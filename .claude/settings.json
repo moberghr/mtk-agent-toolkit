@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allowedTools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet test:*)",
+      "Bash(dotnet format:*)",
+      "Bash(git diff:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(cat:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(curl:*)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(**/appsettings.Production.json)",
+      "Write(.env)",
+      "Write(.env.*)",
+      "Bash(rm -rf:*)",
+      "Bash(git push:*)",
+      "Bash(git checkout main:*)",
+      "Bash(dotnet publish:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.cs)|Edit(*.cs)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "dotnet format --include \"$CLAUDE_FILE\" --verbosity quiet 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}

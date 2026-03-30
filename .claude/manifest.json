@@ -1,0 +1,66 @@
+{
+  "version": "2.0.0",
+  "updated": "2026-03-30",
+  "description": "Moberg Claude Code toolkit — shared commands, agents, and settings for consistent AI-assisted development",
+  "source": "https://github.com/moberghr/claude-helpers",
+  "files": {
+    "commands/moberg-implement.md": {
+      "target": ".claude/commands/moberg-implement.md",
+      "action": "sync",
+      "description": "Full feature implementation loop (plan → implement → verify → review → fix → cleanup → learn)"
+    },
+    "commands/moberg-init.md": {
+      "target": ".claude/commands/moberg-init.md",
+      "action": "sync",
+      "description": "Bootstrap repo with CLAUDE.md generation from codebase scan"
+    },
+    "commands/moberg-scan.md": {
+      "target": ".claude/commands/moberg-scan.md",
+      "action": "sync",
+      "description": "Extract architecture principles from codebase"
+    },
+    "commands/moberg-merge.md": {
+      "target": ".claude/commands/moberg-merge.md",
+      "action": "sync",
+      "description": "Unify architecture scans from multiple repos"
+    },
+    "commands/moberg-update.md": {
+      "target": ".claude/commands/moberg-update.md",
+      "action": "sync",
+      "description": "Pull latest toolkit from central repo"
+    },
+    "commands/moberg-fix.md": {
+      "target": ".claude/commands/moberg-fix.md",
+      "action": "sync",
+      "description": "Lightweight fix/task loop — skip planning and review for small changes"
+    },
+    "commands/quick-check.md": {
+      "target": ".claude/commands/quick-check.md",
+      "action": "sync",
+      "description": "Lightweight pre-commit security scan"
+    },
+    "agents/compliance-reviewer.md": {
+      "target": ".claude/agents/compliance-reviewer.md",
+      "action": "sync",
+      "description": "Adversarial code reviewer for fintech compliance"
+    },
+    "settings.json": {
+      "target": ".claude/settings.json",
+      "action": "merge",
+      "description": "Permissions, hooks, and tool configuration"
+    },
+    "references/coding-guidelines.md": {
+      "target": ".claude/references/coding-guidelines.md",
+      "action": "sync",
+      "description": "Moberg C# coding style guide"
+    }
+  },
+  "protected": [
+    ".claude/settings.local.json",
+    "CLAUDE.md",
+    "tasks/lessons.md",
+    "tasks/todo.md",
+    ".claude/references/architecture-principles.md",
+    ".claude/references/quick-check-list.md"
+  ]
+}
