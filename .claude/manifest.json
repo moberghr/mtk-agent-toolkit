@@ -24,6 +24,11 @@
       "action": "sync",
       "description": "Unify architecture scans from multiple repos"
     },
+    "commands/moberg-install.md": {
+      "target": ".claude/commands/moberg-install.md",
+      "action": "sync",
+      "description": "Install toolkit — globally for user or locally for a project"
+    },
     "commands/moberg-update.md": {
       "target": ".claude/commands/moberg-update.md",
       "action": "sync",

@@ -8,6 +8,7 @@ This repository is the single source of truth for commands, agents, settings, an
 
 | Type | Path | Description |
 |------|------|-------------|
+| Command | `commands/moberg-install.md` | Install toolkit — globally for user or locally for a project |
 | Command | `commands/moberg-init.md` | Bootstrap a repo — scans codebase, pulls guidelines, generates CLAUDE.md |
 | Command | `commands/moberg-implement.md` | Full feature loop: plan → implement → verify → review → fix → cleanup → learn |
 | Command | `commands/moberg-scan.md` | Extract architecture principles from a codebase |
@@ -22,38 +23,106 @@ This repository is the single source of truth for commands, agents, settings, an
 
 All files live under `.claude/` and get distributed into each project's `.claude/` directory.
 
-## Quick Start
+## Installation
 
-### 1. Clone this repo
+The toolkit can be installed in two ways:
+
+| Mode | Location | Commands appear as | Best for |
+|------|----------|-------------------|----------|
+| **Global** | `~/.claude/` | `/user:moberg-*` | Individual engineers — available in every repo |
+| **Project** | `<repo>/.claude/` | `/project:moberg-*` | Team repos — committed and shared with the team |
+
+Both modes work identically. The only difference is scope and how commands are invoked.
+
+### Option A: Ask Claude to install it (recommended)
+
+Open Claude Code in any directory and paste this:
+
+```
+Install the moberg Claude Code toolkit from https://github.com/moberghr/claude-helpers.
+Fetch .claude/manifest.json from the repo's main branch, then install all commands,
+agents, and settings listed in it.
+
+Ask me whether I want global install (~/.claude/) or project install (.claude/ in this repo).
+
+For each file in manifest.files:
+- Fetch from: https://raw.githubusercontent.com/moberghr/claude-helpers/main/.claude/{key}
+- Commands (commands/*.md) → target commands/ directory
+- Agents (agents/*.md) → target agents/ directory
+- Settings (settings.json) → merge into existing settings.json (union permissions, don't overwrite)
+- References (references/*.md) → target references/ directory (project install only)
+
+Create directories as needed. Show me what will be installed before writing files.
+After install, tell me to run moberg-init in my project repo to generate CLAUDE.md.
+```
+
+Claude will fetch the manifest, show you what it found, ask where to install, and do the rest.
+
+### Option B: Clone and run the install command
 
 ```bash
 git clone git@github.com:moberghr/claude-helpers.git ~/Dev/claude-helpers
 ```
 
-### 2. Set the environment variable (optional, enables offline updates)
+Then open Claude Code in the cloned repo and run:
+
+```
+/project:moberg-install
+```
+
+This walks you through the same interactive flow — choose global or project, review files, install.
+
+### Option C: Manual setup
+
+```bash
+# Clone
+git clone git@github.com:moberghr/claude-helpers.git ~/Dev/claude-helpers
+
+# Global install (copy to user-level Claude config)
+mkdir -p ~/.claude/commands ~/.claude/agents
+cp ~/Dev/claude-helpers/.claude/commands/*.md ~/.claude/commands/
+cp ~/Dev/claude-helpers/.claude/agents/*.md ~/.claude/agents/
+
+# OR project install (copy to your repo)
+cd /path/to/your/repo
+mkdir -p .claude/commands .claude/agents .claude/references
+cp ~/Dev/claude-helpers/.claude/commands/*.md .claude/commands/
+cp ~/Dev/claude-helpers/.claude/agents/*.md .claude/agents/
+cp ~/Dev/claude-helpers/.claude/references/*.md .claude/references/
+cp ~/Dev/claude-helpers/.claude/settings.json .claude/settings.json
+```
+
+### After installation
+
+Regardless of install method, set up the environment variable for offline updates:
 
 ```bash
 # Add to your shell profile (~/.zshrc or ~/.bashrc)
 export MOBERG_HELPERS_PATH=~/Dev/claude-helpers
 ```
 
-### 3. Bootstrap your project
-
-Open Claude Code in your project repo and run:
+Then bootstrap your project repo:
 
 ```
-/project:moberg-init
+/user:moberg-init          # if you installed globally
+/project:moberg-init       # if you installed per-project
 ```
 
 This scans your codebase, fetches coding guidelines, and generates a tailored `CLAUDE.md` with numbered rules that the implementation and review commands reference.
 
-### 4. Start building
+### Start building
 
 ```
+/user:moberg-implement Add payment reconciliation endpoint
+# or
 /project:moberg-implement Add payment reconciliation endpoint
 ```
 
 ## Command Reference
+
+### `/project:moberg-install`
+
+Interactively installs the toolkit. Asks whether you want global (`~/.claude/`) or project (`.claude/`) installation, fetches all files from the manifest, and places them in the correct location. Supports `--global`, `--project`, and `--auto` flags to skip prompts.
 
 ### `/project:moberg-scan`
 
@@ -97,21 +166,24 @@ Lightweight pre-commit security scan. Checks staged changes for hardcoded secret
 
 ## Workflow
 
-The typical workflow for setting up a new project:
+### First-time setup
 
 ```
-Per repo (once):          Per repo (ongoing):        Cross-repo (periodic):
-  moberg-scan         -->   moberg-init          -->   moberg-scan (each repo)
-  (extract patterns)        (generate CLAUDE.md)       moberg-merge (unify)
-                                                       moberg-init (regenerate)
-                            moberg-implement
-                            (build features)
+One-time:                 Per repo (once):           Per repo (ongoing):
+  moberg-install      -->   moberg-init          -->   moberg-implement
+  (global or project)       (generate CLAUDE.md)       (build features)
+                                                       moberg-fix
+                                                       (small fixes)
+                                                       moberg-update
+                                                       (pull toolkit updates)
+```
 
-                            moberg-fix
-                            (small fixes/tasks)
+### Cross-repo pattern extraction (optional)
 
-                            moberg-update
-                            (pull toolkit updates)
+```
+Per repo:                 Central:                   Per repo:
+  moberg-scan         -->   moberg-merge         -->   moberg-init
+  (extract patterns)        (unify principles)         (regenerate CLAUDE.md)
 ```
 
 ## How Updates Work
@@ -169,6 +241,7 @@ claude-helpers/
     settings.json                          # Shared permissions, hooks, tool config
     settings.local.json                    # Local overrides (not distributed)
     commands/
+      moberg-install.md                    # Install toolkit (global or project)
       moberg-init.md                       # Bootstrap a project repo
       moberg-implement.md                  # Full feature implementation loop
       moberg-scan.md                       # Extract architecture principles
