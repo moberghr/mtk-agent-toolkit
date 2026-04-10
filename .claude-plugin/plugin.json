@@ -1,11 +1,12 @@
 {
   "name": "moberg-toolkit",
-  "version": "4.0.0",
   "description": "AI-assisted development toolkit for .NET fintech teams — command entry points backed by reusable skills, review agents, and compliance-first workflows",
+  "version": "4.0.0",
   "author": {
     "name": "Moberg HR",
     "url": "https://github.com/moberghr"
   },
+  "homepage": "https://github.com/moberghr/claude-helpers",
   "repository": "https://github.com/moberghr/claude-helpers",
   "license": "UNLICENSED",
   "keywords": [
@@ -16,7 +17,5 @@
     "implementation-workflow",
     "skills"
   ],
-  "commands": "./.claude/commands/",
-  "agents": "./.claude/agents/",
-  "settings": "./.claude/settings.json"
+  "commands": "./.claude/commands"
 }
