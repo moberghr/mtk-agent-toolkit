@@ -23,8 +23,18 @@ if something goes sideways and requires re-planning.
 
 If CLAUDE.md doesn't exist, STOP and tell the engineer to run `/project:moberg-init` first.
 
+### Resolve lessons path
+Lessons must persist across worktrees. Determine the correct path:
+1. Run: `git worktree list --porcelain | head -1 | sed 's/worktree //'` to get the main worktree path.
+2. Compare it to the current working directory (`pwd`).
+3. If they differ, you are in a worktree — use `{main-worktree}/tasks/lessons.md` for ALL
+   lessons reads and writes throughout this session.
+4. If they match (or the command fails), use `tasks/lessons.md` in the current directory.
+
+Store this resolved path as **LESSONS_PATH** for the rest of the session.
+
 ### Read lessons
-If `tasks/lessons.md` exists, read it. Apply any patterns relevant to this task.
+If the file at LESSONS_PATH exists, read it. Apply any patterns relevant to this task.
 These are mistakes and insights from previous sessions — learn from them.
 
 ### Check for --auto flag
@@ -379,8 +389,8 @@ If any fixes are made: `dotnet build && dotnet test`.
 
 ## PHASE 7: LESSONS — Self-Improvement Loop
 
-Capture what was learned in this session to `tasks/lessons.md` — but ONLY if there's
-something worth remembering. Don't write boilerplate.
+Capture what was learned in this session to LESSONS_PATH (resolved in Phase 0) — but ONLY
+if there's something worth remembering. Don't write boilerplate.
 
 ### When to write a lesson:
 - The compliance-reviewer found a **Critical** or **Warning** issue → write what went wrong and the rule to prevent it
@@ -403,7 +413,7 @@ something worth remembering. Don't write boilerplate.
 
 ### During the session
 If the engineer corrects a mistake at ANY point during the session, immediately
-append to `tasks/lessons.md`. Don't wait for Phase 7.
+append to LESSONS_PATH (resolved in Phase 0). Don't wait for Phase 7.
 
 ### Phase 7 exit criteria
 - [ ] Lessons written (if review found Critical/Warning, or engineer corrected, or unexpected obstacle)

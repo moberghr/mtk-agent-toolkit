@@ -29,9 +29,19 @@ STOP and tell the engineer: "This is bigger than a quick fix. Run `/project:mobe
 
 If CLAUDE.md doesn't exist, STOP and tell the engineer to run `/project:moberg-init` first.
 
+### Resolve lessons path
+Lessons must persist across worktrees. Determine the correct path:
+1. Run: `git worktree list --porcelain | head -1 | sed 's/worktree //'` to get the main worktree path.
+2. Compare it to the current working directory (`pwd`).
+3. If they differ, you are in a worktree — use `{main-worktree}/tasks/lessons.md` for ALL
+   lessons reads and writes throughout this session.
+4. If they match (or the command fails), use `tasks/lessons.md` in the current directory.
+
+Store this resolved path as **LESSONS_PATH** for the rest of the session.
+
 ### Read lessons
-If `tasks/lessons.md` exists, scan for entries relevant to this area. Don't read the whole file
-if it's long — search for keywords related to the task.
+If the file at LESSONS_PATH exists, scan for entries relevant to this area. Don't read the
+whole file if it's long — search for keywords related to the task.
 
 ---
 
@@ -86,7 +96,7 @@ Ready to commit:
 ```
 
 ### Lessons (only on corrections)
-If the engineer corrects a mistake during this session, append to `tasks/lessons.md`.
+If the engineer corrects a mistake during this session, append to LESSONS_PATH (resolved in Step 1).
 Otherwise, skip — clean fixes don't need a lessons entry.
 
 ---
