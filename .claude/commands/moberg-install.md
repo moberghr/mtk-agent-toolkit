@@ -7,7 +7,7 @@ argument-hint: [--global | --project] [--auto]
 # Moberg Install — Toolkit Setup
 
 You are installing the Moberg Claude Code toolkit. This command places commands,
-agents, settings, and references into the correct location so the engineer can
+skills, agents, settings, references, and routing assets into the correct location so the engineer can
 use `/project:moberg-*` or `/user:moberg-*` commands.
 
 ## STEP 1: DETERMINE INSTALL MODE
@@ -39,7 +39,7 @@ Find the toolkit source, in priority order:
    echo $MOBERG_HELPERS_PATH
    ```
 
-3. **GitHub**: Fetch from `https://raw.githubusercontent.com/moberghr/claude-helpers/main/.claude/`
+3. **GitHub**: Fetch from `https://raw.githubusercontent.com/moberghr/claude-helpers/main/`
 
 If none work, tell the engineer:
 > "Cannot reach the toolkit source. Options:
@@ -67,9 +67,11 @@ For each file in `manifest.files`:
 | File type | Source key pattern | Target |
 |-----------|-------------------|--------|
 | Commands | `commands/*.md` | `~/.claude/commands/{filename}` |
+| Skills | `skills/*/SKILL.md` | `~/.claude/skills/{skill-name}/SKILL.md` |
 | Agents | `agents/*.md` | `~/.claude/agents/{filename}` |
 | Settings | `settings.json` | `~/.claude/settings.json` (MERGE) |
 | References | `references/*.md` | Skip — these are project-specific |
+| Root assets | `AGENTS.md`, `docs/*`, `scripts/*` | Skip — these are project/project-tooling assets |
 
 **Settings merge strategy** (same as moberg-update):
 - If `~/.claude/settings.json` exists, merge:
@@ -81,7 +83,7 @@ For each file in `manifest.files`:
 
 **Create directories if needed:**
 ```bash
-mkdir -p ~/.claude/commands ~/.claude/agents
+mkdir -p ~/.claude/commands ~/.claude/agents ~/.claude/skills
 ```
 
 **Write version marker:**
@@ -103,7 +105,7 @@ This is identical to what `moberg-update` does. Follow the same sync/merge logic
 
 **Create directories if needed:**
 ```bash
-mkdir -p .claude/commands .claude/agents .claude/references
+mkdir -p .claude/commands .claude/agents .claude/references .claude/skills docs scripts
 ```
 
 **Write version marker:**
@@ -139,6 +141,7 @@ Location: ~/.claude/
 
 Installed:
   Commands: [N] files → ~/.claude/commands/
+  Skills:   [N] files → ~/.claude/skills/
   Agents:   [N] files → ~/.claude/agents/
   Settings: ~/.claude/settings.json [created | merged]
 
@@ -166,9 +169,11 @@ Location: .claude/
 
 Installed:
   Commands:   [N] files → .claude/commands/
+  Skills:     [N] files → .claude/skills/
   Agents:     [N] files → .claude/agents/
   References: [N] files → .claude/references/
   Settings:   .claude/settings.json [created | merged]
+  Routing:    AGENTS.md [project install]
 
 Commands are available in THIS repo as:
   /project:moberg-init       — Bootstrap (generates CLAUDE.md)
@@ -191,6 +196,8 @@ Next steps:
 - **Always create directories before writing files**
 - **Settings are always merged, never overwritten** — the engineer may have local additions
 - **References are project-specific** — skip them for global install
+- **Skills are reusable workflow assets** — install them globally and per-project
+- **Root-level assets like `AGENTS.md` are project-only** unless explicitly designed for user scope
 - For global install, remind the engineer that per-project setup (moberg-init) is still needed
 - If files already exist at the target, show the version diff and use AskUserQuestion to ask whether to proceed (unless --auto or --force):
   ```

@@ -1,0 +1,10 @@
+{
+  "SessionStart": [
+    {
+      "matcher": "startup|clear|compact",
+      "type": "command",
+      "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start",
+      "async": false
+    }
+  ]
+}

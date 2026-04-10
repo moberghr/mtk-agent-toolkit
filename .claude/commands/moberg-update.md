@@ -1,12 +1,12 @@
 ---
-description: Pull latest moberg toolkit (commands, agents, settings) from the central claude-helpers repo. Run periodically or when notified of updates.
+description: Pull latest moberg toolkit (commands, skills, agents, settings) from the central claude-helpers repo. Run periodically or when notified of updates.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 argument-hint: [--auto] [--force]
 ---
 
 # Moberg Update — Sync Toolkit from Central Repo
 
-Pull the latest commands, agents, settings, and references from the moberg
+Pull the latest commands, skills, agents, settings, references, and routing assets from the moberg
 `claude-helpers` repository into this project's `.claude/` directory.
 
 ## SOURCE RESOLUTION
@@ -18,7 +18,7 @@ Determine the source for upstream files, in priority order:
    echo $MOBERG_HELPERS_PATH
    ```
 
-2. **GitHub raw files**: Fetch from `https://raw.githubusercontent.com/moberghr/claude-helpers/main/.claude/`
+2. **GitHub raw files**: Fetch from `https://raw.githubusercontent.com/moberghr/claude-helpers/main/`
 
 If neither works (no env var, network restricted), tell the engineer:
 > "Cannot reach the claude-helpers repo. Either:
@@ -27,11 +27,10 @@ If neither works (no env var, network restricted), tell the engineer:
 
 ## PHASE 1: FETCH MANIFEST
 
-Fetch `manifest.json` from the source. **All files in the claude-helpers repo live under `.claude/`**,
-so prepend `.claude/` to manifest keys when building fetch paths.
+Fetch `manifest.json` from the source.
 
 ```bash
-# From GitHub (note the .claude/ prefix):
+# From GitHub:
 curl -sL https://raw.githubusercontent.com/moberghr/claude-helpers/main/.claude/manifest.json
 
 # Or from local path:
@@ -48,10 +47,10 @@ If versions match and `--force` is not set:
 For each file in `manifest.files`:
 
 1. Fetch the upstream version (to memory, NOT to disk yet).
-   **Path mapping:** Manifest keys like `commands/moberg-implement.md` map to `.claude/commands/moberg-implement.md`
-   in the source repo. When fetching:
-   - GitHub: `https://raw.githubusercontent.com/moberghr/claude-helpers/main/.claude/{manifest-key}`
-   - Local: `$MOBERG_HELPERS_PATH/.claude/{manifest-key}`
+   **Path mapping:** use the manifest entry's `source` field.
+   When fetching:
+   - GitHub: `https://raw.githubusercontent.com/moberghr/claude-helpers/main/{source}`
+   - Local: `$MOBERG_HELPERS_PATH/{source}`
 2. Read the local version at the `target` path (if it exists)
 3. Compare and classify:
    - **unchanged** — identical content
@@ -116,7 +115,7 @@ If the engineer picks "Show diffs first", display the diffs and then ask again w
 
 ### For each file classified as `updated` or `new`:
 
-**If action is `sync`** (commands, agents, references):
+**If action is `sync`** (commands, skills, agents, references, root assets):
 - Overwrite the local file with the upstream version
 
 **If action is `merge`** (settings.json):

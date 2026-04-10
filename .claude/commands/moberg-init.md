@@ -9,6 +9,8 @@ You are setting up a repository for the `/project:moberg-implement` workflow.
 Your job is to scan this codebase and generate a tailored `CLAUDE.md` that the
 implementation and review agents will use as their source of truth.
 
+This bootstrap also prepares the repo for the shared skill layer and OpenCode routing.
+
 ## STEP 1: Pull External Standards
 
 ### Coding Guidelines
@@ -223,13 +225,24 @@ Create a new `CLAUDE.md` following the structure below.
 
 ## STEP 4: Set Up Command Files & Working Directories
 
-### Commands & Agents
+### Commands, Skills, Agents, And Routing
 Ensure the following files exist in `.claude/commands/`:
 - `moberg-implement.md` — the main implementation loop command
 - `moberg-update.md` — toolkit sync command
+ - `moberg-validate.md` — toolkit validation command
 - `quick-check.md` — lightweight pre-commit security scan
 
-Also ensure `.claude/agents/compliance-reviewer.md` exists.
+Also ensure these exist:
+
+- `.claude/skills/spec-driven-development-dotnet/SKILL.md`
+- `.claude/skills/planning-and-task-breakdown/SKILL.md`
+- `.claude/skills/incremental-implementation-dotnet/SKILL.md`
+- `.claude/skills/debugging-and-error-recovery/SKILL.md`
+- `.claude/skills/code-review-and-quality-fintech/SKILL.md`
+- `.claude/agents/compliance-reviewer.md`
+- `.claude/agents/test-reviewer.md`
+- `.claude/agents/architecture-reviewer.md`
+- `AGENTS.md`
 
 If any are missing, tell the engineer to run `/project:moberg-update` to pull them
 from the central claude-helpers repo. If that command is also missing, tell them to

@@ -1,63 +1,254 @@
 {
-  "version": "2.1.0",
+  "version": "4.0.0",
   "updated": "2026-04-10",
-  "description": "Moberg Claude Code toolkit — shared commands, agents, and settings for consistent AI-assisted development",
+  "description": "Moberg Claude Code toolkit — shared commands, skills, agents, references, and settings for consistent AI-assisted development",
   "source": "https://github.com/moberghr/claude-helpers",
   "files": {
     "commands/moberg-implement.md": {
+      "source": ".claude/commands/moberg-implement.md",
       "target": ".claude/commands/moberg-implement.md",
       "action": "sync",
-      "description": "Full feature implementation loop (plan → implement → verify → review → fix → cleanup → learn)"
+      "description": "Thin entry point for the full feature implementation workflow"
     },
     "commands/moberg-init.md": {
+      "source": ".claude/commands/moberg-init.md",
       "target": ".claude/commands/moberg-init.md",
       "action": "sync",
       "description": "Bootstrap repo with CLAUDE.md generation from codebase scan"
     },
     "commands/moberg-scan.md": {
+      "source": ".claude/commands/moberg-scan.md",
       "target": ".claude/commands/moberg-scan.md",
       "action": "sync",
       "description": "Extract architecture principles from codebase"
     },
     "commands/moberg-merge.md": {
+      "source": ".claude/commands/moberg-merge.md",
       "target": ".claude/commands/moberg-merge.md",
       "action": "sync",
       "description": "Unify architecture scans from multiple repos"
     },
     "commands/moberg-install.md": {
+      "source": ".claude/commands/moberg-install.md",
       "target": ".claude/commands/moberg-install.md",
       "action": "sync",
       "description": "Install toolkit — globally for user or locally for a project"
     },
     "commands/moberg-update.md": {
+      "source": ".claude/commands/moberg-update.md",
       "target": ".claude/commands/moberg-update.md",
       "action": "sync",
       "description": "Pull latest toolkit from central repo"
     },
     "commands/moberg-fix.md": {
+      "source": ".claude/commands/moberg-fix.md",
       "target": ".claude/commands/moberg-fix.md",
       "action": "sync",
-      "description": "Lightweight fix/task loop — skip planning and review for small changes"
+      "description": "Thin entry point for the lightweight bug-fix workflow"
     },
     "commands/quick-check.md": {
+      "source": ".claude/commands/quick-check.md",
       "target": ".claude/commands/quick-check.md",
       "action": "sync",
       "description": "Lightweight pre-commit security scan"
     },
+    "commands/moberg-validate.md": {
+      "source": ".claude/commands/moberg-validate.md",
+      "target": ".claude/commands/moberg-validate.md",
+      "action": "sync",
+      "description": "Validate toolkit structure, metadata, and skill anatomy"
+    },
     "agents/compliance-reviewer.md": {
+      "source": ".claude/agents/compliance-reviewer.md",
       "target": ".claude/agents/compliance-reviewer.md",
       "action": "sync",
       "description": "Adversarial code reviewer for fintech compliance"
     },
+    "agents/test-reviewer.md": {
+      "source": ".claude/agents/test-reviewer.md",
+      "target": ".claude/agents/test-reviewer.md",
+      "action": "sync",
+      "description": "Focused reviewer for test completeness and verification quality"
+    },
+    "agents/architecture-reviewer.md": {
+      "source": ".claude/agents/architecture-reviewer.md",
+      "target": ".claude/agents/architecture-reviewer.md",
+      "action": "sync",
+      "description": "Focused reviewer for architectural fit and slice boundaries"
+    },
     "settings.json": {
+      "source": ".claude/settings.json",
       "target": ".claude/settings.json",
       "action": "merge",
       "description": "Permissions, hooks, and tool configuration"
     },
     "references/coding-guidelines.md": {
+      "source": ".claude/references/coding-guidelines.md",
       "target": ".claude/references/coding-guidelines.md",
       "action": "sync",
       "description": "Moberg C# coding style guide"
+    },
+    "references/testing-patterns.md": {
+      "source": ".claude/references/testing-patterns.md",
+      "target": ".claude/references/testing-patterns.md",
+      "action": "sync",
+      "description": "Shared testing guidance for Moberg projects"
+    },
+    "references/security-checklist.md": {
+      "source": ".claude/references/security-checklist.md",
+      "target": ".claude/references/security-checklist.md",
+      "action": "sync",
+      "description": "Shared security checklist for fintech changes"
+    },
+    "references/performance-checklist.md": {
+      "source": ".claude/references/performance-checklist.md",
+      "target": ".claude/references/performance-checklist.md",
+      "action": "sync",
+      "description": "Shared performance checklist for service changes"
+    },
+    "references/ef-core-checklist.md": {
+      "source": ".claude/references/ef-core-checklist.md",
+      "target": ".claude/references/ef-core-checklist.md",
+      "action": "sync",
+      "description": "Shared EF Core review and implementation checklist"
+    },
+    "references/mediatr-slice-patterns.md": {
+      "source": ".claude/references/mediatr-slice-patterns.md",
+      "target": ".claude/references/mediatr-slice-patterns.md",
+      "action": "sync",
+      "description": "Shared MediatR/CQRS slice conventions"
+    },
+    "skills/spec-driven-development-dotnet/SKILL.md": {
+      "source": ".claude/skills/spec-driven-development-dotnet/SKILL.md",
+      "target": ".claude/skills/spec-driven-development-dotnet/SKILL.md",
+      "action": "sync",
+      "description": "Reusable planning skill for substantial .NET changes"
+    },
+    "skills/planning-and-task-breakdown/SKILL.md": {
+      "source": ".claude/skills/planning-and-task-breakdown/SKILL.md",
+      "target": ".claude/skills/planning-and-task-breakdown/SKILL.md",
+      "action": "sync",
+      "description": "Reusable task breakdown and batching skill"
+    },
+    "skills/incremental-implementation-dotnet/SKILL.md": {
+      "source": ".claude/skills/incremental-implementation-dotnet/SKILL.md",
+      "target": ".claude/skills/incremental-implementation-dotnet/SKILL.md",
+      "action": "sync",
+      "description": "Reusable .NET implementation discipline skill"
+    },
+    "skills/debugging-and-error-recovery/SKILL.md": {
+      "source": ".claude/skills/debugging-and-error-recovery/SKILL.md",
+      "target": ".claude/skills/debugging-and-error-recovery/SKILL.md",
+      "action": "sync",
+      "description": "Reusable bug-fix and debugging workflow skill"
+    },
+    "skills/code-review-and-quality-fintech/SKILL.md": {
+      "source": ".claude/skills/code-review-and-quality-fintech/SKILL.md",
+      "target": ".claude/skills/code-review-and-quality-fintech/SKILL.md",
+      "action": "sync",
+      "description": "Reusable fintech review workflow skill"
+    },
+    "skills/test-driven-development-dotnet/SKILL.md": {
+      "source": ".claude/skills/test-driven-development-dotnet/SKILL.md",
+      "target": ".claude/skills/test-driven-development-dotnet/SKILL.md",
+      "action": "sync",
+      "description": "Reusable .NET test-driven development skill"
+    },
+    "skills/context-engineering/SKILL.md": {
+      "source": ".claude/skills/context-engineering/SKILL.md",
+      "target": ".claude/skills/context-engineering/SKILL.md",
+      "action": "sync",
+      "description": "Reusable context loading and re-anchoring skill"
+    },
+    "skills/security-and-hardening-fintech/SKILL.md": {
+      "source": ".claude/skills/security-and-hardening-fintech/SKILL.md",
+      "target": ".claude/skills/security-and-hardening-fintech/SKILL.md",
+      "action": "sync",
+      "description": "Reusable fintech security and hardening workflow"
+    },
+    "skills/source-driven-development/SKILL.md": {
+      "source": ".claude/skills/source-driven-development/SKILL.md",
+      "target": ".claude/skills/source-driven-development/SKILL.md",
+      "action": "sync",
+      "description": "Reusable framework verification and source-grounding skill"
+    },
+    "skills/code-simplification/SKILL.md": {
+      "source": ".claude/skills/code-simplification/SKILL.md",
+      "target": ".claude/skills/code-simplification/SKILL.md",
+      "action": "sync",
+      "description": "Reusable behavior-preserving cleanup and simplification skill"
+    },
+    "skills/verification-before-completion/SKILL.md": {
+      "source": ".claude/skills/verification-before-completion/SKILL.md",
+      "target": ".claude/skills/verification-before-completion/SKILL.md",
+      "action": "sync",
+      "description": "Reusable verification discipline — no completion claims without fresh evidence"
+    },
+    "skills/brainstorming/SKILL.md": {
+      "source": ".claude/skills/brainstorming/SKILL.md",
+      "target": ".claude/skills/brainstorming/SKILL.md",
+      "action": "sync",
+      "description": "Reusable design exploration skill — divergent thinking before spec commitment"
+    },
+    "skills/using-git-worktrees/SKILL.md": {
+      "source": ".claude/skills/using-git-worktrees/SKILL.md",
+      "target": ".claude/skills/using-git-worktrees/SKILL.md",
+      "action": "sync",
+      "description": "Reusable worktree setup and teardown with safety checks"
+    },
+    "skills/writing-skills/SKILL.md": {
+      "source": ".claude/skills/writing-skills/SKILL.md",
+      "target": ".claude/skills/writing-skills/SKILL.md",
+      "action": "sync",
+      "description": "Meta-skill for authoring new skills with TDD discipline and CSO principle"
+    },
+    "tests/pressure-tests/security-hardening-pressure.md": {
+      "source": "tests/pressure-tests/security-hardening-pressure.md",
+      "target": "tests/pressure-tests/security-hardening-pressure.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for security-and-hardening skill"
+    },
+    "tests/pressure-tests/verification-pressure.md": {
+      "source": "tests/pressure-tests/verification-pressure.md",
+      "target": "tests/pressure-tests/verification-pressure.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for verification-before-completion skill"
+    },
+    "tests/pressure-tests/code-review-pressure.md": {
+      "source": "tests/pressure-tests/code-review-pressure.md",
+      "target": "tests/pressure-tests/code-review-pressure.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for code-review skill"
+    },
+    "hooks/session-start": {
+      "source": "hooks/session-start",
+      "target": "hooks/session-start",
+      "action": "sync",
+      "description": "Multi-platform session initialization hook"
+    },
+    "hooks/hooks.json": {
+      "source": "hooks/hooks.json",
+      "target": "hooks/hooks.json",
+      "action": "sync",
+      "description": "Hook configuration for session-start event"
+    },
+    "AGENTS.md": {
+      "source": "AGENTS.md",
+      "target": "AGENTS.md",
+      "action": "sync",
+      "description": "OpenCode routing rules for commands, skills, and reviewer agents"
+    },
+    "docs/skill-anatomy.md": {
+      "source": "docs/skill-anatomy.md",
+      "target": "docs/skill-anatomy.md",
+      "action": "sync",
+      "description": "Authoring anatomy for reusable skills"
+    },
+    "scripts/validate-toolkit.sh": {
+      "source": "scripts/validate-toolkit.sh",
+      "target": "scripts/validate-toolkit.sh",
+      "action": "sync",
+      "description": "Validation script for toolkit integrity"
     }
   },
   "protected": [
