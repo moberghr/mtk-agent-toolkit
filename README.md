@@ -2,63 +2,69 @@
 
 Shared Claude Code toolkit for consistent AI-assisted development across Moberg HR.
 
+**Quick start** — install via the Claude Code plugin marketplace:
+
+```
+/plugin marketplace add moberghr/claude-helpers
+/plugin install moberg-toolkit@moberghr
+```
+
+Then bootstrap your repo: `/moberg-toolkit:moberg-init`
+
+---
+
 This repository is the single source of truth for commands, agents, settings, and references that get distributed to all Moberg project repositories. It grows over time as the team adds new skills, plugins, and knowledge.
 
 ## What's Inside
 
 | Type | Path | Description |
 |------|------|-------------|
-| Command | `commands/moberg-install.md` | Install toolkit — globally for user or locally for a project |
-| Command | `commands/moberg-init.md` | Bootstrap a repo — scans codebase, pulls guidelines, generates CLAUDE.md |
 | Command | `commands/moberg-implement.md` | Full feature loop: plan → implement → verify → review → fix → cleanup → learn |
+| Command | `commands/moberg-fix.md` | Lightweight fix/task — skip planning and review for small changes |
+| Command | `commands/moberg-init.md` | Bootstrap a repo — scans codebase, pulls guidelines, generates CLAUDE.md |
+| Command | `commands/quick-check.md` | Fast pre-commit security review |
 | Command | `commands/moberg-scan.md` | Extract architecture principles from a codebase |
 | Command | `commands/moberg-merge.md` | Unify architecture scans from multiple repos into one document |
-| Command | `commands/moberg-fix.md` | Lightweight fix/task — skip planning and review for small changes |
-| Command | `commands/moberg-update.md` | Pull latest toolkit into a project repo |
-| Command | `commands/quick-check.md` | Fast pre-commit security review |
+| Command | `commands/moberg-install.md` | Install toolkit manually — globally for user or locally for a project |
+| Command | `commands/moberg-update.md` | Pull latest toolkit (manual installs only — plugin handles this automatically) |
 | Agent | `agents/compliance-reviewer.md` | Adversarial code reviewer for fintech compliance (96-item checklist) |
 | Reference | `references/coding-guidelines.md` | Moberg C# coding style guide |
 | Settings | `settings.json` | Shared permissions, hooks, and tool configuration |
-| Manifest | `manifest.json` | Distribution manifest — defines what gets synced and how |
+| Plugin | `.claude-plugin/plugin.json` | Plugin manifest for marketplace distribution |
+| Plugin | `.claude-plugin/marketplace.json` | Marketplace catalog |
+| Manifest | `manifest.json` | Distribution manifest for manual installs — defines what gets synced and how |
 
-All files live under `.claude/` and get distributed into each project's `.claude/` directory.
+All files live under `.claude/` and get distributed via the Claude Code plugin marketplace or manually into each project's `.claude/` directory.
 
 ## Installation
 
-The toolkit can be installed in two ways:
+### Option A: Plugin Marketplace (recommended)
+
+The fastest way. Two commands in Claude Code:
+
+```
+/plugin marketplace add moberghr/claude-helpers
+/plugin install moberg-toolkit@moberghr
+```
+
+This installs all commands, agents, and settings. Commands appear as `/moberg-toolkit:moberg-implement`, `/moberg-toolkit:moberg-fix`, etc.
+
+To update later:
+
+```
+/plugin update moberg-toolkit@moberghr
+```
+
+### Option B: Manual install (more control)
+
+For teams that want to commit the toolkit to each repo or need the settings merge behavior.
 
 | Mode | Location | Commands appear as | Best for |
 |------|----------|-------------------|----------|
 | **Global** | `~/.claude/` | `/user:moberg-*` | Individual engineers — available in every repo |
 | **Project** | `<repo>/.claude/` | `/project:moberg-*` | Team repos — committed and shared with the team |
 
-Both modes work identically. The only difference is scope and how commands are invoked.
-
-### Option A: Ask Claude to install it (recommended)
-
-Open Claude Code in any directory and paste this:
-
-```
-Install the moberg Claude Code toolkit from https://github.com/moberghr/claude-helpers.
-Fetch .claude/manifest.json from the repo's main branch, then install all commands,
-agents, and settings listed in it.
-
-Ask me whether I want global install (~/.claude/) or project install (.claude/ in this repo).
-
-For each file in manifest.files:
-- Fetch from: https://raw.githubusercontent.com/moberghr/claude-helpers/main/.claude/{key}
-- Commands (commands/*.md) → target commands/ directory
-- Agents (agents/*.md) → target agents/ directory
-- Settings (settings.json) → merge into existing settings.json (union permissions, don't overwrite)
-- References (references/*.md) → target references/ directory (project install only)
-
-Create directories as needed. Show me what will be installed before writing files.
-After install, tell me to run moberg-init in my project repo to generate CLAUDE.md.
-```
-
-Claude will fetch the manifest, show you what it found, ask where to install, and do the rest.
-
-### Option B: Clone and run the install command
+Clone and run the install command:
 
 ```bash
 git clone git@github.com:moberghr/claude-helpers.git ~/Dev/claude-helpers
@@ -70,42 +76,23 @@ Then open Claude Code in the cloned repo and run:
 /project:moberg-install
 ```
 
-This walks you through the same interactive flow — choose global or project, review files, install.
+This walks you through the interactive flow — choose global or project, review files, install.
 
-### Option C: Manual setup
-
-```bash
-# Clone
-git clone git@github.com:moberghr/claude-helpers.git ~/Dev/claude-helpers
-
-# Global install (copy to user-level Claude config)
-mkdir -p ~/.claude/commands ~/.claude/agents
-cp ~/Dev/claude-helpers/.claude/commands/*.md ~/.claude/commands/
-cp ~/Dev/claude-helpers/.claude/agents/*.md ~/.claude/agents/
-
-# OR project install (copy to your repo)
-cd /path/to/your/repo
-mkdir -p .claude/commands .claude/agents .claude/references
-cp ~/Dev/claude-helpers/.claude/commands/*.md .claude/commands/
-cp ~/Dev/claude-helpers/.claude/agents/*.md .claude/agents/
-cp ~/Dev/claude-helpers/.claude/references/*.md .claude/references/
-cp ~/Dev/claude-helpers/.claude/settings.json .claude/settings.json
-```
-
-### After installation
-
-Regardless of install method, set up the environment variable for offline updates:
+Optionally set the environment variable for offline updates:
 
 ```bash
 # Add to your shell profile (~/.zshrc or ~/.bashrc)
 export MOBERG_HELPERS_PATH=~/Dev/claude-helpers
 ```
 
-Then bootstrap your project repo:
+### After installation
+
+Bootstrap your project repo (required for both install methods):
 
 ```
-/user:moberg-init          # if you installed globally
-/project:moberg-init       # if you installed per-project
+/moberg-toolkit:moberg-init        # if you used the plugin
+/user:moberg-init                  # if you installed globally
+/project:moberg-init               # if you installed per-project
 ```
 
 This scans your codebase, fetches coding guidelines, and generates a tailored `CLAUDE.md` with numbered rules that the implementation and review commands reference.
@@ -113,9 +100,7 @@ This scans your codebase, fetches coding guidelines, and generates a tailored `C
 ### Start building
 
 ```
-/user:moberg-implement Add payment reconciliation endpoint
-# or
-/project:moberg-implement Add payment reconciliation endpoint
+/moberg-toolkit:moberg-implement Add payment reconciliation endpoint
 ```
 
 ## Command Reference
@@ -204,8 +189,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide on adding commands, ag
 
 ```
 claude-helpers/
+  .claude-plugin/
+    plugin.json                            # Plugin manifest (for marketplace distribution)
+    marketplace.json                       # Marketplace catalog
   .claude/
-    manifest.json                          # Distribution manifest (version, files, protected list)
+    manifest.json                          # Distribution manifest (for manual install — version, files, protected list)
     settings.json                          # Shared permissions, hooks, tool config
     settings.local.json                    # Local overrides (not distributed)
     commands/
@@ -221,14 +209,29 @@ claude-helpers/
       compliance-reviewer.md               # Adversarial fintech code reviewer
     references/
       coding-guidelines.md                 # Moberg C# coding style guide
+  CONTRIBUTING.md                          # Guide for extending the toolkit
   README.md
 ```
+
+## Distribution Models
+
+This toolkit supports two distribution paths that coexist:
+
+| | Plugin Marketplace | Manual (manifest) |
+|---|---|---|
+| **Install** | `/plugin marketplace add moberghr/claude-helpers` | `/project:moberg-install` |
+| **Update** | `/plugin update moberg-toolkit@moberghr` | `/project:moberg-update` |
+| **Settings** | Delivered as-is | Merged (union deny lists, preserve local additions) |
+| **Versioning** | Automatic via plugin cache | Manual via `.moberg-version` marker |
+| **Best for** | Quick onboarding, individual engineers | Team repos needing committed config |
+
+Both read from the same source files. Bump `version` in both `plugin.json` and `manifest.json` when releasing.
 
 ## Roadmap
 
 This repo is designed to grow. Planned additions:
 
 - **Skills** — reusable prompt templates for common tasks (PR descriptions, release notes, incident summaries)
-- **Plugins** — MCP server configurations for team tools
+- **MCP servers** — shared MCP server configurations for team tools
 - **Hooks** — shared pre/post-commit hooks for quality gates
 - **Project templates** — starter CLAUDE.md templates for different project types (API, Lambda, CDK)

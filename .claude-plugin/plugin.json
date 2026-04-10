@@ -1,0 +1,21 @@
+{
+  "name": "moberg-toolkit",
+  "version": "2.1.0",
+  "description": "AI-assisted development toolkit for .NET fintech teams — structured implementation loops, adversarial code review, and compliance-first workflows",
+  "author": {
+    "name": "Moberg HR",
+    "url": "https://github.com/moberghr"
+  },
+  "repository": "https://github.com/moberghr/claude-helpers",
+  "license": "UNLICENSED",
+  "keywords": [
+    "dotnet",
+    "fintech",
+    "compliance",
+    "code-review",
+    "implementation-workflow"
+  ],
+  "commands": "./.claude/commands/",
+  "agents": "./.claude/agents/",
+  "settings": "./.claude/settings.json"
+}

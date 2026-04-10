@@ -259,6 +259,15 @@ If the engineer picks "Revise", apply their feedback, update the plan, and ask a
 - [ ] Elegance check performed — no simpler alternative exists
 - [ ] Approval received (or auto-approved with --auto)
 
+### Phase 1 exit criteria
+- [ ] Summary, Architecture, and Security sections completed (or skipped with stated reason per scope)
+- [ ] Change Manifest lists EVERY file that will be created or modified
+- [ ] Test Manifest lists EVERY test file and case
+- [ ] Batches defined with checkpoint commands
+- [ ] tasks/todo.md written with checkable task list
+- [ ] Elegance check performed — no simpler alternative exists
+- [ ] Approval received (or auto-approved with --auto)
+
 ---
 
 ## PHASE 2: IMPLEMENT — Batch Mode
