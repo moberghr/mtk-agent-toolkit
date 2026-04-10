@@ -1,6 +1,6 @@
 ---
 description: Pull latest moberg toolkit (commands, agents, settings) from the central claude-helpers repo. Run periodically or when notified of updates.
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 argument-hint: [--auto] [--force]
 ---
 
@@ -98,8 +98,21 @@ If nothing to update:
 ## PHASE 3: APPLY
 
 ### Check for --auto flag
-If `--auto` is set, apply immediately. Otherwise, wait for engineer confirmation:
-> "Apply these updates? (**yes** / **no** / **show [filename]** to see diff)"
+If `--auto` is set, apply immediately. Otherwise, use AskUserQuestion:
+
+```
+question: "Apply these updates?"
+header: "Update"
+options:
+  - label: "Yes, apply all"
+    description: "Apply all listed updates to local files"
+  - label: "Show diffs first"
+    description: "Show the full diff for each changed file before applying"
+  - label: "Cancel"
+    description: "Don't apply any changes"
+```
+
+If the engineer picks "Show diffs first", display the diffs and then ask again with just "Apply" and "Cancel".
 
 ### For each file classified as `updated` or `new`:
 

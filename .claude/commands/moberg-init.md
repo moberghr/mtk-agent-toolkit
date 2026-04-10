@@ -1,6 +1,6 @@
 ---
 description: Bootstrap a repo for moberg-implement. Scans codebase, pulls coding guidelines and architecture principles, generates a project-specific CLAUDE.md. Run this once per repo.
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 ---
 
 # Moberg Init — Bootstrap Repository for AI-Assisted Development
@@ -22,15 +22,19 @@ already exists. If not, tell the engineer to manually place the file there.
 
 ### Architecture Principles
 Check if `.claude/references/architecture-principles.md` exists.
-If not, tell the engineer:
-> "I need your architecture principles document. Please place it at:
-> `.claude/references/architecture-principles.md`
-> Then run `/project:moberg-init` again."
->
-> "If you don't have one yet, I can generate a starter based on what I find in the codebase.
-> Want me to do that?"
+If not, use AskUserQuestion:
 
-If the engineer says yes, generate a starter architecture doc based on Step 2 findings.
+```
+question: "Architecture principles document not found at .claude/references/architecture-principles.md. How should I proceed?"
+header: "Arch doc"
+options:
+  - label: "Generate from codebase (Recommended)"
+    description: "I'll scan the codebase and create a starter architecture-principles.md based on actual patterns found"
+  - label: "I'll provide it manually"
+    description: "I'll place the file at .claude/references/architecture-principles.md and re-run moberg-init"
+```
+
+If the engineer picks "Generate from codebase", generate a starter architecture doc based on Step 2 findings.
 
 ## STEP 2: Scan the Codebase
 

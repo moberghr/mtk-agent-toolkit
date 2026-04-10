@@ -1,6 +1,6 @@
 ---
 description: Install the moberg toolkit — globally for user or locally for a project. Handles first-time setup and re-installation.
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 argument-hint: [--global | --project] [--auto]
 ---
 
@@ -12,18 +12,17 @@ use `/project:moberg-*` or `/user:moberg-*` commands.
 
 ## STEP 1: DETERMINE INSTALL MODE
 
-If the argument includes `--global` or `--project`, use that. Otherwise, ask:
+If the argument includes `--global` or `--project`, use that. Otherwise, use AskUserQuestion:
 
-> **Where should I install the moberg toolkit?**
->
-> 1. **Global (user-level)** — Install commands and agents to `~/.claude/`.
->    Available as `/user:moberg-*` in every repo. Recommended for individual use.
->
-> 2. **Project (repo-level)** — Install everything to this repo's `.claude/`.
->    Available as `/project:moberg-*` in this repo only. Recommended for team repos
->    where the toolkit should be committed and shared.
->
-> Which do you prefer? (1 or 2)
+```
+question: "Where should I install the moberg toolkit?"
+header: "Install mode"
+options:
+  - label: "Global (user-level) (Recommended)"
+    description: "Install commands and agents to ~/.claude/. Available as /user:moberg-* in every repo. Best for individual use."
+  - label: "Project (repo-level)"
+    description: "Install everything to this repo's .claude/. Available as /project:moberg-* in this repo only. Best for team repos where the toolkit should be committed."
+```
 
 Wait for the engineer's response before proceeding.
 
@@ -193,4 +192,13 @@ Next steps:
 - **Settings are always merged, never overwritten** — the engineer may have local additions
 - **References are project-specific** — skip them for global install
 - For global install, remind the engineer that per-project setup (moberg-init) is still needed
-- If files already exist at the target, show the version diff and ask to proceed (unless --auto or --force)
+- If files already exist at the target, show the version diff and use AskUserQuestion to ask whether to proceed (unless --auto or --force):
+  ```
+  question: "Files already exist at the target (version [old] → [new]). Proceed with install?"
+  header: "Overwrite"
+  options:
+    - label: "Yes, proceed"
+      description: "Overwrite existing files with the new version"
+    - label: "Cancel"
+      description: "Keep existing files unchanged"
+  ```
