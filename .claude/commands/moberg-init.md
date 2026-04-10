@@ -142,6 +142,22 @@ Create a new `CLAUDE.md` following the structure below.
 
 ---
 
+## Command Routing — Which Tool to Use
+
+> When starting a task, pick the right command:
+>
+> | What you need | Command | When |
+> |---|---|---|
+> | Build a feature | `/project:moberg-implement <description>` | New endpoints, tables, handlers, multi-file work |
+> | Quick fix | `/project:moberg-fix <description>` | Bug fixes, config tweaks, 1-3 file changes |
+> | Pre-commit check | `/project:quick-check` | Before every commit — fast security scan |
+> | Update toolkit | `/project:moberg-update` | Pull latest commands/agents from central repo |
+>
+> **Decision rule:** If you're unsure, start with `moberg-fix`. It has a scope guard —
+> if the change grows beyond 3 files, it will tell you to switch to `moberg-implement`.
+
+---
+
 ## 1. Security & Compliance
 [Generate based on: what you found in the codebase + fintech defaults]
 [Include secrets management patterns actually used (Secrets Manager, user-secrets, env vars)]

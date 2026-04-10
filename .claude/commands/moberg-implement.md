@@ -40,6 +40,13 @@ If the argument starts with `--auto` (or the engineer says "just do it", "don't 
 | `new-feature` | New endpoints, new tables, new behavior | ALL sections |
 | `breaking-change` | Changes existing contracts, schema migration | ALL sections + Migration plan |
 
+### Phase 0 exit criteria
+- [ ] CLAUDE.md read and §-numbered rules noted
+- [ ] Coding guidelines reviewed
+- [ ] Architecture principles reviewed (if exists)
+- [ ] Scope classified as one of the three types
+- [ ] lessons.md scanned for relevant patterns (if exists)
+
 ---
 
 ## PHASE 0.5: CLARIFY — Interactive Q&A
@@ -75,6 +82,10 @@ Answer inline (e.g., "1. yes 2. option A 3. skip it") and I'll proceed to the pl
 - **If everything is clear, skip this phase.** Say: "No open questions — proceeding to plan."
 - **If AUTO_MODE is set, skip this phase entirely.** Make your best judgment calls and note
   assumptions in the plan's Risks section instead.
+
+### Phase 0.5 exit criteria
+- [ ] All ambiguities that would change the plan are resolved
+- [ ] Questions were asked in a single batch (or phase was skipped with justification)
 
 ---
 
@@ -206,6 +217,15 @@ Scope: [scope] | Branch: [branch-name]
 >
 > **Do NOT proceed until the engineer approves.**
 
+### Phase 1 exit criteria
+- [ ] Summary, Architecture, and Security sections completed (or skipped with stated reason per scope)
+- [ ] Change Manifest lists EVERY file that will be created or modified
+- [ ] Test Manifest lists EVERY test file and case
+- [ ] Batches defined with checkpoint commands
+- [ ] tasks/todo.md written with checkable task list
+- [ ] Elegance check performed — no simpler alternative exists
+- [ ] Approval received (or auto-approved with --auto)
+
 ---
 
 ## PHASE 2: IMPLEMENT — Batch Mode
@@ -220,6 +240,11 @@ something goes sideways.
 3. **Follow standards** — before each batch, re-read the relevant sections of
    `.claude/references/coding-guidelines.md` and `CLAUDE.md` that apply to the code
    you're about to write. Match existing codebase patterns.
+3b. **Verify framework APIs** — for any framework or library API usage not already in the
+   codebase (new EF Core methods, new AWS SDK calls, new NuGet package APIs), verify
+   against official documentation before implementing. Use Context7, web search, or
+   Microsoft Learn. Do NOT rely on training data for API surfaces — it may be outdated.
+   If you cannot verify an API, flag it in the behavioral diff as unverified.
 4. **Checkpoint**: run the batch's checkpoint command (`dotnet build`, `dotnet test`)
 5. **Quick check** — read `.claude/references/quick-check-list.md` and verify each item
    against the code you just wrote. Fix anything found immediately.
@@ -242,6 +267,19 @@ If the implementation spans many batches (>4), compact context between batches t
 - Produce the **behavioral diff**: "What can callers/users do now that they couldn't before?
   What changed? Does this match the plan's intent exactly?"
 
+### Phase 2 exit criteria (per batch)
+- [ ] All files from this batch's Change Manifest implemented
+- [ ] Tests from Test Manifest written alongside the code (not deferred)
+- [ ] Checkpoint passes: `dotnet build && dotnet test`
+- [ ] Quick-check passes against batch code
+- [ ] Batch checked off in tasks/todo.md
+- [ ] No files touched outside the Change Manifest
+
+### Phase 2 exit criteria (overall)
+- [ ] Full `dotnet test` passes (all tests, not just batch-relevant)
+- [ ] Behavioral diff written explicitly
+- [ ] All framework API usages verified against official docs (or flagged as unverified)
+
 ---
 
 ## PHASE 3: VERIFY — Prove It Works
@@ -257,6 +295,12 @@ Before sending to review, prove the implementation is correct.
 
 If any item fails, return to Phase 2 for a targeted fix. Do not proceed to review with
 known issues.
+
+### Phase 3 exit criteria
+- [ ] `dotnet test` — all green
+- [ ] Behavioral diff written: what changed for callers, any side effects
+- [ ] Staff engineer test passed — nothing a principal engineer would question beyond style
+- [ ] No known issues remain (all failures addressed before proceeding)
 
 ---
 
@@ -281,6 +325,10 @@ The compliance-reviewer agent has the full 96-item checklist covering:
 
 It will return: `REVIEW RESULT: PASS | NEEDS_CHANGES` with categorized issues.
 
+### Phase 4 exit criteria
+- [ ] compliance-reviewer agent executed with full diff, behavioral diff, and scope context
+- [ ] Result received and recorded: PASS or NEEDS_CHANGES with categorized issues
+
 ---
 
 ## PHASE 5: FIX (if NEEDS_CHANGES)
@@ -294,6 +342,13 @@ After fixing:
 - Return to Phase 4 for re-review
 
 **Maximum 3 review iterations.** After 3, stop and report what remains.
+
+### Phase 5 exit criteria
+- [ ] Every Critical issue fixed
+- [ ] Every reasonable Warning addressed (or justified why not)
+- [ ] `dotnet build && dotnet test` passes after fixes
+- [ ] Quick-check passes on fixed code
+- [ ] Re-review dispatched (return to Phase 4)
 
 ---
 
@@ -314,6 +369,11 @@ code clarity without changing behavior.
 
 If any fixes are made: `dotnet build && dotnet test`.
 **Rule: cleanup must not change behavior. If a test fails after cleanup, revert that change.**
+
+### Phase 6 exit criteria
+- [ ] All 7 cleanup items checked
+- [ ] `dotnet build && dotnet test` still passes (if any changes were made)
+- [ ] No behavioral changes introduced — only clarity improvements
 
 ---
 
@@ -344,6 +404,10 @@ something worth remembering. Don't write boilerplate.
 ### During the session
 If the engineer corrects a mistake at ANY point during the session, immediately
 append to `tasks/lessons.md`. Don't wait for Phase 7.
+
+### Phase 7 exit criteria
+- [ ] Lessons written (if review found Critical/Warning, or engineer corrected, or unexpected obstacle)
+- [ ] OR explicitly skipped: clean pass, no surprises, nothing new to record
 
 ---
 
@@ -390,6 +454,81 @@ CLAUDE.md updates:
 Ready to commit:
   git add -A && git commit -m "[type]([scope]): [description]"
 ```
+
+---
+
+## RED FLAGS — Check These at Every Phase Transition
+
+Before moving to the next phase, scan this list. If any flag is true, STOP and address it
+before proceeding. Do not rationalize these away.
+
+### Process violations
+- You are writing code and Phase 1 (Plan) was never completed or approved
+- You modified a file not listed in the Change Manifest without updating it
+- You skipped a checkpoint (`dotnet build && dotnet test`) between batches
+- You deferred all tests to "after implementation" instead of writing them per batch
+- You are in Phase 4+ but never produced a behavioral diff in Phase 3
+
+### Scope drift
+- You have touched more files than the Change Manifest lists
+- A "small addition" has turned into a new handler, entity, or endpoint not in the plan
+- You are in batch 4+ and the original plan only had 2-3 batches
+- The behavioral diff describes capabilities not mentioned in the original feature request
+
+### Quality shortcuts
+- You wrote `// TODO` or `// FIXME` and plan to "come back to it"
+- You caught a test failure and commented out or weakened the assertion instead of fixing the code
+- You suppressed a compiler warning instead of addressing the root cause
+- You used `catch (Exception) { }` or similar silent error swallowing
+- You skipped `AsNoTracking` on a read query because "it probably doesn't matter"
+- You hardcoded a value that should come from configuration
+
+### Context decay
+- You cannot explain what the behavioral diff should say without re-reading the plan
+- You are guessing at a pattern instead of re-reading the reference file
+- You are unsure which batch you are on — check tasks/todo.md
+
+---
+
+## COMMON RATIONALIZATIONS — Do Not Fall For These
+
+You will be tempted to skip steps. Here is every excuse you will generate, and why it is wrong.
+
+### Planning & Scope
+
+| Rationalization | Reality |
+|---|---|
+| "This is straightforward, I don't need a detailed plan" | Straightforward tasks don't need long plans, but they still need a Change Manifest and Test Manifest. The plan exists to catch design mistakes BEFORE you write 500 lines of code. |
+| "I'll figure out the architecture as I go" | That's how you end up touching 12 files and re-planning three times. Spend 5 minutes on architecture now, save 30 minutes of rework. |
+| "The engineer said 'just do it' so I'll skip the plan" | `--auto` means skip the approval gate, not the plan. You still produce the plan — you just don't wait for a response. |
+| "I already know this codebase pattern, I don't need to read reference files" | Your training data is stale. The codebase has its own conventions. Read CLAUDE.md and coding-guidelines every time — it takes 10 seconds and prevents review failures. |
+
+### Implementation
+
+| Rationalization | Reality |
+|---|---|
+| "I need to modify a file not in the manifest, but it's a small change" | STOP. Update the manifest. If you skip this once, you'll skip it five times, and the manifest becomes fiction. The manifest IS the plan — if it's wrong, the plan is wrong. |
+| "I'll write the tests after I finish all the code" | You won't write them with the same rigor. Tests written alongside code verify behavior. Tests written after verify implementation. Write them per batch, not at the end. |
+| "The build failed but I know the fix, I'll keep going and fix it later" | A broken build means your mental model is wrong. Fix it now. Every batch ends with a green build. Exceptions compound. |
+| "This batch is almost done, I'll skip the checkpoint" | Checkpoints exist because bugs caught in batch 2 are cheap. Bugs caught in batch 5 are expensive. Run `dotnet build && dotnet test` after every batch. No exceptions. |
+| "The existing code doesn't have tests for this area" | You're not maintaining legacy. You're writing new code. New code gets tests. Period. The Test Manifest exists for a reason. |
+
+### Review & Verification
+
+| Rationalization | Reality |
+|---|---|
+| "The code is clean, I'll skip the verification phase" | Phase 3 isn't about cleanliness — it's about proving correctness. The behavioral diff catches intent mismatches that clean code hides. You can write beautiful code that does the wrong thing. |
+| "I wrote the code, so I know it's correct — the review is a formality" | The review exists specifically because implementers cannot objectively assess their own work. The compliance-reviewer has a 96-item checklist. You do not have this checklist in your head. |
+| "The review found only style issues, so I'll mark them as addressed" | If the reviewer said NEEDS_CHANGES, you fix every Critical and every reasonable Warning. Don't downgrade findings to avoid work. |
+| "Three review iterations failed — the reviewer is being too strict" | Three iterations means the implementation has structural problems. Report what remains honestly. Don't blame the tool. |
+
+### Cleanup & Completion
+
+| Rationalization | Reality |
+|---|---|
+| "The code works and passed review, cleanup is unnecessary" | Cleanup isn't about passing — it's about the next engineer. Dead code, debug artifacts, and inconsistent naming create confusion. 5 minutes of cleanup prevents 30 minutes of future debugging. |
+| "Nothing went wrong this session, so there are no lessons to capture" | If the review was clean AND no corrections happened AND no surprises occurred, then yes, skip lessons. But "nothing went wrong" is rare — check before you assume. |
+| "CLAUDE.md doesn't need updating, the change was small" | New endpoints, new handlers, new patterns — these all drift CLAUDE.md. Check. It takes 30 seconds. |
 
 ---
 

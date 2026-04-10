@@ -198,39 +198,7 @@ When you make changes here, bump the version in `manifest.json`. Engineers pull 
 
 ## Contributing
 
-### Adding a new command
-
-1. Create `.claude/commands/your-command.md` with frontmatter:
-   ```yaml
-   ---
-   description: One-line description shown in command list
-   allowed-tools: Read, Write, Edit, Bash, Glob, Grep
-   ---
-   ```
-2. Add an entry to `manifest.json` under `files` with `"action": "sync"`
-3. Bump the version in `manifest.json`
-
-### Adding a new agent
-
-1. Create `.claude/agents/your-agent.md` with frontmatter:
-   ```yaml
-   ---
-   name: your-agent
-   description: What it does and when to use it
-   allowed-tools: Read, Glob, Grep, Bash
-   model: sonnet
-   ---
-   ```
-2. Add to `manifest.json`
-3. Bump the version
-
-### Adding references
-
-Place shared reference documents in `.claude/references/` and add them to the manifest.
-
-### Protected files
-
-If a file should never be overwritten by `moberg-update`, add it to the `protected` array in `manifest.json`.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide on adding commands, agents, references, and writing effective anti-rationalization tables.
 
 ## Repo Structure
 

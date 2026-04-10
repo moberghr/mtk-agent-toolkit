@@ -91,6 +91,20 @@ Otherwise, skip — clean fixes don't need a lessons entry.
 
 ---
 
+## COMMON RATIONALIZATIONS — Do Not Fall For These
+
+| Rationalization | Reality |
+|---|---|
+| "I already know what's wrong, I don't need to read the file first" | You don't. You have a hypothesis. Read the file, read its neighbors, confirm or reject. Fixes based on assumptions create new bugs. |
+| "This is a one-line fix, I don't need to run the tests" | One-line fixes cause production incidents precisely because nobody tests them. `dotnet build && dotnet test`. Every time. |
+| "I'll just fix this related thing while I'm here" | No. Fix what was asked. If the neighbor code is bad, mention it in the report. Don't gold-plate a bug fix. |
+| "It's only 4 files, that's basically 3" | 4 is not 3. The scope guard exists because complexity doesn't grow linearly — it grows combinatorially. Escalate to `moberg-implement`. |
+| "The quick-check is overkill for a config change" | Config changes are where secrets, connection strings, and permission mistakes hide. Run the quick-check. It takes 15 seconds. |
+| "I don't need to match the existing pattern, my way is cleaner" | Your way might be cleaner in isolation. But a codebase with two patterns is worse than a codebase with one mediocre pattern. Consistency wins. Always. |
+| "This test file doesn't exist yet, so I'll skip tests for this fix" | If the behavior changed, write the test. No existing test file means create one. Follow the naming convention of neighboring test files. |
+
+---
+
 ## CRITICAL RULES
 
 1. **Read before you write.** Always read the file and its neighbors before changing anything.
