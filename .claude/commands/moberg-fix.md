@@ -1,138 +1,77 @@
 ---
-description: Lightweight fix/task — skip planning and review, just do it right. For small changes that don't need the full moberg-implement loop.
+description: Lightweight fix/task using the Moberg debugging workflow. Use for 1-3 file changes that do not require feature planning.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 argument-hint: <description of fix or small task>
 ---
 
 # Moberg Fix — Lightweight Task Loop
 
-You are a senior .NET engineer on a fintech team. This is the fast path for small,
-well-scoped changes: bug fixes, adding a validation rule, renaming something, tweaking
-a query, updating a config — anything that touches 1-3 files and doesn't introduce
-new architecture.
+Use this for small, well-bounded work. The source of truth for the fix workflow is:
 
-**When to use this vs moberg-implement:**
-- `moberg-fix`: bug fixes, small tasks, single-file changes, config tweaks
-- `moberg-implement`: new features, new endpoints, new tables, multi-slice work
+- `.claude/skills/context-engineering/SKILL.md`
+- `.claude/skills/debugging-and-error-recovery/SKILL.md`
+- `.claude/skills/test-driven-development-dotnet/SKILL.md` when behavior changes
+- `.claude/skills/source-driven-development/SKILL.md` when framework behavior is uncertain
+- `.claude/skills/security-and-hardening-fintech/SKILL.md` when the fix touches auth, financial state, secrets, or infra
 
-If the task turns out to be bigger than expected (>3 files, new patterns needed),
-STOP and tell the engineer: "This is bigger than a quick fix. Run `/project:moberg-implement` instead."
+## When To Use
 
----
+- Bug fixes
+- Validation tweaks
+- Query fixes
+- Small config changes
+- Renames or narrow refactors that stay within 1-3 files
 
-## STEP 1: BOOTSTRAP
+If the work grows beyond 3 files, introduces new architecture, or needs a formal change manifest, stop and switch to `/project:moberg-implement`.
 
-### Read standards (same as moberg-implement, but fast):
-1. **`CLAUDE.md`** — skim for rules relevant to the change area
-2. **`.claude/references/coding-guidelines.md`** — skim relevant sections only
-3. **Codebase patterns** — read the file(s) you're about to change
+## Load Context (Progressive Disclosure)
 
-If CLAUDE.md doesn't exist, STOP and tell the engineer to run `/project:moberg-init` first.
+1. Follow `.claude/skills/context-engineering/SKILL.md`.
+2. Read `CLAUDE.md`. If missing, stop and tell the engineer to run `/project:moberg-init`.
+3. Read only what the fix needs:
+   - **Always:** `.claude/references/coding-guidelines.md`
+   - **If fix touches queries/EF:** `.claude/references/ef-core-checklist.md`
+   - **If fix touches auth/secrets/financial:** `.claude/references/security-checklist.md`
+   - **If adding tests:** `.claude/references/testing-patterns.md`
+   - **Before commit:** `.claude/references/quick-check-list.md` if present
+4. Resolve and scan relevant lessons from `tasks/lessons.md`.
+5. Read the target file and its closest neighbors before editing.
 
-### Resolve lessons path
-Lessons must persist across worktrees. Determine the correct path:
-1. Run: `git worktree list --porcelain | head -1 | sed 's/worktree //'` to get the main worktree path.
-2. Compare it to the current working directory (`pwd`).
-3. If they differ, you are in a worktree — use `{main-worktree}/tasks/lessons.md` for ALL
-   lessons reads and writes throughout this session.
-4. If they match (or the command fails), use `tasks/lessons.md` in the current directory.
+**Progressive disclosure principle:** Small fixes do not need all references loaded. Load what's relevant to the specific fix, then load additional references if the scope shifts.
 
-Store this resolved path as **LESSONS_PATH** for the rest of the session.
+## Execute The Fix Workflow
 
-### Read lessons
-If the file at LESSONS_PATH exists, scan for entries relevant to this area. Don't read the
-whole file if it's long — search for keywords related to the task.
+Follow `.claude/skills/debugging-and-error-recovery/SKILL.md`.
+Use `.claude/skills/test-driven-development-dotnet/SKILL.md` for regression coverage when behavior changed.
 
----
+Minimum verification:
 
-## STEP 2: CLARIFY (if needed)
+- `dotnet build`
+- relevant tests for the changed area
 
-If the task description is ambiguous, use **AskUserQuestion** with 1-2 questions max.
-Provide options based on what you found in the code to frame each choice.
+If behavior changed, add or update tests.
 
-Example:
-```
-questions:
-  - question: "The validation error for duplicate references is handled in two places. Which should I fix?"
-    header: "Fix target"
-    options:
-      - label: "CreatePaymentHandler"
-        description: "The MediatR handler — this is where the other validations live"
-      - label: "PaymentValidator"
-        description: "The FluentValidation validator — would be more consistent with the uniqueness check pattern"
-    multiSelect: false
-```
+## Scope Guard
 
-If everything is clear, skip this step entirely. Most fixes don't need clarification.
+Stop and escalate if any of these become true:
 
----
+- a 4th file is required
+- a new handler/entity/slice is needed
+- the fix requires architectural re-planning
 
-## STEP 3: IMPLEMENT
+## Final Report
 
-Just do it. No plan document, no approval gate, no batches.
+Report briefly:
 
-1. **Make the change** — match existing patterns in the file and its neighbors
-2. **Write/update tests** if the change affects behavior (skip for pure config/naming changes)
-3. **Build**: `dotnet build`
-4. **Test**: `dotnet test` (run the relevant test project, not the full suite, unless the change is cross-cutting)
-5. **Quick check** — read `.claude/references/quick-check-list.md` and verify each item
-   against the code you wrote. Fix anything found immediately.
+- files changed
+- root cause
+- tests added or updated
+- build result
+- relevant test result
 
-### If build/test fails:
-Read the error, fix it, re-run. Don't loop more than 3 times — if it keeps failing,
-something is wrong with the approach. Tell the engineer what's happening.
+## Critical Rules
 
-### Scope guard:
-If you find yourself needing to touch a 4th file, or creating a new class/handler/entity,
-STOP. This has outgrown moberg-fix. Tell the engineer:
-> "This is growing beyond a quick fix — I've touched [N] files and need to [describe].
-> Want me to continue here or switch to `/project:moberg-implement` for proper planning?"
-
----
-
-## STEP 4: DONE
-
-Brief report — no ceremony:
-
-```
-Done.
-
-Changed:
-  - path/to/file.cs — [what changed]
-  - path/to/test.cs — [test added/updated]
-
-Build: pass
-Tests: pass ([N] relevant tests)
-
-Ready to commit:
-  git add [files] && git commit -m "[type]([scope]): [description]"
-```
-
-### Lessons (only on corrections)
-If the engineer corrects a mistake during this session, append to LESSONS_PATH (resolved in Step 1).
-Otherwise, skip — clean fixes don't need a lessons entry.
-
----
-
-## COMMON RATIONALIZATIONS — Do Not Fall For These
-
-| Rationalization | Reality |
-|---|---|
-| "I already know what's wrong, I don't need to read the file first" | You don't. You have a hypothesis. Read the file, read its neighbors, confirm or reject. Fixes based on assumptions create new bugs. |
-| "This is a one-line fix, I don't need to run the tests" | One-line fixes cause production incidents precisely because nobody tests them. `dotnet build && dotnet test`. Every time. |
-| "I'll just fix this related thing while I'm here" | No. Fix what was asked. If the neighbor code is bad, mention it in the report. Don't gold-plate a bug fix. |
-| "It's only 4 files, that's basically 3" | 4 is not 3. The scope guard exists because complexity doesn't grow linearly — it grows combinatorially. Escalate to `moberg-implement`. |
-| "The quick-check is overkill for a config change" | Config changes are where secrets, connection strings, and permission mistakes hide. Run the quick-check. It takes 15 seconds. |
-| "I don't need to match the existing pattern, my way is cleaner" | Your way might be cleaner in isolation. But a codebase with two patterns is worse than a codebase with one mediocre pattern. Consistency wins. Always. |
-| "This test file doesn't exist yet, so I'll skip tests for this fix" | If the behavior changed, write the test. No existing test file means create one. Follow the naming convention of neighboring test files. |
-
----
-
-## CRITICAL RULES
-
-1. **Read before you write.** Always read the file and its neighbors before changing anything.
-2. **Match the codebase.** Don't introduce new patterns for a fix. When in Rome.
-3. **Scope guard at 3 files.** If you're touching more, escalate to moberg-implement.
-4. **Build and test.** Every change gets a `dotnet build` and relevant tests run.
-5. **No gold-plating.** Fix what was asked. Don't refactor the neighborhood.
-6. **If ambiguous, ask.** But keep it to 1-2 questions, not an interview.
+1. Read before editing.
+2. Match the local codebase pattern.
+3. Do not gold-plate unrelated improvements.
+4. Escalate instead of letting a quick fix become a hidden feature project.

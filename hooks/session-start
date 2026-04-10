@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Session-start hook for Moberg toolkit
+# Detects platform and emits appropriate context format
+# Supports: Claude Code, Cursor, Copilot CLI, Gemini CLI
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="${SCRIPT_DIR}/.."
+
+# Build the context message
+CONTEXT="Moberg toolkit is active. Available commands: moberg-implement, moberg-fix, quick-check, moberg-init, moberg-scan, moberg-merge, moberg-validate, moberg-install, moberg-update. Skills loaded on demand via progressive disclosure."
+
+# Escape for JSON (bash parameter substitution — no external deps)
+json_escape() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//$'\n'/\\n}"
+  s="${s//$'\t'/\\t}"
+  printf '%s' "$s"
+}
+
+ESCAPED_CONTEXT="$(json_escape "$CONTEXT")"
+
+# Platform detection and output routing
+if [[ -n "${CURSOR_PLUGIN_ROOT:-}" ]]; then
+  # Cursor format
+  printf '{"context": "%s"}\n' "$ESCAPED_CONTEXT"
+elif [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]] && [[ -z "${COPILOT_CLI:-}" ]]; then
+  # Claude Code format
+  printf '{"context": "%s"}\n' "$ESCAPED_CONTEXT"
+elif [[ -n "${COPILOT_CLI:-}" ]]; then
+  # GitHub Copilot CLI — SDK standard format
+  printf '{"role": "system", "content": "%s"}\n' "$ESCAPED_CONTEXT"
+elif [[ -n "${GEMINI_EXTENSION_ROOT:-}" ]]; then
+  # Gemini CLI format
+  printf '{"context": "%s"}\n' "$ESCAPED_CONTEXT"
+else
+  # Unknown platform — SDK standard format as fallback
+  printf '{"role": "system", "content": "%s"}\n' "$ESCAPED_CONTEXT"
+fi

@@ -24,6 +24,12 @@ Read these files — they are your review checklists:
 1. **`CLAUDE.md`** — Project-specific rules. Rules are numbered §X.Y. Cite these.
 2. **`.claude/references/coding-guidelines.md`** — Moberg coding style. Cite by section name.
 3. **`.claude/references/architecture-principles.md`** — Architecture rules (if exists).
+4. **`.claude/references/security-checklist.md`** — Shared security and compliance checklist.
+5. **`.claude/references/testing-patterns.md`** — Shared test coverage expectations.
+6. **`.claude/references/performance-checklist.md`** — Shared performance checklist.
+7. **`.claude/references/ef-core-checklist.md`** — Shared EF Core checklist.
+8. **`.claude/references/mediatr-slice-patterns.md`** — Shared CQRS/MediatR structure guidance.
+9. **`.claude/skills/security-and-hardening-fintech/SKILL.md`** — Fintech security workflow.
 
 Also sample 2-3 existing files similar to what was changed to understand the codebase's
 actual conventions. Inconsistency with existing code is a finding.
@@ -170,6 +176,15 @@ Untested code paths:
 What's good:
 - [acknowledge things done well]
 ```
+
+## Self-Escalation
+
+If you cannot complete the review, report your status honestly:
+
+- **BLOCKED** — you cannot access required files, the diff is empty, or a prerequisite is missing. State what is blocking you.
+- **NEEDS_CONTEXT** — the change is too large to review without additional context, or you need clarification on the intended behavior. State what you need.
+
+Never produce a low-confidence review to avoid reporting BLOCKED. A clear escalation is more valuable than a garbage approval.
 
 ## Rules for You
 - NEVER approve code with Critical issues
