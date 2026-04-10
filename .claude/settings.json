@@ -45,6 +45,28 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Review the assistant's final message in $ARGUMENTS. If it claims a task is DONE, COMPLETE, VERIFIED, or FIXED but does NOT cite specific command output (build result, test counts, exit codes) as evidence, respond with: 'VERIFICATION GAP: You claimed completion without citing fresh evidence. Run the verification command and cite its output before reporting done.' Otherwise respond with empty string.",
+            "statusMessage": "Checking verification evidence"
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "A task was just marked completed. Check $ARGUMENTS for the task details. If this is an implementation or fix task, remind the agent: 'Task marked complete. Ensure dotnet build and relevant tests were run AFTER the last code change. Stale evidence does not count.' If it's a planning or review task, respond with empty string.",
+            "statusMessage": "Validating task completion"
+          }
+        ]
+      }
     ]
   }
 }

@@ -1,7 +1,7 @@
 ---
 description: Lightweight fix/task using the Moberg debugging workflow. Use for 1-3 file changes that do not require feature planning.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
-argument-hint: <description of fix or small task>
+argument-hint: [--terse|--verbose] <description of fix or small task>
 ---
 
 # Moberg Fix — Lightweight Task Loop
@@ -22,12 +22,12 @@ Use this for small, well-bounded work. The source of truth for the fix workflow 
 - Small config changes
 - Renames or narrow refactors that stay within 1-3 files
 
-If the work grows beyond 3 files, introduces new architecture, or needs a formal change manifest, stop and switch to `/project:moberg-implement`.
+If the work grows beyond 3 files, introduces new architecture, or needs a formal change manifest, stop and switch to `/moberg:implement`.
 
 ## Load Context (Progressive Disclosure)
 
 1. Follow `.claude/skills/context-engineering/SKILL.md`.
-2. Read `CLAUDE.md`. If missing, stop and tell the engineer to run `/project:moberg-init`.
+2. Read `CLAUDE.md`. If missing, stop and tell the engineer to run `/moberg:init`.
 3. Read only what the fix needs:
    - **Always:** `.claude/references/coding-guidelines.md`
    - **If fix touches queries/EF:** `.claude/references/ef-core-checklist.md`

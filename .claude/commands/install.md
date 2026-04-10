@@ -8,7 +8,7 @@ argument-hint: [--global | --project] [--auto]
 
 You are installing the Moberg Claude Code toolkit. This command places commands,
 skills, agents, settings, references, and routing assets into the correct location so the engineer can
-use `/project:moberg-*` or `/user:moberg-*` commands.
+use `/moberg:*` commands.
 
 ## STEP 1: DETERMINE INSTALL MODE
 
@@ -19,9 +19,9 @@ question: "Where should I install the moberg toolkit?"
 header: "Install mode"
 options:
   - label: "Global (user-level) (Recommended)"
-    description: "Install commands and agents to ~/.claude/. Available as /user:moberg-* in every repo. Best for individual use."
+    description: "Install commands and agents to ~/.claude/. Available as /moberg:* in every repo. Best for individual use."
   - label: "Project (repo-level)"
-    description: "Install everything to this repo's .claude/. Available as /project:moberg-* in this repo only. Best for team repos where the toolkit should be committed."
+    description: "Install everything to this repo's .claude/. Available as /moberg:* in this repo only. Best for team repos where the toolkit should be committed."
 ```
 
 Wait for the engineer's response before proceeding.
@@ -73,7 +73,7 @@ For each file in `manifest.files`:
 | References | `references/*.md` | Skip — these are project-specific |
 | Root assets | `AGENTS.md`, `docs/*`, `scripts/*` | Skip — these are project/project-tooling assets |
 
-**Settings merge strategy** (same as moberg-update):
+**Settings merge strategy** (same as update):
 - If `~/.claude/settings.json` exists, merge:
   - `permissions.deny`: union
   - `permissions.allowedTools`: union
@@ -98,7 +98,7 @@ For each file in `manifest.files`:
 - Fetch the source file
 - Write to the target path
 
-This is identical to what `moberg-update` does. Follow the same sync/merge logic:
+This is identical to what `update` does. Follow the same sync/merge logic:
 - **sync** files: overwrite
 - **merge** files (settings.json): merge as described above
 - **protected** files: never touch
@@ -119,13 +119,13 @@ Check that files were written correctly:
 
 ### For global install:
 ```bash
-ls ~/.claude/commands/moberg-*.md
+ls ~/.claude/commands/*.md
 ls ~/.claude/agents/*.md
 ```
 
 ### For project install:
 ```bash
-ls .claude/commands/moberg-*.md
+ls .claude/commands/*.md
 ls .claude/agents/*.md
 ls .claude/references/*.md
 ```
@@ -146,18 +146,18 @@ Installed:
   Settings: ~/.claude/settings.json [created | merged]
 
 Commands are now available in ALL repos as:
-  /user:moberg-init       — Bootstrap a repo (generates CLAUDE.md + references)
-  /user:moberg-implement  — Full feature implementation loop
-  /user:moberg-fix        — Lightweight fix/task
-  /user:moberg-update     — Update the toolkit
-  /user:moberg-scan       — Extract architecture principles
-  /user:moberg-merge      — Unify architecture scans
-  /user:quick-check       — Pre-commit security scan
+  /moberg:init       — Bootstrap a repo (generates CLAUDE.md + references)
+  /moberg:implement  — Full feature implementation loop
+  /moberg:fix        — Lightweight fix/task
+  /moberg:update     — Update the toolkit
+  /moberg:scan       — Extract architecture principles
+  /moberg:merge      — Unify architecture scans
+  /moberg:quick-check       — Pre-commit security scan
 
 Next steps:
   1. Open any project repo in Claude Code
-  2. Run /user:moberg-init to bootstrap it
-  3. Start building with /user:moberg-implement
+  2. Run /moberg:init to bootstrap it
+  3. Start building with /moberg:implement
 ```
 
 ### Project install report:
@@ -176,18 +176,18 @@ Installed:
   Routing:    AGENTS.md [project install]
 
 Commands are available in THIS repo as:
-  /project:moberg-init       — Bootstrap (generates CLAUDE.md)
-  /project:moberg-implement  — Full feature implementation loop
-  /project:moberg-fix        — Lightweight fix/task
-  /project:moberg-update     — Update the toolkit
-  /project:moberg-scan       — Extract architecture principles
-  /project:moberg-merge      — Unify architecture scans
-  /project:quick-check       — Pre-commit security scan
+  /moberg:init       — Bootstrap (generates CLAUDE.md)
+  /moberg:implement  — Full feature implementation loop
+  /moberg:fix        — Lightweight fix/task
+  /moberg:update     — Update the toolkit
+  /moberg:scan       — Extract architecture principles
+  /moberg:merge      — Unify architecture scans
+  /moberg:quick-check       — Pre-commit security scan
 
 Next steps:
-  1. Run /project:moberg-init to generate CLAUDE.md for this repo
+  1. Run /moberg:init to generate CLAUDE.md for this repo
   2. Commit .claude/ to share with the team: git add .claude/ && git commit -m "chore: add moberg toolkit"
-  3. Start building with /project:moberg-implement
+  3. Start building with /moberg:implement
 ```
 
 ## IMPORTANT
@@ -198,7 +198,7 @@ Next steps:
 - **References are project-specific** — skip them for global install
 - **Skills are reusable workflow assets** — install them globally and per-project
 - **Root-level assets like `AGENTS.md` are project-only** unless explicitly designed for user scope
-- For global install, remind the engineer that per-project setup (moberg-init) is still needed
+- For global install, remind the engineer that per-project setup (init) is still needed
 - If files already exist at the target, show the version diff and use AskUserQuestion to ask whether to proceed (unless --auto or --force):
   ```
   question: "Files already exist at the target (version [old] → [new]). Proceed with install?"

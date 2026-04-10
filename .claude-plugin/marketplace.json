@@ -7,9 +7,9 @@
   },
   "plugins": [
     {
-      "name": "moberg-toolkit",
+      "name": "moberg",
       "description": "Command entry points backed by reusable skills, review agents, and compliance-first workflows for .NET fintech teams",
-      "version": "4.0.1",
+      "version": "4.1.0",
       "source": "./",
       "author": {
         "name": "Moberg HR",

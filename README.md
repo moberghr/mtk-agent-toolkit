@@ -6,10 +6,10 @@ Shared Claude Code toolkit for consistent AI-assisted development across Moberg 
 
 ```text
 /plugin marketplace add moberghr/claude-helpers
-/plugin install moberg-toolkit@moberghr
+/plugin install moberg@moberghr
 ```
 
-Then bootstrap your repo: `/moberg-toolkit:moberg-init`
+Then bootstrap your repo: `/moberg:init`
 
 This repository is the single source of truth for commands, skills, agents, settings, and references distributed to Moberg project repositories.
 
@@ -38,10 +38,10 @@ Core workflow skills:
 
 ## Command Model
 
-- `moberg-implement` composes context, spec, planning, implementation, TDD, source verification, review, security checks, and simplification.
-- `moberg-fix` composes context, debugging, regression-focused TDD, and targeted security/source checks when needed.
-- `moberg-init` bootstraps repo-specific `CLAUDE.md` and project references.
-- `moberg-validate` validates the toolkit repo itself.
+- `implement` composes context, spec, planning, implementation, TDD, source verification, review, security checks, and simplification.
+- `fix` composes context, debugging, regression-focused TDD, and targeted security/source checks when needed.
+- `init` bootstraps repo-specific `CLAUDE.md` and project references.
+- `validate` validates the toolkit repo itself.
 
 ## Review Model
 

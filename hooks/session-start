@@ -8,8 +8,33 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="${SCRIPT_DIR}/.."
 
+# Check for in-progress specs and plans (session recovery)
+RECOVERY_MSG=""
+if [[ -d "docs/specs" ]]; then
+  RECENT_SPEC="$(find docs/specs -name '*.md' -mtime -1 2>/dev/null | head -1)"
+  if [[ -n "$RECENT_SPEC" ]]; then
+    RECOVERY_MSG="SESSION RECOVERY: Found recent spec at ${RECENT_SPEC}. You may have an in-progress feature. Read the spec to resume where you left off."
+  fi
+fi
+if [[ -d "docs/plans" ]] && [[ -z "$RECOVERY_MSG" ]]; then
+  RECENT_PLAN="$(find docs/plans -name '*.md' -mtime -1 2>/dev/null | head -1)"
+  if [[ -n "$RECENT_PLAN" ]]; then
+    RECOVERY_MSG="SESSION RECOVERY: Found recent plan at ${RECENT_PLAN}. You may have an in-progress implementation. Read the plan and tasks/todo.md to resume."
+  fi
+fi
+if [[ -f "tasks/todo.md" ]] && [[ -z "$RECOVERY_MSG" ]]; then
+  if grep -q '\[ \]' tasks/todo.md 2>/dev/null; then
+    RECOVERY_MSG="SESSION RECOVERY: Found incomplete tasks in tasks/todo.md. Check for in-progress work before starting something new."
+  fi
+fi
+
 # Build the context message
-CONTEXT="Moberg toolkit is active. Available commands: moberg-implement, moberg-fix, quick-check, moberg-init, moberg-scan, moberg-merge, moberg-validate, moberg-install, moberg-update. Skills loaded on demand via progressive disclosure."
+BASE_MSG="Moberg toolkit is active. Available commands: implement, fix, quick-check, init, scan, merge, validate, install, update, doctor. Skills loaded on demand via progressive disclosure."
+if [[ -n "$RECOVERY_MSG" ]]; then
+  CONTEXT="${BASE_MSG} ${RECOVERY_MSG}"
+else
+  CONTEXT="$BASE_MSG"
+fi
 
 # Escape for JSON (bash parameter substitution — no external deps)
 json_escape() {

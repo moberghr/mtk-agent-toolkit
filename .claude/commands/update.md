@@ -69,10 +69,10 @@ Also check the `protected` list from the manifest — these files are NEVER touc
 ### Show summary:
 
 ```
-moberg-update: v[old] → v[new]
+update: v[old] → v[new]
 
 Will update (upstream changed):
-  .claude/commands/moberg-implement.md  ([old-lines] → [new-lines] lines)
+  .claude/commands/implement.md  ([old-lines] → [new-lines] lines)
   .claude/agents/compliance-reviewer.md ([old-lines] → [new-lines] lines)
 
 Will add (new in upstream):
@@ -150,7 +150,7 @@ Write the new version to `.claude/.moberg-version`:
    If CLAUDE.md exists, scan the updated commands for §X.Y rule references.
    If any referenced rules don't exist in CLAUDE.md, warn:
    > "Updated commands reference §X.Y rules not found in CLAUDE.md.
-   > Consider running `/project:moberg-init` to regenerate CLAUDE.md."
+   > Consider running `/moberg:init` to regenerate CLAUDE.md."
 
 3. **Report**:
 ```
@@ -163,7 +163,7 @@ Merged:  settings.json [if applicable]
 
 Next steps:
   - Review changes: git diff
-  - If CLAUDE.md is outdated: /project:moberg-init
+  - If CLAUDE.md is outdated: /moberg:init
   - Commit: git add .claude/ && git commit -m "chore: update moberg toolkit to v[new]"
 ```
 

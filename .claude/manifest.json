@@ -1,48 +1,48 @@
 {
-  "version": "4.0.1",
+  "version": "4.1.0",
   "updated": "2026-04-10",
   "description": "Moberg Claude Code toolkit — shared commands, skills, agents, references, and settings for consistent AI-assisted development",
   "source": "https://github.com/moberghr/claude-helpers",
   "files": {
-    "commands/moberg-implement.md": {
-      "source": ".claude/commands/moberg-implement.md",
-      "target": ".claude/commands/moberg-implement.md",
+    "commands/implement.md": {
+      "source": ".claude/commands/implement.md",
+      "target": ".claude/commands/implement.md",
       "action": "sync",
       "description": "Thin entry point for the full feature implementation workflow"
     },
-    "commands/moberg-init.md": {
-      "source": ".claude/commands/moberg-init.md",
-      "target": ".claude/commands/moberg-init.md",
+    "commands/init.md": {
+      "source": ".claude/commands/init.md",
+      "target": ".claude/commands/init.md",
       "action": "sync",
       "description": "Bootstrap repo with CLAUDE.md generation from codebase scan"
     },
-    "commands/moberg-scan.md": {
-      "source": ".claude/commands/moberg-scan.md",
-      "target": ".claude/commands/moberg-scan.md",
+    "commands/scan.md": {
+      "source": ".claude/commands/scan.md",
+      "target": ".claude/commands/scan.md",
       "action": "sync",
       "description": "Extract architecture principles from codebase"
     },
-    "commands/moberg-merge.md": {
-      "source": ".claude/commands/moberg-merge.md",
-      "target": ".claude/commands/moberg-merge.md",
+    "commands/merge.md": {
+      "source": ".claude/commands/merge.md",
+      "target": ".claude/commands/merge.md",
       "action": "sync",
       "description": "Unify architecture scans from multiple repos"
     },
-    "commands/moberg-install.md": {
-      "source": ".claude/commands/moberg-install.md",
-      "target": ".claude/commands/moberg-install.md",
+    "commands/install.md": {
+      "source": ".claude/commands/install.md",
+      "target": ".claude/commands/install.md",
       "action": "sync",
       "description": "Install toolkit — globally for user or locally for a project"
     },
-    "commands/moberg-update.md": {
-      "source": ".claude/commands/moberg-update.md",
-      "target": ".claude/commands/moberg-update.md",
+    "commands/update.md": {
+      "source": ".claude/commands/update.md",
+      "target": ".claude/commands/update.md",
       "action": "sync",
       "description": "Pull latest toolkit from central repo"
     },
-    "commands/moberg-fix.md": {
-      "source": ".claude/commands/moberg-fix.md",
-      "target": ".claude/commands/moberg-fix.md",
+    "commands/fix.md": {
+      "source": ".claude/commands/fix.md",
+      "target": ".claude/commands/fix.md",
       "action": "sync",
       "description": "Thin entry point for the lightweight bug-fix workflow"
     },
@@ -52,9 +52,9 @@
       "action": "sync",
       "description": "Lightweight pre-commit security scan"
     },
-    "commands/moberg-validate.md": {
-      "source": ".claude/commands/moberg-validate.md",
-      "target": ".claude/commands/moberg-validate.md",
+    "commands/validate.md": {
+      "source": ".claude/commands/validate.md",
+      "target": ".claude/commands/validate.md",
       "action": "sync",
       "description": "Validate toolkit structure, metadata, and skill anatomy"
     },
@@ -231,6 +231,18 @@
       "target": "hooks/hooks.json",
       "action": "sync",
       "description": "Hook configuration for session-start event"
+    },
+    "skills/correction-capture/SKILL.md": {
+      "source": ".claude/skills/correction-capture/SKILL.md",
+      "target": ".claude/skills/correction-capture/SKILL.md",
+      "action": "sync",
+      "description": "Reusable correction capture and compounding skill"
+    },
+    "commands/doctor.md": {
+      "source": ".claude/commands/doctor.md",
+      "target": ".claude/commands/doctor.md",
+      "action": "sync",
+      "description": "Quick diagnostic command for toolkit health"
     },
     "AGENTS.md": {
       "source": "AGENTS.md",

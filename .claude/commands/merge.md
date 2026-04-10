@@ -5,7 +5,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 
 # Moberg Merge — Unify Architecture Across Projects
 
-You have scanned multiple repositories with `/project:moberg-scan` and now need a
+You have scanned multiple repositories with `/moberg:scan` and now need a
 single, unified architecture principles document.
 
 ## Input
@@ -20,12 +20,12 @@ Each file is an architecture scan from a different project (e.g., `payfac.md`,
 
 If the directory is empty or doesn't exist, tell the engineer:
 > "No scan files found. To use this command:
-> 1. Run `/project:moberg-scan` in each repo (payfac, collection-system, etc.)
+> 1. Run `/moberg:scan` in each repo (payfac, collection-system, etc.)
 > 2. Copy each generated `architecture-principles.md` into this repo at:
 >    `.claude/references/scans/payfac.md`
 >    `.claude/references/scans/collection-system.md`
 >    etc.
-> 3. Run `/project:moberg-merge` again."
+> 3. Run `/moberg:merge` again."
 
 ## Analysis
 

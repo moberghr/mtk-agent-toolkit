@@ -1,7 +1,7 @@
 ---
-description: Full feature implementation loop using Moberg skills for planning, batching, verification, and review. Run /project:moberg-init first.
+description: Full feature implementation loop using Moberg skills for planning, batching, verification, and review. Run /moberg:init first.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, Task, AskUserQuestion
-argument-hint: [--auto] <feature description>
+argument-hint: [--auto] [--terse|--verbose] <feature description>
 ---
 
 # Moberg Implement — Full Feature Loop
@@ -27,7 +27,7 @@ The command itself is intentionally thin. The source of truth for workflow behav
 Before doing anything else:
 
 1. Follow `.claude/skills/context-engineering/SKILL.md`.
-2. Read `CLAUDE.md`. If missing, stop and tell the engineer to run `/project:moberg-init`.
+2. Read `CLAUDE.md`. If missing, stop and tell the engineer to run `/moberg:init`.
 3. Read only the references needed for the **current phase**:
    - **Always (Phase 0):** `.claude/references/coding-guidelines.md`, `.claude/references/architecture-principles.md` if present
    - **Defer to Phase 1 (spec):** `.claude/references/security-checklist.md` (only if scope touches auth/financial/infra), `.claude/references/testing-patterns.md`
@@ -35,6 +35,10 @@ Before doing anything else:
    - **Defer to Phase 4 (review):** `.claude/references/quick-check-list.md` if present
 4. Resolve the lessons path using the main worktree if needed, then read relevant entries from `tasks/lessons.md`.
 5. Detect `--auto`. Auto mode skips the approval wait, not the planning itself.
+6. Detect `--terse` or `--verbose` for output intensity:
+   - **`--terse`:** Minimal output. Skip explanations, rationale, and intermediate status. Report only: decisions, actions, findings, and evidence. No filler phrases. Aimed at senior engineers who read diffs.
+   - **`--verbose`:** Full explanations. Include rationale for each decision, alternatives considered, references consulted, and step-by-step reasoning. Aimed at engineers learning the codebase or reviewing unfamiliar areas.
+   - **Default (no flag):** Balanced output. Brief rationale for non-obvious decisions, standard reporting, no excess explanation.
 
 **Progressive disclosure principle:** Load references at the phase where they are first needed, not all upfront. This preserves context budget for the actual code and decisions that matter in each phase. Re-anchor on references when switching phases.
 
@@ -130,10 +134,29 @@ Follow `.claude/skills/code-simplification/SKILL.md`.
 
 If cleanup changes code, run `dotnet build && dotnet test` again.
 
-## Phase 7: Lessons And Drift
+## Phase 7: Compound (Learn And Strengthen)
 
-1. Add a lesson only when something was learned that should affect future sessions.
-2. Check `CLAUDE.md` for drift. If the work added new stable patterns, update it.
+This phase is not optional cleanup — it is how the toolkit gets smarter over time.
+
+1. **What was learned?** Answer explicitly:
+   - Did any assumption from the spec turn out to be wrong?
+   - Did any framework/SDK behavior surprise you?
+   - Did any review finding reveal a gap in the standards?
+   - Did you receive any corrections from the engineer during this session?
+
+2. **Capture lessons.** For each learning, append to `tasks/lessons.md`:
+   - What happened
+   - The rule to follow next time
+   - Why it matters
+   - When it applies
+
+3. **Check for promotion.** If a lesson matches an existing pattern in `tasks/lessons.md` (3+ similar entries), propose adding it as a rule in `CLAUDE.md`.
+
+4. **Check CLAUDE.md for drift.** If the work added new stable patterns (naming, structure, conventions), propose updates to `CLAUDE.md`. Do not silently modify it.
+
+5. **Update quick-check-list.** If a security or compliance issue was found during review, add it to `.claude/references/quick-check-list.md` so it's caught earlier next time.
+
+6. **State the compound.** In the final report, include a "What compounded" section listing what future sessions will benefit from.
 
 ## Final Report
 
@@ -142,10 +165,10 @@ Report:
 - scope
 - files changed
 - tests added or updated
-- review agents used
+- review agents used and stage (1 or 2)
 - review iterations
 - cleanup summary
-- whether lessons were captured
+- **what compounded** — lessons captured, rules promoted, quick-check items added
 - whether `CLAUDE.md` changed
 
 ## Red Flags
