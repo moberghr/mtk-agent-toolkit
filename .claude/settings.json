@@ -29,7 +29,6 @@
       "Write(.env)",
       "Write(.env.*)",
       "Bash(rm -rf:*)",
-      "Bash(git push:*)",
       "Bash(git checkout main:*)",
       "Bash(dotnet publish:*)"
     ]
