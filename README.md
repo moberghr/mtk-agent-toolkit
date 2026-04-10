@@ -2,26 +2,39 @@
 
 Shared Claude Code toolkit for consistent AI-assisted development across Moberg HR.
 
+**Quick start** — install via the Claude Code plugin marketplace:
+
+```
+/plugin marketplace add moberghr/claude-helpers
+/plugin install moberg-toolkit@moberghr
+```
+
+Then bootstrap your repo: `/moberg-toolkit:moberg-init`
+
+---
+
 This repository is the single source of truth for commands, agents, settings, and references that get distributed to all Moberg project repositories. It grows over time as the team adds new skills, plugins, and knowledge.
 
 ## What's Inside
 
 | Type | Path | Description |
 |------|------|-------------|
-| Command | `commands/moberg-install.md` | Install toolkit — globally for user or locally for a project |
-| Command | `commands/moberg-init.md` | Bootstrap a repo — scans codebase, pulls guidelines, generates CLAUDE.md |
 | Command | `commands/moberg-implement.md` | Full feature loop: plan → implement → verify → review → fix → cleanup → learn |
+| Command | `commands/moberg-fix.md` | Lightweight fix/task — skip planning and review for small changes |
+| Command | `commands/moberg-init.md` | Bootstrap a repo — scans codebase, pulls guidelines, generates CLAUDE.md |
+| Command | `commands/quick-check.md` | Fast pre-commit security review |
 | Command | `commands/moberg-scan.md` | Extract architecture principles from a codebase |
 | Command | `commands/moberg-merge.md` | Unify architecture scans from multiple repos into one document |
-| Command | `commands/moberg-fix.md` | Lightweight fix/task — skip planning and review for small changes |
-| Command | `commands/moberg-update.md` | Pull latest toolkit into a project repo |
-| Command | `commands/quick-check.md` | Fast pre-commit security review |
+| Command | `commands/moberg-install.md` | Install toolkit manually — globally for user or locally for a project |
+| Command | `commands/moberg-update.md` | Pull latest toolkit (manual installs only — plugin handles this automatically) |
 | Agent | `agents/compliance-reviewer.md` | Adversarial code reviewer for fintech compliance (96-item checklist) |
 | Reference | `references/coding-guidelines.md` | Moberg C# coding style guide |
 | Settings | `settings.json` | Shared permissions, hooks, and tool configuration |
-| Manifest | `manifest.json` | Distribution manifest — defines what gets synced and how |
+| Plugin | `.claude-plugin/plugin.json` | Plugin manifest for marketplace distribution |
+| Plugin | `.claude-plugin/marketplace.json` | Marketplace catalog |
+| Manifest | `manifest.json` | Distribution manifest for manual installs — defines what gets synced and how |
 
-All files live under `.claude/` and get distributed into each project's `.claude/` directory.
+All files live under `.claude/` and get distributed via the Claude Code plugin marketplace or manually into each project's `.claude/` directory.
 
 ## Installation
 
