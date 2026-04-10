@@ -1,6 +1,6 @@
 ---
 description: Lightweight fix/task — skip planning and review, just do it right. For small changes that don't need the full moberg-implement loop.
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 argument-hint: <description of fix or small task>
 ---
 
@@ -47,8 +47,21 @@ whole file if it's long — search for keywords related to the task.
 
 ## STEP 2: CLARIFY (if needed)
 
-If the task description is ambiguous, ask **1-2 questions max** in a single message.
-Show what you found in the code to frame the question.
+If the task description is ambiguous, use **AskUserQuestion** with 1-2 questions max.
+Provide options based on what you found in the code to frame each choice.
+
+Example:
+```
+questions:
+  - question: "The validation error for duplicate references is handled in two places. Which should I fix?"
+    header: "Fix target"
+    options:
+      - label: "CreatePaymentHandler"
+        description: "The MediatR handler — this is where the other validations live"
+      - label: "PaymentValidator"
+        description: "The FluentValidation validator — would be more consistent with the uniqueness check pattern"
+    multiSelect: false
+```
 
 If everything is clear, skip this step entirely. Most fixes don't need clarification.
 

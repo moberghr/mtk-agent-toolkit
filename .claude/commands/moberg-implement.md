@@ -1,6 +1,6 @@
 ---
 description: Full feature implementation loop — plan, implement, verify, review, fix, cleanup, learn. Run /project:moberg-init first to set up the repo.
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, Task
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, Task, AskUserQuestion
 argument-hint: [--auto] <feature description>
 ---
 
@@ -55,8 +55,8 @@ If the argument starts with `--auto` (or the engineer says "just do it", "don't 
 ## PHASE 0.5: CLARIFY — Interactive Q&A
 
 After reading standards and scanning the codebase, but BEFORE writing the plan, identify
-anything unclear about the feature request. Ask the engineer in a single batch of
-numbered questions.
+anything unclear about the feature request. Use **AskUserQuestion** to ask the engineer
+(up to 4 questions per call — make a second call if you have 5).
 
 ### What to clarify:
 
@@ -68,14 +68,29 @@ numbered questions.
 
 ### Format:
 
+Use AskUserQuestion with structured options for each question. For design choices, provide
+the options you identified. For yes/no questions, use two options. The engineer can always
+pick "Other" to give a free-form answer.
+
+Example:
 ```
-Before I plan, a few questions:
-
-1. [question — with context about why it matters]
-2. [question — showing the options you see]
-3. [question]
-
-Answer inline (e.g., "1. yes 2. option A 3. skip it") and I'll proceed to the plan.
+questions:
+  - question: "Should this include bulk operations or just single-item?"
+    header: "Scope"
+    options:
+      - label: "Single-item only"
+        description: "Simpler — matches the existing CreateInvoice pattern"
+      - label: "Include bulk"
+        description: "More flexible — but adds a batch handler and validation complexity"
+    multiSelect: false
+  - question: "I see two data sources: the Payments table and the Ledger service. Which should this read from?"
+    header: "Data source"
+    options:
+      - label: "Payments table"
+        description: "Direct DB read — faster, already used by ReportingQuery"
+      - label: "Ledger service"
+        description: "Goes through the domain service — more consistent but adds a network hop"
+    multiSelect: false
 ```
 
 ### Rules:
@@ -209,12 +224,20 @@ Scope: [scope] | Branch: [branch-name]
 > Show the plan as: "**Plan (auto-approved):**" then proceed directly to Phase 2.
 
 **If NOT AUTO_MODE:**
-> "Here's my implementation plan. Tell me:
-> **approve** — proceed to implementation
-> **revise: [feedback]** — I'll update the plan
-> **abort** — stop here"
->
-> **Do NOT proceed until the engineer approves.**
+Use AskUserQuestion after presenting the plan:
+```
+question: "How would you like to proceed with this plan?"
+header: "Plan"
+options:
+  - label: "Approve"
+    description: "Proceed to implementation"
+  - label: "Revise"
+    description: "I'll update the plan based on your feedback"
+  - label: "Abort"
+    description: "Stop here — don't implement"
+```
+If the engineer picks "Revise", apply their feedback, update the plan, and ask again.
+**Do NOT proceed until the engineer approves.**
 
 ---
 

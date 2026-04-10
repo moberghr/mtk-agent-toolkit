@@ -1,6 +1,6 @@
 ---
 description: Scan the current repository and generate an architecture principles document based on actual codebase patterns. Run in each repo you want to source. Outputs to .claude/references/architecture-principles.md
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 ---
 
 # Moberg Scan — Extract Architecture Principles from Codebase
@@ -367,5 +367,14 @@ Next steps:
 ## IMPORTANT
 - This command is READ-ONLY except for writing the output document
 - Never modify source code during a scan
-- If `.claude/references/architecture-principles.md` already exists, ask before overwriting
+- If `.claude/references/architecture-principles.md` already exists, use AskUserQuestion before overwriting:
+  ```
+  question: ".claude/references/architecture-principles.md already exists. Overwrite with a fresh scan?"
+  header: "Overwrite"
+  options:
+    - label: "Overwrite"
+      description: "Replace the existing file with a new scan of the current codebase"
+    - label: "Cancel"
+      description: "Keep the existing file unchanged"
+  ```
 - Create `.claude/references/` directory if it doesn't exist
