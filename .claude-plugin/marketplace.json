@@ -1,0 +1,25 @@
+{
+  "marketplace": "moberghr",
+  "marketplaceVersion": "1",
+  "displayName": "Moberg HR Engineering",
+  "description": "Internal Claude Code plugins for Moberg HR engineering team",
+  "source": "https://github.com/moberghr/claude-helpers",
+  "plugins": [
+    {
+      "id": "moberg-toolkit",
+      "name": "moberg-toolkit",
+      "version": "2.1.0",
+      "description": "Structured implementation loops, adversarial code review, and compliance-first workflows for .NET fintech teams",
+      "author": "Moberg HR",
+      "license": "UNLICENSED",
+      "source": "./",
+      "keywords": [
+        "dotnet",
+        "fintech",
+        "compliance",
+        "code-review",
+        "implementation-workflow"
+      ]
+    }
+  ]
+}
