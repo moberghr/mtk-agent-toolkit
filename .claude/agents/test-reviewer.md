@@ -14,9 +14,10 @@ Review the diff only for testing quality.
 Read:
 
 1. `CLAUDE.md`
-2. `.claude/references/testing-patterns.md`
-3. `.claude/skills/test-driven-development-dotnet/SKILL.md`
-4. The changed test files and the production files they exercise
+2. `.claude/rules/*.md` — Glob for all rule files and read them (especially `testing.md` §4.x)
+3. `.claude/references/testing-patterns.md`
+4. `.claude/skills/test-driven-development-dotnet/SKILL.md`
+5. The changed test files and the production files they exercise
 
 ## Check
 

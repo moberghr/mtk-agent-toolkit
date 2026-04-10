@@ -14,10 +14,11 @@ Review the diff for architectural fit and boundary violations.
 Read:
 
 1. `CLAUDE.md`
-2. `.claude/references/architecture-principles.md` if present
-3. `.claude/references/mediatr-slice-patterns.md`
-4. `.claude/skills/code-simplification/SKILL.md`
-5. 2-3 neighboring files representing the expected pattern
+2. `.claude/rules/*.md` — Glob for all rule files and read them (especially `architecture.md` §2.x)
+3. `.claude/references/architecture-principles.md` if present
+4. `.claude/references/mediatr-slice-patterns.md`
+5. `.claude/skills/code-simplification/SKILL.md`
+6. 2-3 neighboring files representing the expected pattern
 
 ## Check
 

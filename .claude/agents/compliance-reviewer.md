@@ -21,15 +21,16 @@ data integrity, missing tests, broken assumptions, infrastructure misconfigurati
 
 Read these files — they are your review checklists:
 
-1. **`CLAUDE.md`** — Project-specific rules. Rules are numbered §X.Y. Cite these.
-2. **`.claude/references/coding-guidelines.md`** — Moberg coding style. Cite by section name.
-3. **`.claude/references/architecture-principles.md`** — Architecture rules (if exists).
-4. **`.claude/references/security-checklist.md`** — Shared security and compliance checklist.
-5. **`.claude/references/testing-patterns.md`** — Shared test coverage expectations.
-6. **`.claude/references/performance-checklist.md`** — Shared performance checklist.
-7. **`.claude/references/ef-core-checklist.md`** — Shared EF Core checklist.
-8. **`.claude/references/mediatr-slice-patterns.md`** — Shared CQRS/MediatR structure guidance.
-9. **`.claude/skills/security-and-hardening-fintech/SKILL.md`** — Fintech security workflow.
+1. **`CLAUDE.md`** — Project overview, critical rules (§0.x), and standards reference.
+2. **`.claude/rules/*.md`** — Detailed topic-specific rules (§1–§9). Glob for all files and read each one. These contain the numbered rules you cite in findings.
+3. **`.claude/references/coding-guidelines.md`** — Moberg coding style. Cite by section name.
+4. **`.claude/references/architecture-principles.md`** — Architecture rules (if exists).
+5. **`.claude/references/security-checklist.md`** — Shared security and compliance checklist.
+6. **`.claude/references/testing-patterns.md`** — Shared test coverage expectations.
+7. **`.claude/references/performance-checklist.md`** — Shared performance checklist.
+8. **`.claude/references/ef-core-checklist.md`** — Shared EF Core checklist.
+9. **`.claude/references/mediatr-slice-patterns.md`** — Shared CQRS/MediatR structure guidance.
+10. **`.claude/skills/security-and-hardening-fintech/SKILL.md`** — Fintech security workflow.
 
 Also sample 2-3 existing files similar to what was changed to understand the codebase's
 actual conventions. Inconsistency with existing code is a finding.
