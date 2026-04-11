@@ -1,36 +1,66 @@
-# Contributing to claude-helpers
+# Contributing to Moberg Toolkit
 
-This toolkit is the shared source of truth for AI-assisted development at Moberg HR.
-Anyone on the team can extend it — add commands, skills, agents, references, or validation rules.
+This toolkit is the shared source of truth for AI-assisted development at Moberg HR. Anyone on the team can extend it — add commands, skills, agents, references, or validation rules.
+
+---
 
 ## How the Toolkit Works
 
-```text
-This repo                       install/update                 Target repos
-  .claude/commands/*.md   ───────────────────────────>        .claude/commands/*.md
-  .claude/skills/*/SKILL.md                                   .claude/skills/*/SKILL.md
-  .claude/agents/*.md                                         .claude/agents/*.md
-  .claude/references/*.md                                     .claude/references/*.md
-  AGENTS.md                                                   AGENTS.md
-  docs/*                                                      docs/*
-  scripts/*                                                   scripts/*
-  .claude/settings.json          (merge, not overwrite)       .claude/settings.json
-  .claude/manifest.json          (controls what ships)
+```mermaid
+graph LR
+    subgraph Central["This Repo (claude-helpers)"]
+        commands["commands/*.md"]
+        skills["skills/*/SKILL.md"]
+        agents["agents/*.md"]
+        refs["references/*.md"]
+        manifest["manifest.json<br/><i>controls what ships</i>"]
+        settings["settings.json"]
+    end
+
+    subgraph Target["Target Repos"]
+        t_commands["commands/*.md"]
+        t_skills["skills/*/SKILL.md"]
+        t_agents["agents/*.md"]
+        t_refs["references/*.md"]
+        t_settings["settings.json"]
+    end
+
+    commands -- "sync<br/>(overwrite)" --> t_commands
+    skills -- "sync" --> t_skills
+    agents -- "sync" --> t_agents
+    refs -- "sync" --> t_refs
+    settings -- "merge<br/>(preserve existing)" --> t_settings
+    manifest -.-> commands
+    manifest -.-> skills
+    manifest -.-> agents
+    manifest -.-> refs
 ```
 
-`manifest.json` is the registry. It lists every file that gets distributed, where it comes from, how it gets distributed (`sync` = overwrite, `merge` = intelligent union), and which files are `protected`.
+`manifest.json` is the registry. It lists every distributed file, its source, how it ships (`sync` = overwrite, `merge` = intelligent union), and which files are `protected`.
+
+---
 
 ## Architecture Guidelines
 
-- Commands are entry points.
-- Skills hold reusable workflow logic.
-- Agents are specialized personas, usually for review.
-- References hold durable standards and checklists.
-- If a command section could be reused elsewhere, extract a skill instead of growing the command.
+```mermaid
+graph TD
+    C["Commands<br/><i>Entry points</i>"] --> S["Skills<br/><i>Reusable workflow logic</i>"]
+    C --> A["Agents<br/><i>Specialist reviewers</i>"]
+    S --> R["References<br/><i>Durable standards & checklists</i>"]
+    A --> R
+```
+
+- **Commands** are entry points — user-facing, thin orchestration
+- **Skills** hold reusable workflow logic — the building blocks
+- **Agents** are specialized personas, usually for review
+- **References** hold durable standards and checklists
+- If a command section could be reused elsewhere, extract a skill instead of growing the command
+
+---
 
 ## Adding a New Command
 
-1. Create `.claude/commands/your-command.md` with this structure:
+1. Create `.claude/commands/your-command.md`:
 
 ```yaml
 ---
@@ -46,16 +76,17 @@ argument-hint: [optional] <expected arguments>
 ## Critical Rules
 ```
 
-2. Keep command-specific orchestration in the command.
-3. Put reusable workflow rules in a skill.
-4. Register the command in `manifest.json`.
-5. Bump the `version` in `manifest.json`.
+2. Keep command-specific orchestration in the command
+3. Put reusable workflow rules in a skill
+4. Register in `manifest.json`
+5. Bump version in both `manifest.json` and `plugin.json`
+
+---
 
 ## Adding a New Skill
 
 1. Create `.claude/skills/<skill-name>/SKILL.md`
-2. Follow `docs/skill-anatomy.md`
-3. Use this minimum structure:
+2. Follow [docs/skill-anatomy.md](docs/skill-anatomy.md) — minimum structure:
 
 ```yaml
 ---
@@ -66,69 +97,79 @@ description: Short description of the reusable workflow
 # Skill Title
 
 ## Overview
-
 ## When To Use
-
 ## Workflow
-
 ## Verification
 ```
 
-4. Register the skill in `manifest.json`
-5. Reference it from a command or `AGENTS.md`
-6. Bump the `version` in `manifest.json`
+3. Register in `manifest.json`
+4. Reference from a command or `AGENTS.md`
+5. Bump version
+
+---
 
 ## Adding a New Agent
 
-Agents are standalone personas invoked by commands or used in review routing.
-
 1. Create `.claude/agents/your-agent.md`
-2. Keep agent tools narrow, usually read-only
+2. Keep agent tools narrow — usually read-only
 3. Use `model: sonnet` unless there is a clear reason not to
-4. Register the agent in `manifest.json`
-5. Bump the version
+4. Register in `manifest.json`
+5. Bump version
+
+---
 
 ## Adding References
 
-References are shared documents that commands, skills, and agents read.
-
 1. Place the file in `.claude/references/your-reference.md`
-2. Register it in `manifest.json` with `"action": "sync"`
-3. If it is repo-specific and should never be overwritten, add it to `protected` instead
+2. Register in `manifest.json` with `"action": "sync"`
+3. If it is repo-specific and should never be overwritten, add to `protected` instead
+
+---
 
 ## Writing Anti-Rationalization Tables
 
-This is still one of the highest-value prompt patterns in the repo.
+This is one of the highest-value prompt patterns in the repo.
 
-Good rationalizations are:
+**Good rationalizations are:**
+- Specific — tied to a real scenario
+- Realistic — something the model actually says
+- Paired with sharp rebuttals
+- Domain-aware
 
-- specific
-- realistic
-- paired with sharp rebuttals
-- domain-aware
+**Bad rationalizations are:**
+- Generic advice
+- Rule restatements with no consequence
+- Hypothetical cases the model never actually uses
 
-Bad rationalizations are:
+---
 
-- generic advice
-- rule restatements with no consequence
-- hypothetical cases the model never actually uses
+## Pre-Push Checklist
 
-## Testing Changes Locally
-
-Before pushing changes:
+```mermaid
+flowchart TD
+    A["Make your changes"] --> B["Register in manifest.json"]
+    B --> C["Bump version<br/>(manifest + plugin)"]
+    C --> D["Run /moberg:validate"]
+    D --> E{"Passes?"}
+    E -- Yes --> F["Update AGENTS.md<br/>if routing changed"]
+    F --> G["Push"]
+    E -- No --> H["Fix issues"] --> D
+```
 
 1. Verify command or agent syntax in Claude Code if applicable
-2. Check the manifest — every new shipped file must be registered
-3. Check protected files — generated repo-local assets should not be overwritten later
-4. Bump the version in `manifest.json`
+2. Every new shipped file must be registered in `manifest.json`
+3. Generated repo-local assets should be in the `protected` list
+4. Bump version in both `manifest.json` and `plugin.json`
 5. Run `bash scripts/validate-toolkit.sh`
-6. If the workflow logic is reusable, update `AGENTS.md` and the relevant commands to compose the new skill
+6. If workflow logic is reusable, update `AGENTS.md` and commands to compose the new skill
+
+---
 
 ## Style Guidelines
 
-- Be opinionated.
-- Be concrete.
-- Be brief.
-- Number rules when they need to be cited.
-- Match existing patterns.
-- Prefer extraction over growth when a workflow is reusable.
+- Be opinionated
+- Be concrete
+- Be brief
+- Number rules when they need to be cited
+- Match existing patterns
+- Prefer extraction over growth when a workflow is reusable
