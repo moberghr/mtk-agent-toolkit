@@ -422,6 +422,55 @@ echo "tasks/todo.md" >> .gitignore
 
 Do NOT gitignore `tasks/lessons.md` — it should be committed and shared.
 
+### Cross-Tool AGENTS.md
+
+Generate a root-level `AGENTS.md` for cross-tool compatibility (Cursor, Copilot, Codex, Gemini CLI).
+This file follows the open AGENTS.md standard (agents.md) and contains the subset of rules that
+any AI coding tool needs — no Claude-specific features.
+
+If `AGENTS.md` already exists, leave it alone — it may have been customized.
+
+If creating from scratch, generate based on codebase scan findings:
+
+```markdown
+# AGENTS.md
+
+> Cross-tool AI coding instructions. Works with Claude Code, Cursor, Copilot, Codex, and others.
+> For Claude-specific rules: see CLAUDE.md and .claude/rules/.
+
+## Build & Test
+
+[Generate: actual build and test commands for this project]
+
+## Code Style
+
+[Generate: top 5-8 most critical coding conventions from coding-guidelines.md]
+[Include only rules the AI is likely to violate — skip obvious ones]
+
+## Architecture
+
+[Generate: layer structure, dependency direction, handler/service splits]
+[Keep to 3-5 bullet points]
+
+## Testing
+
+[Generate: test framework, naming conventions, what must be tested]
+
+## Security
+
+[Generate: top 3-5 security rules relevant to this project]
+
+## Do Not
+
+[Generate: 3-5 things the AI should never do in this codebase]
+```
+
+**Rules for generation:**
+- Keep under 100 lines. This file loads into every AI tool on every request.
+- Use plain markdown — no YAML frontmatter, no tool-specific syntax.
+- Include only rules that are NOT obvious from the code itself.
+- Focus on things the AI would get wrong without instruction.
+
 ## STEP 5: Verify & Report
 
 Present a summary to the engineer:

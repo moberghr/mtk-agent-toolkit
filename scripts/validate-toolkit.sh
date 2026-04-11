@@ -61,4 +61,22 @@ grep -q 'docs/skill-anatomy.md' CONTRIBUTING.md || fail "CONTRIBUTING does not p
 grep -q 'test-driven-development-dotnet' README.md || fail "README does not mention the new skill set"
 grep -q 'context-engineering' AGENTS.md || fail "AGENTS.md does not route context-engineering"
 
+# Token budget enforcement: prevent context bloat
+if [ -f "CLAUDE.md" ]; then
+  claude_lines="$(wc -l < CLAUDE.md)"
+  [ "$claude_lines" -le 200 ] || fail "CLAUDE.md exceeds 200-line budget ($claude_lines lines). Move detail to .claude/rules/"
+fi
+
+while IFS= read -r skill; do
+  skill_lines="$(wc -l < "$skill")"
+  [ "$skill_lines" -le 500 ] || fail "Skill $skill exceeds 500-line budget ($skill_lines lines). Split into core + reference files"
+done < <(find .claude/skills -name 'SKILL.md' | sort)
+
+if [ -d ".claude/rules" ]; then
+  while IFS= read -r rule; do
+    rule_lines="$(wc -l < "$rule")"
+    [ "$rule_lines" -le 120 ] || fail "Rule file $rule exceeds 120-line budget ($rule_lines lines). Tighten wording or split"
+  done < <(find .claude/rules -name '*.md' | sort)
+fi
+
 printf 'Toolkit validation passed.\n'

@@ -3,12 +3,12 @@
   "description": "AI-assisted development toolkit for .NET fintech teams — command entry points backed by reusable skills, review agents, and compliance-first workflows",
   "version": "4.1.1",
   "author": {
-    "name": "Moberg HR",
-    "url": "https://github.com/moberghr"
+    "name": "Moberg d.o.o.",
+    "url": "https://www.moberg.hr"
   },
   "homepage": "https://github.com/moberghr/claude-helpers",
   "repository": "https://github.com/moberghr/claude-helpers",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "keywords": [
     "dotnet",
     "fintech",

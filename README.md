@@ -9,7 +9,7 @@
 [![Version](https://img.shields.io/badge/version-4.1.0-blue.svg)](https://github.com/moberghr/claude-helpers/releases)
 [![Platform](https://img.shields.io/badge/platform-Claude%20Code-purple.svg)](https://claude.ai/code)
 [![.NET](https://img.shields.io/badge/.NET-8.0%2B-512BD4.svg)](https://dotnet.microsoft.com/)
-[![License](https://img.shields.io/badge/license-UNLICENSED-red.svg)](#license)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 [Quick Start](#quick-start) | [Architecture](#architecture) | [Commands](#commands) | [Skills](#skills) | [Review Agents](#review-agents) | [Contributing](#contributing)
 
@@ -755,12 +755,12 @@ This toolkit is designed for fintech environments where code quality and securit
 
 ## License
 
-UNLICENSED. This toolkit is proprietary to Moberg HR and intended for internal use only.
+MIT License. See [LICENSE](LICENSE) for details.
 
 ---
 
 <div align="center">
 
-**Moberg Toolkit** v4.1.0 | Built for teams that ship production code, not prototypes.
+**Moberg Toolkit** v4.1.0 | [Moberg d.o.o.](https://www.moberg.hr) | Built for teams that ship production code, not prototypes.
 
 </div>

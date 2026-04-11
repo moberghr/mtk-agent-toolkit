@@ -1,0 +1,87 @@
+---
+name: code-review-and-quality-fintech
+description: Use after implementation is verified and before merge, or when reviewing a PR, to check correctness, security, architecture, and test quality against project standards.
+license: MIT
+compatibility:
+  - claude-code
+  - codex
+trigger: post-implementation|pr-review|merge-safety-check|quality-audit
+skip_when: no-behavioral-diff|pre-implementation-phase
+---
+
+# Code Review And Quality for Fintech
+
+## Overview
+
+Review changed code as an adversary, not a collaborator. The review must prioritize real risks over style and decide whether the change improves overall code health.
+
+## When To Use
+
+- After implementation and verification
+- For PR review or merge-safety checks
+- When a change touches money movement, auth, data integrity, or infra
+- After bug fixes, including review of the regression test
+
+### When NOT To Use
+
+- Before the implementation has a coherent behavioral diff or verification story
+
+## Workflow
+
+1. Load standards:
+   - `CLAUDE.md`
+   - `.claude/references/coding-guidelines.md`
+   - `.claude/references/security-checklist.md`
+   - `.claude/references/testing-patterns.md`
+   - `.claude/references/performance-checklist.md`
+   - `.claude/references/ef-core-checklist.md`
+   - `.claude/references/mediatr-slice-patterns.md`
+2. Read the behavioral diff if provided.
+3. Review across these axes:
+   - correctness
+   - readability and simplicity
+   - architectural fit
+   - security and compliance
+   - performance and scaling risk
+   - test quality and verification strength
+4. Route specialized review when needed:
+   - `compliance-reviewer` for security/compliance-sensitive work
+   - `test-reviewer` for coverage and verification quality
+   - `architecture-reviewer` for boundary and slice integrity concerns
+5. Categorize findings:
+   - `Critical`
+   - `Warning`
+   - `Suggestion`
+6. Report findings ordered by severity with file and line references.
+7. If no issues are found, say so explicitly and state residual risk or confidence limits.
+
+## Rules
+
+- Real risks first, style second.
+- Missing tests on mutation paths are substantive findings.
+- Mismatch between behavioral diff and actual code is a critical finding.
+- Security-sensitive changes need explicit scrutiny, not a passing glance.
+- Approve changes that improve overall code health even if they are not perfect.
+
+## Common Rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| "The tests pass, so this is fine" | Passing tests do not clear architecture, security, or performance risks. |
+| "I wrote it, so I already reviewed it" | Authors are blind to their own assumptions. Review is a separate activity. |
+| "This is mostly style" | Real review starts with correctness and risk, not formatting. |
+| "I'll mention the issue softly so I don't block progress" | Soft-pedaling a real production risk is a review failure. |
+
+## Red Flags
+
+- Review with no severity ordering
+- Security-sensitive diff with no security-focused findings or explicit clear statement
+- No verification story for the implementation
+- Large unreviewable change accepted as-is instead of flagged
+
+## Verification
+
+- [ ] Findings are actionable and severity-ordered
+- [ ] Review references governing rules or checklists
+- [ ] Testing gaps are explicitly called out or explicitly cleared
+- [ ] Review verdict matches the actual risk level of the change

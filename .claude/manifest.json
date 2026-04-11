@@ -58,6 +58,12 @@
       "action": "sync",
       "description": "Validate toolkit structure, metadata, and skill anatomy"
     },
+    "commands/handoff.md": {
+      "source": ".claude/commands/handoff.md",
+      "target": ".claude/commands/handoff.md",
+      "action": "sync",
+      "description": "Capture session state into a recovery artifact for context continuity"
+    },
     "agents/compliance-reviewer.md": {
       "source": ".claude/agents/compliance-reviewer.md",
       "target": ".claude/agents/compliance-reviewer.md",

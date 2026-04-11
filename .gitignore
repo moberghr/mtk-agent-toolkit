@@ -1,5 +1,7 @@
 ### Claude Code
 .claude/settings.local.json
+!.claude/skills/
+tasks/todo.md
 
 ### macOS
 # Finder metadata

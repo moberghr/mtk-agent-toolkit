@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Stop hook: flags completion claims that lack command output evidence.
-# Prints a one-liner if triggered, nothing otherwise.
+# The error message is a prompt — it tells the agent exactly what to do next.
+# Prints actionable guidance if triggered, nothing otherwise.
 set -euo pipefail
 
 MSG="$*"
@@ -11,5 +12,5 @@ if echo "$MSG" | grep -qiE '\b(done|complete[d]?|fixed|verified|finished)\b'; th
   if echo "$MSG" | grep -qE '(exit code|passed|failed|error[s]? [0-9]|warning[s]? [0-9]|Build succeeded|PASSED|FAILED|\$ |```|test[s]? ran)'; then
     exit 0
   fi
-  echo "VERIFICATION GAP: Cite fresh command output before reporting done."
+  echo "VERIFICATION GAP: Run the verification command and cite its output before reporting done. For .NET: run 'dotnet build && dotnet test', cite exit code and pass/fail counts. For toolkit: run 'bash scripts/validate-toolkit.sh', cite 'Toolkit validation passed.' For fixes: run the specific reproduction step."
 fi

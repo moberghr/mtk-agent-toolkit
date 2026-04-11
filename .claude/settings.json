@@ -55,16 +55,6 @@
         ]
       }
     ],
-    "TaskCompleted": [
-      {
-        "hooks": [
-          {
-            "type": "prompt",
-            "prompt": "Does $ARGUMENTS describe completing an implementation or fix task? YES → print exactly: Task complete — verify dotnet build and tests ran AFTER the last code change. NO → print nothing.",
-            "statusMessage": "Validating task completion"
-          }
-        ]
-      }
-    ]
+    "TaskCompleted": []
   }
 }
