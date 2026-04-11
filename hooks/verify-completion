@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Stop hook: flags completion claims that lack command output evidence.
+# Prints a one-liner if triggered, nothing otherwise.
+set -euo pipefail
+
+MSG="$*"
+
+# Does the message claim completion?
+if echo "$MSG" | grep -qiE '\b(done|complete[d]?|fixed|verified|finished)\b'; then
+  # Does it also contain command output evidence? (exit codes, test counts, build results, shell prompts)
+  if echo "$MSG" | grep -qE '(exit code|passed|failed|error[s]? [0-9]|warning[s]? [0-9]|Build succeeded|PASSED|FAILED|\$ |```|test[s]? ran)'; then
+    exit 0
+  fi
+  echo "VERIFICATION GAP: Cite fresh command output before reporting done."
+fi

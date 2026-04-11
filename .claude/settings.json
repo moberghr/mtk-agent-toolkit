@@ -49,9 +49,8 @@
       {
         "hooks": [
           {
-            "type": "prompt",
-            "prompt": "You are a silent gate. Output ONLY one of two things — never explain your reasoning.\n\nCheck the assistant's final message in $ARGUMENTS.\n\nIF the message explicitly claims a task is DONE/COMPLETE/VERIFIED/FIXED AND lacks cited command output (build result, test counts, exit codes) as evidence:\nOutput exactly: VERIFICATION GAP: Cite fresh command output before reporting done.\n\nOTHERWISE (no completion claim, or evidence is present):\nOutput exactly nothing — an empty string with zero characters.",
-            "statusMessage": "Checking verification evidence"
+            "type": "command",
+            "command": "hooks/verify-completion \"$ARGUMENTS\""
           }
         ]
       }
@@ -61,7 +60,7 @@
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "You are a silent gate. Output ONLY one of two things — never explain your reasoning.\n\nCheck $ARGUMENTS for the completed task.\n\nIF this is an implementation or fix task:\nOutput exactly: Task complete — verify dotnet build and tests ran AFTER the last code change.\n\nOTHERWISE:\nOutput exactly nothing — an empty string with zero characters.",
+            "prompt": "Does $ARGUMENTS describe completing an implementation or fix task? YES → print exactly: Task complete — verify dotnet build and tests ran AFTER the last code change. NO → print nothing.",
             "statusMessage": "Validating task completion"
           }
         ]
