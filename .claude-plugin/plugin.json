@@ -1,7 +1,7 @@
 {
   "name": "moberg",
   "description": "AI-assisted development toolkit for .NET fintech teams — command entry points backed by reusable skills, review agents, and compliance-first workflows",
-  "version": "4.1.0",
+  "version": "4.1.1",
   "author": {
     "name": "Moberg HR",
     "url": "https://github.com/moberghr"
