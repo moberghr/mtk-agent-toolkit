@@ -3,7 +3,7 @@ description: Validate the toolkit structure, manifest metadata, and skill anatom
 allowed-tools: Read, Bash, Glob, Grep
 ---
 
-# Moberg Validate — Toolkit Integrity Check
+# MTK Validate — Toolkit Integrity Check
 
 Validate this repository as a toolkit source of truth.
 

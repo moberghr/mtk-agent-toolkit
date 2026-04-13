@@ -63,7 +63,7 @@ Write the implementation spec before writing code. The spec is the shared source
    - Save to `docs/specs/YYYY-MM-DD-<feature-slug>.md` using the current date and a kebab-case slug of the feature name.
    - This enables session recovery, human review outside chat, and reuse across sessions.
    - Add `docs/specs/` to `.gitignore` if not already present — specs are working artifacts, not committed deliverables.
-10. Always stop for approval before implementation. When invoked from `/moberg:implement`, this means handing control back to the command's Phase 2.5 approval gate (which uses `AskUserQuestion`). Do not silently continue to implementation.
+10. Always stop for approval before implementation. When invoked from `/mtk:implement`, this means handing control back to the command's Phase 2.5 approval gate (which uses `AskUserQuestion`). Do not silently continue to implementation.
 
 ## Required Outputs
 

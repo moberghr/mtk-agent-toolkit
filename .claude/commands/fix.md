@@ -1,10 +1,10 @@
 ---
-description: Lightweight fix/task using the Moberg debugging workflow. Use for 1-3 file changes that do not require feature planning.
+description: Lightweight fix/task using the MTK debugging workflow. Use for 1-3 file changes that do not require feature planning.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 argument-hint: [--terse|--verbose] <description of fix or small task>
 ---
 
-# Moberg Fix — Lightweight Task Loop
+# MTK Fix — Lightweight Task Loop
 
 Use this for small, well-bounded work. The source of truth for the fix workflow is:
 
@@ -23,12 +23,12 @@ Use this for small, well-bounded work. The source of truth for the fix workflow 
 - Small config changes
 - Renames or narrow refactors that stay within 1-3 files
 
-If the work grows beyond 3 files, introduces new architecture, or needs a formal change manifest, stop and switch to `/moberg:implement`.
+If the work grows beyond 3 files, introduces new architecture, or needs a formal change manifest, stop and switch to `/mtk:implement`.
 
 ## Load Context (Progressive Disclosure)
 
 1. Follow `.claude/skills/context-engineering/SKILL.md`.
-2. Read `CLAUDE.md`. If missing, stop and tell the engineer to run `/moberg:init`.
+2. Read `CLAUDE.md`. If missing, stop and tell the engineer to run `/mtk:init`.
 3. Load the active tech stack: read `.claude/tech-stack` and `.claude/skills/tech-stack-{stack}/SKILL.md`. This provides build/test commands and stack-specific reference paths.
 4. Read only what the fix needs:
    - **Always:** the coding guidelines from the tech stack's `## Reference Files`

@@ -1,6 +1,6 @@
-# claude-helpers — Moberg AI Toolkit Standards
+# claude-helpers — MTK Standards
 
-> Updated 2026-04-13 for v5.1.0 (trimmed command surface: 7 commands, handoff demoted to model-invoked skill).
+> Updated 2026-04-13 for v5.3.0 (renamed product namespace from `moberg` to `mtk`; command namespace is now `/mtk:*`).
 >
 > This file + `.claude/rules/` are the source of truth for AI agents.
 > Detailed standards live in `.claude/rules/`. Reference docs live in `.claude/references/` (shared) and `.claude/references/{stack}/` (stack-specific).
@@ -11,10 +11,10 @@
 
 | What you need | Command | When |
 |---|---|---|
-| Add/modify a skill, command, or agent | `/moberg:implement <description>` | New skills, multi-file changes, structural work |
-| Quick fix | `/moberg:fix <description>` | Bug fixes, typos, single-file changes |
-| Validate toolkit | `/moberg:validate` | Before every commit — runs `scripts/validate-toolkit.sh` |
-| Install or update toolkit | `/moberg:install` | Idempotent — fresh install on first run, in-place sync afterwards |
+| Add/modify a skill, command, or agent | `/mtk:implement <description>` | New skills, multi-file changes, structural work |
+| Quick fix | `/mtk:fix <description>` | Bug fixes, typos, single-file changes |
+| Validate toolkit | `/mtk:validate` | Before every commit — runs `scripts/validate-toolkit.sh` |
+| Install or update toolkit | `/mtk:install` | Idempotent — fresh install on first run, in-place sync afterwards |
 
 **Decision rule:** If the change touches only 1-2 files (typo fix, hook tweak), use `fix`. If it adds a new skill, command, or agent, use `implement`.
 

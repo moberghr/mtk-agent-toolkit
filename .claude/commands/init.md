@@ -3,9 +3,9 @@ description: Bootstrap a repo for implement. Detects tech stack, scans codebase,
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 ---
 
-# Moberg Init — Bootstrap Repository for AI-Assisted Development
+# MTK Init — Bootstrap Repository for AI-Assisted Development
 
-You are setting up a repository for the `/moberg:implement` workflow.
+You are setting up a repository for the `/mtk:implement` workflow.
 Your job is to detect the tech stack, scan the codebase, and generate a tailored `CLAUDE.md` that the implementation and review agents will use as their source of truth.
 
 This bootstrap also prepares the repo for the shared skill layer and OpenCode routing.
@@ -18,13 +18,14 @@ Scan the repo root for tech stack markers:
 |---|---|
 | `*.sln`, `*.slnx`, `*.csproj` | `dotnet` |
 | `pyproject.toml`, `setup.py`, `requirements.txt`, `Pipfile` | `python` |
-| `package.json` (without `*.csproj`) | `node` (not yet supported — stop and warn) |
+| `package.json`, `tsconfig.json` (and no `*.csproj`) | `typescript` (covers React, Next.js, Tauri, Node backends) |
 | `go.mod` | `go` (not yet supported — stop and warn) |
 
 Detection commands:
 ```bash
 DOTNET=$(find . -maxdepth 3 -name "*.csproj" -o -name "*.sln" -o -name "*.slnx" 2>/dev/null | head -1)
 PYTHON=$(find . -maxdepth 2 -name "pyproject.toml" -o -name "setup.py" -o -name "requirements.txt" -o -name "Pipfile" 2>/dev/null | head -1)
+TYPESCRIPT=$(find . -maxdepth 2 -name "package.json" -not -path "*/node_modules/*" 2>/dev/null | head -1)
 ```
 
 If multiple stacks detected, ask the engineer:
@@ -36,6 +37,8 @@ options:
     description: ".NET / C# is the primary stack"
   - label: "python"
     description: "Python is the primary stack"
+  - label: "typescript"
+    description: "TypeScript / JavaScript is the primary stack (React, Next.js, Tauri, Node)"
 ```
 
 If no supported stack detected, stop and tell the engineer to add a `tech-stack-{name}/` skill or open an issue.
@@ -46,6 +49,21 @@ echo "dotnet" > .claude/tech-stack
 ```
 
 Then load `.claude/skills/tech-stack-{stack}/SKILL.md` — this is the source of truth for build commands, scan recipes, and reference paths used in the rest of init.
+
+### Package manager auto-detect (typescript only)
+
+When the active stack is `typescript`, also write the detected package manager to `.claude/tech-stack-pm` so workflow skills can substitute `<pm>` in commands. Pick automatically by lockfile priority:
+
+```bash
+if [ -f bun.lock ] || [ -f bun.lockb ]; then PM=bun
+elif [ -f pnpm-lock.yaml ]; then PM=pnpm
+elif [ -f yarn.lock ]; then PM=yarn
+else PM=npm  # package-lock.json or no lockfile
+fi
+echo "$PM" > .claude/tech-stack-pm
+```
+
+If multiple lockfiles exist (e.g. both `yarn.lock` and `package-lock.json`), that's almost always a mistake — warn the engineer and pick the highest-priority one. Do not prompt; the priority order is: bun > pnpm > yarn > npm.
 
 ## STEP 1: Pull External Standards
 
@@ -59,6 +77,8 @@ curl -sL https://raw.githubusercontent.com/moberghr/coding-guidelines/main/Codin
 ```
 
 For `python`: see the placeholder in `.claude/references/python/coding-guidelines.md`. If it's empty, leave it for the team to fill in when starting their first Python project.
+
+For `typescript`: see the placeholder in `.claude/references/typescript/coding-guidelines.md`. The defaults in the placeholder (strict `tsconfig.json`, Biome, ESM, naming conventions) are reasonable until the team formalizes its own guide.
 
 If the fetch fails (network restrictions), check if the file already exists. If not, tell the engineer to manually place it.
 
@@ -152,10 +172,10 @@ Create `CLAUDE.md` and `.claude/rules/` files following the templates below.
 
 | What you need | Command | When |
 |---|---|---|
-| Build a feature | `/moberg:implement <description>` | New endpoints, tables, handlers, multi-file work |
-| Quick fix | `/moberg:fix <description>` | Bug fixes, config tweaks, 1-3 file changes |
-| Pre-commit check | `/moberg:quick-check` | Before every commit — fast security scan |
-| Install or update toolkit | `/moberg:install` | Idempotent — fresh setup on first run, in-place sync afterwards |
+| Build a feature | `/mtk:implement <description>` | New endpoints, tables, handlers, multi-file work |
+| Quick fix | `/mtk:fix <description>` | Bug fixes, config tweaks, 1-3 file changes |
+| Pre-commit check | `/mtk:quick-check` | Before every commit — fast security scan |
+| Install or update toolkit | `/mtk:install` | Idempotent — fresh setup on first run, in-place sync afterwards |
 
 **Decision rule:** If unsure, start with `fix`. If the change grows beyond 3 files, switch to `implement`.
 
@@ -190,6 +210,16 @@ For python:
 - **Data layer:** [SQLAlchemy / Django ORM / Tortoise / etc.]
 - **Test stack:** [pytest / unittest, mocking framework]
 - **Hosting:** [Lambda / ECS / docker / etc.]
+
+For typescript:
+- **Framework:** [React / Next.js / Tauri / Express / Fastify / Hono / NestJS / etc.]
+- **Package manager:** [from `.claude/tech-stack-pm` — bun / pnpm / yarn / npm]
+- **Build tool:** [Vite / Next / tsup / Rollup / Tauri / etc.]
+- **Data layer:** [Prisma / Drizzle / TypeORM / Kysely / none (client-only) / etc.]
+- **State / data fetching:** [TanStack Query / SWR / tRPC / Zustand / Redux / etc.]
+- **Test stack:** [Vitest / Jest / Playwright / RTL / MSW / etc.]
+- **Hosting:** [Vercel / Cloudflare Workers / AWS Lambda / Tauri desktop binary / etc.]
+- **Tauri sidecar:** [Yes — `src-tauri/Cargo.toml` present / No]
 
 ---
 
@@ -284,7 +314,7 @@ Ensure the following files exist:
 - `.claude/agents/architecture-reviewer.md`
 - `AGENTS.md`
 
-If any are missing, tell the engineer to run `/moberg:install`.
+If any are missing, tell the engineer to run `/mtk:install`.
 
 ### Quick Check List
 
@@ -303,6 +333,13 @@ For python:
 - If SQLAlchemy found: session management, eager/lazy loading, N+1 patterns
 - If FastAPI found: dependency injection, Pydantic validation
 - If Django found: select_related/prefetch_related, transaction.atomic
+
+For typescript:
+- If React found: Rules of Hooks, SSR-safe browser access, stable list keys
+- If Next.js found: `'use client'` at the boundary, server actions validated, `next/image` / `next/font` over raw tags
+- If Tauri found: allowlist discipline, every `#[tauri::command]` validates input, no `all: true`
+- If Prisma / Drizzle found: `select` projection over `include`, indexes on foreign keys, paginated list queries
+- If TanStack Query found: explicit `staleTime`, stable `queryKey`, no server-state duplication in `useState`
 
 Always include (any stack):
 - No PII in logs
@@ -330,7 +367,7 @@ If `AGENTS.md` already exists, leave it alone.
 ## STEP 5: Verify & Report
 
 ```
-✅ MOBERG INIT COMPLETE
+✅ MTK INIT COMPLETE
 
 Project: [name]
 Tech stack: [stack name from .claude/tech-stack]
@@ -352,13 +389,13 @@ Codebase findings:
   [stack-specific summary based on scan]
 
 Commands available:
-  /moberg:implement  — Full feature loop
-  /moberg:fix        — Quick fix (1-3 files)
-  /moberg:quick-check — Fast security scan
-  /moberg:install    — Install or update the toolkit (idempotent)
+  /mtk:implement  — Full feature loop
+  /mtk:fix        — Quick fix (1-3 files)
+  /mtk:quick-check — Fast security scan
+  /mtk:install    — Install or update the toolkit (idempotent)
 
 Next: Try it with:
-  /moberg:implement Add [your feature description here]
+  /mtk:implement Add [your feature description here]
 ```
 
 ## IMPORTANT

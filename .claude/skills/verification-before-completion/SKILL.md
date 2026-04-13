@@ -31,9 +31,9 @@ No completion claim is valid without fresh evidence from an actual command execu
 
 ## Workflow
 
-1. Identify the verification command for the current claim:
-   - Build claim -> `dotnet build`
-   - Test claim -> `dotnet test` or the relevant test project
+1. Identify the verification command for the current claim — read the active tech stack skill (`.claude/skills/tech-stack-{stack}/SKILL.md`, where `{stack}` comes from `.claude/tech-stack`) and pick from its `## Build & Test Commands` section:
+   - Build claim -> the stack's compile/type-check command (dotnet: `dotnet build`, python: `mypy .`, typescript: `<pm> run build` or `tsc --noEmit`)
+   - Test claim -> the stack's test command (dotnet: `dotnet test`, python: `pytest`, typescript: `<pm> test`)
    - Fix claim -> the specific test or reproduction step
    - Deployment claim -> the relevant smoke test
 2. Execute the command to completion. Do not stop at partial output.

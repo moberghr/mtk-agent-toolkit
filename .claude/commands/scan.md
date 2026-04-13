@@ -4,7 +4,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 argument-hint: [--merge]
 ---
 
-# Moberg Scan — Extract or Unify Architecture Principles
+# MTK Scan — Extract or Unify Architecture Principles
 
 This command has two modes:
 
@@ -30,7 +30,7 @@ PYTHON=$(find . -maxdepth 2 -name "pyproject.toml" -o -name "setup.py" -o -name 
 
 If multiple stacks detected, ask the engineer which to scan first. Multi-stack repos may need multiple scans.
 
-If no supported stack detected, stop and tell the engineer to run `/moberg:init` first or add a tech stack skill.
+If no supported stack detected, stop and tell the engineer to run `/mtk:init` first or add a tech stack skill.
 
 Then load `.claude/skills/tech-stack-{stack}/SKILL.md`. The `## Scan Recipes` section provides the bash commands for that stack.
 
@@ -158,7 +158,7 @@ Based on EVERYTHING you found, create `.claude/references/architecture-principle
 ## STEP 4: Present Results
 
 ```
-✅ MOBERG SCAN COMPLETE
+✅ MTK SCAN COMPLETE
 
 Repository: [name]
 Tech stack: [stack]
@@ -185,8 +185,8 @@ Inconsistencies found: [N]
 Next steps:
   1. Review the generated document — edit anything that's wrong
   2. Decide how to resolve any inconsistencies flagged
-  3. Run /moberg:init to generate the full CLAUDE.md
-  4. To unify with scans from other repos: copy this doc to <hub>/.claude/references/scans/<repo>.md and run /moberg:scan --merge there
+  3. Run /mtk:init to generate the full CLAUDE.md
+  4. To unify with scans from other repos: copy this doc to <hub>/.claude/references/scans/<repo>.md and run /mtk:scan --merge there
 ```
 
 ---
@@ -214,12 +214,12 @@ Each file is an architecture scan from a different project (e.g., `payfac.md`, `
 
 If the directory is empty or doesn't exist, tell the engineer:
 > "No scan files found. To use --merge:
-> 1. Run `/moberg:scan` (without --merge) in each repo (payfac, collection-system, etc.)
+> 1. Run `/mtk:scan` (without --merge) in each repo (payfac, collection-system, etc.)
 > 2. Copy each generated `.claude/references/architecture-principles.md` into THIS repo at:
 >    `.claude/references/scans/payfac.md`
 >    `.claude/references/scans/collection-system.md`
 >    etc.
-> 3. Run `/moberg:scan --merge` again."
+> 3. Run `/mtk:scan --merge` again."
 
 ## STEP 1: Analyze Across Scans
 

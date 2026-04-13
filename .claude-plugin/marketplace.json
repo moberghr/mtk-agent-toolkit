@@ -7,9 +7,9 @@
   },
   "plugins": [
     {
-      "name": "moberg",
-      "description": "Command entry points backed by reusable skills, review agents, and compliance-first workflows for .NET fintech teams",
-      "version": "4.1.0",
+      "name": "mtk",
+      "description": "MTK (Moberg Toolkit) — command entry points backed by reusable skills, review agents, and compliance-first workflows for fintech teams across .NET, Python, and TypeScript",
+      "version": "5.3.0",
       "source": "./",
       "author": {
         "name": "Moberg HR",

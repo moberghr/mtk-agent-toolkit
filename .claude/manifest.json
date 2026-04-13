@@ -1,7 +1,7 @@
 {
-  "version": "5.1.0",
+  "version": "5.3.0",
   "updated": "2026-04-13",
-  "description": "Moberg Claude Code toolkit — language-agnostic workflow skills with pluggable tech stacks (.NET, Python). Commands, agents, references, and settings for consistent AI-assisted development.",
+  "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
   "files": {
     "commands/implement.md": {
@@ -158,6 +158,41 @@
       "stack": "python",
       "description": "Python performance rules (async, connection pooling, GIL, Lambda)"
     },
+    "references/typescript/coding-guidelines.md": {
+      "source": ".claude/references/typescript/coding-guidelines.md",
+      "target": ".claude/references/typescript/coding-guidelines.md",
+      "action": "sync",
+      "stack": "typescript",
+      "description": "TypeScript coding style guide (placeholder — defaults to strict tsconfig + Biome until team authors its own)"
+    },
+    "references/typescript/data-layer-checklist.md": {
+      "source": ".claude/references/typescript/data-layer-checklist.md",
+      "target": ".claude/references/typescript/data-layer-checklist.md",
+      "action": "sync",
+      "stack": "typescript",
+      "description": "Prisma / Drizzle / TanStack Query review and implementation checklist"
+    },
+    "references/typescript/framework-patterns.md": {
+      "source": ".claude/references/typescript/framework-patterns.md",
+      "target": ".claude/references/typescript/framework-patterns.md",
+      "action": "sync",
+      "stack": "typescript",
+      "description": "React / Next.js / Tauri / Node backend structural conventions"
+    },
+    "references/typescript/testing-supplement.md": {
+      "source": ".claude/references/typescript/testing-supplement.md",
+      "target": ".claude/references/typescript/testing-supplement.md",
+      "action": "sync",
+      "stack": "typescript",
+      "description": "Vitest / Jest / Playwright / RTL / MSW patterns and TanStack Query test setup"
+    },
+    "references/typescript/performance-supplement.md": {
+      "source": ".claude/references/typescript/performance-supplement.md",
+      "target": ".claude/references/typescript/performance-supplement.md",
+      "action": "sync",
+      "stack": "typescript",
+      "description": "Bundle size, rendering, SSR, Node I/O, serverless cold-start, and Tauri IPC performance rules"
+    },
     "skills/spec-driven-development/SKILL.md": {
       "source": ".claude/skills/spec-driven-development/SKILL.md",
       "target": ".claude/skills/spec-driven-development/SKILL.md",
@@ -268,6 +303,13 @@
       "stack": "python",
       "description": "Python tech stack: pytest, ruff, SQLAlchemy/Django guidance, FastAPI patterns, scan recipes"
     },
+    "skills/tech-stack-typescript/SKILL.md": {
+      "source": ".claude/skills/tech-stack-typescript/SKILL.md",
+      "target": ".claude/skills/tech-stack-typescript/SKILL.md",
+      "action": "sync",
+      "stack": "typescript",
+      "description": "TypeScript tech stack: package manager auto-detect (bun/pnpm/yarn/npm), React/Next.js/Tauri/Node patterns, Prisma/Drizzle/TanStack Query guidance, scan recipes"
+    },
     "tests/pressure-tests/security-hardening-pressure.md": {
       "source": "tests/pressure-tests/security-hardening-pressure.md",
       "target": "tests/pressure-tests/security-hardening-pressure.md",
@@ -326,6 +368,7 @@
   "protected": [
     ".claude/settings.local.json",
     ".claude/tech-stack",
+    ".claude/tech-stack-pm",
     "CLAUDE.md",
     "tasks/lessons.md",
     "tasks/todo.md",

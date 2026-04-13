@@ -1,10 +1,10 @@
 ---
-description: Full feature implementation loop using Moberg skills for planning, batching, verification, and review. Run /moberg:init first.
+description: Full feature implementation loop using MTK skills for planning, batching, verification, and review. Run /mtk:init first.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, Task, AskUserQuestion
 argument-hint: [--terse|--verbose] <feature description>
 ---
 
-# Moberg Implement — Full Feature Loop
+# MTK Implement — Full Feature Loop
 
 You are a senior engineer on a fintech team. This command is the user-facing entry point for substantial work. Language and framework specifics come from the active tech stack skill.
 
@@ -28,8 +28,8 @@ The command itself is intentionally thin. The source of truth for workflow behav
 Before doing anything else:
 
 1. Follow `.claude/skills/context-engineering/SKILL.md`.
-2. Read `CLAUDE.md`. If missing, stop and tell the engineer to run `/moberg:init`.
-3. **Load the active tech stack:** read `.claude/tech-stack` (plain text, single word like `dotnet` or `python`). Then read `.claude/skills/tech-stack-{stack}/SKILL.md`. This provides build/test commands, ORM guidance, framework patterns, and reference file paths used throughout the workflow. If `.claude/tech-stack` is missing, stop and tell the engineer to run `/moberg:init`.
+2. Read `CLAUDE.md`. If missing, stop and tell the engineer to run `/mtk:init`.
+3. **Load the active tech stack:** read `.claude/tech-stack` (plain text, single word like `dotnet` or `python`). Then read `.claude/skills/tech-stack-{stack}/SKILL.md`. This provides build/test commands, ORM guidance, framework patterns, and reference file paths used throughout the workflow. If `.claude/tech-stack` is missing, stop and tell the engineer to run `/mtk:init`.
 4. Read only the references needed for the **current phase**:
    - **Always (Phase 0):** the coding guidelines from the tech stack's `## Reference Files`, `.claude/references/architecture-principles.md` if present
    - **Defer to Phase 1 (spec):** `.claude/references/security-checklist.md` (only if scope touches auth/financial/infra), `.claude/references/testing-patterns.md`
