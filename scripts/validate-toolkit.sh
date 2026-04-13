@@ -70,12 +70,12 @@ while IFS= read -r path; do
 done < <(grep -E '^[[:space:]]*"source":' .claude/manifest.json | sed -E 's/.*"source":[[:space:]]*"([^"]+)".*/\1/' | grep -v '://')
 
 # Frontmatter check on commands, agents, and manifest-tracked skills only.
-# (Third-party skill plugins under .claude/skills/ — e.g. gitnexus/ — are not Moberg-managed.)
+# (Third-party skill plugins under .claude/skills/ — e.g. gitnexus/ — are not MTK-managed.)
 while IFS= read -r file; do
   require_section "$file" '^---$'
 done < <({ find .claude/commands .claude/agents -name '*.md'; printf '%s\n' "${manifest_skill_paths[@]+"${manifest_skill_paths[@]}"}"; } | sort -u)
 
-# Skill anatomy check — only Moberg-managed skills (those in the manifest)
+# Skill anatomy check — only MTK-managed skills (those in the manifest)
 for skill in "${manifest_skill_paths[@]+"${manifest_skill_paths[@]}"}"; do
   skill_dir="$(basename "$(dirname "$skill")")"
   skill_name="$(grep -E '^name:' "$skill" | sed -E 's/name:[[:space:]]*//')"

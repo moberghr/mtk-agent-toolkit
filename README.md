@@ -1,12 +1,12 @@
 <div align="center">
 
-# Moberg Toolkit
+# MTK — Moberg Toolkit
 
 ### AI-Assisted Development Framework with Pluggable Tech Stacks
 
 **Language-agnostic workflow skills with tech stack plugins for .NET and Python. Enforce coding standards, security compliance, and architectural consistency across every AI-generated line of code.**
 
-[![Version](https://img.shields.io/badge/version-5.1.0-blue.svg)](https://github.com/moberghr/claude-helpers/releases)
+[![Version](https://img.shields.io/badge/version-5.3.0-blue.svg)](https://github.com/moberghr/claude-helpers/releases)
 [![Platform](https://img.shields.io/badge/platform-Claude%20Code-purple.svg)](https://claude.ai/code)
 [![.NET](https://img.shields.io/badge/.NET-8.0%2B-512BD4.svg)](https://dotnet.microsoft.com/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg)](https://python.org/)
@@ -22,7 +22,7 @@
 
 AI code assistants are powerful but unpredictable. Without guardrails, they produce code that compiles but violates your team's standards — wrong patterns, missing tests, security gaps, inconsistent style. In fintech, where every line of code touches money, compliance, or customer data, *"it works"* is not enough.
 
-The Moberg Toolkit solves this by embedding your engineering standards directly into the AI workflow. Every feature goes through planning, implementation, verification, and adversarial review — all guided by your team's actual patterns and rules.
+MTK solves this by embedding your engineering standards directly into the AI workflow. Every feature goes through planning, implementation, verification, and adversarial review — all guided by your team's actual patterns and rules.
 
 **What it enforces** | **What it does NOT do**
 ---|---
@@ -41,7 +41,7 @@ Evidence of passing builds required before "done" | Store or transmit secrets
 ```bash
 # In Claude Code
 /plugin marketplace add moberghr/claude-helpers
-/plugin install moberg@moberghr
+/plugin install mtk@moberghr
 ```
 
 ### Option B: Manual Install
@@ -50,24 +50,24 @@ Evidence of passing builds required before "done" | Store or transmit secrets
 git clone git@github.com:moberghr/claude-helpers.git
 
 # In Claude Code, from your target repo
-/moberg:install --project
+/mtk:install --project
 ```
 
 ### Bootstrap Your Repository
 
 ```bash
 # Generate project-specific CLAUDE.md and .claude/rules/ from your codebase
-/moberg:init
+/mtk:init
 ```
 
 ### Start Building
 
 ```bash
 # Implement a feature (full workflow: plan → build → test → review)
-/moberg:implement Add user notification preferences endpoint
+/mtk:implement Add user notification preferences endpoint
 
 # Quick fix (lightweight: debug → fix → verify)
-/moberg:fix Fix null reference in PaymentProcessor when amount is zero
+/mtk:fix Fix null reference in PaymentProcessor when amount is zero
 ```
 
 ---
@@ -101,7 +101,7 @@ Adding a new language stack means writing one tech stack skill and a small set o
 
 ```mermaid
 graph TB
-    subgraph Toolkit["MOBERG TOOLKIT"]
+    subgraph Toolkit["MTK (MOBERG TOOLKIT)"]
         direction TB
 
         subgraph Commands["Commands — Entry Points"]
@@ -160,7 +160,7 @@ Commands do not contain workflow logic directly. They orchestrate skills:
 
 ```mermaid
 graph LR
-    CMD["/moberg:implement<br/>Add payment retry endpoint"] --> P0
+    CMD["/mtk:implement<br/>Add payment retry endpoint"] --> P0
 
     subgraph Phases
         direction TB
@@ -184,18 +184,18 @@ graph LR
 
 | Command | Purpose | Scope |
 |:---|:---|:---|
-| **`/moberg:implement`** | Full feature implementation workflow | Multi-file features, new endpoints, handlers |
-| **`/moberg:fix`** | Lightweight bug fix workflow | 1–3 file changes, focused debugging |
-| **`/moberg:init`** | Bootstrap repo for AI-assisted dev | Run once per repository |
-| **`/moberg:quick-check`** | Pre-commit security scan | Staged changes only |
-| **`/moberg:scan`** | Extract architecture principles | Outputs descriptive doc of team patterns |
+| **`/mtk:implement`** | Full feature implementation workflow | Multi-file features, new endpoints, handlers |
+| **`/mtk:fix`** | Lightweight bug fix workflow | 1–3 file changes, focused debugging |
+| **`/mtk:init`** | Bootstrap repo for AI-assisted dev | Run once per repository |
+| **`/mtk:quick-check`** | Pre-commit security scan | Staged changes only |
+| **`/mtk:scan`** | Extract architecture principles | Outputs descriptive doc of team patterns |
 
 #### implement
 
 Composes 11 skills across 7 phases. Produces an executable spec, implements in verified batches with TDD, runs two-stage adversarial review, and captures lessons for future sessions.
 
 ```bash
-/moberg:implement Add user notification preferences with email and SMS channels
+/mtk:implement Add user notification preferences with email and SMS channels
 ```
 
 **Flags:** `--terse` (minimal output) · `--verbose` (full explanations)
@@ -207,7 +207,7 @@ After planning completes, you'll always see an approval question with options to
 Composes debugging, targeted TDD, and verification. Has a built-in scope guard — if the change grows beyond 3 files, it tells you to switch to `implement`.
 
 ```bash
-/moberg:fix Fix null reference in PaymentProcessor when amount is zero
+/mtk:fix Fix null reference in PaymentProcessor when amount is zero
 ```
 
 #### init
@@ -215,7 +215,7 @@ Composes debugging, targeted TDD, and verification. Has a built-in scope guard �
 Scans the codebase, pulls shared coding guidelines, and generates a lean `CLAUDE.md` (under 200 lines), `.claude/rules/*.md` files, and a project-specific quick-check list.
 
 ```bash
-/moberg:init
+/mtk:init
 ```
 
 #### quick-check
@@ -223,7 +223,7 @@ Scans the codebase, pulls shared coding guidelines, and generates a lean `CLAUDE
 Checks staged changes against the security checklist: hardcoded secrets, SQL injection, PII in logs, missing auth, audit gaps.
 
 ```bash
-/moberg:quick-check
+/mtk:quick-check
 ```
 
 #### scan
@@ -231,7 +231,7 @@ Checks staged changes against the security checklist: hardcoded secrets, SQL inj
 Documents what IS, not what should be. Outputs `.claude/references/architecture-principles.md` and flags inconsistencies for the team to resolve.
 
 ```bash
-/moberg:scan
+/mtk:scan
 ```
 
 ### Lifecycle Commands
@@ -407,7 +407,7 @@ sequenceDiagram
     participant T as Toolkit
     participant R as Repository
 
-    E->>T: /moberg:implement "Add payment retry"
+    E->>T: /mtk:implement "Add payment retry"
     T->>R: Load CLAUDE.md, guidelines, lessons
     T->>R: Scan codebase for patterns
     T-->>E: Executable spec for review
@@ -440,7 +440,7 @@ sequenceDiagram
     participant T as Toolkit
     participant R as Repository
 
-    E->>T: /moberg:fix "Fix null ref in X"
+    E->>T: /mtk:fix "Fix null ref in X"
     T->>R: Load context
     T->>R: Reproduce the bug
     T->>T: Identify root cause
@@ -455,12 +455,12 @@ sequenceDiagram
 
 ```mermaid
 graph LR
-    A["1. Install<br/>/moberg:install --project"] --> B["2. Scan<br/>/moberg:scan"]
-    B --> C["3. Bootstrap<br/>/moberg:init"]
+    A["1. Install<br/>/mtk:install --project"] --> B["2. Scan<br/>/mtk:scan"]
+    B --> C["3. Bootstrap<br/>/mtk:init"]
     C --> D["4. Review<br/>CLAUDE.md + rules"]
-    D --> E["5. First feature<br/>/moberg:implement"]
-    E --> F["6. Stay current<br/>/moberg:install<br/>(idempotent)"]
-    F --> G["7. Validate<br/>/moberg:validate"]
+    D --> E["5. First feature<br/>/mtk:implement"]
+    E --> F["6. Stay current<br/>/mtk:install<br/>(idempotent)"]
+    F --> G["7. Validate<br/>/mtk:validate"]
 ```
 
 ### Toolkit Lifecycle
@@ -471,11 +471,11 @@ sequenceDiagram
     participant T as Target Repos
 
     Note over C: Contributor adds skill<br/>or updates reference
-    C->>C: /moberg:validate
+    C->>C: /mtk:validate
     C->>C: Bump manifest + plugin version
     C->>C: Push to main + tag
 
-    T->>C: /moberg:install (idempotent re-run)
+    T->>C: /mtk:install (idempotent re-run)
     Note over C,T: manifest.json controls distribution
 
     C->>T: sync → overwrite target
@@ -529,7 +529,7 @@ The `manifest.json` controls what gets distributed and how:
 
 ## 📐 Project Standards Generation
 
-When you run `/moberg:init`, the toolkit scans your codebase and generates standards that follow Claude Code best practices.
+When you run `/mtk:init`, the toolkit scans your codebase and generates standards that follow Claude Code best practices.
 
 ### CLAUDE.md Structure
 
@@ -609,10 +609,16 @@ claude-helpers/
 │   │   │   ├── mediatr-slice-patterns.md
 │   │   │   ├── testing-supplement.md
 │   │   │   └── performance-supplement.md
-│   │   └── python/
+│   │   ├── python/
+│   │   │   ├── coding-guidelines.md         # placeholder
+│   │   │   ├── sqlalchemy-checklist.md
+│   │   │   ├── fastapi-patterns.md
+│   │   │   ├── testing-supplement.md
+│   │   │   └── performance-supplement.md
+│   │   └── typescript/
 │   │       ├── coding-guidelines.md         # placeholder
-│   │       ├── sqlalchemy-checklist.md
-│   │       ├── fastapi-patterns.md
+│   │       ├── data-layer-checklist.md
+│   │       ├── framework-patterns.md
 │   │       ├── testing-supplement.md
 │   │       └── performance-supplement.md
 │   ├── tech-stack             # plain-text active stack identifier (per repo)
@@ -640,22 +646,22 @@ claude-helpers/
 
 | Symptom | Cause | Fix |
 |:---|:---|:---|
-| `implement` says "run init first" | Missing `CLAUDE.md` | Run `/moberg:init` |
-| Review agent reports `BLOCKED` | Required files inaccessible | Check `.claude/references/`; run `/moberg:install` |
+| `implement` says "run init first" | Missing `CLAUDE.md` | Run `/mtk:init` |
+| Review agent reports `BLOCKED` | Required files inaccessible | Check `.claude/references/`; run `/mtk:install` |
 | `dotnet format` hook fails silently | .NET SDK not on PATH | Ensure `dotnet` is in your shell profile |
 | `install` overwrites local changes | File not in `protected` list | Add to `protected` in `manifest.json` |
-| Toolkit version mismatch | Stale local copy | Run `/moberg:install` (idempotent) |
-| Skills not loading | Missing skill files | Run `/moberg:install` then `/moberg:validate` |
+| Toolkit version mismatch | Stale local copy | Run `/mtk:install` (idempotent) |
+| Skills not loading | Missing skill files | Run `/mtk:install` then `/mtk:validate` |
 | "Verification gap" fires often | Claims without evidence | Working as intended — cite build/test output |
 
-Run **`/moberg:validate`** to verify toolkit structure and surface most missing files.
+Run **`/mtk:validate`** to verify toolkit structure and surface most missing files.
 
 ---
 
 ## ❓ FAQ
 
 <details>
-<summary><b>Do I need to run <code>/moberg:init</code> on every branch?</b></summary>
+<summary><b>Do I need to run <code>/mtk:init</code> on every branch?</b></summary>
 
 No. Run it once per repository. The generated `CLAUDE.md` and `.claude/rules/` are committed and shared across branches.
 </details>
@@ -669,7 +675,7 @@ Yes. After `init` generates the files, edit them freely. `update` will never ove
 <details>
 <summary><b>Does this work with non-.NET projects?</b></summary>
 
-Yes. As of v5.0, workflow skills are language-agnostic and tech-stack support is pluggable. Python is shipped out of the box (`tech-stack-python`). Add a new stack by creating `tech-stack-{name}/SKILL.md` and the matching reference files under `.claude/references/{name}/`. See [docs/skill-anatomy.md](docs/skill-anatomy.md) and `.claude/skills/tech-stack-dotnet/SKILL.md` as a template.
+Yes. As of v5.0, workflow skills are language-agnostic and tech-stack support is pluggable. Python (`tech-stack-python`) and TypeScript/React/Next.js/Tauri/Node (`tech-stack-typescript`) ship out of the box. Add a new stack by creating `tech-stack-{name}/SKILL.md` and the matching reference files under `.claude/references/{name}/`. See [docs/skill-anatomy.md](docs/skill-anatomy.md) and `.claude/skills/tech-stack-dotnet/SKILL.md` as a template.
 </details>
 
 <details>
@@ -687,13 +693,13 @@ Review agents can be wrong. Dismiss incorrect findings and move on. If the same 
 <details>
 <summary><b>How do I add a custom skill?</b></summary>
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/skill-anatomy.md](docs/skill-anatomy.md). Create the skill, register in `manifest.json`, add routing in `AGENTS.md`, and run `/moberg:validate`.
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/skill-anatomy.md](docs/skill-anatomy.md). Create the skill, register in `manifest.json`, add routing in `AGENTS.md`, and run `/mtk:validate`.
 </details>
 
 <details>
 <summary><b>Can I use this alongside other Claude Code plugins?</b></summary>
 
-Yes. The toolkit's permissions and hooks merge with other plugins' settings. Run `/moberg:validate` after install if you suspect conflicts.
+Yes. The toolkit's permissions and hooks merge with other plugins' settings. Run `/mtk:validate` after install if you suspect conflicts.
 </details>
 
 ---
@@ -707,7 +713,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide. The short version:
 3. **Agents** are narrow specialists — keep tools read-only, use `model: sonnet`
 4. **References** are durable standards — register with `"action": "sync"` in manifest
 5. **Every new file** must be in `manifest.json` with a version bump
-6. **Run `/moberg:validate`** before pushing
+6. **Run `/mtk:validate`** before pushing
 
 ---
 
@@ -740,6 +746,6 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 <div align="center">
 
-**Moberg Toolkit** v5.1.0 · [Moberg d.o.o.](https://www.moberg.hr) · Built for teams that ship production code, not prototypes.
+**MTK — Moberg Toolkit** v5.3.0 · [Moberg d.o.o.](https://www.moberg.hr) · Built for teams that ship production code, not prototypes.
 
 </div>

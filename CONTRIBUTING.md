@@ -1,6 +1,6 @@
-# Contributing to Moberg Toolkit
+# Contributing to MTK (Moberg Toolkit)
 
-This toolkit is the shared source of truth for AI-assisted development at Moberg HR. Anyone on the team can extend it — add commands, skills, agents, references, or validation rules.
+MTK is the shared source of truth for AI-assisted development at Moberg HR. Anyone on the team can extend it — add commands, skills, agents, references, or validation rules.
 
 ---
 
@@ -149,7 +149,7 @@ This is one of the highest-value prompt patterns in the repo.
 flowchart TD
     A["Make your changes"] --> B["Register in manifest.json"]
     B --> C["Bump version<br/>(manifest + plugin)"]
-    C --> D["Run /moberg:validate"]
+    C --> D["Run /mtk:validate"]
     D --> E{"Passes?"}
     E -- Yes --> F["Update AGENTS.md<br/>if routing changed"]
     F --> G["Push"]

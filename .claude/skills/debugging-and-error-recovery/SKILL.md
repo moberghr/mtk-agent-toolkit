@@ -36,7 +36,7 @@ Start from the failure, confirm the cause, make the smallest correct fix, and ve
 4. Hypothesize: state what you think is wrong before editing.
 5. Fix: apply the smallest correction that matches the local codebase pattern.
 6. Guard: add or update a regression test if behavior changed or failure could recur.
-7. Verify: run `dotnet build` and the relevant tests.
+7. Verify: run the active tech stack's build/test commands (from `.claude/skills/tech-stack-{stack}/SKILL.md` `## Build & Test Commands`).
 8. Escalate to the full implementation workflow if the task grows past 3 files or needs new architecture.
 
 ## Rules

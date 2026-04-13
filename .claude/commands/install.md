@@ -1,14 +1,14 @@
 ---
-description: Install or update the moberg toolkit — globally for the user (~/.claude/) or locally for a project (./.claude/). Idempotent: detects an existing install and switches to update mode automatically.
+description: Install or update MTK — globally for the user (~/.claude/) or locally for a project (./.claude/). Idempotent: detects an existing install and switches to update mode automatically.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 argument-hint: [--global | --project] [--auto] [--force]
 ---
 
-# Moberg Install — Toolkit Setup (Idempotent)
+# MTK Install — Toolkit Setup (Idempotent)
 
 This single command handles **first-time install** and **subsequent updates**.
 
-If `.moberg-version` already exists at the target, it switches into **UPDATE MODE** (diff + apply, respecting protected files). Otherwise, it runs **INSTALL MODE** (fresh install of the full file set).
+If `.mtk-version` already exists at the target, it switches into **UPDATE MODE** (diff + apply, respecting protected files). Otherwise, it runs **INSTALL MODE** (fresh install of the full file set).
 
 Use `--force` to re-fetch even when versions match. Use `--auto` to skip approval prompts.
 
@@ -19,13 +19,13 @@ Use `--force` to re-fetch even when versions match. Use `--auto` to skip approva
 If the argument includes `--global` or `--project`, use that. Otherwise, use AskUserQuestion:
 
 ```
-question: "Where should I install the moberg toolkit?"
+question: "Where should I install MTK?"
 header: "Install mode"
 options:
   - label: "Global (user-level) (Recommended)"
-    description: "Install commands and agents to ~/.claude/. Available as /moberg:* in every repo. Best for individual use."
+    description: "Install commands and agents to ~/.claude/. Available as /mtk:* in every repo. Best for individual use."
   - label: "Project (repo-level)"
-    description: "Install everything to this repo's .claude/. Available as /moberg:* in this repo only. Best for team repos where the toolkit should be committed."
+    description: "Install everything to this repo's .claude/. Available as /mtk:* in this repo only. Best for team repos where the toolkit should be committed."
 ```
 
 Wait for the engineer's response before proceeding.
@@ -39,16 +39,16 @@ Set `TARGET_DIR`:
 Find the toolkit source, in priority order:
 
 1. **Current directory**: If the current directory IS the claude-helpers repo (check for `.claude/manifest.json` with `"source": "https://github.com/moberghr/claude-helpers"`), use local files directly.
-2. **Environment variable**: If `MOBERG_HELPERS_PATH` is set and valid, use that.
+2. **Environment variable**: If `MTK_HELPERS_PATH` is set and valid, use that.
    ```bash
-   echo $MOBERG_HELPERS_PATH
+   echo $MTK_HELPERS_PATH
    ```
 3. **GitHub**: Fetch from `https://raw.githubusercontent.com/moberghr/claude-helpers/main/`
 
 If none work, tell the engineer:
 > "Cannot reach the toolkit source. Options:
 > - Clone the repo: `git clone git@github.com:moberghr/claude-helpers.git ~/Dev/claude-helpers`
-> - Then either set `MOBERG_HELPERS_PATH=~/Dev/claude-helpers` or cd into it and re-run."
+> - Then either set `MTK_HELPERS_PATH=~/Dev/claude-helpers` or cd into it and re-run."
 
 ## STEP 3: FETCH MANIFEST + DETECT EXISTING INSTALL
 
@@ -62,7 +62,7 @@ curl -sL https://raw.githubusercontent.com/moberghr/claude-helpers/main/.claude/
 cat $SOURCE_PATH/.claude/manifest.json
 ```
 
-Check for an existing install at `TARGET_DIR/.moberg-version`:
+Check for an existing install at `TARGET_DIR/.mtk-version`:
 - If it exists → set `MODE=update`, read the local version
 - If it doesn't exist → set `MODE=install`
 
@@ -172,31 +172,38 @@ mkdir -p .claude/commands .claude/agents .claude/references .claude/skills docs 
 **Write the version marker:**
 ```bash
 # Global
-echo "[version]" > ~/.claude/.moberg-version
+echo "[version]" > ~/.claude/.mtk-version
 
 # Project
-echo "[version]" > .claude/.moberg-version
+echo "[version]" > .claude/.mtk-version
 ```
 
 ## STEP 7: POST-APPLY VERIFICATION
 
 For project install/update only:
 
-1. **Build sanity check** (if `.claude/tech-stack` is `dotnet`):
+1. **Build sanity check** — run the active tech stack's compile-equivalent command. Read `.claude/tech-stack` and pick:
    ```bash
-   dotnet build 2>&1 | tail -5
+   case "$(cat .claude/tech-stack 2>/dev/null)" in
+     dotnet) dotnet build 2>&1 | tail -5 ;;
+     python) (mypy . 2>&1 || pyright 2>&1) | tail -5 ;;
+     typescript)
+       PM="$(cat .claude/tech-stack-pm 2>/dev/null || echo npm)"
+       ("$PM" run typecheck 2>&1 || npx tsc --noEmit 2>&1) | tail -5 ;;
+     *) echo "No tech stack configured; skipping build sanity check" ;;
+   esac
    ```
-   If build fails, the change may have touched hooks. Report the error.
+   If the check fails, the change may have touched hooks. Report the error.
 
 2. **CLAUDE.md compatibility:**
    If `CLAUDE.md` exists, scan the applied commands for `§X.Y` rule references. If any referenced rules don't exist in `CLAUDE.md`, warn:
-   > "Updated commands reference §X.Y rules not found in CLAUDE.md. Consider running `/moberg:init` to regenerate CLAUDE.md."
+   > "Updated commands reference §X.Y rules not found in CLAUDE.md. Consider running `/mtk:init` to regenerate CLAUDE.md."
 
 ## STEP 8: REPORT
 
 ### First-time install report:
 ```
-MOBERG TOOLKIT INSTALLED ([global | project])
+MTK INSTALLED ([global | project])
 
 Version: v[version]
 Location: [TARGET_DIR]
@@ -209,23 +216,23 @@ Installed:
   Settings:   .claude/settings.json [created | merged]
 
 Commands now available:
-  /moberg:init        — Bootstrap a repo (generates CLAUDE.md + references)
-  /moberg:implement   — Full feature implementation loop
-  /moberg:fix         — Lightweight fix/task
-  /moberg:scan        — Extract architecture (add --merge to unify multi-repo scans)
-  /moberg:install     — Re-run to update (idempotent)
-  /moberg:quick-check — Pre-commit security scan
-  /moberg:validate    — Toolkit health and structural validation
+  /mtk:init        — Bootstrap a repo (generates CLAUDE.md + references)
+  /mtk:implement   — Full feature implementation loop
+  /mtk:fix         — Lightweight fix/task
+  /mtk:scan        — Extract architecture (add --merge to unify multi-repo scans)
+  /mtk:install     — Re-run to update (idempotent)
+  /mtk:quick-check — Pre-commit security scan
+  /mtk:validate    — Toolkit health and structural validation
 
 Next steps:
-  1. Run /moberg:init to bootstrap this repo (generates CLAUDE.md from your codebase)
+  1. Run /mtk:init to bootstrap this repo (generates CLAUDE.md from your codebase)
   2. Project install: commit .claude/ to share with the team
-  3. Start building with /moberg:implement
+  3. Start building with /mtk:implement
 ```
 
 ### Update report:
 ```
-MOBERG TOOLKIT UPDATED
+MTK UPDATED
 
 Version: v[old] → v[new]
 Mode: [global | project]
@@ -239,15 +246,15 @@ Warning: [N] local-only files (review manually)
 
 Next steps:
   - Review changes: git diff
-  - If CLAUDE.md is outdated: /moberg:init
-  - Commit: git add .claude/ && git commit -m "chore: update moberg toolkit to v[new]"
+  - If CLAUDE.md is outdated: /mtk:init
+  - Commit: git add .claude/ && git commit -m "chore: update MTK to v[new]"
 ```
 
 ---
 
 ## IMPORTANT
 
-- **Idempotent:** safe to re-run. Detects existing install via `.moberg-version`.
+- **Idempotent:** safe to re-run. Detects existing install via `.mtk-version`.
 - **Never overwrite protected files** — especially `CLAUDE.md`, `settings.local.json`, `lessons.md`, `tech-stack`, `architecture-principles.md`, `quick-check-list.md`
 - **Never delete local-only files** — they may be project-specific customizations
 - **Settings are always merged, never overwritten** — the engineer may have local additions
