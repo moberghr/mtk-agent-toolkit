@@ -1,6 +1,6 @@
-# Quick Check List
+# Pre-Commit Review List
 
-> Toolkit-specific inline verification. Read by implement and fix after each batch.
+> Toolkit-specific inline verification. Read by implement and fix after each batch, and by pre-commit-review before each commit.
 > Curate this list — add checks for patterns your team cares about, remove irrelevant ones.
 
 - [ ] Manifest entry exists for every new/modified file

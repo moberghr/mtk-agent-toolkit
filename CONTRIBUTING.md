@@ -149,7 +149,7 @@ This is one of the highest-value prompt patterns in the repo.
 flowchart TD
     A["Make your changes"] --> B["Register in manifest.json"]
     B --> C["Bump version<br/>(manifest + plugin)"]
-    C --> D["Run /mtk:validate"]
+    C --> D["Run bash scripts/validate-toolkit.sh"]
     D --> E{"Passes?"}
     E -- Yes --> F["Update AGENTS.md<br/>if routing changed"]
     F --> G["Push"]

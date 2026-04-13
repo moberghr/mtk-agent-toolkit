@@ -24,7 +24,7 @@ Loaded automatically by commands and skills when the active tech stack is `types
 
 ## Build & Test Commands
 
-All commands assume a package manager is detected at init time and written to `.claude/tech-stack-pm` (one of: `bun`, `pnpm`, `yarn`, `npm`). Commands below use `<pm>` as placeholder — substitute the detected value.
+All commands assume a package manager is detected during `setup-bootstrap` and written to `.claude/tech-stack-pm` (one of: `bun`, `pnpm`, `yarn`, `npm`). Commands below use `<pm>` as placeholder — substitute the detected value.
 
 **Package manager auto-detection (priority order):**
 
@@ -65,7 +65,7 @@ fi
 
 ## File Extensions & Markers
 
-How `init` detects this stack in a repository:
+How `setup-bootstrap` detects this stack in a repository:
 
 | Marker | Confidence |
 |---|---|
@@ -189,7 +189,7 @@ These files are loaded by commands and review agents when the active stack is `t
 
 ## Settings Additions
 
-Merge these into the project's `.claude/settings.json` during `init`:
+Merge these into the project's `.claude/settings.json` during `setup-bootstrap`:
 
 ### allowedTools (merge: union)
 - `Bash(bun:*)`
@@ -220,7 +220,7 @@ Triggered on: `Write(*.{ts,tsx,js,jsx})|Edit(*.{ts,tsx,js,jsx})`
 
 ## Scan Recipes
 
-These bash commands are used by `scan.md` when auditing a TypeScript repository.
+These bash commands are used by `setup-audit.md` when auditing a TypeScript repository.
 
 ### Project Structure
 ```bash

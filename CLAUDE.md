@@ -1,6 +1,6 @@
 # claude-helpers — MTK Standards
 
-> Updated 2026-04-13 for v5.3.0 (renamed product namespace from `moberg` to `mtk`; command namespace is now `/mtk:*`).
+> Updated 2026-04-13 for v5.4.0 (renamed commands: `init` → `setup-bootstrap`, `scan` → `setup-audit`, `quick-check` → `pre-commit-review`; removed `install` and `validate` user commands in favor of marketplace install and `bash scripts/validate-toolkit.sh`).
 >
 > This file + `.claude/rules/` are the source of truth for AI agents.
 > Detailed standards live in `.claude/rules/`. Reference docs live in `.claude/references/` (shared) and `.claude/references/{stack}/` (stack-specific).
@@ -13,8 +13,7 @@
 |---|---|---|
 | Add/modify a skill, command, or agent | `/mtk:implement <description>` | New skills, multi-file changes, structural work |
 | Quick fix | `/mtk:fix <description>` | Bug fixes, typos, single-file changes |
-| Validate toolkit | `/mtk:validate` | Before every commit — runs `scripts/validate-toolkit.sh` |
-| Install or update toolkit | `/mtk:install` | Idempotent — fresh install on first run, in-place sync afterwards |
+| Validate toolkit | `bash scripts/validate-toolkit.sh` | Before every commit — structural check of manifest, plugin.json, and skill anatomy |
 
 **Decision rule:** If the change touches only 1-2 files (typo fix, hook tweak), use `fix`. If it adds a new skill, command, or agent, use `implement`.
 
@@ -52,7 +51,7 @@ bash scripts/validate-toolkit.sh
 - **C0.4** Commands, agents, and skills must have `---` frontmatter blocks.
 - **C0.5** Hooks must be executable (`chmod +x`) and use `set -euo pipefail`.
 - **C0.6** Never hardcode secrets, API keys, or user-specific paths in committed files. `.claude/settings.local.json` is gitignored.
-- **C0.7** `CLAUDE.md` is protected — init generates it, but subsequent edits are project-specific. Don't overwrite during update.
+- **C0.7** `CLAUDE.md` is protected — `setup-bootstrap` generates it, but subsequent edits are project-specific. Don't overwrite during update.
 - **C0.8** Run `bash scripts/validate-toolkit.sh` and confirm "Toolkit validation passed" before reporting any change as complete.
 
 ---

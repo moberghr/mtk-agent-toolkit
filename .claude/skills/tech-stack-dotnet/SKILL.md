@@ -29,7 +29,7 @@ Loaded automatically by commands and skills when the active tech stack is `dotne
 
 ## File Extensions & Markers
 
-How `init` detects this stack in a repository:
+How `setup-bootstrap` detects this stack in a repository:
 
 | Marker | Confidence |
 |---|---|
@@ -112,7 +112,7 @@ These files are loaded by commands and review agents when the active stack is `d
 
 ## Settings Additions
 
-Merge these into the project's `.claude/settings.json` during `init`:
+Merge these into the project's `.claude/settings.json` during `setup-bootstrap`:
 
 ### allowedTools (merge: union)
 - `Bash(dotnet build:*)`
@@ -138,7 +138,7 @@ Triggered on: `Write(*.cs)|Edit(*.cs)`
 
 ## Scan Recipes
 
-These bash commands are used by `scan.md` when auditing a .NET repository.
+These bash commands are used by `setup-audit.md` when auditing a .NET repository.
 
 ### Project Structure
 ```bash

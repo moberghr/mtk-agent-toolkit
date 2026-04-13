@@ -33,10 +33,10 @@ Implement in thin slices. Each slice must compile, test, and remain explainable 
 4. Follow `test-driven-development` for tests in the same batch.
 5. Use `source-driven-development` when any framework, library, or SDK behavior is uncertain.
 6. Run the batch checkpoint using the build and test commands from the active tech stack skill's `## Build & Test Commands`.
-7. Read `.claude/references/quick-check-list.md` if present and fix any violations immediately.
+7. Read `.claude/references/pre-commit-review-list.md` if present and fix any violations immediately.
 8. Mark the batch complete in `tasks/todo.md`.
 9. **Churn check:** After completing each batch, run `git diff --stat` and count net lines changed. If cumulative changes across batches exceed 300 lines, pause and trigger an early review checkpoint:
-   - Run quick-check list if present
+   - Run the pre-commit review list if present
    - Assess whether the scope is still within the approved manifest
    - If changes exceed 500 lines without a review, stop and run `compliance-reviewer` before continuing
    - This catches large unplanned changes mid-implementation rather than at the end
