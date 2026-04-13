@@ -87,13 +87,16 @@ Create `docs/plans/` if missing.
    - Plan file path: `docs/plans/<filename>.md`
    - Todo file path: `tasks/todo.md`
    - Number of batches and total files in the change manifest
-2. Use `AskUserQuestion` to ask:
+2. **Ask via the `AskUserQuestion` tool — nothing else counts.**
    - **Question:** "Plan and todo are written. How would you like to proceed?"
-   - **Options:**
+   - **Options (tool labels, not prose):**
      - `Approve & run until done` — autonomous mode. Proceed through Phases 3-7 without asking further questions. Make best-effort decisions on minor ambiguities; only stop for blocking issues (build failures that need design input, security findings the spec did not anticipate, or scope expansion beyond the manifest). Set internal flag `autonomous = true` for the rest of the session.
      - `Approve (interactive)` — proceed to Phase 3, but ask follow-up questions during implementation/review when ambiguities arise.
      - `Edit first` — pause so the engineer can edit the spec/plan/todo files. Stop and wait for their next message.
      - `Revise` — describe what to change in the spec/plan; Claude rewrites Phase 1/2 (overwrites the same file paths) and returns to this gate.
+   - **You MUST invoke the `AskUserQuestion` tool.** Do not render the options as a numbered/lettered list (no "A. Approve…", no "1) Approve…"), do not ask the question as plain prose, do not wait for a free-text reply. The TUI prompt is the only acceptable form.
+   - If `AskUserQuestion` is deferred in this session (schema not loaded), call `ToolSearch` with `select:AskUserQuestion` first to load it, then invoke it.
+   - If the harness genuinely does not expose `AskUserQuestion` (e.g., Cursor, Copilot CLI, Gemini CLI), STOP. Print one line: "Approval gate requires the AskUserQuestion TUI tool, which is unavailable in this harness. Tell me which option to take: Approve & run until done / Approve (interactive) / Edit first / Revise." Then wait. Do not fabricate an A/B/C/D prompt and do not proceed.
 3. Do not call any Edit/Write on source code, do not start Phase 3, and do not use Bash for anything beyond read-only inspection until the engineer answers.
 4. Honor the chosen mode for the rest of the session:
    - **Autonomous:** in Phases 3-7, never call `AskUserQuestion`. If a blocking issue surfaces, stop and report it instead of asking. Resume only after the engineer responds.
@@ -210,6 +213,7 @@ Report:
 - Spec or plan not written to `docs/specs/` and `docs/plans/`
 - Phase 2.5 approval gate skipped or merged into Phase 3
 - Phase 3 started without an explicit approval answer from the engineer
+- Approval gate rendered as plain-text A/B/C/D prose instead of invoking the `AskUserQuestion` TUI tool
 - Files touched outside the change manifest
 - Checkpoints skipped
 - No behavioral diff before review
@@ -222,4 +226,4 @@ Report:
 3. Every touched file must appear in the plan.
 4. New public behavior must be tested.
 5. Review is mandatory for substantial work.
-6. **The Phase 2.5 approval gate is always mandatory.** Spec, plan, and todo must all be written to disk before the gate. Use `AskUserQuestion` to ask for approval. Never assume approval, never infer it from the original request, never proceed silently to Phase 3. The engineer chooses interactive vs autonomous mode at the gate, not via a flag.
+6. **The Phase 2.5 approval gate is always mandatory.** Spec, plan, and todo must all be written to disk before the gate. Ask via the `AskUserQuestion` TUI tool — never by printing the options as prose (no "A. Approve… / B. Approve (interactive)… / C. Edit first… / D. Revise…"). If the tool is deferred, load it with `ToolSearch` first; if the harness does not expose it at all, stop and say so rather than faking a text prompt. Never assume approval, never infer it from the original request, never proceed silently to Phase 3. The engineer chooses interactive vs autonomous mode at the gate, not via a flag.
