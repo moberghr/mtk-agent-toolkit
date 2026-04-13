@@ -32,6 +32,16 @@ require_file ".claude/references/testing-patterns.md"
 require_file ".claude/references/security-checklist.md"
 require_file ".claude/references/performance-checklist.md"
 
+# Reviewer agents — the two-stage review model depends on these
+require_file ".claude/agents/compliance-reviewer.md"
+require_file ".claude/agents/test-reviewer.md"
+require_file ".claude/agents/architecture-reviewer.md"
+
+# Settings sanity (ported from former doctor command)
+require_file ".claude/settings.json"
+grep -q '"deny"' .claude/settings.json || fail "settings.json missing permissions.deny — dangerous operations are not blocked"
+grep -q '"hooks"' .claude/settings.json || fail "settings.json missing hooks block — verify-completion / format hooks are not registered"
+
 # Tech stack validation: each tech stack skill must declare its own reference files,
 # and those files must exist. The toolkit ships with at least the dotnet stack.
 for stack_dir in .claude/skills/tech-stack-*/; do
@@ -48,13 +58,25 @@ plugin_version="$(grep -E '"version"' .claude-plugin/plugin.json | head -1 | sed
 
 [ "$manifest_version" = "$plugin_version" ] || fail "Version mismatch: manifest=$manifest_version plugin=$plugin_version"
 
-# Frontmatter check on commands, agents, skills
+# Manifest source path existence + collect manifest-tracked skill paths.
+# manifest.json has no nested objects with "source" keys other than file entries,
+# so a flat grep is sufficient and correct.
+manifest_skill_paths=()
+while IFS= read -r path; do
+  [ -e "$path" ] || fail "Manifest references missing path: $path"
+  case "$path" in
+    .claude/skills/*/SKILL.md) manifest_skill_paths+=("$path") ;;
+  esac
+done < <(grep -E '^[[:space:]]*"source":' .claude/manifest.json | sed -E 's/.*"source":[[:space:]]*"([^"]+)".*/\1/' | grep -v '://')
+
+# Frontmatter check on commands, agents, and manifest-tracked skills only.
+# (Third-party skill plugins under .claude/skills/ — e.g. gitnexus/ — are not Moberg-managed.)
 while IFS= read -r file; do
   require_section "$file" '^---$'
-done < <(find .claude/commands .claude/agents .claude/skills -name '*.md' | sort)
+done < <({ find .claude/commands .claude/agents -name '*.md'; printf '%s\n' "${manifest_skill_paths[@]+"${manifest_skill_paths[@]}"}"; } | sort -u)
 
-# Skill anatomy check
-while IFS= read -r skill; do
+# Skill anatomy check — only Moberg-managed skills (those in the manifest)
+for skill in "${manifest_skill_paths[@]+"${manifest_skill_paths[@]}"}"; do
   skill_dir="$(basename "$(dirname "$skill")")"
   skill_name="$(grep -E '^name:' "$skill" | sed -E 's/name:[[:space:]]*//')"
   [ "$skill_dir" = "$skill_name" ] || fail "Skill name mismatch: $skill uses '$skill_name' but directory is '$skill_dir'"
@@ -66,12 +88,7 @@ while IFS= read -r skill; do
     require_section "$skill" '^## Workflow'
   fi
   require_section "$skill" '^## Verification'
-done < <(find .claude/skills -name 'SKILL.md' | sort)
-
-# Manifest source path existence
-while IFS= read -r path; do
-  [ -e "$path" ] || fail "Manifest references missing path: $path"
-done < <(awk '/"files": \{/,/^[[:space:]]*\},?$/' .claude/manifest.json | grep -E '"source": ' | sed -E 's/.*"source": "([^"]+)".*/\1/')
+done
 
 # README and AGENTS coverage
 grep -q 'skills/' README.md || fail "README does not describe skills"
@@ -86,7 +103,7 @@ if [ -f "CLAUDE.md" ]; then
   [ "$claude_lines" -le 200 ] || fail "CLAUDE.md exceeds 200-line budget ($claude_lines lines). Move detail to .claude/rules/"
 fi
 
-while IFS= read -r skill; do
+for skill in "${manifest_skill_paths[@]+"${manifest_skill_paths[@]}"}"; do
   skill_lines="$(wc -l < "$skill")"
   # Tech stack skills are larger — they carry scan recipes and full reference paths.
   if echo "$skill" | grep -q 'tech-stack-'; then
@@ -94,7 +111,7 @@ while IFS= read -r skill; do
   else
     [ "$skill_lines" -le 500 ] || fail "Skill $skill exceeds 500-line budget ($skill_lines lines). Split into core + reference files"
   fi
-done < <(find .claude/skills -name 'SKILL.md' | sort)
+done
 
 if [ -d ".claude/rules" ]; then
   while IFS= read -r rule; do

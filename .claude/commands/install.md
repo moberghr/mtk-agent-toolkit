@@ -1,16 +1,20 @@
 ---
-description: Install the moberg toolkit — globally for user or locally for a project. Handles first-time setup and re-installation.
+description: Install or update the moberg toolkit — globally for the user (~/.claude/) or locally for a project (./.claude/). Idempotent: detects an existing install and switches to update mode automatically.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
-argument-hint: [--global | --project] [--auto]
+argument-hint: [--global | --project] [--auto] [--force]
 ---
 
-# Moberg Install — Toolkit Setup
+# Moberg Install — Toolkit Setup (Idempotent)
 
-You are installing the Moberg Claude Code toolkit. This command places commands,
-skills, agents, settings, references, and routing assets into the correct location so the engineer can
-use `/moberg:*` commands.
+This single command handles **first-time install** and **subsequent updates**.
 
-## STEP 1: DETERMINE INSTALL MODE
+If `.moberg-version` already exists at the target, it switches into **UPDATE MODE** (diff + apply, respecting protected files). Otherwise, it runs **INSTALL MODE** (fresh install of the full file set).
+
+Use `--force` to re-fetch even when versions match. Use `--auto` to skip approval prompts.
+
+---
+
+## STEP 1: DETERMINE INSTALL MODE (Global vs Project)
 
 If the argument includes `--global` or `--project`, use that. Otherwise, use AskUserQuestion:
 
@@ -26,19 +30,19 @@ options:
 
 Wait for the engineer's response before proceeding.
 
+Set `TARGET_DIR`:
+- Global: `~/.claude`
+- Project: `./.claude`
+
 ## STEP 2: DETERMINE SOURCE
 
 Find the toolkit source, in priority order:
 
-1. **Current directory**: If the current directory IS the claude-helpers repo
-   (check for `.claude/manifest.json` with `"source": "https://github.com/moberghr/claude-helpers"`),
-   use local files directly.
-
+1. **Current directory**: If the current directory IS the claude-helpers repo (check for `.claude/manifest.json` with `"source": "https://github.com/moberghr/claude-helpers"`), use local files directly.
 2. **Environment variable**: If `MOBERG_HELPERS_PATH` is set and valid, use that.
    ```bash
    echo $MOBERG_HELPERS_PATH
    ```
-
 3. **GitHub**: Fetch from `https://raw.githubusercontent.com/moberghr/claude-helpers/main/`
 
 If none work, tell the engineer:
@@ -46,7 +50,7 @@ If none work, tell the engineer:
 > - Clone the repo: `git clone git@github.com:moberghr/claude-helpers.git ~/Dev/claude-helpers`
 > - Then either set `MOBERG_HELPERS_PATH=~/Dev/claude-helpers` or cd into it and re-run."
 
-## STEP 3: FETCH MANIFEST
+## STEP 3: FETCH MANIFEST + DETECT EXISTING INSTALL
 
 Read/fetch `manifest.json` from the source. Parse the file list and version.
 
@@ -58,154 +62,195 @@ curl -sL https://raw.githubusercontent.com/moberghr/claude-helpers/main/.claude/
 cat $SOURCE_PATH/.claude/manifest.json
 ```
 
-## STEP 4: INSTALL FILES
+Check for an existing install at `TARGET_DIR/.moberg-version`:
+- If it exists → set `MODE=update`, read the local version
+- If it doesn't exist → set `MODE=install`
 
-### Global install (`~/.claude/`)
+If `MODE=update` and the local version equals the upstream version and `--force` is not set:
+> "Already up to date (v[version]). Use `--force` to re-fetch anyway."
+> Exit cleanly.
+
+## STEP 4: PLAN CHANGES
 
 For each file in `manifest.files`:
 
-| File type | Source key pattern | Target |
-|-----------|-------------------|--------|
-| Commands | `commands/*.md` | `~/.claude/commands/{filename}` |
-| Skills | `skills/*/SKILL.md` | `~/.claude/skills/{skill-name}/SKILL.md` |
-| Agents | `agents/*.md` | `~/.claude/agents/{filename}` |
-| Settings | `settings.json` | `~/.claude/settings.json` (MERGE) |
-| References | `references/*.md` | Skip — these are project-specific |
-| Root assets | `AGENTS.md`, `docs/*`, `scripts/*` | Skip — these are project/project-tooling assets |
+1. Fetch the upstream version (to memory, not disk).
+   - GitHub: `https://raw.githubusercontent.com/moberghr/claude-helpers/main/{source}`
+   - Local: `$SOURCE_PATH/{source}`
+2. Read the local version at the `target` path (if it exists).
+3. Classify:
+   - **unchanged** — identical content (skip)
+   - **updated** — upstream differs from local (apply)
+   - **new** — exists upstream, not locally (apply)
+   - **local-only** — exists locally, not in manifest (warn, never delete)
 
-**Settings merge strategy** (same as update):
-- If `~/.claude/settings.json` exists, merge:
-  - `permissions.deny`: union
-  - `permissions.allowedTools`: union
-  - `hooks`: upstream wins
-- If it doesn't exist, write directly
-- **Never overwrite `~/.claude/settings.local.json`**
+For **global install**, restrict the file set:
+- Apply: commands, skills, agents, settings (merge)
+- Skip: references (project-specific), root assets (`AGENTS.md`, `docs/*`, `scripts/*`, `tests/*`, hooks)
 
-**Create directories if needed:**
+For **project install**, apply every entry per the manifest's `target` field.
+
+Always honor the `protected` list from the manifest — these files are NEVER touched in either mode:
+- `.claude/settings.local.json`
+- `.claude/tech-stack`
+- `CLAUDE.md`
+- `tasks/lessons.md`
+- `tasks/todo.md`
+- `.claude/references/architecture-principles.md`
+- `.claude/references/quick-check-list.md`
+
+### Show plan summary
+
+```
+[install | update]: [— → v[new] | v[old] → v[new]]
+Mode: [global | project]
+Target: [TARGET_DIR]
+
+Will apply (updated):
+  .claude/commands/implement.md  ([old-lines] → [new-lines] lines)
+  .claude/agents/compliance-reviewer.md ([old-lines] → [new-lines] lines)
+
+Will add (new):
+  .claude/skills/handoff/SKILL.md
+
+Unchanged:
+  .claude/commands/quick-check.md
+
+Protected (never touched):
+  CLAUDE.md
+  .claude/settings.local.json
+  tasks/lessons.md
+
+Local-only (not in upstream — review manually):
+  .claude/commands/custom-local-command.md
+```
+
+If nothing to apply and `--force` is not set:
+> "All files are up to date."
+
+## STEP 5: APPROVE
+
+If `--auto` is set, apply immediately. Otherwise use AskUserQuestion:
+
+```
+question: "Apply these changes?"
+header: "[Install | Update]"
+options:
+  - label: "Yes, apply all"
+    description: "Apply the listed changes"
+  - label: "Show diffs first"
+    description: "Show full diffs for changed files before applying"
+  - label: "Cancel"
+    description: "Don't apply any changes"
+```
+
+If "Show diffs first": display unified diffs for each `updated` file, then re-prompt with just "Apply" / "Cancel".
+
+## STEP 6: APPLY
+
+**Create directories first:**
 ```bash
+# Global
 mkdir -p ~/.claude/commands ~/.claude/agents ~/.claude/skills
+
+# Project
+mkdir -p .claude/commands .claude/agents .claude/references .claude/skills docs scripts hooks tests/pressure-tests
 ```
 
-**Write version marker:**
+**For each `updated` or `new` entry, apply per `action`:**
+
+- `sync` (commands, skills, agents, references, root assets): overwrite the target with the upstream version.
+- `merge` (settings.json):
+  - `permissions.deny`: **union** — upstream deny rules cannot be removed locally
+  - `permissions.allowedTools`: **union** — keep both upstream and local additions
+  - `hooks`: **upstream wins** — hooks are integral to command behavior
+  - Any other keys: **upstream wins** unless local has custom additions
+  - Show the merged result before writing (unless `--auto`)
+
+**Local-only files:** never delete. Print a one-line warning per file.
+
+**Write the version marker:**
 ```bash
+# Global
 echo "[version]" > ~/.claude/.moberg-version
-```
 
-### Project install (`<repo>/.claude/`)
-
-For each file in `manifest.files`:
-- Read the `target` field from the manifest entry
-- Fetch the source file
-- Write to the target path
-
-This is identical to what `update` does. Follow the same sync/merge logic:
-- **sync** files: overwrite
-- **merge** files (settings.json): merge as described above
-- **protected** files: never touch
-
-**Create directories if needed:**
-```bash
-mkdir -p .claude/commands .claude/agents .claude/references .claude/skills docs scripts
-```
-
-**Write version marker:**
-```bash
+# Project
 echo "[version]" > .claude/.moberg-version
 ```
 
-## STEP 5: VERIFY
+## STEP 7: POST-APPLY VERIFICATION
 
-Check that files were written correctly:
+For project install/update only:
 
-### For global install:
-```bash
-ls ~/.claude/commands/*.md
-ls ~/.claude/agents/*.md
+1. **Build sanity check** (if `.claude/tech-stack` is `dotnet`):
+   ```bash
+   dotnet build 2>&1 | tail -5
+   ```
+   If build fails, the change may have touched hooks. Report the error.
+
+2. **CLAUDE.md compatibility:**
+   If `CLAUDE.md` exists, scan the applied commands for `§X.Y` rule references. If any referenced rules don't exist in `CLAUDE.md`, warn:
+   > "Updated commands reference §X.Y rules not found in CLAUDE.md. Consider running `/moberg:init` to regenerate CLAUDE.md."
+
+## STEP 8: REPORT
+
+### First-time install report:
 ```
-
-### For project install:
-```bash
-ls .claude/commands/*.md
-ls .claude/agents/*.md
-ls .claude/references/*.md
-```
-
-## STEP 6: REPORT
-
-### Global install report:
-```
-MOBERG TOOLKIT INSTALLED (global)
+MOBERG TOOLKIT INSTALLED ([global | project])
 
 Version: v[version]
-Location: ~/.claude/
+Location: [TARGET_DIR]
 
 Installed:
-  Commands: [N] files → ~/.claude/commands/
-  Skills:   [N] files → ~/.claude/skills/
-  Agents:   [N] files → ~/.claude/agents/
-  Settings: ~/.claude/settings.json [created | merged]
-
-Commands are now available in ALL repos as:
-  /moberg:init       — Bootstrap a repo (generates CLAUDE.md + references)
-  /moberg:implement  — Full feature implementation loop
-  /moberg:fix        — Lightweight fix/task
-  /moberg:update     — Update the toolkit
-  /moberg:scan       — Extract architecture principles
-  /moberg:merge      — Unify architecture scans
-  /moberg:quick-check       — Pre-commit security scan
-
-Next steps:
-  1. Open any project repo in Claude Code
-  2. Run /moberg:init to bootstrap it
-  3. Start building with /moberg:implement
-```
-
-### Project install report:
-```
-MOBERG TOOLKIT INSTALLED (project)
-
-Version: v[version]
-Location: .claude/
-
-Installed:
-  Commands:   [N] files → .claude/commands/
-  Skills:     [N] files → .claude/skills/
-  Agents:     [N] files → .claude/agents/
-  References: [N] files → .claude/references/
+  Commands:   [N] files
+  Skills:     [N] files
+  Agents:     [N] files
+  References: [N] files                   # project only
   Settings:   .claude/settings.json [created | merged]
-  Routing:    AGENTS.md [project install]
 
-Commands are available in THIS repo as:
-  /moberg:init       — Bootstrap (generates CLAUDE.md)
-  /moberg:implement  — Full feature implementation loop
-  /moberg:fix        — Lightweight fix/task
-  /moberg:update     — Update the toolkit
-  /moberg:scan       — Extract architecture principles
-  /moberg:merge      — Unify architecture scans
-  /moberg:quick-check       — Pre-commit security scan
+Commands now available:
+  /moberg:init        — Bootstrap a repo (generates CLAUDE.md + references)
+  /moberg:implement   — Full feature implementation loop
+  /moberg:fix         — Lightweight fix/task
+  /moberg:scan        — Extract architecture (add --merge to unify multi-repo scans)
+  /moberg:install     — Re-run to update (idempotent)
+  /moberg:quick-check — Pre-commit security scan
+  /moberg:validate    — Toolkit health and structural validation
 
 Next steps:
-  1. Run /moberg:init to generate CLAUDE.md for this repo
-  2. Commit .claude/ to share with the team: git add .claude/ && git commit -m "chore: add moberg toolkit"
+  1. Run /moberg:init to bootstrap this repo (generates CLAUDE.md from your codebase)
+  2. Project install: commit .claude/ to share with the team
   3. Start building with /moberg:implement
 ```
+
+### Update report:
+```
+MOBERG TOOLKIT UPDATED
+
+Version: v[old] → v[new]
+Mode: [global | project]
+Target: [TARGET_DIR]
+
+Updated: [N] files
+Added:   [N] files
+Merged:  settings.json [if applicable]
+Skipped: [N] unchanged
+Warning: [N] local-only files (review manually)
+
+Next steps:
+  - Review changes: git diff
+  - If CLAUDE.md is outdated: /moberg:init
+  - Commit: git add .claude/ && git commit -m "chore: update moberg toolkit to v[new]"
+```
+
+---
 
 ## IMPORTANT
 
-- **Never overwrite existing files without showing what changed** (unless --auto)
-- **Always create directories before writing files**
+- **Idempotent:** safe to re-run. Detects existing install via `.moberg-version`.
+- **Never overwrite protected files** — especially `CLAUDE.md`, `settings.local.json`, `lessons.md`, `tech-stack`, `architecture-principles.md`, `quick-check-list.md`
+- **Never delete local-only files** — they may be project-specific customizations
 - **Settings are always merged, never overwritten** — the engineer may have local additions
 - **References are project-specific** — skip them for global install
-- **Skills are reusable workflow assets** — install them globally and per-project
-- **Root-level assets like `AGENTS.md` are project-only** unless explicitly designed for user scope
-- For global install, remind the engineer that per-project setup (init) is still needed
-- If files already exist at the target, show the version diff and use AskUserQuestion to ask whether to proceed (unless --auto or --force):
-  ```
-  question: "Files already exist at the target (version [old] → [new]). Proceed with install?"
-  header: "Overwrite"
-  options:
-    - label: "Yes, proceed"
-      description: "Overwrite existing files with the new version"
-    - label: "Cancel"
-      description: "Keep existing files unchanged"
-  ```
+- **Show diffs / merge results** before writing (unless `--auto`)
+- The `manifest.json` in the source repo is the single source of truth for what gets distributed

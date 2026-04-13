@@ -1,16 +1,23 @@
 ---
-description: Scan the current repository and generate an architecture principles document based on actual codebase patterns. Run in each repo you want to source. Outputs to .claude/references/architecture-principles.md
+description: Scan the repo to extract architecture principles, or with --merge unify scans from multiple repos into a single team-wide document. Outputs to .claude/references/architecture-principles.md.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
+argument-hint: [--merge]
 ---
 
-# Moberg Scan — Extract Architecture Principles from Codebase
+# Moberg Scan — Extract or Unify Architecture Principles
 
-You are a senior architect performing an architectural audit of this repository.
-Your job is to analyze the codebase using the active tech stack's scan recipes and produce a comprehensive architecture principles document that captures HOW this team builds software.
+This command has two modes:
 
-Do NOT invent rules. Document what the codebase ACTUALLY does. If you find inconsistencies, note them as "⚠️ Inconsistency" — let the team decide which pattern to standardize on.
+- **Default (single-repo scan):** Audit the current repository and produce `.claude/references/architecture-principles.md` describing how this team builds software.
+- **`--merge` (multi-repo unification):** Combine architecture scans from multiple repos placed under `.claude/references/scans/` into a single unified document.
+
+Pick based on the argument. If the engineer passed `--merge`, jump to **MERGE MODE** below. Otherwise, run **SCAN MODE**.
 
 ---
+
+# SCAN MODE (default)
+
+You are a senior architect performing an architectural audit of this repository. Document what the codebase ACTUALLY does, not what it should do. If you find inconsistencies, flag them as "⚠️ Inconsistency" — let the team decide which pattern to standardize on.
 
 ## STEP 0: Determine The Tech Stack
 
@@ -179,13 +186,90 @@ Next steps:
   1. Review the generated document — edit anything that's wrong
   2. Decide how to resolve any inconsistencies flagged
   3. Run /moberg:init to generate the full CLAUDE.md
+  4. To unify with scans from other repos: copy this doc to <hub>/.claude/references/scans/<repo>.md and run /moberg:scan --merge there
 ```
 
 ---
 
-## IMPORTANT
-- This command is READ-ONLY except for writing the output document
+## SCAN MODE — IMPORTANT
+- This mode is READ-ONLY except for writing the output document
 - Never modify source code during a scan
 - If `.claude/references/architecture-principles.md` already exists, use AskUserQuestion before overwriting
 - Create `.claude/references/` directory if it doesn't exist
 - The actual scan commands live in the tech stack skill — do not duplicate them here. If they need updating, update the tech stack skill.
+
+---
+
+# MERGE MODE (--merge)
+
+You have scanned multiple repositories and now want a single, unified architecture principles document. This mode reads scan files from `.claude/references/scans/` and produces a unified doc.
+
+## STEP 0: Locate Inputs
+
+```bash
+ls -la .claude/references/scans/
+```
+
+Each file is an architecture scan from a different project (e.g., `payfac.md`, `collection-system.md`, `bnpl.md`).
+
+If the directory is empty or doesn't exist, tell the engineer:
+> "No scan files found. To use --merge:
+> 1. Run `/moberg:scan` (without --merge) in each repo (payfac, collection-system, etc.)
+> 2. Copy each generated `.claude/references/architecture-principles.md` into THIS repo at:
+>    `.claude/references/scans/payfac.md`
+>    `.claude/references/scans/collection-system.md`
+>    etc.
+> 3. Run `/moberg:scan --merge` again."
+
+## STEP 1: Analyze Across Scans
+
+For each section of the architecture doc, compare across all scans:
+
+### What's Consistent (standardize on this)
+- Patterns used the same way across all projects → these are your team's actual standards
+- Same tools and frameworks → these are your tech stack
+
+### What's Different (team needs to decide)
+- Different patterns for the same concern → flag as "needs alignment"
+- Different conventions → flag with a recommendation
+
+### What's Unique (project-specific)
+- Patterns that only appear in one project → document as project-specific, not team-wide
+
+## STEP 2: Generate Unified Document
+
+Generate `.claude/references/architecture-principles.md` (overwriting if it already exists — ask via AskUserQuestion first):
+
+```markdown
+# Moberg Architecture Principles
+
+> Unified from scans of: [list repos]
+> Generated: [date]
+>
+> This document defines team-wide architectural standards.
+> Project-specific patterns are noted where they differ.
+
+---
+
+## Team-Wide Standards
+[Patterns consistent across ALL scanned projects]
+
+## Recommended Alignments
+⚠️ [Patterns that differ between projects — with recommendation on which to standardize]
+
+## Project-Specific Patterns
+### PayFac
+[Unique patterns]
+### Collection System
+[Unique patterns]
+[etc.]
+```
+
+## STEP 3: Present Results
+
+Present the unified doc and highlight the key decisions the team needs to make. Do not make standardization decisions for the team — flag them clearly so engineers can debate and decide.
+
+## MERGE MODE — IMPORTANT
+- This mode is READ-ONLY except for writing the unified output document
+- If `.claude/references/architecture-principles.md` already exists, use AskUserQuestion before overwriting
+- Do not modify the input scan files in `.claude/references/scans/`

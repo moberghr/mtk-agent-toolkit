@@ -155,7 +155,7 @@ Create `CLAUDE.md` and `.claude/rules/` files following the templates below.
 | Build a feature | `/moberg:implement <description>` | New endpoints, tables, handlers, multi-file work |
 | Quick fix | `/moberg:fix <description>` | Bug fixes, config tweaks, 1-3 file changes |
 | Pre-commit check | `/moberg:quick-check` | Before every commit — fast security scan |
-| Update toolkit | `/moberg:update` | Pull latest commands/agents from central repo |
+| Install or update toolkit | `/moberg:install` | Idempotent — fresh setup on first run, in-place sync afterwards |
 
 **Decision rule:** If unsure, start with `fix`. If the change grows beyond 3 files, switch to `implement`.
 
@@ -269,7 +269,7 @@ Read the active tech stack skill's `## Settings Additions` section. Merge those 
 Ensure the following files exist:
 - `.claude/commands/implement.md` — main implementation loop
 - `.claude/commands/fix.md` — quick fix loop
-- `.claude/commands/update.md` — toolkit sync
+- `.claude/commands/install.md` — idempotent install/update
 - `.claude/commands/validate.md` — toolkit validation
 - `.claude/commands/quick-check.md` — pre-commit scan
 - `.claude/skills/spec-driven-development/SKILL.md`
@@ -284,7 +284,7 @@ Ensure the following files exist:
 - `.claude/agents/architecture-reviewer.md`
 - `AGENTS.md`
 
-If any are missing, tell the engineer to run `/moberg:update`.
+If any are missing, tell the engineer to run `/moberg:install`.
 
 ### Quick Check List
 
@@ -355,7 +355,7 @@ Commands available:
   /moberg:implement  — Full feature loop
   /moberg:fix        — Quick fix (1-3 files)
   /moberg:quick-check — Fast security scan
-  /moberg:update     — Pull latest toolkit
+  /moberg:install    — Install or update the toolkit (idempotent)
 
 Next: Try it with:
   /moberg:implement Add [your feature description here]

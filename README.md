@@ -6,7 +6,7 @@
 
 **Language-agnostic workflow skills with tech stack plugins for .NET and Python. Enforce coding standards, security compliance, and architectural consistency across every AI-generated line of code.**
 
-[![Version](https://img.shields.io/badge/version-5.0.0-blue.svg)](https://github.com/moberghr/claude-helpers/releases)
+[![Version](https://img.shields.io/badge/version-5.1.0-blue.svg)](https://github.com/moberghr/claude-helpers/releases)
 [![Platform](https://img.shields.io/badge/platform-Claude%20Code-purple.svg)](https://claude.ai/code)
 [![.NET](https://img.shields.io/badge/.NET-8.0%2B-512BD4.svg)](https://dotnet.microsoft.com/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg)](https://python.org/)
@@ -108,14 +108,10 @@ graph TB
             implement["/implement"]
             fix["/fix"]
             init["/init"]
-            scan["/scan"]
+            scan["/scan<br/>(+ --merge)"]
             quickcheck["/quick-check"]
-            install["/install"]
-            update["/update"]
-            doctor["/doctor"]
+            install["/install<br/>(idempotent)"]
             validate["/validate"]
-            merge["/merge"]
-            handoff["/handoff"]
         end
 
         subgraph Skills["Skills — Reusable Workflow"]
@@ -242,12 +238,11 @@ Documents what IS, not what should be. Outputs `.claude/references/architecture-
 
 | Command | Purpose |
 |:---|:---|
-| **`install`** | Install toolkit globally (`~/.claude/`) or locally (`./.claude/`). First-time setup |
-| **`update`** | Pull latest toolkit version from central repo. Respects protected files |
-| **`doctor`** | Health check: CLAUDE.md present? References valid? Toolkit version current? |
+| **`install`** | Install or update the toolkit, globally (`~/.claude/`) or locally (`./.claude/`). Idempotent — safe to re-run |
+| **`scan --merge`** | Unify architecture scans from multiple repos into a single document |
 | **`validate`** | Validate toolkit structure, manifest metadata, and skill anatomy |
-| **`merge`** | Unify architecture scans from multiple repos into a single document |
-| **`handoff`** | Capture session state for context continuity across sessions |
+
+> **Model-invoked skills:** `handoff` (capture session state when context is tight) and `correction-capture` (record engineer corrections) load automatically — no command to type.
 
 ---
 
@@ -464,8 +459,8 @@ graph LR
     B --> C["3. Bootstrap<br/>/moberg:init"]
     C --> D["4. Review<br/>CLAUDE.md + rules"]
     D --> E["5. First feature<br/>/moberg:implement"]
-    E --> F["6. Stay current<br/>/moberg:update"]
-    F --> G["7. Troubleshoot<br/>/moberg:doctor"]
+    E --> F["6. Stay current<br/>/moberg:install<br/>(idempotent)"]
+    F --> G["7. Validate<br/>/moberg:validate"]
 ```
 
 ### Toolkit Lifecycle
@@ -480,7 +475,7 @@ sequenceDiagram
     C->>C: Bump manifest + plugin version
     C->>C: Push to main + tag
 
-    T->>C: /moberg:update
+    T->>C: /moberg:install (idempotent re-run)
     Note over C,T: manifest.json controls distribution
 
     C->>T: sync → overwrite target
@@ -573,19 +568,15 @@ Rules are numbered (§X.Y) so review agents can cite specific violations.
 ```
 claude-helpers/
 ├── .claude/
-│   ├── commands/              # 11 command entry points
+│   ├── commands/              # 7 command entry points
 │   │   ├── implement.md       #   Full feature workflow
 │   │   ├── fix.md             #   Lightweight bug fix
 │   │   ├── init.md            #   Repository bootstrap
-│   │   ├── scan.md            #   Architecture extraction
-│   │   ├── merge.md           #   Multi-repo scan unification
-│   │   ├── install.md         #   Toolkit installation
-│   │   ├── update.md          #   Toolkit sync
-│   │   ├── validate.md        #   Toolkit validation
-│   │   ├── doctor.md          #   Health diagnostics
-│   │   ├── quick-check.md     #   Pre-commit security scan
-│   │   └── handoff.md         #   Session state capture
-│   ├── skills/                # 17 skills: 15 workflow + 2 tech stack
+│   │   ├── scan.md            #   Architecture extraction (--merge unifies multi-repo scans)
+│   │   ├── install.md         #   Idempotent install / update
+│   │   ├── validate.md        #   Toolkit structure validation
+│   │   └── quick-check.md     #   Pre-commit security scan
+│   ├── skills/                # 18 skills: 16 workflow + 2 tech stack
 │   │   ├── context-engineering/
 │   │   ├── spec-driven-development/         # generic
 │   │   ├── planning-and-task-breakdown/
@@ -601,6 +592,7 @@ claude-helpers/
 │   │   ├── correction-capture/
 │   │   ├── using-git-worktrees/
 │   │   ├── writing-skills/
+│   │   ├── handoff/                         # model-invoked: capture session state
 │   │   ├── tech-stack-dotnet/               # .NET-specific context
 │   │   └── tech-stack-python/               # Python-specific context
 │   ├── agents/                # 3 specialist reviewers
@@ -649,14 +641,14 @@ claude-helpers/
 | Symptom | Cause | Fix |
 |:---|:---|:---|
 | `implement` says "run init first" | Missing `CLAUDE.md` | Run `/moberg:init` |
-| Review agent reports `BLOCKED` | Required files inaccessible | Check `.claude/references/`; run `/moberg:update` |
+| Review agent reports `BLOCKED` | Required files inaccessible | Check `.claude/references/`; run `/moberg:install` |
 | `dotnet format` hook fails silently | .NET SDK not on PATH | Ensure `dotnet` is in your shell profile |
-| `update` overwrites local changes | File not in `protected` list | Add to `protected` in `manifest.json` |
-| Toolkit version mismatch | Stale local copy | Run `/moberg:update` |
-| Skills not loading | Missing skill files | Run `/moberg:doctor` then `/moberg:update` |
+| `install` overwrites local changes | File not in `protected` list | Add to `protected` in `manifest.json` |
+| Toolkit version mismatch | Stale local copy | Run `/moberg:install` (idempotent) |
+| Skills not loading | Missing skill files | Run `/moberg:install` then `/moberg:validate` |
 | "Verification gap" fires often | Claims without evidence | Working as intended — cite build/test output |
 
-Run **`/moberg:doctor`** for automated health checks covering all common issues.
+Run **`/moberg:validate`** to verify toolkit structure and surface most missing files.
 
 ---
 
@@ -701,7 +693,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/skill-anatomy.md](docs/skill-an
 <details>
 <summary><b>Can I use this alongside other Claude Code plugins?</b></summary>
 
-Yes. The toolkit's permissions and hooks merge with other plugins' settings. Check for conflicts with `/moberg:doctor`.
+Yes. The toolkit's permissions and hooks merge with other plugins' settings. Run `/moberg:validate` after install if you suspect conflicts.
 </details>
 
 ---
@@ -748,6 +740,6 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 <div align="center">
 
-**Moberg Toolkit** v5.0.0 · [Moberg d.o.o.](https://www.moberg.hr) · Built for teams that ship production code, not prototypes.
+**Moberg Toolkit** v5.1.0 · [Moberg d.o.o.](https://www.moberg.hr) · Built for teams that ship production code, not prototypes.
 
 </div>

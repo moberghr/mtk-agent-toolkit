@@ -1,6 +1,6 @@
 # claude-helpers — Moberg AI Toolkit Standards
 
-> Updated 2026-04-13 for v5.0.0 (language-agnostic skills + tech stack architecture).
+> Updated 2026-04-13 for v5.1.0 (trimmed command surface: 7 commands, handoff demoted to model-invoked skill).
 >
 > This file + `.claude/rules/` are the source of truth for AI agents.
 > Detailed standards live in `.claude/rules/`. Reference docs live in `.claude/references/` (shared) and `.claude/references/{stack}/` (stack-specific).
@@ -14,7 +14,7 @@
 | Add/modify a skill, command, or agent | `/moberg:implement <description>` | New skills, multi-file changes, structural work |
 | Quick fix | `/moberg:fix <description>` | Bug fixes, typos, single-file changes |
 | Validate toolkit | `/moberg:validate` | Before every commit — runs `scripts/validate-toolkit.sh` |
-| Update toolkit | `/moberg:update` | Pull latest from central repo |
+| Install or update toolkit | `/moberg:install` | Idempotent — fresh install on first run, in-place sync afterwards |
 
 **Decision rule:** If the change touches only 1-2 files (typo fix, hook tweak), use `fix`. If it adds a new skill, command, or agent, use `implement`.
 

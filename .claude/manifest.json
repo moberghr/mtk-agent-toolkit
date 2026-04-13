@@ -1,5 +1,5 @@
 {
-  "version": "5.0.0",
+  "version": "5.1.0",
   "updated": "2026-04-13",
   "description": "Moberg Claude Code toolkit — language-agnostic workflow skills with pluggable tech stacks (.NET, Python). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
@@ -20,25 +20,13 @@
       "source": ".claude/commands/scan.md",
       "target": ".claude/commands/scan.md",
       "action": "sync",
-      "description": "Extract architecture principles from codebase using tech stack scan recipes"
-    },
-    "commands/merge.md": {
-      "source": ".claude/commands/merge.md",
-      "target": ".claude/commands/merge.md",
-      "action": "sync",
-      "description": "Unify architecture scans from multiple repos"
+      "description": "Extract architecture principles, or with --merge unify scans from multiple repos"
     },
     "commands/install.md": {
       "source": ".claude/commands/install.md",
       "target": ".claude/commands/install.md",
       "action": "sync",
-      "description": "Install toolkit — globally for user or locally for a project"
-    },
-    "commands/update.md": {
-      "source": ".claude/commands/update.md",
-      "target": ".claude/commands/update.md",
-      "action": "sync",
-      "description": "Pull latest toolkit from central repo"
+      "description": "Idempotent install/update — fresh setup or in-place sync from upstream"
     },
     "commands/fix.md": {
       "source": ".claude/commands/fix.md",
@@ -57,18 +45,6 @@
       "target": ".claude/commands/validate.md",
       "action": "sync",
       "description": "Validate toolkit structure, metadata, and skill anatomy"
-    },
-    "commands/handoff.md": {
-      "source": ".claude/commands/handoff.md",
-      "target": ".claude/commands/handoff.md",
-      "action": "sync",
-      "description": "Capture session state into a recovery artifact for context continuity"
-    },
-    "commands/doctor.md": {
-      "source": ".claude/commands/doctor.md",
-      "target": ".claude/commands/doctor.md",
-      "action": "sync",
-      "description": "Quick diagnostic command for toolkit health"
     },
     "agents/compliance-reviewer.md": {
       "source": ".claude/agents/compliance-reviewer.md",
@@ -271,6 +247,12 @@
       "target": ".claude/skills/correction-capture/SKILL.md",
       "action": "sync",
       "description": "Reusable correction capture and compounding skill"
+    },
+    "skills/handoff/SKILL.md": {
+      "source": ".claude/skills/handoff/SKILL.md",
+      "target": ".claude/skills/handoff/SKILL.md",
+      "action": "sync",
+      "description": "Model-invoked session handoff — capture state into a recovery artifact when context is tight or work is paused"
     },
     "skills/tech-stack-dotnet/SKILL.md": {
       "source": ".claude/skills/tech-stack-dotnet/SKILL.md",
