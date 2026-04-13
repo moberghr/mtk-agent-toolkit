@@ -60,10 +60,54 @@ Write the implementation spec before writing code. The spec is the shared source
 8. Run an elegance check: reduce file count, new abstractions, and moving parts if a simpler design exists.
 9. Persist the spec to disk:
    - Create `docs/specs/` if it does not exist.
-   - Save to `docs/specs/YYYY-MM-DD-<feature-slug>.md` using the current date and a kebab-case slug of the feature name.
+   - Save the human-readable spec to `docs/specs/YYYY-MM-DD-<feature-slug>.md` using the current date and a kebab-case slug of the feature name.
+   - **Also emit a machine-parseable sidecar** at `docs/specs/YYYY-MM-DD-<feature-slug>.json` with the schema in the next section. This sidecar drives `spec-drift-detection` after implementation.
    - This enables session recovery, human review outside chat, and reuse across sessions.
    - Add `docs/specs/` to `.gitignore` if not already present — specs are working artifacts, not committed deliverables.
 10. Always stop for approval before implementation. When invoked from `/mtk:implement`, this means handing control back to the command's Phase 2.5 approval gate (which uses `AskUserQuestion`). Do not silently continue to implementation.
+
+## Machine-Parseable Manifest (JSON Sidecar)
+
+Every spec is accompanied by a structured manifest at
+`docs/specs/<date>-<slug>.json`. This is the source of truth for drift detection.
+
+```json
+{
+  "slug": "feature-slug",
+  "date": "YYYY-MM-DD",
+  "scope": "new-feature | internal-refactoring | breaking-change",
+  "change_manifest": [
+    { "path": "src/X.cs", "action": "create | modify | delete", "purpose": "one-line why" }
+  ],
+  "public_contracts": [
+    { "kind": "endpoint | handler | method | event | cli-flag",
+      "signature": "POST /api/orders or Namespace.Class.Method(...) or OrderCreated event",
+      "change": "new | modified | removed" }
+  ],
+  "success_criteria": [
+    { "id": "SC1", "description": "testable outcome", "verification": "name of test or command" }
+  ],
+  "test_manifest": [
+    { "path": "tests/X_Tests.cs", "covers": ["SC1", "SC2"] }
+  ],
+  "out_of_scope": ["explicit non-goals"],
+  "security_impact": "none | requires-audit-trail | new-auth-path | secrets-change | pii-exposure | iam-change",
+  "assumptions": ["..."],
+  "risks": ["..."]
+}
+```
+
+Rules:
+
+- Every entry in `change_manifest` must be intended — do not pre-populate
+  with files you "might" touch.
+- `public_contracts` is what callers or external consumers will see change.
+  Internal helpers don't count.
+- `security_impact` is NOT `none` if the diff touches auth, payments,
+  audit trails, secrets, PII paths, or IAM configuration. Be honest here;
+  `spec-drift-detection` will catch understated impact and block.
+- Keep the JSON in sync with the markdown spec. They are one artifact in
+  two shapes, not independent documents.
 
 ## Required Outputs
 
@@ -73,6 +117,8 @@ Write the implementation spec before writing code. The spec is the shared source
 - A batch breakdown with build/test checkpoints
 - A list of assumptions and unresolved risks
 - Concrete, testable success criteria
+- A JSON sidecar manifest at `docs/specs/<date>-<slug>.json` matching the
+  Machine-Parseable Manifest schema (drives drift detection)
 
 ## Common Rationalizations
 
@@ -98,3 +144,8 @@ Write the implementation spec before writing code. The spec is the shared source
 - [ ] Success criteria are specific and testable
 - [ ] Assumptions are explicit
 - [ ] The scope still matches the original request
+- [ ] The JSON sidecar exists at `docs/specs/<date>-<slug>.json` and matches
+      the markdown spec's change_manifest, test_manifest, success_criteria,
+      and security_impact
+- [ ] `security_impact` honestly reflects touched trust boundaries (not `none`
+      if auth / payments / audit / secrets / PII / IAM are involved)

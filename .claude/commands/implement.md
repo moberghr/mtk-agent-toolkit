@@ -19,6 +19,7 @@ The command itself is intentionally thin. The source of truth for workflow behav
 - `.claude/skills/code-review-and-quality-fintech/SKILL.md`
 - `.claude/skills/security-and-hardening-fintech/SKILL.md`
 - `.claude/skills/verification-before-completion/SKILL.md`
+- `.claude/skills/spec-drift-detection/SKILL.md`
 - `.claude/skills/brainstorming/SKILL.md`
 - `.claude/skills/code-simplification/SKILL.md`
 - `.claude/skills/tech-stack-{stack}/SKILL.md` — loaded based on `.claude/tech-stack`
@@ -126,6 +127,30 @@ After all batches:
 
 - run the full test command from the active tech stack skill
 - write an explicit behavioral diff
+
+## Phase 3.5: Spec-Drift Check
+
+Before review, follow `.claude/skills/spec-drift-detection/SKILL.md`.
+
+Compare the implementation against the spec's JSON sidecar at
+`docs/specs/<date>-<slug>.json`:
+
+- Files touched vs `change_manifest`
+- Public contracts vs `public_contracts`
+- `security_impact` vs actually-touched security-surface files
+- `out_of_scope` items vs what was delivered
+
+If critical drift is found:
+
+1. Decide: is the implementation wrong, or was the spec incomplete?
+2. If implementation wrong → fix within the manifest and re-run drift check.
+3. If spec incomplete → amend the spec + JSON sidecar via
+   `spec-driven-development`, re-open the Phase 2.5 approval gate for the
+   scope change, then re-run drift check.
+4. Do NOT proceed to review until drift is clean.
+
+Silent drift repair is forbidden — every change to scope goes through the
+approval gate.
 
 ## Phase 4: Review (Two-Stage)
 

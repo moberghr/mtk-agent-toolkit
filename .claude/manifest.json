@@ -259,6 +259,12 @@
       "action": "sync",
       "description": "Reusable verification discipline — no completion claims without fresh evidence"
     },
+    "skills/spec-drift-detection/SKILL.md": {
+      "source": ".claude/skills/spec-drift-detection/SKILL.md",
+      "target": ".claude/skills/spec-drift-detection/SKILL.md",
+      "action": "sync",
+      "description": "Compare the implementation against the spec's JSON sidecar manifest; surface divergence before review"
+    },
     "skills/brainstorming/SKILL.md": {
       "source": ".claude/skills/brainstorming/SKILL.md",
       "target": ".claude/skills/brainstorming/SKILL.md",
@@ -333,6 +339,12 @@
       "target": "tests/pressure-tests/confidence-scoring-pressure.md",
       "action": "sync",
       "description": "Adversarial pressure test for confidence-scored review output (inflation and sandbagging)"
+    },
+    "tests/pressure-tests/spec-drift-pressure.md": {
+      "source": "tests/pressure-tests/spec-drift-pressure.md",
+      "target": "tests/pressure-tests/spec-drift-pressure.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for spec-drift-detection (silent repair, fabricated manifest, out-of-scope scope creep)"
     },
     "hooks/session-start": {
       "source": "hooks/session-start",
