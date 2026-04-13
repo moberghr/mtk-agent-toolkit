@@ -468,6 +468,39 @@
       "action": "sync",
       "description": "Stop hook flagging completion claims without command output evidence"
     },
+    "hooks/pre-commit-linters.sh": {
+      "source": "hooks/pre-commit-linters.sh",
+      "target": "hooks/pre-commit-linters.sh",
+      "action": "sync",
+      "description": "Deterministic static-check pass: scans staged diff for known-bad patterns, emits findings with source:linter and confidence:100"
+    },
+    "hooks/linter-patterns/shared.txt": {
+      "source": "hooks/linter-patterns/shared.txt",
+      "target": "hooks/linter-patterns/shared.txt",
+      "action": "sync",
+      "description": "Language-agnostic lint patterns (secrets, keys, connection strings, JWTs)"
+    },
+    "hooks/linter-patterns/dotnet.txt": {
+      "source": "hooks/linter-patterns/dotnet.txt",
+      "target": "hooks/linter-patterns/dotnet.txt",
+      "action": "sync",
+      "stack": "dotnet",
+      "description": ".NET lint patterns (raw SQL interpolation, console output, empty catches)"
+    },
+    "hooks/linter-patterns/python.txt": {
+      "source": "hooks/linter-patterns/python.txt",
+      "target": "hooks/linter-patterns/python.txt",
+      "action": "sync",
+      "stack": "python",
+      "description": "Python lint patterns (raw SQL in execute, bare except, print debugging)"
+    },
+    "hooks/linter-patterns/typescript.txt": {
+      "source": "hooks/linter-patterns/typescript.txt",
+      "target": "hooks/linter-patterns/typescript.txt",
+      "action": "sync",
+      "stack": "typescript",
+      "description": "TypeScript / JavaScript lint patterns (SQL template literals with interpolation, console output, any type)"
+    },
     "AGENTS.md": {
       "source": "AGENTS.md",
       "target": "AGENTS.md",

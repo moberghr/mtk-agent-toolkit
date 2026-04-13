@@ -13,6 +13,16 @@ check engineers should run before every commit.
 1. Get the staged diff: `git diff --cached`
 2. If nothing staged, check unstaged: `git diff`
 3. If nothing at all, tell the engineer there's nothing to review
+4. **Run the static linter pass first:** `bash hooks/pre-commit-linters.sh`
+   - Emits deterministic findings with `source: "linter"` and `confidence: 100`
+   - Findings include secrets, raw SQL interpolation, connection strings with
+     plaintext passwords, AWS keys, JWTs, and stack-specific patterns
+   - Merge linter findings into your final JSON output (they always pass the
+     threshold, so they always surface)
+5. Run the AI review pass on the same diff to catch issues the linter can't
+   reach (design, intent, context-sensitive rules). AI findings use
+   `source: "ai"` and their own confidence scores per the rubric.
+6. Combine linter + AI findings into a single schema-conformant output.
 
 ## Check ONLY These (from CLAUDE.md §1):
 

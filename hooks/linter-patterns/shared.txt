@@ -1,0 +1,9 @@
+# Language-agnostic lint patterns.
+# Tab-separated: RULE_ID<TAB>SEVERITY<TAB>ERE_REGEX<TAB>RATIONALE<TAB>SUGGESTED_FIX
+# Lines starting with # are comments. Empty lines are ignored.
+# Regex is POSIX ERE (grep -E); matches produce findings with confidence 100.
+SECRET-HARDCODED	critical	(password|passwd|pwd|secret|api[_-]?key|access[_-]?key|auth[_-]?token)["]?[[:space:]]*[:=][[:space:]]*["][A-Za-z0-9_+/=.-]{12,}["]	Hardcoded credential visible in source	Move to secret manager, env var, or user-secrets
+AWS-ACCESS-KEY	critical	AKIA[0-9A-Z]{16}	AWS access key ID in source	Rotate immediately and move to secret manager
+PRIVATE-KEY-HEADER	critical	-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----	Private key header committed to source	Revoke key and store in secret manager
+JWT-HARDCODED	critical	ey[A-Za-z0-9_-]{20,}\.ey[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}	JWT token committed to source	Treat as leaked; rotate and move to secret manager
+CONN-STRING-PW	critical	(Server|Host|Data Source)=[^;]+;.*Password=[^;"]+	Connection string with plaintext password	Use user-secrets / env var and reference by key

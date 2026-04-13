@@ -1,0 +1,5 @@
+# Python lint patterns. Tab-separated.
+RAW-SQL-FSTRING	critical	(execute|executemany)[[:space:]]*\([[:space:]]*f["'](SELECT|INSERT|UPDATE|DELETE)	Raw SQL with f-string — injection risk	Use cursor.execute(sql, (params,)) with DB-API parameterization
+RAW-SQL-PERCENT	critical	(execute|executemany)[[:space:]]*\(["'](SELECT|INSERT|UPDATE|DELETE)[^"']*%[sd]	Raw SQL with percent-format — injection risk	Use parameterized form with DB-API placeholders
+PRINT-DEBUG	suggestion	^[[:space:]]*print\(	print() left in production code	Replace with logging.info/debug/error
+BARE-EXCEPT	warning	^[[:space:]]*except[[:space:]]*:	Bare except swallows SystemExit/KeyboardInterrupt	Use except Exception or narrow to specific exception
