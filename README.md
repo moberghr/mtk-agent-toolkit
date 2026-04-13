@@ -6,7 +6,7 @@
 
 **Language-agnostic workflow skills with tech stack plugins for .NET and Python. Enforce coding standards, security compliance, and architectural consistency across every AI-generated line of code.**
 
-[![Version](https://img.shields.io/badge/version-5.3.0-blue.svg)](https://github.com/moberghr/claude-helpers/releases)
+[![Version](https://img.shields.io/badge/version-5.5.0-blue.svg)](https://github.com/moberghr/claude-helpers/releases)
 [![Platform](https://img.shields.io/badge/platform-Claude%20Code-purple.svg)](https://claude.ai/code)
 [![.NET](https://img.shields.io/badge/.NET-8.0%2B-512BD4.svg)](https://dotnet.microsoft.com/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg)](https://python.org/)
