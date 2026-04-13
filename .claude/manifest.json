@@ -74,12 +74,42 @@
       "source": ".claude/references/testing-patterns.md",
       "target": ".claude/references/testing-patterns.md",
       "action": "sync",
+      "applyTo": [
+        "**/tests/**",
+        "**/*.Tests/**",
+        "**/*Tests.cs",
+        "**/*Test.cs",
+        "**/test_*.py",
+        "**/*_test.py",
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx"
+      ],
       "description": "Generic testing guidance — load alongside the active stack's testing supplement"
     },
     "references/security-checklist.md": {
       "source": ".claude/references/security-checklist.md",
       "target": ".claude/references/security-checklist.md",
       "action": "sync",
+      "applyTo": [
+        "**/auth/**",
+        "**/authentication/**",
+        "**/authorization/**",
+        "**/payments/**",
+        "**/transfers/**",
+        "**/audit/**",
+        "**/secrets/**",
+        "**/infra/**",
+        "**/iam/**",
+        "**/*Auth*.cs",
+        "**/*Auth*.py",
+        "**/*Auth*.ts",
+        "**/appsettings*.json",
+        "**/*.env*",
+        "**/settings.py",
+        "**/config/*.ts"
+      ],
       "description": "Shared, language-agnostic security checklist for fintech changes"
     },
     "references/performance-checklist.md": {
@@ -100,6 +130,15 @@
       "target": ".claude/references/dotnet/ef-core-checklist.md",
       "action": "sync",
       "stack": "dotnet",
+      "applyTo": [
+        "**/*DbContext.cs",
+        "**/Entities/**",
+        "**/Migrations/**",
+        "**/*Entity.cs",
+        "**/*Configuration.cs",
+        "**/Persistence/**",
+        "**/Repositories/**"
+      ],
       "description": "EF Core review and implementation checklist"
     },
     "references/dotnet/mediatr-slice-patterns.md": {
@@ -107,6 +146,15 @@
       "target": ".claude/references/dotnet/mediatr-slice-patterns.md",
       "action": "sync",
       "stack": "dotnet",
+      "applyTo": [
+        "**/Handlers/**",
+        "**/Commands/**",
+        "**/Queries/**",
+        "**/Features/**",
+        "**/*Handler.cs",
+        "**/*Command.cs",
+        "**/*Query.cs"
+      ],
       "description": "MediatR/CQRS slice conventions for .NET"
     },
     "references/dotnet/testing-supplement.md": {
@@ -114,6 +162,12 @@
       "target": ".claude/references/dotnet/testing-supplement.md",
       "action": "sync",
       "stack": "dotnet",
+      "applyTo": [
+        "**/*.Tests/**",
+        "**/tests/**",
+        "**/*Tests.cs",
+        "**/*Test.cs"
+      ],
       "description": ".NET-specific testing guidance (EF Core providers, xUnit/NUnit conventions)"
     },
     "references/dotnet/performance-supplement.md": {
@@ -135,6 +189,15 @@
       "target": ".claude/references/python/sqlalchemy-checklist.md",
       "action": "sync",
       "stack": "python",
+      "applyTo": [
+        "**/models.py",
+        "**/models/*.py",
+        "**/migrations/**",
+        "**/alembic/**",
+        "**/db/**",
+        "**/database/**",
+        "**/*_repository.py"
+      ],
       "description": "SQLAlchemy review and implementation checklist"
     },
     "references/python/fastapi-patterns.md": {
@@ -142,6 +205,14 @@
       "target": ".claude/references/python/fastapi-patterns.md",
       "action": "sync",
       "stack": "python",
+      "applyTo": [
+        "**/routers/**",
+        "**/api/**",
+        "**/endpoints/**",
+        "**/views.py",
+        "**/urls.py",
+        "**/main.py"
+      ],
       "description": "FastAPI and Django structural conventions"
     },
     "references/python/testing-supplement.md": {
@@ -149,6 +220,12 @@
       "target": ".claude/references/python/testing-supplement.md",
       "action": "sync",
       "stack": "python",
+      "applyTo": [
+        "**/tests/**",
+        "**/test_*.py",
+        "**/*_test.py",
+        "**/conftest.py"
+      ],
       "description": "pytest patterns, fixtures, mocking, async tests"
     },
     "references/python/performance-supplement.md": {
@@ -170,6 +247,16 @@
       "target": ".claude/references/typescript/data-layer-checklist.md",
       "action": "sync",
       "stack": "typescript",
+      "applyTo": [
+        "**/prisma/**",
+        "**/drizzle/**",
+        "**/db/**",
+        "**/schema.ts",
+        "**/schema.prisma",
+        "**/queries/**",
+        "**/*.query.ts",
+        "**/use*Query.ts"
+      ],
       "description": "Prisma / Drizzle / TanStack Query review and implementation checklist"
     },
     "references/typescript/framework-patterns.md": {
@@ -177,6 +264,15 @@
       "target": ".claude/references/typescript/framework-patterns.md",
       "action": "sync",
       "stack": "typescript",
+      "applyTo": [
+        "**/app/**/page.tsx",
+        "**/app/**/layout.tsx",
+        "**/app/**/route.ts",
+        "**/pages/**",
+        "**/routes/**",
+        "**/components/**",
+        "**/src-tauri/**"
+      ],
       "description": "React / Next.js / Tauri / Node backend structural conventions"
     },
     "references/typescript/testing-supplement.md": {
@@ -184,6 +280,14 @@
       "target": ".claude/references/typescript/testing-supplement.md",
       "action": "sync",
       "stack": "typescript",
+      "applyTo": [
+        "**/tests/**",
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx",
+        "**/e2e/**"
+      ],
       "description": "Vitest / Jest / Playwright / RTL / MSW patterns and TanStack Query test setup"
     },
     "references/typescript/performance-supplement.md": {

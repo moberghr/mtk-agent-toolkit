@@ -31,14 +31,28 @@ Good output depends on good context. Load the minimum relevant context needed to
 
 1. Start with `CLAUDE.md` when present.
 2. Load only the shared references relevant to the task.
-3. Read the exact file to be changed and 2-3 neighboring files that establish local patterns.
-4. Separate trusted local standards from untrusted external inputs.
-5. Before a new phase, summarize what matters now:
+3. **Path-scoped auto-load.** Reference entries in `.claude/manifest.json`
+   may declare an `applyTo` glob array. When the current task has a known
+   set of files in scope (from the spec's `change_manifest` or from
+   `git diff --name-only HEAD`):
+   - For each reference with `applyTo`, test each touched file against the
+     globs (bash `case` / `fnmatch` semantics).
+   - Load references whose globs match at least one touched file.
+   - Skip references whose globs match nothing — they're not relevant to
+     this task.
+   - References without `applyTo` are always-on when needed (e.g.
+     coding-guidelines, framework-patterns); load on demand per phase.
+4. Read the exact file to be changed and 2-3 neighboring files that establish local patterns.
+5. Separate trusted local standards from untrusted external inputs.
+6. Before a new phase, summarize what matters now:
    - current goal
    - files in scope
    - governing rules
    - open risks
-6. Refresh context when the scope or failure mode changes.
+   - which `applyTo` references activated and why
+7. Refresh context when the scope or failure mode changes. If new files
+   enter scope, re-run the path-scoped match and load any newly-applicable
+   references.
 
 ## Context Budget Tracking
 
@@ -67,6 +81,10 @@ Track the cumulative context loaded in the session. Research shows LLMs reliably
 - Re-anchor on the local codebase pattern before introducing new structures.
 - If confidence drops, gather better context before guessing.
 - Track context budget: fewer, more relevant instructions beat more, diluted ones.
+- Respect `applyTo` globs: if a reference's globs don't match any touched
+  file, do NOT load it as a "just in case" measure. That defeats the budget.
+- When in doubt about which globs match, use `git diff --name-only HEAD` as
+  the authoritative list of touched files.
 
 ## Common Rationalizations
 
@@ -89,3 +107,6 @@ Track the cumulative context loaded in the session. Research shows LLMs reliably
 - [ ] Context matches the current phase and task scope
 - [ ] No more than 3 skills loaded simultaneously unless justified
 - [ ] Reference files loaded by section, not in full, when possible
+- [ ] Path-scoped references were matched against actual touched files,
+      not loaded speculatively
+- [ ] When scope changed mid-session, path-scoped matches were re-run
