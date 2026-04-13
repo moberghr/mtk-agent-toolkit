@@ -1,5 +1,5 @@
 ---
-description: Full feature implementation loop using MTK skills for planning, batching, verification, and review. Run /mtk:init first.
+description: Full feature implementation loop using MTK skills for planning, batching, verification, and review. Run /mtk:setup-bootstrap once per repo first.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, Task, AskUserQuestion
 argument-hint: [--terse|--verbose] <feature description>
 ---
@@ -28,13 +28,13 @@ The command itself is intentionally thin. The source of truth for workflow behav
 Before doing anything else:
 
 1. Follow `.claude/skills/context-engineering/SKILL.md`.
-2. Read `CLAUDE.md`. If missing, stop and tell the engineer to run `/mtk:init`.
-3. **Load the active tech stack:** read `.claude/tech-stack` (plain text, single word like `dotnet` or `python`). Then read `.claude/skills/tech-stack-{stack}/SKILL.md`. This provides build/test commands, ORM guidance, framework patterns, and reference file paths used throughout the workflow. If `.claude/tech-stack` is missing, stop and tell the engineer to run `/mtk:init`.
+2. Read `CLAUDE.md`. If missing, stop and tell the engineer to run `/mtk:setup-bootstrap`.
+3. **Load the active tech stack:** read `.claude/tech-stack` (plain text, single word like `dotnet` or `python`). Then read `.claude/skills/tech-stack-{stack}/SKILL.md`. This provides build/test commands, ORM guidance, framework patterns, and reference file paths used throughout the workflow. If `.claude/tech-stack` is missing, stop and tell the engineer to run `/mtk:setup-bootstrap`.
 4. Read only the references needed for the **current phase**:
    - **Always (Phase 0):** the coding guidelines from the tech stack's `## Reference Files`, `.claude/references/architecture-principles.md` if present
    - **Defer to Phase 1 (spec):** `.claude/references/security-checklist.md` (only if scope touches auth/financial/infra), `.claude/references/testing-patterns.md`
    - **Defer to Phase 3 (implementation):** `.claude/references/performance-checklist.md`, plus stack-specific references from the tech stack's `## Reference Files` (e.g., ORM checklist, framework patterns)
-   - **Defer to Phase 4 (review):** `.claude/references/quick-check-list.md` if present
+   - **Defer to Phase 4 (review):** `.claude/references/pre-commit-review-list.md` if present
 5. Resolve the lessons path using the main worktree if needed, then read relevant entries from `tasks/lessons.md`.
 6. Detect `--terse` or `--verbose` for output intensity:
    - **`--terse`:** Minimal output. Skip explanations, rationale, and intermediate status. Report only: decisions, actions, findings, and evidence. No filler phrases. Aimed at senior engineers who read diffs.
@@ -116,7 +116,7 @@ For every batch:
 1. implement only in-manifest files
 2. add or update tests in the same batch
 3. run the batch checkpoint using the build/test commands from the active tech stack skill
-4. run the quick-check list if present
+4. run the pre-commit review list if present
 5. check the batch off in `tasks/todo.md`
 
 After all batches:
@@ -156,7 +156,7 @@ Provide Stage 2 reviewers with the same diff and behavioral diff.
 Fix every critical issue and every reasonable warning, then:
 
 - run the build and test commands from the active tech stack skill
-- run the quick-check list if present
+- run the pre-commit review list if present
 - re-run the necessary reviewer(s)
 
 Maximum 3 review iterations.
@@ -187,7 +187,7 @@ This phase is not optional cleanup — it is how the toolkit gets smarter over t
 
 4. **Check CLAUDE.md for drift.** If the work added new stable patterns (naming, structure, conventions), propose updates to `CLAUDE.md`. Do not silently modify it.
 
-5. **Update quick-check-list.** If a security or compliance issue was found during review, add it to `.claude/references/quick-check-list.md` so it's caught earlier next time.
+5. **Update pre-commit-review-list.** If a security or compliance issue was found during review, add it to `.claude/references/pre-commit-review-list.md` so it's caught earlier next time.
 
 6. **State the compound.** In the final report, include a "What compounded" section listing what future sessions will benefit from.
 
@@ -201,7 +201,7 @@ Report:
 - review agents used and stage (1 or 2)
 - review iterations
 - cleanup summary
-- **what compounded** — lessons captured, rules promoted, quick-check items added
+- **what compounded** — lessons captured, rules promoted, pre-commit-review items added
 - whether `CLAUDE.md` changed
 
 ## Red Flags

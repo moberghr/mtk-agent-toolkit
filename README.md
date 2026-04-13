@@ -36,7 +36,7 @@ Evidence of passing builds required before "done" | Store or transmit secrets
 
 ## 🚀 Quick Start
 
-### Option A: Plugin Install (Recommended)
+### Install the Plugin
 
 ```bash
 # In Claude Code
@@ -44,20 +44,11 @@ Evidence of passing builds required before "done" | Store or transmit secrets
 /plugin install mtk@moberghr
 ```
 
-### Option B: Manual Install
-
-```bash
-git clone git@github.com:moberghr/claude-helpers.git
-
-# In Claude Code, from your target repo
-/mtk:install --project
-```
-
 ### Bootstrap Your Repository
 
 ```bash
 # Generate project-specific CLAUDE.md and .claude/rules/ from your codebase
-/mtk:init
+/mtk:setup-bootstrap
 ```
 
 ### Start Building
@@ -107,11 +98,9 @@ graph TB
         subgraph Commands["Commands — Entry Points"]
             implement["/implement"]
             fix["/fix"]
-            init["/init"]
-            scan["/scan<br/>(+ --merge)"]
-            quickcheck["/quick-check"]
-            install["/install<br/>(idempotent)"]
-            validate["/validate"]
+            bootstrap["/setup-bootstrap"]
+            audit["/setup-audit<br/>(+ --merge)"]
+            precommit["/pre-commit-review"]
         end
 
         subgraph Skills["Skills — Reusable Workflow"]
@@ -186,9 +175,9 @@ graph LR
 |:---|:---|:---|
 | **`/mtk:implement`** | Full feature implementation workflow | Multi-file features, new endpoints, handlers |
 | **`/mtk:fix`** | Lightweight bug fix workflow | 1–3 file changes, focused debugging |
-| **`/mtk:init`** | Bootstrap repo for AI-assisted dev | Run once per repository |
-| **`/mtk:quick-check`** | Pre-commit security scan | Staged changes only |
-| **`/mtk:scan`** | Extract architecture principles | Outputs descriptive doc of team patterns |
+| **`/mtk:setup-bootstrap`** | Bootstrap repo for AI-assisted dev | Run once per repository |
+| **`/mtk:pre-commit-review`** | Pre-commit security review | Staged changes only |
+| **`/mtk:setup-audit`** | Extract architecture principles | Outputs descriptive doc of team patterns |
 
 #### implement
 
@@ -210,37 +199,36 @@ Composes debugging, targeted TDD, and verification. Has a built-in scope guard �
 /mtk:fix Fix null reference in PaymentProcessor when amount is zero
 ```
 
-#### init
+#### setup-bootstrap
 
-Scans the codebase, pulls shared coding guidelines, and generates a lean `CLAUDE.md` (under 200 lines), `.claude/rules/*.md` files, and a project-specific quick-check list.
+Audits the codebase, pulls shared coding guidelines, and generates a lean `CLAUDE.md` (under 200 lines), `.claude/rules/*.md` files, and a project-specific pre-commit review list.
 
 ```bash
-/mtk:init
+/mtk:setup-bootstrap
 ```
 
-#### quick-check
+#### pre-commit-review
 
 Checks staged changes against the security checklist: hardcoded secrets, SQL injection, PII in logs, missing auth, audit gaps.
 
 ```bash
-/mtk:quick-check
+/mtk:pre-commit-review
 ```
 
-#### scan
+#### setup-audit
 
 Documents what IS, not what should be. Outputs `.claude/references/architecture-principles.md` and flags inconsistencies for the team to resolve.
 
 ```bash
-/mtk:scan
+/mtk:setup-audit
 ```
 
 ### Lifecycle Commands
 
 | Command | Purpose |
 |:---|:---|
-| **`install`** | Install or update the toolkit, globally (`~/.claude/`) or locally (`./.claude/`). Idempotent — safe to re-run |
-| **`scan --merge`** | Unify architecture scans from multiple repos into a single document |
-| **`validate`** | Validate toolkit structure, manifest metadata, and skill anatomy |
+| **`setup-audit --merge`** | Unify architecture audits from multiple repos into a single document |
+| **`bash scripts/validate-toolkit.sh`** | Validate toolkit structure, manifest metadata, and skill anatomy (toolkit maintainers only) |
 
 > **Model-invoked skills:** `handoff` (capture session state when context is tight) and `correction-capture` (record engineer corrections) load automatically — no command to type.
 
@@ -369,7 +357,7 @@ graph LR
         MS["mediatr-slice-patterns"]
     end
     subgraph Review
-        QC["quick-check-list"]
+        QC["pre-commit-review-list"]
     end
 
     Always --> Planning --> Implementation --> Review
@@ -455,12 +443,10 @@ sequenceDiagram
 
 ```mermaid
 graph LR
-    A["1. Install<br/>/mtk:install --project"] --> B["2. Scan<br/>/mtk:scan"]
-    B --> C["3. Bootstrap<br/>/mtk:init"]
-    C --> D["4. Review<br/>CLAUDE.md + rules"]
-    D --> E["5. First feature<br/>/mtk:implement"]
-    E --> F["6. Stay current<br/>/mtk:install<br/>(idempotent)"]
-    F --> G["7. Validate<br/>/mtk:validate"]
+    A["1. Install plugin<br/>/plugin install mtk@moberghr"] --> B["2. Bootstrap<br/>/mtk:setup-bootstrap<br/>(auto-audits codebase)"]
+    B --> C["3. Review<br/>CLAUDE.md + rules"]
+    C --> D["4. First feature<br/>/mtk:implement"]
+    D --> E["5. Re-audit as architecture evolves<br/>/mtk:setup-audit"]
 ```
 
 ### Toolkit Lifecycle
@@ -471,16 +457,15 @@ sequenceDiagram
     participant T as Target Repos
 
     Note over C: Contributor adds skill<br/>or updates reference
-    C->>C: /mtk:validate
+    C->>C: bash scripts/validate-toolkit.sh
     C->>C: Bump manifest + plugin version
     C->>C: Push to main + tag
 
-    T->>C: /mtk:install (idempotent re-run)
-    Note over C,T: manifest.json controls distribution
+    T->>C: /plugin update mtk@moberghr
+    Note over C,T: plugin.json + manifest.json define the distribution
 
-    C->>T: sync → overwrite target
-    C->>T: merge → intelligent union
-    Note over T: Protected files preserved:<br/>CLAUDE.md, architecture-principles,<br/>lessons.md, settings.local.json
+    C->>T: Plugin loader refreshes commands, skills, agents
+    Note over T: Project-owned files untouched:<br/>CLAUDE.md, architecture-principles,<br/>lessons.md, settings.local.json
 ```
 
 ---
@@ -523,13 +508,13 @@ The `manifest.json` controls what gets distributed and how:
 | `tasks/lessons.md` | Team's accumulated learnings |
 | `tasks/todo.md` | In-progress work |
 | `architecture-principles.md` | Project-specific architecture doc |
-| `quick-check-list.md` | Project-specific verification checklist |
+| `pre-commit-review-list.md` | Project-specific verification checklist |
 
 ---
 
 ## 📐 Project Standards Generation
 
-When you run `/mtk:init`, the toolkit scans your codebase and generates standards that follow Claude Code best practices.
+When you run `/mtk:setup-bootstrap`, the toolkit audits your codebase and generates standards that follow Claude Code best practices.
 
 ### CLAUDE.md Structure
 
@@ -568,14 +553,12 @@ Rules are numbered (§X.Y) so review agents can cite specific violations.
 ```
 claude-helpers/
 ├── .claude/
-│   ├── commands/              # 7 command entry points
-│   │   ├── implement.md       #   Full feature workflow
-│   │   ├── fix.md             #   Lightweight bug fix
-│   │   ├── init.md            #   Repository bootstrap
-│   │   ├── scan.md            #   Architecture extraction (--merge unifies multi-repo scans)
-│   │   ├── install.md         #   Idempotent install / update
-│   │   ├── validate.md        #   Toolkit structure validation
-│   │   └── quick-check.md     #   Pre-commit security scan
+│   ├── commands/              # 5 command entry points
+│   │   ├── implement.md             #   Full feature workflow
+│   │   ├── fix.md                   #   Lightweight bug fix
+│   │   ├── setup-bootstrap.md       #   Repository bootstrap (auto-runs architecture audit)
+│   │   ├── setup-audit.md           #   Architecture extraction (--merge unifies multi-repo audits)
+│   │   └── pre-commit-review.md     #   Pre-commit security review
 │   ├── skills/                # 18 skills: 16 workflow + 2 tech stack
 │   │   ├── context-engineering/
 │   │   ├── spec-driven-development/         # generic
@@ -646,22 +629,21 @@ claude-helpers/
 
 | Symptom | Cause | Fix |
 |:---|:---|:---|
-| `implement` says "run init first" | Missing `CLAUDE.md` | Run `/mtk:init` |
-| Review agent reports `BLOCKED` | Required files inaccessible | Check `.claude/references/`; run `/mtk:install` |
+| `implement` says "run setup-bootstrap first" | Missing `CLAUDE.md` | Run `/mtk:setup-bootstrap` |
+| Review agent reports `BLOCKED` | Required files inaccessible | Check `.claude/references/`; re-run `/mtk:setup-bootstrap` to regenerate stack references |
 | `dotnet format` hook fails silently | .NET SDK not on PATH | Ensure `dotnet` is in your shell profile |
-| `install` overwrites local changes | File not in `protected` list | Add to `protected` in `manifest.json` |
-| Toolkit version mismatch | Stale local copy | Run `/mtk:install` (idempotent) |
-| Skills not loading | Missing skill files | Run `/mtk:install` then `/mtk:validate` |
+| Toolkit version mismatch | Stale plugin | Run `/plugin update mtk@moberghr` |
+| Skills not loading | Missing skill files | Run `/plugin update mtk@moberghr` |
 | "Verification gap" fires often | Claims without evidence | Working as intended — cite build/test output |
 
-Run **`/mtk:validate`** to verify toolkit structure and surface most missing files.
+Toolkit maintainers working inside the `claude-helpers` repo can run **`bash scripts/validate-toolkit.sh`** to verify toolkit structure.
 
 ---
 
 ## ❓ FAQ
 
 <details>
-<summary><b>Do I need to run <code>/mtk:init</code> on every branch?</b></summary>
+<summary><b>Do I need to run <code>/mtk:setup-bootstrap</code> on every branch?</b></summary>
 
 No. Run it once per repository. The generated `CLAUDE.md` and `.claude/rules/` are committed and shared across branches.
 </details>
@@ -669,7 +651,7 @@ No. Run it once per repository. The generated `CLAUDE.md` and `.claude/rules/` a
 <details>
 <summary><b>Can I customize the generated rules?</b></summary>
 
-Yes. After `init` generates the files, edit them freely. `update` will never overwrite `CLAUDE.md`, `.claude/rules/`, or `architecture-principles.md` — they are protected.
+Yes. After `setup-bootstrap` generates the files, edit them freely. Plugin updates never overwrite `CLAUDE.md`, `.claude/rules/`, or `architecture-principles.md` — they live in your repo, not the plugin.
 </details>
 
 <details>
@@ -693,13 +675,13 @@ Review agents can be wrong. Dismiss incorrect findings and move on. If the same 
 <details>
 <summary><b>How do I add a custom skill?</b></summary>
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/skill-anatomy.md](docs/skill-anatomy.md). Create the skill, register in `manifest.json`, add routing in `AGENTS.md`, and run `/mtk:validate`.
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/skill-anatomy.md](docs/skill-anatomy.md). Create the skill, register in `manifest.json`, add routing in `AGENTS.md`, and run `bash scripts/validate-toolkit.sh`.
 </details>
 
 <details>
 <summary><b>Can I use this alongside other Claude Code plugins?</b></summary>
 
-Yes. The toolkit's permissions and hooks merge with other plugins' settings. Run `/mtk:validate` after install if you suspect conflicts.
+Yes. The toolkit's permissions and hooks merge with other plugins' settings.
 </details>
 
 ---
@@ -713,7 +695,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide. The short version:
 3. **Agents** are narrow specialists — keep tools read-only, use `model: sonnet`
 4. **References** are durable standards — register with `"action": "sync"` in manifest
 5. **Every new file** must be in `manifest.json` with a version bump
-6. **Run `/mtk:validate`** before pushing
+6. **Run `bash scripts/validate-toolkit.sh`** before pushing
 
 ---
 

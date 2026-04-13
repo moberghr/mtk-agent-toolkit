@@ -1,12 +1,12 @@
 ---
-description: Bootstrap a repo for implement. Detects tech stack, scans codebase, pulls coding guidelines, and generates a project-specific CLAUDE.md. Run this once per repo.
+description: One-time repo setup. Detects tech stack, audits the codebase, pulls coding guidelines, and generates a project-specific CLAUDE.md. Run this once per repo.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 ---
 
-# MTK Init — Bootstrap Repository for AI-Assisted Development
+# MTK Setup Bootstrap — Prepare Repository for AI-Assisted Development
 
 You are setting up a repository for the `/mtk:implement` workflow.
-Your job is to detect the tech stack, scan the codebase, and generate a tailored `CLAUDE.md` that the implementation and review agents will use as their source of truth.
+Your job is to detect the tech stack, audit the codebase, and generate a tailored `CLAUDE.md` that the implementation and review agents will use as their source of truth.
 
 This bootstrap also prepares the repo for the shared skill layer and OpenCode routing.
 
@@ -84,21 +84,13 @@ If the fetch fails (network restrictions), check if the file already exists. If 
 
 ### Architecture Principles
 Check if `.claude/references/architecture-principles.md` exists.
-If not, use AskUserQuestion:
 
-```
-question: "Architecture principles document not found at .claude/references/architecture-principles.md. How should I proceed?"
-header: "Arch doc"
-options:
-  - label: "Generate from codebase (Recommended)"
-    description: "I'll scan the codebase and create a starter architecture-principles.md based on actual patterns found"
-  - label: "I'll provide it manually"
-    description: "I'll place the file at .claude/references/architecture-principles.md and re-run init"
-```
+- **If it exists:** leave it alone — init respects prior architecture decisions.
+- **If it does NOT exist:** auto-generate it from the Step 2 audit findings using the same template as `/mtk:setup-audit` (descriptive audit of actual patterns, with "⚠️ Inconsistency" flags where the codebase disagrees with itself). No prompt — this is the one-time bootstrap.
 
-If the engineer picks "Generate from codebase", generate a starter architecture doc based on Step 2 findings.
+To refresh the file later as the architecture evolves, the engineer runs `/mtk:setup-audit` explicitly.
 
-## STEP 2: Scan the Codebase
+## STEP 2: Audit the Codebase
 
 Use the **`## Scan Recipes`** section from the active tech stack skill (`.claude/skills/tech-stack-{stack}/SKILL.md`). Each tech stack provides its own scanning bash blocks.
 
@@ -174,8 +166,7 @@ Create `CLAUDE.md` and `.claude/rules/` files following the templates below.
 |---|---|---|
 | Build a feature | `/mtk:implement <description>` | New endpoints, tables, handlers, multi-file work |
 | Quick fix | `/mtk:fix <description>` | Bug fixes, config tweaks, 1-3 file changes |
-| Pre-commit check | `/mtk:quick-check` | Before every commit — fast security scan |
-| Install or update toolkit | `/mtk:install` | Idempotent — fresh setup on first run, in-place sync afterwards |
+| Pre-commit check | `/mtk:pre-commit-review` | Before every commit — fast security-focused review |
 
 **Decision rule:** If unsure, start with `fix`. If the change grows beyond 3 files, switch to `implement`.
 
@@ -299,9 +290,7 @@ Read the active tech stack skill's `## Settings Additions` section. Merge those 
 Ensure the following files exist:
 - `.claude/commands/implement.md` — main implementation loop
 - `.claude/commands/fix.md` — quick fix loop
-- `.claude/commands/install.md` — idempotent install/update
-- `.claude/commands/validate.md` — toolkit validation
-- `.claude/commands/quick-check.md` — pre-commit scan
+- `.claude/commands/pre-commit-review.md` — pre-commit security review
 - `.claude/skills/spec-driven-development/SKILL.md`
 - `.claude/skills/incremental-implementation/SKILL.md`
 - `.claude/skills/test-driven-development/SKILL.md`
@@ -314,11 +303,11 @@ Ensure the following files exist:
 - `.claude/agents/architecture-reviewer.md`
 - `AGENTS.md`
 
-If any are missing, tell the engineer to run `/mtk:install`.
+If any are missing, tell the engineer to re-install the MTK plugin from the marketplace (`/plugin install mtk@moberghr`).
 
-### Quick Check List
+### Pre-Commit Review List
 
-Generate `.claude/references/quick-check-list.md` based on scan findings. Use stack-specific items from the tech stack skill where applicable.
+Generate `.claude/references/pre-commit-review-list.md` based on audit findings. Use stack-specific items from the tech stack skill where applicable.
 
 If the file already exists, leave it alone.
 
@@ -382,17 +371,17 @@ Generated/Updated:
   ✓ .claude/tech-stack: [stack]
   ✓ CLAUDE.md ([N] lines — under 200 ✓)
   ✓ .claude/rules/ — [N] rule files generated
-  ✓ .claude/references/quick-check-list.md — [generated with N items | already exists, skipped]
+  ✓ .claude/references/pre-commit-review-list.md — [generated with N items | already exists, skipped]
   ✓ .claude/settings.json — merged [N] stack-specific entries
 
 Codebase findings:
   [stack-specific summary based on scan]
 
 Commands available:
-  /mtk:implement  — Full feature loop
-  /mtk:fix        — Quick fix (1-3 files)
-  /mtk:quick-check — Fast security scan
-  /mtk:install    — Install or update the toolkit (idempotent)
+  /mtk:implement         — Full feature loop
+  /mtk:fix               — Quick fix (1-3 files)
+  /mtk:pre-commit-review — Fast security-focused review of staged changes
+  /mtk:setup-audit       — Re-run architecture audit
 
 Next: Try it with:
   /mtk:implement Add [your feature description here]

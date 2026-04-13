@@ -1,21 +1,21 @@
 ---
-description: Scan the repo to extract architecture principles, or with --merge unify scans from multiple repos into a single team-wide document. Outputs to .claude/references/architecture-principles.md.
+description: Audit the repo to extract architecture principles, or with --merge unify audits from multiple repos into a single team-wide document. Outputs to .claude/references/architecture-principles.md.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 argument-hint: [--merge]
 ---
 
-# MTK Scan — Extract or Unify Architecture Principles
+# MTK Setup Audit — Extract or Unify Architecture Principles
 
 This command has two modes:
 
-- **Default (single-repo scan):** Audit the current repository and produce `.claude/references/architecture-principles.md` describing how this team builds software.
-- **`--merge` (multi-repo unification):** Combine architecture scans from multiple repos placed under `.claude/references/scans/` into a single unified document.
+- **Default (single-repo audit):** Audit the current repository and produce `.claude/references/architecture-principles.md` describing how this team builds software.
+- **`--merge` (multi-repo unification):** Combine architecture audits from multiple repos placed under `.claude/references/audits/` into a single unified document.
 
-Pick based on the argument. If the engineer passed `--merge`, jump to **MERGE MODE** below. Otherwise, run **SCAN MODE**.
+Pick based on the argument. If the engineer passed `--merge`, jump to **MERGE MODE** below. Otherwise, run **AUDIT MODE**.
 
 ---
 
-# SCAN MODE (default)
+# AUDIT MODE (default)
 
 You are a senior architect performing an architectural audit of this repository. Document what the codebase ACTUALLY does, not what it should do. If you find inconsistencies, flag them as "⚠️ Inconsistency" — let the team decide which pattern to standardize on.
 
@@ -28,9 +28,9 @@ DOTNET=$(find . -maxdepth 3 -name "*.csproj" -o -name "*.sln" -o -name "*.slnx" 
 PYTHON=$(find . -maxdepth 2 -name "pyproject.toml" -o -name "setup.py" -o -name "requirements.txt" 2>/dev/null | head -1)
 ```
 
-If multiple stacks detected, ask the engineer which to scan first. Multi-stack repos may need multiple scans.
+If multiple stacks detected, ask the engineer which to audit first. Multi-stack repos may need multiple audits.
 
-If no supported stack detected, stop and tell the engineer to run `/mtk:init` first or add a tech stack skill.
+If no supported stack detected, stop and tell the engineer to run `/mtk:setup-bootstrap` first or add a tech stack skill.
 
 Then load `.claude/skills/tech-stack-{stack}/SKILL.md`. The `## Scan Recipes` section provides the bash commands for that stack.
 
@@ -158,11 +158,11 @@ Based on EVERYTHING you found, create `.claude/references/architecture-principle
 ## STEP 4: Present Results
 
 ```
-✅ MTK SCAN COMPLETE
+✅ MTK SETUP AUDIT COMPLETE
 
 Repository: [name]
 Tech stack: [stack]
-Scanned: [N] source files across [N] projects/modules
+Audited: [N] source files across [N] projects/modules
 
 Architecture profile:
   - Stack: [name + version]
@@ -185,15 +185,15 @@ Inconsistencies found: [N]
 Next steps:
   1. Review the generated document — edit anything that's wrong
   2. Decide how to resolve any inconsistencies flagged
-  3. Run /mtk:init to generate the full CLAUDE.md
-  4. To unify with scans from other repos: copy this doc to <hub>/.claude/references/scans/<repo>.md and run /mtk:scan --merge there
+  3. Run /mtk:setup-bootstrap to generate the full CLAUDE.md (if not already done)
+  4. To unify with audits from other repos: copy this doc to <hub>/.claude/references/audits/<repo>.md and run /mtk:setup-audit --merge there
 ```
 
 ---
 
-## SCAN MODE — IMPORTANT
+## AUDIT MODE — IMPORTANT
 - This mode is READ-ONLY except for writing the output document
-- Never modify source code during a scan
+- Never modify source code during an audit
 - If `.claude/references/architecture-principles.md` already exists, use AskUserQuestion before overwriting
 - Create `.claude/references/` directory if it doesn't exist
 - The actual scan commands live in the tech stack skill — do not duplicate them here. If they need updating, update the tech stack skill.
@@ -202,28 +202,28 @@ Next steps:
 
 # MERGE MODE (--merge)
 
-You have scanned multiple repositories and now want a single, unified architecture principles document. This mode reads scan files from `.claude/references/scans/` and produces a unified doc.
+You have audited multiple repositories and now want a single, unified architecture principles document. This mode reads audit files from `.claude/references/audits/` and produces a unified doc.
 
 ## STEP 0: Locate Inputs
 
 ```bash
-ls -la .claude/references/scans/
+ls -la .claude/references/audits/
 ```
 
-Each file is an architecture scan from a different project (e.g., `payfac.md`, `collection-system.md`, `bnpl.md`).
+Each file is an architecture audit from a different project (e.g., `payfac.md`, `collection-system.md`, `bnpl.md`).
 
 If the directory is empty or doesn't exist, tell the engineer:
-> "No scan files found. To use --merge:
-> 1. Run `/mtk:scan` (without --merge) in each repo (payfac, collection-system, etc.)
+> "No audit files found. To use --merge:
+> 1. Run `/mtk:setup-audit` (without --merge) in each repo (payfac, collection-system, etc.)
 > 2. Copy each generated `.claude/references/architecture-principles.md` into THIS repo at:
->    `.claude/references/scans/payfac.md`
->    `.claude/references/scans/collection-system.md`
+>    `.claude/references/audits/payfac.md`
+>    `.claude/references/audits/collection-system.md`
 >    etc.
-> 3. Run `/mtk:scan --merge` again."
+> 3. Run `/mtk:setup-audit --merge` again."
 
-## STEP 1: Analyze Across Scans
+## STEP 1: Analyze Across Audits
 
-For each section of the architecture doc, compare across all scans:
+For each section of the architecture doc, compare across all audits:
 
 ### What's Consistent (standardize on this)
 - Patterns used the same way across all projects → these are your team's actual standards
@@ -243,7 +243,7 @@ Generate `.claude/references/architecture-principles.md` (overwriting if it alre
 ```markdown
 # Moberg Architecture Principles
 
-> Unified from scans of: [list repos]
+> Unified from audits of: [list repos]
 > Generated: [date]
 >
 > This document defines team-wide architectural standards.
@@ -272,4 +272,4 @@ Present the unified doc and highlight the key decisions the team needs to make. 
 ## MERGE MODE — IMPORTANT
 - This mode is READ-ONLY except for writing the unified output document
 - If `.claude/references/architecture-principles.md` already exists, use AskUserQuestion before overwriting
-- Do not modify the input scan files in `.claude/references/scans/`
+- Do not modify the input audit files in `.claude/references/audits/`

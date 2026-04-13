@@ -8,7 +8,7 @@
 - **S1.2** Each manifest entry must have: `source`, `target`, `action` (sync or merge), and `description`.
 - **S1.3** `description` follows the CSO (Claude Slash-command Output) principle — clear, specific, one sentence explaining what the file does.
 - **S1.4** Version in `manifest.json` and `plugin.json` must always match. Bump both together using semver.
-- **S1.5** Protected files (listed in `manifest.protected`) are never overwritten by update. Currently: `settings.local.json`, `CLAUDE.md`, `tasks/lessons.md`, `tasks/todo.md`, `architecture-principles.md`, `quick-check-list.md`.
+- **S1.5** Protected files (listed in `manifest.protected`) are never overwritten by update. Currently: `settings.local.json`, `CLAUDE.md`, `tasks/lessons.md`, `tasks/todo.md`, `architecture-principles.md`, `pre-commit-review-list.md`.
 
 ## File Organization
 
@@ -23,5 +23,5 @@
 ## Naming
 
 - **S1.13** Skill directory names use kebab-case matching the frontmatter `name:` field exactly.
-- **S1.14** Command files use kebab-case: `implement.md`, `quick-check.md`.
+- **S1.14** Command files use kebab-case: `implement.md`, `pre-commit-review.md`.
 - **S1.15** Agent files use kebab-case: `compliance-reviewer.md`.

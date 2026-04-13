@@ -1,9 +1,9 @@
 ---
-description: Quick security-focused review of staged changes. Faster than full /review — checks only critical compliance rules.
+description: Fast security-focused review of staged changes. Run before every commit — checks only the critical compliance rules, not the full review workflow.
 allowed-tools: Read, Glob, Grep, Bash
 ---
 
-# Quick Security Review
+# Pre-Commit Security Review
 
 Run a fast, security-focused review on staged changes only. This is the lightweight
 check engineers should run before every commit.
@@ -40,7 +40,7 @@ check engineers should run before every commit.
 ## Output
 
 ```
-Quick Security Review: PASS | FAIL
+Pre-Commit Security Review: PASS | FAIL
 
 [If FAIL, list each issue with file:line and one-line description]
 ```

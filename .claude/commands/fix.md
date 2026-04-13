@@ -28,14 +28,14 @@ If the work grows beyond 3 files, introduces new architecture, or needs a formal
 ## Load Context (Progressive Disclosure)
 
 1. Follow `.claude/skills/context-engineering/SKILL.md`.
-2. Read `CLAUDE.md`. If missing, stop and tell the engineer to run `/mtk:init`.
+2. Read `CLAUDE.md`. If missing, stop and tell the engineer to run `/mtk:setup-bootstrap`.
 3. Load the active tech stack: read `.claude/tech-stack` and `.claude/skills/tech-stack-{stack}/SKILL.md`. This provides build/test commands and stack-specific reference paths.
 4. Read only what the fix needs:
    - **Always:** the coding guidelines from the tech stack's `## Reference Files`
    - **If fix touches data layer/ORM:** the ORM checklist from the tech stack's `## Reference Files`
    - **If fix touches auth/secrets/financial:** `.claude/references/security-checklist.md`
    - **If adding tests:** `.claude/references/testing-patterns.md` plus the testing supplement from the tech stack
-   - **Before commit:** `.claude/references/quick-check-list.md` if present
+   - **Before commit:** `.claude/references/pre-commit-review-list.md` if present
 5. Resolve and scan relevant lessons from `tasks/lessons.md`.
 6. Read the target file and its closest neighbors before editing.
 

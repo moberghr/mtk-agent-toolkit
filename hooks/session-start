@@ -29,7 +29,7 @@ if [[ -f "tasks/todo.md" ]] && [[ -z "$RECOVERY_MSG" ]]; then
 fi
 
 # Build the context message
-BASE_MSG="Moberg toolkit is active. Available commands: implement, fix, quick-check, init, scan, merge, validate, install, update, doctor. Skills loaded on demand via progressive disclosure."
+BASE_MSG="Moberg toolkit is active. Available commands: implement, fix, pre-commit-review, setup-bootstrap, setup-audit. Skills loaded on demand via progressive disclosure."
 if [[ -n "$RECOVERY_MSG" ]]; then
   CONTEXT="${BASE_MSG} ${RECOVERY_MSG}"
 else

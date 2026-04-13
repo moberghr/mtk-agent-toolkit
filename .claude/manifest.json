@@ -1,5 +1,5 @@
 {
-  "version": "5.3.0",
+  "version": "5.4.0",
   "updated": "2026-04-13",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
@@ -10,23 +10,17 @@
       "action": "sync",
       "description": "Thin entry point for the full feature implementation workflow"
     },
-    "commands/init.md": {
-      "source": ".claude/commands/init.md",
-      "target": ".claude/commands/init.md",
+    "commands/setup-bootstrap.md": {
+      "source": ".claude/commands/setup-bootstrap.md",
+      "target": ".claude/commands/setup-bootstrap.md",
       "action": "sync",
-      "description": "Bootstrap repo with tech stack detection and CLAUDE.md generation"
+      "description": "One-time setup: detect tech stack, audit codebase, generate CLAUDE.md"
     },
-    "commands/scan.md": {
-      "source": ".claude/commands/scan.md",
-      "target": ".claude/commands/scan.md",
+    "commands/setup-audit.md": {
+      "source": ".claude/commands/setup-audit.md",
+      "target": ".claude/commands/setup-audit.md",
       "action": "sync",
-      "description": "Extract architecture principles, or with --merge unify scans from multiple repos"
-    },
-    "commands/install.md": {
-      "source": ".claude/commands/install.md",
-      "target": ".claude/commands/install.md",
-      "action": "sync",
-      "description": "Idempotent install/update — fresh setup or in-place sync from upstream"
+      "description": "Audit architecture principles, or with --merge unify audits from multiple repos"
     },
     "commands/fix.md": {
       "source": ".claude/commands/fix.md",
@@ -34,17 +28,11 @@
       "action": "sync",
       "description": "Thin entry point for the lightweight bug-fix workflow"
     },
-    "commands/quick-check.md": {
-      "source": ".claude/commands/quick-check.md",
-      "target": ".claude/commands/quick-check.md",
+    "commands/pre-commit-review.md": {
+      "source": ".claude/commands/pre-commit-review.md",
+      "target": ".claude/commands/pre-commit-review.md",
       "action": "sync",
-      "description": "Lightweight pre-commit security scan"
-    },
-    "commands/validate.md": {
-      "source": ".claude/commands/validate.md",
-      "target": ".claude/commands/validate.md",
-      "action": "sync",
-      "description": "Validate toolkit structure, metadata, and skill anatomy"
+      "description": "Fast security-focused review of staged changes; run before every commit"
     },
     "agents/compliance-reviewer.md": {
       "source": ".claude/agents/compliance-reviewer.md",
@@ -373,6 +361,6 @@
     "tasks/lessons.md",
     "tasks/todo.md",
     ".claude/references/architecture-principles.md",
-    ".claude/references/quick-check-list.md"
+    ".claude/references/pre-commit-review-list.md"
   ]
 }
