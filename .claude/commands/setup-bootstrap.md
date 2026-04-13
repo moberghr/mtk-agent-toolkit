@@ -1,6 +1,7 @@
 ---
 description: One-time repo setup. Detects tech stack, audits the codebase, pulls coding guidelines, and generates a project-specific CLAUDE.md. Run this once per repo.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
+argument-hint: [--preview] [--non-interactive]
 ---
 
 # MTK Setup Bootstrap — Prepare Repository for AI-Assisted Development
@@ -9,6 +10,27 @@ You are setting up a repository for the `/mtk:implement` workflow.
 Your job is to detect the tech stack, audit the codebase, and generate a tailored `CLAUDE.md` that the implementation and review agents will use as their source of truth.
 
 This bootstrap also prepares the repo for the shared skill layer and OpenCode routing.
+
+## Modes
+
+Parse arguments before starting:
+
+- **`--preview`** — run detection, scan, and interview, then **show the proposed CLAUDE.md + rules files diff** and ask for confirmation via `AskUserQuestion` before writing anything. Use this when the engineer wants to review before commit. Without `--preview`, the bootstrap writes files directly (merge mode is still the default for existing CLAUDE.md).
+- **`--non-interactive`** — skip the post-scan interview (STEP 2.5). Use when scripting the bootstrap or when the engineer has no time for questions. Defaults to interactive.
+
+Both flags can combine: `--preview --non-interactive` runs silently but still asks to confirm writes.
+
+## Research-backed constraints (read this first)
+
+The content you generate is subject to an **instruction budget** — Claude's compliance with CLAUDE.md rules degrades uniformly past ~150 total instructions (Anthropic's system prompt already consumes ~50). The ETH Zurich benchmark across 1,188 runs showed LLM-generated CLAUDE.md files performed *worst*. Anthropic's own cookbook CLAUDE.md is ~80 lines. HumanLayer's production file is <60 lines. Boris Cherny (Claude Code creator) uses ~100.
+
+**Therefore:**
+
+1. **Root CLAUDE.md target: 60–80 lines. Hard cap: 120 lines.** If you can't get under 120, something belongs in `.claude/rules/` or a hook, not CLAUDE.md.
+2. **Trigger-action, negative phrasing sticks better.** Prefer `WHEN X, DO NOT Y` and `NEVER Z` over `Always follow X`. Use `IMPORTANT:` / `YOU MUST` markers sparingly for the top 1–2 rules.
+3. **Mechanize what you can.** If a rule can live in a hook or `settings.json` deny-list, put it there and do NOT duplicate in CLAUDE.md.
+4. **No aspirational rules.** Every rule must come from an actual pattern or actual failure mode in this codebase. If you're inventing it, drop it.
+5. **No list-of-everything.** Omit rules Claude can figure out from reading the code (e.g., "use async/await" in a JS project).
 
 ## STEP 0: Detect Tech Stack
 
@@ -113,12 +135,46 @@ find . -name "pull_request_template*"
 
 Record what you find — this is the input for Step 3.
 
+## STEP 2.5: Post-Scan Interview (skip if `--non-interactive`)
+
+Auto-detection captures WHAT is in the codebase. It cannot capture the team's implicit knowledge — the things that make CLAUDE.md actually useful. Ask **3–5 focused questions** via `AskUserQuestion`. These answers feed directly into the Critical Rules and `project-specific.md`.
+
+**Rules for the interview:**
+- Keep it short. 5 questions max. If the engineer pushes back or seems unsure, accept "skip" as a valid answer.
+- Do NOT ask anything you can answer from the scan (e.g., "what's your test framework" — you already know).
+- Frame for answers you can convert into trigger-action rules.
+- Record answers; integrate into Step 3 output.
+
+**Question set (adapt wording per stack):**
+
+1. **Top failure modes** — "What are the 2–3 things AI assistants (or junior engineers) get wrong most often in this codebase?" Convert each answer into a `WHEN X, DO NOT Y` rule.
+
+2. **Hard nevers** — "What should an AI **never** do in this repo without explicit approval?" Examples to prompt with: "touch migrations / modify financial state without audit trail / change auth middleware / drop caches / skip the review step". These become the top Critical Rules (§0.x).
+
+3. **Invisible conventions** — "Is there an architectural or naming convention that isn't obvious from reading the code?" (e.g., "all money is `decimal` with 4-digit scale", "handlers must emit a domain event", "routes live in `Endpoints/` not `Controllers/` even though we use MVC").
+
+4. **Branch + PR workflow** — only ask if recent `git log` / PR templates didn't make this obvious. "How do you name branches and what's the PR convention?"
+
+5. **Compliance / regulatory constraints** (fintech-specific, always ask for fintech repos) — "Are there compliance constraints that should surface in reviews? (e.g., PII handling, audit log requirements, SOC2 scope, PCI scope)"
+
+**What to do with answers:**
+- Each `hard never` → top of Critical Rules, with `IMPORTANT:` prefix.
+- Each `top failure mode` → rule in the relevant `.claude/rules/` file (e.g., failure about EF queries → `data-layer.md`).
+- Each `invisible convention` → `project-specific.md`.
+- Compliance answers → fold into `security.md` with `§1.x` numbering.
+
+If `--non-interactive` is passed, skip this entire step but print a notice:
+```
+⚠️ Interview skipped. CLAUDE.md will be auto-detected only — consider running without --non-interactive for better team-specific rules.
+```
+
 ## STEP 3: Generate CLAUDE.md + Rules Files
 
 The generated output follows Claude Code best practices:
-- **Root `CLAUDE.md`** stays **under 200 lines** (better adherence, less context waste)
+- **Root `CLAUDE.md`** target **60–80 lines**, hard cap **120 lines** (ETH Zurich benchmark + HumanLayer + Anthropic cookbook). Past ~150 instructions, compliance degrades uniformly — every line must earn its place.
 - **`.claude/rules/*.md`** files hold detailed, topic-specific rules (auto-loaded by Claude Code)
 - **`.claude/references/`** files are read on-demand by commands and agents (not duplicated)
+- **Hooks / `settings.json` deny-list** handle anything mechanically enforceable (formatting, secret scanning, banned commands) — do NOT duplicate those rules in CLAUDE.md.
 
 ### If CLAUDE.md does NOT exist → Generate from scratch
 
@@ -144,7 +200,7 @@ Create `CLAUDE.md` and `.claude/rules/` files following the templates below.
 
 ### Root CLAUDE.md Template
 
-**Hard limit: 200 lines.** If it's longer, move detail to `.claude/rules/`.
+**Target: 60–80 lines. Hard cap: 120 lines.** If it's longer, move detail to `.claude/rules/` or delete speculative rules entirely. Count before finishing.
 
 ````markdown
 # [Project Name] — Engineering Standards
@@ -218,7 +274,14 @@ For typescript:
 
 These are the highest-impact rules — the ones most commonly violated or most damaging when broken. Full detailed standards live in `.claude/rules/`.
 
-[Generate the top 5-10 most critical rules from across all categories, based on what this project actually uses. Pick the rules that, if violated, cause the most damage. Number them §0.1–§0.N.]
+[Generate the top **3–5** most critical rules (not 10 — every extra rule dilutes adherence). Prefer interview "hard nevers" first, then scan-derived failure modes. Number them §0.1–§0.N.
+
+**Phrasing rules (non-negotiable):**
+- Use trigger-action form: `WHEN X, DO NOT Y` or `NEVER Z WITHOUT W`.
+- Negatives beat positives. `NEVER commit secrets` > `Always keep secrets safe`.
+- Prefix the top 1–2 most damaging rules with `IMPORTANT:` or `YOU MUST` (research shows measurable compliance improvement — but only works if used sparingly).
+- If a rule can be enforced by a hook, `settings.json` deny-list, or pre-commit-review-list, put it there and DO NOT list it here.
+- Every rule must point to a concrete failure mode in this codebase — no aspirational rules.]
 
 ---
 
@@ -263,13 +326,58 @@ The rule file templates are largely the same as before — adapt the content per
 - `project-specific.md` — anything unique
 
 ### Rules for Generation
-- **Root CLAUDE.md must stay under 200 lines.** Count before finishing. If over, move detail to rules files.
+- **Root CLAUDE.md target 60–80 lines, hard cap 120.** Count before finishing. If over 120, move detail to rules files or delete speculative rules.
 - Every rule in `.claude/rules/` must have a section number (§X.Y) for review agents to cite.
 - Include **code examples** from the actual codebase where possible.
 - Flag conflicts: "⚠️ Guideline says X, but codebase does Y. Standardize on: [recommendation]"
 - Be specific to THIS project — skip technologies not in use.
 - **Don't duplicate** content from `.claude/references/` — point to the file instead.
 - Skip rules files for sections that don't apply.
+
+## STEP 3.5: Preview Gate (if `--preview`)
+
+If the engineer passed `--preview`, **do not write any files yet**. Instead:
+
+1. Hold the generated content in memory (CLAUDE.md body, each `.claude/rules/*.md` body, AGENTS.md, pre-commit-review-list).
+2. Print a plan summary:
+   ```
+   📋 PROPOSED CHANGES (preview — nothing written yet)
+
+   CLAUDE.md                                   [NEW | MERGE | REPLACE — N lines, cap 120]
+   .claude/rules/security.md                   [NEW — N lines]
+   .claude/rules/architecture.md               [NEW — N lines]
+   .claude/rules/testing.md                    [NEW — N lines]
+   .claude/rules/data-layer.md                 [NEW — N lines]
+   .claude/rules/project-specific.md           [NEW — N lines]
+   .claude/references/pre-commit-review-list.md [NEW — N items]
+   AGENTS.md                                   [NEW | SKIP — already exists]
+
+   Critical Rules (top of CLAUDE.md):
+     §0.1 [first rule]
+     §0.2 [second rule]
+     ...
+
+   Tech stack:  [stack]
+   Package mgr: [pm, if ts]
+   ```
+3. Print the full CLAUDE.md body inline (inside a fenced code block) so the engineer can review it.
+4. Ask via `AskUserQuestion`:
+   ```
+   question: "Proceed with writing these files?"
+   header: "Bootstrap confirmation"
+   options:
+     - label: "Yes, write all"
+       description: "Commit the proposed files as shown"
+     - label: "Yes, but skip CLAUDE.md"
+       description: "Write rules files only — I'll author CLAUDE.md myself"
+     - label: "Cancel"
+       description: "Discard the proposed output"
+   ```
+5. On "Cancel", stop and leave the repo untouched.
+6. On "skip CLAUDE.md", write everything except root CLAUDE.md.
+7. On "Yes, write all", proceed to STEP 4.
+
+Without `--preview`, skip this step and write directly.
 
 ## STEP 4: Set Up Supporting Files & Directories
 
@@ -353,6 +461,134 @@ Generate a root-level `AGENTS.md` for cross-tool compatibility (Cursor, Copilot,
 
 If `AGENTS.md` already exists, leave it alone.
 
+## STEP 4.5: Monorepo — Per-Package CLAUDE.md (conditional)
+
+Research-backed: a documented monorepo case study reduced per-session context load by ~80% by splitting a 47k-word monolithic CLAUDE.md into a ~9k-word root + short per-package files that load on-demand when Claude accesses those directories.
+
+### Detect if this is a monorepo
+
+Run these checks in parallel:
+
+```bash
+# JS/TS workspaces
+LERNA=$(test -f lerna.json && echo "yes")
+PNPM_WS=$(test -f pnpm-workspace.yaml && echo "yes")
+TURBO=$(test -f turbo.json && echo "yes")
+NX=$(test -f nx.json && echo "yes")
+RUSH=$(test -f rush.json && echo "yes")
+PKG_WORKSPACES=$(grep -l '"workspaces"' package.json 2>/dev/null)
+
+# .NET multi-project solutions
+SLN_COUNT=$(find . -maxdepth 2 -name "*.sln" -o -name "*.slnx" 2>/dev/null | wc -l | tr -d ' ')
+CSPROJ_COUNT=$(find . -maxdepth 4 -name "*.csproj" -not -path "*/bin/*" -not -path "*/obj/*" 2>/dev/null | wc -l | tr -d ' ')
+
+# Python multi-package
+PYPROJECT_COUNT=$(find . -maxdepth 3 -name "pyproject.toml" -not -path "*/.venv/*" -not -path "*/node_modules/*" 2>/dev/null | wc -l | tr -d ' ')
+
+# Conventional layout
+HAS_APPS=$(test -d apps && echo "yes")
+HAS_PACKAGES=$(test -d packages && echo "yes")
+HAS_SERVICES=$(test -d services && echo "yes")
+HAS_LIBS=$(test -d libs && echo "yes")
+```
+
+**Classification:**
+- **Not a monorepo** if: single `*.sln` with ≤3 `*.csproj` in a linear hierarchy, or single `pyproject.toml` at root, or single `package.json` with no `workspaces`. Skip the rest of this step.
+- **Monorepo** if: any of LERNA/PNPM_WS/TURBO/NX/RUSH/PKG_WORKSPACES is set, OR `CSPROJ_COUNT >= 4`, OR `SLN_COUNT >= 2`, OR `PYPROJECT_COUNT >= 2`, OR any of the conventional layout dirs exist and contain >1 subdirectory with a project marker.
+
+If classification is ambiguous, ask via `AskUserQuestion`:
+```
+question: "Is this a monorepo? (Multiple packages/services sharing a repo)"
+header: "Repo layout"
+options:
+  - label: "Yes — generate per-package CLAUDE.md files"
+    description: "Short per-directory files pointing to root CLAUDE.md"
+  - label: "No — single project"
+    description: "Skip per-package generation"
+```
+
+### Enumerate packages
+
+Build the list of package directories:
+
+- **JS/TS workspaces:** read `workspaces` from `package.json`, `packages` from `pnpm-workspace.yaml`, or globs from `turbo.json` / `nx.json`. Expand globs.
+- **.NET:** each directory containing a `*.csproj` is a package. Group by top-level folder if there's a clear `src/<Module>/<Project>.csproj` pattern.
+- **Python:** each directory containing a `pyproject.toml`.
+- **Convention-based:** each immediate subdirectory of `apps/`, `services/`, `packages/`, `libs/` that contains a project marker.
+
+Cap at **20 packages**. If there are more, pick the top 20 by file count and print a note: "Skipped N packages — generate per-package CLAUDE.md manually for any that need special context."
+
+### Generate per-package CLAUDE.md
+
+**For each package**, create `<package-path>/CLAUDE.md` **only if it doesn't already exist** (never overwrite — these may be hand-authored).
+
+Each file targets **15–30 lines**. It should contain the **local delta** — what Claude needs to know here that isn't already in root CLAUDE.md. No repeated rules, no general guidance.
+
+Template:
+
+```markdown
+# [Package Name] — Local Context
+
+> This package lives in a monorepo. See root `CLAUDE.md` for team-wide standards.
+> This file only documents what's specific to this package.
+
+## What this is
+[One or two sentences. Inferred from README, package.json description, .csproj description, or directory name.]
+
+## Framework / runtime
+[From package.json dependencies, .csproj TargetFramework, pyproject.toml requires-python, etc. Only note if it differs from the root default.]
+
+## Build / test (local)
+[Only if commands differ from root. Otherwise omit this section.]
+```bash
+[package-specific commands, if any]
+```
+
+## Local conventions
+[Only patterns unique to this package. Examples:
+ - "No I/O — this is a pure domain package"
+ - "Client-only — no server imports"
+ - "Public API package — changes require version bump"
+ - "This service owns the <X> database schema"
+]
+
+## Dependencies / boundaries
+[Only if there are notable dependency rules:
+ - "Imports from ../core only — never from ../web"
+ - "This package is consumed by the SDK — breaking changes require a major bump"
+]
+```
+
+**Rules for per-package generation:**
+- **Omit any section you can't fill with something specific.** An empty "Local conventions" section is worse than no section.
+- If a package has no notable local delta (e.g., a trivial shared `types/` package), generate a 5-line stub:
+  ```markdown
+  # [Name] — Local Context
+
+  > See root `CLAUDE.md`. No package-specific conventions beyond the root standards.
+  ```
+- Never duplicate rules from root. If a rule appears in root, do not re-state it locally.
+- Never overwrite an existing per-package `CLAUDE.md` — skip with a note.
+
+### Update root CLAUDE.md
+
+Add a short **Monorepo Layout** block to the root CLAUDE.md (inside the 120-line cap — this earns its place because it helps Claude navigate):
+
+```markdown
+## Monorepo Layout
+
+This is a monorepo with [N] packages. Each package has its own `CLAUDE.md` with local context.
+
+- `apps/api/` — [one-line purpose]
+- `apps/web/` — [one-line purpose]
+- `packages/core/` — [one-line purpose]
+- ...
+
+Claude loads package-level `CLAUDE.md` files automatically when working in that directory.
+```
+
+If the root is already near 120 lines, collapse each entry to a single line and skip the one-line purpose.
+
 ## STEP 5: Verify & Report
 
 ```
@@ -369,10 +605,14 @@ Standards sources:
 
 Generated/Updated:
   ✓ .claude/tech-stack: [stack]
-  ✓ CLAUDE.md ([N] lines — under 200 ✓)
+  ✓ CLAUDE.md ([N] lines — under 120 ✓)
   ✓ .claude/rules/ — [N] rule files generated
   ✓ .claude/references/pre-commit-review-list.md — [generated with N items | already exists, skipped]
   ✓ .claude/settings.json — merged [N] stack-specific entries
+  [if monorepo:]
+  ✓ Monorepo detected — [N] packages found
+      ✓ Generated per-package CLAUDE.md for: [list of packages]
+      [⚠️ Skipped (already exists): list of packages]
 
 Codebase findings:
   [stack-specific summary based on scan]
@@ -393,5 +633,7 @@ Next: Try it with:
 - If existing CLAUDE.md is monolithic (>200 lines), migrate to lean structure automatically
 - If CLAUDE.md doesn't exist, generate from scratch without asking
 - The generated files should be committed to the repo
-- **Count CLAUDE.md lines before finishing.** If over 200, move content to rules files.
+- **Count CLAUDE.md lines before finishing.** Target 60–80. If over 120, move content to rules files or delete speculative rules.
+- **Per-package CLAUDE.md files are never overwritten.** If one already exists, skip it and report it as skipped. These may be hand-authored.
+- **Per-package files must be small (15–30 lines) and contain only the local delta.** If a package has no notable delta, generate the 5-line stub pointing to root.
 - The `.claude/tech-stack` file is critical — every command reads it. Make sure it's written before reporting completion.
