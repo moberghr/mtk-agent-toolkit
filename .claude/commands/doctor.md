@@ -16,14 +16,21 @@ Run ALL of these checks and report results:
 - Check if `CLAUDE.md` exists in the repo root
 - If missing: "Run `/moberg:init` to generate CLAUDE.md from codebase scan."
 
-### 2. References Valid
-Check that these files exist:
-- `.claude/references/coding-guidelines.md`
+### 2. Tech Stack Detected
+- Read `.claude/tech-stack` (single word: `dotnet`, `python`, etc.)
+- If missing: "Run `/moberg:init` to detect the tech stack and bootstrap the repo."
+- If present, verify `.claude/skills/tech-stack-{stack}/SKILL.md` exists.
+
+### 3. References Valid
+
+Always-required (any stack):
 - `.claude/references/security-checklist.md`
 - `.claude/references/testing-patterns.md`
 - `.claude/references/performance-checklist.md`
-- `.claude/references/ef-core-checklist.md`
-- `.claude/references/mediatr-slice-patterns.md`
+
+Stack-specific (read paths from the active tech stack skill's `## Reference Files`):
+- For `dotnet`: `.claude/references/dotnet/coding-guidelines.md`, `ef-core-checklist.md`, `mediatr-slice-patterns.md`, `testing-supplement.md`, `performance-supplement.md`
+- For `python`: `.claude/references/python/coding-guidelines.md`, `sqlalchemy-checklist.md`, `fastapi-patterns.md`, `testing-supplement.md`, `performance-supplement.md`
 
 For each missing file: report it and suggest running `/moberg:update`.
 

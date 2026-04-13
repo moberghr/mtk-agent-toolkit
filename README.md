@@ -2,13 +2,14 @@
 
 # Moberg Toolkit
 
-### AI-Assisted Development Framework for .NET Fintech Teams
+### AI-Assisted Development Framework with Pluggable Tech Stacks
 
-**Enforce coding standards, security compliance, and architectural consistency across every AI-generated line of code.**
+**Language-agnostic workflow skills with tech stack plugins for .NET and Python. Enforce coding standards, security compliance, and architectural consistency across every AI-generated line of code.**
 
-[![Version](https://img.shields.io/badge/version-4.2.0-blue.svg)](https://github.com/moberghr/claude-helpers/releases)
+[![Version](https://img.shields.io/badge/version-5.0.0-blue.svg)](https://github.com/moberghr/claude-helpers/releases)
 [![Platform](https://img.shields.io/badge/platform-Claude%20Code-purple.svg)](https://claude.ai/code)
 [![.NET](https://img.shields.io/badge/.NET-8.0%2B-512BD4.svg)](https://dotnet.microsoft.com/)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg)](https://python.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 [Quick Start](#-quick-start) · [Architecture](#-architecture) · [Commands](#-commands) · [Skills](#-skills) · [Review Agents](#-review-agents) · [Workflows](#-workflows) · [FAQ](#-faq) · [Contributing](#-contributing)
@@ -83,6 +84,18 @@ git clone git@github.com:moberghr/claude-helpers.git
 | **Anti-rationalization** | Every step an AI might skip has an explicit rebuttal in a "Common Rationalizations" table |
 | **Commands compose skills** | Commands are thin entry points; reusable workflow logic lives in skills |
 | **Specialists over generalists** | Review agents are narrow experts, not one agent trying to check everything |
+
+### Tech Stack Architecture
+
+The toolkit separates **language-agnostic workflow skills** (planning, batched implementation, TDD, review discipline) from **stack-specific knowledge** (build commands, ORM patterns, framework conventions). The latter lives in pluggable **tech stack skills**.
+
+| Component | Role |
+|:---|:---|
+| **Workflow skills** | Generic — work for any language. Examples: `spec-driven-development`, `incremental-implementation`, `test-driven-development`. |
+| **Tech stack skills** | Per-language: `tech-stack-dotnet`, `tech-stack-python`. Provide build/test commands, ORM guidance, framework patterns, scan recipes, and references. |
+| **`.claude/tech-stack` file** | Plain text identifier (e.g., `dotnet`). Written by `init`, read by every command and agent in Phase 0. |
+
+Adding a new language stack means writing one tech stack skill and a small set of references — the workflow skills work unchanged.
 
 ### Component Model
 
@@ -189,7 +202,9 @@ Composes 11 skills across 7 phases. Produces an executable spec, implements in v
 /moberg:implement Add user notification preferences with email and SMS channels
 ```
 
-**Flags:** `--auto` (skip approval waits) · `--terse` (minimal output) · `--verbose` (full explanations)
+**Flags:** `--terse` (minimal output) · `--verbose` (full explanations)
+
+After planning completes, you'll always see an approval question with options to **Approve & run until done** (autonomous), **Approve (interactive)**, **Edit first**, or **Revise**.
 
 #### fix
 
@@ -245,12 +260,13 @@ Skills are reusable workflow building blocks. Commands compose them; they are no
 | Skill | Trigger | What It Does |
 |:---|:---|:---|
 | **context-engineering** | Session start, phase switch, unfamiliar code | Loads project norms progressively; anchors to CLAUDE.md |
-| **spec-driven-development** | New feature, breaking change, multi-file work | Produces executable spec with change manifest and approval gates |
+| **spec-driven-development** | New feature, breaking change, multi-file work | Produces executable spec with change manifest and approval gates (language-agnostic) |
 | **planning-and-task-breakdown** | After spec approval | Writes vertical-slice batches with checkpoint criteria |
-| **incremental-implementation** | Approved multi-file work | Implements in verified batches; early review if churn > 300 lines |
-| **test-driven-development** | New behavior, bug fix, public contract change | Red → green → refactor cycle |
+| **incremental-implementation** | Approved multi-file work | Implements in verified batches; early review if churn > 300 lines (uses build/test from active tech stack) |
+| **test-driven-development** | New behavior, bug fix, public contract change | Red → green → refactor cycle (language-agnostic) |
 | **debugging-and-error-recovery** | Bug, failing test, runtime error | Reproduce first, then fix root cause within scope |
 | **source-driven-development** | Unfamiliar SDK/framework behavior | Verify from authoritative sources before implementing |
+| **tech-stack-dotnet** / **tech-stack-python** | Loaded based on `.claude/tech-stack` | Provides build/test commands, ORM guidance, framework patterns, scan recipes |
 
 ### Quality & Review
 
@@ -364,14 +380,25 @@ graph LR
     Always --> Planning --> Implementation --> Review
 ```
 
-| Reference | Phase | Content |
-|:---|:---|:---|
-| `coding-guidelines.md` | Always | Moberg C# style: naming, LINQ, file structure, MediatR patterns |
-| `security-checklist.md` | Planning | Input validation, auth, secrets, PII, audit trails |
-| `testing-patterns.md` | Planning | Test selection, EF Core providers, coverage rules |
-| `performance-checklist.md` | Implementation | AsNoTracking, projections, N+1, async, HttpClient factory |
-| `ef-core-checklist.md` | Implementation | Query rules, write rules, configuration patterns |
-| `mediatr-slice-patterns.md` | Implementation | Request/Response/Handler, Command/Query, side effects |
+References live in two places:
+- `.claude/references/*.md` — language-agnostic shared standards
+- `.claude/references/{stack}/*.md` — stack-specific supplements (loaded via the active tech stack skill's `## Reference Files`)
+
+| Reference | Location | Phase | Content |
+|:---|:---|:---|:---|
+| `security-checklist.md` | shared | Planning | Input validation, auth, secrets, PII, audit trails |
+| `testing-patterns.md` | shared | Planning | Generic test selection and coverage rules |
+| `performance-checklist.md` | shared | Implementation | Generic data access, async, connection pooling |
+| `dotnet/coding-guidelines.md` | dotnet | Always | Moberg C# style: naming, LINQ, file structure, MediatR |
+| `dotnet/ef-core-checklist.md` | dotnet | Implementation | EF Core query/write rules |
+| `dotnet/mediatr-slice-patterns.md` | dotnet | Implementation | MediatR/CQRS slice conventions |
+| `dotnet/testing-supplement.md` | dotnet | Planning | EF Core test provider rules, xUnit/NUnit conventions |
+| `dotnet/performance-supplement.md` | dotnet | Implementation | AsNoTracking, projections, N+1, HttpClient factory, Lambda |
+| `python/coding-guidelines.md` | python | Always | Python style guide *(placeholder — to be authored)* |
+| `python/sqlalchemy-checklist.md` | python | Implementation | SQLAlchemy query/write rules, sessions, migrations |
+| `python/fastapi-patterns.md` | python | Implementation | FastAPI/Django structural conventions |
+| `python/testing-supplement.md` | python | Planning | pytest fixtures, async tests, real DB providers |
+| `python/performance-supplement.md` | python | Implementation | async, connection pooling, GIL, Lambda cold starts |
 
 ---
 
@@ -558,12 +585,12 @@ claude-helpers/
 │   │   ├── doctor.md          #   Health diagnostics
 │   │   ├── quick-check.md     #   Pre-commit security scan
 │   │   └── handoff.md         #   Session state capture
-│   ├── skills/                # 16 reusable workflow skills
+│   ├── skills/                # 17 skills: 15 workflow + 2 tech stack
 │   │   ├── context-engineering/
-│   │   ├── spec-driven-development-dotnet/
+│   │   ├── spec-driven-development/         # generic
 │   │   ├── planning-and-task-breakdown/
-│   │   ├── incremental-implementation-dotnet/
-│   │   ├── test-driven-development-dotnet/
+│   │   ├── incremental-implementation/      # generic
+│   │   ├── test-driven-development/         # generic
 │   │   ├── debugging-and-error-recovery/
 │   │   ├── code-review-and-quality-fintech/
 │   │   ├── security-and-hardening-fintech/
@@ -573,20 +600,32 @@ claude-helpers/
 │   │   ├── brainstorming/
 │   │   ├── correction-capture/
 │   │   ├── using-git-worktrees/
-│   │   └── writing-skills/
+│   │   ├── writing-skills/
+│   │   ├── tech-stack-dotnet/               # .NET-specific context
+│   │   └── tech-stack-python/               # Python-specific context
 │   ├── agents/                # 3 specialist reviewers
 │   │   ├── compliance-reviewer.md
 │   │   ├── test-reviewer.md
 │   │   └── architecture-reviewer.md
-│   ├── references/            # 6 shared standards
-│   │   ├── coding-guidelines.md
-│   │   ├── testing-patterns.md
-│   │   ├── security-checklist.md
-│   │   ├── performance-checklist.md
-│   │   ├── ef-core-checklist.md
-│   │   └── mediatr-slice-patterns.md
-│   ├── manifest.json          # Distribution registry
-│   └── settings.json          # Shared permissions & hooks
+│   ├── references/            # Shared + stack-specific standards
+│   │   ├── testing-patterns.md              # generic
+│   │   ├── security-checklist.md            # generic
+│   │   ├── performance-checklist.md         # generic
+│   │   ├── dotnet/
+│   │   │   ├── coding-guidelines.md
+│   │   │   ├── ef-core-checklist.md
+│   │   │   ├── mediatr-slice-patterns.md
+│   │   │   ├── testing-supplement.md
+│   │   │   └── performance-supplement.md
+│   │   └── python/
+│   │       ├── coding-guidelines.md         # placeholder
+│   │       ├── sqlalchemy-checklist.md
+│   │       ├── fastapi-patterns.md
+│   │       ├── testing-supplement.md
+│   │       └── performance-supplement.md
+│   ├── tech-stack             # plain-text active stack identifier (per repo)
+│   ├── manifest.json          # Distribution registry (with `stack` field)
+│   └── settings.json          # Generic permissions & hooks (stack-specific merged by init)
 ├── .claude-plugin/            # Plugin marketplace config
 │   └── plugin.json
 ├── hooks/                     # Session initialization
@@ -638,7 +677,7 @@ Yes. After `init` generates the files, edit them freely. `update` will never ove
 <details>
 <summary><b>Does this work with non-.NET projects?</b></summary>
 
-The skills and references are .NET/fintech-focused. The architecture (commands, skills, agents, references) is framework-agnostic and can be adapted. See [docs/skill-anatomy.md](docs/skill-anatomy.md) for writing skills for other stacks.
+Yes. As of v5.0, workflow skills are language-agnostic and tech-stack support is pluggable. Python is shipped out of the box (`tech-stack-python`). Add a new stack by creating `tech-stack-{name}/SKILL.md` and the matching reference files under `.claude/references/{name}/`. See [docs/skill-anatomy.md](docs/skill-anatomy.md) and `.claude/skills/tech-stack-dotnet/SKILL.md` as a template.
 </details>
 
 <details>
@@ -709,6 +748,6 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 <div align="center">
 
-**Moberg Toolkit** v4.2.0 · [Moberg d.o.o.](https://www.moberg.hr) · Built for teams that ship production code, not prototypes.
+**Moberg Toolkit** v5.0.0 · [Moberg d.o.o.](https://www.moberg.hr) · Built for teams that ship production code, not prototypes.
 
 </div>

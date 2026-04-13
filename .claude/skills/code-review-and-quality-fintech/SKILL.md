@@ -30,12 +30,11 @@ Review changed code as an adversary, not a collaborator. The review must priorit
 
 1. Load standards:
    - `CLAUDE.md`
-   - `.claude/references/coding-guidelines.md`
+   - `.claude/tech-stack` to identify the active stack, then `.claude/skills/tech-stack-{stack}/SKILL.md` for stack-specific reference paths
+   - The coding guidelines and other reference files listed in the tech stack's `## Reference Files` section
    - `.claude/references/security-checklist.md`
    - `.claude/references/testing-patterns.md`
    - `.claude/references/performance-checklist.md`
-   - `.claude/references/ef-core-checklist.md`
-   - `.claude/references/mediatr-slice-patterns.md`
 2. Read the behavioral diff if provided.
 3. Review across these axes:
    - correctness

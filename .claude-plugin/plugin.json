@@ -1,7 +1,7 @@
 {
   "name": "moberg",
-  "description": "AI-assisted development toolkit for .NET fintech teams — command entry points backed by reusable skills, review agents, and compliance-first workflows",
-  "version": "4.2.0",
+  "description": "AI-assisted development toolkit with pluggable tech stacks (.NET, Python). Language-agnostic workflow skills, command entry points, review agents, and compliance-first workflows.",
+  "version": "5.0.0",
   "author": {
     "name": "Moberg d.o.o.",
     "url": "https://www.moberg.hr"
@@ -11,11 +11,13 @@
   "license": "MIT",
   "keywords": [
     "dotnet",
+    "python",
     "fintech",
     "compliance",
     "code-review",
     "implementation-workflow",
-    "skills"
+    "skills",
+    "tech-stack"
   ],
   "commands": "./.claude/commands"
 }

@@ -1,6 +1,6 @@
 ---
 name: test-reviewer
-description: Focused reviewer for test coverage, assertion quality, and verification gaps in .NET changes.
+description: Focused reviewer for test coverage, assertion quality, and verification gaps.
 allowed-tools: Read, Glob, Grep, Bash
 model: sonnet
 ---
@@ -14,10 +14,11 @@ Review the diff only for testing quality.
 Read:
 
 1. `CLAUDE.md`
-2. `.claude/rules/*.md` — Glob for all rule files and read them (especially `testing.md` §4.x)
-3. `.claude/references/testing-patterns.md`
-4. `.claude/skills/test-driven-development-dotnet/SKILL.md`
-5. The changed test files and the production files they exercise
+2. `.claude/tech-stack` to identify the active stack, then `.claude/skills/tech-stack-{stack}/SKILL.md` for stack-specific test guidance
+3. `.claude/rules/*.md` — Glob for all rule files and read them (especially `testing.md` §4.x)
+4. `.claude/references/testing-patterns.md` (shared) plus the testing supplement from the tech stack's `## Reference Files`
+5. `.claude/skills/test-driven-development/SKILL.md`
+6. The changed test files and the production files they exercise
 
 ## Check
 

@@ -1,6 +1,6 @@
 ---
-name: incremental-implementation-dotnet
-description: Use when executing an approved multi-file .NET implementation to ensure each batch compiles, tests, and stays within the approved manifest.
+name: incremental-implementation
+description: Use when executing an approved multi-file implementation to ensure each batch compiles, tests, and stays within the approved manifest.
 license: MIT
 compatibility:
   - claude-code
@@ -9,11 +9,11 @@ trigger: approved-multi-file-implementation|batched-execution
 skip_when: single-file-change|minimal-fix
 ---
 
-# Incremental Implementation for .NET
+# Incremental Implementation
 
 ## Overview
 
-Implement in thin slices. Each slice must compile, test, and remain explainable before moving on. Use `test-driven-development-dotnet` for the test strategy inside each slice and `source-driven-development` when framework behavior is uncertain.
+Implement in thin slices. Each slice must compile, test, and remain explainable before moving on. Use `test-driven-development` for the test strategy inside each slice and `source-driven-development` when framework behavior is uncertain.
 
 ## When To Use
 
@@ -30,11 +30,9 @@ Implement in thin slices. Each slice must compile, test, and remain explainable 
 1. Before each batch, re-read the relevant rules from `CLAUDE.md` and the shared references.
 2. Ask the simplicity question: what is the smallest correct implementation that could work?
 3. Implement only the files listed for the batch.
-4. Follow `test-driven-development-dotnet` for tests in the same batch.
+4. Follow `test-driven-development` for tests in the same batch.
 5. Use `source-driven-development` when any framework, library, or SDK behavior is uncertain.
-6. Run the batch checkpoint:
-   - `dotnet build`
-   - `dotnet test` or the relevant test project
+6. Run the batch checkpoint using the build and test commands from the active tech stack skill's `## Build & Test Commands`.
 7. Read `.claude/references/quick-check-list.md` if present and fix any violations immediately.
 8. Mark the batch complete in `tasks/todo.md`.
 9. **Churn check:** After completing each batch, run `git diff --stat` and count net lines changed. If cumulative changes across batches exceed 300 lines, pause and trigger an early review checkpoint:
@@ -42,7 +40,7 @@ Implement in thin slices. Each slice must compile, test, and remain explainable 
    - Assess whether the scope is still within the approved manifest
    - If changes exceed 500 lines without a review, stop and run `compliance-reviewer` before continuing
    - This catches large unplanned changes mid-implementation rather than at the end
-10. After all batches, run a full `dotnet test` and write an explicit behavioral diff.
+10. After all batches, run the full test command from the tech stack and write an explicit behavioral diff.
 
 ## Rules
 

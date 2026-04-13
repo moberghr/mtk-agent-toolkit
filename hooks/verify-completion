@@ -12,5 +12,5 @@ if echo "$MSG" | grep -qiE '\b(done|complete[d]?|fixed|verified|finished)\b'; th
   if echo "$MSG" | grep -qE '(exit code|passed|failed|error[s]? [0-9]|warning[s]? [0-9]|Build succeeded|PASSED|FAILED|\$ |```|test[s]? ran)'; then
     exit 0
   fi
-  echo "VERIFICATION GAP: Run the verification command and cite its output before reporting done. For .NET: run 'dotnet build && dotnet test', cite exit code and pass/fail counts. For toolkit: run 'bash scripts/validate-toolkit.sh', cite 'Toolkit validation passed.' For fixes: run the specific reproduction step."
+  echo "VERIFICATION GAP: Run the verification command from your active tech stack and cite its output before reporting done. The build and test commands are in .claude/skills/tech-stack-{stack}/SKILL.md (## Build & Test Commands). For toolkit work: run 'bash scripts/validate-toolkit.sh' and cite 'Toolkit validation passed.' For fixes: run the specific reproduction step. Cite exit code and pass/fail counts."
 fi

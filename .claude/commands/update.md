@@ -80,7 +80,7 @@ Will add (new in upstream):
 
 Unchanged:
   .claude/commands/quick-check.md
-  .claude/references/coding-guidelines.md
+  .claude/references/dotnet/coding-guidelines.md
 
 Protected (never touched):
   CLAUDE.md

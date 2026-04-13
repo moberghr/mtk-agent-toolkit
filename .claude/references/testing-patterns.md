@@ -1,6 +1,6 @@
 # Testing Patterns
 
-Shared guidance for test design in Moberg projects.
+Shared, language-agnostic testing guidance. For stack-specific rules, see the active tech stack skill's `## Test Level Guidance` and the testing supplement in `.claude/references/{stack}/`.
 
 ## Core Rules
 
@@ -11,15 +11,13 @@ Shared guidance for test design in Moberg projects.
 
 ## Test Selection
 
-- Unit tests: pure logic, validators, mapping, branching rules.
-- Integration tests: handlers, API endpoints, persistence, authorization, serialization.
-- End-to-end tests: only when the project already uses them and the behavior crosses major boundaries.
+- **Unit tests:** pure logic, validators, mapping, branching rules.
+- **Integration tests:** behavior that depends on framework infrastructure (handlers, endpoints, persistence, authorization, serialization).
+- **End-to-end tests:** only when the project already uses them and the behavior crosses major boundaries.
 
-## EF Core Guidance
+## Provider Selection
 
-- Do not rely on `UseInMemoryDatabase` for behavior that depends on relational semantics.
-- Prefer SQLite or project-standard integration infrastructure when query translation matters.
-- Verify projections, filtering, pagination, and transaction behavior with realistic providers.
+The test provider must validate the behavior under risk. In-memory or mock providers can mask provider-specific issues. See your tech stack's testing supplement for stack-specific provider rules.
 
 ## Review Questions
 

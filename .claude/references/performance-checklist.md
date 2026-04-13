@@ -1,23 +1,24 @@
 # Performance Checklist
 
-Quick performance review prompts for .NET services.
+Shared, language-agnostic performance rules. For stack-specific rules, see the active tech stack skill's reference files (e.g., `.claude/references/dotnet/performance-supplement.md`).
 
 ## Data Access
 
-- Use `AsNoTracking()` on read-only EF Core queries.
-- Prefer projections over loading full entities for DTO responses.
 - Avoid N+1 query patterns and database calls inside loops.
-- Add pagination to list endpoints that can grow.
+- Add pagination to list endpoints that can grow unbounded.
+- Fetch only the data you need — avoid loading full objects when projections will do.
+- Keep filtering in the database, not after materialization.
 
 ## Async And Cancellation
 
-- Propagate `CancellationToken` through async calls.
-- Use async database APIs for I/O-bound work.
+- Use async I/O for database, HTTP, and file operations.
+- Propagate cancellation tokens / abort signals through async chains.
+- Do not block async code with synchronous waits.
 
 ## Memory And Network
 
 - Avoid loading unbounded result sets into memory.
-- Reuse `HttpClient` through `IHttpClientFactory`.
+- Reuse HTTP connection pools rather than creating new clients per request.
 - Keep expensive remote calls outside tight loops when possible.
 
 ## Review Questions
@@ -25,3 +26,4 @@ Quick performance review prompts for .NET services.
 - Does this change create a scaling bottleneck under realistic load?
 - Is there avoidable extra data fetching?
 - Are there missing cancellation or pagination protections?
+- Is the connection/resource management correct under concurrent load?

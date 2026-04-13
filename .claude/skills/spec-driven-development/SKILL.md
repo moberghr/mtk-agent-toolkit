@@ -1,5 +1,5 @@
 ---
-name: spec-driven-development-dotnet
+name: spec-driven-development
 description: Use when the task is a new feature, breaking change, multi-file change, or any work where approval should happen before coding begins.
 license: MIT
 compatibility:
@@ -9,7 +9,7 @@ trigger: new-feature|breaking-change|multi-file-change|approval-required
 skip_when: typo-fix|config-update|single-line-change
 ---
 
-# Spec-Driven Development for .NET
+# Spec-Driven Development
 
 ## Overview
 
@@ -17,7 +17,7 @@ Write the implementation spec before writing code. The spec is the shared source
 
 ## When To Use
 
-- New endpoints or handlers
+- New endpoints, handlers, routes, or views
 - Database changes or migrations
 - Multi-file work
 - Breaking changes
@@ -34,7 +34,7 @@ Write the implementation spec before writing code. The spec is the shared source
 
 1. Read standards in this order:
    - `CLAUDE.md`
-   - `.claude/references/coding-guidelines.md`
+   - The coding guidelines from the active tech stack skill's `## Reference Files`
    - `.claude/references/security-checklist.md`
    - `.claude/references/testing-patterns.md`
    - `.claude/references/architecture-principles.md` if present
@@ -63,7 +63,7 @@ Write the implementation spec before writing code. The spec is the shared source
    - Save to `docs/specs/YYYY-MM-DD-<feature-slug>.md` using the current date and a kebab-case slug of the feature name.
    - This enables session recovery, human review outside chat, and reuse across sessions.
    - Add `docs/specs/` to `.gitignore` if not already present — specs are working artifacts, not committed deliverables.
-10. If not in auto mode, stop for approval before implementation.
+10. Always stop for approval before implementation. When invoked from `/moberg:implement`, this means handing control back to the command's Phase 2.5 approval gate (which uses `AskUserQuestion`). Do not silently continue to implementation.
 
 ## Required Outputs
 
@@ -88,7 +88,7 @@ Write the implementation spec before writing code. The spec is the shared source
 - Planning after code has already started
 - Files likely to be touched but omitted from the change manifest
 - Missing tests for new public behavior
-- Approval gate skipped when not explicitly in auto mode
+- Approval gate skipped or merged into implementation
 - Success criteria written as vague aspirations instead of verifiable outcomes
 
 ## Verification

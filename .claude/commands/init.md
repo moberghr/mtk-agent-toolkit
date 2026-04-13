@@ -1,26 +1,66 @@
 ---
-description: Bootstrap a repo for implement. Scans codebase, pulls coding guidelines and architecture principles, generates a project-specific CLAUDE.md. Run this once per repo.
+description: Bootstrap a repo for implement. Detects tech stack, scans codebase, pulls coding guidelines, and generates a project-specific CLAUDE.md. Run this once per repo.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 ---
 
 # Moberg Init — Bootstrap Repository for AI-Assisted Development
 
 You are setting up a repository for the `/moberg:implement` workflow.
-Your job is to scan this codebase and generate a tailored `CLAUDE.md` that the
-implementation and review agents will use as their source of truth.
+Your job is to detect the tech stack, scan the codebase, and generate a tailored `CLAUDE.md` that the implementation and review agents will use as their source of truth.
 
 This bootstrap also prepares the repo for the shared skill layer and OpenCode routing.
+
+## STEP 0: Detect Tech Stack
+
+Scan the repo root for tech stack markers:
+
+| Marker files | Tech stack |
+|---|---|
+| `*.sln`, `*.slnx`, `*.csproj` | `dotnet` |
+| `pyproject.toml`, `setup.py`, `requirements.txt`, `Pipfile` | `python` |
+| `package.json` (without `*.csproj`) | `node` (not yet supported — stop and warn) |
+| `go.mod` | `go` (not yet supported — stop and warn) |
+
+Detection commands:
+```bash
+DOTNET=$(find . -maxdepth 3 -name "*.csproj" -o -name "*.sln" -o -name "*.slnx" 2>/dev/null | head -1)
+PYTHON=$(find . -maxdepth 2 -name "pyproject.toml" -o -name "setup.py" -o -name "requirements.txt" -o -name "Pipfile" 2>/dev/null | head -1)
+```
+
+If multiple stacks detected, ask the engineer:
+```
+question: "Multiple tech stacks detected. Which is the primary stack for this repo?"
+header: "Tech stack"
+options:
+  - label: "dotnet"
+    description: ".NET / C# is the primary stack"
+  - label: "python"
+    description: "Python is the primary stack"
+```
+
+If no supported stack detected, stop and tell the engineer to add a `tech-stack-{name}/` skill or open an issue.
+
+Write the result to `.claude/tech-stack` (plain text, single word):
+```bash
+echo "dotnet" > .claude/tech-stack
+```
+
+Then load `.claude/skills/tech-stack-{stack}/SKILL.md` — this is the source of truth for build commands, scan recipes, and reference paths used in the rest of init.
 
 ## STEP 1: Pull External Standards
 
 ### Coding Guidelines
-Fetch our coding guidelines from GitHub. Run:
+
+Check the active tech stack skill's `## Coding Style Reference` section. If it lists a remote source URL, fetch it:
+
+For `dotnet`:
 ```
-curl -sL https://raw.githubusercontent.com/moberghr/coding-guidelines/main/CodingStyle.md -o .claude/references/coding-guidelines.md
+curl -sL https://raw.githubusercontent.com/moberghr/coding-guidelines/main/CodingStyle.md -o .claude/references/dotnet/coding-guidelines.md
 ```
 
-If the fetch fails (network restrictions), check if `.claude/references/coding-guidelines.md`
-already exists. If not, tell the engineer to manually place the file there.
+For `python`: see the placeholder in `.claude/references/python/coding-guidelines.md`. If it's empty, leave it for the team to fill in when starting their first Python project.
+
+If the fetch fails (network restrictions), check if the file already exists. If not, tell the engineer to manually place it.
 
 ### Architecture Principles
 Check if `.claude/references/architecture-principles.md` exists.
@@ -40,72 +80,26 @@ If the engineer picks "Generate from codebase", generate a starter architecture 
 
 ## STEP 2: Scan the Codebase
 
-Analyze the repository to understand how the team actually works. Collect:
+Use the **`## Scan Recipes`** section from the active tech stack skill (`.claude/skills/tech-stack-{stack}/SKILL.md`). Each tech stack provides its own scanning bash blocks.
 
-### Project Structure
-- Run `find . -name "*.csproj" -not -path "*/bin/*" -not -path "*/obj/*"` to find all projects
-- Run `find . -name "*.sln"` to find solutions
-- Map the project dependency graph from `.csproj` references
-- Identify the layer structure (Api, Application, Domain, Infrastructure, Tests, Shared)
+Run the recipes in order:
+1. Project Structure
+2. Patterns In Use
+3. Data Layer
+4. Infrastructure
+5. Naming Conventions
+6. Testing Patterns
+7. Configuration
 
-### Patterns in Use
-- Check for MediatR: `grep -rl "IRequest\|IRequestHandler\|IMediator" --include="*.cs" | head -20`
-- Check for CQRS: `find . -path "*/Commands/*" -o -path "*/Queries/*" | head -20`
-- Check for Result pattern: `grep -rl "Result<\|Result\.Success\|Result\.Failure" --include="*.cs" | head -10`
-- Check for domain events: `grep -rl "IDomainEvent\|DomainEvent\|INotification" --include="*.cs" | head -10`
-- Check for FluentValidation: `grep -rl "AbstractValidator\|IRuleBuilder" --include="*.cs" | head -10`
-- Check for AutoMapper or Mapster: `grep -rl "IMapper\|CreateMap\|TypeAdapterConfig" --include="*.cs" | head -10`
-- Check for EF Core: `grep -rl "DbContext\|DbSet\|OnModelCreating" --include="*.cs" | head -10`
+Then run these stack-agnostic checks:
+```bash
+# Git Conventions
+git log --oneline -20
+git branch -a | head -20
+find . -name "pull_request_template*"
+```
 
-### Data Layer Patterns (deep scan)
-- EF Core configuration style: `find . -name "*Configuration*.cs" -not -path "*/bin/*" | head -10`
-- Fluent API vs data annotations: `grep -rl "IEntityTypeConfiguration\|modelBuilder\.\|HasKey\|HasIndex" --include="*.cs" | head -5`
-- Raw SQL usage: `grep -rn "FromSqlRaw\|ExecuteSqlRaw\|SqlQuery" --include="*.cs" | head -5`
-- AsNoTracking usage: `grep -rn "AsNoTracking" --include="*.cs" | head -5`
-- Select projections vs Include: compare counts of `grep -rc "\.Include(" --include="*.cs" | grep -v ":0"` vs `grep -rc "\.Select(" --include="*.cs" | grep -v ":0"`
-- Connection string patterns: `grep -rn "ConnectionString\|UseNpgsql\|UseSqlServer\|UseInMemory" --include="*.cs" | head -5`
-- Data API / non-ORM access: `grep -rl "DataApiHelper\|IAmazonRDSDataService\|Dapper\|SqlCommand" --include="*.cs" | head -5`
-
-### Infrastructure Patterns
-- AWS services: `grep -rh "Amazon\.\|AWS\.\|AWSSDK" --include="*.cs" --include="*.csproj" | sort -u | head -20`
-- CDK/IaC: `find . -name "*.csproj" -path "*cdk*" -o -name "*.csproj" -path "*Cdk*" | head -5`
-- Lambda patterns: `grep -rl "ILambdaContext\|FunctionHandler\|LambdaSerializer" --include="*.cs" | head -5`
-- VPC/networking: `grep -rn "Vpc\|SubnetType\|SecurityGroup\|NatGateway" --include="*.cs" | head -10`
-- Docker: `find . -name "Dockerfile" -o -name "docker-compose*"`
-- SQS/SNS/messaging: `grep -rl "IAmazonSQS\|IAmazonSNS\|SendMessageAsync\|SQSEvent" --include="*.cs" | head -5`
-- Secrets Manager: `grep -rl "SecretsManager\|GetSecretValue\|SecretResolver" --include="*.cs" | head -5`
-
-### Naming Conventions Actually Used
-- Sample 5-10 handler/controller files: check route patterns, naming
-- Sample 5-10 service files: check method naming, async patterns
-- Sample 5-10 entity files: check property naming, field prefixes
-- Check if `_camelCase` field convention is followed
-- Check lambda parameter naming (x/y/z vs descriptive)
-
-### Testing Patterns
-- Find test projects: `find . -name "*Tests*" -type d | head -10`
-- Check test framework: `grep -rl "xUnit\|NUnit\|MSTest\|\[Fact\]\|\[Test\]" --include="*.cs" | head -5`
-- Check mocking framework: `grep -rl "Moq\|NSubstitute\|FakeItEasy" --include="*.cs" | head -5`
-- Check for EF Core test patterns: `grep -rl "UseInMemoryDatabase\|UseSqlite\|InMemory" --include="*.cs" | head -5`
-- Sample test naming patterns from existing tests
-- Check for integration test base classes
-
-### Database Patterns
-- Check migration history: `find . -path "*/Migrations/*" -name "*.cs" | wc -l`
-- Sample an entity to check: timestamps, soft delete, money types
-- Check for audit trail tables/entities
-- Check connection string patterns (Secrets Manager, env vars, etc.)
-
-### Configuration & DI
-- Check for `appsettings.json` patterns
-- Check for IOptions usage
-- Check for DI registration patterns (extension methods vs Program.cs inline)
-- Check DI lifetimes: `grep -rn "AddSingleton\|AddScoped\|AddTransient\|AddDbContext" --include="*.cs" | head -10`
-
-### Git Conventions
-- Check recent commit messages: `git log --oneline -20`
-- Check branch naming: `git branch -a | head -20`
-- Check for PR templates: `find . -name "pull_request_template*"`
+Record what you find — this is the input for Step 3.
 
 ## STEP 3: Generate CLAUDE.md + Rules Files
 
@@ -122,7 +116,7 @@ Create `CLAUDE.md` and `.claude/rules/` files following the templates below.
 
 1. Read the existing CLAUDE.md and check if `.claude/rules/` exists
 2. **If monolithic CLAUDE.md (>200 lines, contains full rule sections):**
-   - Extract each section (§1–§9) into the corresponding `.claude/rules/` file
+   - Extract each section into the corresponding `.claude/rules/` file
    - Replace CLAUDE.md with the lean template, preserving project-specific content
 3. **If lean CLAUDE.md + `.claude/rules/` already exists:**
    - Compare each rules file against scan findings
@@ -144,7 +138,8 @@ Create `CLAUDE.md` and `.claude/rules/` files following the templates below.
 # [Project Name] — Engineering Standards
 
 > Auto-generated by init on [date]. Based on:
-> - Moberg HR coding guidelines (`.claude/references/coding-guidelines.md`)
+> - Tech stack: [stack name from `.claude/tech-stack`]
+> - Coding guidelines (`.claude/references/{stack}/coding-guidelines.md`)
 > - Architecture principles (`.claude/references/architecture-principles.md`) [or "not found"]
 > - Codebase scan of this repository
 >
@@ -166,15 +161,22 @@ Create `CLAUDE.md` and `.claude/rules/` files following the templates below.
 
 ---
 
-## Build & Test
+## Tech Stack
 
-[Generate based on scan: actual build/test commands for this project]
-[e.g., `dotnet build`, `dotnet test`, specific solution files, test filters]
+- **Active stack:** [from `.claude/tech-stack`]
+- **Build command:** [from tech stack skill `## Build & Test Commands`]
+- **Test command:** [from tech stack skill `## Build & Test Commands`]
+- **Format command:** [from tech stack skill `## Format Command`]
+
+For framework-specific guidance, see `.claude/skills/tech-stack-{stack}/SKILL.md`.
 
 ---
 
 ## Project Profile
 
+[Generate based on scan findings — adapt fields per stack]
+
+For dotnet:
 - **Framework:** .NET [version]
 - **Data layer:** [EF Core / Dapper / Data API / etc.]
 - **Patterns:** [MediatR/CQRS, Result pattern, FluentValidation, etc.]
@@ -182,23 +184,20 @@ Create `CLAUDE.md` and `.claude/rules/` files following the templates below.
 - **Database:** [PostgreSQL / SQL Server / etc.]
 - **Test stack:** [xUnit/NUnit + Moq/NSubstitute + InMemory/SQLite/TestContainers]
 
+For python:
+- **Framework:** [Django / FastAPI / Flask / etc.]
+- **Python version:** [from pyproject.toml or .python-version]
+- **Data layer:** [SQLAlchemy / Django ORM / Tortoise / etc.]
+- **Test stack:** [pytest / unittest, mocking framework]
+- **Hosting:** [Lambda / ECS / docker / etc.]
+
 ---
 
 ## Critical Rules (Always Apply)
 
-These are the highest-impact rules — the ones most commonly violated or most
-damaging when broken. Full detailed standards live in `.claude/rules/`.
+These are the highest-impact rules — the ones most commonly violated or most damaging when broken. Full detailed standards live in `.claude/rules/`.
 
-[Generate the top 5-10 most critical rules from across all categories, based on
- what this project actually uses. Pick the rules that, if violated, cause the most
- damage. Number them §0.1–§0.N.]
-
-Example:
-- **§0.1** No hardcoded secrets, connection strings, or API keys
-- **§0.2** `AsNoTracking()` on all read-only EF Core queries
-- **§0.3** Every new public method must have test coverage
-- **§0.4** Audit logs for financial state changes, in the same transaction
-- **§0.5** No PII in logs, error messages, or exceptions
+[Generate the top 5-10 most critical rules from across all categories, based on what this project actually uses. Pick the rules that, if violated, cause the most damage. Number them §0.1–§0.N.]
 
 ---
 
@@ -212,124 +211,35 @@ Detailed rules in `.claude/rules/` (auto-loaded by Claude Code):
 | `architecture.md` | Layers, slices, DI, patterns | §2.x |
 | `coding-style.md` | Project-specific style overrides | §3.x |
 | `testing.md` | Frameworks, coverage, naming | §4.x |
-| `data-layer.md` | EF Core, queries, connections | §5.x |
-| `performance.md` | Async, caching, HttpClient | §6.x |
-| `infrastructure.md` | CDK, Lambda, Docker, AWS | §7.x |
+| `data-layer.md` | ORM, queries, connections | §5.x |
+| `performance.md` | Async, caching, connection pooling | §6.x |
+| `infrastructure.md` | IaC, containers, cloud services | §7.x |
 | `git-workflow.md` | Branches, commits, PRs | §8.x |
 | `project-specific.md` | Patterns unique to this repo | §9.x |
 
 Full reference docs (read on-demand by commands and review agents):
-- `.claude/references/coding-guidelines.md` — Moberg coding style guide
+- `.claude/references/{stack}/coding-guidelines.md` — Stack-specific coding style
 - `.claude/references/architecture-principles.md` — Architecture principles
-- `.claude/references/security-checklist.md` — Security checklist
+- `.claude/references/security-checklist.md` — Security checklist (shared)
+- Stack-specific references listed in `.claude/skills/tech-stack-{stack}/SKILL.md` `## Reference Files`
 ````
 
 ### .claude/rules/ File Templates
 
-Generate each file below. **Only generate files for sections relevant to this project.**
-Skip files for technologies the project doesn't use (no EF Core → skip `data-layer.md`,
-no infrastructure code → skip `infrastructure.md`).
+Generate each file below. **Only generate files for sections relevant to this project.** Skip files for technologies the project doesn't use.
 
-Each rules file target: **30–80 lines**. Be concise. If a section is larger, tighten the
-wording or split into sub-files.
+Each rules file target: **30–80 lines**. Be concise.
 
-#### `.claude/rules/security.md` (always generate)
-```markdown
-# Security & Compliance (§1)
-
-> Generated by init on [date]. Cite rules as §1.N in reviews.
-
-[Generate based on: codebase findings + fintech defaults]
-[Include: auth patterns found, secrets management approach, audit patterns, PII rules]
-[Number every rule: §1.1, §1.2, etc.]
-```
-
-#### `.claude/rules/architecture.md` (always generate)
-```markdown
-# Architecture Patterns (§2)
-
-> Generated by init on [date]. Cite rules as §2.N in reviews.
-
-[Generate based on: architecture-principles.md + actual patterns found]
-[Include: layer structure, dependency direction, handler/service splits, DI patterns]
-[Number every rule: §2.1, §2.2, etc.]
-```
-
-#### `.claude/rules/coding-style.md` (generate only if project-specific overrides exist)
-```markdown
-# Coding Style — Project Overrides (§3)
-
-> Generated by init on [date]. Cite rules as §3.N in reviews.
-> Full coding guidelines: `.claude/references/coding-guidelines.md`
-> This file contains ONLY project-specific additions or overrides.
-
-[Generate based on: conventions found in THIS codebase that differ from or extend the guidelines]
-[Do NOT duplicate content from coding-guidelines.md — reference it instead]
-[If no project-specific overrides exist, skip this file entirely]
-[Number every rule: §3.1, §3.2, etc.]
-```
-
-#### `.claude/rules/testing.md` (generate if tests exist)
-```markdown
-# Testing Standards (§4)
-
-> Generated by init on [date]. Cite rules as §4.N in reviews.
-
-[Generate based on: test patterns found + coding guidelines]
-[Include: frameworks, naming conventions, EF Core test providers, integration test patterns]
-[Number every rule: §4.1, §4.2, etc.]
-```
-
-#### `.claude/rules/data-layer.md` (generate if EF Core / data access found)
-```markdown
-# Data Layer (§5)
-
-> Generated by init on [date]. Cite rules as §5.N in reviews.
-
-[Generate based on: actual data access patterns found]
-[Include: configuration style, AsNoTracking, projections, connections, entity conventions]
-[Number every rule: §5.1, §5.2, etc.]
-```
-
-#### `.claude/rules/performance.md` (always generate)
-```markdown
-# Performance Standards (§6)
-
-> Generated by init on [date]. Cite rules as §6.N in reviews.
-
-[Generate based on: patterns found + sensible defaults for fintech]
-[Number every rule: §6.1, §6.2, etc.]
-```
-
-#### `.claude/rules/infrastructure.md` (generate only if infra code found)
-```markdown
-# Infrastructure (§7)
-
-> Generated by init on [date]. Cite rules as §7.N in reviews.
-
-[Generate based on: CDK/IaC patterns, AWS services, Lambda, VPC, Docker]
-[Number every rule: §7.1, §7.2, etc.]
-```
-
-#### `.claude/rules/git-workflow.md` (always generate)
-```markdown
-# Git & Workflow (§8)
-
-> Generated by init on [date]. Cite rules as §8.N in reviews.
-
-[Generate based on: coding guidelines + commit history + branch patterns]
-[Number every rule: §8.1, §8.2, etc.]
-```
-
-#### `.claude/rules/project-specific.md` (generate if unique patterns found)
-```markdown
-# Project-Specific Patterns (§9)
-
-> Generated by init on [date]. Cite rules as §9.N in reviews.
-
-[Anything unique to THIS repo: handler patterns, domain concepts, shared utilities]
-[Number every rule: §9.1, §9.2, etc.]
-```
+The rule file templates are largely the same as before — adapt the content per tech stack:
+- `security.md` — generic, applies to all stacks
+- `architecture.md` — based on actual patterns found
+- `coding-style.md` — project-specific overrides only (don't duplicate the coding guidelines file)
+- `testing.md` — based on test patterns found, reference the tech stack's testing supplement
+- `data-layer.md` — based on actual data access patterns (EF Core / SQLAlchemy / etc.)
+- `performance.md` — based on actual performance considerations
+- `infrastructure.md` — IaC, containers, cloud services found
+- `git-workflow.md` — commit and branch conventions
+- `project-specific.md` — anything unique
 
 ### Rules for Generation
 - **Root CLAUDE.md must stay under 200 lines.** Count before finishing. If over, move detail to rules files.
@@ -348,56 +258,58 @@ Create `.claude/rules/` if it doesn't exist:
 mkdir -p .claude/rules
 ```
 
-### Commands, Skills, Agents
-Ensure the following files exist in `.claude/commands/`:
-- `implement.md` — the main implementation loop command
-- `update.md` — toolkit sync command
-- `validate.md` — toolkit validation command
-- `quick-check.md` — lightweight pre-commit security scan
+### Settings Merge
 
-Also ensure these exist:
-- `.claude/skills/spec-driven-development-dotnet/SKILL.md`
+Read the active tech stack skill's `## Settings Additions` section. Merge those entries into `.claude/settings.json`:
+- `allowedTools` — union with existing
+- `deny` — union with existing
+- `hooks.PostToolUse` — append the stack's format hook
+
+### Commands, Skills, Agents
+Ensure the following files exist:
+- `.claude/commands/implement.md` — main implementation loop
+- `.claude/commands/fix.md` — quick fix loop
+- `.claude/commands/update.md` — toolkit sync
+- `.claude/commands/validate.md` — toolkit validation
+- `.claude/commands/quick-check.md` — pre-commit scan
+- `.claude/skills/spec-driven-development/SKILL.md`
+- `.claude/skills/incremental-implementation/SKILL.md`
+- `.claude/skills/test-driven-development/SKILL.md`
 - `.claude/skills/planning-and-task-breakdown/SKILL.md`
-- `.claude/skills/incremental-implementation-dotnet/SKILL.md`
 - `.claude/skills/debugging-and-error-recovery/SKILL.md`
 - `.claude/skills/code-review-and-quality-fintech/SKILL.md`
+- `.claude/skills/tech-stack-{stack}/SKILL.md` — for the active stack
 - `.claude/agents/compliance-reviewer.md`
 - `.claude/agents/test-reviewer.md`
 - `.claude/agents/architecture-reviewer.md`
 - `AGENTS.md`
 
-If any are missing, tell the engineer to run `/moberg:update` to pull them
-from the central claude-helpers repo. If that command is also missing, tell them to
-copy the `.claude/` folder from the claude-helpers repo.
+If any are missing, tell the engineer to run `/moberg:update`.
 
 ### Quick Check List
 
-Generate `.claude/references/quick-check-list.md` based on what you found in the codebase scan.
-This is the inline verification checklist that `implement` and `fix` read after
-every batch of code. It should contain only checks relevant to THIS project.
+Generate `.claude/references/quick-check-list.md` based on scan findings. Use stack-specific items from the tech stack skill where applicable.
 
-If the file already exists, leave it alone — the engineer may have curated it.
+If the file already exists, leave it alone.
 
-If creating from scratch, include items based on what the codebase actually uses:
+**Selection rules (per stack):**
 
-```markdown
-# Quick Check List
+For dotnet:
+- If EF Core found: `AsNoTracking` on reads, `Select()` over `Include()`, `CancellationToken` propagated
+- If MediatR found: one `SaveChanges` per handler, validate request
+- If Lambda found: DbContext disposal, cold start considerations
 
-> Project-specific inline verification. Read by implement and fix after each batch.
-> Curate this list — add checks for patterns your team cares about, remove irrelevant ones.
+For python:
+- If SQLAlchemy found: session management, eager/lazy loading, N+1 patterns
+- If FastAPI found: dependency injection, Pydantic validation
+- If Django found: select_related/prefetch_related, transaction.atomic
 
-- [ ] [item based on scan findings]
-- [ ] [item based on scan findings]
-...
-```
+Always include (any stack):
+- No PII in logs
+- Tests for new public methods
+- No hardcoded secrets
 
-**Selection rules:**
-- If EF Core found: include `AsNoTracking` on reads, `Select()` over `Include()`, `CancellationToken` propagated
-- If MediatR found: include one `SaveChanges` per handler, validate request
-- If Lambda found: include DbContext disposal, cold start considerations
-- If financial data found: include no PII in logs, audit trail on state changes
-- Always include: `var` for locals, braces on all control flow, tests for new public methods
-- **Max 10 items.** Pick the ones most likely to be violated. This list must be fast to scan.
+**Max 10 items.** Pick the ones most likely to be violated.
 
 ### Tasks Directory
 Create the `tasks/` directory if it doesn't exist:
@@ -405,110 +317,45 @@ Create the `tasks/` directory if it doesn't exist:
 mkdir -p tasks
 ```
 
-Create `tasks/lessons.md` if it doesn't exist:
-```markdown
-# Lessons Learned
+Create `tasks/lessons.md` if it doesn't exist (header only).
 
-> This file captures patterns and mistakes discovered during AI-assisted development.
-> It is read at the start of every `/moberg:implement` session.
-> Commit this file — it is institutional memory for the team.
-
-```
-
-Add `tasks/todo.md` to `.gitignore` if not already there (it is ephemeral per-feature work):
-```bash
-echo "tasks/todo.md" >> .gitignore
-```
-
-Do NOT gitignore `tasks/lessons.md` — it should be committed and shared.
+Add `tasks/todo.md` to `.gitignore` if not already there. Do NOT gitignore `tasks/lessons.md`.
 
 ### Cross-Tool AGENTS.md
 
-Generate a root-level `AGENTS.md` for cross-tool compatibility (Cursor, Copilot, Codex, Gemini CLI).
-This file follows the open AGENTS.md standard (agents.md) and contains the subset of rules that
-any AI coding tool needs — no Claude-specific features.
+Generate a root-level `AGENTS.md` for cross-tool compatibility (Cursor, Copilot, Codex, Gemini CLI). Stack-aware: include the active tech stack's build/test commands and key conventions.
 
-If `AGENTS.md` already exists, leave it alone — it may have been customized.
-
-If creating from scratch, generate based on codebase scan findings:
-
-```markdown
-# AGENTS.md
-
-> Cross-tool AI coding instructions. Works with Claude Code, Cursor, Copilot, Codex, and others.
-> For Claude-specific rules: see CLAUDE.md and .claude/rules/.
-
-## Build & Test
-
-[Generate: actual build and test commands for this project]
-
-## Code Style
-
-[Generate: top 5-8 most critical coding conventions from coding-guidelines.md]
-[Include only rules the AI is likely to violate — skip obvious ones]
-
-## Architecture
-
-[Generate: layer structure, dependency direction, handler/service splits]
-[Keep to 3-5 bullet points]
-
-## Testing
-
-[Generate: test framework, naming conventions, what must be tested]
-
-## Security
-
-[Generate: top 3-5 security rules relevant to this project]
-
-## Do Not
-
-[Generate: 3-5 things the AI should never do in this codebase]
-```
-
-**Rules for generation:**
-- Keep under 100 lines. This file loads into every AI tool on every request.
-- Use plain markdown — no YAML frontmatter, no tool-specific syntax.
-- Include only rules that are NOT obvious from the code itself.
-- Focus on things the AI would get wrong without instruction.
+If `AGENTS.md` already exists, leave it alone.
 
 ## STEP 5: Verify & Report
-
-Present a summary to the engineer:
 
 ```
 ✅ MOBERG INIT COMPLETE
 
 Project: [name]
+Tech stack: [stack name from .claude/tech-stack]
+
 Standards sources:
-  ✓ Coding guidelines: .claude/references/coding-guidelines.md
+  ✓ Tech stack skill: .claude/skills/tech-stack-{stack}/SKILL.md
+  ✓ Coding guidelines: .claude/references/{stack}/coding-guidelines.md
   ✓ Architecture principles: .claude/references/architecture-principles.md [or ⚠️ not found]
-  ✓ Codebase scan: [N] .cs files across [N] projects
+  ✓ Codebase scan: [N] files across [N] projects/modules
 
 Generated/Updated:
+  ✓ .claude/tech-stack: [stack]
   ✓ CLAUDE.md ([N] lines — under 200 ✓)
-  ✓ .claude/rules/ — [N] rule files generated:
-      [list each file with rule count, e.g., "security.md (§1.1–§1.6)"]
+  ✓ .claude/rules/ — [N] rule files generated
   ✓ .claude/references/quick-check-list.md — [generated with N items | already exists, skipped]
+  ✓ .claude/settings.json — merged [N] stack-specific entries
 
 Codebase findings:
-  - Framework: .NET [version]
-  - Data layer: [EF Core / Data API / Dapper / etc.]
-  - Patterns: [MediatR/CQRS/Handler/etc.]
-  - Test framework: [xUnit/NUnit/etc.] + [mocking framework]
-  - Infrastructure: [Lambda/Docker/CDK/etc.]
-  - Database: [PostgreSQL/SQL Server/none/etc.]
-  - [N] conventions matched guidelines
-  - [N] potential conflicts flagged (see ⚠️ markers in rules files)
+  [stack-specific summary based on scan]
 
 Commands available:
   /moberg:implement  — Full feature loop
   /moberg:fix        — Quick fix (1-3 files)
   /moberg:quick-check — Fast security scan
   /moberg:update     — Pull latest toolkit
-
-Working directories:
-  ✓ tasks/lessons.md — [created | already exists with N entries]
-  ✓ tasks/todo.md — [gitignored]
 
 Next: Try it with:
   /moberg:implement Add [your feature description here]
@@ -519,5 +366,6 @@ Next: Try it with:
 - **Default to merge mode** when CLAUDE.md already exists — don't ask overwrite/merge/abort
 - If existing CLAUDE.md is monolithic (>200 lines), migrate to lean structure automatically
 - If CLAUDE.md doesn't exist, generate from scratch without asking
-- The generated files should be committed to the repo — they're documentation, not secrets
-- **Count CLAUDE.md lines before finishing.** If over 200, you must move content to rules files.
+- The generated files should be committed to the repo
+- **Count CLAUDE.md lines before finishing.** If over 200, move content to rules files.
+- The `.claude/tech-stack` file is critical — every command reads it. Make sure it's written before reporting completion.

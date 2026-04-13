@@ -22,15 +22,16 @@ data integrity, missing tests, broken assumptions, infrastructure misconfigurati
 Read these files — they are your review checklists:
 
 1. **`CLAUDE.md`** — Project overview, critical rules (§0.x), and standards reference.
-2. **`.claude/rules/*.md`** — Detailed topic-specific rules (§1–§9). Glob for all files and read each one. These contain the numbered rules you cite in findings.
-3. **`.claude/references/coding-guidelines.md`** — Moberg coding style. Cite by section name.
-4. **`.claude/references/architecture-principles.md`** — Architecture rules (if exists).
-5. **`.claude/references/security-checklist.md`** — Shared security and compliance checklist.
-6. **`.claude/references/testing-patterns.md`** — Shared test coverage expectations.
-7. **`.claude/references/performance-checklist.md`** — Shared performance checklist.
-8. **`.claude/references/ef-core-checklist.md`** — Shared EF Core checklist.
-9. **`.claude/references/mediatr-slice-patterns.md`** — Shared CQRS/MediatR structure guidance.
-10. **`.claude/skills/security-and-hardening-fintech/SKILL.md`** — Fintech security workflow.
+2. **`.claude/tech-stack`** — single word identifying the active stack (e.g., `dotnet`, `python`).
+3. **`.claude/skills/tech-stack-{stack}/SKILL.md`** — provides stack-specific reference paths, ORM guidance, framework patterns. The `## Reference Files` section tells you which stack-specific docs to load below.
+4. **`.claude/rules/*.md`** — Detailed topic-specific rules (§1–§9). Glob for all files and read each one. These contain the numbered rules you cite in findings.
+5. **The coding guidelines file** named in the tech stack's `## Coding Style Reference` section — your primary style checklist. Cite findings by section name.
+6. **`.claude/references/architecture-principles.md`** — Architecture rules (if exists).
+7. **`.claude/references/security-checklist.md`** — Shared security and compliance checklist.
+8. **`.claude/references/testing-patterns.md`** — Shared test coverage expectations.
+9. **`.claude/references/performance-checklist.md`** — Shared performance checklist.
+10. **All files listed in the tech stack skill's `## Reference Files`** — stack-specific ORM, framework, testing, and performance supplements.
+11. **`.claude/skills/security-and-hardening-fintech/SKILL.md`** — Fintech security workflow.
 
 Also sample 2-3 existing files similar to what was changed to understand the codebase's
 actual conventions. Inconsistency with existing code is a finding.
@@ -74,68 +75,41 @@ If no diff, ask which files to review.
 - [ ] Domain events: idempotent, immutable, past-tense (§2.5)
 - [ ] DI lifetimes correct (DbContext scoped, not singleton; HttpClient via factory)
 
-### Coding Style (coding-guidelines.md) — CHECK ALL OF THESE
-- [ ] Lambda params: `x`, nested: `y`, `z` — not descriptive names
-- [ ] LINQ: chained methods on separate lines
-- [ ] LINQ: multiple conditions → multiple `.Where()` calls, not `&&`
-- [ ] LINQ: `.Where()` before `.First()`/`.Single()`, not conditions inside
-- [ ] LINQ: `Select()` projections from DB, no `Include()`
-- [ ] LINQ: `new` keyword on new line in `.Select()`
-- [ ] LINQ: async queries (`ToListAsync`) when hitting database
-- [ ] LINQ: `foreach` loop, not `.ForEach()` method
-- [ ] File-scoped namespaces
-- [ ] `var` for all local variables
-- [ ] Early return, avoid `else`
-- [ ] MediatR: one `SaveChanges` per handler
-- [ ] MediatR: validate request
-- [ ] MediatR: Handler + Request + Response in same file
-- [ ] MediatR: files suffixed with `Query` or `Command`
-- [ ] No meaningless comments
-- [ ] Object initializer without `()` parentheses
-- [ ] All properties set in object initializer, not after
-- [ ] Braces on ALL control flow (even single-line `if`)
-- [ ] Private methods last in file
-- [ ] Single blank line between members (except private fields grouped together)
-- [ ] Blank line before `return` statements
-- [ ] Never two consecutive blank lines
-- [ ] Compound assignment (`+=` not `x = x +`)
-- [ ] Null coalescing (`??`) over ternary null checks
-- [ ] Ternary over if-else for simple assignments
-- [ ] No `this.` prefix
-- [ ] Variables declared close to where they're used
-- [ ] DbContext add just before `SaveChanges`
-- [ ] `IOptions<T>` for configuration
-- [ ] Using directives outside namespace, System.* first
-- [ ] Simple `using` declaration over `using` block with braces
-- [ ] One statement per line, one declaration per line
-- [ ] Namespaces match folder structure
-- [ ] Operators at beginning of continuation lines
-- [ ] Route names in kebab-case
-- [ ] No abbreviations (except Id, Xml, Uri); acronyms: first letter uppercase only
-- [ ] Avoid initializing collections inside loops
-- [ ] Extract complicated expressions to named variables
+### Coding Style — Cite from the loaded coding guidelines
 
-### Data & EF Core
-- [ ] AsNoTracking on ALL read-only queries
-- [ ] No N+1 queries (check for DB calls inside loops)
-- [ ] Select projections — no loading full entities for read-only DTOs
-- [ ] No `Include()` (use `Select()` instead)
-- [ ] Pagination on list endpoints that could grow unbounded
-- [ ] Connection strings not logged or exposed in error messages
-- [ ] DbContext lifetime: scoped (not singleton) in ASP.NET; consider disposal in Lambda
+Review the diff against every applicable rule in the coding guidelines file from the active tech stack (loaded in Step 1). Cite findings by the section name from that file (e.g., "Coding Guidelines — LINQ conventions"). Do not enumerate the rules here — the guidelines are the source of truth and the agent updates over time. Common categories to scan:
+
+- Naming (classes, methods, locals, fields, parameters)
+- Layout and formatting
+- Control flow (early return, guard clauses, brace conventions)
+- Async patterns
+- Framework idioms specific to the stack (e.g., MediatR for dotnet, FastAPI dependencies for python)
+- Comments (no meaningless comments, only justify non-obvious decisions)
+
+### Data Layer
+
+Review the diff against the ORM checklist from the tech stack's `## Reference Files` (e.g., `ef-core-checklist.md` for dotnet, `sqlalchemy-checklist.md` for python). Common universal concerns:
+
+- No N+1 queries (DB calls inside loops)
+- Read-only queries do not load mutable state when not needed
+- Pagination on list endpoints that could grow unbounded
+- Connection strings not logged or exposed in error messages
 
 ### Performance
-- [ ] HttpClient via IHttpClientFactory
-- [ ] CancellationToken propagated through async chains
-- [ ] No unbounded in-memory collections from DB queries
 
-### Infrastructure (if CDK/infra changes present)
-- [ ] Security groups follow least privilege
-- [ ] VPC subnets properly isolated (public/private/isolated for their purpose)
-- [ ] IAM permissions follow least privilege (no `*` resources unless justified)
-- [ ] Removal policies appropriate (RETAIN for data, DESTROY only for dev)
-- [ ] Cost impact documented (NAT gateways ~$32/mo/AZ, reserved concurrency, etc.)
-- [ ] Secrets Manager secrets granted with GrantRead, not broad policies
+Review against `performance-checklist.md` and the stack-specific performance supplement. Common universal concerns:
+
+- HTTP client reuse / connection pooling
+- Cancellation propagated through async chains
+- No unbounded in-memory collections from data layer queries
+
+### Infrastructure (if IaC / infra changes present)
+- [ ] Security groups / network rules follow least privilege
+- [ ] Network isolation appropriate (public/private/isolated for their purpose)
+- [ ] IAM / cloud permissions follow least privilege (no `*` resources unless justified)
+- [ ] Removal/deletion policies appropriate (RETAIN for data, DESTROY only for dev)
+- [ ] Cost impact documented (NAT gateways, reserved concurrency, large instance sizes)
+- [ ] Secrets granted with narrow scopes, not broad policies
 
 ### Test Coverage — CRITICAL
 - [ ] Every new public method has at least one test

@@ -4,10 +4,17 @@
 
 ## Anatomy Requirements
 
-- **S2.1** Every SKILL.md must have YAML frontmatter with at minimum: `name`, `description`, `type: skill`.
-- **S2.2** Required sections in order: `## Overview`, `## When To Use`, `## Workflow`, `## Verification`.
+- **S2.1** Every SKILL.md must have YAML frontmatter with at minimum: `name`, `description`, `type: skill` (or `type: tech-stack` for tech stack skills).
+- **S2.2** Required sections for workflow skills in order: `## Overview`, `## When To Use`, `## Workflow`, `## Verification`.
 - **S2.3** Skill name in frontmatter must match the containing directory name exactly.
 - **S2.4** Skills are reusable building blocks, not user-facing entry points. Commands are the entry points.
+
+## Tech Stack Skills
+
+- **S2.12** Tech stack skills (`tech-stack-{name}/SKILL.md`) provide declarative context, not workflow. They have `type: tech-stack` in frontmatter.
+- **S2.13** Required sections for tech stack skills: `## Overview`, `## When To Use`, `## Build & Test Commands`, `## File Extensions & Markers`, `## ORM & Data Layer Guidance`, `## Framework Patterns`, `## Test Level Guidance`, `## Coding Style Reference`, `## Reference Files`, `## Settings Additions`, `## Format Command`, `## Scan Recipes`, `## Verification`. The `## Workflow` section is omitted (they're declarative, not procedural).
+- **S2.14** Reference files for a tech stack live under `.claude/references/{stack}/`. The tech stack skill's `## Reference Files` section is the canonical list.
+- **S2.15** When adding a new tech stack, the `## Coding Style Reference` may point to a placeholder file initially — write real guidelines when the team starts using that stack.
 
 ## CSO Principle
 

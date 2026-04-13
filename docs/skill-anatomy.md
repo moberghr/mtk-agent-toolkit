@@ -31,6 +31,19 @@ description: What this skill does and when to use it.
 
 ---
 
+## Two Skill Types
+
+The toolkit has two kinds of skills:
+
+| Type | Purpose | Anatomy |
+|:---|:---|:---|
+| **Workflow skill** | Procedural — agent follows `## Workflow` steps | Required: Overview, When To Use, Workflow, Verification |
+| **Tech stack skill** | Declarative — provides context that workflow skills consume | Required: Overview, When To Use, Build & Test Commands, File Extensions & Markers, ORM & Data Layer Guidance, Framework Patterns, Test Level Guidance, Coding Style Reference, Reference Files, Settings Additions, Format Command, Scan Recipes, Verification |
+
+Tech stack skills have `type: tech-stack` in their frontmatter and `tech-stack-{name}` directory naming. They do not have a `## Workflow` section because they describe context, not a procedure.
+
+---
+
 ## Structure
 
 ```mermaid

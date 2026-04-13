@@ -20,45 +20,64 @@ require_section() {
   grep -q "$pattern" "$file" || fail "Missing section '$pattern' in $file"
 }
 
+# Always-required files (stack-agnostic)
 require_file ".claude/manifest.json"
 require_file ".claude-plugin/plugin.json"
 require_file "README.md"
 require_file "CONTRIBUTING.md"
 require_file "AGENTS.md"
-require_file ".claude/references/coding-guidelines.md"
+
+# Generic references — required regardless of stack
 require_file ".claude/references/testing-patterns.md"
 require_file ".claude/references/security-checklist.md"
 require_file ".claude/references/performance-checklist.md"
-require_file ".claude/references/ef-core-checklist.md"
-require_file ".claude/references/mediatr-slice-patterns.md"
+
+# Tech stack validation: each tech stack skill must declare its own reference files,
+# and those files must exist. The toolkit ships with at least the dotnet stack.
+for stack_dir in .claude/skills/tech-stack-*/; do
+  [ -d "$stack_dir" ] || continue
+  stack_skill="${stack_dir}SKILL.md"
+  require_file "$stack_skill"
+  stack_name="$(basename "$stack_dir" | sed 's/^tech-stack-//')"
+  # Each tech stack has a coding-guidelines reference (even if placeholder)
+  require_file ".claude/references/${stack_name}/coding-guidelines.md"
+done
 
 manifest_version="$(grep -E '"version"' .claude/manifest.json | head -1 | sed -E 's/.*"version": "([^"]+)".*/\1/')"
 plugin_version="$(grep -E '"version"' .claude-plugin/plugin.json | head -1 | sed -E 's/.*"version": "([^"]+)".*/\1/')"
 
 [ "$manifest_version" = "$plugin_version" ] || fail "Version mismatch: manifest=$manifest_version plugin=$plugin_version"
 
+# Frontmatter check on commands, agents, skills
 while IFS= read -r file; do
   require_section "$file" '^---$'
 done < <(find .claude/commands .claude/agents .claude/skills -name '*.md' | sort)
 
+# Skill anatomy check
 while IFS= read -r skill; do
   skill_dir="$(basename "$(dirname "$skill")")"
   skill_name="$(grep -E '^name:' "$skill" | sed -E 's/name:[[:space:]]*//')"
   [ "$skill_dir" = "$skill_name" ] || fail "Skill name mismatch: $skill uses '$skill_name' but directory is '$skill_dir'"
   require_section "$skill" '^## Overview'
   require_section "$skill" '^## When To Use'
-  require_section "$skill" '^## Workflow'
+  # Tech stack skills don't have a Workflow section — they're declarative context.
+  # All other skills must.
+  if ! echo "$skill_dir" | grep -q '^tech-stack-'; then
+    require_section "$skill" '^## Workflow'
+  fi
   require_section "$skill" '^## Verification'
 done < <(find .claude/skills -name 'SKILL.md' | sort)
 
+# Manifest source path existence
 while IFS= read -r path; do
   [ -e "$path" ] || fail "Manifest references missing path: $path"
 done < <(awk '/"files": \{/,/^[[:space:]]*\},?$/' .claude/manifest.json | grep -E '"source": ' | sed -E 's/.*"source": "([^"]+)".*/\1/')
 
+# README and AGENTS coverage
 grep -q 'skills/' README.md || fail "README does not describe skills"
 grep -q 'AGENTS.md' README.md || fail "README does not mention AGENTS.md"
 grep -q 'docs/skill-anatomy.md' CONTRIBUTING.md || fail "CONTRIBUTING does not point to skill anatomy guidance"
-grep -q 'test-driven-development-dotnet' README.md || fail "README does not mention the new skill set"
+grep -q 'tech-stack' README.md || fail "README does not mention the tech stack architecture"
 grep -q 'context-engineering' AGENTS.md || fail "AGENTS.md does not route context-engineering"
 
 # Token budget enforcement: prevent context bloat
@@ -69,7 +88,12 @@ fi
 
 while IFS= read -r skill; do
   skill_lines="$(wc -l < "$skill")"
-  [ "$skill_lines" -le 500 ] || fail "Skill $skill exceeds 500-line budget ($skill_lines lines). Split into core + reference files"
+  # Tech stack skills are larger — they carry scan recipes and full reference paths.
+  if echo "$skill" | grep -q 'tech-stack-'; then
+    [ "$skill_lines" -le 1000 ] || fail "Tech stack skill $skill exceeds 1000-line budget ($skill_lines lines). Split scan recipes or references into companion files."
+  else
+    [ "$skill_lines" -le 500 ] || fail "Skill $skill exceeds 500-line budget ($skill_lines lines). Split into core + reference files"
+  fi
 done < <(find .claude/skills -name 'SKILL.md' | sort)
 
 if [ -d ".claude/rules" ]; then

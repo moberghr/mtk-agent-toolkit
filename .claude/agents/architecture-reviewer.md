@@ -1,6 +1,6 @@
 ---
 name: architecture-reviewer
-description: Focused reviewer for slice boundaries, dependency direction, and architectural fit of .NET changes.
+description: Focused reviewer for slice boundaries, dependency direction, and architectural fit of code changes.
 allowed-tools: Read, Glob, Grep, Bash
 model: sonnet
 ---
@@ -14,11 +14,12 @@ Review the diff for architectural fit and boundary violations.
 Read:
 
 1. `CLAUDE.md`
-2. `.claude/rules/*.md` — Glob for all rule files and read them (especially `architecture.md` §2.x)
-3. `.claude/references/architecture-principles.md` if present
-4. `.claude/references/mediatr-slice-patterns.md`
-5. `.claude/skills/code-simplification/SKILL.md`
-6. 2-3 neighboring files representing the expected pattern
+2. `.claude/tech-stack` to identify the active stack, then `.claude/skills/tech-stack-{stack}/SKILL.md` for stack-specific framework patterns
+3. `.claude/rules/*.md` — Glob for all rule files and read them (especially `architecture.md` §2.x)
+4. `.claude/references/architecture-principles.md` if present
+5. The framework patterns reference from the tech stack's `## Reference Files` (e.g., `mediatr-slice-patterns.md` for dotnet, `fastapi-patterns.md` for python)
+6. `.claude/skills/code-simplification/SKILL.md`
+7. 2-3 neighboring files representing the expected pattern
 
 ## Check
 

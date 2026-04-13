@@ -1,6 +1,6 @@
 ---
-name: test-driven-development-dotnet
-description: Use when implementing new behavior, fixing a bug, or changing any public contract in .NET code — write the failing test before the implementation.
+name: test-driven-development
+description: Use when implementing new behavior, fixing a bug, or changing any public contract — write the failing test before the implementation.
 license: MIT
 compatibility:
   - claude-code
@@ -9,7 +9,7 @@ trigger: new-behavior|bug-fix|public-contract-change|regression-test
 skip_when: rename-only|formatting-only|no-behavioral-change
 ---
 
-# Test-Driven Development for .NET
+# Test-Driven Development
 
 ## Overview
 
@@ -17,7 +17,7 @@ Use tests as proof of intent, not cleanup after coding. The test should define t
 
 ## When To Use
 
-- New behavior in handlers, services, endpoints, or validators
+- New behavior in handlers, services, endpoints, routes, or validators
 - Bug fixes that need regression protection
 - Refactors where behavior must stay stable
 
@@ -32,10 +32,10 @@ Use tests as proof of intent, not cleanup after coding. The test should define t
 2. Write the smallest failing test that proves the missing or broken behavior.
 3. Choose the correct test level:
    - unit for pure logic
-   - integration for handlers, persistence, serialization, auth, or EF behavior
-4. Use the project-standard provider for EF-sensitive behavior. Do not default to `UseInMemoryDatabase` when relational behavior matters.
+   - integration for behavior that depends on framework infrastructure (see the active tech stack skill's `## Test Level Guidance` for stack-specific rules)
+4. Use the project-standard test provider. See the active tech stack skill's `## ORM & Data Layer Guidance` for stack-specific data layer testing rules.
 5. Implement the minimum production code needed to make the test pass.
-6. Strengthen the test if it only proves "does not throw".
+6. Strengthen the test if it only proves "does not throw" or "does not raise".
 7. Run the relevant tests, then broader tests as the task requires.
 
 ## Rules
@@ -50,14 +50,14 @@ Use tests as proof of intent, not cleanup after coding. The test should define t
 | Rationalization | Reality |
 |---|---|
 | "I'll add the test after the code works" | Then the test proves your implementation, not the intended behavior. |
-| "A unit test is enough for this EF query" | Not if the risk lives in translation, provider behavior, or relational semantics. |
+| "A unit test is enough for this query" | Not if the risk lives in translation, provider behavior, or relational semantics. Check the tech stack's ORM guidance. |
 | "This assertion is good enough" | If it wouldn't fail on a real regression, it is not good enough. |
 
 ## Red Flags
 
 - Behavior changed with no new or updated test
-- Assertions only prove no exception
-- InMemory provider used for relationally sensitive behavior
+- Assertions only prove no exception or no error
+- In-memory or mock provider used for behavior that depends on real database semantics
 
 ## Verification
 

@@ -1,7 +1,7 @@
 {
-  "version": "4.2.0",
-  "updated": "2026-04-11",
-  "description": "Moberg Claude Code toolkit — shared commands, skills, agents, references, and settings for consistent AI-assisted development",
+  "version": "5.0.0",
+  "updated": "2026-04-13",
+  "description": "Moberg Claude Code toolkit — language-agnostic workflow skills with pluggable tech stacks (.NET, Python). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
   "files": {
     "commands/implement.md": {
@@ -14,13 +14,13 @@
       "source": ".claude/commands/init.md",
       "target": ".claude/commands/init.md",
       "action": "sync",
-      "description": "Bootstrap repo with CLAUDE.md generation from codebase scan"
+      "description": "Bootstrap repo with tech stack detection and CLAUDE.md generation"
     },
     "commands/scan.md": {
       "source": ".claude/commands/scan.md",
       "target": ".claude/commands/scan.md",
       "action": "sync",
-      "description": "Extract architecture principles from codebase"
+      "description": "Extract architecture principles from codebase using tech stack scan recipes"
     },
     "commands/merge.md": {
       "source": ".claude/commands/merge.md",
@@ -64,11 +64,17 @@
       "action": "sync",
       "description": "Capture session state into a recovery artifact for context continuity"
     },
+    "commands/doctor.md": {
+      "source": ".claude/commands/doctor.md",
+      "target": ".claude/commands/doctor.md",
+      "action": "sync",
+      "description": "Quick diagnostic command for toolkit health"
+    },
     "agents/compliance-reviewer.md": {
       "source": ".claude/agents/compliance-reviewer.md",
       "target": ".claude/agents/compliance-reviewer.md",
       "action": "sync",
-      "description": "Adversarial code reviewer for fintech compliance"
+      "description": "Adversarial code reviewer that loads stack-specific guidelines from the active tech stack"
     },
     "agents/test-reviewer.md": {
       "source": ".claude/agents/test-reviewer.md",
@@ -86,49 +92,101 @@
       "source": ".claude/settings.json",
       "target": ".claude/settings.json",
       "action": "merge",
-      "description": "Permissions, hooks, and tool configuration"
-    },
-    "references/coding-guidelines.md": {
-      "source": ".claude/references/coding-guidelines.md",
-      "target": ".claude/references/coding-guidelines.md",
-      "action": "sync",
-      "description": "Moberg C# coding style guide"
+      "description": "Generic permissions, hooks, and tool configuration. Stack-specific entries merged by init."
     },
     "references/testing-patterns.md": {
       "source": ".claude/references/testing-patterns.md",
       "target": ".claude/references/testing-patterns.md",
       "action": "sync",
-      "description": "Shared testing guidance for Moberg projects"
+      "description": "Generic testing guidance — load alongside the active stack's testing supplement"
     },
     "references/security-checklist.md": {
       "source": ".claude/references/security-checklist.md",
       "target": ".claude/references/security-checklist.md",
       "action": "sync",
-      "description": "Shared security checklist for fintech changes"
+      "description": "Shared, language-agnostic security checklist for fintech changes"
     },
     "references/performance-checklist.md": {
       "source": ".claude/references/performance-checklist.md",
       "target": ".claude/references/performance-checklist.md",
       "action": "sync",
-      "description": "Shared performance checklist for service changes"
+      "description": "Generic performance checklist — load alongside the active stack's performance supplement"
     },
-    "references/ef-core-checklist.md": {
-      "source": ".claude/references/ef-core-checklist.md",
-      "target": ".claude/references/ef-core-checklist.md",
+    "references/dotnet/coding-guidelines.md": {
+      "source": ".claude/references/dotnet/coding-guidelines.md",
+      "target": ".claude/references/dotnet/coding-guidelines.md",
       "action": "sync",
-      "description": "Shared EF Core review and implementation checklist"
+      "stack": "dotnet",
+      "description": "Moberg C# coding style guide"
     },
-    "references/mediatr-slice-patterns.md": {
-      "source": ".claude/references/mediatr-slice-patterns.md",
-      "target": ".claude/references/mediatr-slice-patterns.md",
+    "references/dotnet/ef-core-checklist.md": {
+      "source": ".claude/references/dotnet/ef-core-checklist.md",
+      "target": ".claude/references/dotnet/ef-core-checklist.md",
       "action": "sync",
-      "description": "Shared MediatR/CQRS slice conventions"
+      "stack": "dotnet",
+      "description": "EF Core review and implementation checklist"
     },
-    "skills/spec-driven-development-dotnet/SKILL.md": {
-      "source": ".claude/skills/spec-driven-development-dotnet/SKILL.md",
-      "target": ".claude/skills/spec-driven-development-dotnet/SKILL.md",
+    "references/dotnet/mediatr-slice-patterns.md": {
+      "source": ".claude/references/dotnet/mediatr-slice-patterns.md",
+      "target": ".claude/references/dotnet/mediatr-slice-patterns.md",
       "action": "sync",
-      "description": "Reusable planning skill for substantial .NET changes"
+      "stack": "dotnet",
+      "description": "MediatR/CQRS slice conventions for .NET"
+    },
+    "references/dotnet/testing-supplement.md": {
+      "source": ".claude/references/dotnet/testing-supplement.md",
+      "target": ".claude/references/dotnet/testing-supplement.md",
+      "action": "sync",
+      "stack": "dotnet",
+      "description": ".NET-specific testing guidance (EF Core providers, xUnit/NUnit conventions)"
+    },
+    "references/dotnet/performance-supplement.md": {
+      "source": ".claude/references/dotnet/performance-supplement.md",
+      "target": ".claude/references/dotnet/performance-supplement.md",
+      "action": "sync",
+      "stack": "dotnet",
+      "description": ".NET-specific performance rules (EF Core, HttpClient, Lambda cold starts)"
+    },
+    "references/python/coding-guidelines.md": {
+      "source": ".claude/references/python/coding-guidelines.md",
+      "target": ".claude/references/python/coding-guidelines.md",
+      "action": "sync",
+      "stack": "python",
+      "description": "Python coding style guide (placeholder — to be authored when first Python project starts)"
+    },
+    "references/python/sqlalchemy-checklist.md": {
+      "source": ".claude/references/python/sqlalchemy-checklist.md",
+      "target": ".claude/references/python/sqlalchemy-checklist.md",
+      "action": "sync",
+      "stack": "python",
+      "description": "SQLAlchemy review and implementation checklist"
+    },
+    "references/python/fastapi-patterns.md": {
+      "source": ".claude/references/python/fastapi-patterns.md",
+      "target": ".claude/references/python/fastapi-patterns.md",
+      "action": "sync",
+      "stack": "python",
+      "description": "FastAPI and Django structural conventions"
+    },
+    "references/python/testing-supplement.md": {
+      "source": ".claude/references/python/testing-supplement.md",
+      "target": ".claude/references/python/testing-supplement.md",
+      "action": "sync",
+      "stack": "python",
+      "description": "pytest patterns, fixtures, mocking, async tests"
+    },
+    "references/python/performance-supplement.md": {
+      "source": ".claude/references/python/performance-supplement.md",
+      "target": ".claude/references/python/performance-supplement.md",
+      "action": "sync",
+      "stack": "python",
+      "description": "Python performance rules (async, connection pooling, GIL, Lambda)"
+    },
+    "skills/spec-driven-development/SKILL.md": {
+      "source": ".claude/skills/spec-driven-development/SKILL.md",
+      "target": ".claude/skills/spec-driven-development/SKILL.md",
+      "action": "sync",
+      "description": "Language-agnostic planning skill for substantial changes"
     },
     "skills/planning-and-task-breakdown/SKILL.md": {
       "source": ".claude/skills/planning-and-task-breakdown/SKILL.md",
@@ -136,11 +194,11 @@
       "action": "sync",
       "description": "Reusable task breakdown and batching skill"
     },
-    "skills/incremental-implementation-dotnet/SKILL.md": {
-      "source": ".claude/skills/incremental-implementation-dotnet/SKILL.md",
-      "target": ".claude/skills/incremental-implementation-dotnet/SKILL.md",
+    "skills/incremental-implementation/SKILL.md": {
+      "source": ".claude/skills/incremental-implementation/SKILL.md",
+      "target": ".claude/skills/incremental-implementation/SKILL.md",
       "action": "sync",
-      "description": "Reusable .NET implementation discipline skill"
+      "description": "Language-agnostic batched implementation discipline"
     },
     "skills/debugging-and-error-recovery/SKILL.md": {
       "source": ".claude/skills/debugging-and-error-recovery/SKILL.md",
@@ -154,11 +212,11 @@
       "action": "sync",
       "description": "Reusable fintech review workflow skill"
     },
-    "skills/test-driven-development-dotnet/SKILL.md": {
-      "source": ".claude/skills/test-driven-development-dotnet/SKILL.md",
-      "target": ".claude/skills/test-driven-development-dotnet/SKILL.md",
+    "skills/test-driven-development/SKILL.md": {
+      "source": ".claude/skills/test-driven-development/SKILL.md",
+      "target": ".claude/skills/test-driven-development/SKILL.md",
       "action": "sync",
-      "description": "Reusable .NET test-driven development skill"
+      "description": "Language-agnostic test-driven development discipline"
     },
     "skills/context-engineering/SKILL.md": {
       "source": ".claude/skills/context-engineering/SKILL.md",
@@ -208,6 +266,26 @@
       "action": "sync",
       "description": "Meta-skill for authoring new skills with TDD discipline and CSO principle"
     },
+    "skills/correction-capture/SKILL.md": {
+      "source": ".claude/skills/correction-capture/SKILL.md",
+      "target": ".claude/skills/correction-capture/SKILL.md",
+      "action": "sync",
+      "description": "Reusable correction capture and compounding skill"
+    },
+    "skills/tech-stack-dotnet/SKILL.md": {
+      "source": ".claude/skills/tech-stack-dotnet/SKILL.md",
+      "target": ".claude/skills/tech-stack-dotnet/SKILL.md",
+      "action": "sync",
+      "stack": "dotnet",
+      "description": ".NET tech stack: build/test commands, EF Core guidance, MediatR patterns, scan recipes"
+    },
+    "skills/tech-stack-python/SKILL.md": {
+      "source": ".claude/skills/tech-stack-python/SKILL.md",
+      "target": ".claude/skills/tech-stack-python/SKILL.md",
+      "action": "sync",
+      "stack": "python",
+      "description": "Python tech stack: pytest, ruff, SQLAlchemy/Django guidance, FastAPI patterns, scan recipes"
+    },
     "tests/pressure-tests/security-hardening-pressure.md": {
       "source": "tests/pressure-tests/security-hardening-pressure.md",
       "target": "tests/pressure-tests/security-hardening-pressure.md",
@@ -238,17 +316,11 @@
       "action": "sync",
       "description": "Hook configuration for session-start event"
     },
-    "skills/correction-capture/SKILL.md": {
-      "source": ".claude/skills/correction-capture/SKILL.md",
-      "target": ".claude/skills/correction-capture/SKILL.md",
+    "hooks/verify-completion": {
+      "source": "hooks/verify-completion",
+      "target": "hooks/verify-completion",
       "action": "sync",
-      "description": "Reusable correction capture and compounding skill"
-    },
-    "commands/doctor.md": {
-      "source": ".claude/commands/doctor.md",
-      "target": ".claude/commands/doctor.md",
-      "action": "sync",
-      "description": "Quick diagnostic command for toolkit health"
+      "description": "Stop hook flagging completion claims without command output evidence"
     },
     "AGENTS.md": {
       "source": "AGENTS.md",
@@ -260,17 +332,18 @@
       "source": "docs/skill-anatomy.md",
       "target": "docs/skill-anatomy.md",
       "action": "sync",
-      "description": "Authoring anatomy for reusable skills"
+      "description": "Authoring anatomy for reusable skills (workflow + tech stack types)"
     },
     "scripts/validate-toolkit.sh": {
       "source": "scripts/validate-toolkit.sh",
       "target": "scripts/validate-toolkit.sh",
       "action": "sync",
-      "description": "Validation script for toolkit integrity"
+      "description": "Validation script for toolkit integrity (stack-aware)"
     }
   },
   "protected": [
     ".claude/settings.local.json",
+    ".claude/tech-stack",
     "CLAUDE.md",
     "tasks/lessons.md",
     "tasks/todo.md",
