@@ -77,6 +77,28 @@ Before writing any skill content:
 
 4. Save pressure tests to `tests/pressure-tests/<skill-name>-pressure.md`.
 
+### Phase 3b: Add Evals (If The Skill Gates Shipping)
+
+If the skill is on the ship path — meaning a miss ends up in a commit, a PR,
+or a release — add measurable evals in addition to pressure tests:
+
+1. Create `evals/<skill-name>/` with at minimum:
+   - `eval-01-<positive>.md` — scenario where the skill MUST trigger
+   - `eval-02-<negative>.md` — scenario where the skill MUST NOT trigger
+   - `eval-03-<adversarial>.md` — scenario designed to make the skill skip
+     steps or inflate output
+   - `grader.md` — grading prompt checking expected signals
+2. Each scenario declares `category: positive | negative | adversarial` in
+   frontmatter, includes a fenced `prompt` block for automated extraction,
+   and specifies Expected Signals + a pass/partial/fail Rubric.
+3. Evals are distributed via `manifest.json` so target teams can run them.
+4. Run with `bash scripts/run-evals.sh` (manual mode by default; wire
+   `EVAL_EXECUTOR` / `EVAL_GRADER` env vars for automation).
+
+Pressure tests are adversarial-only. Evals span positive/negative/adversarial
+and give a measurable pass rate. Use both for ship-path skills; pressure
+tests alone are sufficient for advisory skills.
+
 ### Phase 4: Register
 
 1. Add the skill to `.claude/manifest.json` with action `sync`.

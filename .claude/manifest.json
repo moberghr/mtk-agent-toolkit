@@ -369,6 +369,90 @@
       "target": "scripts/validate-toolkit.sh",
       "action": "sync",
       "description": "Validation script for toolkit integrity (stack-aware)"
+    },
+    "scripts/run-evals.sh": {
+      "source": "scripts/run-evals.sh",
+      "target": "scripts/run-evals.sh",
+      "action": "sync",
+      "description": "Eval pipeline runner: lists scenarios, supports manual or automated execution (via EVAL_EXECUTOR / EVAL_GRADER env hooks)"
+    },
+    "evals/README.md": {
+      "source": "evals/README.md",
+      "target": "evals/README.md",
+      "action": "sync",
+      "description": "Eval pipeline overview, directory layout, and manual/automated run guidance"
+    },
+    "evals/security-and-hardening-fintech/eval-01-hardcoded-secret.md": {
+      "source": "evals/security-and-hardening-fintech/eval-01-hardcoded-secret.md",
+      "target": "evals/security-and-hardening-fintech/eval-01-hardcoded-secret.md",
+      "action": "sync",
+      "description": "Positive eval: hardcoded DB connection string must be flagged critical"
+    },
+    "evals/security-and-hardening-fintech/eval-02-pure-refactor.md": {
+      "source": "evals/security-and-hardening-fintech/eval-02-pure-refactor.md",
+      "target": "evals/security-and-hardening-fintech/eval-02-pure-refactor.md",
+      "action": "sync",
+      "description": "Negative eval: pure internal refactor must not trigger security findings"
+    },
+    "evals/security-and-hardening-fintech/eval-03-internal-endpoint-pressure.md": {
+      "source": "evals/security-and-hardening-fintech/eval-03-internal-endpoint-pressure.md",
+      "target": "evals/security-and-hardening-fintech/eval-03-internal-endpoint-pressure.md",
+      "action": "sync",
+      "description": "Adversarial eval: 'internal endpoint, skip auth' pressure — missing auth must stay critical"
+    },
+    "evals/security-and-hardening-fintech/grader.md": {
+      "source": "evals/security-and-hardening-fintech/grader.md",
+      "target": "evals/security-and-hardening-fintech/grader.md",
+      "action": "sync",
+      "description": "Grader prompt for security-and-hardening-fintech evals"
+    },
+    "evals/pre-commit-review/eval-01-sql-concat.md": {
+      "source": "evals/pre-commit-review/eval-01-sql-concat.md",
+      "target": "evals/pre-commit-review/eval-01-sql-concat.md",
+      "action": "sync",
+      "description": "Positive eval: raw SQL with string interpolation must be flagged critical"
+    },
+    "evals/pre-commit-review/eval-02-docs-only.md": {
+      "source": "evals/pre-commit-review/eval-02-docs-only.md",
+      "target": "evals/pre-commit-review/eval-02-docs-only.md",
+      "action": "sync",
+      "description": "Negative eval: docs-only diff must pass with substantive rationale, no fabricated findings"
+    },
+    "evals/pre-commit-review/eval-03-inflate-to-pass.md": {
+      "source": "evals/pre-commit-review/eval-03-inflate-to-pass.md",
+      "target": "evals/pre-commit-review/eval-03-inflate-to-pass.md",
+      "action": "sync",
+      "description": "Adversarial eval: cosmetic rename with pressure to surface findings — must resist inflation"
+    },
+    "evals/pre-commit-review/grader.md": {
+      "source": "evals/pre-commit-review/grader.md",
+      "target": "evals/pre-commit-review/grader.md",
+      "action": "sync",
+      "description": "Grader prompt for pre-commit-review evals"
+    },
+    "evals/verification-before-completion/eval-01-done-without-evidence.md": {
+      "source": "evals/verification-before-completion/eval-01-done-without-evidence.md",
+      "target": "evals/verification-before-completion/eval-01-done-without-evidence.md",
+      "action": "sync",
+      "description": "Positive eval: completion claim without cited command output must be blocked"
+    },
+    "evals/verification-before-completion/eval-02-evidence-cited.md": {
+      "source": "evals/verification-before-completion/eval-02-evidence-cited.md",
+      "target": "evals/verification-before-completion/eval-02-evidence-cited.md",
+      "action": "sync",
+      "description": "Negative eval: completion with exit code + test counts must be accepted cleanly"
+    },
+    "evals/verification-before-completion/eval-03-trivial-change-excuse.md": {
+      "source": "evals/verification-before-completion/eval-03-trivial-change-excuse.md",
+      "target": "evals/verification-before-completion/eval-03-trivial-change-excuse.md",
+      "action": "sync",
+      "description": "Adversarial eval: 'trivial change, obvious compilation' must still require build evidence"
+    },
+    "evals/verification-before-completion/grader.md": {
+      "source": "evals/verification-before-completion/grader.md",
+      "target": "evals/verification-before-completion/grader.md",
+      "action": "sync",
+      "description": "Grader prompt for verification-before-completion evals"
     }
   },
   "protected": [
