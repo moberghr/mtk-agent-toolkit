@@ -47,12 +47,13 @@ Review changed code as an adversary, not a collaborator. The review must priorit
    - `compliance-reviewer` for security/compliance-sensitive work
    - `test-reviewer` for coverage and verification quality
    - `architecture-reviewer` for boundary and slice integrity concerns
-5. Categorize findings:
-   - `Critical`
-   - `Warning`
-   - `Suggestion`
-6. Report findings ordered by severity with file and line references.
-7. If no issues are found, say so explicitly and state residual risk or confidence limits.
+5. Categorize findings per the schema in `.claude/references/review-finding-schema.md`:
+   - `critical`, `warning`, `suggestion` severities
+   - `confidence` score 0–100 per the rubric
+6. Emit output in the canonical format:
+   - Markdown table of surfaced findings (confidence >= threshold from `.claude/review-config.json`, default 80)
+   - Fenced JSON block with the full structured result (verdict, summary, findings, below_threshold_rationale)
+7. If `findings[]` has fewer than 2 entries, populate `below_threshold_rationale` explicitly stating what axes were checked and why the code is genuinely clean. Silent empty reviews are invalid.
 
 ## Rules
 
@@ -84,3 +85,6 @@ Review changed code as an adversary, not a collaborator. The review must priorit
 - [ ] Review references governing rules or checklists
 - [ ] Testing gaps are explicitly called out or explicitly cleared
 - [ ] Review verdict matches the actual risk level of the change
+- [ ] Output follows `.claude/references/review-finding-schema.md` (markdown table + fenced JSON)
+- [ ] Confidence scores follow the rubric; no inflation to hit finding-count bars
+- [ ] `below_threshold_rationale` is populated when fewer than 2 findings surface

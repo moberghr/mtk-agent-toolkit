@@ -1,0 +1,15 @@
+{
+  "$doc": "Review configuration for MTK. Controls confidence thresholds and verdict rules across pre-commit-review, code-review-and-quality-fintech, and compliance-reviewer. See .claude/references/review-finding-schema.md. Per-engineer overrides go in .claude/review-config.local.json (gitignored).",
+  "thresholds": {
+    "default": 80,
+    "preCommit": 80,
+    "fullReview": 80,
+    "linter": 100
+  },
+  "verdict": {
+    "anyCriticalAboveThreshold": "NEEDS_CHANGES",
+    "otherwise": "PASS"
+  },
+  "minSurfacedFindings": 2,
+  "belowThresholdRationaleRequired": true
+}

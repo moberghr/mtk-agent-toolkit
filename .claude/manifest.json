@@ -58,6 +58,18 @@
       "action": "merge",
       "description": "Generic permissions, hooks, and tool configuration. Stack-specific entries merged by init."
     },
+    "references/review-finding-schema.md": {
+      "source": ".claude/references/review-finding-schema.md",
+      "target": ".claude/references/review-finding-schema.md",
+      "action": "sync",
+      "description": "Canonical output schema for all review entry points (markdown table + fenced JSON with confidence scores)"
+    },
+    "review-config.json": {
+      "source": ".claude/review-config.json",
+      "target": ".claude/review-config.json",
+      "action": "sync",
+      "description": "Review threshold and verdict configuration. Per-engineer overrides go in .claude/review-config.local.json (gitignored)."
+    },
     "references/testing-patterns.md": {
       "source": ".claude/references/testing-patterns.md",
       "target": ".claude/references/testing-patterns.md",
@@ -316,6 +328,12 @@
       "action": "sync",
       "description": "Adversarial pressure test for code-review skill"
     },
+    "tests/pressure-tests/confidence-scoring-pressure.md": {
+      "source": "tests/pressure-tests/confidence-scoring-pressure.md",
+      "target": "tests/pressure-tests/confidence-scoring-pressure.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for confidence-scored review output (inflation and sandbagging)"
+    },
     "hooks/session-start": {
       "source": "hooks/session-start",
       "target": "hooks/session-start",
@@ -355,6 +373,7 @@
   },
   "protected": [
     ".claude/settings.local.json",
+    ".claude/review-config.local.json",
     ".claude/tech-stack",
     ".claude/tech-stack-pm",
     "CLAUDE.md",

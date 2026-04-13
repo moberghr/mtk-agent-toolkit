@@ -1,5 +1,6 @@
 ### Claude Code
 .claude/settings.local.json
+.claude/review-config.local.json
 !.claude/skills/
 .claude/skills/gitnexus/
 tasks/todo.md
