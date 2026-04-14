@@ -9,6 +9,7 @@ compatibility:
 trigger: reporting-done|closing-task|handing-off|claiming-success
 skip_when: mid-exploration|research-phase
 effort: high
+user-invocable: false
 ---
 
 # Verification Before Completion

@@ -8,6 +8,7 @@ compatibility:
   - codex
 trigger: unclear-approach|multiple-designs|architectural-decision|how-should-we
 skip_when: approach-already-decided|narrow-scope|bug-fix
+user-invocable: false
 ---
 
 # Brainstorming

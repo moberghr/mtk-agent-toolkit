@@ -24,13 +24,7 @@
     "skills",
     "tech-stack"
   ],
-  "skills": [
-    "./.claude/skills/implement/SKILL.md",
-    "./.claude/skills/fix/SKILL.md",
-    "./.claude/skills/pre-commit-review/SKILL.md",
-    "./.claude/skills/setup-bootstrap/SKILL.md",
-    "./.claude/skills/setup-audit/SKILL.md"
-  ],
+  "skills": "./.claude/skills",
   "agents": [
     "./.claude/agents/architecture-reviewer.md",
     "./.claude/agents/compliance-reviewer.md",

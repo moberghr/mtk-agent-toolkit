@@ -9,6 +9,7 @@ trigger: auth-change|secrets-change|audited-state|audit-trail|infrastructure|ext
 skip_when: internal-refactoring|no-data-flow|no-boundary-change
 effort: max
 context: fork
+user-invocable: false
 ---
 
 # Security And Hardening

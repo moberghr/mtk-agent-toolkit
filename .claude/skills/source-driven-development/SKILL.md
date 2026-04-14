@@ -8,6 +8,7 @@ compatibility:
   - codex
 trigger: unfamiliar-api|version-sensitive|sdk-uncertainty|framework-behavior
 skip_when: well-understood-local-patterns|no-external-dependencies
+user-invocable: false
 ---
 
 # Source-Driven Development

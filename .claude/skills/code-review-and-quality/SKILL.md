@@ -9,6 +9,7 @@ trigger: post-implementation|pr-review|merge-safety-check|quality-audit
 skip_when: no-behavioral-diff|pre-implementation-phase
 effort: max
 context: fork
+user-invocable: false
 ---
 
 # Code Review And Quality

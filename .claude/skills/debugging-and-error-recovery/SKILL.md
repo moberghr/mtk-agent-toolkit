@@ -8,6 +8,7 @@ compatibility:
   - codex
 trigger: test-failure|runtime-error|behavioral-regression|bug-report
 skip_when: new-feature-design|large-scope-planning
+user-invocable: false
 ---
 
 # Debugging And Error Recovery

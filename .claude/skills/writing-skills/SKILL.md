@@ -6,6 +6,7 @@ compatibility:
   - claude-code
 trigger: new-skill|skill-rewrite|skill-conversion
 skip_when: project-convention|hook-automation|standard-practice
+user-invocable: false
 ---
 
 # Writing Skills
