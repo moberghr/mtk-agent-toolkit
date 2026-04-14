@@ -1,10 +1,28 @@
 ---
+name: setup-bootstrap
 description: One-time repo setup. Detects tech stack, audits the codebase, pulls coding guidelines, and generates a project-specific CLAUDE.md. Run this once per repo.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 argument-hint: [--preview] [--non-interactive]
 ---
 
 # MTK Setup Bootstrap — Prepare Repository for AI-Assisted Development
+
+## MTK File Resolution
+
+MTK skills and shared references may be in the project (local install) or the plugin cache (marketplace install). Resolve once before loading any skill:
+
+1. Check: does `.claude/skills/context-engineering/SKILL.md` exist in the project root?
+2. If yes → **local install**. All `.claude/skills/` and `.claude/references/` paths work as-is.
+3. If no → **marketplace install**. Find the MTK plugin root:
+   ```bash
+   find ~/.claude/plugins -maxdepth 8 -name "SKILL.md" -path "*/mtk/*/context-engineering/*" -type f 2>/dev/null | head -1 | sed 's|/.claude/skills/context-engineering/SKILL.md||'
+   ```
+   Prefix all `.claude/skills/...` and `.claude/references/{stack}/...` reads with the resolved root path.
+4. If the find returns nothing → MTK skills are unavailable. Warn the engineer and proceed with `CLAUDE.md` only.
+
+**Always project-relative** (never prefixed): `CLAUDE.md`, `.claude/tech-stack`, `.claude/rules/`, `tasks/`, `docs/`, `.claude/references/architecture-principles.md`, `.claude/references/pre-commit-review-list.md`.
+
+---
 
 You are setting up a repository for the `/mtk:implement` workflow.
 Your job is to detect the tech stack, audit the codebase, and generate a tailored `CLAUDE.md` that the implementation and review agents will use as their source of truth.
@@ -173,7 +191,7 @@ If `--non-interactive` is passed, skip this entire step but print a notice:
 The generated output follows Claude Code best practices:
 - **Root `CLAUDE.md`** target **60–80 lines**, hard cap **120 lines** (ETH Zurich benchmark + HumanLayer + Anthropic cookbook). Past ~150 instructions, compliance degrades uniformly — every line must earn its place.
 - **`.claude/rules/*.md`** files hold detailed, topic-specific rules (auto-loaded by Claude Code)
-- **`.claude/references/`** files are read on-demand by commands and agents (not duplicated)
+- **`.claude/references/`** files are read on-demand by skills and agents (not duplicated)
 - **Hooks / `settings.json` deny-list** handle anything mechanically enforceable (formatting, secret scanning, banned commands) — do NOT duplicate those rules in CLAUDE.md.
 
 ### If CLAUDE.md does NOT exist → Generate from scratch
@@ -216,9 +234,9 @@ Create `CLAUDE.md` and `.claude/rules/` files following the templates below.
 
 ---
 
-## Command Routing
+## Skill Routing
 
-| What you need | Command | When |
+| What you need | Skill | When |
 |---|---|---|
 | Build a feature | `/mtk:implement <description>` | New endpoints, tables, handlers, multi-file work |
 | Quick fix | `/mtk:fix <description>` | Bug fixes, config tweaks, 1-3 file changes |
@@ -301,7 +319,7 @@ Detailed rules in `.claude/rules/` (auto-loaded by Claude Code):
 | `git-workflow.md` | Branches, commits, PRs | §8.x |
 | `project-specific.md` | Patterns unique to this repo | §9.x |
 
-Full reference docs (read on-demand by commands and review agents):
+Full reference docs (read on-demand by skills and review agents):
 - `.claude/references/{stack}/coding-guidelines.md` — Stack-specific coding style
 - `.claude/references/architecture-principles.md` — Architecture principles
 - `.claude/references/security-checklist.md` — Security checklist (shared)
@@ -421,11 +439,11 @@ HOOK_SOURCE="hooks/git-hooks/pre-commit"
 
 The hook runs `hooks/pre-commit-linters.sh --cached` (< 1 second) and blocks on critical findings. Engineers bypass with `git commit --no-verify`. The full AI review (`/mtk:pre-commit-review`) remains a separate, manual step.
 
-### Commands, Skills, Agents
+### Skills and Agents
 Ensure the following files exist:
-- `.claude/commands/implement.md` — main implementation loop
-- `.claude/commands/fix.md` — quick fix loop
-- `.claude/commands/pre-commit-review.md` — pre-commit security review
+- `.claude/skills/implement/SKILL.md` — main implementation loop
+- `.claude/skills/fix/SKILL.md` — quick fix loop
+- `.claude/skills/pre-commit-review/SKILL.md` — pre-commit security review
 - `.claude/skills/spec-driven-development/SKILL.md`
 - `.claude/skills/incremental-implementation/SKILL.md`
 - `.claude/skills/test-driven-development/SKILL.md`
@@ -645,7 +663,7 @@ Generated/Updated:
 Codebase findings:
   [stack-specific summary based on scan]
 
-Commands available:
+Skills available:
   /mtk:implement         — Full feature loop
   /mtk:fix               — Quick fix (1-3 files)
   /mtk:pre-commit-review — Fast security-focused review of staged changes
@@ -664,4 +682,4 @@ Next: Try it with:
 - **Count CLAUDE.md lines before finishing.** Target 60–80. If over 120, move content to rules files or delete speculative rules.
 - **Per-package CLAUDE.md files are never overwritten.** If one already exists, skip it and report it as skipped. These may be hand-authored.
 - **Per-package files must be small (15–30 lines) and contain only the local delta.** If a package has no notable delta, generate the 5-line stub pointing to root.
-- The `.claude/tech-stack` file is critical — every command reads it. Make sure it's written before reporting completion.
+- The `.claude/tech-stack` file is critical — every skill reads it. Make sure it's written before reporting completion.

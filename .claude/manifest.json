@@ -1,36 +1,36 @@
 {
-  "version": "6.0.0",
+  "version": "6.1.0",
   "updated": "2026-04-14",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
   "files": {
-    "commands/implement.md": {
-      "source": ".claude/commands/implement.md",
-      "target": ".claude/commands/implement.md",
+    "skills/implement/SKILL.md": {
+      "source": ".claude/skills/implement/SKILL.md",
+      "target": ".claude/skills/implement/SKILL.md",
       "action": "sync",
-      "description": "Thin entry point for the full feature implementation workflow"
+      "description": "Full feature implementation workflow — orchestrates planning, batching, review, and verification skills"
     },
-    "commands/setup-bootstrap.md": {
-      "source": ".claude/commands/setup-bootstrap.md",
-      "target": ".claude/commands/setup-bootstrap.md",
+    "skills/setup-bootstrap/SKILL.md": {
+      "source": ".claude/skills/setup-bootstrap/SKILL.md",
+      "target": ".claude/skills/setup-bootstrap/SKILL.md",
       "action": "sync",
       "description": "One-time setup: detect tech stack, audit codebase, generate CLAUDE.md"
     },
-    "commands/setup-audit.md": {
-      "source": ".claude/commands/setup-audit.md",
-      "target": ".claude/commands/setup-audit.md",
+    "skills/setup-audit/SKILL.md": {
+      "source": ".claude/skills/setup-audit/SKILL.md",
+      "target": ".claude/skills/setup-audit/SKILL.md",
       "action": "sync",
       "description": "Audit architecture principles, or with --merge unify audits from multiple repos"
     },
-    "commands/fix.md": {
-      "source": ".claude/commands/fix.md",
-      "target": ".claude/commands/fix.md",
+    "skills/fix/SKILL.md": {
+      "source": ".claude/skills/fix/SKILL.md",
+      "target": ".claude/skills/fix/SKILL.md",
       "action": "sync",
-      "description": "Thin entry point for the lightweight bug-fix workflow"
+      "description": "Lightweight bug-fix workflow — debugging, targeted tests, scope-guarded verification"
     },
-    "commands/pre-commit-review.md": {
-      "source": ".claude/commands/pre-commit-review.md",
-      "target": ".claude/commands/pre-commit-review.md",
+    "skills/pre-commit-review/SKILL.md": {
+      "source": ".claude/skills/pre-commit-review/SKILL.md",
+      "target": ".claude/skills/pre-commit-review/SKILL.md",
       "action": "sync",
       "description": "Fast security-focused review of staged changes; run before every commit"
     },

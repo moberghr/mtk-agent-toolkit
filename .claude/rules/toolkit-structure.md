@@ -4,7 +4,7 @@
 
 ## Manifest Integrity
 
-- **S1.1** `.claude/manifest.json` is the single source of truth for what ships. Every command, skill, agent, reference, hook, test, and script must have an entry in `files`.
+- **S1.1** `.claude/manifest.json` is the single source of truth for what ships. Every skill, agent, reference, hook, test, and script must have an entry in `files`.
 - **S1.2** Each manifest entry must have: `source`, `target`, `action` (sync or merge), and `description`.
 - **S1.3** `description` follows the CSO (Claude Slash-command Output) principle — clear, specific, one sentence explaining what the file does.
 - **S1.4** Version in `manifest.json` and `plugin.json` must always match. Bump both together using semver.
@@ -12,16 +12,14 @@
 
 ## File Organization
 
-- **S1.6** Commands go in `.claude/commands/`. They are thin entry points — workflow logic lives in skills.
-- **S1.7** Skills go in `.claude/skills/<skill-name>/SKILL.md`. One skill per directory.
-- **S1.8** Agents go in `.claude/agents/`. They are reviewer personas with restricted tool access.
-- **S1.9** References go in `.claude/references/`. They are shared checklists/guides read on-demand.
-- **S1.10** Hooks go in `hooks/`. Config in `hooks/hooks.json`, executables alongside.
-- **S1.11** Pressure tests go in `tests/pressure-tests/`. One per skill being adversarially tested.
-- **S1.12** Validation script at `scripts/validate-toolkit.sh`. Must pass before any release.
+- **S1.6** All skills (both workflow and entry-point) go in `.claude/skills/<skill-name>/SKILL.md`. One skill per directory. Entry-point skills (formerly commands) use `allowed-tools` and `argument-hint` frontmatter to signal they are user-invocable.
+- **S1.7** Agents go in `.claude/agents/`. They are reviewer personas with restricted tool access.
+- **S1.8** References go in `.claude/references/`. They are shared checklists/guides read on-demand.
+- **S1.9** Hooks go in `hooks/`. Config in `hooks/hooks.json`, executables alongside.
+- **S1.10** Pressure tests go in `tests/pressure-tests/`. One per skill being adversarially tested.
+- **S1.11** Validation script at `scripts/validate-toolkit.sh`. Must pass before any release.
 
 ## Naming
 
-- **S1.13** Skill directory names use kebab-case matching the frontmatter `name:` field exactly.
-- **S1.14** Command files use kebab-case: `implement.md`, `pre-commit-review.md`.
-- **S1.15** Agent files use kebab-case: `compliance-reviewer.md`.
+- **S1.12** Skill directory names use kebab-case matching the frontmatter `name:` field exactly.
+- **S1.13** Agent files use kebab-case: `compliance-reviewer.md`.

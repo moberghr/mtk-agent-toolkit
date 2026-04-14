@@ -1,6 +1,8 @@
 # MTK Agent Routing
 
-This repository uses a hybrid model: **commands** are user-facing entry points, **skills** are reusable workflow blocks, and **agents** are specialist reviewers.
+> Compatible with: Claude Code, Codex CLI, Cursor, Copilot, Windsurf, and other AI coding tools that read AGENTS.md.
+
+This repository uses **skills** as both user-facing entry points and reusable workflow blocks, and **agents** as specialist reviewers. Entry-point skills (invoked via `/mtk:<name>`) orchestrate workflow skills.
 
 ---
 
@@ -41,9 +43,9 @@ flowchart TD
 
 ---
 
-## Command Mapping
+## Entry-Point Skills
 
-| Command | Skill Composition |
+| Skill | Workflow Composition |
 |:---|:---|
 | `/mtk:implement` | brainstorm *(optional)* → context → spec *(+ JSON sidecar)* → task breakdown → TDD → source-driven impl → **spec-drift-detection** → two-stage review → simplification |
 | `/mtk:fix` | debugging/error recovery → focused verification |
@@ -73,7 +75,7 @@ glob array. `context-engineering` matches touched files against these
 globs and loads only the matching references, avoiding session-wide
 context bloat.
 
-**Model-invoked skills** (no command — loaded automatically when triggered):
+**Model-invoked skills** (not user-invocable — loaded automatically when triggered):
 - `handoff` — capture session state when context is tight or work is paused mid-stream
 - `correction-capture` — capture engineer corrections as reusable lessons
 
@@ -100,7 +102,7 @@ flowchart LR
 
 ## Tech Stack Loading
 
-The toolkit uses pluggable tech stacks. The active stack is recorded in `.claude/tech-stack` (a single word like `dotnet`, `python`, or `typescript`). Every command and agent reads this file in Phase 0 and loads the corresponding `.claude/skills/tech-stack-{stack}/SKILL.md`. For the `typescript` stack, `.claude/tech-stack-pm` additionally stores the auto-detected package manager (bun / pnpm / yarn / npm). That skill provides:
+The toolkit uses pluggable tech stacks. The active stack is recorded in `.claude/tech-stack` (a single word like `dotnet`, `python`, or `typescript`). Every entry-point skill and agent reads this file in Phase 0 and loads the corresponding `.claude/skills/tech-stack-{stack}/SKILL.md`. For the `typescript` stack, `.claude/tech-stack-pm` additionally stores the auto-detected package manager (bun / pnpm / yarn / npm). That skill provides:
 
 - Build and test commands
 - ORM and framework patterns
@@ -126,7 +128,7 @@ Load shared references **progressively** — only what the current phase needs:
 ## Routing Rules
 
 1. Always read `CLAUDE.md` first when present — it is the project-specific source of truth
-2. If a command exists for the task, prefer it as the user-facing entry point, but still follow the underlying skills
+2. If an entry-point skill exists for the task, prefer it — it orchestrates the underlying workflow skills
 3. Do not skip planning, testing, review, or verification when the chosen skill requires them
 4. For toolkit structural health (toolkit maintainers only), run `bash scripts/validate-toolkit.sh`. For onboarding a new repo, install the MTK plugin from the marketplace (`/plugin install mtk@moberghr`) then run `/mtk:setup-bootstrap`.
 

@@ -79,25 +79,32 @@ if grep -nE '"applyTo":[[:space:]]*[^\[]' .claude/manifest.json | grep -v '"appl
   fail "manifest.json has an 'applyTo' entry that is not an array. Use [\"glob1\", \"glob2\"] form."
 fi
 
-# Frontmatter check on commands, agents, and manifest-tracked skills only.
+# Frontmatter check on agents and manifest-tracked skills only.
 # (Third-party skill plugins under .claude/skills/ — e.g. gitnexus/ — are not MTK-managed.)
 while IFS= read -r file; do
   require_section "$file" '^---$'
-done < <({ find .claude/commands .claude/agents -name '*.md'; printf '%s\n' "${manifest_skill_paths[@]+"${manifest_skill_paths[@]}"}"; } | sort -u)
+done < <({ find .claude/agents -name '*.md'; printf '%s\n' "${manifest_skill_paths[@]+"${manifest_skill_paths[@]}"}"; } | sort -u)
 
 # Skill anatomy check — only MTK-managed skills (those in the manifest)
 for skill in "${manifest_skill_paths[@]+"${manifest_skill_paths[@]}"}"; do
   skill_dir="$(basename "$(dirname "$skill")")"
   skill_name="$(grep -E '^name:' "$skill" | sed -E 's/name:[[:space:]]*//')"
   [ "$skill_dir" = "$skill_name" ] || fail "Skill name mismatch: $skill uses '$skill_name' but directory is '$skill_dir'"
-  require_section "$skill" '^## Overview'
-  require_section "$skill" '^## When To Use'
-  # Tech stack skills don't have a Workflow section — they're declarative context.
-  # All other skills must.
-  if ! echo "$skill_dir" | grep -q '^tech-stack-'; then
+  # Entry-point skills (with allowed-tools) have phase-based structure, not the standard anatomy.
+  if grep -q '^allowed-tools:' "$skill"; then
+    require_section "$skill" '^## '
+  elif echo "$skill_dir" | grep -q '^tech-stack-'; then
+    # Tech stack skills are declarative — no Workflow section.
+    require_section "$skill" '^## Overview'
+    require_section "$skill" '^## When To Use'
+    require_section "$skill" '^## Verification'
+  else
+    # Workflow skills require full anatomy.
+    require_section "$skill" '^## Overview'
+    require_section "$skill" '^## When To Use'
     require_section "$skill" '^## Workflow'
+    require_section "$skill" '^## Verification'
   fi
-  require_section "$skill" '^## Verification'
 done
 
 # README and AGENTS coverage
@@ -116,8 +123,11 @@ fi
 for skill in "${manifest_skill_paths[@]+"${manifest_skill_paths[@]}"}"; do
   skill_lines="$(wc -l < "$skill")"
   # Tech stack skills are larger — they carry scan recipes and full reference paths.
+  # Entry-point skills (with allowed-tools) orchestrate full workflows, so 1000-line budget.
   if echo "$skill" | grep -q 'tech-stack-'; then
     [ "$skill_lines" -le 1000 ] || fail "Tech stack skill $skill exceeds 1000-line budget ($skill_lines lines). Split scan recipes or references into companion files."
+  elif grep -q '^allowed-tools:' "$skill"; then
+    [ "$skill_lines" -le 1000 ] || fail "Entry-point skill $skill exceeds 1000-line budget ($skill_lines lines). Split into core + companion files."
   else
     [ "$skill_lines" -le 500 ] || fail "Skill $skill exceeds 500-line budget ($skill_lines lines). Split into core + reference files"
   fi

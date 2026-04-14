@@ -1,10 +1,28 @@
 ---
+name: fix
 description: Lightweight fix/task using the MTK debugging workflow. Use for 1-3 file changes that do not require feature planning.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 argument-hint: [--terse|--verbose] <description of fix or small task>
 ---
 
 # MTK Fix — Lightweight Task Loop
+
+## MTK File Resolution
+
+MTK skills and shared references may be in the project (local install) or the plugin cache (marketplace install). Resolve once before loading any skill:
+
+1. Check: does `.claude/skills/context-engineering/SKILL.md` exist in the project root?
+2. If yes → **local install**. All `.claude/skills/` and `.claude/references/` paths work as-is.
+3. If no → **marketplace install**. Find the MTK plugin root:
+   ```bash
+   find ~/.claude/plugins -maxdepth 8 -name "SKILL.md" -path "*/mtk/*/context-engineering/*" -type f 2>/dev/null | head -1 | sed 's|/.claude/skills/context-engineering/SKILL.md||'
+   ```
+   Prefix all `.claude/skills/...` and `.claude/references/{stack}/...` reads with the resolved root path.
+4. If the find returns nothing → MTK skills are unavailable. Warn the engineer and proceed with `CLAUDE.md` only.
+
+**Always project-relative** (never prefixed): `CLAUDE.md`, `.claude/tech-stack`, `.claude/rules/`, `tasks/`, `docs/`, `.claude/references/architecture-principles.md`, `.claude/references/pre-commit-review-list.md`.
+
+---
 
 Use this for small, well-bounded work. The source of truth for the fix workflow is:
 

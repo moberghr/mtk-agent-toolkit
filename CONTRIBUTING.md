@@ -58,18 +58,19 @@ graph TD
 
 ---
 
-## Adding a New Command
+## Adding a New Entry-Point Skill
 
-1. Create `.claude/commands/your-command.md`:
+1. Create `.claude/skills/your-skill/SKILL.md`:
 
 ```yaml
 ---
-description: One-line description shown in the command list
+name: your-skill
+description: One-line description shown in the skill list
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 argument-hint: [optional] <expected arguments>
 ---
 
-# Command Title
+# Skill Title
 
 ## Workflow
 

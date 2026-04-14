@@ -1,4 +1,5 @@
 ---
+name: implement
 description: Full feature implementation loop using MTK skills for planning, batching, verification, and review. Run /mtk:setup-bootstrap once per repo first.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, Task, AskUserQuestion
 argument-hint: [--terse|--verbose] <feature description>
@@ -6,9 +7,26 @@ argument-hint: [--terse|--verbose] <feature description>
 
 # MTK Implement — Full Feature Loop
 
-You are a senior engineer building serious software. This command is the user-facing entry point for substantial work. Language and framework specifics come from the active tech stack skill.
+## MTK File Resolution
 
-The command itself is intentionally thin. The source of truth for workflow behavior is the skill layer:
+MTK skills and shared references may be in the project (local install) or the plugin cache (marketplace install). Resolve once before loading any skill:
+
+1. Check: does `.claude/skills/context-engineering/SKILL.md` exist in the project root?
+2. If yes → **local install**. All `.claude/skills/` and `.claude/references/` paths work as-is.
+3. If no → **marketplace install**. Find the MTK plugin root:
+   ```bash
+   find ~/.claude/plugins -maxdepth 8 -name "SKILL.md" -path "*/mtk/*/context-engineering/*" -type f 2>/dev/null | head -1 | sed 's|/.claude/skills/context-engineering/SKILL.md||'
+   ```
+   Prefix all `.claude/skills/...` and `.claude/references/{stack}/...` reads with the resolved root path.
+4. If the find returns nothing → MTK skills are unavailable. Warn the engineer and proceed with `CLAUDE.md` only.
+
+**Always project-relative** (never prefixed): `CLAUDE.md`, `.claude/tech-stack`, `.claude/rules/`, `tasks/`, `docs/`, `.claude/references/architecture-principles.md`, `.claude/references/pre-commit-review-list.md`.
+
+---
+
+You are a senior engineer building serious software. This skill is the user-facing entry point for substantial work. Language and framework specifics come from the active tech stack skill.
+
+The skill itself is intentionally thin. The source of truth for workflow behavior is the skill layer:
 
 - `.claude/skills/context-engineering/SKILL.md`
 - `.claude/skills/spec-driven-development/SKILL.md`
@@ -96,6 +114,7 @@ Create `docs/plans/` if missing.
      - `Approve (interactive)` — proceed to Phase 3, but ask follow-up questions during implementation/review when ambiguities arise.
      - `Edit first` — pause so the engineer can edit the spec/plan/todo files. Stop and wait for their next message.
      - `Revise` — describe what to change in the spec/plan; Claude rewrites Phase 1/2 (overwrites the same file paths) and returns to this gate.
+     - `Show plan in terminal` — read the plan file (`docs/plans/<filename>.md`) and print its full contents to the terminal, then re-ask this same approval gate. This lets the engineer review the plan without leaving the terminal.
    - **You MUST invoke the `AskUserQuestion` tool.** Do not render the options as a numbered/lettered list (no "A. Approve…", no "1) Approve…"), do not ask the question as plain prose, do not wait for a free-text reply. The TUI prompt is the only acceptable form.
    - If `AskUserQuestion` is deferred in this session (schema not loaded), call `ToolSearch` with `select:AskUserQuestion` first to load it, then invoke it.
    - If the harness genuinely does not expose `AskUserQuestion` (e.g., Cursor, Copilot CLI, Gemini CLI), STOP. Print one line: "Approval gate requires the AskUserQuestion TUI tool, which is unavailable in this harness. Tell me which option to take: Approve & run until done / Approve (interactive) / Edit first / Revise." Then wait. Do not fabricate an A/B/C/D prompt and do not proceed.
@@ -103,6 +122,7 @@ Create `docs/plans/` if missing.
 4. Honor the chosen mode for the rest of the session:
    - **Autonomous:** in Phases 3-7, never call `AskUserQuestion`. If a blocking issue surfaces, stop and report it instead of asking. Resume only after the engineer responds.
    - **Interactive:** ask focused questions when a decision materially affects the implementation. Do not ask for trivial confirmations.
+   - **Show plan in terminal:** read the plan file and print its full contents as output text. Then loop back to step 2 and re-ask the approval gate with the same options. Do not proceed to Phase 3.
 5. Only proceed to Phase 3 after `Approve & run until done` or `Approve (interactive)`.
 
 Note: this approval gate controls when *Claude* asks questions. The harness's tool-permission prompts (file write/Bash approvals) are a separate layer controlled by the engineer's permission mode (Shift+Tab to toggle accept-edits). Autonomous mode does not bypass the harness.

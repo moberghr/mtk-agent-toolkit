@@ -13,7 +13,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0%2B-3178C6.svg)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-[Quick Start](#-quick-start) · [What It Does](#what-it-does) · [Examples](#-examples) · [Architecture](#-architecture) · [Commands](#-commands) · [Skills](#-skills) · [Review Agents](#-review-agents) · [Tech Stacks](#-tech-stacks) · [FAQ](#-faq)
+[Quick Start](#-quick-start) · [What It Does](#what-it-does) · [Examples](#-examples) · [Architecture](#-architecture) · [Skills](#-skills) · [Review Agents](#-review-agents) · [Tech Stacks](#-tech-stacks) · [FAQ](#-faq)
 
 </div>
 
@@ -256,9 +256,9 @@ graph LR
 
 ---
 
-## Commands
+## Entry-Point Skills
 
-| Command | Purpose | When to use |
+| Skill | Purpose | When to use |
 |:---|:---|:---|
 | **`/mtk:implement`** | Full feature workflow: plan, build in batches, TDD, two-stage review | Multi-file features, new endpoints, breaking changes |
 | **`/mtk:fix`** | Lightweight bug fix: reproduce, fix, verify | 1-3 file changes, contained scope |
@@ -294,7 +294,7 @@ Two-pass review: deterministic linter scan (secrets, SQL injection, PII in logs)
 
 ## Skills
 
-22 skills total: 16 language-agnostic workflow skills, 3 tech stack skills, 3 enabling skills. Skills are reusable building blocks invoked by commands — not called directly.
+27 skills total: 5 entry-point skills, 16 language-agnostic workflow skills, 3 tech stack skills, 3 enabling skills. Entry-point skills (invoked via `/mtk:<name>`) orchestrate workflow skills.
 
 ### Workflow Skills
 
@@ -504,8 +504,7 @@ These files are never overwritten by plugin updates:
 ```
 claude-helpers/
 ├── .claude/
-│   ├── commands/              # 5 thin entry points
-│   ├── skills/                # 22 skills (16 workflow + 3 tech stack + 3 enabling)
+│   ├── skills/                # 27 skills (5 entry-point + 16 workflow + 3 tech stack + 3 enabling)
 │   │   ├── context-engineering/
 │   │   ├── spec-driven-development/
 │   │   ├── planning-and-task-breakdown/

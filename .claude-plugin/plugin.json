@@ -1,7 +1,7 @@
 {
   "name": "mtk",
   "description": "MTK (Moberg Toolkit) — AI-assisted development toolkit with pluggable tech stacks (.NET, Python, TypeScript). Language-agnostic workflow skills, command entry points, review agents, and compliance-first workflows.",
-  "version": "6.0.0",
+  "version": "6.1.0",
   "author": {
     "name": "Moberg d.o.o.",
     "url": "https://www.moberg.hr"
@@ -24,7 +24,6 @@
     "skills",
     "tech-stack"
   ],
-  "commands": "./.claude/commands",
   "skills": "./.claude/skills",
   "agents": [
     "./.claude/agents/architecture-reviewer.md",
