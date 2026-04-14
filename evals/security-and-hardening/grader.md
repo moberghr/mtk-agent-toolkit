@@ -1,7 +1,7 @@
-# Grader: security-and-hardening-fintech
+# Grader: security-and-hardening
 
 You are grading whether the agent's output satisfies an eval scenario for the
-`security-and-hardening-fintech` skill. You are given three inputs:
+`security-and-hardening` skill. You are given three inputs:
 
 1. This grader prompt
 2. The eval file (contains the scenario, expected signals, and rubric)

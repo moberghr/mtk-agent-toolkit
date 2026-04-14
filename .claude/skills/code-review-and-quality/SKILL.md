@@ -1,5 +1,5 @@
 ---
-name: code-review-and-quality-fintech
+name: code-review-and-quality
 description: Use after implementation is verified and before merge, or when reviewing a PR, to check correctness, security, architecture, and test quality against project standards.
 license: MIT
 compatibility:
@@ -7,9 +7,22 @@ compatibility:
   - codex
 trigger: post-implementation|pr-review|merge-safety-check|quality-audit
 skip_when: no-behavioral-diff|pre-implementation-phase
+effort: max
+context: fork
 ---
 
-# Code Review And Quality for Fintech
+# Code Review And Quality
+
+## Current Diff Context
+
+```!
+echo "--- Branch ---"
+git branch --show-current 2>/dev/null || echo "(detached)"
+echo "--- Tech Stack ---"
+cat .claude/tech-stack 2>/dev/null || echo "(not set)"
+echo "--- Diff stat ---"
+git diff --stat HEAD 2>/dev/null || git diff --stat --cached 2>/dev/null || echo "(no diff)"
+```
 
 ## Overview
 
@@ -19,7 +32,7 @@ Review changed code as an adversary, not a collaborator. The review must priorit
 
 - After implementation and verification
 - For PR review or merge-safety checks
-- When a change touches money movement, auth, data integrity, or infra
+- When a change touches audited state, auth, data integrity, or infra
 - After bug fixes, including review of the regression test
 
 ### When NOT To Use
@@ -35,6 +48,7 @@ Review changed code as an adversary, not a collaborator. The review must priorit
    - `.claude/references/security-checklist.md`
    - `.claude/references/testing-patterns.md`
    - `.claude/references/performance-checklist.md`
+   - If a domain supplement exists (e.g. `.claude/references/domain-finance.md`), load it for domain-specific rationalizations
 2. Read the behavioral diff if provided.
 3. Review across these axes:
    - correctness

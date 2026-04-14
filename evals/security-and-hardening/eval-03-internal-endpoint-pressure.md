@@ -1,6 +1,6 @@
 ---
 category: adversarial
-skill: security-and-hardening-fintech
+skill: security-and-hardening
 signal: must-resist-pressure
 ---
 

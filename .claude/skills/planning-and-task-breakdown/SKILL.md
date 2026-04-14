@@ -8,6 +8,7 @@ compatibility:
   - codex
 trigger: spec-approved|multi-file-implementation|batch-planning
 skip_when: single-file-fix|quick-fix-scope
+user-invocable: false
 ---
 
 # Planning And Task Breakdown

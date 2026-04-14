@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Git pre-commit hook — runs the MTK deterministic linter on staged changes.
+# Blocks the commit if any critical finding is detected.
+#
+# Installed by /mtk:setup-bootstrap as a symlink from .git/hooks/pre-commit.
+# Bypass with: git commit --no-verify
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+LINTER="$REPO_ROOT/hooks/pre-commit-linters.sh"
+
+# If the linter script doesn't exist, skip silently (toolkit may have been
+# partially uninstalled or the repo structure changed).
+if [ ! -x "$LINTER" ]; then
+  exit 0
+fi
+
+# Run the linter in JSON mode and capture output.
+RESULT="$("$LINTER" --cached 2>/dev/null)" || true
+
+# Parse the verdict from JSON output.
+# Uses parameter expansion to avoid depending on jq.
+if printf '%s' "$RESULT" | grep -q '"verdict":"NEEDS_CHANGES"'; then
+  printf '\n'
+  printf '==============================================================\n'
+  printf '  MTK pre-commit: critical finding(s) detected — commit blocked\n'
+  printf '==============================================================\n\n'
+  # Re-run in human mode for readable output.
+  "$LINTER" --cached --human 2>/dev/null || true
+  printf '\nFix the issues above, or bypass with: git commit --no-verify\n'
+  exit 1
+fi

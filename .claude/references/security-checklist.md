@@ -1,6 +1,16 @@
+---
+paths:
+  - "**/auth/**"
+  - "**/authentication/**"
+  - "**/authorization/**"
+  - "**/security/**"
+  - "**/secrets/**"
+  - "**/middleware/**"
+---
+
 # Security Checklist
 
-Fast security and compliance reference for Moberg fintech work.
+Fast security and compliance reference for serious software.
 
 ## Input And Auth
 

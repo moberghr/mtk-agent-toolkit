@@ -42,6 +42,10 @@ require_file ".claude/settings.json"
 grep -q '"deny"' .claude/settings.json || fail "settings.json missing permissions.deny — dangerous operations are not blocked"
 grep -q '"hooks"' .claude/settings.json || fail "settings.json missing hooks block — verify-completion / format hooks are not registered"
 
+# Git pre-commit hook must exist and be executable
+require_file "hooks/git-hooks/pre-commit"
+[ -x "hooks/git-hooks/pre-commit" ] || fail "hooks/git-hooks/pre-commit is not executable (chmod +x)"
+
 # Tech stack validation: each tech stack skill must declare its own reference files,
 # and those files must exist. The toolkit ships with at least the dotnet stack.
 for stack_dir in .claude/skills/tech-stack-*/; do

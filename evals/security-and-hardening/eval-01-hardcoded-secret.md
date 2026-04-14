@@ -1,6 +1,6 @@
 ---
 category: positive
-skill: security-and-hardening-fintech
+skill: security-and-hardening
 signal: must-trigger
 ---
 
@@ -31,7 +31,7 @@ audit-log writes in the transaction.
 ## Prompt
 
 ```prompt
-Review this diff against fintech security and hardening rules. Report per the
+Review this diff against security and hardening rules. Report per the
 review-finding-schema (markdown table + fenced JSON block). The active tech
 stack is dotnet.
 ```

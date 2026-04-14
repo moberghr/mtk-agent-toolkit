@@ -6,7 +6,7 @@ argument-hint: [--terse|--verbose] <feature description>
 
 # MTK Implement — Full Feature Loop
 
-You are a senior engineer on a fintech team. This command is the user-facing entry point for substantial work. Language and framework specifics come from the active tech stack skill.
+You are a senior engineer building serious software. This command is the user-facing entry point for substantial work. Language and framework specifics come from the active tech stack skill.
 
 The command itself is intentionally thin. The source of truth for workflow behavior is the skill layer:
 
@@ -16,8 +16,8 @@ The command itself is intentionally thin. The source of truth for workflow behav
 - `.claude/skills/incremental-implementation/SKILL.md`
 - `.claude/skills/test-driven-development/SKILL.md`
 - `.claude/skills/source-driven-development/SKILL.md`
-- `.claude/skills/code-review-and-quality-fintech/SKILL.md`
-- `.claude/skills/security-and-hardening-fintech/SKILL.md`
+- `.claude/skills/code-review-and-quality/SKILL.md`
+- `.claude/skills/security-and-hardening/SKILL.md`
 - `.claude/skills/verification-before-completion/SKILL.md`
 - `.claude/skills/spec-drift-detection/SKILL.md`
 - `.claude/skills/brainstorming/SKILL.md`
@@ -114,7 +114,7 @@ Also follow:
 
 - `.claude/skills/test-driven-development/SKILL.md`
 - `.claude/skills/source-driven-development/SKILL.md` when framework or SDK behavior is uncertain
-- `.claude/skills/security-and-hardening-fintech/SKILL.md` when the scope touches auth, financial state, secrets, or infra
+- `.claude/skills/security-and-hardening/SKILL.md` when the scope touches auth, financial state, secrets, or infra
 
 For every batch:
 
@@ -155,7 +155,7 @@ approval gate.
 
 ## Phase 4: Review (Two-Stage)
 
-Follow `.claude/skills/code-review-and-quality-fintech/SKILL.md`.
+Follow `.claude/skills/code-review-and-quality/SKILL.md`.
 Follow `.claude/skills/verification-before-completion/SKILL.md` before starting review.
 
 Reviews are **sequential, not parallel**. Spec compliance comes first because if the implementation doesn't match the spec, code quality review is wasted effort.

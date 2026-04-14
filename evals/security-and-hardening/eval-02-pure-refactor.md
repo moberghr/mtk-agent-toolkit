@@ -1,6 +1,6 @@
 ---
 category: negative
-skill: security-and-hardening-fintech
+skill: security-and-hardening
 signal: must-not-trigger
 ---
 
@@ -27,7 +27,7 @@ new logging. The class is internal, no DTO/API boundary shift.
 ## Prompt
 
 ```prompt
-Review this diff against fintech security and hardening rules. Report per the
+Review this diff against security and hardening rules. Report per the
 review-finding-schema. The active tech stack is dotnet.
 ```
 

@@ -12,7 +12,7 @@ Use this for small, well-bounded work. The source of truth for the fix workflow 
 - `.claude/skills/debugging-and-error-recovery/SKILL.md`
 - `.claude/skills/test-driven-development/SKILL.md` when behavior changes
 - `.claude/skills/source-driven-development/SKILL.md` when framework behavior is uncertain
-- `.claude/skills/security-and-hardening-fintech/SKILL.md` when the fix touches auth, financial state, secrets, or infra
+- `.claude/skills/security-and-hardening/SKILL.md` when the fix touches auth, audited state, secrets, or infra
 - `.claude/skills/tech-stack-{stack}/SKILL.md` — loaded based on `.claude/tech-stack`
 
 ## When To Use
