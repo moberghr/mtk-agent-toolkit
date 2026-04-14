@@ -17,8 +17,9 @@ MTK skills and shared references may be in the project (local install) or the pl
 2. If yes → **local install**. All `.claude/skills/` and `.claude/references/` paths work as-is.
 3. If no → **marketplace install**. Find the MTK plugin root:
    ```bash
-   find ~/.claude/plugins -maxdepth 8 -name "SKILL.md" -path "*/mtk/*/context-engineering/*" -type f 2>/dev/null | head -1 | sed 's|/.claude/skills/context-engineering/SKILL.md||'
+   MTK_ROOTS=$(find ~/.claude/plugins -maxdepth 8 -name "SKILL.md" -path "*/mtk/*/context-engineering/*" -type f 2>/dev/null | sed 's|/.claude/skills/context-engineering/SKILL.md||' | sort -u)
    ```
+   If multiple roots are found, warn the engineer: "Multiple MTK plugin versions detected: {paths}. Using the first match. Use `--source <path>` to specify explicitly." Use the first result.
    Prefix all `.claude/skills/...` and `.claude/references/{stack}/...` reads with the resolved root path.
 4. If the find returns nothing → MTK skills are unavailable. Warn the engineer and proceed with `CLAUDE.md` only.
 
@@ -56,9 +57,9 @@ For each file in the source manifest's `files` section:
    - If target doesn't exist: mark for creation.
    - If target exists and differs from source: mark for overwrite.
    - If target matches source: skip (already current).
-4. **Merge files** (`action: "merge"`): Compare source to target.
-   - For `settings.json`: use `hooks/merge-settings.sh` to compute the merged result.
-   - For other merge files: mark for manual review if they differ.
+4. **Protected files with drift**: For files in the `protected` array that also exist in the source manifest, compare source to target.
+   - If they differ: show a unified diff so the engineer can manually apply relevant additions.
+   - Specifically for `settings.json`: show the diff of new permissions or hooks from the source that the engineer may want to adopt. Do NOT auto-merge — settings contain repo-specific structure (nested matchers, custom hooks, `$schema`) that automated merging cannot safely preserve.
 
 ### Phase 3: Approval
 
@@ -86,9 +87,10 @@ Otherwise, use AskUserQuestion:
 
 1. Copy sync files from source to target.
 2. Create new files.
-3. Run `hooks/merge-settings.sh` for settings.json merges.
-4. Update `.claude/mtk-version.json` with the new version and date.
-5. If `CHANGELOG.md` exists in the source, read entries between the installed and current versions and display them.
+3. For protected files with drift (e.g., `settings.json`): display the diff and let the engineer decide which additions to adopt manually.
+4. Regenerate `AGENTS.md` by running `bash scripts/generate-agents-md.sh` (if the script exists). This picks up any new or changed references. Custom sections (`## Custom:`) are preserved automatically.
+5. Update `.claude/mtk-version.json` with the new version and date.
+6. If `CHANGELOG.md` exists in the source, read entries between the installed and current versions and display them.
 
 ### Phase 5: Report
 
@@ -97,7 +99,8 @@ List every file touched with a one-line description of the change. Note any file
 ## Verification
 
 - [ ] Version stamp updated to new version
-- [ ] Protected files untouched
-- [ ] Settings.json merged (not overwritten)
+- [ ] Protected files untouched (settings.json, AGENTS.md, CLAUDE.md, etc.)
+- [ ] Settings.json drift shown as diff for manual review (not auto-merged)
+- [ ] AGENTS.md regenerated from current references (if generate-agents-md.sh exists)
 - [ ] Stack-filtered files skipped for non-matching stacks
 - [ ] New files created

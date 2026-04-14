@@ -24,13 +24,28 @@ REMOVED="$(echo "$DIFF" | grep '^-[^-]' || true)"
 FINDING_NUM=0
 FINDINGS=""
 
+# JSON string escaping (no jq per S3.3)
+json_escape() {
+  local s="$1"
+  s="${s//\\/\\\\}"      # backslash
+  s="${s//\"/\\\"}"      # double quote
+  s="${s//$'\n'/\\n}"    # newline
+  s="${s//$'\r'/\\r}"    # carriage return
+  s="${s//$'\t'/\\t}"    # tab
+  printf '%s' "$s"
+}
+
 add_finding() {
   local sev="$1" rule="$2" file="$3" line="$4" rationale="$5" fix="$6"
   FINDING_NUM=$((FINDING_NUM + 1))
   local fid
   fid="$(printf 'BC%03d' "$FINDING_NUM")"
+  local esc_rationale esc_fix esc_file
+  esc_rationale="$(json_escape "$rationale")"
+  esc_fix="$(json_escape "$fix")"
+  esc_file="$(json_escape "$file")"
   FINDINGS="${FINDINGS:+$FINDINGS,}
-    {\"id\":\"$fid\",\"severity\":\"$sev\",\"confidence\":100,\"rule\":\"$rule\",\"source\":\"linter\",\"file\":\"$file\",\"line\":$line,\"rationale\":\"$rationale\",\"suggested_fix\":\"$fix\"}"
+    {\"id\":\"$fid\",\"severity\":\"$sev\",\"confidence\":100,\"rule\":\"$rule\",\"source\":\"linter\",\"file\":\"$esc_file\",\"line\":$line,\"rationale\":\"$esc_rationale\",\"suggested_fix\":\"$esc_fix\"}"
 }
 
 # --- .NET breaking changes ---
@@ -101,7 +116,7 @@ if [ "$STACK" = "typescript" ]; then
       current_file="${BASH_REMATCH[1]}"
     fi
     # Removed route handlers
-    if [[ "$line" =~ ^-.*\.(get|post|put|patch|delete)\([\"\']/([^\"\']+ ]]; then
+    if [[ "$line" =~ ^-.*\.(get|post|put|patch|delete)\([\"\']/([^\"\']+)[\"\'] ]]; then
       route="${BASH_REMATCH[2]}"
       add_finding "critical" "API-ROUTE-REMOVED" "$current_file" 0 \
         "API route removed: .${BASH_REMATCH[1]}(\\\"/$route\\\") — consumers will get 404" \

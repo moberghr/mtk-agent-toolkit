@@ -38,11 +38,14 @@ check engineers should run before every commit.
    - Merge linter findings into your final JSON output (they always pass the
      threshold, so they always surface)
 4.5. **Merge cached analyzer output (if available).** If `.mtk/analyzer-output.json`
-   exists and was modified within the last 10 minutes, read it and merge those
-   findings into your output. These are deterministic findings from the most
-   recent `dotnet build` / `ruff check` / `tsc` run, with `source: "analyzer"`
-   and `confidence: 100`. **Do NOT run the build yourself** — the pre-commit
-   gate must stay fast (seconds, not minutes). Only consume cached output.
+   exists and was modified within the last 10 minutes, read it and **filter
+   findings to only those whose `file` field matches a file in
+   `git diff --cached --name-only`** (or `git diff --name-only` if using
+   unstaged). Discard all other findings — surfacing repo-wide warnings on an
+   unrelated commit erodes trust in the gate. Merge the filtered set into your
+   output with `source: "analyzer"` and `confidence: 100`. **Do NOT run the
+   build yourself** — the pre-commit gate must stay fast (seconds, not minutes).
+   Only consume cached output.
 4.6. **Roslyn MCP tools (if available, .NET only).** If `dotnet-claude-kit` is
    installed and the `DetectAntiPatterns` tool is available, call it on the
    changed files for on-demand semantic analysis. Treat results as

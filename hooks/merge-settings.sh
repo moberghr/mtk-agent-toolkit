@@ -29,6 +29,10 @@ TARGET="$2"
 [ -f "$SOURCE" ] || { echo "ERROR: Source not found: $SOURCE" >&2; exit 1; }
 [ -f "$TARGET" ] || { echo "ERROR: Target not found: $TARGET" >&2; exit 1; }
 
+# Temp files with guaranteed cleanup
+TMPDIR_MERGE="$(mktemp -d)"
+trap 'rm -rf "$TMPDIR_MERGE"' EXIT
+
 # Strategy: The MTK settings.json is small (~70 lines) and has a predictable
 # structure. We extract arrays from both files, union them, and reconstruct.
 # This avoids needing jq or python JSON parsing.
@@ -81,13 +85,13 @@ fi
 {
   extract_array_entries "$SOURCE" "allowedTools"
   extract_array_entries "$TARGET" "allowedTools"
-} | sort -u > /tmp/mtk_merged_allowed.$$
+} | sort -u > $TMPDIR_MERGE/allowed.txt
 
 # Build merged deny
 {
   extract_array_entries "$SOURCE" "deny"
   extract_array_entries "$TARGET" "deny"
-} | sort -u > /tmp/mtk_merged_deny.$$
+} | sort -u > $TMPDIR_MERGE/deny.txt
 
 # Start with source as base, replace arrays with merged versions
 # This is intentionally simple — it handles the MTK settings structure.
@@ -111,7 +115,7 @@ while IFS= read -r entry; do
   else
     printf ',\n      "%s"' "$entry"
   fi
-done < /tmp/mtk_merged_allowed.$$
+done < $TMPDIR_MERGE/allowed.txt
 echo ""
 
 cat <<MIDDLE
@@ -129,7 +133,7 @@ while IFS= read -r entry; do
   else
     printf ',\n      "%s"' "$entry"
   fi
-done < /tmp/mtk_merged_deny.$$
+done < $TMPDIR_MERGE/deny.txt
 echo ""
 
 cat <<HOOKS_START
@@ -166,5 +170,4 @@ cat <<FOOTER
 }
 FOOTER
 
-# Cleanup
-rm -f /tmp/mtk_merged_allowed.$$ /tmp/mtk_merged_deny.$$
+# Cleanup handled by trap

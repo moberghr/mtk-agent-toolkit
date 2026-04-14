@@ -81,6 +81,17 @@ if [ -z "$FORMAT" ]; then
   fi
 fi
 
+# --- JSON string escaping (no jq per S3.3) ---
+json_escape() {
+  local s="$1"
+  s="${s//\\/\\\\}"      # backslash
+  s="${s//\"/\\\"}"      # double quote
+  s="${s//$'\n'/\\n}"    # newline
+  s="${s//$'\r'/\\r}"    # carriage return
+  s="${s//$'\t'/\\t}"    # tab
+  printf '%s' "$s"
+}
+
 # --- Finding counter ---
 FINDING_NUM=0
 next_id() {
@@ -107,8 +118,10 @@ case "$FORMAT" in
         sev="$(get_severity "$rule")"
         [ "$level" = "error" ] && sev="critical"
         fid="$(next_id)"
+        esc_msg="$(json_escape "$msg")"
+        esc_file="$(json_escape "$file")"
         FINDINGS="${FINDINGS:+$FINDINGS,}
-    {\"id\":\"$fid\",\"severity\":\"$sev\",\"confidence\":100,\"rule\":\"$rule\",\"source\":\"analyzer\",\"file\":\"$file\",\"line\":$lineno,\"rationale\":\"$msg\",\"suggested_fix\":\"See analyzer documentation for $rule\"}"
+    {\"id\":\"$fid\",\"severity\":\"$sev\",\"confidence\":100,\"rule\":\"$rule\",\"source\":\"analyzer\",\"file\":\"$esc_file\",\"line\":$lineno,\"rationale\":\"$esc_msg\",\"suggested_fix\":\"See analyzer documentation for $rule\"}"
       fi
     done <<< "$INPUT"
     ;;
@@ -132,8 +145,10 @@ case "$FORMAT" in
         if [ -n "${rule:-}" ] && [ -n "${msg:-}" ] && [ -n "${file:-}" ]; then
           sev="$(get_severity "$rule")"
           fid="$(next_id)"
+          esc_msg="$(json_escape "$msg")"
+          esc_file="$(json_escape "$file")"
           FINDINGS="${FINDINGS:+$FINDINGS,}
-    {\"id\":\"$fid\",\"severity\":\"$sev\",\"confidence\":100,\"rule\":\"$rule\",\"source\":\"analyzer\",\"file\":\"$file\",\"line\":$lineno,\"rationale\":\"$msg\",\"suggested_fix\":\"See ruff documentation for $rule\"}"
+    {\"id\":\"$fid\",\"severity\":\"$sev\",\"confidence\":100,\"rule\":\"$rule\",\"source\":\"analyzer\",\"file\":\"$esc_file\",\"line\":$lineno,\"rationale\":\"$esc_msg\",\"suggested_fix\":\"See ruff documentation for $rule\"}"
           rule="" msg="" file="" lineno=""
         fi
       fi
@@ -150,8 +165,10 @@ case "$FORMAT" in
         msg="${BASH_REMATCH[5]}"
         sev="$(get_severity "$rule")"
         fid="$(next_id)"
+        esc_msg="$(json_escape "$msg")"
+        esc_file="$(json_escape "$file")"
         FINDINGS="${FINDINGS:+$FINDINGS,}
-    {\"id\":\"$fid\",\"severity\":\"$sev\",\"confidence\":100,\"rule\":\"$rule\",\"source\":\"analyzer\",\"file\":\"$file\",\"line\":$lineno,\"rationale\":\"$msg\",\"suggested_fix\":\"See TypeScript documentation for $rule\"}"
+    {\"id\":\"$fid\",\"severity\":\"$sev\",\"confidence\":100,\"rule\":\"$rule\",\"source\":\"analyzer\",\"file\":\"$esc_file\",\"line\":$lineno,\"rationale\":\"$esc_msg\",\"suggested_fix\":\"See TypeScript documentation for $rule\"}"
       fi
     done <<< "$INPUT"
     ;;
@@ -173,8 +190,10 @@ case "$FORMAT" in
         if [ -n "${rule:-}" ] && [ -n "${msg:-}" ] && [ -n "${file:-}" ]; then
           sev="$(get_severity "$rule")"
           fid="$(next_id)"
+          esc_msg="$(json_escape "$msg")"
+          esc_file="$(json_escape "$file")"
           FINDINGS="${FINDINGS:+$FINDINGS,}
-    {\"id\":\"$fid\",\"severity\":\"$sev\",\"confidence\":100,\"rule\":\"$rule\",\"source\":\"analyzer\",\"file\":\"$file\",\"line\":$lineno,\"rationale\":\"$msg\",\"suggested_fix\":\"See Biome documentation for $rule\"}"
+    {\"id\":\"$fid\",\"severity\":\"$sev\",\"confidence\":100,\"rule\":\"$rule\",\"source\":\"analyzer\",\"file\":\"$esc_file\",\"line\":$lineno,\"rationale\":\"$esc_msg\",\"suggested_fix\":\"See Biome documentation for $rule\"}"
           rule="" msg="" file="" lineno=""
         fi
       fi

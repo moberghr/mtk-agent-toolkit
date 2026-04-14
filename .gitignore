@@ -29,3 +29,6 @@ Icon
 
 mcp/node_modules
 mcp/package-lock.json
+
+# MCP build artifact — built on first session via hooks/session-start
+dist/
