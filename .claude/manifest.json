@@ -813,6 +813,12 @@
       "action": "sync",
       "description": "API backward compatibility checker — detects removed routes, changed DTOs, removed public properties"
     },
+    "skills/mtk/SKILL.md": {
+      "source": ".claude/skills/mtk/SKILL.md",
+      "target": ".claude/skills/mtk/SKILL.md",
+      "action": "sync",
+      "description": "Unified entry point — routes natural language to the right MTK skill (fix, implement, review, setup)"
+    },
     "skills/context-report/SKILL.md": {
       "source": ".claude/skills/context-report/SKILL.md",
       "target": ".claude/skills/context-report/SKILL.md",
