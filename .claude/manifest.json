@@ -498,32 +498,44 @@
       "action": "sync",
       "description": "Git pre-commit hook that runs the deterministic linter and blocks commits on critical findings"
     },
-    "hooks/linter-patterns/shared.txt": {
-      "source": "hooks/linter-patterns/shared.txt",
-      "target": "hooks/linter-patterns/shared.txt",
+    "hooks/linter-patterns/core/secrets.txt": {
+      "source": "hooks/linter-patterns/core/secrets.txt",
+      "target": "hooks/linter-patterns/core/secrets.txt",
       "action": "sync",
-      "description": "Language-agnostic lint patterns (secrets, keys, connection strings, JWTs)"
+      "description": "Core lint pack — language-agnostic secret detection (API keys, JWTs, connection strings)"
     },
-    "hooks/linter-patterns/dotnet.txt": {
-      "source": "hooks/linter-patterns/dotnet.txt",
-      "target": "hooks/linter-patterns/dotnet.txt",
+    "hooks/linter-patterns/core/slopwatch.txt": {
+      "source": "hooks/linter-patterns/core/slopwatch.txt",
+      "target": "hooks/linter-patterns/core/slopwatch.txt",
+      "action": "sync",
+      "description": "Core lint pack — LLM reward hacking patterns (disabled tests, empty catches, always-pass assertions)"
+    },
+    "hooks/linter-patterns/stack-dotnet/patterns.txt": {
+      "source": "hooks/linter-patterns/stack-dotnet/patterns.txt",
+      "target": "hooks/linter-patterns/stack-dotnet/patterns.txt",
       "action": "sync",
       "stack": "dotnet",
-      "description": ".NET lint patterns (raw SQL interpolation, console output, empty catches)"
+      "description": "Stack lint pack — .NET patterns (raw SQL interpolation, console output, empty catches)"
     },
-    "hooks/linter-patterns/python.txt": {
-      "source": "hooks/linter-patterns/python.txt",
-      "target": "hooks/linter-patterns/python.txt",
+    "hooks/linter-patterns/stack-python/patterns.txt": {
+      "source": "hooks/linter-patterns/stack-python/patterns.txt",
+      "target": "hooks/linter-patterns/stack-python/patterns.txt",
       "action": "sync",
       "stack": "python",
-      "description": "Python lint patterns (raw SQL in execute, bare except, print debugging)"
+      "description": "Stack lint pack — Python patterns (raw SQL in execute, bare except, print debugging)"
     },
-    "hooks/linter-patterns/typescript.txt": {
-      "source": "hooks/linter-patterns/typescript.txt",
-      "target": "hooks/linter-patterns/typescript.txt",
+    "hooks/linter-patterns/stack-typescript/patterns.txt": {
+      "source": "hooks/linter-patterns/stack-typescript/patterns.txt",
+      "target": "hooks/linter-patterns/stack-typescript/patterns.txt",
       "action": "sync",
       "stack": "typescript",
-      "description": "TypeScript / JavaScript lint patterns (SQL template literals with interpolation, console output, any type)"
+      "description": "Stack lint pack — TypeScript/JS patterns (SQL template literals, console output, any type)"
+    },
+    "hooks/linter-patterns/domain-finance/patterns.txt": {
+      "source": "hooks/linter-patterns/domain-finance/patterns.txt",
+      "target": "hooks/linter-patterns/domain-finance/patterns.txt",
+      "action": "sync",
+      "description": "Domain lint pack — finance patterns (float money, hardcoded currencies/rates, unrounded division)"
     },
     "AGENTS.md": {
       "source": "AGENTS.md",
@@ -795,17 +807,35 @@
       "action": "sync",
       "description": "Adversarial pressure test for MCP fallback paths (server unavailable, empty results, errors)"
     },
-    "hooks/linter-patterns/slopwatch.txt": {
-      "source": "hooks/linter-patterns/slopwatch.txt",
-      "target": "hooks/linter-patterns/slopwatch.txt",
-      "action": "sync",
-      "description": "LLM reward hacking patterns (disabled tests, pragma without restore, empty catches, always-pass assertions)"
-    },
     "hooks/api-compat-check.sh": {
       "source": "hooks/api-compat-check.sh",
       "target": "hooks/api-compat-check.sh",
       "action": "sync",
       "description": "API backward compatibility checker — detects removed routes, changed DTOs, removed public properties"
+    },
+    "skills/context-report/SKILL.md": {
+      "source": ".claude/skills/context-report/SKILL.md",
+      "target": ".claude/skills/context-report/SKILL.md",
+      "action": "sync",
+      "description": "Diagnostic snapshot of active MTK configuration — tech stack, linter packs, domains, hooks, references"
+    },
+    "scripts/ci-lint.sh": {
+      "source": "scripts/ci-lint.sh",
+      "target": "scripts/ci-lint.sh",
+      "action": "sync",
+      "description": "CI wrapper for deterministic linter — emits GitHub Actions annotations and step summary"
+    },
+    "templates/ci/pr-lint.yml": {
+      "source": "templates/ci/pr-lint.yml",
+      "target": "templates/ci/pr-lint.yml",
+      "action": "sync",
+      "description": "GitHub Actions template — deterministic lint on every PR (no API keys needed)"
+    },
+    "templates/ci/pr-review.yml": {
+      "source": "templates/ci/pr-review.yml",
+      "target": "templates/ci/pr-review.yml",
+      "action": "sync",
+      "description": "GitHub Actions template — deterministic lint + Claude Code AI review on PRs (requires ANTHROPIC_API_KEY)"
     }
   },
   "protected": [
@@ -819,6 +849,7 @@
     "tasks/lessons.md",
     "tasks/todo.md",
     ".claude/references/architecture-principles.md",
-    ".claude/references/pre-commit-review-list.md"
+    ".claude/references/pre-commit-review-list.md",
+    ".claude/domains"
   ]
 }

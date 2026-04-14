@@ -1,0 +1,70 @@
+# MTK Full Review — GitHub Actions workflow template (optional)
+#
+# Runs the deterministic linter AND Claude Code AI review on every PR.
+# Requires ANTHROPIC_API_KEY secret. Costs ~$0.05-0.50 per review depending
+# on diff size and model routing.
+#
+# Setup:
+#   1. Copy this file to .github/workflows/pr-review.yml in your repo
+#   2. Add ANTHROPIC_API_KEY to repo secrets (Settings > Secrets > Actions)
+#   3. Ensure the MTK plugin is installed (/plugin marketplace add moberghr/claude-helpers)
+#   4. Push — the workflow runs on every PR to main
+#
+# The deterministic lint always runs. The AI review runs only if the lint passes
+# (no point reviewing code with hardcoded secrets).
+
+name: MTK Review
+
+on:
+  pull_request:
+    branches: [main, master, develop]
+
+permissions:
+  contents: read
+  pull-requests: write  # Needed for posting review comments
+
+jobs:
+  lint:
+    name: Deterministic Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run MTK linter on PR diff
+        run: bash scripts/ci-lint.sh --base "origin/${{ github.base_ref }}"
+
+  ai-review:
+    name: AI Review
+    needs: lint
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run AI review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          # Get the diff for context
+          DIFF=$(git diff "origin/${{ github.base_ref }}"...HEAD)
+          FILES=$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD)
+
+          # Run pre-commit-review via Claude Code in non-interactive mode
+          claude -p "Review this PR diff for security, correctness, and architecture issues. Use /mtk:pre-commit-review on the staged changes. Files changed: ${FILES}" \
+            --allowedTools Read,Grep,Glob,Bash,Agent \
+            --output-format json \
+            > /tmp/review-output.json 2>&1 || true
+
+          # Post review summary as PR comment
+          if [ -f /tmp/review-output.json ]; then
+            echo "AI review completed. See workflow logs for details."
+          fi

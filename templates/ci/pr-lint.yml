@@ -1,0 +1,32 @@
+# MTK Deterministic Lint — GitHub Actions workflow template
+#
+# Runs the MTK deterministic linter on every PR. No AI, no API keys needed.
+# Catches secrets, SQL injection, empty catches, and stack-specific issues.
+#
+# Setup:
+#   1. Copy this file to .github/workflows/pr-lint.yml in your repo
+#   2. Ensure hooks/pre-commit-linters.sh and hooks/linter-patterns/ exist
+#      (they're synced by the MTK plugin)
+#   3. Push — the workflow runs on every PR to main
+
+name: MTK Lint
+
+on:
+  pull_request:
+    branches: [main, master, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Deterministic Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history needed for diff
+
+      - name: Run MTK linter on PR diff
+        run: bash scripts/ci-lint.sh --base "origin/${{ github.base_ref }}"

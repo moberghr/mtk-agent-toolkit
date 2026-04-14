@@ -24,6 +24,9 @@ Icon
 .Trashes
 .VolumeIcon.icns
 .com.apple.timemachine.donotpresent
+# Project-local linter patterns (each target repo adds its own)
+hooks/linter-patterns/project/*.txt
+
 # Third-party plugin artifacts (local dev only)
 .claude/skills/gitnexus/
 
