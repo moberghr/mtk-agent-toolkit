@@ -46,6 +46,9 @@ grep -q '"hooks"' .claude/settings.json || fail "settings.json missing hooks blo
 require_file "hooks/git-hooks/pre-commit"
 [ -x "hooks/git-hooks/pre-commit" ] || fail "hooks/git-hooks/pre-commit is not executable (chmod +x)"
 
+# The git pre-commit hook and linter script must agree on supported flags.
+grep -q -- '--cached' hooks/pre-commit-linters.sh || fail "hooks/pre-commit-linters.sh must support --cached for git hooks"
+
 # Tech stack validation: each tech stack skill must declare its own reference files,
 # and those files must exist. The toolkit ships with at least the dotnet stack.
 for stack_dir in .claude/skills/tech-stack-*/; do
@@ -59,8 +62,10 @@ done
 
 manifest_version="$(grep -E '"version"' .claude/manifest.json | head -1 | sed -E 's/.*"version": "([^"]+)".*/\1/')"
 plugin_version="$(grep -E '"version"' .claude-plugin/plugin.json | head -1 | sed -E 's/.*"version": "([^"]+)".*/\1/')"
+marketplace_version="$(grep -E '"version"' .claude-plugin/marketplace.json | head -1 | sed -E 's/.*"version": "([^"]+)".*/\1/')"
 
 [ "$manifest_version" = "$plugin_version" ] || fail "Version mismatch: manifest=$manifest_version plugin=$plugin_version"
+[ "$manifest_version" = "$marketplace_version" ] || fail "Version mismatch: manifest=$manifest_version marketplace=$marketplace_version"
 
 # Manifest source path existence + collect manifest-tracked skill paths.
 # manifest.json has no nested objects with "source" keys other than file entries,

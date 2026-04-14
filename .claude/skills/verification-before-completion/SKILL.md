@@ -85,9 +85,8 @@ No completion claim is valid without fresh evidence from an actual command execu
 This skill is enforced via hooks in `settings.json`:
 
 - **Stop hook:** When the agent finishes responding, a prompt hook checks whether completion claims cite specific command output. If not, the agent is reminded to run verification and cite evidence.
-- **TaskCompleted hook:** When a task is marked done, a prompt hook reminds the agent to verify build and test results are fresh.
 
-These hooks are the enforcement mechanism. The skill documentation above is the contract; the hooks are the guardrails.
+The Stop hook is the enforcement mechanism. The skill documentation above is the contract; the hook is the guardrail.
 
 ### Stuck Signal
 

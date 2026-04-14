@@ -16,8 +16,17 @@ if [ ! -x "$LINTER" ]; then
   exit 0
 fi
 
-# Run the linter in JSON mode and capture output.
-RESULT="$("$LINTER" --cached 2>/dev/null)" || true
+# Run the linter in JSON mode and capture output. A broken linter invocation is
+# safer as a blocked commit than a silent pass.
+if ! RESULT="$("$LINTER" --cached 2>&1)"; then
+  printf '\n'
+  printf '==============================================================\n'
+  printf '  MTK pre-commit: linter failed to run — commit blocked\n'
+  printf '==============================================================\n\n'
+  printf '%s\n' "$RESULT"
+  printf '\nFix the linter contract above, or bypass with: git commit --no-verify\n'
+  exit 1
+fi
 
 # Parse the verdict from JSON output.
 # Uses parameter expansion to avoid depending on jq.
