@@ -38,7 +38,7 @@ bash scripts/validate-toolkit.sh
 - **Distribution:** Claude Code plugin marketplace via `.claude-plugin/plugin.json`
 - **Version tracking:** `.claude/manifest.json` + `.claude-plugin/plugin.json` (must stay in sync)
 - **Test approach:** `scripts/validate-toolkit.sh` (structural) + `tests/pressure-tests/*.md` (adversarial behavioral)
-- **Target audience:** Fintech teams using Claude Code (.NET first-class, Python supported, more stacks pluggable)
+- **Target audience:** Engineering teams building serious software (.NET first-class, Python supported, more stacks pluggable; finance domain supplement included)
 - **Tech stack architecture:** Workflow skills are language-agnostic; per-stack context lives in `tech-stack-{name}` skills loaded via `.claude/tech-stack`
 
 ---
@@ -70,7 +70,8 @@ Detailed rules in `.claude/rules/` (auto-loaded by Claude Code):
 Full reference docs (distributed to target repos, read on-demand):
 
 **Shared (any stack):**
-- `.claude/references/security-checklist.md` — Security checklist for fintech changes
+- `.claude/references/security-checklist.md` — Security checklist for serious software
+- `.claude/references/domain-finance.md` — Finance domain supplement (regulated state, sensitive data, audit requirements)
 - `.claude/references/testing-patterns.md` — Generic testing guidance
 - `.claude/references/performance-checklist.md` — Generic performance checklist
 

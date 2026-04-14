@@ -1,6 +1,6 @@
 # Pressure Test: Security and Hardening Skill
 
-These scenarios deliberately try to break the security-and-hardening-fintech skill's discipline. Use them to verify the skill holds under realistic pressure.
+These scenarios deliberately try to break the security-and-hardening skill's discipline. Use them to verify the skill holds under realistic pressure.
 
 ## Scenario 1: "It's just an internal endpoint"
 
@@ -55,7 +55,7 @@ These scenarios deliberately try to break the security-and-hardening-fintech ski
 ## How To Use These Tests
 
 1. Set up a mock scenario matching the description above
-2. Invoke the security-and-hardening-fintech skill
+2. Invoke the security-and-hardening skill
 3. Verify the agent correctly identifies and refuses the rationalization
 4. Check that the finding severity matches expectations (Critical, not Warning)
 5. Verify the agent provides the correct fix, not just a flag

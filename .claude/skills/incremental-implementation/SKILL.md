@@ -7,6 +7,7 @@ compatibility:
   - codex
 trigger: approved-multi-file-implementation|batched-execution
 skip_when: single-file-change|minimal-fix
+user-invocable: false
 ---
 
 # Incremental Implementation

@@ -25,11 +25,40 @@
       "Write(.env)",
       "Write(.env.*)",
       "Bash(rm -rf:*)",
-      "Bash(git checkout main:*)"
+      "Bash(git checkout main:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git branch -D:*)",
+      "Bash(git clean -f:*)",
+      "Bash(git stash drop:*)"
     ]
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "hooks/security-gate.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "PostToolUse": [],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "hooks/post-compact.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [

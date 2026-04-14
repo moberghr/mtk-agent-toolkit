@@ -8,9 +8,17 @@ compatibility:
   - codex
 trigger: reporting-done|closing-task|handing-off|claiming-success
 skip_when: mid-exploration|research-phase
+effort: high
 ---
 
 # Verification Before Completion
+
+## Active Stack
+
+```!
+echo "--- Tech Stack ---"
+cat .claude/tech-stack 2>/dev/null || echo "(not set)"
+```
 
 ## Overview
 

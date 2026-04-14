@@ -8,9 +8,21 @@ compatibility:
   - codex
 trigger: context-limit-approaching|long-session-ending|teammate-handoff|pre-compaction|branch-switch-mid-feature
 skip_when: short-session|no-in-progress-work|nothing-meaningful-to-resume
+user-invocable: false
 ---
 
 # Handoff
+
+## Current Session State
+
+```!
+echo "--- Branch ---"
+git branch --show-current 2>/dev/null || echo "(detached)"
+echo "--- Uncommitted changes ---"
+git status --short 2>/dev/null | head -20 || echo "(not a git repo)"
+echo "--- Recent commits (this branch) ---"
+git log --oneline -5 2>/dev/null || echo "(no commits)"
+```
 
 ## Overview
 

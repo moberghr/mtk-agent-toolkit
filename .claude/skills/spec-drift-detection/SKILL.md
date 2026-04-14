@@ -7,6 +7,8 @@ compatibility:
   - codex
 trigger: post-implementation|pre-review|spec-approved|ship-gate
 skip_when: no-spec|typo-fix|single-line-change
+user-invocable: false
+effort: high
 ---
 
 # Spec-Drift Detection

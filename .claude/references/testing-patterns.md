@@ -1,3 +1,15 @@
+---
+paths:
+  - "**/tests/**"
+  - "**/*.Tests/**"
+  - "**/*Tests.cs"
+  - "**/test_*.py"
+  - "**/*_test.py"
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.spec.ts"
+---
+
 # Testing Patterns
 
 Shared, language-agnostic testing guidance. For stack-specific rules, see the active tech stack skill's `## Test Level Guidance` and the testing supplement in `.claude/references/{stack}/`.

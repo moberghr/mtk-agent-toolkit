@@ -8,6 +8,7 @@ compatibility:
 trigger: tech-stack-context
 skip_when: never-skip-when-active-stack
 type: tech-stack
+user-invocable: false
 ---
 
 # Tech Stack: TypeScript

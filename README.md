@@ -20,7 +20,7 @@
 
 ## Why This Exists
 
-AI code assistants are powerful but unpredictable. Without guardrails, they produce code that compiles but violates your team's standards — wrong patterns, missing tests, security gaps, inconsistent style. In fintech, where every line of code touches money, compliance, or customer data, *"it works"* is not enough.
+AI code assistants are powerful but unpredictable. Without guardrails, they produce code that compiles but violates your team's standards — wrong patterns, missing tests, security gaps, inconsistent style. In serious software — where code touches real money, real users, or regulated data — *"it works"* is not enough.
 
 MTK solves this by embedding your engineering standards directly into the AI workflow. Every feature goes through planning, implementation, verification, and adversarial review — all guided by your team's actual patterns and rules.
 
@@ -320,7 +320,7 @@ flowchart TD
 
 ### compliance-reviewer
 
-**Adversarial senior code reviewer for fintech/investment banking.** Must find at least 2 substantive issues or provide a detailed argument for why the code is genuinely flawless. Style nits alone don't count.
+**Adversarial senior code reviewer for serious software.** Must find at least 2 substantive issues or provide a detailed argument for why the code is genuinely flawless. Style nits alone don't count.
 
 **Checks:** Security & compliance (auth, secrets, audit, PII) · Architecture (slices, layers, DI) · Coding style (40+ rules) · Data layer (AsNoTracking, N+1, projections) · Performance · Infrastructure (IAM, VPC, security groups) · Test coverage · Codebase consistency
 
@@ -566,8 +566,8 @@ claude-helpers/
 │   │   ├── incremental-implementation/      # generic
 │   │   ├── test-driven-development/         # generic
 │   │   ├── debugging-and-error-recovery/
-│   │   ├── code-review-and-quality-fintech/
-│   │   ├── security-and-hardening-fintech/
+│   │   ├── code-review-and-quality/
+│   │   ├── security-and-hardening/
 │   │   ├── source-driven-development/
 │   │   ├── code-simplification/
 │   │   ├── verification-before-completion/

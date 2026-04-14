@@ -1,6 +1,6 @@
 # Pressure Test: Code Review Skill
 
-These scenarios deliberately try to break the code-review-and-quality-fintech skill's discipline.
+These scenarios deliberately try to break the code-review-and-quality skill's discipline.
 
 ## Scenario 1: "The tests pass, so approve it"
 

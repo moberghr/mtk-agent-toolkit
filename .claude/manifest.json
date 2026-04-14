@@ -1,6 +1,6 @@
 {
-  "version": "5.5.0",
-  "updated": "2026-04-13",
+  "version": "6.0.0",
+  "updated": "2026-04-14",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
   "files": {
@@ -110,7 +110,13 @@
         "**/settings.py",
         "**/config/*.ts"
       ],
-      "description": "Shared, language-agnostic security checklist for fintech changes"
+      "description": "Shared, language-agnostic security checklist for serious software"
+    },
+    "references/domain-finance.md": {
+      "source": ".claude/references/domain-finance.md",
+      "target": ".claude/references/domain-finance.md",
+      "action": "sync",
+      "description": "Finance domain supplement — concrete examples of regulated state, sensitive data, and audit requirements for fintech codebases"
     },
     "references/performance-checklist.md": {
       "source": ".claude/references/performance-checklist.md",
@@ -321,11 +327,11 @@
       "action": "sync",
       "description": "Reusable bug-fix and debugging workflow skill"
     },
-    "skills/code-review-and-quality-fintech/SKILL.md": {
-      "source": ".claude/skills/code-review-and-quality-fintech/SKILL.md",
-      "target": ".claude/skills/code-review-and-quality-fintech/SKILL.md",
+    "skills/code-review-and-quality/SKILL.md": {
+      "source": ".claude/skills/code-review-and-quality/SKILL.md",
+      "target": ".claude/skills/code-review-and-quality/SKILL.md",
       "action": "sync",
-      "description": "Reusable fintech review workflow skill"
+      "description": "Reusable review workflow skill for serious software"
     },
     "skills/test-driven-development/SKILL.md": {
       "source": ".claude/skills/test-driven-development/SKILL.md",
@@ -339,11 +345,11 @@
       "action": "sync",
       "description": "Reusable context loading and re-anchoring skill"
     },
-    "skills/security-and-hardening-fintech/SKILL.md": {
-      "source": ".claude/skills/security-and-hardening-fintech/SKILL.md",
-      "target": ".claude/skills/security-and-hardening-fintech/SKILL.md",
+    "skills/security-and-hardening/SKILL.md": {
+      "source": ".claude/skills/security-and-hardening/SKILL.md",
+      "target": ".claude/skills/security-and-hardening/SKILL.md",
       "action": "sync",
-      "description": "Reusable fintech security and hardening workflow"
+      "description": "Reusable security and hardening workflow for serious software"
     },
     "skills/source-driven-development/SKILL.md": {
       "source": ".claude/skills/source-driven-development/SKILL.md",
@@ -474,6 +480,24 @@
       "action": "sync",
       "description": "Deterministic static-check pass: scans staged diff for known-bad patterns, emits findings with source:linter and confidence:100"
     },
+    "hooks/security-gate.sh": {
+      "source": "hooks/security-gate.sh",
+      "target": "hooks/security-gate.sh",
+      "action": "sync",
+      "description": "PreToolUse hook that blocks destructive Bash commands (DB drops, force-push to main, broad rm)"
+    },
+    "hooks/post-compact.sh": {
+      "source": "hooks/post-compact.sh",
+      "target": "hooks/post-compact.sh",
+      "action": "sync",
+      "description": "PostCompact hook that re-injects tech stack, in-progress specs, plans, and task state after auto-compaction"
+    },
+    "hooks/git-hooks/pre-commit": {
+      "source": "hooks/git-hooks/pre-commit",
+      "target": "hooks/git-hooks/pre-commit",
+      "action": "sync",
+      "description": "Git pre-commit hook that runs the deterministic linter and blocks commits on critical findings"
+    },
     "hooks/linter-patterns/shared.txt": {
       "source": "hooks/linter-patterns/shared.txt",
       "target": "hooks/linter-patterns/shared.txt",
@@ -531,29 +555,29 @@
       "action": "sync",
       "description": "Eval pipeline overview, directory layout, and manual/automated run guidance"
     },
-    "evals/security-and-hardening-fintech/eval-01-hardcoded-secret.md": {
-      "source": "evals/security-and-hardening-fintech/eval-01-hardcoded-secret.md",
-      "target": "evals/security-and-hardening-fintech/eval-01-hardcoded-secret.md",
+    "evals/security-and-hardening/eval-01-hardcoded-secret.md": {
+      "source": "evals/security-and-hardening/eval-01-hardcoded-secret.md",
+      "target": "evals/security-and-hardening/eval-01-hardcoded-secret.md",
       "action": "sync",
       "description": "Positive eval: hardcoded DB connection string must be flagged critical"
     },
-    "evals/security-and-hardening-fintech/eval-02-pure-refactor.md": {
-      "source": "evals/security-and-hardening-fintech/eval-02-pure-refactor.md",
-      "target": "evals/security-and-hardening-fintech/eval-02-pure-refactor.md",
+    "evals/security-and-hardening/eval-02-pure-refactor.md": {
+      "source": "evals/security-and-hardening/eval-02-pure-refactor.md",
+      "target": "evals/security-and-hardening/eval-02-pure-refactor.md",
       "action": "sync",
       "description": "Negative eval: pure internal refactor must not trigger security findings"
     },
-    "evals/security-and-hardening-fintech/eval-03-internal-endpoint-pressure.md": {
-      "source": "evals/security-and-hardening-fintech/eval-03-internal-endpoint-pressure.md",
-      "target": "evals/security-and-hardening-fintech/eval-03-internal-endpoint-pressure.md",
+    "evals/security-and-hardening/eval-03-internal-endpoint-pressure.md": {
+      "source": "evals/security-and-hardening/eval-03-internal-endpoint-pressure.md",
+      "target": "evals/security-and-hardening/eval-03-internal-endpoint-pressure.md",
       "action": "sync",
       "description": "Adversarial eval: 'internal endpoint, skip auth' pressure — missing auth must stay critical"
     },
-    "evals/security-and-hardening-fintech/grader.md": {
-      "source": "evals/security-and-hardening-fintech/grader.md",
-      "target": "evals/security-and-hardening-fintech/grader.md",
+    "evals/security-and-hardening/grader.md": {
+      "source": "evals/security-and-hardening/grader.md",
+      "target": "evals/security-and-hardening/grader.md",
       "action": "sync",
-      "description": "Grader prompt for security-and-hardening-fintech evals"
+      "description": "Grader prompt for security-and-hardening evals"
     },
     "evals/pre-commit-review/eval-01-sql-concat.md": {
       "source": "evals/pre-commit-review/eval-01-sql-concat.md",

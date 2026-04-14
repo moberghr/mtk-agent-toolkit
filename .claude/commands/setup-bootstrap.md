@@ -155,7 +155,7 @@ Auto-detection captures WHAT is in the codebase. It cannot capture the team's im
 
 4. **Branch + PR workflow** — only ask if recent `git log` / PR templates didn't make this obvious. "How do you name branches and what's the PR convention?"
 
-5. **Compliance / regulatory constraints** (fintech-specific, always ask for fintech repos) — "Are there compliance constraints that should surface in reviews? (e.g., PII handling, audit log requirements, SOC2 scope, PCI scope)"
+5. **Compliance / regulatory constraints** (always ask for regulated domains) — "Are there compliance constraints that should surface in reviews? (e.g., PII handling, audit log requirements, SOC2 scope, PCI scope)"
 
 **What to do with answers:**
 - Each `hard never` → top of Critical Rules, with `IMPORTANT:` prefix.
@@ -394,6 +394,33 @@ Read the active tech stack skill's `## Settings Additions` section. Merge those 
 - `deny` — union with existing
 - `hooks.PostToolUse` — append the stack's format hook
 
+### Git Pre-Commit Hook
+
+Install the deterministic linter as a git pre-commit hook so critical findings (secrets, raw SQL, etc.) block the commit automatically.
+
+```bash
+HOOK_TARGET=".git/hooks/pre-commit"
+HOOK_SOURCE="hooks/git-hooks/pre-commit"
+```
+
+1. **If `.git/hooks/pre-commit` does not exist** — create a symlink:
+   ```bash
+   ln -s ../../hooks/git-hooks/pre-commit .git/hooks/pre-commit
+   ```
+2. **If `.git/hooks/pre-commit` exists and is already a symlink to our hook** — skip (idempotent).
+   ```bash
+   # Check with: readlink .git/hooks/pre-commit
+   ```
+3. **If `.git/hooks/pre-commit` exists but is something else** — do NOT overwrite. Print a warning:
+   ```
+   ⚠️ Existing git pre-commit hook found at .git/hooks/pre-commit.
+   MTK's deterministic linter was NOT installed as a git hook.
+   To chain it manually, add this line to your existing hook:
+     exec hooks/git-hooks/pre-commit
+   ```
+
+The hook runs `hooks/pre-commit-linters.sh --cached` (< 1 second) and blocks on critical findings. Engineers bypass with `git commit --no-verify`. The full AI review (`/mtk:pre-commit-review`) remains a separate, manual step.
+
 ### Commands, Skills, Agents
 Ensure the following files exist:
 - `.claude/commands/implement.md` — main implementation loop
@@ -404,7 +431,7 @@ Ensure the following files exist:
 - `.claude/skills/test-driven-development/SKILL.md`
 - `.claude/skills/planning-and-task-breakdown/SKILL.md`
 - `.claude/skills/debugging-and-error-recovery/SKILL.md`
-- `.claude/skills/code-review-and-quality-fintech/SKILL.md`
+- `.claude/skills/code-review-and-quality/SKILL.md`
 - `.claude/skills/tech-stack-{stack}/SKILL.md` — for the active stack
 - `.claude/agents/compliance-reviewer.md`
 - `.claude/agents/test-reviewer.md`
@@ -609,6 +636,7 @@ Generated/Updated:
   ✓ .claude/rules/ — [N] rule files generated
   ✓ .claude/references/pre-commit-review-list.md — [generated with N items | already exists, skipped]
   ✓ .claude/settings.json — merged [N] stack-specific entries
+  ✓ Git pre-commit hook: [installed | ⚠️ existing hook found, skipped]
   [if monorepo:]
   ✓ Monorepo detected — [N] packages found
       ✓ Generated per-package CLAUDE.md for: [list of packages]

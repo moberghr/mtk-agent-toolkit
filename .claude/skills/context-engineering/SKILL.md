@@ -8,9 +8,18 @@ compatibility:
   - codex
 trigger: session-start|phase-switch|unfamiliar-code|output-drift
 skip_when: single-command|trivial-lookup
+user-invocable: false
 ---
 
 # Context Engineering
+
+## Active Stack
+
+```!
+echo "--- Tech Stack ---"
+cat .claude/tech-stack 2>/dev/null || echo "(not set)"
+if [ -f .claude/tech-stack-pm ]; then echo "--- Package Manager ---"; cat .claude/tech-stack-pm; fi
+```
 
 ## Overview
 

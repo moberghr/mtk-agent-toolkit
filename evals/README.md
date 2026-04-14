@@ -11,7 +11,7 @@ Three skills are covered in the baseline eval set because they gate shipping:
 
 | Skill                               | Why it gates shipping                                       |
 |-------------------------------------|-------------------------------------------------------------|
-| `security-and-hardening-fintech`    | A miss here can leak PII, secrets, or audit trail.          |
+| `security-and-hardening`            | A miss here can leak PII, secrets, or audit trail.          |
 | `pre-commit-review`                 | Last-line defense before every commit.                      |
 | `verification-before-completion`    | Prevents false "done" claims from propagating downstream.   |
 
