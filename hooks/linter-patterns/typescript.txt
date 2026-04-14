@@ -1,0 +1,4 @@
+# TypeScript / JavaScript lint patterns. Tab-separated.
+SQL-TEMPLATE-LITERAL	critical	(query|execute|queryRaw|executeRaw)[[:space:]]*\([[:space:]]*`[^`]*\$\{	Raw SQL template literal with interpolation — injection risk	Use parameterized form; Prisma tagged templates ($queryRaw) are safe; $queryRawUnsafe is not
+CONSOLE-LOG	suggestion	console\.(log|debug|info)\(	console output left in production code	Remove or replace with a proper logger
+ANY-TYPE	suggestion	:[[:space:]]*any[[:space:]]*[;,=)]	any type defeats TypeScripts safety	Replace with a concrete type or unknown plus narrowing

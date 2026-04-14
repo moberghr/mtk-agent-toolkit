@@ -1,5 +1,5 @@
 {
-  "version": "5.4.1",
+  "version": "5.5.0",
   "updated": "2026-04-13",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
@@ -58,16 +58,58 @@
       "action": "merge",
       "description": "Generic permissions, hooks, and tool configuration. Stack-specific entries merged by init."
     },
+    "references/review-finding-schema.md": {
+      "source": ".claude/references/review-finding-schema.md",
+      "target": ".claude/references/review-finding-schema.md",
+      "action": "sync",
+      "description": "Canonical output schema for all review entry points (markdown table + fenced JSON with confidence scores)"
+    },
+    "review-config.json": {
+      "source": ".claude/review-config.json",
+      "target": ".claude/review-config.json",
+      "action": "sync",
+      "description": "Review threshold and verdict configuration. Per-engineer overrides go in .claude/review-config.local.json (gitignored)."
+    },
     "references/testing-patterns.md": {
       "source": ".claude/references/testing-patterns.md",
       "target": ".claude/references/testing-patterns.md",
       "action": "sync",
+      "applyTo": [
+        "**/tests/**",
+        "**/*.Tests/**",
+        "**/*Tests.cs",
+        "**/*Test.cs",
+        "**/test_*.py",
+        "**/*_test.py",
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx"
+      ],
       "description": "Generic testing guidance — load alongside the active stack's testing supplement"
     },
     "references/security-checklist.md": {
       "source": ".claude/references/security-checklist.md",
       "target": ".claude/references/security-checklist.md",
       "action": "sync",
+      "applyTo": [
+        "**/auth/**",
+        "**/authentication/**",
+        "**/authorization/**",
+        "**/payments/**",
+        "**/transfers/**",
+        "**/audit/**",
+        "**/secrets/**",
+        "**/infra/**",
+        "**/iam/**",
+        "**/*Auth*.cs",
+        "**/*Auth*.py",
+        "**/*Auth*.ts",
+        "**/appsettings*.json",
+        "**/*.env*",
+        "**/settings.py",
+        "**/config/*.ts"
+      ],
       "description": "Shared, language-agnostic security checklist for fintech changes"
     },
     "references/performance-checklist.md": {
@@ -88,6 +130,15 @@
       "target": ".claude/references/dotnet/ef-core-checklist.md",
       "action": "sync",
       "stack": "dotnet",
+      "applyTo": [
+        "**/*DbContext.cs",
+        "**/Entities/**",
+        "**/Migrations/**",
+        "**/*Entity.cs",
+        "**/*Configuration.cs",
+        "**/Persistence/**",
+        "**/Repositories/**"
+      ],
       "description": "EF Core review and implementation checklist"
     },
     "references/dotnet/mediatr-slice-patterns.md": {
@@ -95,6 +146,15 @@
       "target": ".claude/references/dotnet/mediatr-slice-patterns.md",
       "action": "sync",
       "stack": "dotnet",
+      "applyTo": [
+        "**/Handlers/**",
+        "**/Commands/**",
+        "**/Queries/**",
+        "**/Features/**",
+        "**/*Handler.cs",
+        "**/*Command.cs",
+        "**/*Query.cs"
+      ],
       "description": "MediatR/CQRS slice conventions for .NET"
     },
     "references/dotnet/testing-supplement.md": {
@@ -102,6 +162,12 @@
       "target": ".claude/references/dotnet/testing-supplement.md",
       "action": "sync",
       "stack": "dotnet",
+      "applyTo": [
+        "**/*.Tests/**",
+        "**/tests/**",
+        "**/*Tests.cs",
+        "**/*Test.cs"
+      ],
       "description": ".NET-specific testing guidance (EF Core providers, xUnit/NUnit conventions)"
     },
     "references/dotnet/performance-supplement.md": {
@@ -123,6 +189,15 @@
       "target": ".claude/references/python/sqlalchemy-checklist.md",
       "action": "sync",
       "stack": "python",
+      "applyTo": [
+        "**/models.py",
+        "**/models/*.py",
+        "**/migrations/**",
+        "**/alembic/**",
+        "**/db/**",
+        "**/database/**",
+        "**/*_repository.py"
+      ],
       "description": "SQLAlchemy review and implementation checklist"
     },
     "references/python/fastapi-patterns.md": {
@@ -130,6 +205,14 @@
       "target": ".claude/references/python/fastapi-patterns.md",
       "action": "sync",
       "stack": "python",
+      "applyTo": [
+        "**/routers/**",
+        "**/api/**",
+        "**/endpoints/**",
+        "**/views.py",
+        "**/urls.py",
+        "**/main.py"
+      ],
       "description": "FastAPI and Django structural conventions"
     },
     "references/python/testing-supplement.md": {
@@ -137,6 +220,12 @@
       "target": ".claude/references/python/testing-supplement.md",
       "action": "sync",
       "stack": "python",
+      "applyTo": [
+        "**/tests/**",
+        "**/test_*.py",
+        "**/*_test.py",
+        "**/conftest.py"
+      ],
       "description": "pytest patterns, fixtures, mocking, async tests"
     },
     "references/python/performance-supplement.md": {
@@ -158,6 +247,16 @@
       "target": ".claude/references/typescript/data-layer-checklist.md",
       "action": "sync",
       "stack": "typescript",
+      "applyTo": [
+        "**/prisma/**",
+        "**/drizzle/**",
+        "**/db/**",
+        "**/schema.ts",
+        "**/schema.prisma",
+        "**/queries/**",
+        "**/*.query.ts",
+        "**/use*Query.ts"
+      ],
       "description": "Prisma / Drizzle / TanStack Query review and implementation checklist"
     },
     "references/typescript/framework-patterns.md": {
@@ -165,6 +264,15 @@
       "target": ".claude/references/typescript/framework-patterns.md",
       "action": "sync",
       "stack": "typescript",
+      "applyTo": [
+        "**/app/**/page.tsx",
+        "**/app/**/layout.tsx",
+        "**/app/**/route.ts",
+        "**/pages/**",
+        "**/routes/**",
+        "**/components/**",
+        "**/src-tauri/**"
+      ],
       "description": "React / Next.js / Tauri / Node backend structural conventions"
     },
     "references/typescript/testing-supplement.md": {
@@ -172,6 +280,14 @@
       "target": ".claude/references/typescript/testing-supplement.md",
       "action": "sync",
       "stack": "typescript",
+      "applyTo": [
+        "**/tests/**",
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx",
+        "**/e2e/**"
+      ],
       "description": "Vitest / Jest / Playwright / RTL / MSW patterns and TanStack Query test setup"
     },
     "references/typescript/performance-supplement.md": {
@@ -247,6 +363,12 @@
       "action": "sync",
       "description": "Reusable verification discipline — no completion claims without fresh evidence"
     },
+    "skills/spec-drift-detection/SKILL.md": {
+      "source": ".claude/skills/spec-drift-detection/SKILL.md",
+      "target": ".claude/skills/spec-drift-detection/SKILL.md",
+      "action": "sync",
+      "description": "Compare the implementation against the spec's JSON sidecar manifest; surface divergence before review"
+    },
     "skills/brainstorming/SKILL.md": {
       "source": ".claude/skills/brainstorming/SKILL.md",
       "target": ".claude/skills/brainstorming/SKILL.md",
@@ -316,6 +438,18 @@
       "action": "sync",
       "description": "Adversarial pressure test for code-review skill"
     },
+    "tests/pressure-tests/confidence-scoring-pressure.md": {
+      "source": "tests/pressure-tests/confidence-scoring-pressure.md",
+      "target": "tests/pressure-tests/confidence-scoring-pressure.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for confidence-scored review output (inflation and sandbagging)"
+    },
+    "tests/pressure-tests/spec-drift-pressure.md": {
+      "source": "tests/pressure-tests/spec-drift-pressure.md",
+      "target": "tests/pressure-tests/spec-drift-pressure.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for spec-drift-detection (silent repair, fabricated manifest, out-of-scope scope creep)"
+    },
     "hooks/session-start": {
       "source": "hooks/session-start",
       "target": "hooks/session-start",
@@ -334,6 +468,39 @@
       "action": "sync",
       "description": "Stop hook flagging completion claims without command output evidence"
     },
+    "hooks/pre-commit-linters.sh": {
+      "source": "hooks/pre-commit-linters.sh",
+      "target": "hooks/pre-commit-linters.sh",
+      "action": "sync",
+      "description": "Deterministic static-check pass: scans staged diff for known-bad patterns, emits findings with source:linter and confidence:100"
+    },
+    "hooks/linter-patterns/shared.txt": {
+      "source": "hooks/linter-patterns/shared.txt",
+      "target": "hooks/linter-patterns/shared.txt",
+      "action": "sync",
+      "description": "Language-agnostic lint patterns (secrets, keys, connection strings, JWTs)"
+    },
+    "hooks/linter-patterns/dotnet.txt": {
+      "source": "hooks/linter-patterns/dotnet.txt",
+      "target": "hooks/linter-patterns/dotnet.txt",
+      "action": "sync",
+      "stack": "dotnet",
+      "description": ".NET lint patterns (raw SQL interpolation, console output, empty catches)"
+    },
+    "hooks/linter-patterns/python.txt": {
+      "source": "hooks/linter-patterns/python.txt",
+      "target": "hooks/linter-patterns/python.txt",
+      "action": "sync",
+      "stack": "python",
+      "description": "Python lint patterns (raw SQL in execute, bare except, print debugging)"
+    },
+    "hooks/linter-patterns/typescript.txt": {
+      "source": "hooks/linter-patterns/typescript.txt",
+      "target": "hooks/linter-patterns/typescript.txt",
+      "action": "sync",
+      "stack": "typescript",
+      "description": "TypeScript / JavaScript lint patterns (SQL template literals with interpolation, console output, any type)"
+    },
     "AGENTS.md": {
       "source": "AGENTS.md",
       "target": "AGENTS.md",
@@ -351,10 +518,95 @@
       "target": "scripts/validate-toolkit.sh",
       "action": "sync",
       "description": "Validation script for toolkit integrity (stack-aware)"
+    },
+    "scripts/run-evals.sh": {
+      "source": "scripts/run-evals.sh",
+      "target": "scripts/run-evals.sh",
+      "action": "sync",
+      "description": "Eval pipeline runner: lists scenarios, supports manual or automated execution (via EVAL_EXECUTOR / EVAL_GRADER env hooks)"
+    },
+    "evals/README.md": {
+      "source": "evals/README.md",
+      "target": "evals/README.md",
+      "action": "sync",
+      "description": "Eval pipeline overview, directory layout, and manual/automated run guidance"
+    },
+    "evals/security-and-hardening-fintech/eval-01-hardcoded-secret.md": {
+      "source": "evals/security-and-hardening-fintech/eval-01-hardcoded-secret.md",
+      "target": "evals/security-and-hardening-fintech/eval-01-hardcoded-secret.md",
+      "action": "sync",
+      "description": "Positive eval: hardcoded DB connection string must be flagged critical"
+    },
+    "evals/security-and-hardening-fintech/eval-02-pure-refactor.md": {
+      "source": "evals/security-and-hardening-fintech/eval-02-pure-refactor.md",
+      "target": "evals/security-and-hardening-fintech/eval-02-pure-refactor.md",
+      "action": "sync",
+      "description": "Negative eval: pure internal refactor must not trigger security findings"
+    },
+    "evals/security-and-hardening-fintech/eval-03-internal-endpoint-pressure.md": {
+      "source": "evals/security-and-hardening-fintech/eval-03-internal-endpoint-pressure.md",
+      "target": "evals/security-and-hardening-fintech/eval-03-internal-endpoint-pressure.md",
+      "action": "sync",
+      "description": "Adversarial eval: 'internal endpoint, skip auth' pressure — missing auth must stay critical"
+    },
+    "evals/security-and-hardening-fintech/grader.md": {
+      "source": "evals/security-and-hardening-fintech/grader.md",
+      "target": "evals/security-and-hardening-fintech/grader.md",
+      "action": "sync",
+      "description": "Grader prompt for security-and-hardening-fintech evals"
+    },
+    "evals/pre-commit-review/eval-01-sql-concat.md": {
+      "source": "evals/pre-commit-review/eval-01-sql-concat.md",
+      "target": "evals/pre-commit-review/eval-01-sql-concat.md",
+      "action": "sync",
+      "description": "Positive eval: raw SQL with string interpolation must be flagged critical"
+    },
+    "evals/pre-commit-review/eval-02-docs-only.md": {
+      "source": "evals/pre-commit-review/eval-02-docs-only.md",
+      "target": "evals/pre-commit-review/eval-02-docs-only.md",
+      "action": "sync",
+      "description": "Negative eval: docs-only diff must pass with substantive rationale, no fabricated findings"
+    },
+    "evals/pre-commit-review/eval-03-inflate-to-pass.md": {
+      "source": "evals/pre-commit-review/eval-03-inflate-to-pass.md",
+      "target": "evals/pre-commit-review/eval-03-inflate-to-pass.md",
+      "action": "sync",
+      "description": "Adversarial eval: cosmetic rename with pressure to surface findings — must resist inflation"
+    },
+    "evals/pre-commit-review/grader.md": {
+      "source": "evals/pre-commit-review/grader.md",
+      "target": "evals/pre-commit-review/grader.md",
+      "action": "sync",
+      "description": "Grader prompt for pre-commit-review evals"
+    },
+    "evals/verification-before-completion/eval-01-done-without-evidence.md": {
+      "source": "evals/verification-before-completion/eval-01-done-without-evidence.md",
+      "target": "evals/verification-before-completion/eval-01-done-without-evidence.md",
+      "action": "sync",
+      "description": "Positive eval: completion claim without cited command output must be blocked"
+    },
+    "evals/verification-before-completion/eval-02-evidence-cited.md": {
+      "source": "evals/verification-before-completion/eval-02-evidence-cited.md",
+      "target": "evals/verification-before-completion/eval-02-evidence-cited.md",
+      "action": "sync",
+      "description": "Negative eval: completion with exit code + test counts must be accepted cleanly"
+    },
+    "evals/verification-before-completion/eval-03-trivial-change-excuse.md": {
+      "source": "evals/verification-before-completion/eval-03-trivial-change-excuse.md",
+      "target": "evals/verification-before-completion/eval-03-trivial-change-excuse.md",
+      "action": "sync",
+      "description": "Adversarial eval: 'trivial change, obvious compilation' must still require build evidence"
+    },
+    "evals/verification-before-completion/grader.md": {
+      "source": "evals/verification-before-completion/grader.md",
+      "target": "evals/verification-before-completion/grader.md",
+      "action": "sync",
+      "description": "Grader prompt for verification-before-completion evals"
     }
   },
   "protected": [
     ".claude/settings.local.json",
+    ".claude/review-config.local.json",
     ".claude/tech-stack",
     ".claude/tech-stack-pm",
     "CLAUDE.md",

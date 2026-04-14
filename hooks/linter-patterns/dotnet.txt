@@ -1,0 +1,5 @@
+# .NET lint patterns. Tab-separated.
+RAW-SQL-INTERPOLATED	critical	(FromSqlRaw|ExecuteSqlRaw|SqlQuery)[[:space:]]*\([[:space:]]*\$"	EF Core raw SQL with string interpolation — SQL injection risk	Use FromSqlInterpolated or parameterize via {0} placeholders
+CONSOLE-WRITELINE	suggestion	Console\.(WriteLine|Write)\(	Console output left in production code	Remove or replace with ILogger
+DEBUG-WRITELINE	suggestion	Debug\.WriteLine\(	Debug output left in production code	Remove or replace with structured logging
+BROAD-CATCH-EMPTY	warning	catch[[:space:]]*\([[:space:]]*Exception[^)]*\)[[:space:]]*\{[[:space:]]*\}	Empty catch(Exception) swallows errors silently	Log and rethrow, or narrow the exception type

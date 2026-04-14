@@ -1,8 +1,11 @@
 ### Claude Code
 .claude/settings.local.json
+.claude/review-config.local.json
 !.claude/skills/
 .claude/skills/gitnexus/
+!AGENTS.md
 tasks/todo.md
+evals/results/
 
 ### macOS
 # Finder metadata

@@ -13,6 +13,16 @@ check engineers should run before every commit.
 1. Get the staged diff: `git diff --cached`
 2. If nothing staged, check unstaged: `git diff`
 3. If nothing at all, tell the engineer there's nothing to review
+4. **Run the static linter pass first:** `bash hooks/pre-commit-linters.sh`
+   - Emits deterministic findings with `source: "linter"` and `confidence: 100`
+   - Findings include secrets, raw SQL interpolation, connection strings with
+     plaintext passwords, AWS keys, JWTs, and stack-specific patterns
+   - Merge linter findings into your final JSON output (they always pass the
+     threshold, so they always surface)
+5. Run the AI review pass on the same diff to catch issues the linter can't
+   reach (design, intent, context-sensitive rules). AI findings use
+   `source: "ai"` and their own confidence scores per the rubric.
+6. Combine linter + AI findings into a single schema-conformant output.
 
 ## Check ONLY These (from CLAUDE.md §1):
 
@@ -37,12 +47,35 @@ check engineers should run before every commit.
 
 ---
 
-## Output
+## Output Contract
+
+Emit the schema-conformant output per `.claude/references/review-finding-schema.md`:
+
+1. **Markdown table** of surfaced findings (rows where `confidence >= threshold`).
+2. **Fenced JSON block** with the full structured result.
+
+Read `.claude/review-config.json` for the threshold (default 80; `.claude/review-config.local.json` overrides if present). Apply the **confidence rubric** and the **anti-inflation rule**.
+
+- Any `critical` finding at/above threshold → `verdict: "NEEDS_CHANGES"`.
+- Otherwise → `verdict: "PASS"`.
+- If `findings[]` has fewer than 2 entries, `below_threshold_rationale` is mandatory — state what you checked and why you conclude the diff is clean.
+
+Keep the table tight. This is a pre-commit gate, not a full review.
+
+### Example (clean diff)
 
 ```
-Pre-Commit Security Review: PASS | FAIL
-
-[If FAIL, list each issue with file:line and one-line description]
+| ID | Sev | Conf | Src | File:Line | Rule | Issue |
+|----|-----|------|-----|-----------|------|-------|
+| — | — | — | — | — | — | No findings at or above threshold. |
 ```
 
-Keep it brief. This is a pre-commit gate, not a full review.
+```json
+{
+  "verdict": "PASS",
+  "threshold": 80,
+  "summary": { "critical": 0, "warning": 0, "suggestion": 0, "filtered_below_threshold": 0 },
+  "findings": [],
+  "below_threshold_rationale": "Checked: secrets, SQL injection, PII in logs, missing [Authorize], missing audit trail, IAM blast radius. Diff adds a read-only DTO property with no logging, no auth-scoped change, and no data mutation. No below-threshold findings suppressed."
+}
+```

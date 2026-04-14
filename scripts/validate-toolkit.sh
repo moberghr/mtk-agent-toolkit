@@ -69,6 +69,12 @@ while IFS= read -r path; do
   esac
 done < <(grep -E '^[[:space:]]*"source":' .claude/manifest.json | sed -E 's/.*"source":[[:space:]]*"([^"]+)".*/\1/' | grep -v '://')
 
+# applyTo values must be glob patterns (strings). Quick sanity: any applyTo line
+# must be an array opener or a quoted glob. Detect obvious errors (non-array value).
+if grep -nE '"applyTo":[[:space:]]*[^\[]' .claude/manifest.json | grep -v '"applyTo": \[$' >/dev/null; then
+  fail "manifest.json has an 'applyTo' entry that is not an array. Use [\"glob1\", \"glob2\"] form."
+fi
+
 # Frontmatter check on commands, agents, and manifest-tracked skills only.
 # (Third-party skill plugins under .claude/skills/ — e.g. gitnexus/ — are not MTK-managed.)
 while IFS= read -r file; do
