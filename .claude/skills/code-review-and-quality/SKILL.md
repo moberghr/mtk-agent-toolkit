@@ -1,6 +1,7 @@
 ---
 name: code-review-and-quality
 description: Use after implementation is verified and before merge, or when reviewing a PR, to check correctness, security, architecture, and test quality against project standards.
+type: skill
 license: MIT
 compatibility:
   - claude-code
@@ -51,6 +52,15 @@ Review changed code as an adversary, not a collaborator. The review must priorit
    - `.claude/references/performance-checklist.md`
    - If a domain supplement exists (e.g. `.claude/references/domain-finance.md`), load it for domain-specific rationalizations
 2. Read the behavioral diff if provided.
+
+### CI Context (if available)
+
+If reviewing a PR or branch with CI runs, check CI status:
+1. Run `bash hooks/ci-status.sh` to get check run results
+2. If CI failed, note which checks failed — the review should focus on those areas
+3. If CI passed, note any warnings from the build output (`.mtk/analyzer-output.json`)
+4. If `hooks/ci-status.sh` is not available or `gh` is not installed, proceed without CI context
+
 3. Review across these axes:
    - correctness
    - readability and simplicity

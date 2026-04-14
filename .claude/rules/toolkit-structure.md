@@ -8,7 +8,7 @@
 - **S1.2** Each manifest entry must have: `source`, `target`, `action` (sync or merge), and `description`.
 - **S1.3** `description` follows the CSO (Claude Slash-command Output) principle — clear, specific, one sentence explaining what the file does.
 - **S1.4** Version in `manifest.json` and `plugin.json` must always match. Bump both together using semver.
-- **S1.5** Protected files (listed in `manifest.protected`) are never overwritten by update. Currently: `settings.local.json`, `CLAUDE.md`, `tasks/lessons.md`, `tasks/todo.md`, `architecture-principles.md`, `pre-commit-review-list.md`.
+- **S1.5** Protected files (listed in `manifest.protected`) are never overwritten by update. Currently: `settings.local.json`, `review-config.local.json`, `tech-stack`, `tech-stack-pm`, `CLAUDE.md`, `tasks/lessons.md`, `tasks/todo.md`, `architecture-principles.md`, `pre-commit-review-list.md`.
 
 ## File Organization
 

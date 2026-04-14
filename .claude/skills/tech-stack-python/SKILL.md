@@ -117,6 +117,15 @@ Key conventions to start with (until guidelines are written):
 - f-strings over `.format()` or `%` formatting
 - Use `pathlib.Path` over `os.path` for new code
 
+## Analyzer Configuration
+
+See `.claude/references/python/analyzer-config.md` for recommended ruff rules and mypy strict settings.
+
+Lint with analyzer capture:
+```bash
+ruff check --output-format json . | hooks/parse-build-diagnostics.sh --format ruff > .mtk/analyzer-output.json
+```
+
 ## Reference Files
 
 These files are loaded by commands and review agents when the active stack is `python`:

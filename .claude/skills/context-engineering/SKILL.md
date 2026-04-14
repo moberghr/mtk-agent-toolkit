@@ -1,6 +1,7 @@
 ---
 name: context-engineering
 description: Use when starting a session, switching between planning/implementation/review phases, entering unfamiliar code, or when output drifts from project norms.
+type: skill
 license: MIT
 compatibility:
   - claude-code
@@ -44,8 +45,11 @@ Good output depends on good context. Load the minimum relevant context needed to
    may declare an `applyTo` glob array. When the current task has a known
    set of files in scope (from the spec's `change_manifest` or from
    `git diff --name-only HEAD`):
-   - For each reference with `applyTo`, test each touched file against the
-     globs (bash `case` / `fnmatch` semantics).
+   - **MCP-first:** If `mtk_resolve_references` tool is available, call it
+     with the list of touched files. It returns deterministic glob matches
+     against the manifest's `applyTo` arrays. Use its output directly.
+   - **Fallback:** If the MCP tool is unavailable, manually test each
+     touched file against the globs (bash `case` / `fnmatch` semantics).
    - Load references whose globs match at least one touched file.
    - Skip references whose globs match nothing — they're not relevant to
      this task.
@@ -94,6 +98,28 @@ Track the cumulative context loaded in the session. Research shows LLMs reliably
   file, do NOT load it as a "just in case" measure. That defeats the budget.
 - When in doubt about which globs match, use `git diff --name-only HEAD` as
   the authoritative list of touched files.
+
+## Model Routing
+
+Not all tasks need the same model tier. Route work by complexity to optimize cost and quality:
+
+| Phase / Skill | Model | Rationale |
+|---|---|---|
+| Pre-commit linter | N/A (bash) | Deterministic — no model needed |
+| Setup-bootstrap scan recipes | haiku | File discovery, grep — structured data collection |
+| Setup-audit scan recipes | haiku | Same — structured data collection |
+| Planning and task breakdown | sonnet | Judgment needed but scope is bounded |
+| Incremental implementation | sonnet | Standard code generation |
+| Test-driven development | sonnet | Standard test generation |
+| Pre-commit AI review | sonnet | Fast review with bounded scope |
+| Compliance review | opus | Security, financial state, audit trails — highest stakes |
+| Security and hardening | opus | Security decisions cannot be shallow |
+| Spec-drift detection | sonnet | Structured comparison, moderate judgment |
+| Architecture review | sonnet | Pattern matching against known rules |
+| Test review | sonnet | Assertion quality, coverage gaps |
+| Brainstorming | opus | Creative exploration benefits from deeper reasoning |
+
+Agent frontmatter `model:` sets the model for subagents. Entry-point skills run on the user's selected model. When a skill spawns a reviewer agent, the agent's frontmatter controls its model.
 
 ## Common Rationalizations
 

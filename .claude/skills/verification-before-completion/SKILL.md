@@ -1,6 +1,7 @@
 ---
 name: verification-before-completion
 description: Require fresh execution evidence before claiming any task is complete. Use before reporting success, closing a task, or handing off to review.
+type: skill
 license: MIT
 compatibility:
   - claude-code

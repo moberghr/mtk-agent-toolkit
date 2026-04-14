@@ -24,7 +24,7 @@ the table is rendered from it for scanning.
       "severity": "critical",
       "confidence": 95,
       "rule": "<e.g., §1.1 / Coding Guidelines — LINQ / SECRET-HARDCODED>",
-      "source": "ai | linter | drift",
+      "source": "ai | linter | drift | analyzer",
       "file": "relative/path/to/file.ext",
       "line": 42,
       "rationale": "One-line statement of why this is a problem.",
@@ -38,6 +38,7 @@ the table is rendered from it for scanning.
 The `source` field distinguishes deterministic linter findings from AI
 reasoning and spec-drift checks. Static linters emit `source: "linter"`
 with confidence always `100`. AI findings emit `source: "ai"`.
+Analyzer findings (from Roslyn, ruff, tsc, biome) emit `source: "analyzer"` with confidence always `100`.
 
 ## Markdown Table Template
 

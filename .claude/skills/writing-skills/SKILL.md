@@ -1,6 +1,7 @@
 ---
 name: writing-skills
 description: Use when creating a new skill for this toolkit — ensures the skill follows the anatomy, CSO principle, and is tested against agent rationalizations before shipping.
+type: skill
 license: MIT
 compatibility:
   - claude-code

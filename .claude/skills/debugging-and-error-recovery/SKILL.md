@@ -1,6 +1,7 @@
 ---
 name: debugging-and-error-recovery
 description: Use when a test fails, a runtime error occurs, or a behavioral regression is reported — reproduce first, then fix the root cause within scope.
+type: skill
 license: MIT
 compatibility:
   - claude-code

@@ -1,6 +1,7 @@
 ---
 name: incremental-implementation
 description: Use when executing an approved multi-file implementation to ensure each batch compiles, tests, and stays within the approved manifest.
+type: skill
 license: MIT
 compatibility:
   - claude-code
@@ -34,6 +35,15 @@ Implement in thin slices. Each slice must compile, test, and remain explainable 
 4. Follow `test-driven-development` for tests in the same batch.
 5. Use `source-driven-development` when any framework, library, or SDK behavior is uncertain.
 6. Run the batch checkpoint using the build and test commands from the active tech stack skill's `## Build & Test Commands`.
+6.5. **Capture analyzer output.** After the build command completes, pipe its output
+   through the build diagnostics parser if available:
+   ```bash
+   # Example for .NET (adapt command from tech stack skill's Build & Test Commands):
+   dotnet build 2>&1 | tee /dev/tty | hooks/parse-build-diagnostics.sh > .mtk/analyzer-output.json
+   ```
+   Surface any critical analyzer findings immediately — they block the batch just like
+   build failures. Warning-level findings carry forward to the pre-commit review.
+   If the parser script is not available (pre-Wave-4 install), skip this step.
 7. Read `.claude/references/pre-commit-review-list.md` if present and fix any violations immediately.
 8. Mark the batch complete in `tasks/todo.md`.
 9. **Churn check:** After completing each batch, run `git diff --stat` and count net lines changed. If cumulative changes across batches exceed 300 lines, pause and trigger an early review checkpoint:

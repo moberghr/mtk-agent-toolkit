@@ -1,6 +1,7 @@
 ---
 name: brainstorming
 description: Use before spec writing when the approach is unclear, multiple designs are plausible, or the engineer wants to explore alternatives before committing.
+type: skill
 license: MIT
 compatibility:
   - claude-code

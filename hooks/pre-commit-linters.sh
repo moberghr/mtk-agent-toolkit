@@ -47,6 +47,10 @@ fi
 
 # --- Build pattern list ---
 PATTERN_FILES=("$PATTERNS_DIR/shared.txt")
+# Slopwatch patterns apply to all stacks (LLM reward hacking is language-agnostic)
+if [ -f "$PATTERNS_DIR/slopwatch.txt" ]; then
+  PATTERN_FILES+=("$PATTERNS_DIR/slopwatch.txt")
+fi
 if [ -n "$STACK" ] && [ -f "$PATTERNS_DIR/$STACK.txt" ]; then
   PATTERN_FILES+=("$PATTERNS_DIR/$STACK.txt")
 fi

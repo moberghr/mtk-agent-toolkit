@@ -1,6 +1,7 @@
 ---
 name: code-simplification
 description: Use after a feature or fix is verified and passing to reduce complexity, remove dead code, and improve clarity without changing behavior.
+type: skill
 license: MIT
 compatibility:
   - claude-code

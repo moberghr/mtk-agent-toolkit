@@ -1,6 +1,7 @@
 ---
 name: using-git-worktrees
 description: Use when creating an isolated workspace for feature work, experiments, or parallel development to avoid contaminating the main branch.
+type: skill
 license: MIT
 compatibility:
   - claude-code

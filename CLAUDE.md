@@ -1,6 +1,6 @@
 # claude-helpers — MTK Standards
 
-> Updated 2026-04-14 for v6.1.0 (commands merged into skills per Claude Code v2.1.101; all entry points now live in `.claude/skills/`).
+> Updated 2026-04-14 for v6.1.4 (commands merged into skills per Claude Code v2.1.101; all entry points now live in `.claude/skills/`).
 >
 > This file + `.claude/rules/` are the source of truth for AI agents.
 > Detailed standards live in `.claude/rules/`. Reference docs live in `.claude/references/` (shared) and `.claude/references/{stack}/` (stack-specific).
@@ -13,6 +13,10 @@
 |---|---|---|
 | Add/modify a skill or agent | `/mtk:implement <description>` | New skills, multi-file changes, structural work |
 | Quick fix | `/mtk:fix <description>` | Bug fixes, typos, single-file changes |
+| Pre-commit security check | `/mtk:pre-commit-review` | Before every commit — linter + AI review of staged changes |
+| Bootstrap a repo | `/mtk:setup-bootstrap` | One-time setup — detects tech stack, generates CLAUDE.md |
+| Audit architecture | `/mtk:setup-audit [--merge]` | Extract architecture principles, or unify multi-repo audits |
+| Update to latest MTK | `/mtk:setup-update` | Sync non-protected files, merge settings |
 | Validate toolkit | `bash scripts/validate-toolkit.sh` | Before every commit — structural check of manifest, plugin.json, and skill anatomy |
 
 **Decision rule:** If the change touches only 1-2 files (typo fix, hook tweak), use `fix`. If it adds a new skill or agent, use `implement`.

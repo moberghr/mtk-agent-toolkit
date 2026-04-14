@@ -662,6 +662,126 @@
       "target": ".github/pull_request_template.md",
       "action": "sync",
       "description": "PR template with summary, changes, verification checklist, and breaking changes sections"
+    },
+    "references/dotnet/analyzer-config.md": {
+      "source": ".claude/references/dotnet/analyzer-config.md",
+      "target": ".claude/references/dotnet/analyzer-config.md",
+      "action": "sync",
+      "stack": "dotnet",
+      "description": "Recommended Roslyn analyzer NuGet packages and .editorconfig rules for .NET"
+    },
+    "references/python/analyzer-config.md": {
+      "source": ".claude/references/python/analyzer-config.md",
+      "target": ".claude/references/python/analyzer-config.md",
+      "action": "sync",
+      "stack": "python",
+      "description": "Recommended ruff rules, mypy strict config, and bandit security checks for Python"
+    },
+    "references/typescript/analyzer-config.md": {
+      "source": ".claude/references/typescript/analyzer-config.md",
+      "target": ".claude/references/typescript/analyzer-config.md",
+      "action": "sync",
+      "stack": "typescript",
+      "description": "Recommended tsconfig strict settings and biome lint rules for TypeScript"
+    },
+    "hooks/parse-build-diagnostics.sh": {
+      "source": "hooks/parse-build-diagnostics.sh",
+      "target": "hooks/parse-build-diagnostics.sh",
+      "action": "sync",
+      "description": "Parses build tool diagnostics (dotnet build, ruff, tsc, biome) into review-finding-schema JSON with source:analyzer"
+    },
+    "hooks/analyzer-severity/dotnet.txt": {
+      "source": "hooks/analyzer-severity/dotnet.txt",
+      "target": "hooks/analyzer-severity/dotnet.txt",
+      "action": "sync",
+      "stack": "dotnet",
+      "description": ".NET Roslyn analyzer rule-to-severity mappings (EF1001→critical, CA2007→warning, etc.)"
+    },
+    "hooks/analyzer-severity/python.txt": {
+      "source": "hooks/analyzer-severity/python.txt",
+      "target": "hooks/analyzer-severity/python.txt",
+      "action": "sync",
+      "stack": "python",
+      "description": "Python ruff/bandit rule-to-severity mappings (S101→critical, B006→warning, etc.)"
+    },
+    "hooks/analyzer-severity/typescript.txt": {
+      "source": "hooks/analyzer-severity/typescript.txt",
+      "target": "hooks/analyzer-severity/typescript.txt",
+      "action": "sync",
+      "stack": "typescript",
+      "description": "TypeScript tsc/biome rule-to-severity mappings"
+    },
+    "tests/pressure-tests/analyzer-integration-pressure.md": {
+      "source": "tests/pressure-tests/analyzer-integration-pressure.md",
+      "target": "tests/pressure-tests/analyzer-integration-pressure.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for analyzer integration (no pre-commit builds, stale output, fabrication)"
+    },
+    "skills/setup-update/SKILL.md": {
+      "source": ".claude/skills/setup-update/SKILL.md",
+      "target": ".claude/skills/setup-update/SKILL.md",
+      "action": "sync",
+      "description": "Update a bootstrapped repo to the latest MTK version with protected-file safety"
+    },
+    "hooks/merge-settings.sh": {
+      "source": "hooks/merge-settings.sh",
+      "target": "hooks/merge-settings.sh",
+      "action": "sync",
+      "description": "Merges two settings.json files by unioning arrays (allowedTools, deny, hooks) without clobbering"
+    },
+    "tests/pressure-tests/update-safety-pressure.md": {
+      "source": "tests/pressure-tests/update-safety-pressure.md",
+      "target": "tests/pressure-tests/update-safety-pressure.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for setup-update (protected files, downgrades, approval gate)"
+    },
+    "CHANGELOG.md": {
+      "source": "CHANGELOG.md",
+      "target": "CHANGELOG.md",
+      "action": "sync",
+      "description": "Keep-a-changelog format documenting MTK version history and upgrade notes"
+    },
+    ".mcp.json": {
+      "source": ".mcp.json",
+      "target": ".mcp.json",
+      "action": "sync",
+      "description": "MCP server declaration for mtk-context (reference resolution, solution structure)"
+    },
+    "dist/mtk-mcp-server.cjs": {
+      "source": "dist/mtk-mcp-server.cjs",
+      "target": "dist/mtk-mcp-server.cjs",
+      "action": "sync",
+      "description": "Pre-built MCP server bundle — single CJS file with all dependencies inlined"
+    },
+    "scripts/build-mcp.sh": {
+      "source": "scripts/build-mcp.sh",
+      "target": "scripts/build-mcp.sh",
+      "action": "sync",
+      "description": "Build script for the MCP server — runs esbuild to produce dist/mtk-mcp-server.cjs"
+    },
+    "hooks/ci-status.sh": {
+      "source": "hooks/ci-status.sh",
+      "target": "hooks/ci-status.sh",
+      "action": "sync",
+      "description": "Bash helper wrapping gh CLI for CI status — outputs structured JSON for review skills"
+    },
+    "tests/pressure-tests/mcp-fallback-pressure.md": {
+      "source": "tests/pressure-tests/mcp-fallback-pressure.md",
+      "target": "tests/pressure-tests/mcp-fallback-pressure.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for MCP fallback paths (server unavailable, empty results, errors)"
+    },
+    "hooks/linter-patterns/slopwatch.txt": {
+      "source": "hooks/linter-patterns/slopwatch.txt",
+      "target": "hooks/linter-patterns/slopwatch.txt",
+      "action": "sync",
+      "description": "LLM reward hacking patterns (disabled tests, pragma without restore, empty catches, always-pass assertions)"
+    },
+    "hooks/api-compat-check.sh": {
+      "source": "hooks/api-compat-check.sh",
+      "target": "hooks/api-compat-check.sh",
+      "action": "sync",
+      "description": "API backward compatibility checker — detects removed routes, changed DTOs, removed public properties"
     }
   },
   "protected": [

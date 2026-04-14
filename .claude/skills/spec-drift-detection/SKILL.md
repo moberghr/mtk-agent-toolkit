@@ -1,6 +1,7 @@
 ---
 name: spec-drift-detection
 description: Use after implementation completes and before review begins, to verify the actual change matches the approved spec — files touched, public contracts added, security impact, and declared scope.
+type: skill
 license: MIT
 compatibility:
   - claude-code

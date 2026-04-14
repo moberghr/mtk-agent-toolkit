@@ -28,13 +28,26 @@ if [[ -f "tasks/todo.md" ]] && [[ -z "$RECOVERY_MSG" ]]; then
   fi
 fi
 
+# Version drift check (advisory only)
+VERSION_MSG=""
+if [ -f .claude/mtk-version.json ]; then
+  INSTALLED_VERSION="$(grep -o '"version":"[^"]*"' .claude/mtk-version.json 2>/dev/null | sed 's/"version":"//;s/"//' || true)"
+  if [ -n "$INSTALLED_VERSION" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
+    SOURCE_MANIFEST="${CLAUDE_PLUGIN_ROOT}/.claude/manifest.json"
+    if [ -f "$SOURCE_MANIFEST" ]; then
+      SOURCE_VERSION="$(grep -o '"version": "[^"]*"' "$SOURCE_MANIFEST" | head -1 | sed 's/"version": "//;s/"//' || true)"
+      if [ -n "$SOURCE_VERSION" ] && [ "$INSTALLED_VERSION" != "$SOURCE_VERSION" ]; then
+        VERSION_MSG="MTK update available: ${INSTALLED_VERSION} → ${SOURCE_VERSION}. Run /mtk:setup-update to sync."
+      fi
+    fi
+  fi
+fi
+
 # Build the context message
 BASE_MSG="Moberg toolkit is active. Available commands: implement, fix, pre-commit-review, setup-bootstrap, setup-audit. Skills loaded on demand via progressive disclosure."
-if [[ -n "$RECOVERY_MSG" ]]; then
-  CONTEXT="${BASE_MSG} ${RECOVERY_MSG}"
-else
-  CONTEXT="$BASE_MSG"
-fi
+CONTEXT="$BASE_MSG"
+[[ -n "$RECOVERY_MSG" ]] && CONTEXT="${CONTEXT} ${RECOVERY_MSG}"
+[[ -n "$VERSION_MSG" ]] && CONTEXT="${CONTEXT} ${VERSION_MSG}"
 
 # Escape for JSON (bash parameter substitution — no external deps)
 json_escape() {
