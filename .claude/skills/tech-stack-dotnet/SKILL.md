@@ -27,6 +27,7 @@ Loaded automatically by commands and skills when the active tech stack is `dotne
 - **Test (batch):** `dotnet test` or `dotnet test --filter <project>`
 - **Test (full):** `dotnet test`
 - **Format:** `dotnet format --include "$CLAUDE_FILE" --verbosity quiet`
+  - `$CLAUDE_FILE` is a Claude Code built-in hook variable — expanded to the edited file path when a `PostToolUse` hook fires. Do not use in manual terminal commands or document in human-facing CLAUDE.md; use `dotnet format --verbosity quiet` there instead.
 
 ## File Extensions & Markers
 
@@ -132,6 +133,8 @@ Merge these into the project's `.claude/settings.json` during `setup-bootstrap`:
 ## Format Command
 
 ```bash
+# $CLAUDE_FILE: Claude Code built-in — expanded to the edited file path by PostToolUse hooks.
+# In human-facing CLAUDE.md, show only: dotnet format --verbosity quiet
 dotnet format --include "$CLAUDE_FILE" --verbosity quiet 2>/dev/null || true
 ```
 

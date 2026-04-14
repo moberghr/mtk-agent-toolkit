@@ -251,7 +251,7 @@ Create `CLAUDE.md` and `.claude/rules/` files following the templates below.
 - **Active stack:** [from `.claude/tech-stack`]
 - **Build command:** [from tech stack skill `## Build & Test Commands`]
 - **Test command:** [from tech stack skill `## Build & Test Commands`]
-- **Format command:** [from tech stack skill `## Format Command`]
+- **Format:** [human-readable form of the format command from tech stack skill `## Format Command` — strip `$CLAUDE_FILE` and show the base command, e.g., `dotnet format --verbosity quiet` not `dotnet format --include "$CLAUDE_FILE"`. The hook in settings.json handles per-file targeting; CLAUDE.md is for human readers.]
 
 For framework-specific guidance, see `.claude/skills/tech-stack-{stack}/SKILL.md`.
 
@@ -352,7 +352,44 @@ The rule file templates are largely the same as before — adapt the content per
 - **Don't duplicate** content from `.claude/references/` — point to the file instead.
 - Skip rules files for sections that don't apply.
 
-## STEP 3.5: Preview Gate (if `--preview`)
+## STEP 3.5a: Verify Generated References
+
+Before writing files (or presenting preview), validate every concrete directory/project claim in the generated content. This prevents stale references from appearing when bootstrap runs alongside cleanup.
+
+**For architecture-principles.md:**
+
+1. Extract every directory or project name referenced with an "exists on disk" / "still on disk" / "on disk" claim:
+   ```bash
+   # For each directory mentioned as existing, verify it
+   for dir in $(grep -oE '[A-Z][a-zA-Z0-9]+/' .claude/references/architecture-principles.md 2>/dev/null | sort -u); do
+     [ ! -d "$dir" ] && echo "STALE: $dir referenced but not found"
+   done
+   ```
+2. For each `.csproj` or project file mentioned by name, verify it exists:
+   ```bash
+   grep -oE '[A-Za-z0-9._-]+\.csproj' .claude/references/architecture-principles.md 2>/dev/null | while read proj; do
+     find . -name "$proj" -not -path "*/bin/*" 2>/dev/null | grep -q . || echo "STALE: $proj not found"
+   done
+   ```
+3. For any `TargetFramework` claims (e.g., "one net7.0 orphan"), verify against actual csproj files:
+   ```bash
+   grep -rh "TargetFramework" --include="*.csproj" | sort -u
+   ```
+
+**For .claude/rules/*.md files:**
+
+4. Check each rules file for references to specific projects, directories, or workers. If they don't exist on disk, remove or correct the reference.
+
+**Action on stale references:**
+
+- If a directory/project is referenced as "exists" but doesn't → remove the reference or mark as removed.
+- If a directory/project is referenced as "not on disk" but does exist → correct the claim.
+- If a TargetFramework version is claimed but no csproj uses it → remove the claim.
+- Re-run this check after any file deletions in the same session.
+
+**Rule:** The generated content must reflect the repository state AT THE TIME OF WRITING, not at the time of scanning. If setup-bootstrap also performed cleanup, the verification pass catches the drift.
+
+## STEP 3.5b: Preview Gate (if `--preview`)
 
 If the engineer passed `--preview`, **do not write any files yet**. Instead:
 
@@ -457,6 +494,22 @@ Ensure the following files exist:
 - `AGENTS.md`
 
 If any are missing, tell the engineer to re-install the MTK plugin from the marketplace (`/plugin install mtk@moberghr`).
+
+### Reference File Customization
+
+Shared reference files (e.g., `testing-supplement.md`, `performance-supplement.md`) ship as generic, multi-stack guidance. After confirming they exist, customize them based on scan findings so they don't contradict the repo-specific rules in `.claude/rules/`.
+
+**Customization rules:**
+
+1. **Test framework:** If the scan detected exactly ONE test framework (e.g., xUnit with zero NUnit/MSTest references), narrow any "xUnit, NUnit, or MSTest — match existing" line to name only the detected framework: `xUnit only. Do not introduce NUnit or MSTest in this repository.`
+2. **Mocking library:** If the scan detected exactly ONE mocking library, narrow similarly.
+3. **ORM / data layer:** If the scan detected exactly ONE ORM (e.g., EF Core with no Dapper), narrow "EF Core or Dapper" options to the detected one.
+
+**When NOT to customize:**
+- If the scan found multiple frameworks/libraries in use (e.g., both xUnit and NUnit) — leave the generic guidance.
+- If the scan found zero matches for a category — leave the generic guidance (the project may not have tests yet).
+
+**Rule:** Only narrow when the evidence is unambiguous (single framework, zero alternatives detected). The goal is to prevent shared references from contradicting the repo-specific `.claude/rules/` files.
 
 ### Pre-Commit Review List
 

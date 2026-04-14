@@ -1,5 +1,7 @@
 # .NET Testing Supplement
 
+> **Precedence:** This is a shared reference file. Project-specific overrides in `.claude/rules/testing.md` take precedence over guidance here. If `testing.md` says "xUnit only", that overrides the generic framework list below.
+
 Stack-specific testing guidance for .NET projects. Read alongside `.claude/references/testing-patterns.md`.
 
 ## Test Selection
