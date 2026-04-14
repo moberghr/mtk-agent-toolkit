@@ -26,7 +26,11 @@
   ],
   "commands": "./.claude/commands",
   "skills": "./.claude/skills",
-  "agents": "./.claude/agents",
+  "agents": [
+    "./.claude/agents/architecture-reviewer.md",
+    "./.claude/agents/compliance-reviewer.md",
+    "./.claude/agents/test-reviewer.md"
+  ],
   "hooks": "./hooks/hooks.json",
   "settings.json": "./.claude/settings.json"
 }
