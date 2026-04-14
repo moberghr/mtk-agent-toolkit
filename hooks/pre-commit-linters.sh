@@ -19,16 +19,18 @@ OUTPUT="json"                 # json | human
 
 while [ $# -gt 0 ]; do
   case "$1" in
+    --cached)  DIFF_SOURCE="cached"; shift ;;
     --head)    DIFF_SOURCE="head"; shift ;;
     --stack)   STACK="${2:-}"; shift 2 ;;
     --human)   OUTPUT="human"; shift ;;
     -h|--help)
       cat <<'EOF'
-Usage: hooks/pre-commit-linters.sh [--head] [--stack <name>] [--human]
+Usage: hooks/pre-commit-linters.sh [--cached | --head] [--stack <name>] [--human]
 
-Scans staged changes (default: --cached) or HEAD changes (--head) with
+Scans staged changes (--cached, default) or HEAD changes (--head) with
 deterministic patterns. Emits JSON findings on stdout.
 
+--cached     Scan staged changes (default)
 --stack      Override tech stack detection (default reads .claude/tech-stack)
 --human      Human-readable output instead of JSON
 EOF

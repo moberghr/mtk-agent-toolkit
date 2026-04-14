@@ -6,7 +6,7 @@
 
 **A Claude Code plugin that enforces your team's coding standards, security policies, and review discipline on every AI-generated line of code. Language-agnostic workflows with pluggable tech stacks for .NET, Python, and TypeScript.**
 
-[![Version](https://img.shields.io/badge/version-6.0.0-blue.svg)](https://github.com/moberghr/claude-helpers/releases)
+[![Version](https://img.shields.io/badge/version-6.1.4-blue.svg)](https://github.com/moberghr/claude-helpers/releases)
 [![Platform](https://img.shields.io/badge/platform-Claude%20Code-purple.svg)](https://claude.ai/code)
 [![.NET](https://img.shields.io/badge/.NET-8.0%2B-512BD4.svg)](https://dotnet.microsoft.com/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg)](https://python.org/)
@@ -199,8 +199,8 @@ COMMANDS (5 entry points)
 
       ↓ orchestrate
 
-SKILLS (22 reusable workflow blocks)
-  ├── 16 language-agnostic workflow skills
+SKILLS (20 reusable workflow blocks)
+  ├── 14 language-agnostic workflow skills
   ├── 3 tech stack skills (.NET, Python, TypeScript)
   └── 3 enabling skills (worktrees, writing-skills, brainstorming)
 
@@ -294,7 +294,7 @@ Two-pass review: deterministic linter scan (secrets, SQL injection, PII in logs)
 
 ## Skills
 
-27 skills total: 5 entry-point skills, 16 language-agnostic workflow skills, 3 tech stack skills, 3 enabling skills. Entry-point skills (invoked via `/mtk:<name>`) orchestrate workflow skills.
+25 skills total: 5 entry-point skills, 14 language-agnostic workflow skills, 3 tech stack skills, 3 enabling skills. Entry-point skills (invoked via `/mtk:<name>`) orchestrate workflow skills.
 
 ### Workflow Skills
 
@@ -504,7 +504,7 @@ These files are never overwritten by plugin updates:
 ```
 claude-helpers/
 ├── .claude/
-│   ├── skills/                # 27 skills (5 entry-point + 16 workflow + 3 tech stack + 3 enabling)
+│   ├── skills/                # 25 skills (5 entry-point + 14 workflow + 3 tech stack + 3 enabling)
 │   │   ├── context-engineering/
 │   │   ├── spec-driven-development/
 │   │   ├── planning-and-task-breakdown/
@@ -663,7 +663,7 @@ MIT. See [LICENSE](LICENSE).
 
 <div align="center">
 
-**MTK — Moberg Toolkit** v6.0.0 · [Moberg d.o.o.](https://www.moberg.hr)
+**MTK — Moberg Toolkit** v6.1.4 · [Moberg d.o.o.](https://www.moberg.hr)
 
 Built for teams that ship production code, not prototypes.
 

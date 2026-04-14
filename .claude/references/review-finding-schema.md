@@ -63,9 +63,10 @@ problem — **not** how severe the problem is.
 
 ## Threshold
 
-Default: `80`. Configured in `.claude/settings.json` under
-`reviewThresholds.default`. Commands may accept a per-invocation override
-where documented.
+Default: `80`. Configured in `.claude/review-config.json` under
+`thresholds.default`. Per-engineer overrides live in
+`.claude/review-config.local.json`. Commands may accept a per-invocation
+override where documented.
 
 Only findings with `confidence >= threshold` appear in `findings[]`.
 Below-threshold findings are counted in `summary.filtered_below_threshold`.
