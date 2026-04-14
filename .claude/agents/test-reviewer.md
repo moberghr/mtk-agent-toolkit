@@ -3,6 +3,7 @@ name: test-reviewer
 description: Focused reviewer for test coverage, assertion quality, and verification gaps.
 allowed-tools: Read, Glob, Grep, Bash
 model: sonnet
+effort: high
 ---
 
 # Test Reviewer

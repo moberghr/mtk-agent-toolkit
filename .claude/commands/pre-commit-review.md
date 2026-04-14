@@ -1,6 +1,7 @@
 ---
 description: Fast security-focused review of staged changes. Run before every commit — checks only the critical compliance rules, not the full review workflow.
 allowed-tools: Read, Glob, Grep, Bash
+argument-hint: "[--staged-only]"
 ---
 
 # Pre-Commit Security Review
@@ -40,7 +41,7 @@ check engineers should run before every commit.
 |---|---|
 | "It's just a DTO change, no security implications" | DTOs define what data crosses trust boundaries. A missing `[JsonIgnore]` on an internal field leaks data. Check it. |
 | "EF Core handles parameterization, so SQL injection isn't possible here" | EF Core handles it when you use LINQ. `FromSqlRaw` with string concatenation is still injection. Check for raw SQL. |
-| "This is an internal endpoint, it doesn't need `[Authorize]`" | Internal endpoints get exposed. Network boundaries shift. Auth on every endpoint. No exceptions in fintech. |
+| "This is an internal endpoint, it doesn't need `[Authorize]`" | Internal endpoints get exposed. Network boundaries shift. Auth on every endpoint. No exceptions. |
 | "The audit trail isn't needed here — this doesn't touch financial data" | If it mutates state that affects financial calculations, reports, or compliance records, it needs an audit trail. "Financial data" is broader than you think. |
 | "This change is too small to have security implications" | The smallest changes cause the biggest incidents. A one-line config change can expose a connection string. A renamed property can break auth middleware. Check every diff. |
 | "I already reviewed this mentally, running the checklist is redundant" | Mental reviews miss things. That's the whole point of a checklist. Pilots don't skip pre-flight because they "already know the plane works." |

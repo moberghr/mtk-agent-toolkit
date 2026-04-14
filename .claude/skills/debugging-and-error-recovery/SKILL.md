@@ -12,6 +12,15 @@ skip_when: new-feature-design|large-scope-planning
 
 # Debugging And Error Recovery
 
+## Current State
+
+```!
+echo "--- Branch ---"
+git branch --show-current 2>/dev/null || echo "(detached)"
+echo "--- Working tree ---"
+git status --short 2>/dev/null | head -15 || echo "(not a git repo)"
+```
+
 ## Overview
 
 Start from the failure, confirm the cause, make the smallest correct fix, and verify it with build and test evidence. Guesswork is not debugging.

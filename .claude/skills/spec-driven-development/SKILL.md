@@ -7,6 +7,7 @@ compatibility:
   - codex
 trigger: new-feature|breaking-change|multi-file-change|approval-required
 skip_when: typo-fix|config-update|single-line-change
+user-invocable: false
 ---
 
 # Spec-Driven Development

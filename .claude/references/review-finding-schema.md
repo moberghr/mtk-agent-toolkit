@@ -1,7 +1,7 @@
 # Review Finding Schema
 
 Canonical output format for reviews across the toolkit: `pre-commit-review`,
-`code-review-and-quality-fintech`, `compliance-reviewer`, and future linter
+`code-review-and-quality`, `compliance-reviewer`, and future linter
 or drift-detection sources. Every review produces a human-readable markdown
 table **plus** a trailing fenced JSON block. The JSON is the source of truth;
 the table is rendered from it for scanning.

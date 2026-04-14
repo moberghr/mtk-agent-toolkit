@@ -32,8 +32,8 @@ flowchart TD
     B3 --> B4["verification-before-completion"]
 
     REV --> R1["context-engineering"]
-    R1 --> R2["code-review-and-quality-fintech"]
-    R2 --> R3["security-and-hardening-fintech<br/><i>if auth/secrets/financial</i>"]
+    R1 --> R2["code-review-and-quality"]
+    R2 --> R3["security-and-hardening<br/><i>if auth/secrets/audited state</i>"]
 
     SKILL --> S1["writing-skills"]
     S1 --> S2["Create pressure tests<br/>in tests/pressure-tests/"]
@@ -61,7 +61,7 @@ via `.claude/review-config.local.json`).
 
 ### Eval Pipeline
 
-Ship-path skills (`security-and-hardening-fintech`, `pre-commit-review`,
+Ship-path skills (`security-and-hardening`, `pre-commit-review`,
 `verification-before-completion`) have positive / negative / adversarial
 evals under `evals/<skill>/`. Run via `bash scripts/run-evals.sh` — manual
 mode by default; set `EVAL_EXECUTOR` / `EVAL_GRADER` for automation.
