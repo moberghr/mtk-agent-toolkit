@@ -1,6 +1,7 @@
 ---
 name: spec-driven-development
 description: Use when the task is a new feature, breaking change, multi-file change, or any work where approval should happen before coding begins.
+type: skill
 license: MIT
 compatibility:
   - claude-code

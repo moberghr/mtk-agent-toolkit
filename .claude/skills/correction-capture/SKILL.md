@@ -1,6 +1,7 @@
 ---
 name: correction-capture
 description: Use when the engineer corrects your approach, says "no", "not like that", "stop", or redirects your work — capture the correction as a reusable lesson.
+type: skill
 license: MIT
 compatibility:
   - claude-code

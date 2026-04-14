@@ -45,10 +45,54 @@ if [ -z "$STACK" ] && [ -f .claude/tech-stack ]; then
   STACK="$(tr -d '[:space:]' < .claude/tech-stack)"
 fi
 
-# --- Build pattern list ---
-PATTERN_FILES=("$PATTERNS_DIR/shared.txt")
-if [ -n "$STACK" ] && [ -f "$PATTERNS_DIR/$STACK.txt" ]; then
-  PATTERN_FILES+=("$PATTERNS_DIR/$STACK.txt")
+# --- Build pattern list from composable packs ---
+# Pack discovery order: core/ → stack-{name}/ → domain-{name}/ → project/
+# Falls back to flat files for backward compatibility with pre-6.2 layouts.
+PATTERN_FILES=()
+
+# Core packs (always active)
+if [ -d "$PATTERNS_DIR/core" ]; then
+  for f in "$PATTERNS_DIR"/core/*.txt; do
+    [ -f "$f" ] && PATTERN_FILES+=("$f")
+  done
+else
+  # Flat-file fallback (pre-6.2 layout)
+  [ -f "$PATTERNS_DIR/shared.txt" ] && PATTERN_FILES+=("$PATTERNS_DIR/shared.txt")
+  [ -f "$PATTERNS_DIR/slopwatch.txt" ] && PATTERN_FILES+=("$PATTERNS_DIR/slopwatch.txt")
+fi
+
+# Stack pack
+if [ -n "$STACK" ]; then
+  if [ -d "$PATTERNS_DIR/stack-$STACK" ]; then
+    for f in "$PATTERNS_DIR"/stack-"$STACK"/*.txt; do
+      [ -f "$f" ] && PATTERN_FILES+=("$f")
+    done
+  elif [ -f "$PATTERNS_DIR/$STACK.txt" ]; then
+    # Flat-file fallback (pre-6.2 layout)
+    PATTERN_FILES+=("$PATTERNS_DIR/$STACK.txt")
+  fi
+fi
+
+# Domain packs (activated by .claude/domains — one domain name per line)
+DOMAINS_FILE="$ROOT_DIR/.claude/domains"
+if [ -f "$DOMAINS_FILE" ]; then
+  while IFS= read -r domain || [ -n "$domain" ]; do
+    domain="$(echo "$domain" | tr -d '[:space:]')"
+    [ -z "$domain" ] && continue
+    [[ "$domain" == \#* ]] && continue
+    if [ -d "$PATTERNS_DIR/domain-$domain" ]; then
+      for f in "$PATTERNS_DIR"/domain-"$domain"/*.txt; do
+        [ -f "$f" ] && PATTERN_FILES+=("$f")
+      done
+    fi
+  done < "$DOMAINS_FILE"
+fi
+
+# Project-local packs (gitignored, project-specific patterns)
+if [ -d "$PATTERNS_DIR/project" ]; then
+  for f in "$PATTERNS_DIR"/project/*.txt; do
+    [ -f "$f" ] && PATTERN_FILES+=("$f")
+  done
 fi
 
 # --- Get diff ---

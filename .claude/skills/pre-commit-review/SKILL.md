@@ -1,6 +1,7 @@
 ---
 name: pre-commit-review
 description: Fast security-focused review of staged changes. Run before every commit — checks only the critical compliance rules, not the full review workflow.
+type: skill
 allowed-tools: Read, Glob, Grep, Bash
 argument-hint: "[--staged-only]"
 ---
@@ -36,6 +37,21 @@ check engineers should run before every commit.
      plaintext passwords, AWS keys, JWTs, and stack-specific patterns
    - Merge linter findings into your final JSON output (they always pass the
      threshold, so they always surface)
+4.5. **Merge cached analyzer output (if available).** If `.mtk/analyzer-output.json`
+   exists and was modified within the last 10 minutes, read it and **filter
+   findings to only those whose `file` field matches a file in
+   `git diff --cached --name-only`** (or `git diff --name-only` if using
+   unstaged). Discard all other findings — surfacing repo-wide warnings on an
+   unrelated commit erodes trust in the gate. Merge the filtered set into your
+   output with `source: "analyzer"` and `confidence: 100`. **Do NOT run the
+   build yourself** — the pre-commit gate must stay fast (seconds, not minutes).
+   Only consume cached output.
+4.6. **Roslyn MCP tools (if available, .NET only).** If `dotnet-claude-kit` is
+   installed and the `DetectAntiPatterns` tool is available, call it on the
+   changed files for on-demand semantic analysis. Treat results as
+   `source: "analyzer"`, `confidence: 100`. This is fast (analyzes specific
+   files, not full build) and catches EF Core, async, and disposal patterns
+   that the regex linter misses. If the tool is not available, skip this step.
 5. Run the AI review pass on the same diff to catch issues the linter can't
    reach (design, intent, context-sensitive rules). AI findings use
    `source: "ai"` and their own confidence scores per the rubric.
@@ -79,20 +95,19 @@ Read `.claude/review-config.json` for the threshold (default 80; `.claude/review
 
 Keep the table tight. This is a pre-commit gate, not a full review.
 
-### Example (clean diff)
+### Clean pass — compact output
+
+When verdict is `PASS` **and** `findings[]` is empty, skip the table and JSON block entirely. Instead emit a single compact summary:
 
 ```
-| ID | Sev | Conf | Src | File:Line | Rule | Issue |
-|----|-----|------|-----|-----------|------|-------|
-| — | — | — | — | — | — | No findings at or above threshold. |
+✅ Pre-commit review passed — 0 findings across 7 rules ({N} files, {A}+/{D}−)
+
+Checked: secrets · SQL injection · PII in logs · auth · audit trail · env secrets · IAM scope
 ```
 
-```json
-{
-  "verdict": "PASS",
-  "threshold": 80,
-  "summary": { "critical": 0, "warning": 0, "suggestion": 0, "filtered_below_threshold": 0 },
-  "findings": [],
-  "below_threshold_rationale": "Checked: secrets, SQL injection, PII in logs, missing [Authorize], missing audit trail, IAM blast radius. Diff adds a read-only DTO property with no logging, no auth-scoped change, and no data mutation. No below-threshold findings suppressed."
-}
-```
+Replace `{N}`, `{A}`, `{D}` with actual file count, additions, and deletions from the diff.
+This is the **only** output for a clean pass. No table, no JSON block, no rationale dump.
+
+### Findings present — full output
+
+When there are findings (PASS with warnings/suggestions, or NEEDS_CHANGES), emit the standard schema output: markdown table + fenced JSON block per `.claude/references/review-finding-schema.md`.

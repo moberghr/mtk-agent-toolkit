@@ -1,6 +1,7 @@
 ---
 name: fix
 description: Lightweight fix/task using the MTK debugging workflow. Use for 1-3 file changes that do not require feature planning.
+type: skill
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 argument-hint: [--terse|--verbose] <description of fix or small task>
 ---

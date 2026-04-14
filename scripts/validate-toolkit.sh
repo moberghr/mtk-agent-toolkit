@@ -46,8 +46,22 @@ grep -q '"hooks"' .claude/settings.json || fail "settings.json missing hooks blo
 require_file "hooks/git-hooks/pre-commit"
 [ -x "hooks/git-hooks/pre-commit" ] || fail "hooks/git-hooks/pre-commit is not executable (chmod +x)"
 
+# AGENTS.md generator must exist and be executable
+require_file "scripts/generate-agents-md.sh"
+[ -x "scripts/generate-agents-md.sh" ] || fail "scripts/generate-agents-md.sh is not executable (chmod +x)"
+
 # The git pre-commit hook and linter script must agree on supported flags.
 grep -q -- '--cached' hooks/pre-commit-linters.sh || fail "hooks/pre-commit-linters.sh must support --cached for git hooks"
+
+# Update skill must exist
+require_file ".claude/skills/setup-update/SKILL.md"
+
+# Merge-settings script must exist and be executable
+require_file "hooks/merge-settings.sh"
+[ -x "hooks/merge-settings.sh" ] || fail "hooks/merge-settings.sh is not executable (chmod +x)"
+
+# Changelog must exist
+require_file "CHANGELOG.md"
 
 # Tech stack validation: each tech stack skill must declare its own reference files,
 # and those files must exist. The toolkit ships with at least the dotnet stack.
@@ -85,7 +99,7 @@ if grep -nE '"applyTo":[[:space:]]*[^\[]' .claude/manifest.json | grep -v '"appl
 fi
 
 # Frontmatter check on agents and manifest-tracked skills only.
-# (Third-party skill plugins under .claude/skills/ — e.g. gitnexus/ — are not MTK-managed.)
+# (Third-party skill plugins under .claude/skills/ are not MTK-managed.)
 while IFS= read -r file; do
   require_section "$file" '^---$'
 done < <({ find .claude/agents -name '*.md'; printf '%s\n' "${manifest_skill_paths[@]+"${manifest_skill_paths[@]}"}"; } | sort -u)

@@ -1,6 +1,7 @@
 ---
 name: setup-bootstrap
 description: One-time repo setup. Detects tech stack, audits the codebase, pulls coding guidelines, and generates a project-specific CLAUDE.md. Run this once per repo.
+type: skill
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 argument-hint: [--preview] [--non-interactive]
 ---
@@ -553,11 +554,57 @@ Create `tasks/lessons.md` if it doesn't exist (header only).
 
 Add `tasks/todo.md` to `.gitignore` if not already there. Do NOT gitignore `tasks/lessons.md`.
 
-### Cross-Tool AGENTS.md
+### Analyzer Configuration (opt-in)
 
-Generate a root-level `AGENTS.md` for cross-tool compatibility (Cursor, Copilot, Codex, Gemini CLI). Stack-aware: include the active tech stack's build/test commands and key conventions.
+After distributing references, ask the engineer whether to configure recommended analyzers for the detected stack. This sets up Roslyn analyzers (.NET), ruff/mypy (Python), or biome/tsc-strict (TypeScript) so that build output feeds into the review pipeline with `source: "analyzer"` and `confidence: 100`.
 
-If `AGENTS.md` already exists, leave it alone.
+1. Read `.claude/references/{stack}/analyzer-config.md` for the recommended packages and config
+2. Ask: "Would you like to set up recommended analyzers for {stack}? This adds [packages] to your build and surfaces semantic findings in the review pipeline. (y/n)"
+3. If yes: generate the appropriate config (`Directory.Build.props` additions for .NET, `pyproject.toml [tool.ruff]` for Python, `biome.json` for TypeScript)
+4. If no: skip — the regex linter and AI review still work without analyzers
+5. Add `.mtk/` to `.gitignore` (ephemeral analyzer output cache)
+
+### Companion Plugin: dotnet-claude-kit (.NET only)
+
+If the detected stack is `dotnet`, check whether the `codewithmukesh/dotnet-claude-kit` plugin is installed:
+
+```bash
+# Check if dotnet-claude-kit is available
+find ~/.claude/plugins -maxdepth 4 -name "plugin.json" -path "*dotnet-claude-kit*" 2>/dev/null | head -1
+```
+
+If NOT found, recommend installation:
+
+> **Recommended companion:** `codewithmukesh/dotnet-claude-kit` provides 15 Roslyn-powered MCP tools for real semantic analysis — anti-pattern detection, circular dependency detection, dead code finder, project graph, type hierarchy, and more. MTK orchestrates the workflow; dotnet-claude-kit provides .NET code intelligence. Install it via the Claude Code plugin marketplace.
+>
+> With dotnet-claude-kit installed, the review pipeline gains:
+> - `DetectAntiPatterns` findings feed into the review as `source: "analyzer"`, confidence 100
+> - `GetProjectGraph` and `GetDependencyGraph` enable scoped builds on large solutions
+> - `FindDeadCode` and `DetectCircularDependencies` catch issues no AI review can reliably find
+>
+> MTK works without it — the regex linter, build output parser, and AI review still function. dotnet-claude-kit adds the Roslyn layer.
+
+If found, note it in the bootstrap output: "dotnet-claude-kit detected — Roslyn MCP tools available for the review pipeline."
+
+### Version Stamp
+
+Write the MTK version stamp so `setup-update` can track which version this repo was bootstrapped with:
+
+```bash
+echo '{"version":"VERSION","installed":"DATE","source":"https://github.com/moberghr/claude-helpers"}' > .claude/mtk-version.json
+```
+
+Replace VERSION with the manifest version and DATE with today's date. This file is committed (not gitignored) so the team can track MTK versions across repos.
+
+### Cross-Agent Compatibility
+
+After generating CLAUDE.md and rules, generate a portable AGENTS.md for cross-agent compatibility:
+
+1. Run `bash scripts/generate-agents-md.sh` (if the script exists in the plugin directory)
+2. This creates an `AGENTS.md` at the repo root that Cursor, Copilot, Gemini, and other AI tools can read
+3. The file contains coding guidelines, security requirements, testing expectations, and architecture principles — extracted from the references already distributed
+4. Custom sections (prefixed `## Custom:`) are preserved across regeneration
+5. If `AGENTS.md` already exists and has no `## Custom:` sections, the file is regenerated from current references
 
 ## STEP 4.5: Monorepo — Per-Package CLAUDE.md (conditional)
 

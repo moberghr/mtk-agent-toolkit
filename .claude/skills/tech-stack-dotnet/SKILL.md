@@ -102,6 +102,28 @@ Key conventions enforced by the coding guidelines (summary for reviewers):
 - MediatR: one `SaveChanges` per handler, Handler+Request+Response in same file
 - Braces on all control flow, even single-line
 
+## Analyzer Configuration
+
+See `.claude/references/dotnet/analyzer-config.md` for recommended Roslyn analyzer packages and `.editorconfig` rules. Key packages: `Microsoft.EntityFrameworkCore.Analyzers`, `Meziantou.Analyzer`, `Roslynator.Analyzers`.
+
+Build with analyzer capture:
+```bash
+dotnet build 2>&1 | tee /dev/tty | hooks/parse-build-diagnostics.sh > .mtk/analyzer-output.json
+```
+
+## Companion Plugin: dotnet-claude-kit
+
+If `codewithmukesh/dotnet-claude-kit` is installed, its 15 Roslyn MCP tools are available for deeper analysis. These tools load the actual MSBuild workspace and provide semantic code intelligence that MTK's file-based analysis cannot match.
+
+**Key tools to use in MTK workflows:**
+- `DetectAntiPatterns` — call during pre-commit or batch review for deterministic anti-pattern findings (AsyncVoid, BroadCatch, EfCoreNoTracking, HttpClientInstantiation, MissingCancellationToken, SyncOverAsync). Treat results as `source: "analyzer"`, `confidence: 100`.
+- `GetProjectGraph` / `GetDependencyGraph` — call to scope builds to affected projects on large solutions. Feed results to `incremental-implementation` for targeted build/test commands.
+- `FindDeadCode` / `DetectCircularDependencies` — call during architecture review for structural findings.
+- `GetDiagnostics` — call for compiler and analyzer warnings on specific files, more targeted than full `dotnet build`.
+- `GetTestCoverageMap` — call during test review to verify coverage claims.
+
+**Graceful degradation:** If dotnet-claude-kit is not installed, all MTK skills fall back to build output parsing (`hooks/parse-build-diagnostics.sh`) and AI-based review. The workflow is the same; the deterministic layer is thinner.
+
 ## Reference Files
 
 These files are loaded by commands and review agents when the active stack is `dotnet`:

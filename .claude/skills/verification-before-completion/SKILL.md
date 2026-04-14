@@ -1,6 +1,7 @@
 ---
 name: verification-before-completion
 description: Require fresh execution evidence before claiming any task is complete. Use before reporting success, closing a task, or handing off to review.
+type: skill
 license: MIT
 compatibility:
   - claude-code
@@ -59,6 +60,7 @@ No completion claim is valid without fresh evidence from an actual command execu
 - Every completion claim must cite a specific command and its output.
 - Partial verification is not verification. Run the full command.
 - Cached results from earlier in the session do not count as fresh evidence.
+- Evidence is stale if the cited command output predates the most recent file write to any file in the change set. Compare timestamps — the verification command must have run AFTER the last edit. Gut feel is not a timestamp.
 - If the verification fails, the task is not complete. Do not report it as complete with caveats.
 - Re-verify after any fix-up, even a trivial one.
 

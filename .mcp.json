@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "mtk-context": {
+      "type": "stdio",
+      "command": "${CLAUDE_PLUGIN_ROOT}/dist/mtk-mcp-server.cjs"
+    }
+  }
+}

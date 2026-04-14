@@ -1,6 +1,7 @@
 ---
 name: security-and-hardening
 description: Use when the change touches auth, secrets, audited state, audit trails, infrastructure, or external inputs — treat security as a design constraint, not final polish.
+type: skill
 license: MIT
 compatibility:
   - claude-code

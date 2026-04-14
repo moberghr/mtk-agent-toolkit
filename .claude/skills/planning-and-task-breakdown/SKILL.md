@@ -1,6 +1,7 @@
 ---
 name: planning-and-task-breakdown
 description: Use after a spec is approved and before multi-file implementation begins, to break work into verifiable batches with checkpoints.
+type: skill
 license: MIT
 compatibility:
   - claude-code

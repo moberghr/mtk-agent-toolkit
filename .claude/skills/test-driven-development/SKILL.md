@@ -1,6 +1,7 @@
 ---
 name: test-driven-development
 description: Use when implementing new behavior, fixing a bug, or changing any public contract — write the failing test before the implementation.
+type: skill
 license: MIT
 compatibility:
   - claude-code

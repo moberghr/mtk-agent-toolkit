@@ -2,7 +2,6 @@
 .claude/settings.local.json
 .claude/review-config.local.json
 !.claude/skills/
-.claude/skills/gitnexus/
 !AGENTS.md
 tasks/todo.md
 evals/results/
@@ -25,4 +24,14 @@ Icon
 .Trashes
 .VolumeIcon.icns
 .com.apple.timemachine.donotpresent
-.gitnexus
+# Project-local linter patterns (each target repo adds its own)
+hooks/linter-patterns/project/*.txt
+
+# Third-party plugin artifacts (local dev only)
+.claude/skills/gitnexus/
+
+mcp/node_modules
+mcp/package-lock.json
+
+# MCP build artifact — built on first session via hooks/session-start
+dist/

@@ -178,6 +178,15 @@ Key conventions to start with (until guidelines are written):
 - No default exports for modules with multiple symbols (named exports refactor better)
 - ESM (`import`/`export`) only — avoid CommonJS in new code
 
+## Analyzer Configuration
+
+See `.claude/references/typescript/analyzer-config.md` for recommended tsconfig strict settings and biome rules.
+
+Type check with analyzer capture:
+```bash
+npx tsc --noEmit 2>&1 | hooks/parse-build-diagnostics.sh --format tsc > .mtk/analyzer-output.json
+```
+
 ## Reference Files
 
 These files are loaded by commands and review agents when the active stack is `typescript`:

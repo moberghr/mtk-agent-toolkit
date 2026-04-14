@@ -1,6 +1,7 @@
 ---
 name: source-driven-development
 description: Use when framework, SDK, or library behavior is unfamiliar or version-sensitive — verify from authoritative sources before implementing.
+type: skill
 license: MIT
 compatibility:
   - claude-code

@@ -1,0 +1,12 @@
+# Python ruff/mypy severity mappings
+# Format: RULE_ID<TAB>severity<TAB>description
+S101	critical	Use of assert in production code
+S105	critical	Hardcoded password string
+S106	critical	Hardcoded password in function argument
+S107	critical	Hardcoded password default value
+S608	critical	SQL injection via string formatting
+B006	warning	Mutable default argument
+B904	warning	Missing from in raise-from
+E711	warning	Comparison to None using == instead of is
+F841	warning	Local variable assigned but never used
+PLR1722	warning	Use sys.exit instead of exit
