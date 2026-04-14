@@ -1,0 +1,42 @@
+name: Validate Toolkit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Toolkit Structure Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run toolkit validation
+        run: bash scripts/validate-toolkit.sh
+
+      - name: Check for secrets in committed files
+        run: |
+          # Scan for common secret patterns in tracked files
+          # Excludes: binary files, .git, node_modules, dist
+          PATTERNS=(
+            'AKIA[0-9A-Z]{16}'                    # AWS Access Key
+            'sk-[a-zA-Z0-9]{32,}'                 # OpenAI/Anthropic API key pattern
+            'ghp_[a-zA-Z0-9]{36}'                 # GitHub Personal Access Token
+            'password\s*[:=]\s*["\x27][^"\x27]+'  # Hardcoded passwords
+          )
+
+          EXIT_CODE=0
+          for pattern in "${PATTERNS[@]}"; do
+            if git grep -InE "$pattern" -- ':!*.yml' ':!dist/' ':!*.lock' 2>/dev/null; then
+              echo "ERROR: Potential secret found matching pattern: $pattern"
+              EXIT_CODE=1
+            fi
+          done
+
+          exit $EXIT_CODE

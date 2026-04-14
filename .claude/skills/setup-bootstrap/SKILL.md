@@ -553,11 +553,15 @@ Create `tasks/lessons.md` if it doesn't exist (header only).
 
 Add `tasks/todo.md` to `.gitignore` if not already there. Do NOT gitignore `tasks/lessons.md`.
 
-### Cross-Tool AGENTS.md
+### Cross-Agent Compatibility
 
-Generate a root-level `AGENTS.md` for cross-tool compatibility (Cursor, Copilot, Codex, Gemini CLI). Stack-aware: include the active tech stack's build/test commands and key conventions.
+After generating CLAUDE.md and rules, generate a portable AGENTS.md for cross-agent compatibility:
 
-If `AGENTS.md` already exists, leave it alone.
+1. Run `bash scripts/generate-agents-md.sh` (if the script exists in the plugin directory)
+2. This creates an `AGENTS.md` at the repo root that Cursor, Copilot, Gemini, and other AI tools can read
+3. The file contains coding guidelines, security requirements, testing expectations, and architecture principles — extracted from the references already distributed
+4. Custom sections (prefixed `## Custom:`) are preserved across regeneration
+5. If `AGENTS.md` already exists and has no `## Custom:` sections, the file is regenerated from current references
 
 ## STEP 4.5: Monorepo — Per-Package CLAUDE.md (conditional)
 

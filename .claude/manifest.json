@@ -626,6 +626,42 @@
       "target": "evals/verification-before-completion/grader.md",
       "action": "sync",
       "description": "Grader prompt for verification-before-completion evals"
+    },
+    "tests/pressure-tests/test-reviewer-pressure.md": {
+      "source": "tests/pressure-tests/test-reviewer-pressure.md",
+      "target": "tests/pressure-tests/test-reviewer-pressure.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for test-reviewer (weak assertions, false coverage, mock divergence)"
+    },
+    "tests/pressure-tests/architecture-reviewer-pressure.md": {
+      "source": "tests/pressure-tests/architecture-reviewer-pressure.md",
+      "target": "tests/pressure-tests/architecture-reviewer-pressure.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for architecture-reviewer (cross-slice deps, precedent-as-excuse, YAGNI)"
+    },
+    "hooks/verify-behavioral-diff.sh": {
+      "source": "hooks/verify-behavioral-diff.sh",
+      "target": "hooks/verify-behavioral-diff.sh",
+      "action": "sync",
+      "description": "Advisory hook that warns when a recent spec is missing a behavioral_diff field"
+    },
+    "scripts/generate-agents-md.sh": {
+      "source": "scripts/generate-agents-md.sh",
+      "target": "scripts/generate-agents-md.sh",
+      "action": "sync",
+      "description": "Generates a portable AGENTS.md for cross-agent compatibility (Cursor, Copilot, Gemini, Codex)"
+    },
+    ".github/workflows/validate.yml": {
+      "source": ".github/workflows/validate.yml",
+      "target": ".github/workflows/validate.yml",
+      "action": "sync",
+      "description": "GitHub Actions workflow — runs validate-toolkit.sh and secret scanning on every PR"
+    },
+    ".github/pull_request_template.md": {
+      "source": ".github/pull_request_template.md",
+      "target": ".github/pull_request_template.md",
+      "action": "sync",
+      "description": "PR template with summary, changes, verification checklist, and breaking changes sections"
     }
   },
   "protected": [

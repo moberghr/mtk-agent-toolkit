@@ -46,6 +46,10 @@ grep -q '"hooks"' .claude/settings.json || fail "settings.json missing hooks blo
 require_file "hooks/git-hooks/pre-commit"
 [ -x "hooks/git-hooks/pre-commit" ] || fail "hooks/git-hooks/pre-commit is not executable (chmod +x)"
 
+# AGENTS.md generator must exist and be executable
+require_file "scripts/generate-agents-md.sh"
+[ -x "scripts/generate-agents-md.sh" ] || fail "scripts/generate-agents-md.sh is not executable (chmod +x)"
+
 # Tech stack validation: each tech stack skill must declare its own reference files,
 # and those files must exist. The toolkit ships with at least the dotnet stack.
 for stack_dir in .claude/skills/tech-stack-*/; do
