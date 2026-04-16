@@ -1,6 +1,6 @@
 ---
 name: mtk
-description: Unified entry point — routes natural language requests to the right MTK skill. Use instead of remembering individual command names.
+description: Unified entry point that routes natural language requests to the right MTK skill
 type: skill
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, Task, AskUserQuestion
 argument-hint: <what you want to do>

@@ -1,6 +1,6 @@
 ---
 name: pre-commit-review
-description: Fast security-focused review of staged changes. Run before every commit — checks only the critical compliance rules, not the full review workflow.
+description: Fast security-focused review of staged changes before every commit, checking only critical compliance rules
 type: skill
 allowed-tools: Read, Glob, Grep, Bash
 argument-hint: "[--staged-only]"

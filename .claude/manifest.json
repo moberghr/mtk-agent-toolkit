@@ -1,6 +1,6 @@
 {
-  "version": "6.1.4",
-  "updated": "2026-04-14",
+  "version": "6.2.0",
+  "updated": "2026-04-16",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
   "files": {
@@ -657,11 +657,71 @@
       "action": "sync",
       "description": "Advisory hook that warns when a recent spec is missing a behavioral_diff field"
     },
+    "hooks/scope-guard.sh": {
+      "source": "hooks/scope-guard.sh",
+      "target": "hooks/scope-guard.sh",
+      "action": "sync",
+      "description": "PreToolUse hook that warns when editing files not in the active spec's change_manifest — anti-rationalization scope guard"
+    },
+    "hooks/context-budget.sh": {
+      "source": "hooks/context-budget.sh",
+      "target": "hooks/context-budget.sh",
+      "action": "sync",
+      "description": "PostToolUse hook that tracks session activity and warns when context budget is getting heavy"
+    },
+    "hooks/capture-learnings.sh": {
+      "source": "hooks/capture-learnings.sh",
+      "target": "hooks/capture-learnings.sh",
+      "action": "sync",
+      "description": "Stop hook that reminds agent to capture learnings after substantial sessions and suggests CLAUDE.md promotion for repeated patterns"
+    },
+    "hooks/check-prerequisites.sh": {
+      "source": "hooks/check-prerequisites.sh",
+      "target": "hooks/check-prerequisites.sh",
+      "action": "sync",
+      "description": "Checks for recommended development tools per tech stack during setup-bootstrap"
+    },
+    "hooks/session-analytics.sh": {
+      "source": "hooks/session-analytics.sh",
+      "target": "hooks/session-analytics.sh",
+      "action": "sync",
+      "description": "Stop hook that persists session stats to .claude/analytics.json for team adoption tracking"
+    },
+    "scripts/run-benchmarks.sh": {
+      "source": "scripts/run-benchmarks.sh",
+      "target": "scripts/run-benchmarks.sh",
+      "action": "sync",
+      "description": "Deterministic effectiveness benchmarks for linter patterns, security gate, scope guard, and verification hooks"
+    },
+    "scripts/analytics-report.sh": {
+      "source": "scripts/analytics-report.sh",
+      "target": "scripts/analytics-report.sh",
+      "action": "sync",
+      "description": "Prints a formatted summary of MTK usage stats from .claude/analytics.json"
+    },
+    "benchmarks/fixtures/known-bad.diff": {
+      "source": "benchmarks/fixtures/known-bad.diff",
+      "target": "benchmarks/fixtures/known-bad.diff",
+      "action": "sync",
+      "description": "Known-bad code fixture for benchmark testing — contains secrets, SQL injection, disabled tests, float money"
+    },
+    "benchmarks/fixtures/known-good.diff": {
+      "source": "benchmarks/fixtures/known-good.diff",
+      "target": "benchmarks/fixtures/known-good.diff",
+      "action": "sync",
+      "description": "Known-good code fixture for benchmark testing — clean code that should produce zero false positives"
+    },
     "scripts/generate-agents-md.sh": {
       "source": "scripts/generate-agents-md.sh",
       "target": "scripts/generate-agents-md.sh",
       "action": "sync",
       "description": "Generates a portable AGENTS.md for cross-agent compatibility (Cursor, Copilot, Gemini, Codex)"
+    },
+    "scripts/generate-tool-configs.sh": {
+      "source": "scripts/generate-tool-configs.sh",
+      "target": "scripts/generate-tool-configs.sh",
+      "action": "sync",
+      "description": "Generates native config files for non-Claude AI tools (Cursor MDC rules, Copilot instructions, Windsurf, Gemini, Cline)"
     },
     ".github/workflows/validate.yml": {
       "source": ".github/workflows/validate.yml",

@@ -42,23 +42,18 @@ require_file ".claude/settings.json"
 grep -q '"deny"' .claude/settings.json || fail "settings.json missing permissions.deny — dangerous operations are not blocked"
 grep -q '"hooks"' .claude/settings.json || fail "settings.json missing hooks block — verify-completion / format hooks are not registered"
 
-# Git pre-commit hook must exist and be executable
-require_file "hooks/git-hooks/pre-commit"
-[ -x "hooks/git-hooks/pre-commit" ] || fail "hooks/git-hooks/pre-commit is not executable (chmod +x)"
-
-# AGENTS.md generator must exist and be executable
-require_file "scripts/generate-agents-md.sh"
-[ -x "scripts/generate-agents-md.sh" ] || fail "scripts/generate-agents-md.sh is not executable (chmod +x)"
+# All shell scripts in hooks/ and scripts/ must be executable and follow S3.1
+while IFS= read -r script; do
+  [ -x "$script" ] || fail "$script is not executable (chmod +x) — violates S3.2"
+  # Some scripts have multi-line comment headers before pipefail; scan first 15 lines
+  head -15 "$script" | grep -q 'set -euo pipefail' || fail "$script missing 'set -euo pipefail' — violates S3.1"
+done < <(find hooks/ scripts/ -type f \( -name '*.sh' -o -name 'pre-commit' -o -name 'session-start' -o -name 'verify-completion' \) | sort)
 
 # The git pre-commit hook and linter script must agree on supported flags.
 grep -q -- '--cached' hooks/pre-commit-linters.sh || fail "hooks/pre-commit-linters.sh must support --cached for git hooks"
 
 # Update skill must exist
 require_file ".claude/skills/setup-update/SKILL.md"
-
-# Merge-settings script must exist and be executable
-require_file "hooks/merge-settings.sh"
-[ -x "hooks/merge-settings.sh" ] || fail "hooks/merge-settings.sh is not executable (chmod +x)"
 
 # Changelog must exist
 require_file "CHANGELOG.md"

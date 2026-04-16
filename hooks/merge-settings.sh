@@ -85,13 +85,13 @@ fi
 {
   extract_array_entries "$SOURCE" "allowedTools"
   extract_array_entries "$TARGET" "allowedTools"
-} | sort -u > $TMPDIR_MERGE/allowed.txt
+} | sort -u > "$TMPDIR_MERGE/allowed.txt"
 
 # Build merged deny
 {
   extract_array_entries "$SOURCE" "deny"
   extract_array_entries "$TARGET" "deny"
-} | sort -u > $TMPDIR_MERGE/deny.txt
+} | sort -u > "$TMPDIR_MERGE/deny.txt"
 
 # Start with source as base, replace arrays with merged versions
 # This is intentionally simple — it handles the MTK settings structure.
@@ -115,7 +115,7 @@ while IFS= read -r entry; do
   else
     printf ',\n      "%s"' "$entry"
   fi
-done < $TMPDIR_MERGE/allowed.txt
+done < "$TMPDIR_MERGE/allowed.txt"
 echo ""
 
 cat <<MIDDLE
@@ -133,7 +133,7 @@ while IFS= read -r entry; do
   else
     printf ',\n      "%s"' "$entry"
   fi
-done < $TMPDIR_MERGE/deny.txt
+done < "$TMPDIR_MERGE/deny.txt"
 echo ""
 
 cat <<HOOKS_START

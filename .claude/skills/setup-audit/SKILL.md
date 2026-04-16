@@ -1,6 +1,6 @@
 ---
 name: setup-audit
-description: Audit the repo to extract architecture principles, or with --merge unify audits from multiple repos into a single team-wide document. Outputs to .claude/references/architecture-principles.md.
+description: Audit the repo to extract architecture principles, or with --merge unify audits from multiple repos into a single team-wide document
 type: skill
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 argument-hint: [--merge]

@@ -1,0 +1,47 @@
+diff --git a/src/Config/appsettings.json b/src/Config/appsettings.json
+index 1234567..abcdefg 100644
+--- a/src/Config/appsettings.json
++++ b/src/Config/appsettings.json
+@@ -1,3 +1,6 @@
+ {
+-  "Logging": { "LogLevel": { "Default": "Information" } }
++  "Logging": { "LogLevel": { "Default": "Information" } },
++  "ConnectionStrings": {
++    "Default": "Server=prod-db;Database=Ledger;User Id=admin;Password=S3cret!;"
++  }
+ }
+diff --git a/src/Data/UserRepository.cs b/src/Data/UserRepository.cs
+index 1234567..abcdefg 100644
+--- a/src/Data/UserRepository.cs
++++ b/src/Data/UserRepository.cs
+@@ -10,3 +10,6 @@ public class UserRepository
++    public async Task<User> FindByEmail(string email)
++    {
++        return await _db.Users.FromSqlRaw($"SELECT * FROM Users WHERE Email = '{email}'").FirstOrDefaultAsync();
++    }
+diff --git a/tests/UserTests.cs b/tests/UserTests.cs
+index 1234567..abcdefg 100644
+--- a/tests/UserTests.cs
++++ b/tests/UserTests.cs
+@@ -5,3 +5,12 @@ public class UserTests
++    [Fact]
++    public void TestUser()
++    {
++        // TODO: write actual test
++    }
++
++    [Fact(Skip = "Flaky")]
++    public void TestUserCreation()
++    {
++        Assert.True(true);
++    }
+diff --git a/src/Services/PaymentService.cs b/src/Services/PaymentService.cs
+index 1234567..abcdefg 100644
+--- a/src/Services/PaymentService.cs
++++ b/src/Services/PaymentService.cs
+@@ -10,3 +10,6 @@ public class PaymentService
++    public decimal CalculateTotal(int quantity, double pricePerUnit)
++    {
++        double total = quantity * pricePerUnit;
++        return (decimal)total;
++    }

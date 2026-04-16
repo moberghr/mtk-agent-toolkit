@@ -1,6 +1,6 @@
 ---
 name: implement
-description: Full feature implementation loop using MTK skills for planning, batching, verification, and review. Run /mtk:setup-bootstrap once per repo first.
+description: Full feature implementation loop orchestrating planning, batching, verification, and review skills
 type: skill
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, Task, AskUserQuestion
 argument-hint: [--terse|--verbose] <feature description>

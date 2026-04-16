@@ -1,6 +1,6 @@
 ---
 name: context-report
-description: Diagnostic skill showing what MTK has loaded — tech stack, references, linter packs, domains, hooks, and rules. Use to debug why a rule fired or didn't, or to understand the toolkit's current state.
+description: Diagnostic snapshot of active MTK configuration — tech stack, references, linter packs, domains, hooks, and rules
 type: skill
 license: MIT
 compatibility:

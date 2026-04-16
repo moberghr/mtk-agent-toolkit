@@ -88,8 +88,10 @@ Otherwise, use AskUserQuestion:
 1. Copy sync files from source to target.
 2. Create new files.
 3. For protected files with drift (e.g., `settings.json`): display the diff and let the engineer decide which additions to adopt manually.
-4. Regenerate `AGENTS.md` by running `bash scripts/generate-agents-md.sh` (if the script exists). This picks up any new or changed references. Custom sections (`## Custom:`) are preserved automatically.
-5. Update `.claude/mtk-version.json` with the new version and date.
+4. **Re-apply reference customizations.** If any synced reference files had a `<!-- Customized by setup-bootstrap ... -->` comment before the sync (meaning they were previously tailored to this repo), re-run the customization procedure from `setup-bootstrap`'s "Reference File Customization" section using the detected values listed in the old comment. This preserves project-specific narrowing (e.g., "xUnit only") after a template upgrade.
+5. Regenerate `AGENTS.md` by running `bash scripts/generate-agents-md.sh` (if the script exists). This picks up any new or changed references. Custom sections (`## Custom:`) are preserved automatically.
+5a. Regenerate cross-tool configs by running `bash scripts/generate-tool-configs.sh --all` (if the script exists). This updates Cursor rules, Copilot instructions, Windsurf rules, Gemini guidelines, and Cline rules from the latest references.
+6. Update `.claude/mtk-version.json` with the new version and date.
 6. If `CHANGELOG.md` exists in the source, read entries between the installed and current versions and display them.
 
 ### Phase 5: Report
@@ -102,5 +104,6 @@ List every file touched with a one-line description of the change. Note any file
 - [ ] Protected files untouched (settings.json, AGENTS.md, CLAUDE.md, etc.)
 - [ ] Settings.json drift shown as diff for manual review (not auto-merged)
 - [ ] AGENTS.md regenerated from current references (if generate-agents-md.sh exists)
+- [ ] Cross-tool configs regenerated (if generate-tool-configs.sh exists)
 - [ ] Stack-filtered files skipped for non-matching stacks
 - [ ] New files created
