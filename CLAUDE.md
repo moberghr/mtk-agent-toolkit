@@ -1,6 +1,6 @@
 # claude-helpers — MTK Standards
 
-> Updated 2026-04-14 for v6.1.4 (commands merged into skills per Claude Code v2.1.101; all entry points now live in `.claude/skills/`).
+> Updated 2026-04-16 for v6.3.0 (consolidated to two entry points: `/mtk` and `/mtk-setup`; previous slash commands routed through `/mtk`).
 >
 > This file + `.claude/rules/` are the source of truth for AI agents.
 > Detailed standards live in `.claude/rules/`. Reference docs live in `.claude/references/` (shared) and `.claude/references/{stack}/` (stack-specific).
@@ -9,17 +9,17 @@
 
 ## Skill Routing
 
-| What you need | Skill | When |
+| What you need | Command | When |
 |---|---|---|
-| Add/modify a skill or agent | `/mtk:implement <description>` | New skills, multi-file changes, structural work |
-| Quick fix | `/mtk:fix <description>` | Bug fixes, typos, single-file changes |
-| Pre-commit security check | `/mtk:pre-commit-review` | Before every commit — linter + AI review of staged changes |
-| Bootstrap a repo | `/mtk:setup-bootstrap` | One-time setup — detects tech stack, generates CLAUDE.md |
-| Audit architecture | `/mtk:setup-audit [--merge]` | Extract architecture principles, or unify multi-repo audits |
-| Update to latest MTK | `/mtk:setup-update` | Sync non-protected files, merge settings |
+| First-time repo setup | `/mtk-setup` | Bootstrap — detects tech stack, pulls guidelines, generates CLAUDE.md and architecture-principles.md |
+| Re-run audit | `/mtk-setup --audit` | Refresh `.claude/references/architecture-principles.md` after architectural change |
+| Merge multi-repo audits | `/mtk-setup --merge` | Unify per-repo audits in `.claude/references/audits/` into a team-wide doc |
+| Everything else | `/mtk <description>` | Natural language — routes to fix / implement / pre-commit-review / context-report |
 | Validate toolkit | `bash scripts/validate-toolkit.sh` | Before every commit — structural check of manifest, plugin.json, and skill anatomy |
 
-**Decision rule:** If the change touches only 1-2 files (typo fix, hook tweak), use `fix`. If it adds a new skill or agent, use `implement`.
+**Decision rule for `/mtk`:** Say what you want in plain English. The router picks the right workflow skill — fix (1-3 file changes), implement (new features / multi-file), pre-commit-review (security check before commit), or context-report (diagnostic).
+
+**Updates:** MTK is a Claude Code plugin — use the plugin manager to upgrade. There is no in-repo update command.
 
 ---
 

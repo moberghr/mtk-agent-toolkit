@@ -1,19 +1,22 @@
 <div align="center">
 
-# MTK — Moberg Toolkit for Claude Code
+# MTK — Moberg Toolkit for AI-Assisted Engineering
 
-### Turn Claude Code into a disciplined engineering partner
+### Turn any AI coding assistant into a disciplined engineering partner
 
-**A Claude Code plugin that enforces your team's coding standards, security policies, and review discipline on every AI-generated line of code. Language-agnostic workflows with pluggable tech stacks for .NET, Python, and TypeScript.**
+**A multi-agent toolkit that enforces your team's coding standards, security policies, and review discipline on every AI-generated line of code. Language-agnostic workflows with pluggable tech stacks for .NET, Python, and TypeScript.**
 
-[![Version](https://img.shields.io/badge/version-6.1.4-blue.svg)](https://github.com/moberghr/claude-helpers/releases)
-[![Platform](https://img.shields.io/badge/platform-Claude%20Code-purple.svg)](https://claude.ai/code)
+[![Version](https://img.shields.io/badge/version-6.3.0-blue.svg)](https://github.com/moberghr/claude-helpers/releases)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-supported-purple.svg)](https://claude.ai/code)
+[![Cursor](https://img.shields.io/badge/Cursor-supported-blue.svg)](https://cursor.sh)
+[![Copilot](https://img.shields.io/badge/GitHub%20Copilot-supported-green.svg)](https://github.com/features/copilot)
+[![Windsurf](https://img.shields.io/badge/Windsurf-supported-teal.svg)](https://codeium.com/windsurf)
 [![.NET](https://img.shields.io/badge/.NET-8.0%2B-512BD4.svg)](https://dotnet.microsoft.com/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg)](https://python.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0%2B-3178C6.svg)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-[Quick Start](#-quick-start) · [What It Does](#what-it-does) · [Examples](#-examples) · [Architecture](#-architecture) · [Skills](#-skills) · [Review Agents](#-review-agents) · [Tech Stacks](#-tech-stacks) · [FAQ](#-faq)
+[Quick Start](#-quick-start) · [What It Does](#what-it-does) · [Multi-Agent Support](#-multi-agent-support) · [Examples](#-examples) · [Architecture](#-architecture) · [Skills](#-skills) · [Review Agents](#-review-agents) · [Tech Stacks](#-tech-stacks) · [FAQ](#-faq)
 
 </div>
 
@@ -23,7 +26,7 @@
 
 AI code assistants generate code that compiles but silently violates your team's standards. Missing auth checks, unaudited state mutations, N+1 queries, tests that assert nothing meaningful, style drift from one end of the codebase to the other. In serious software — where code touches real money, real users, or regulated data — *"it works"* is not enough.
 
-Most teams respond by writing a big CLAUDE.md. But instructions are advisory. Claude follows them about 80% of the time. The other 20% is where production incidents live.
+Most teams respond by writing a big CLAUDE.md or `.cursor/rules`. But instructions are advisory. AI assistants follow them about 80% of the time. The other 20% is where production incidents live.
 
 ## What It Does
 
@@ -31,7 +34,7 @@ MTK closes that gap with **workflow enforcement** (planning, TDD, batched implem
 
 | Without MTK | With MTK |
 |:---|:---|
-| Claude generates code, you review it manually | Claude plans, implements in batches, tests, reviews itself adversarially, then reports with evidence |
+| AI generates code, you review it manually | AI plans, implements in batches, tests, reviews itself adversarially, then reports with evidence |
 | CLAUDE.md rules followed ~80% of the time | Critical rules enforced by hooks (100% deterministic) |
 | "Tests pass" with no proof | Build output, exit codes, and pass/fail counts cited in every completion |
 | Security checks happen if you remember to ask | Security-and-hardening skill activates automatically for auth/secrets/audit changes |
@@ -42,25 +45,65 @@ MTK closes that gap with **workflow enforcement** (planning, TDD, batched implem
 
 ## Quick Start
 
+**Claude Code (plugin marketplace):**
 ```bash
 # 1. Install the plugin
 /plugin marketplace add moberghr/claude-helpers
 /plugin install mtk@moberghr
 
-# 2. Bootstrap your repo (one-time — detects tech stack, generates CLAUDE.md)
-/mtk:setup-bootstrap
+# 2. Bootstrap your repo (one-time)
+/mtk-setup
 
 # 3. Implement a feature
-/mtk:implement Add user notification preferences with email and SMS channels
+/mtk add user notification preferences with email and SMS channels
 
-# 4. Or do a quick fix
-/mtk:fix Fix null reference in PaymentProcessor when amount is zero
+# 4. Quick fix
+/mtk fix null reference in PaymentProcessor when amount is zero
 
 # 5. Before every commit
-/mtk:pre-commit-review
+/mtk review before commit
 ```
 
-That's it. The toolkit detects your tech stack (`.sln` = .NET, `pyproject.toml` = Python, `package.json` = TypeScript), generates a lean CLAUDE.md under 200 lines, and from then on every `/mtk:implement` runs through planning, TDD, two-stage review, and evidence-gated verification.
+**Cursor, Copilot, Windsurf, and other tools:**
+```bash
+# 1. Clone the toolkit
+git clone https://github.com/moberghr/claude-helpers .mtk
+
+# 2. Generate native config for your tool
+bash .mtk/scripts/generate-tool-configs.sh --all
+# Writes: .cursor/rules/mtk-*.mdc, .github/copilot-instructions.md,
+#         .windsurfrules, GEMINI.md, .clinerules
+
+# 3. Follow AGENTS.md for routing to the right skills
+```
+
+The toolkit detects your tech stack (`.sln` = .NET, `pyproject.toml` = Python, `package.json` = TypeScript) and from then on every implementation session runs through planning, TDD, two-stage review, and evidence-gated verification.
+
+---
+
+## Multi-Agent Support
+
+MTK is not a Claude Code-only plugin. The workflows and standards work with any AI coding assistant that can read markdown files.
+
+| Tool | Integration method | What you get |
+|:---|:---|:---|
+| **Claude Code** | Plugin marketplace install | Full `/mtk` skill routing, hooks, session recovery |
+| **Cursor** | `.cursor/rules/mtk-*.mdc` (glob-scoped) | Coding guidelines, security rules, test patterns — loaded per file type |
+| **GitHub Copilot** | `.github/copilot-instructions.md` | All reference content in Copilot's native format |
+| **Windsurf** | `.windsurfrules` | Full reference content |
+| **Gemini CLI / AI Studio** | `GEMINI.md` | Full reference content |
+| **Cline / Roo** | `.clinerules` | Full reference content |
+| **Any AGENTS.md-compatible tool** | `AGENTS.md` routing rules | Skill routing decision tree for the active task type |
+
+Generate all native configs in one command:
+
+```bash
+bash scripts/generate-tool-configs.sh --all
+# or selectively:
+bash scripts/generate-tool-configs.sh --format cursor-rules --format copilot
+```
+
+Regenerate any time you update the toolkit or change your tech stack. Generated files are prefixed `mtk-` and never conflict with your own rules.
 
 ---
 
@@ -103,17 +146,23 @@ Every finding has a `confidence` score (50-100), a `source` (`ai`, `linter`, or 
 
 ### What the deterministic linter catches
 
-Before the AI review even starts, `pre-commit-linters.sh` scans the diff for known-bad patterns at confidence 100:
+Before the AI review even starts, `pre-commit-linters.sh` scans the diff. The linter pack is hierarchical — core patterns apply everywhere, stack and domain packs layer on top:
 
 ```
-[LINTER] CRITICAL  hooks/linter-patterns/shared.txt:L3  Hardcoded secret detected
+[LINTER] CRITICAL  core/secrets:SECRET-HARDCODED   Hardcoded credential
    > private const string DbPassword = "Prod$ecret123";
 
-[LINTER] CRITICAL  hooks/linter-patterns/dotnet.txt:L1  Raw SQL with string interpolation
+[LINTER] CRITICAL  stack-dotnet:SQL-INTERPOLATION   Raw SQL with string interpolation
    > var users = db.Users.FromSqlRaw($"SELECT * FROM Users WHERE Name = '{name}'");
+
+[LINTER] WARNING   core/slopwatch:SLOP-SKIP-TEST    Test disabled — masking a failure
+   > [Skip("flaky")]
+
+[LINTER] WARNING   domain-finance:FLOAT-MONEY       float/double for monetary value
+   > public double Amount { get; set; }
 ```
 
-These are deterministic — no false negatives, no confidence scoring needed. The AI review layer then handles the judgment calls (architecture, test quality, performance).
+The **slopwatch** pack specifically catches LLM reward-hacking patterns — disabled tests, suppressed warnings, empty implementations, and assertions that always pass. These are the exact shortcuts an AI takes when it wants to claim "done" without doing the work.
 
 ### What spec-drift detection looks like
 
@@ -129,10 +178,10 @@ Drift Analysis: docs/specs/2026-04-14-payment-retry.json
 Verdict: NEEDS_CHANGES — implementation drifted from approved spec
 ```
 
-### What a `/mtk:implement` session looks like
+### What a `/mtk <feature>` session looks like
 
 ```
-> /mtk:implement Add payment retry logic for failed card transactions
+> /mtk add payment retry logic for failed card transactions
 
 Phase 0: Loading context...
   Tech stack: dotnet | Build: dotnet build | Test: dotnet test
@@ -190,19 +239,23 @@ Phase 6: Done
 | **Anti-rationalization** | Every skill has a "Common Rationalizations" table countering the exact excuses an AI uses to skip steps. |
 | **Deterministic + AI layering** | Linters catch known-bad patterns at confidence 100. AI review handles judgment calls. Both feed the same finding schema. |
 | **Dynamic context injection** | Skills use `` !`command` `` blocks to inject runtime state (tech stack, branch, diff stats) at load time — no procedural file reads. |
+| **Scope enforcement** | A real-time scope guard warns when any file edit falls outside the approved spec's change manifest — before the edit lands. |
+| **Learning persistence** | Corrections captured to `tasks/lessons.md` accumulate across sessions. Recurring patterns get promoted to permanent rules. |
 
 ### Component Model
 
 ```
-COMMANDS (5 entry points)
-  └── implement, fix, pre-commit-review, setup-bootstrap, setup-audit
+ENTRY POINTS (2 user-invocable skills)
+  ├── /mtk-setup  (first-time bootstrap + audit)
+  └── /mtk <description>  (natural language router)
 
       ↓ orchestrate
 
-SKILLS (20 reusable workflow blocks)
-  ├── 14 language-agnostic workflow skills
+WORKFLOW SKILLS (23 reusable blocks)
+  ├── 17 language-agnostic workflow skills (fix, implement, pre-commit-review,
+  │   context-engineering, spec-driven-development, …, setup-bootstrap, setup-audit)
   ├── 3 tech stack skills (.NET, Python, TypeScript)
-  └── 3 enabling skills (worktrees, writing-skills, brainstorming)
+  └── 3 enabling skills (brainstorming, using-git-worktrees, writing-skills)
 
       ↓ route to
 
@@ -213,31 +266,39 @@ AGENTS (3 specialist reviewers)
 
       ↓ backed by
 
-REFERENCES (21 standard documents)
+REFERENCES (24 standard documents)
   ├── 6 shared (security, testing, performance, finance domain, review schema, pre-commit list)
-  └── 5 per stack × 3 stacks (coding-guidelines, ORM checklist, framework patterns, testing, performance)
+  └── 6 per stack × 3 stacks (coding-guidelines, ORM checklist, framework patterns, testing, performance, analyzer-config)
 
       ↓ enforced by
 
-HOOKS (4 execution gates)
-  ├── SessionStart — multi-platform init, session recovery
-  ├── PreToolUse — security gate (blocks destructive commands)
-  ├── PostCompact — re-injects tech stack, specs, tasks after auto-compaction
-  └── Stop — blocks "done" claims without evidence
+HOOKS (8 execution gates)
+  ├── SessionStart    — multi-platform init, session recovery
+  ├── PreToolUse(1)   — security gate (blocks destructive commands)
+  ├── PreToolUse(2)   — scope guard (warns on out-of-spec file edits)
+  ├── PostToolUse     — context budget (tracks files read / edits / operations)
+  ├── PostCompact     — re-injects tech stack, specs, tasks after auto-compaction
+  ├── Stop(1)         — blocks "done" claims without evidence
+  ├── Stop(2)         — prompts learning capture after substantial sessions
+  └── Stop(3)         — persists session analytics to .claude/analytics.json
 
       ↓ validated by
 
-EVALS (3 eval suites × 3 scenarios each + pressure tests)
-  ├── security-and-hardening (positive, negative, adversarial)
-  ├── pre-commit-review (positive, negative, adversarial)
-  └── verification-before-completion (positive, negative, adversarial)
+BENCHMARKS (7 deterministic test suites)
+  ├── linter/known-bad — linter must catch hardcoded secrets, SQL injection, disabled tests
+  ├── linter/known-good — linter must NOT fire on clean code (false-positive check)
+  ├── security-gate — must block DROP TABLE, rm -rf, force push to main
+  ├── scope-guard — must warn on out-of-spec edits, silent for allowed files
+  ├── verify-completion — must reject evidence-less "done" claims
+  ├── prerequisites — must detect missing recommended tools
+  └── validate-toolkit — structural integrity of manifest, skills, and agents
 ```
 
-### How `/mtk:implement` Composes Skills
+### How `/mtk <feature>` Composes Skills
 
 ```mermaid
 graph LR
-    CMD["/mtk:implement"] --> P0
+    CMD["/mtk &lt;feature&gt;"] --> P0
 
     subgraph Phases
         direction TB
@@ -258,43 +319,63 @@ graph LR
 
 ## Entry-Point Skills
 
-| Skill | Purpose | When to use |
+MTK has just **two** user-invocable commands. Everything else is a workflow skill routed through `/mtk`.
+
+| Command | Purpose | When to use |
 |:---|:---|:---|
-| **`/mtk:implement`** | Full feature workflow: plan, build in batches, TDD, two-stage review | Multi-file features, new endpoints, breaking changes |
-| **`/mtk:fix`** | Lightweight bug fix: reproduce, fix, verify | 1-3 file changes, contained scope |
-| **`/mtk:pre-commit-review`** | Pre-commit security gate: deterministic linters + AI review | Before every `git commit` |
-| **`/mtk:setup-bootstrap`** | One-time repo setup: detect stack, audit codebase, generate CLAUDE.md | First time using MTK in a repo |
-| **`/mtk:setup-audit`** | Extract architecture principles from codebase patterns | Document what IS (not what should be) |
+| **`/mtk-setup`** | One-time bootstrap + re-audit dispatcher (`--audit` refreshes principles, `--merge` unifies multi-repo audits) | First time in a repo, or after architectural change |
+| **`/mtk <description>`** | Natural-language router — dispatches to fix, implement, pre-commit-review, or context-report based on intent | Everything else |
 
-### implement
+### The `/mtk` router
 
-Composes 11 skills across 7 phases. Includes an explicit approval gate at Phase 2.5 where you can approve autonomously, go interactive, edit, or revise.
+You don't need to remember skill names. Just describe what you want:
 
 ```bash
-/mtk:implement Add user notification preferences with email and SMS channels
+/mtk add user auth                 → implement
+/mtk fix the null check            → fix
+/mtk review before commit          → pre-commit-review
+/mtk what's loaded?                → context-report
+/mtk toolkit health                → toolkit-health (usage analytics)
+/mtk help                          → lists all routed workflows
 ```
 
-### fix
+### implement workflow (via `/mtk <feature>`)
 
-Has a built-in scope guard — if the change grows beyond 3 files, it tells you to switch to `implement`.
+Composes 11 skills across 7 phases. Includes an explicit approval gate at Phase 2.5 where you can approve autonomously, go interactive, edit, or revise. Stage 2 reviewers (`test-reviewer` + `architecture-reviewer`) spawn in a single parallel `Agent` call — see [`docs/parallelism-patterns.md`](docs/parallelism-patterns.md) for the canonical pattern used by entry skills.
 
 ```bash
-/mtk:fix Fix null reference in PaymentProcessor when amount is zero
+/mtk Add user notification preferences with email and SMS channels
 ```
 
-### pre-commit-review
+### fix workflow (via `/mtk fix …`)
 
-Two-pass review: deterministic linter scan (secrets, SQL injection, PII in logs) at confidence 100, then AI review for judgment calls. Both feed the same finding schema.
+Has a built-in scope guard — if the change grows beyond 3 files, it **self-escalates** to the implement workflow via the `/mtk` router (no manual switch required).
 
 ```bash
-/mtk:pre-commit-review
+/mtk fix null reference in PaymentProcessor when amount is zero
+```
+
+### pre-commit-review workflow (via `/mtk review before commit`)
+
+Two-pass review: deterministic linter scan (secrets, SQL injection, PII in logs, slopwatch) at confidence 100, then AI review for judgment calls. Both feed the same finding schema.
+
+```bash
+/mtk review before commit
+```
+
+### Updating MTK
+
+MTK is a Claude Code plugin. Use the plugin marketplace to upgrade — there is no in-repo update command.
+
+```bash
+/plugin update mtk@moberghr
 ```
 
 ---
 
 ## Skills
 
-25 skills total: 5 entry-point skills, 14 language-agnostic workflow skills, 3 tech stack skills, 3 enabling skills. Entry-point skills (invoked via `/mtk:<name>`) orchestrate workflow skills.
+29 skills total: 2 entry-point skills, 21 language-agnostic workflow skills, 3 tech stack skills, 3 enabling skills. Entry-point skills (`/mtk-setup` and `/mtk`) orchestrate workflow skills. Workflow skill count includes the new `toolkit-health` (v6.3.0) diagnostic for usage-pulse reports.
 
 ### Workflow Skills
 
@@ -316,6 +397,8 @@ Two-pass review: deterministic linter scan (secrets, SQL injection, PII in logs)
 | **correction-capture** | Auto-captures engineer corrections as reusable lessons (model-invoked) |
 | **handoff** | Captures session state for recovery across context boundaries (model-invoked) |
 | **writing-skills** | Meta-skill for authoring new skills with TDD discipline and pressure tests |
+| **context-report** | Diagnostic snapshot of active MTK configuration — tech stack, references, linter packs, domains, hooks, and rules |
+| **toolkit-health** | Historical usage-pulse report from `.claude/analytics.json` — session trends, specs/lessons ratios, anomaly flags with suggested actions |
 
 ### Skill Anatomy
 
@@ -396,11 +479,11 @@ The toolkit separates language-agnostic workflow from stack-specific knowledge. 
 
 TypeScript auto-detects the package manager (bun > pnpm > yarn > npm) from lockfiles.
 
-Each tech stack skill provides: build/test commands, ORM checklist, framework patterns, test level guidance, coding style reference, and paths to 5 stack-specific reference documents.
+Each tech stack skill provides: build/test commands, ORM checklist, framework patterns, test level guidance, coding style reference, and paths to 6 stack-specific reference documents.
 
 ### Adding a New Stack
 
-1. Create `.claude/skills/tech-stack-{name}/SKILL.md` with the [required sections](docs/skill-anatomy.md)
+1. Create `.claude/skills/tech-stack-{name}/SKILL.md` with the required sections
 2. Author reference files under `.claude/references/{name}/`
 3. Register in `manifest.json` with `"stack": "{name}"` entries
 4. The workflow skills work unchanged
@@ -415,20 +498,95 @@ Hooks are deterministic — they fire every time, unlike CLAUDE.md instructions 
 |:---|:---|:---|
 | **session-start** | SessionStart | Multi-platform init (Claude Code, Cursor, Copilot CLI, Gemini CLI); detects in-progress specs/plans for session recovery |
 | **security-gate.sh** | PreToolUse (Bash) | Blocks destructive operations: DB drops, force-push to main, `rm -rf` on broad paths |
+| **scope-guard.sh** | PreToolUse (Edit/Write) | Warns when a file edit falls outside the active spec's `change_manifest` — real-time scope creep detection |
+| **context-budget.sh** | PostToolUse | Tracks session activity (files read, edits, operations); warns at 30 unique files / 40 modifications / 120 total ops |
 | **post-compact.sh** | PostCompact | Re-injects tech stack, active specs/plans, incomplete tasks, and handoff artifacts after auto-compaction |
 | **verify-completion** | Stop | Catches "done" claims that lack cited command output (exit codes, test counts) |
-| **pre-commit-linters.sh** | Manual (via pre-commit-review) | Deterministic pattern scan: hardcoded secrets, raw SQL interpolation, PII in logs, console output, empty catches |
+| **capture-learnings.sh** | Stop | After substantial sessions (20+ ops or 5+ edits), prompts for lessons capture; detects recurring patterns that should be promoted to CLAUDE.md |
+| **session-analytics.sh** | Stop | Persists session stats (operations, modifications, specs created, lessons captured) to `.claude/analytics.json` |
 
 ### Linter Patterns
 
-Stack-specific pattern files in `hooks/linter-patterns/`:
+The linter pack is hierarchical: core patterns apply to every diff, stack patterns layer on top, domain packs add sector-specific rules, and project-local patterns let teams add their own.
 
-| File | Catches |
+```
+hooks/linter-patterns/
+  core/
+    secrets.txt     — hardcoded credentials, JWT tokens, connection strings
+    slopwatch.txt   — LLM reward-hacking: disabled tests, empty catch blocks, always-pass assertions
+  stack-dotnet/
+    patterns.txt    — raw SQL interpolation, Console.Write debugging
+  stack-python/
+    patterns.txt    — f-string SQL, bare except:, print() debugging
+  stack-typescript/
+    patterns.txt    — SQL template literals, console.log, any type usage
+  domain-finance/
+    patterns.txt    — float/double for money, unaudited mutation patterns
+  project/          — drop .txt files here for project-specific patterns (not committed to plugin)
+```
+
+Every pattern is tab-separated: `RULE_ID`, `SEVERITY`, `ERE_REGEX`, `RATIONALE`, `SUGGESTED_FIX`. The regex matches at confidence 100 — no scoring needed.
+
+---
+
+## Benchmarks
+
+MTK's hooks and linter scripts have a deterministic test suite. No LLM required — these test the bash scripts directly against known-good and known-bad inputs.
+
+```bash
+# Run all benchmarks
+bash scripts/run-benchmarks.sh
+
+# Verbose output (shows passing tests too)
+bash scripts/run-benchmarks.sh --verbose
+```
+
+Seven benchmark suites, 21+ assertions:
+
+| Suite | What it verifies |
 |:---|:---|
-| `shared.txt` | AWS keys, JWTs, connection strings with passwords, hardcoded API keys |
-| `dotnet.txt` | `FromSqlRaw` with interpolation, `Console.WriteLine`, empty catch blocks |
-| `python.txt` | `execute()` with f-strings, bare `except:`, `print()` debugging |
-| `typescript.txt` | SQL template literals with `${}`, `console.log`, `any` type usage |
+| **linter/known-bad** | Linter catches hardcoded secrets, SQL injection, disabled tests, float money |
+| **linter/known-good** | Linter does NOT fire on clean code (false-positive check) |
+| **security-gate** | Blocks `DROP TABLE`, `rm -rf .`, force push to main; allows normal commands |
+| **scope-guard** | Warns on out-of-spec edits; silent for allowed files and meta-files |
+| **verify-completion** | Rejects evidence-less "done" claims; accepts claims with build output |
+| **prerequisites** | Reports missing recommended tools (shellcheck, jq, stack toolchain) |
+| **validate-toolkit** | Structural integrity: manifest, frontmatter, skill anatomy, file paths |
+
+The benchmarks run against fixture diffs (`benchmarks/fixtures/`) so results are repeatable and independent of your working tree state.
+
+---
+
+## Analytics
+
+MTK tracks your usage across sessions in `.claude/analytics.json` (gitignored). Run the report at any time:
+
+```bash
+bash scripts/analytics-report.sh
+```
+
+```
+┌─────────────────────────────────────────┐
+│         MTK Analytics Report            │
+├─────────────────────────────────────────┤
+│ Period:     2026-04-01 → 2026-04-16     │
+│ Sessions:   42                          │
+├─────────────────────────────────────────┤
+│ Total operations:     1,842             │
+│ Total modifications:  421               │
+│ Avg ops/session:      43                │
+│ Avg mods/session:     10                │
+├─────────────────────────────────────────┤
+│ Specs created:        18                │
+│ Lessons captured:     7                 │
+│ Scope guard warnings: 3                 │
+├─────────────────────────────────────────┤
+│ Benchmarks run:       5                 │
+│ Last benchmark score: 21/21             │
+└─────────────────────────────────────────┘
+```
+
+Useful for understanding how much scope drift you're generating, how many corrections are being captured, and whether the toolkit is being used consistently.
 
 ---
 
@@ -471,19 +629,15 @@ References in `manifest.json` can declare `applyTo` glob arrays. When the contex
 
 If you're editing a controller, the EF Core checklist doesn't load. If you're editing a DbContext, it does. This keeps context lean.
 
-### Path-Scoped Rules
+### Domain Packs
 
-Rules in `.claude/rules/` can declare `paths` frontmatter to auto-scope when they load:
+Activate domain-specific rules by creating `.claude/domains`:
 
-```yaml
----
-paths:
-  - "hooks/**"
-  - "scripts/**"
----
+```
+finance
 ```
 
-Rules without `paths` load always. Rules with `paths` load only when Claude reads files matching the patterns.
+When active, the finance domain pack adds linter patterns for float/double money types, unaudited mutations, and PII exposure, plus loads `domain-finance.md` reference material.
 
 ### Protected Files
 
@@ -495,7 +649,7 @@ These files are never overwritten by plugin updates:
 | `.claude/settings.local.json` | Engineer's personal permission overrides |
 | `.claude/review-config.local.json` | Engineer's personal review threshold overrides |
 | `tasks/lessons.md` | Team's accumulated learnings |
-| `architecture-principles.md` | Project-specific architecture doc |
+| `.claude/references/architecture-principles.md` | Project-specific architecture doc |
 
 ---
 
@@ -504,7 +658,14 @@ These files are never overwritten by plugin updates:
 ```
 claude-helpers/
 ├── .claude/
-│   ├── skills/                # 25 skills (5 entry-point + 14 workflow + 3 tech stack + 3 enabling)
+│   ├── skills/                # 29 skills (2 entry-point + 21 workflow + 3 tech stack + 3 enabling)
+│   │   ├── mtk/               # natural-language router (user-invocable)
+│   │   ├── mtk-setup/         # bootstrap + audit dispatcher (user-invocable)
+│   │   ├── implement/         # full feature loop (routed)
+│   │   ├── fix/               # lightweight task loop (routed)
+│   │   ├── pre-commit-review/ # security gate (routed)
+│   │   ├── setup-bootstrap/   # one-time repo setup (called by mtk-setup)
+│   │   ├── setup-audit/       # architecture principle extractor (called by mtk-setup)
 │   │   ├── context-engineering/
 │   │   ├── spec-driven-development/
 │   │   ├── planning-and-task-breakdown/
@@ -518,38 +679,56 @@ claude-helpers/
 │   │   ├── verification-before-completion/
 │   │   ├── spec-drift-detection/
 │   │   ├── brainstorming/
-│   │   ├── correction-capture/          # model-invoked
-│   │   ├── handoff/                     # model-invoked
+│   │   ├── correction-capture/       # model-invoked
+│   │   ├── handoff/                  # model-invoked
+│   │   ├── context-report/           # diagnostic
+│   │   ├── writing-skills/           # meta-skill
 │   │   ├── using-git-worktrees/
-│   │   ├── writing-skills/              # meta-skill
 │   │   ├── tech-stack-dotnet/
 │   │   ├── tech-stack-python/
 │   │   └── tech-stack-typescript/
 │   ├── agents/                # 3 specialist reviewers
-│   ├── references/            # 21 standard documents
+│   ├── references/            # 24 standard documents
 │   │   ├── security-checklist.md
 │   │   ├── testing-patterns.md
 │   │   ├── performance-checklist.md
 │   │   ├── domain-finance.md
 │   │   ├── review-finding-schema.md
-│   │   ├── dotnet/            # 5 .NET-specific references
-│   │   ├── python/            # 5 Python-specific references
-│   │   └── typescript/        # 5 TypeScript-specific references
+│   │   ├── pre-commit-review-list.md
+│   │   ├── dotnet/            # 6 .NET-specific references
+│   │   ├── python/            # 6 Python-specific references
+│   │   └── typescript/        # 6 TypeScript-specific references
 │   ├── rules/                 # 4 auto-loaded rule files (path-scoped)
 │   ├── review-config.json     # Review thresholds and verdict rules
 │   ├── manifest.json          # Distribution registry
 │   └── settings.json          # Permissions, hooks, tool config
-├── hooks/                     # 5 hook scripts + linter patterns
+├── hooks/                     # 8 hook scripts + linter patterns
 │   ├── session-start
 │   ├── security-gate.sh
+│   ├── scope-guard.sh
+│   ├── context-budget.sh
 │   ├── post-compact.sh
 │   ├── verify-completion
-│   ├── pre-commit-linters.sh
-│   └── linter-patterns/       # shared.txt, dotnet.txt, python.txt, typescript.txt
+│   ├── capture-learnings.sh
+│   ├── session-analytics.sh
+│   ├── check-prerequisites.sh
+│   ├── api-compat-check.sh
+│   ├── ci-status.sh
+│   ├── merge-settings.sh
+│   ├── parse-build-diagnostics.sh
+│   ├── verify-behavioral-diff.sh
+│   ├── git-hooks/pre-commit
+│   └── linter-patterns/       # core/, stack-{name}/, domain-{name}/, project/
+├── benchmarks/                # Deterministic test fixtures
+│   └── fixtures/              # known-bad.diff, known-good.diff
 ├── evals/                     # 3 eval suites (9 scenarios + 3 graders)
 ├── tests/pressure-tests/      # Adversarial behavioral tests
-├── scripts/validate-toolkit.sh
-├── AGENTS.md                  # Routing rules for AI agents
+├── scripts/
+│   ├── validate-toolkit.sh    # Structural integrity check
+│   ├── run-benchmarks.sh      # Deterministic hook/linter tests
+│   ├── analytics-report.sh    # Print usage stats
+│   └── generate-tool-configs.sh  # Generate Cursor/Copilot/Windsurf/Gemini/Cline configs
+├── AGENTS.md                  # Routing rules for AI agents (all tools)
 └── README.md
 ```
 
@@ -561,7 +740,7 @@ claude-helpers/
 |:---|:---|:---|
 | **Just CLAUDE.md** | Advisory rules, ~80% adherence | No enforcement, no workflow, no review |
 | **CLAUDE.md + rules/** | Scoped rules, better adherence | No structured review, no evidence gates, no spec tracking |
-| **MTK** | Workflow enforcement, adversarial review, deterministic linters, evidence gates, spec-drift detection, auto-compaction recovery | Requires Claude Code (not Cursor/Copilot natively) |
+| **MTK** | Workflow enforcement, adversarial review, deterministic linters, evidence gates, spec-drift detection, scope guard, session analytics, multi-tool native configs | Requires Claude Code for full skill routing; reference docs work everywhere |
 | **CodeRabbit / SaaS review** | Mature review with 40+ linters | External service, monthly cost, no workflow enforcement, no spec tracking |
 
 MTK is not a replacement for human review. It's a first pass that catches the mechanical stuff — so your human reviewers can focus on design, product, and things the AI can't judge.
@@ -571,7 +750,15 @@ MTK is not a replacement for human review. It's a first pass that catches the me
 ## FAQ
 
 <details>
-<summary><b>Do I need to run setup-bootstrap on every branch?</b></summary>
+<summary><b>Do I need Claude Code to use this?</b></summary>
+
+No. The reference documents, AGENTS.md routing rules, and linter scripts work with any AI coding tool. Use `bash scripts/generate-tool-configs.sh --all` to generate native config files for Cursor (`.cursor/rules/*.mdc`), Copilot (`.github/copilot-instructions.md`), Windsurf (`.windsurfrules`), Gemini (`GEMINI.md`), and Cline (`.clinerules`).
+
+Claude Code unlocks the full `/mtk` and `/mtk-setup` routing and automatic hook enforcement. Other tools get the same reference content delivered in their native format.
+</details>
+
+<details>
+<summary><b>Do I need to run /mtk-setup on every branch?</b></summary>
 
 No. Run it once per repository. The generated CLAUDE.md and rules are committed and shared across branches.
 </details>
@@ -579,13 +766,7 @@ No. Run it once per repository. The generated CLAUDE.md and rules are committed 
 <details>
 <summary><b>Can I customize the generated rules?</b></summary>
 
-Yes. After setup-bootstrap generates the files, edit them freely. Plugin updates never overwrite CLAUDE.md, rules, or architecture-principles.md.
-</details>
-
-<details>
-<summary><b>Does this work with non-.NET projects?</b></summary>
-
-Yes. Workflow skills are language-agnostic. .NET, Python, and TypeScript (React, Next.js, Tauri, Node) are supported out of the box. Add a new stack by creating one tech stack skill and a set of reference files — see [docs/skill-anatomy.md](docs/skill-anatomy.md).
+Yes. After `/mtk-setup` generates the files, edit them freely. Plugin updates never overwrite CLAUDE.md, rules, or architecture-principles.md.
 </details>
 
 <details>
@@ -597,13 +778,13 @@ Dismiss it and move on. If the same false positive recurs, add a clarification t
 <details>
 <summary><b>How does this differ from writing a CLAUDE.md manually?</b></summary>
 
-Three things: (1) setup-bootstrap generates CLAUDE.md from your actual codebase, not guesswork; (2) MTK provides workflow enforcement (planning, TDD, review, evidence gates), not just rules; (3) adversarial review agents actively find violations with confidence-scored structured output.
+Three things: (1) `/mtk-setup` generates CLAUDE.md from your actual codebase, not guesswork; (2) MTK provides workflow enforcement (planning, TDD, review, evidence gates), not just rules; (3) adversarial review agents actively find violations with confidence-scored structured output.
 </details>
 
 <details>
 <summary><b>Can I use this alongside other Claude Code plugins?</b></summary>
 
-Yes. The toolkit's permissions and hooks merge with other plugins' settings. The `/mtk:` namespace prevents command conflicts.
+Yes. The toolkit's permissions and hooks merge with other plugins' settings. The `/mtk` and `/mtk-setup` commands use unique names to prevent conflicts.
 </details>
 
 <details>
@@ -613,9 +794,21 @@ The PostCompact hook automatically re-injects your tech stack, active spec/plan 
 </details>
 
 <details>
+<summary><b>What is the slopwatch linter pack?</b></summary>
+
+The slopwatch pack catches LLM reward-hacking patterns — code changes that make quality metrics look good without doing real work. Examples: `[Skip]` on failing tests, empty catch blocks, `Assert.True(true)`, and suppressed warnings. These are the exact shortcuts an AI takes when it wants to claim "done" without solving the actual problem.
+</details>
+
+<details>
+<summary><b>How do I add a custom linter rule?</b></summary>
+
+Drop a `.txt` file in `hooks/linter-patterns/project/`. The format is tab-separated: `RULE_ID`, `SEVERITY`, `ERE_REGEX`, `RATIONALE`, `SUGGESTED_FIX`. Project-local patterns are never overwritten by plugin updates.
+</details>
+
+<details>
 <summary><b>How do I add a custom skill?</b></summary>
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/skill-anatomy.md](docs/skill-anatomy.md). Create the skill directory, add a SKILL.md with frontmatter and required sections, register in manifest.json, and run `bash scripts/validate-toolkit.sh`.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Create the skill directory, add a SKILL.md with frontmatter and required sections, register in manifest.json, and run `bash scripts/validate-toolkit.sh`.
 </details>
 
 ---
@@ -624,13 +817,16 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/skill-anatomy.md](docs/skill-an
 
 | Symptom | Fix |
 |:---|:---|
-| `implement` says "run setup-bootstrap first" | Run `/mtk:setup-bootstrap` |
+| `implement` says "run setup-bootstrap first" | Run `/mtk-setup` |
 | Review agent reports `BLOCKED` | Check `.claude/references/` exists; re-run setup-bootstrap |
 | "Verification gap" fires constantly | Working as intended — cite build/test output in your completion |
 | Toolkit version mismatch | Run `/plugin update mtk@moberghr` |
 | Skills not loading after update | Run `/plugin update mtk@moberghr` then restart session |
+| Scope guard fires on every edit | Check `docs/specs/*.json` — you have an active spec; update its `change_manifest` or remove it |
+| Context budget warning fires early | Expected on large sessions — consider committing a checkpoint or using the handoff skill |
+| Cursor rules not loading | Re-run `bash scripts/generate-tool-configs.sh --format cursor-rules` after updating the toolkit |
 
-Toolkit maintainers: run `bash scripts/validate-toolkit.sh` to verify structural integrity.
+Toolkit maintainers: run `bash scripts/validate-toolkit.sh` and `bash scripts/run-benchmarks.sh` to verify structural and behavioral integrity.
 
 ---
 
@@ -638,10 +834,10 @@ Toolkit maintainers: run `bash scripts/validate-toolkit.sh` to verify structural
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). The short version:
 
-1. **Skills** follow [docs/skill-anatomy.md](docs/skill-anatomy.md) — include anti-rationalization tables and a verification checklist
+1. **Skills** follow the skill anatomy in `.claude/rules/skill-authoring.md` — include anti-rationalization tables and a verification checklist
 2. **Review/security/verification skills** must have an eval suite in `evals/`
 3. **Every new file** must be in `manifest.json`
-4. **Run `bash scripts/validate-toolkit.sh`** before pushing
+4. **Run `bash scripts/validate-toolkit.sh`** and **`bash scripts/run-benchmarks.sh`** before pushing
 
 ---
 
@@ -663,7 +859,7 @@ MIT. See [LICENSE](LICENSE).
 
 <div align="center">
 
-**MTK — Moberg Toolkit** v6.1.4 · [Moberg d.o.o.](https://www.moberg.hr)
+**MTK — Moberg Toolkit** v6.3.0 · [Moberg d.o.o.](https://www.moberg.hr)
 
 Built for teams that ship production code, not prototypes.
 

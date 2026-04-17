@@ -68,7 +68,7 @@ dotnet_diagnostic.CA1816.severity = warning
 
 Build output from `dotnet build` includes these analyzer warnings. The toolkit's `hooks/parse-build-diagnostics.sh` parser converts them into review-finding-schema findings with `source: "analyzer"` and `confidence: 100`.
 
-During `/mtk:implement` batches, pipe build output to capture analyzer findings:
+During the implement workflow's batches, pipe build output to capture analyzer findings:
 ```bash
 dotnet build 2>&1 | tee /dev/tty | hooks/parse-build-diagnostics.sh > .mtk/analyzer-output.json
 ```

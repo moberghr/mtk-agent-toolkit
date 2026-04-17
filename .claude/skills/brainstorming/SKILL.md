@@ -79,12 +79,7 @@ Explore the design space before committing to a single approach. Brainstorming p
 
 ## Common Rationalizations
 
-| Rationalization | Reality |
-|---|---|
-| "The right approach is obvious, skip brainstorming" | Obvious to whom? The engineer asked for options because the choice is not clear to them. |
-| "I'll just start and adjust if it's wrong" | Adjusting a wrong architecture costs 10x more than spending 5 minutes on alternatives. |
-| "There's really only one way to do this" | Then present that one approach and explain why alternatives don't apply. The discipline still helps. |
-| "Let me prototype and then we'll decide" | Prototyping creates sunk-cost bias. Decide on the approach, then build. |
+See `.claude/skills/context-engineering/SKILL.md` for the shared table. Brainstorming-specific traps: "there's really only one way to do this" (then present that one approach and explain why alternatives don't apply — the discipline still helps), and "let me prototype and then we'll decide" (prototyping creates sunk-cost bias — decide on the approach first, then build).
 
 ## Red Flags
 

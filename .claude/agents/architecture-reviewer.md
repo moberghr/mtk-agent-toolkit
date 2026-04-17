@@ -4,7 +4,12 @@ description: Focused reviewer for slice boundaries, dependency direction, and ar
 allowed-tools: Read, Glob, Grep, Bash
 model: sonnet
 effort: high
+context: fork
 ---
+
+<!-- Cache-stable prefix: persona + output contract below is identical across every
+     invocation. Dynamic state (diff, behavioral diff) is injected at the call site. -->
+
 
 # Architecture Reviewer
 

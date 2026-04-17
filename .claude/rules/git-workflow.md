@@ -14,12 +14,12 @@
 
 ## Versioning
 
-- **S4.5** Follow semver: major (breaking changes to skill contracts), minor (new skills/commands), patch (fixes, tweaks).
+- **S4.5** Follow semver: major (breaking changes to skill contracts), minor (new skills), patch (fixes, tweaks).
 - **S4.6** Bump version in both `manifest.json` and `plugin.json` in the same commit.
 - **S4.7** Update `manifest.updated` date when bumping version.
 
 ## Release Checklist
 
 - **S4.8** Before release: `bash scripts/validate-toolkit.sh` must pass.
-- **S4.9** Before release: README must reflect any new commands or skills.
+- **S4.9** Before release: README must reflect any new skills.
 - **S4.10** Before release: AGENTS.md must route to any new skills.

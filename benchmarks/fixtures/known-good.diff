@@ -1,0 +1,34 @@
+diff --git a/src/Config/appsettings.json b/src/Config/appsettings.json
+index 1234567..abcdefg 100644
+--- a/src/Config/appsettings.json
++++ b/src/Config/appsettings.json
+@@ -1,3 +1,6 @@
+ {
+-  "Logging": { "LogLevel": { "Default": "Information" } }
++  "Logging": { "LogLevel": { "Default": "Information" } },
++  "ConnectionStrings": {
++    "Default": "Name=DefaultConnection"
++  }
+ }
+diff --git a/src/Data/UserRepository.cs b/src/Data/UserRepository.cs
+index 1234567..abcdefg 100644
+--- a/src/Data/UserRepository.cs
++++ b/src/Data/UserRepository.cs
+@@ -10,3 +10,6 @@ public class UserRepository
++    public async Task<User> FindByEmail(string email)
++    {
++        return await _db.Users.Where(u => u.Email == email).FirstOrDefaultAsync();
++    }
+diff --git a/tests/UserTests.cs b/tests/UserTests.cs
+index 1234567..abcdefg 100644
+--- a/tests/UserTests.cs
++++ b/tests/UserTests.cs
+@@ -5,3 +5,10 @@ public class UserTests
++    [Fact]
++    public async Task FindByEmail_ReturnsUser_WhenExists()
++    {
++        var repo = new UserRepository(_fixture.DbContext);
++        var user = await repo.FindByEmail("test@example.com");
++        Assert.NotNull(user);
++        Assert.Equal("test@example.com", user.Email);
++    }

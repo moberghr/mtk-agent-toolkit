@@ -47,11 +47,7 @@ Simplify only after behavior is proven. The goal is to reduce complexity, remove
 
 ## Common Rationalizations
 
-| Rationalization | Reality |
-|---|---|
-| "Now that I'm here, I should refactor the whole module" | Cleanup is not permission for a hidden rewrite. |
-| "This abstraction might be useful later" | Maybe. But right now it is complexity someone has to read. |
-| "The dead code is probably still needed somewhere" | Probably is a reason to verify or ask, not a reason to keep obvious clutter forever. |
+See `.claude/skills/context-engineering/SKILL.md` for the shared table. Simplification-specific traps: "now that I'm here, I should refactor the whole module" (cleanup is not permission for a hidden rewrite — stay scoped), and "the dead code is probably still needed somewhere" (probably is a reason to verify or ask, not to leave clutter in place).
 
 ## Red Flags
 

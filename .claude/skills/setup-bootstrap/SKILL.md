@@ -1,31 +1,24 @@
 ---
 name: setup-bootstrap
-description: One-time repo setup. Detects tech stack, audits the codebase, pulls coding guidelines, and generates a project-specific CLAUDE.md. Run this once per repo.
+description: One-time repo setup that detects tech stack, audits the codebase, pulls coding guidelines, and generates a project-specific CLAUDE.md
 type: skill
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
-argument-hint: [--preview] [--non-interactive]
 ---
 
 # MTK Setup Bootstrap — Prepare Repository for AI-Assisted Development
 
 ## MTK File Resolution
 
-MTK skills and shared references may be in the project (local install) or the plugin cache (marketplace install). Resolve once before loading any skill:
+MTK skills and shared references live either in the project (local install) or the plugin cache (marketplace install). Resolve once:
 
-1. Check: does `.claude/skills/context-engineering/SKILL.md` exist in the project root?
-2. If yes → **local install**. All `.claude/skills/` and `.claude/references/` paths work as-is.
-3. If no → **marketplace install**. Find the MTK plugin root:
-   ```bash
-   find ~/.claude/plugins -maxdepth 8 -name "SKILL.md" -path "*/mtk/*/context-engineering/*" -type f 2>/dev/null | head -1 | sed 's|/.claude/skills/context-engineering/SKILL.md||'
-   ```
-   Prefix all `.claude/skills/...` and `.claude/references/{stack}/...` reads with the resolved root path.
-4. If the find returns nothing → MTK skills are unavailable. Warn the engineer and proceed with `CLAUDE.md` only.
+1. If `$CLAUDE_PLUGIN_ROOT` is set, prefix `.claude/skills/` and `.claude/references/` reads with it.
+2. Otherwise, if `.claude/skills/context-engineering/SKILL.md` exists locally → project-relative paths work as-is.
+3. Otherwise, fall back to `find ~/.claude/plugins -maxdepth 8 -name "SKILL.md" -path "*/mtk/*/context-engineering/*" -type f 2>/dev/null | head -1 | sed 's|/.claude/skills/context-engineering/SKILL.md||'`. If empty, MTK skills are unavailable — warn the engineer and proceed with `CLAUDE.md` only.
 
-**Always project-relative** (never prefixed): `CLAUDE.md`, `.claude/tech-stack`, `.claude/rules/`, `tasks/`, `docs/`, `.claude/references/architecture-principles.md`, `.claude/references/pre-commit-review-list.md`.
+Always project-relative (never prefixed): `CLAUDE.md`, `.claude/tech-stack`, `.claude/rules/`, `tasks/`, `docs/`, `.claude/references/architecture-principles.md`, `.claude/references/pre-commit-review-list.md`.
 
 ---
 
-You are setting up a repository for the `/mtk:implement` workflow.
+You are setting up a repository for the `/mtk` workflows.
 Your job is to detect the tech stack, audit the codebase, and generate a tailored `CLAUDE.md` that the implementation and review agents will use as their source of truth.
 
 This bootstrap also prepares the repo for the shared skill layer and OpenCode routing.
@@ -91,6 +84,16 @@ echo "dotnet" > .claude/tech-stack
 
 Then load `.claude/skills/tech-stack-{stack}/SKILL.md` — this is the source of truth for build commands, scan recipes, and reference paths used in the rest of init.
 
+### Tool Prerequisites Check
+
+After detecting the tech stack, run the prerequisites check:
+
+```bash
+bash hooks/check-prerequisites.sh
+```
+
+This checks for recommended tools (shellcheck, shfmt, jq, plus stack-specific tools like ruff/mypy for Python, dotnet-format for .NET, etc.). Missing tools are reported as warnings in the final report — they never block bootstrap. Include the output in the STEP 5 verification report.
+
 ### Package manager auto-detect (typescript only)
 
 When the active stack is `typescript`, also write the detected package manager to `.claude/tech-stack-pm` so workflow skills can substitute `<pm>` in commands. Pick automatically by lockfile priority:
@@ -127,9 +130,9 @@ If the fetch fails (network restrictions), check if the file already exists. If 
 Check if `.claude/references/architecture-principles.md` exists.
 
 - **If it exists:** leave it alone — init respects prior architecture decisions.
-- **If it does NOT exist:** auto-generate it from the Step 2 audit findings using the same template as `/mtk:setup-audit` (descriptive audit of actual patterns, with "⚠️ Inconsistency" flags where the codebase disagrees with itself). No prompt — this is the one-time bootstrap.
+- **If it does NOT exist:** auto-generate it from the Step 2 audit findings using the same template as `/mtk-setup --audit` (descriptive audit of actual patterns, with "⚠️ Inconsistency" flags where the codebase disagrees with itself). No prompt — this is the one-time bootstrap.
 
-To refresh the file later as the architecture evolves, the engineer runs `/mtk:setup-audit` explicitly.
+To refresh the file later as the architecture evolves, the engineer runs `/mtk-setup --audit` explicitly.
 
 ## STEP 2: Audit the Codebase
 
@@ -239,9 +242,9 @@ Create `CLAUDE.md` and `.claude/rules/` files following the templates below.
 
 | What you need | Skill | When |
 |---|---|---|
-| Build a feature | `/mtk:implement <description>` | New endpoints, tables, handlers, multi-file work |
-| Quick fix | `/mtk:fix <description>` | Bug fixes, config tweaks, 1-3 file changes |
-| Pre-commit check | `/mtk:pre-commit-review` | Before every commit — fast security-focused review |
+| Build a feature | `/mtk <feature description>` | New endpoints, tables, handlers, multi-file work (routes to implement) |
+| Quick fix | `/mtk fix <description>` | Bug fixes, config tweaks, 1-3 file changes |
+| Pre-commit check | `/mtk review before commit` | Before every commit — fast security-focused review |
 
 **Decision rule:** If unsure, start with `fix`. If the change grows beyond 3 files, switch to `implement`.
 
@@ -352,43 +355,69 @@ The rule file templates are largely the same as before — adapt the content per
 - Be specific to THIS project — skip technologies not in use.
 - **Don't duplicate** content from `.claude/references/` — point to the file instead.
 - Skip rules files for sections that don't apply.
+- **Cache-stable ordering:** put invariants (Critical Rules, Standards Reference, Tech Stack commands) near the top; volatile state (project profile with versions, monorepo layout) below. This keeps the prompt prefix stable across sessions so prompt caching stays warm. See `.claude/skills/writing-skills/SKILL.md` `## Cache-Stable Prefixes`.
 
 ## STEP 3.5a: Verify Generated References
 
-Before writing files (or presenting preview), validate every concrete directory/project claim in the generated content. This prevents stale references from appearing when bootstrap runs alongside cleanup.
+Before writing files (or presenting preview), validate every concrete directory, project, and file claim in ALL generated content. This prevents stale references from appearing when bootstrap runs alongside cleanup or when solution files reference deleted projects.
 
-**For architecture-principles.md:**
+**Scope:** Verify claims in ALL generated files — `CLAUDE.md`, `.claude/references/architecture-principles.md`, every `.claude/rules/*.md`, and (if monorepo) every per-package `CLAUDE.md`.
 
-1. Extract every directory or project name referenced with an "exists on disk" / "still on disk" / "on disk" claim:
+**Verification procedure:**
+
+1. **Directory claims — use `test -d`, not inference.** For every directory mentioned as existing or containing something, run `test -d`:
    ```bash
-   # For each directory mentioned as existing, verify it
-   for dir in $(grep -oE '[A-Z][a-zA-Z0-9]+/' .claude/references/architecture-principles.md 2>/dev/null | sort -u); do
-     [ ! -d "$dir" ] && echo "STALE: $dir referenced but not found"
+   # Collect all directory-like references from generated content.
+   # Catch both PascalCase (src/Infrastructure/) and lowercase (apps/api/, packages/core/).
+   for file in CLAUDE.md .claude/references/architecture-principles.md .claude/rules/*.md; do
+     [ -f "$file" ] || continue
+     grep -oE '[a-zA-Z0-9_./-]+/' "$file" | grep -v '^//' | grep -v '^\.' | sort -u | while read dir; do
+       # Skip obvious non-paths: URLs, code patterns, comment fragments
+       case "$dir" in http*|ftp*|//|.*/) continue ;; esac
+       [ ! -d "$dir" ] && echo "STALE in $file: directory '$dir' referenced but not found on disk"
+     done
    done
    ```
-2. For each `.csproj` or project file mentioned by name, verify it exists:
+
+2. **Project file claims — verify each named file exists.** For `.csproj`, `package.json`, `pyproject.toml`, or any project marker referenced by name:
    ```bash
-   grep -oE '[A-Za-z0-9._-]+\.csproj' .claude/references/architecture-principles.md 2>/dev/null | while read proj; do
-     find . -name "$proj" -not -path "*/bin/*" 2>/dev/null | grep -q . || echo "STALE: $proj not found"
+   # .NET
+   for file in CLAUDE.md .claude/references/architecture-principles.md .claude/rules/*.md; do
+     [ -f "$file" ] || continue
+     grep -oE '[A-Za-z0-9._-]+\.csproj' "$file" 2>/dev/null | sort -u | while read proj; do
+       find . -name "$proj" -not -path "*/bin/*" -not -path "*/obj/*" 2>/dev/null | grep -q . || echo "STALE in $file: $proj not found"
+     done
    done
    ```
-3. For any `TargetFramework` claims (e.g., "one net7.0 orphan"), verify against actual csproj files:
+
+3. **Framework / version claims — verify against actual files:**
    ```bash
+   # .NET TargetFramework
    grep -rh "TargetFramework" --include="*.csproj" | sort -u
+   # TypeScript — check package.json "engines" or tsconfig "target"
+   # Python — check pyproject.toml "requires-python" or .python-version
    ```
 
-**For .claude/rules/*.md files:**
+4. **Solution membership vs disk reality (.NET).** Solution files can reference projects that have been deleted. Do NOT trust `.sln`/`.slnx` project lists as proof of existence — always `test -d` the project directory:
+   ```bash
+   # Extract project paths from solution file and verify each
+   grep 'Project(' *.sln 2>/dev/null | grep -oE '"[^"]+\.csproj"' | tr -d '"' | while read proj; do
+     [ ! -f "$proj" ] && echo "STALE: solution references $proj but file does not exist"
+   done
+   ```
 
-4. Check each rules file for references to specific projects, directories, or workers. If they don't exist on disk, remove or correct the reference.
+5. **Rules files — check for specific project/directory/service references:**
+   For each `.claude/rules/*.md`, scan for proper nouns that look like project or directory names. Verify each with `test -d` or `test -f`.
 
 **Action on stale references:**
 
 - If a directory/project is referenced as "exists" but doesn't → remove the reference or mark as removed.
 - If a directory/project is referenced as "not on disk" but does exist → correct the claim.
-- If a TargetFramework version is claimed but no csproj uses it → remove the claim.
-- Re-run this check after any file deletions in the same session.
+- If a framework version is claimed but no project file uses it → remove the claim.
+- If a solution references a project that doesn't exist on disk → note the stale solution entry but do NOT modify the `.sln` file.
+- Re-run this check after any file deletions or renames in the same session.
 
-**Rule:** The generated content must reflect the repository state AT THE TIME OF WRITING, not at the time of scanning. If setup-bootstrap also performed cleanup, the verification pass catches the drift.
+**Rule:** Never infer disk presence from solution membership, package manifests, or lock files alone. The `test -d` / `test -f` check is the source of truth. The generated content must reflect the repository state AT THE TIME OF WRITING, not at the time of scanning.
 
 ## STEP 3.5b: Preview Gate (if `--preview`)
 
@@ -475,7 +504,7 @@ HOOK_SOURCE="hooks/git-hooks/pre-commit"
      exec hooks/git-hooks/pre-commit
    ```
 
-The hook runs `hooks/pre-commit-linters.sh --cached` (< 1 second) and blocks on critical findings. Engineers bypass with `git commit --no-verify`. The full AI review (`/mtk:pre-commit-review`) remains a separate, manual step.
+The hook runs `hooks/pre-commit-linters.sh --cached` (< 1 second) and blocks on critical findings. Engineers bypass with `git commit --no-verify`. The full AI review (`/mtk review before commit`) remains a separate, manual step.
 
 ### Skills and Agents
 Ensure the following files exist:
@@ -498,19 +527,51 @@ If any are missing, tell the engineer to re-install the MTK plugin from the mark
 
 ### Reference File Customization
 
-Shared reference files (e.g., `testing-supplement.md`, `performance-supplement.md`) ship as generic, multi-stack guidance. After confirming they exist, customize them based on scan findings so they don't contradict the repo-specific rules in `.claude/rules/`.
+Shared reference files ship as generic, multi-stack guidance with "match existing" placeholders. After confirming they exist, substitute those placeholders with concrete scan findings so that every subsequent `/mtk` implement and review run gets project-specific guidance without re-scanning.
 
-**Customization rules:**
+**When to customize:** Only when the scan found exactly ONE tool in a category (unambiguous evidence).
+**When NOT to customize:** If the scan found multiple tools (e.g., both xUnit and NUnit), or zero matches — leave the generic guidance intact.
 
-1. **Test framework:** If the scan detected exactly ONE test framework (e.g., xUnit with zero NUnit/MSTest references), narrow any "xUnit, NUnit, or MSTest — match existing" line to name only the detected framework: `xUnit only. Do not introduce NUnit or MSTest in this repository.`
-2. **Mocking library:** If the scan detected exactly ONE mocking library, narrow similarly.
-3. **ORM / data layer:** If the scan detected exactly ONE ORM (e.g., EF Core with no Dapper), narrow "EF Core or Dapper" options to the detected one.
+**Customization table — dotnet:**
 
-**When NOT to customize:**
-- If the scan found multiple frameworks/libraries in use (e.g., both xUnit and NUnit) — leave the generic guidance.
-- If the scan found zero matches for a category — leave the generic guidance (the project may not have tests yet).
+| Category | File to patch | Generic pattern to find | Example replacement |
+|---|---|---|---|
+| Test framework | `{stack}/testing-supplement.md` | `xUnit, NUnit, or MSTest — match the project's existing choice.` | `xUnit only. Do not introduce NUnit or MSTest.` |
+| Mocking library | `{stack}/testing-supplement.md` | `Mocking: Moq, NSubstitute, or FakeItEasy — match existing.` | `Mocking: NSubstitute only. Do not introduce Moq or FakeItEasy.` |
+| Integration test base | `{stack}/testing-supplement.md` | `WebApplicationFactory<T> for ASP.NET Core, IClassFixture for shared setup` | Keep as-is (both are standard); but if TestContainers detected, append: `TestContainers is the standard integration test infrastructure in this repo.` |
+| ORM | `{stack}/ef-core-checklist.md` | No generic pattern (EF-only file) | If Dapper also detected alongside EF Core, add a note: `This repo also uses Dapper for [raw SQL / read-side queries]. Do not migrate Dapper queries to EF Core unless explicitly asked.` |
+| Validation | `{stack}/mediatr-slice-patterns.md` | `Validate requests using the project-standard approach.` | `Validate requests using FluentValidation.` (or `DataAnnotations`, or whatever was detected) |
 
-**Rule:** Only narrow when the evidence is unambiguous (single framework, zero alternatives detected). The goal is to prevent shared references from contradicting the repo-specific `.claude/rules/` files.
+**Customization table — typescript:**
+
+| Category | File to patch | Generic pattern to find | Example replacement |
+|---|---|---|---|
+| Test framework | `{stack}/testing-supplement.md` | (Multiple frameworks listed in `## Test Framework`) | If Vitest only: remove Jest/Playwright guidance paragraphs. If Jest only: remove Vitest paragraphs. Leave both if both detected. |
+| Component testing | `{stack}/testing-supplement.md` | `@testing-library/react for React component tests` | If no React detected, remove this section entirely. |
+| Data fetching | `{stack}/testing-supplement.md` | `## TanStack Query in Tests` | If no TanStack Query detected, remove this section. |
+| State management | `{stack}/framework-patterns.md` | Generic state patterns | Narrow to detected library (Zustand, Redux, etc.) |
+| Data layer | `{stack}/data-layer-checklist.md` | Multi-ORM guidance | Narrow to detected ORM (Prisma, Drizzle, etc.) |
+
+**Customization table — python:**
+
+| Category | File to patch | Generic pattern to find | Example replacement |
+|---|---|---|---|
+| Test framework | `{stack}/testing-supplement.md` | `pytest is the default` | If unittest found instead: `unittest.TestCase is the standard in this repo. Do not introduce pytest without team approval.` |
+| Mocking | `{stack}/testing-supplement.md` | `Use respx for mocking HTTPX clients, vcrpy for recorded HTTP interactions.` | Narrow to detected library only. |
+| Database testing | `{stack}/testing-supplement.md` | `testcontainers-python with a Postgres container` | If the repo uses a different approach (e.g., `pytest-django --reuse-db`), narrow to that. |
+
+**Procedure:**
+
+1. For each category in the active stack's table above, check whether the scan detected exactly one tool.
+2. If yes — read the target reference file, find the generic pattern, and replace it with the project-specific version using `Edit`.
+3. If the pattern isn't found (file was already customized or has different wording) — skip silently, do not force the replacement.
+4. After all substitutions, add a comment at the top of each modified reference file:
+   ```markdown
+   <!-- Customized by setup-bootstrap on [date]. Detected: [list of substituted values]. -->
+   ```
+   This makes it obvious which files were patched and allows `setup-update` to re-customize if the reference template changes upstream.
+
+**Rule:** Only narrow when the evidence is unambiguous (single tool, zero alternatives detected). Never remove sections about tools the project doesn't use YET — only remove sections about tools from a different category (e.g., remove TanStack Query guidance from a project with no React). The goal is to prevent shared references from contradicting the repo-specific `.claude/rules/` files while keeping useful guidance for future adoption.
 
 ### Pre-Commit Review List
 
@@ -598,13 +659,19 @@ Replace VERSION with the manifest version and DATE with today's date. This file 
 
 ### Cross-Agent Compatibility
 
-After generating CLAUDE.md and rules, generate a portable AGENTS.md for cross-agent compatibility:
+After generating CLAUDE.md and rules, generate portable configs for all AI coding tools:
 
 1. Run `bash scripts/generate-agents-md.sh` (if the script exists in the plugin directory)
-2. This creates an `AGENTS.md` at the repo root that Cursor, Copilot, Gemini, and other AI tools can read
+2. This creates an `AGENTS.md` at the repo root that Codex and other AGENTS.md-aware tools can read
 3. The file contains coding guidelines, security requirements, testing expectations, and architecture principles — extracted from the references already distributed
 4. Custom sections (prefixed `## Custom:`) are preserved across regeneration
 5. If `AGENTS.md` already exists and has no `## Custom:` sections, the file is regenerated from current references
+6. Run `bash scripts/generate-tool-configs.sh --all` (if the script exists) to generate native configs for other tools:
+   - `.cursor/rules/mtk-*.mdc` — glob-scoped Cursor rules (applyTo globs from manifest)
+   - `.github/copilot-instructions.md` — GitHub Copilot instructions
+   - `.windsurfrules` — Windsurf rules
+   - `GEMINI.md` — Gemini CLI guidelines
+   - `.clinerules` — Cline/Roo rules
 
 ## STEP 4.5: Monorepo — Per-Package CLAUDE.md (conditional)
 
@@ -755,6 +822,7 @@ Generated/Updated:
   ✓ .claude/references/pre-commit-review-list.md — [generated with N items | already exists, skipped]
   ✓ .claude/settings.json — merged [N] stack-specific entries
   ✓ Git pre-commit hook: [installed | ⚠️ existing hook found, skipped]
+  ✓ Tool prerequisites: [all found | ⚠️ N missing — see details above]
   [if monorepo:]
   ✓ Monorepo detected — [N] packages found
       ✓ Generated per-package CLAUDE.md for: [list of packages]
@@ -764,13 +832,13 @@ Codebase findings:
   [stack-specific summary based on scan]
 
 Skills available:
-  /mtk:implement         — Full feature loop
-  /mtk:fix               — Quick fix (1-3 files)
-  /mtk:pre-commit-review — Fast security-focused review of staged changes
-  /mtk:setup-audit       — Re-run architecture audit
+  /mtk <feature>         — Full feature loop
+  /mtk fix <description> — Quick fix (1-3 files)
+  /mtk review before commit — Fast security-focused review of staged changes
+  /mtk-setup --audit     — Re-run architecture audit
 
 Next: Try it with:
-  /mtk:implement Add [your feature description here]
+  /mtk Add [your feature description here]
 ```
 
 ## IMPORTANT

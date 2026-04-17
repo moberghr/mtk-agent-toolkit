@@ -7,7 +7,13 @@ description: >
 allowed-tools: Read, Glob, Grep, Bash
 model: opus
 effort: high
+context: fork
 ---
+
+<!-- Cache-stable prefix: the persona, output contract, and standards checklist below
+     are identical across every invocation. Dynamic state (diff, behavioral diff) is
+     injected at the call site, not here. -->
+
 
 # Compliance-Aware Code Review Agent
 

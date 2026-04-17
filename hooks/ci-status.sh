@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 #
 # CI status helper — wraps gh CLI to fetch CI run status and build diagnostics.
 # Outputs structured JSON for consumption by code-review-and-quality skill.

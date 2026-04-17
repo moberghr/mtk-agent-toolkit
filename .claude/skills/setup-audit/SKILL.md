@@ -1,27 +1,20 @@
 ---
 name: setup-audit
-description: Audit the repo to extract architecture principles, or with --merge unify audits from multiple repos into a single team-wide document. Outputs to .claude/references/architecture-principles.md.
+description: Audit the repo to extract architecture principles, or with --merge unify audits from multiple repos into a single team-wide document
 type: skill
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
-argument-hint: [--merge]
 ---
 
 # MTK Setup Audit — Extract or Unify Architecture Principles
 
 ## MTK File Resolution
 
-MTK skills and shared references may be in the project (local install) or the plugin cache (marketplace install). Resolve once before loading any skill:
+MTK skills and shared references live either in the project (local install) or the plugin cache (marketplace install). Resolve once:
 
-1. Check: does `.claude/skills/context-engineering/SKILL.md` exist in the project root?
-2. If yes → **local install**. All `.claude/skills/` and `.claude/references/` paths work as-is.
-3. If no → **marketplace install**. Find the MTK plugin root:
-   ```bash
-   find ~/.claude/plugins -maxdepth 8 -name "SKILL.md" -path "*/mtk/*/context-engineering/*" -type f 2>/dev/null | head -1 | sed 's|/.claude/skills/context-engineering/SKILL.md||'
-   ```
-   Prefix all `.claude/skills/...` and `.claude/references/{stack}/...` reads with the resolved root path.
-4. If the find returns nothing → MTK skills are unavailable. Warn the engineer and proceed with `CLAUDE.md` only.
+1. If `$CLAUDE_PLUGIN_ROOT` is set, prefix `.claude/skills/` and `.claude/references/` reads with it.
+2. Otherwise, if `.claude/skills/context-engineering/SKILL.md` exists locally → project-relative paths work as-is.
+3. Otherwise, fall back to `find ~/.claude/plugins -maxdepth 8 -name "SKILL.md" -path "*/mtk/*/context-engineering/*" -type f 2>/dev/null | head -1 | sed 's|/.claude/skills/context-engineering/SKILL.md||'`. If empty, MTK skills are unavailable — warn the engineer and proceed with `CLAUDE.md` only.
 
-**Always project-relative** (never prefixed): `CLAUDE.md`, `.claude/tech-stack`, `.claude/rules/`, `tasks/`, `docs/`, `.claude/references/architecture-principles.md`, `.claude/references/pre-commit-review-list.md`.
+Always project-relative (never prefixed): `CLAUDE.md`, `.claude/tech-stack`, `.claude/rules/`, `tasks/`, `docs/`, `.claude/references/architecture-principles.md`, `.claude/references/pre-commit-review-list.md`.
 
 ---
 
@@ -49,7 +42,7 @@ PYTHON=$(find . -maxdepth 2 -name "pyproject.toml" -o -name "setup.py" -o -name 
 
 If multiple stacks detected, ask the engineer which to audit first. Multi-stack repos may need multiple audits.
 
-If no supported stack detected, stop and tell the engineer to run `/mtk:setup-bootstrap` first or add a tech stack skill.
+If no supported stack detected, stop and tell the engineer to run `/mtk-setup` first or add a tech stack skill.
 
 Then load `.claude/skills/tech-stack-{stack}/SKILL.md`. The `## Scan Recipes` section provides the bash commands for that stack.
 
@@ -296,8 +289,8 @@ Inconsistencies found: [N]
 Next steps:
   1. Review the generated document — edit anything that's wrong
   2. Decide how to resolve any inconsistencies flagged
-  3. Run /mtk:setup-bootstrap to generate the full CLAUDE.md (if not already done)
-  4. To unify with audits from other repos: copy this doc to <hub>/.claude/references/audits/<repo>.md and run /mtk:setup-audit --merge there
+  3. Run /mtk-setup to generate the full CLAUDE.md (if not already done)
+  4. To unify with audits from other repos: copy this doc to <hub>/.claude/references/audits/<repo>.md and run /mtk-setup --merge there
 ```
 
 ---
@@ -325,12 +318,12 @@ Each file is an architecture audit from a different project (e.g., `payfac.md`, 
 
 If the directory is empty or doesn't exist, tell the engineer:
 > "No audit files found. To use --merge:
-> 1. Run `/mtk:setup-audit` (without --merge) in each repo (payfac, collection-system, etc.)
+> 1. Run `/mtk-setup --audit` (without --merge) in each repo (payfac, collection-system, etc.)
 > 2. Copy each generated `.claude/references/architecture-principles.md` into THIS repo at:
 >    `.claude/references/audits/payfac.md`
 >    `.claude/references/audits/collection-system.md`
 >    etc.
-> 3. Run `/mtk:setup-audit --merge` again."
+> 3. Run `/mtk-setup --merge` again."
 
 ## STEP 1: Analyze Across Audits
 

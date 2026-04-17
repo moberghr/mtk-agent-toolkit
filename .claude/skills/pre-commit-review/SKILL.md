@@ -1,25 +1,18 @@
 ---
 name: pre-commit-review
-description: Fast security-focused review of staged changes. Run before every commit — checks only the critical compliance rules, not the full review workflow.
+description: Fast security-focused review of staged changes before every commit, checking only critical compliance rules
 type: skill
-allowed-tools: Read, Glob, Grep, Bash
-argument-hint: "[--staged-only]"
 ---
 
 # Pre-Commit Security Review
 
 ## MTK File Resolution
 
-MTK files (`hooks/`, `.claude/references/`, `.claude/review-config.json`) may be in the project (local install) or the plugin cache (marketplace install). Resolve once before loading any MTK file:
+MTK files (`hooks/`, `.claude/references/`, `.claude/review-config.json`) live either in the project (local install) or the plugin cache (marketplace install). Resolve once:
 
-1. Check: does `hooks/pre-commit-linters.sh` exist in the project root?
-2. If yes → **local install**. All `hooks/` and `.claude/references/` paths work as-is.
-3. If no → **marketplace install**. Find the MTK plugin root:
-   ```bash
-   find ~/.claude/plugins -maxdepth 8 -name "pre-commit-linters.sh" -path "*/mtk/*" -type f 2>/dev/null | head -1 | sed 's|/hooks/pre-commit-linters.sh||'
-   ```
-   Prefix all `hooks/...`, `.claude/references/...`, and `.claude/review-config.json` reads with the resolved root path.
-4. If the find returns nothing → skip the linter pass and run the AI review only.
+1. If `$CLAUDE_PLUGIN_ROOT` is set, prefix `hooks/`, `.claude/references/`, and `.claude/review-config.json` reads with it.
+2. Otherwise, if `hooks/pre-commit-linters.sh` exists locally → project-relative paths work as-is.
+3. Otherwise, fall back to `find ~/.claude/plugins -maxdepth 8 -name "pre-commit-linters.sh" -path "*/mtk/*" -type f 2>/dev/null | head -1 | sed 's|/hooks/pre-commit-linters.sh||'`. If empty, skip the linter pass and run the AI review only.
 
 ---
 

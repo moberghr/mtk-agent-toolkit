@@ -1,16 +1,24 @@
 #!/usr/bin/env bash
-# Stop hook: flags completion claims that lack command output evidence.
-# The error message is a prompt — it tells the agent exactly what to do next.
-# Prints actionable guidance if triggered, nothing otherwise.
+# Stop hook: advisory when a strong completion claim lacks cited command output.
+# Tuned for modern models — fires only on unambiguous completion phrases, not every
+# casual mention of "done" or "fixed". Evidence regex covers modern test runners
+# (pytest, vitest, jest, dotnet, biome, ruff, tsc) and toolkit validators.
 set -euo pipefail
 
 MSG="$*"
 
-# Does the message claim completion?
-if echo "$MSG" | grep -qiE '\b(done|complete[d]?|fixed|verified|finished)\b'; then
-  # Does it also contain command output evidence? (exit codes, test counts, build results, shell prompts)
-  if echo "$MSG" | grep -qE '(exit code|passed|failed|error[s]? [0-9]|warning[s]? [0-9]|Build succeeded|PASSED|FAILED|\$ |```|test[s]? ran)'; then
+# Strong completion claim: a deliberate top-level "task is done" statement.
+# Avoid firing on casual phrases like "I fixed the typo, now let's...".
+# Matches: bolded ✅ done, explicit "all done"/"task complete"/"ready for review",
+# or a bare completion verb followed by punctuation at the start of a line.
+STRONG_CLAIM='(all done|task complete|work complete|implementation complete|ready for review|fully verified|✅ ?done|🟢 ?done)|(^|\n)[[:space:]]*(done|completed|fixed|verified|finished)[[:space:]]*[\.\!:]'
+
+if echo "$MSG" | grep -qiE "$STRONG_CLAIM"; then
+  # Evidence of actual execution: exit codes, shell prompts, fenced blocks,
+  # diagnostic counts, or output from common test/build tools.
+  EVIDENCE='(exit code|Build succeeded|Build FAILED|Passed!|Failed!|PASSED|FAILED|\$ |```|Tests:|Test Files|tests? ran|[0-9]+ (passed|failed|errors?|warnings?)|Checked [0-9]+ file|[Ff]ound [0-9]+ (error|warning|issue)|Toolkit validation passed|No issues found)'
+  if echo "$MSG" | grep -qE "$EVIDENCE"; then
     exit 0
   fi
-  echo "VERIFICATION GAP: Run the verification command from your active tech stack and cite its output before reporting done. The build and test commands are in .claude/skills/tech-stack-{stack}/SKILL.md (## Build & Test Commands). For toolkit work: run 'bash scripts/validate-toolkit.sh' and cite 'Toolkit validation passed.' For fixes: run the specific reproduction step. Cite exit code and pass/fail counts."
+  echo "Advisory: completion claim without cited command output. Run the verification command from your active tech stack (.claude/skills/tech-stack-{stack}/SKILL.md → ## Build & Test Commands) and cite exit code + pass/fail counts. For toolkit work: 'bash scripts/validate-toolkit.sh' and cite 'Toolkit validation passed.'"
 fi

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 #
 # API backward compatibility checker. Scans the diff against main for
 # breaking changes: removed routes, changed DTOs, removed public properties.

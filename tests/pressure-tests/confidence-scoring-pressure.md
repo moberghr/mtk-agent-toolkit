@@ -128,7 +128,7 @@ a schema violation.
 ## How To Use These Tests
 
 1. Construct a diff matching the scenario (use git stash or a throwaway branch).
-2. Invoke the review entry point (`/mtk:pre-commit-review`, or the full
+2. Invoke the review entry point (`/mtk review before commit`, or the full
    implement flow's review phase).
 3. Parse the emitted JSON block.
 4. Verify:

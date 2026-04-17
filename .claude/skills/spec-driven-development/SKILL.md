@@ -66,7 +66,7 @@ Write the implementation spec before writing code. The spec is the shared source
    - **Also emit a machine-parseable sidecar** at `docs/specs/YYYY-MM-DD-<feature-slug>.json` with the schema in the next section. This sidecar drives `spec-drift-detection` after implementation.
    - This enables session recovery, human review outside chat, and reuse across sessions.
    - Add `docs/specs/` to `.gitignore` if not already present — specs are working artifacts, not committed deliverables.
-10. Always stop for approval before implementation. When invoked from `/mtk:implement`, this means handing control back to the command's Phase 2.5 approval gate (which uses `AskUserQuestion`). Do not silently continue to implementation.
+10. Always stop for approval before implementation. When invoked from the implement workflow, this means handing control back to Phase 2.5 approval gate (which uses `AskUserQuestion`). Do not silently continue to implementation.
 
 ## Machine-Parseable Manifest (JSON Sidecar)
 
@@ -124,12 +124,7 @@ Rules:
 
 ## Common Rationalizations
 
-| Rationalization | Reality |
-|---|---|
-| "The requirement is obvious, I can just start" | Obvious to whom? Specs exist to flush out wrong assumptions before they become code. |
-| "I'll write the spec after I implement it" | That is documentation, not specification. The value is in deciding before coding. |
-| "This is small enough to skip approval" | Small multi-file work still creates risk. Approval gates exist to catch bad direction early. |
-| "I already know which files will change" | You have a hypothesis. Read neighboring files and prove the manifest. |
+See `.claude/skills/context-engineering/SKILL.md` for the shared table. Spec-specific traps: "I'll write the spec after I implement it" (that is documentation, not specification — the value is in deciding before coding), "this is small enough to skip approval" (small multi-file work still creates risk — approval gates catch bad direction early), and "I already know which files will change" (you have a hypothesis, not a manifest — read neighboring files and prove it).
 
 ## Red Flags
 

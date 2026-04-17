@@ -1,0 +1,1489 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MTK — Serious engineering for AI-assisted development · Moberg</title>
+<meta name="description" content="MTK turns any AI coding assistant into a disciplined engineering partner. Evidence-first workflows, adversarial review gates, and deterministic linters for enterprise teams shipping serious software." />
+<meta property="og:title" content="MTK · Moberg — Serious engineering for AI-assisted development" />
+<meta property="og:description" content="Stop shipping vibes. Enforce evidence-first AI workflows across Claude Code, Cursor, Copilot, Windsurf, Gemini, and Cline." />
+<meta property="og:type" content="website" />
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --font-body: "Helvetica Neue", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    --font-mono: "JetBrains Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+
+    --bg: #FFFFFF;
+    --surface: #FFFFFF;
+    --surface2: #F4F6FA;
+    --surface-elevated: #FFFFFF;
+
+    --border: #E1E7EB;
+    --border-bright: rgba(0, 0, 0, 0.13);
+
+    --text: #121212;
+    --text-dim: #717A80;
+    --text-muted: #545454;
+
+    --accent: #4E0EFF;
+    --accent-light: #5634FF;
+    --accent-dark: #230083;
+    --accent-dim: rgba(78, 14, 255, 0.06);
+    --accent-gradient: linear-gradient(135deg, #4E0EFF 0%, #230083 100%);
+
+    --success: #16a34a;
+    --success-dim: rgba(22, 163, 74, 0.08);
+    --warning: #d97706;
+    --warning-dim: rgba(217, 119, 6, 0.08);
+    --danger: #dc2626;
+    --danger-dim: rgba(220, 38, 38, 0.08);
+
+    --radius-card: 12px;
+    --radius-pill: 20px;
+    --radius-btn: 8px;
+
+    --container: 1120px;
+  }
+
+  :root { color-scheme: light; }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--text);
+    background: var(--bg);
+    background-image: radial-gradient(ellipse at 10% 0%, var(--accent-dim) 0%, transparent 55%);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .container { max-width: var(--container); margin: 0 auto; padding: 0 24px; }
+
+  /* === NAV === */
+  .nav {
+    position: sticky; top: 0; z-index: 40;
+    backdrop-filter: saturate(180%) blur(12px);
+    -webkit-backdrop-filter: saturate(180%) blur(12px);
+    background: color-mix(in srgb, var(--bg) 80%, transparent);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+  .brand-wordmark { display: block; height: 22px; width: auto; }
+  .brand-sep { color: var(--text-dim); font-weight: 300; }
+  .brand-product {
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--accent);
+    padding: 3px 8px;
+    background: var(--accent-dim);
+    border-radius: var(--radius-pill);
+  }
+  .nav-links { display: flex; align-items: center; gap: 28px; }
+  .nav-links a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: color .15s;
+  }
+  .nav-links a:hover { color: var(--text); }
+  .nav-links .cta {
+    color: var(--accent);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  @media (max-width: 760px) {
+    .nav-links a:not(.cta) { display: none; }
+  }
+
+  /* === HERO === */
+  .hero { padding: 96px 0 64px; }
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 28px;
+  }
+  .hero-eyebrow .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+  }
+  .hero h1 {
+    font-family: var(--font-body);
+    font-size: clamp(42px, 6vw, 72px);
+    font-weight: 300;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    color: var(--text);
+    margin: 0 0 24px;
+    max-width: 900px;
+  }
+  .hero h1 em {
+    font-style: normal;
+    color: var(--accent);
+    font-weight: 400;
+  }
+  .hero-sub {
+    font-size: 19px;
+    color: var(--text-muted);
+    max-width: 640px;
+    margin: 0 0 36px;
+    line-height: 1.55;
+  }
+  .hero-actions { display: inline-flex; gap: 12px; flex-wrap: wrap; }
+  .btn {
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 500;
+    padding: 11px 22px;
+    border-radius: var(--radius-btn);
+    border: 1px solid transparent;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all .15s ease-out;
+  }
+  .btn--primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn--primary:hover {
+    background: var(--accent-dark);
+    box-shadow: 0 4px 16px rgba(78, 14, 255, 0.22);
+    transform: translateY(-1px);
+  }
+  .btn--secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border-color: var(--border);
+  }
+  .btn--secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .hero-stats {
+    margin-top: 40px;
+    display: flex; gap: 32px; flex-wrap: wrap;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .hero-stats span { display: inline-flex; align-items: center; gap: 8px; }
+  .hero-stats span::before {
+    content: ''; width: 4px; height: 4px; border-radius: 50%; background: var(--accent);
+  }
+
+  /* === TERMINAL === */
+  .terminal {
+    margin-top: 64px;
+    background: #0E1218;
+    border: 1px solid #1f2532;
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    box-shadow: 0 20px 50px -10px rgba(17, 10, 60, 0.18);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.75;
+  }
+  .terminal-bar {
+    display: flex; align-items: center; gap: 6px;
+    padding: 11px 16px;
+    border-bottom: 1px solid #1f2532;
+    background: #0a0d12;
+  }
+  .terminal-bar i { display: block; width: 10px; height: 10px; border-radius: 50%; background: #2a303e; }
+  .terminal-bar .label {
+    margin-left: 14px;
+    font-size: 11px;
+    color: #6b7280;
+  }
+  .terminal pre {
+    margin: 0;
+    padding: 20px 22px;
+    color: #CFD4E2;
+    overflow-x: auto;
+  }
+  .k-green { color: #4ade80; }
+  .k-red { color: #fb7185; }
+  .k-yellow { color: #fbbf24; }
+  .k-blue { color: #9b7aff; }
+  .k-mute { color: #8b95a2; }
+  .k-dim { color: #6b7280; }
+  .k-purple { color: #b197fc; }
+
+  /* === SECTIONS === */
+  .section { padding: 96px 0; }
+  .section--alt { background: var(--surface2); }
+
+  .sec-head {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    margin: 0 0 18px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .sec-num {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    min-width: 24px;
+  }
+
+  h2 {
+    font-family: var(--font-body);
+    font-size: clamp(28px, 4vw, 44px);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+    color: var(--text);
+    margin: 0 0 20px;
+    max-width: 780px;
+  }
+  .lede {
+    font-size: 18px;
+    color: var(--text-muted);
+    max-width: 640px;
+    margin: 0 0 48px;
+    line-height: 1.55;
+  }
+
+  h3 {
+    font-family: var(--font-body);
+    font-size: 19px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 8px;
+  }
+
+  /* === CARDS === */
+  .grid { display: grid; gap: 16px; }
+  .grid--2 { grid-template-columns: repeat(2, 1fr); }
+  .grid--3 { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 880px) {
+    .grid--2, .grid--3 { grid-template-columns: 1fr; }
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 24px 26px;
+    transition: border-color .15s, transform .15s;
+  }
+  .card:hover { border-color: var(--border-bright); }
+  .card--hero {
+    background: color-mix(in srgb, var(--surface) 94%, var(--accent) 6%);
+    border-color: color-mix(in srgb, var(--border) 50%, var(--accent) 25%);
+  }
+  .card--elevated {
+    background: var(--surface-elevated);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  }
+  .card p { color: var(--text-muted); margin: 0; font-size: 14.5px; line-height: 1.6; }
+  .card-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-bottom: 16px;
+  }
+  .card-num {
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--accent);
+    background: var(--accent-dim);
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    display: inline-block;
+    margin-bottom: 14px;
+  }
+
+  /* === BADGES === */
+  .badge {
+    display: inline-block;
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: var(--radius-pill);
+  }
+  .badge--purple { background: var(--accent-dim); color: var(--accent); }
+  .badge--success { background: var(--success-dim); color: var(--success); }
+  .badge--warning { background: var(--warning-dim); color: var(--warning); }
+  .badge--danger { background: var(--danger-dim); color: var(--danger); }
+  .badge--neutral { background: var(--surface2); color: var(--text-dim); }
+  .badge-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+  .badge-mono {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: var(--radius-pill);
+    background: var(--surface2);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+
+  /* === COMPARISON TABLE === */
+  .table-wrap {
+    overflow-x: auto;
+    border-radius: var(--radius-card);
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  thead th {
+    background: #121212;
+    color: #FFFFFF;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 14px 18px;
+    text-align: left;
+  }
+  thead th.th--danger { color: #ffaab4; }
+  thead th.th--purple { color: #c4b3ff; }
+  td {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+    vertical-align: top;
+  }
+  td.td-key {
+    font-weight: 600;
+    color: var(--text);
+    width: 24%;
+  }
+  td.td-good { color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+
+  /* === STEP CARDS (how it works) === */
+  .step {
+    display: flex; gap: 20px; align-items: flex-start;
+    padding: 24px 26px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+  }
+  .step-num {
+    shrink: 0; flex-shrink: 0;
+    width: 42px; height: 42px;
+    border-radius: 10px;
+    background: var(--accent-gradient);
+    color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    font-family: var(--font-body);
+  }
+  .step-body { flex: 1; }
+
+  /* === COMPONENTS LIST === */
+  .compo-row {
+    display: flex; align-items: center; gap: 18px;
+    padding: 14px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    margin-bottom: 8px;
+  }
+  .compo-code {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent);
+    min-width: 200px;
+    padding: 4px 10px;
+    background: var(--accent-dim);
+    border-radius: 6px;
+  }
+  .compo-text { color: var(--text-muted); font-size: 14.5px; }
+
+  /* === INSTALL STEPS === */
+  .install-step { margin-bottom: 20px; }
+  .install-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px; padding: 0 4px;
+  }
+  .install-head .lbl {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+  }
+  .install-head .meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  /* === FAQ === */
+  .faq details {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 18px 22px;
+    margin-bottom: 8px;
+  }
+  .faq summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex; align-items: center; justify-content: space-between;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary .chev {
+    display: inline-block;
+    transition: transform .2s;
+    color: var(--text-dim);
+  }
+  .faq details[open] summary .chev { transform: rotate(90deg); }
+  .faq p {
+    margin: 14px 0 0;
+    color: var(--text-muted);
+    font-size: 14.5px;
+    line-height: 1.65;
+  }
+  .faq code {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--accent);
+    background: var(--accent-dim);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  /* === MARQUEE === */
+  .marquee-wrap {
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+    overflow: hidden;
+  }
+  .marquee-inner {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    padding: 20px 24px;
+    max-width: var(--container);
+    margin: 0 auto;
+  }
+  .marquee-label {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  .marquee-viewport { flex: 1; overflow: hidden; position: relative; }
+  .marquee-track {
+    display: inline-flex; gap: 3rem;
+    animation: scroll 45s linear infinite;
+    font-family: var(--font-body);
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 15px;
+    white-space: nowrap;
+  }
+  @keyframes scroll { to { transform: translateX(-50%); } }
+
+  /* === CALLOUT === */
+  .callout {
+    background: var(--accent-gradient);
+    color: #fff;
+    padding: 56px 48px;
+    border-radius: var(--radius-card);
+    margin: 0 auto;
+  }
+  .callout h2 {
+    color: #fff;
+    font-weight: 300;
+    margin-bottom: 16px;
+  }
+  .callout p {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 18px;
+    margin: 0 0 28px;
+    max-width: 560px;
+  }
+  .callout .btn--primary {
+    background: #fff;
+    color: var(--accent-dark);
+  }
+  .callout .btn--primary:hover { background: #f4f0ff; color: var(--accent); }
+  .callout .btn--secondary {
+    background: transparent;
+    color: #fff;
+    border-color: rgba(255,255,255,0.35);
+  }
+  .callout .btn--secondary:hover { border-color: #fff; color: #fff; }
+
+  /* === FOOTER === */
+  .footer {
+    padding: 32px 0;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .footer-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 16px;
+  }
+  .footer a { color: var(--text-muted); text-decoration: none; }
+  .footer a:hover { color: var(--text); }
+  .footer-links { display: inline-flex; gap: 24px; flex-wrap: wrap; }
+  .footer-legal {
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+
+  /* === ANIMATIONS === */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate { animation: fadeUp 0.5s ease-out both; }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+
+  /* === UTILS === */
+  .stack-sm > * + * { margin-top: 12px; }
+  .divider {
+    height: 1px;
+    background: var(--border);
+    max-width: var(--container);
+    margin: 0 auto;
+  }
+
+  a { color: var(--accent-light); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--accent); }
+
+  /* === FOUNDATIONS STRIP === */
+  .foundations {
+    padding: 64px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .foundations-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 32px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+  .foundations-head .lbl {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .foundations-head h3 {
+    margin: 10px 0 0;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text);
+    max-width: 520px;
+  }
+  .foundations-head p {
+    margin: 0;
+    font-size: 14.5px;
+    color: var(--text-muted);
+    max-width: 440px;
+    line-height: 1.55;
+  }
+  .foundations-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+  }
+  @media (max-width: 960px) {
+    .foundations-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 540px) {
+    .foundations-grid { grid-template-columns: 1fr; }
+  }
+  .foundation {
+    background: var(--surface);
+    padding: 22px 22px 20px;
+  }
+  .foundation-num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    display: block;
+    margin-bottom: 14px;
+  }
+  .foundation-name {
+    font-family: var(--font-body);
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 6px;
+  }
+  .foundation-desc {
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  /* === PIPELINE DIAGRAM === */
+  .pipeline-diagram {
+    margin: 28px 0 48px;
+    padding: 28px 28px 22px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+  }
+  .pipeline-diagram figcaption {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .pipeline-diagram .pipe-label {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .pipeline-diagram .pipe-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .pipeline-svg-wrap {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -4px;
+  }
+  .pipeline-diagram svg {
+    display: block;
+    width: 100%;
+    min-width: 880px;
+    height: auto;
+  }
+  .pipeline-legend {
+    display: flex;
+    gap: 24px;
+    margin-top: 12px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+    font-family: var(--font-body);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .pipeline-legend .lg {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pipeline-legend .lg::before {
+    content: '';
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .pipeline-legend .lg-stage::before    { background: var(--accent); }
+  .pipeline-legend .lg-gate::before     { background: var(--success); border-radius: 50%; }
+  .pipeline-legend .lg-artifact::before { background: var(--surface2); border: 1px solid var(--border); }
+  .pipeline-legend .lg-fail::before     { background: transparent; border: 1px dashed var(--text-dim); }
+
+  .pd-endpoint-box          { fill: var(--surface2); stroke: var(--border-bright); stroke-width: 1; }
+  .pd-endpoint-box--success { fill: var(--success-dim); stroke: var(--success); stroke-width: 1; opacity: .9; }
+  .pd-endpoint-label  { font-family: var(--font-body); font-size: 10px; font-weight: 700; letter-spacing: 1.5px; fill: var(--text-dim); }
+  .pd-endpoint-sub    { font-family: var(--font-body); font-size: 11px; fill: var(--text-muted); }
+  .pd-endpoint-value  { font-family: var(--font-mono); font-size: 11px; fill: var(--text); }
+  .pd-endpoint-done   { font-family: var(--font-body); font-size: 10px; font-weight: 700; letter-spacing: 1.5px; fill: var(--success); }
+
+  .pd-stage-box    { fill: var(--surface); stroke: var(--border-bright); stroke-width: 1; }
+  .pd-stage-stripe { fill: var(--accent); }
+  .pd-stage-num    { font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: 1.5px; fill: var(--accent); }
+  .pd-stage-title  { font-family: var(--font-body); font-size: 17px; font-weight: 700; fill: var(--text); letter-spacing: -0.01em; }
+  .pd-stage-sub    { font-family: var(--font-body); font-size: 11px; fill: var(--text-muted); }
+
+  .pd-arrow        { stroke: var(--text); stroke-width: 1.5; fill: none; }
+  .pd-arrow-head   { fill: var(--text); }
+  .pd-arrow-head-dim { fill: var(--text-dim); }
+
+  .pd-gate-circle  { fill: var(--success); }
+  .pd-gate-check   { fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .pd-gate-label   { font-family: var(--font-body); font-size: 10.5px; font-weight: 600; fill: var(--success); }
+
+  .pd-artifact-line  { stroke: var(--border-bright); stroke-width: 1; fill: none; }
+  .pd-artifact-box   { fill: var(--surface2); stroke: var(--border); stroke-width: 1; }
+  .pd-artifact-label { font-family: var(--font-body); font-size: 9px; font-weight: 700; letter-spacing: 1.5px; fill: var(--text-dim); }
+  .pd-artifact-value { font-family: var(--font-mono); font-size: 11.5px; fill: var(--text); }
+
+  .pd-loopback       { stroke: var(--text-dim); stroke-width: 1.2; fill: none; }
+  .pd-loopback-label { font-family: var(--font-body); font-size: 11px; fill: var(--text-dim); font-style: italic; }
+</style>
+</head>
+<body>
+
+<!-- === NAV === -->
+<header class="nav">
+  <div class="container nav-inner">
+    <a href="#" class="brand" aria-label="Moberg · MTK home">
+      <img src="assets/logo-wordmark-dark.svg" alt="Moberg" class="brand-wordmark" height="22">
+      <span class="brand-sep">·</span>
+      <span class="brand-product">MTK</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#problem">Problem</a>
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#components">Components</a>
+      <a href="https://github.com/moberghr/claude-helpers" class="cta">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.73.5.75 5.48.75 11.75c0 5 3.24 9.24 7.73 10.74.57.1.78-.25.78-.55v-1.93c-3.14.68-3.81-1.51-3.81-1.51-.51-1.3-1.25-1.65-1.25-1.65-1.02-.7.08-.68.08-.68 1.13.08 1.72 1.16 1.72 1.16 1 1.72 2.63 1.22 3.27.93.1-.73.39-1.22.71-1.5-2.51-.29-5.15-1.25-5.15-5.57 0-1.23.44-2.23 1.16-3.02-.12-.29-.5-1.43.11-2.98 0 0 .95-.3 3.1 1.15a10.8 10.8 0 0 1 5.64 0c2.15-1.45 3.1-1.15 3.1-1.15.61 1.55.23 2.69.11 2.98.72.79 1.16 1.79 1.16 3.02 0 4.33-2.64 5.28-5.16 5.56.4.35.76 1.04.76 2.1v3.11c0 .3.2.66.79.55 4.49-1.5 7.73-5.74 7.73-10.74C23.25 5.48 18.27.5 12 .5Z"/></svg>
+        GitHub
+      </a>
+    </nav>
+  </div>
+</header>
+
+<!-- === HERO === -->
+<section class="hero">
+  <div class="container animate">
+    <div class="hero-eyebrow">
+      <span class="dot"></span>
+      Serious engineering, infinite possibilities
+    </div>
+    <h1>
+      AI-assisted development<br>
+      you can <em>actually</em> ship to production.
+    </h1>
+    <p class="hero-sub">
+      MTK is an opinionated toolkit that turns any AI coding assistant into a disciplined engineering partner. Evidence-first workflows, adversarial review gates, and deterministic linters — built for enterprise teams shipping regulated software.
+    </p>
+    <div class="hero-actions">
+      <a href="#install" class="btn btn--primary">
+        Install MTK
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+      <a href="#how" class="btn btn--secondary">See how it works</a>
+    </div>
+    <div class="hero-stats">
+      <span>MIT licensed</span>
+      <span>32 skills · 3 review agents</span>
+      <span>6 AI assistants supported</span>
+    </div>
+
+    <div class="terminal">
+      <div class="terminal-bar">
+        <i></i><i></i><i></i>
+        <span class="label">claude-code — /mtk "add 2FA to login endpoint"</span>
+      </div>
+<pre><span class="k-dim">┌─ 01 · Brainstorm &amp; spec</span>
+<span class="k-green">✓</span> spec written      <span class="k-dim">→ .claude/tasks/0042-2fa-login.spec.json</span>
+<span class="k-green">✓</span> engineer approved <span class="k-dim">→ security impact: HIGH · security-and-hardening loaded</span>
+
+<span class="k-dim">┌─ 02 · Batched TDD (3 batches)</span>
+<span class="k-green">✓</span> batch 1/3 · totp service       <span class="k-dim">12 tests · 12 pass · build 0</span>
+<span class="k-green">✓</span> batch 2/3 · login handler      <span class="k-dim">18 tests · 18 pass · build 0</span>
+<span class="k-green">✓</span> batch 3/3 · recovery codes     <span class="k-dim">9 tests · 9 pass · build 0</span>
+
+<span class="k-dim">┌─ 03 · Spec-drift &amp; adversarial review</span>
+<span class="k-green">✓</span> spec-drift                     <span class="k-dim">files match · contracts match</span>
+<span class="k-yellow">!</span> compliance-reviewer            <span class="k-dim">2 findings</span>
+  <span class="k-red">HIGH</span>  <span class="k-mute">rule S7.3</span> totp secret logged at auth_service.cs:84 <span class="k-purple">[conf 100]</span>
+  <span class="k-yellow">MED</span>   <span class="k-mute">rule S4.2</span> missing rate-limit on verify endpoint <span class="k-purple">[conf 92]</span>
+<span class="k-green">✓</span> test-reviewer                  <span class="k-dim">coverage 94% · assertions strong</span>
+
+<span class="k-dim">┌─ 04 · Verification gate</span>
+<span class="k-red">✗</span> <span class="k-mute">stop-hook blocked completion</span> — 1 HIGH finding unresolved
+  <span class="k-dim">fix required before commit</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- === MARQUEE === -->
+<div class="marquee-wrap">
+  <div class="marquee-inner">
+    <span class="marquee-label">Works with</span>
+    <div class="marquee-viewport">
+      <div class="marquee-track">
+        <span style="display:flex;gap:3rem">
+          <span>Claude&nbsp;Code</span><span>Cursor</span><span>GitHub&nbsp;Copilot</span>
+          <span>Windsurf</span><span>Gemini&nbsp;CLI</span><span>Cline</span>
+          <span>Claude&nbsp;Code</span><span>Cursor</span><span>GitHub&nbsp;Copilot</span>
+          <span>Windsurf</span><span>Gemini&nbsp;CLI</span><span>Cline</span>
+        </span>
+        <span style="display:flex;gap:3rem" aria-hidden="true">
+          <span>Claude&nbsp;Code</span><span>Cursor</span><span>GitHub&nbsp;Copilot</span>
+          <span>Windsurf</span><span>Gemini&nbsp;CLI</span><span>Cline</span>
+          <span>Claude&nbsp;Code</span><span>Cursor</span><span>GitHub&nbsp;Copilot</span>
+          <span>Windsurf</span><span>Gemini&nbsp;CLI</span><span>Cline</span>
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- === PROBLEM === -->
+<section class="section" id="problem">
+  <div class="container">
+    <div class="sec-head"><span class="sec-num">01</span> The problem</div>
+    <h2>AI assistants follow rules about 80% of the time.</h2>
+    <p class="lede">
+      The other 20% ships to production. A mocked test that was supposed to be real. A secret logged in plaintext. A migration that "looked fine" but deadlocks under load. When you're building regulated software — finance, healthcare, critical infrastructure — 80% is not a number you can afford.
+    </p>
+
+    <div class="grid grid--3">
+      <div class="card">
+        <span class="badge badge--danger">Without MTK</span>
+        <h3 style="margin-top:14px">"It compiles."</h3>
+        <p>Vibes-based completion. AI claims success. Nobody cites evidence. Reviewer trusts the output. A week later, prod breaks.</p>
+      </div>
+      <div class="card">
+        <span class="badge badge--warning">The 80% problem</span>
+        <h3 style="margin-top:14px">Rules in CLAUDE.md are mostly followed.</h3>
+        <p>Instructions buried in context drift. Under pressure, the model cuts corners — disables tests, swallows errors, skips review.</p>
+      </div>
+      <div class="card card--hero">
+        <span class="badge badge--purple">With MTK</span>
+        <h3 style="margin-top:14px">"Tests pass, evidence cited, review clear."</h3>
+        <p>Hooks block unverified claims. Linters catch known-bad patterns. Adversarial agents review findings with rule citations before merge.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- === FOUNDATIONS === -->
+<section class="foundations">
+  <div class="container">
+    <div class="foundations-head">
+      <div>
+        <div class="lbl">Foundations</div>
+        <h3>No new methodology. Proven disciplines, enforced on the AI.</h3>
+      </div>
+      <p>MTK industrialises the engineering practices enterprise teams already trust — specification, verification, adversarial review — and makes the harness enforce them, not the reviewer.</p>
+    </div>
+    <div class="foundations-grid">
+      <div class="foundation">
+        <span class="foundation-num">F.01</span>
+        <h4 class="foundation-name">Spec-driven</h4>
+        <p class="foundation-desc">Written intent before code. Scope, files, security, and tests approved up front.</p>
+      </div>
+      <div class="foundation">
+        <span class="foundation-num">F.02</span>
+        <h4 class="foundation-name">Test-driven</h4>
+        <p class="foundation-desc">Failing test first. Green build per batch. No test, no merge path.</p>
+      </div>
+      <div class="foundation">
+        <span class="foundation-num">F.03</span>
+        <h4 class="foundation-name">Peer review</h4>
+        <p class="foundation-desc">Adversarial reviewers in isolated, forked contexts — running in parallel on orthogonal axes. The author never reviews alone.</p>
+      </div>
+      <div class="foundation">
+        <span class="foundation-num">F.04</span>
+        <h4 class="foundation-name">Evidence-based</h4>
+        <p class="foundation-desc">Exit codes, test counts, citations. Completion is a receipt, not a feeling.</p>
+      </div>
+      <div class="foundation">
+        <span class="foundation-num">F.05</span>
+        <h4 class="foundation-name">Deterministic gates</h4>
+        <p class="foundation-desc">Hooks and linters enforce the rules. 100% compliance, not 80%.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- === HOW IT WORKS === -->
+<section class="section" id="how">
+  <div class="container">
+    <div class="sec-head"><span class="sec-num">02</span> How it works</div>
+    <h2>A pipeline, not a prompt.</h2>
+    <p class="lede">
+      Every feature flows through four stages. Each stage has its own skills, its own gates, its own adversarial checks. Your AI doesn't get to skip steps — the harness enforces them.
+    </p>
+
+    <figure class="pipeline-diagram" aria-labelledby="pipe-title">
+      <figcaption>
+        <span class="pipe-label">Figure 01 · Request → Commit</span>
+        <span class="pipe-meta">4 stages · 4 artifacts · 1 evidence trail</span>
+      </figcaption>
+      <div class="pipeline-svg-wrap">
+        <svg viewBox="0 0 1120 415" role="img" aria-labelledby="pipe-title pipe-desc" preserveAspectRatio="xMidYMid meet">
+          <title id="pipe-title">MTK request-to-commit pipeline</title>
+          <desc id="pipe-desc">Four stages — Spec, Implement, Review, Gate — each producing an auditable artifact. Review findings loop the work back to Implement.</desc>
+
+          <defs>
+            <marker id="pd-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" class="pd-arrow-head"/>
+            </marker>
+            <marker id="pd-arrow-dim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" class="pd-arrow-head-dim"/>
+            </marker>
+          </defs>
+
+          <!-- ENGINEER request -->
+          <g>
+            <rect x="10" y="85" width="130" height="90" rx="8" class="pd-endpoint-box"/>
+            <text x="75" y="112" text-anchor="middle" class="pd-endpoint-label">ENGINEER</text>
+            <text x="75" y="134" text-anchor="middle" class="pd-endpoint-sub">plain-English request</text>
+            <text x="75" y="158" text-anchor="middle" class="pd-endpoint-value">/mtk "add 2FA"</text>
+          </g>
+          <line x1="142" y1="130" x2="158" y2="130" class="pd-arrow" marker-end="url(#pd-arrow)"/>
+
+          <!-- STAGE 01 SPEC -->
+          <g>
+            <rect x="160" y="55" width="180" height="150" rx="8" class="pd-stage-box"/>
+            <rect x="160" y="55" width="4" height="150" class="pd-stage-stripe"/>
+            <text x="180" y="82" class="pd-stage-num">01</text>
+            <text x="180" y="115" class="pd-stage-title">Spec</text>
+            <text x="180" y="140" class="pd-stage-sub">Brainstorm, plan,</text>
+            <text x="180" y="156" class="pd-stage-sub">engineer approves</text>
+            <g transform="translate(180,176)">
+              <circle cx="7" cy="7" r="7" class="pd-gate-circle"/>
+              <path d="M 3.5 7 L 6 9.5 L 10.5 4.5" class="pd-gate-check"/>
+              <text x="20" y="11" class="pd-gate-label">spec approved</text>
+            </g>
+          </g>
+          <line x1="340" y1="130" x2="368" y2="130" class="pd-arrow" marker-end="url(#pd-arrow)"/>
+
+          <!-- STAGE 02 IMPLEMENT -->
+          <g>
+            <rect x="370" y="55" width="180" height="150" rx="8" class="pd-stage-box"/>
+            <rect x="370" y="55" width="4" height="150" class="pd-stage-stripe"/>
+            <text x="390" y="82" class="pd-stage-num">02</text>
+            <text x="390" y="115" class="pd-stage-title">Implement</text>
+            <text x="390" y="140" class="pd-stage-sub">Batched TDD,</text>
+            <text x="390" y="156" class="pd-stage-sub">build + test per batch</text>
+            <g transform="translate(390,176)">
+              <circle cx="7" cy="7" r="7" class="pd-gate-circle"/>
+              <path d="M 3.5 7 L 6 9.5 L 10.5 4.5" class="pd-gate-check"/>
+              <text x="20" y="11" class="pd-gate-label">green build</text>
+            </g>
+          </g>
+          <line x1="550" y1="130" x2="578" y2="130" class="pd-arrow" marker-end="url(#pd-arrow)"/>
+
+          <!-- STAGE 03 REVIEW -->
+          <g>
+            <rect x="580" y="55" width="180" height="150" rx="8" class="pd-stage-box"/>
+            <rect x="580" y="55" width="4" height="150" class="pd-stage-stripe"/>
+            <text x="600" y="82" class="pd-stage-num">03</text>
+            <text x="600" y="115" class="pd-stage-title">Review</text>
+            <text x="600" y="140" class="pd-stage-sub">Linters · compliance ·</text>
+            <text x="600" y="156" class="pd-stage-sub">test · architecture</text>
+            <g transform="translate(600,176)">
+              <circle cx="7" cy="7" r="7" class="pd-gate-circle"/>
+              <path d="M 3.5 7 L 6 9.5 L 10.5 4.5" class="pd-gate-check"/>
+              <text x="20" y="11" class="pd-gate-label">findings = 0</text>
+            </g>
+          </g>
+          <line x1="760" y1="130" x2="788" y2="130" class="pd-arrow" marker-end="url(#pd-arrow)"/>
+
+          <!-- STAGE 04 GATE -->
+          <g>
+            <rect x="790" y="55" width="180" height="150" rx="8" class="pd-stage-box"/>
+            <rect x="790" y="55" width="4" height="150" class="pd-stage-stripe"/>
+            <text x="810" y="82" class="pd-stage-num">04</text>
+            <text x="810" y="115" class="pd-stage-title">Gate</text>
+            <text x="810" y="140" class="pd-stage-sub">Spec-drift check,</text>
+            <text x="810" y="156" class="pd-stage-sub">evidence citation</text>
+            <g transform="translate(810,176)">
+              <circle cx="7" cy="7" r="7" class="pd-gate-circle"/>
+              <path d="M 3.5 7 L 6 9.5 L 10.5 4.5" class="pd-gate-check"/>
+              <text x="20" y="11" class="pd-gate-label">evidence cited</text>
+            </g>
+          </g>
+          <line x1="970" y1="130" x2="998" y2="130" class="pd-arrow" marker-end="url(#pd-arrow)"/>
+
+          <!-- COMMIT -->
+          <g>
+            <rect x="1000" y="85" width="110" height="90" rx="8" class="pd-endpoint-box--success"/>
+            <text x="1055" y="112" text-anchor="middle" class="pd-endpoint-label">COMMIT</text>
+            <text x="1055" y="134" text-anchor="middle" class="pd-endpoint-sub">with receipts</text>
+            <text x="1055" y="158" text-anchor="middle" class="pd-endpoint-done">✓ MERGE-READY</text>
+          </g>
+
+          <!-- artifact drop lines -->
+          <line x1="250" y1="205" x2="250" y2="243" class="pd-artifact-line" stroke-dasharray="3 3"/>
+          <line x1="460" y1="205" x2="460" y2="243" class="pd-artifact-line" stroke-dasharray="3 3"/>
+          <line x1="670" y1="205" x2="670" y2="243" class="pd-artifact-line" stroke-dasharray="3 3"/>
+          <line x1="880" y1="205" x2="880" y2="243" class="pd-artifact-line" stroke-dasharray="3 3"/>
+
+          <!-- artifact boxes -->
+          <g>
+            <rect x="180" y="243" width="140" height="52" rx="6" class="pd-artifact-box"/>
+            <text x="250" y="263" text-anchor="middle" class="pd-artifact-label">ARTIFACT 01</text>
+            <text x="250" y="283" text-anchor="middle" class="pd-artifact-value">spec.json</text>
+          </g>
+          <g>
+            <rect x="390" y="243" width="140" height="52" rx="6" class="pd-artifact-box"/>
+            <text x="460" y="263" text-anchor="middle" class="pd-artifact-label">ARTIFACT 02</text>
+            <text x="460" y="283" text-anchor="middle" class="pd-artifact-value">39/39 tests pass</text>
+          </g>
+          <g>
+            <rect x="600" y="243" width="140" height="52" rx="6" class="pd-artifact-box"/>
+            <text x="670" y="263" text-anchor="middle" class="pd-artifact-label">ARTIFACT 03</text>
+            <text x="670" y="283" text-anchor="middle" class="pd-artifact-value">findings.json</text>
+          </g>
+          <g>
+            <rect x="810" y="243" width="140" height="52" rx="6" class="pd-artifact-box"/>
+            <text x="880" y="263" text-anchor="middle" class="pd-artifact-label">ARTIFACT 04</text>
+            <text x="880" y="283" text-anchor="middle" class="pd-artifact-value">evidence.log</text>
+          </g>
+
+          <!-- loopback: findings → rebatch -->
+          <path d="M 670 295 L 670 370 L 360 370 L 360 130 L 368 130"
+                class="pd-loopback" stroke-dasharray="5 4" marker-end="url(#pd-arrow-dim)"/>
+          <text x="515" y="390" text-anchor="middle" class="pd-loopback-label">if findings open → rebatch stage 02</text>
+        </svg>
+      </div>
+      <div class="pipeline-legend">
+        <span class="lg lg-stage">Pipeline stage</span>
+        <span class="lg lg-gate">Passed gate</span>
+        <span class="lg lg-artifact">Auditable artifact</span>
+        <span class="lg lg-fail">Failure loopback</span>
+      </div>
+    </figure>
+
+    <div class="grid grid--2">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-body">
+          <h3>Brainstorm &amp; spec</h3>
+          <p>Before a single line of code, the engineer approves a spec sidecar — scope, files touched, security impact, test strategy. No spec, no implementation.</p>
+          <div class="badge-row">
+            <span class="badge-mono">brainstorming</span>
+            <span class="badge-mono">spec-driven-development</span>
+            <span class="badge-mono">planning-and-task-breakdown</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-body">
+          <h3>Batched implementation with TDD</h3>
+          <p>Large work is decomposed into verifiable batches. Each batch: failing test first, then code, then green. Between batches: build, test, checkpoint.</p>
+          <div class="badge-row">
+            <span class="badge-mono">test-driven-development</span>
+            <span class="badge-mono">incremental-implementation</span>
+            <span class="badge-mono">source-driven-development</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-body">
+          <h3>Adversarial two-stage review</h3>
+          <p>Deterministic linters first — confidence 100 on known-bad patterns. Then three reviewer agents in isolated context: compliance, test, architecture. Findings cite rule IDs and file:line.</p>
+          <div class="badge-row">
+            <span class="badge-mono">compliance-reviewer</span>
+            <span class="badge-mono">test-reviewer</span>
+            <span class="badge-mono">architecture-reviewer</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">04</div>
+        <div class="step-body">
+          <h3>Evidence gate before completion</h3>
+          <p>The stop hook blocks any "done" claim without cited build output, test count, and exit codes. Spec-drift detection compares the diff against the approved manifest. No evidence, no completion.</p>
+          <div class="badge-row">
+            <span class="badge-mono">verification-before-completion</span>
+            <span class="badge-mono">spec-drift-detection</span>
+            <span class="badge-mono">pre-commit-review</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- === FEATURES === -->
+<section class="section section--alt" id="features">
+  <div class="container">
+    <div class="sec-head"><span class="sec-num">03</span> Why enterprise teams choose MTK</div>
+    <h2>Built for teams that can't afford "mostly right."</h2>
+    <p class="lede">Nine capabilities that separate MTK from prompt-and-pray workflows.</p>
+
+    <div class="grid grid--3">
+      <div class="card">
+        <div class="card-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+        </div>
+        <h3>Evidence-first, not trust-first</h3>
+        <p>The stop hook rejects completion claims without cited build output, test counts, and exit codes. "I think it works" doesn't pass.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        </div>
+        <h3>Deterministic + AI layering</h3>
+        <p>Linter packs catch known-bad patterns — secrets, SQLi, disabled tests — at confidence 100. AI handles the judgment calls. One unified finding schema.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L3 7v6c0 5 4 9 9 10 5-1 9-5 9-10V7l-9-5z"/></svg>
+        </div>
+        <h3>Security embedded, not bolted on</h3>
+        <p>Changes to auth, secrets, audit trails, or external inputs auto-trigger the security-and-hardening skill. Security lives in design — not final polish.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg>
+        </div>
+        <h3>Structured findings, not vibes</h3>
+        <p>Every review outputs JSON with severity, confidence, rule citation, and file:line. Teams audit and track over time. Auditors can read it.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg>
+        </div>
+        <h3>Spec-drift detection</h3>
+        <p>Before review, the diff is compared against the approved spec sidecar. Scope creep, surprise files, and undeclared contract changes surface automatically.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        </div>
+        <h3>Anti-rationalization by design</h3>
+        <p>Every skill ships with a "Common Rationalizations" table — the exact excuses AI uses to skip steps ("just this once", "small change") — pre-rebutted in-context.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
+        </div>
+        <h3>Pluggable tech stacks</h3>
+        <p>Language-agnostic core + first-class .NET, Python, and TypeScript packs. EF Core, MediatR, SQLAlchemy, FastAPI, React, Next.js, Tauri.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+        </div>
+        <h3>Compound learning</h3>
+        <p>Correction-capture turns every "no, not like that" into a persistent lesson. Handoff preserves state across sessions. Your AI gets better over time.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3h4v4M21 3l-7 7M7 21H3v-4M3 21l7-7M21 21l-7-7M17 21h4v-4M3 3h4M3 3v4"/></svg>
+        </div>
+        <h3>Zero vendor lock-in</h3>
+        <p>Native config generation for Cursor, Copilot, Windsurf, Gemini, and Cline — not just Claude Code. One source of truth, six target harnesses.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- === COMPARISON === -->
+<section class="section">
+  <div class="container">
+    <div class="sec-head"><span class="sec-num">04</span> The difference</div>
+    <h2>What "done" means, before and after.</h2>
+    <p class="lede">The same engineering milestones, compared across stock AI workflows and MTK-enforced pipelines.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Dimension</th>
+            <th class="th--danger">Stock AI assistant</th>
+            <th class="th--purple">With MTK</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="td-key">Completion claim</td>
+            <td>"Done. It should work."</td>
+            <td class="td-good">Cited build exit 0 · 47/47 tests pass · no lint findings</td>
+          </tr>
+          <tr>
+            <td class="td-key">Security review</td>
+            <td>Skipped for "small" changes</td>
+            <td class="td-good">Auto-triggered on auth / secrets / audited state</td>
+          </tr>
+          <tr>
+            <td class="td-key">Findings format</td>
+            <td>Prose suggestions, no IDs</td>
+            <td class="td-good">JSON · severity · confidence · rule · file:line</td>
+          </tr>
+          <tr>
+            <td class="td-key">Scope discipline</td>
+            <td>Drifts during implementation</td>
+            <td class="td-good">Diff vs. approved spec · drift surfaced pre-review</td>
+          </tr>
+          <tr>
+            <td class="td-key">Critical rules</td>
+            <td>In CLAUDE.md · ~80% compliance</td>
+            <td class="td-good">Enforced by hooks · 100% deterministic</td>
+          </tr>
+          <tr>
+            <td class="td-key">Review pass</td>
+            <td>Same model reviews own work</td>
+            <td class="td-good">Forked context · adversarial persona · tools restricted · parallel Stage 2 fan-out</td>
+          </tr>
+          <tr>
+            <td class="td-key">Cross-harness</td>
+            <td>Per-tool config drift</td>
+            <td class="td-good">One source · six native configs generated</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- === COMPONENTS === -->
+<section class="section section--alt" id="components">
+  <div class="container">
+    <div class="sec-head"><span class="sec-num">05</span> Components</div>
+    <h2>32 skills. 3 agents. 8 hooks. One discipline.</h2>
+    <p class="lede">MTK is composed of small, pressure-tested pieces that snap together. Invoke one entry point — the rest orchestrate themselves.</p>
+
+    <div class="grid grid--2">
+      <div>
+        <div class="sec-head" style="border:0;padding:0;margin-bottom:12px"><span style="color:var(--text-dim)">Entry points — two commands, everything else routes</span></div>
+        <div class="compo-row"><code class="compo-code">/mtk-setup</code><span class="compo-text">Bootstrap a repo — detect stack, pull guidelines, generate CLAUDE.md</span></div>
+        <div class="compo-row"><code class="compo-code">/mtk-setup --audit</code><span class="compo-text">Refresh architecture-principles.md after a structural change</span></div>
+        <div class="compo-row"><code class="compo-code">/mtk-setup --merge</code><span class="compo-text">Unify per-repo audits into one team-wide standard</span></div>
+        <div class="compo-row"><code class="compo-code">/mtk &lt;description&gt;</code><span class="compo-text">Plain English. Routes to fix, implement, pre-commit-review, or context-report.</span></div>
+      </div>
+
+      <div>
+        <div class="sec-head" style="border:0;padding:0;margin-bottom:12px"><span style="color:var(--text-dim)">Reviewer agents (adversarial, isolated context)</span></div>
+        <div class="compo-row">
+          <code class="compo-code">compliance-reviewer</code>
+          <div>
+            <div class="compo-text"><strong style="color:var(--text)">Stage 1</strong> — security, correctness, standards.</div>
+          </div>
+        </div>
+        <div class="compo-row">
+          <code class="compo-code">test-reviewer</code>
+          <div><div class="compo-text"><strong style="color:var(--text)">Stage 2</strong> — coverage, assertion quality, test smells.</div></div>
+        </div>
+        <div class="compo-row">
+          <code class="compo-code">architecture-reviewer</code>
+          <div><div class="compo-text"><strong style="color:var(--text)">Stage 2</strong> — boundaries, dependencies, naming, coupling.</div></div>
+        </div>
+
+        <div class="sec-head" style="border:0;padding:0;margin: 24px 0 12px"><span style="color:var(--text-dim)">Tech stacks</span></div>
+        <div class="badge-row">
+          <span class="badge-mono">tech-stack-dotnet</span>
+          <span class="badge-mono">tech-stack-python</span>
+          <span class="badge-mono">tech-stack-typescript</span>
+          <span class="badge-mono">+ pluggable</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- === FINDING EXAMPLE === -->
+<section class="section">
+  <div class="container">
+    <div class="sec-head"><span class="sec-num">06</span> What a finding looks like</div>
+    <div class="grid grid--2" style="align-items:center;gap:48px">
+      <div>
+        <h2>Structured, cited, auditable.</h2>
+        <p class="lede" style="margin-bottom:24px">
+          MTK reviews don't output prose. They output findings. Every finding has a severity, a confidence score, a rule citation, and a precise file:line reference. Pipe them into a dashboard, an audit log, or a PR bot. Auditors can trace every rejection back to a written standard.
+        </p>
+        <div class="stack-sm">
+          <div><strong>severity</strong> — <span style="color:var(--text-muted)">HIGH · MED · LOW · INFO</span></div>
+          <div><strong>confidence</strong> — <span style="color:var(--text-muted)">0–100, linters default to 100</span></div>
+          <div><strong>rule</strong> — <span style="color:var(--text-muted)">ID from project standards (e.g. S7.3)</span></div>
+          <div><strong>location</strong> — <span style="color:var(--text-muted)">file:line, every time</span></div>
+        </div>
+      </div>
+
+      <div class="terminal" style="margin-top:0">
+        <div class="terminal-bar">
+          <i></i><i></i><i></i>
+          <span class="label">review-findings.json</span>
+        </div>
+<pre>{
+  <span class="k-blue">"severity"</span>:   <span class="k-yellow">"HIGH"</span>,
+  <span class="k-blue">"confidence"</span>: <span class="k-green">100</span>,
+  <span class="k-blue">"rule"</span>:       <span class="k-yellow">"S7.3"</span>,
+  <span class="k-blue">"source"</span>:     <span class="k-yellow">"linter.secrets"</span>,
+  <span class="k-blue">"title"</span>:      <span class="k-yellow">"Secret logged in plaintext"</span>,
+  <span class="k-blue">"file"</span>:       <span class="k-yellow">"src/auth/totp.cs"</span>,
+  <span class="k-blue">"line"</span>:       <span class="k-green">84</span>,
+  <span class="k-blue">"snippet"</span>:    <span class="k-yellow">"_log.Info($\"totp: {secret}\")"</span>,
+  <span class="k-blue">"guidance"</span>:   <span class="k-yellow">"Never log secrets. Redact at the sink."</span>,
+  <span class="k-blue">"blocks_merge"</span>: <span class="k-green">true</span>
+}</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- === INSTALL === -->
+<section class="section section--alt" id="install">
+  <div class="container" style="max-width:760px">
+    <div class="sec-head"><span class="sec-num">07</span> Get started</div>
+    <h2>Install in one command.</h2>
+    <p class="lede">MTK ships as a Claude Code plugin and works with every major AI coding assistant. Install once, bootstrap any repo, stay disciplined.</p>
+
+    <div class="install-step">
+      <div class="install-head">
+        <span class="lbl">1 · Install the plugin</span>
+        <span class="meta">claude-code</span>
+      </div>
+      <div class="terminal" style="margin:0">
+        <div class="terminal-bar"><i></i><i></i><i></i></div>
+<pre><span class="k-dim">$</span> /plugin marketplace add moberghr/claude-helpers
+<span class="k-dim">$</span> /plugin install mtk</pre>
+      </div>
+    </div>
+
+    <div class="install-step">
+      <div class="install-head">
+        <span class="lbl">2 · Bootstrap your repo</span>
+        <span class="meta">one-time</span>
+      </div>
+      <div class="terminal" style="margin:0">
+        <div class="terminal-bar"><i></i><i></i><i></i></div>
+<pre><span class="k-dim">$</span> /mtk-setup
+<span class="k-dim">  → detects stack · audits architecture · generates CLAUDE.md</span></pre>
+      </div>
+    </div>
+
+    <div class="install-step">
+      <div class="install-head">
+        <span class="lbl">3 · Ship disciplined work</span>
+        <span class="meta">every feature</span>
+      </div>
+      <div class="terminal" style="margin:0">
+        <div class="terminal-bar"><i></i><i></i><i></i></div>
+<pre><span class="k-dim">$</span> /mtk "add 2FA to login endpoint"
+<span class="k-green">✓</span> spec approved · <span class="k-green">✓</span> batched TDD · <span class="k-green">✓</span> adversarial review · <span class="k-green">✓</span> evidence gate</pre>
+      </div>
+    </div>
+
+    <div style="margin-top:36px;display:flex;gap:12px;flex-wrap:wrap">
+      <a href="https://github.com/moberghr/claude-helpers" class="btn btn--primary">View on GitHub</a>
+      <a href="https://github.com/moberghr/claude-helpers#readme" class="btn btn--secondary">Read the docs</a>
+    </div>
+  </div>
+</section>
+
+<!-- === CALLOUT === -->
+<section class="section">
+  <div class="container">
+    <div class="callout">
+      <h2>Stop shipping vibes.<br>Start shipping evidence.</h2>
+      <p>Join the teams who replaced "it compiles" with "it compiles, tests pass, findings resolved, spec approved." Your AI has never been more capable — make sure it's also disciplined.</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <a href="https://github.com/moberghr/claude-helpers" class="btn btn--primary">Get MTK</a>
+        <a href="https://www.moberg.hr" class="btn btn--secondary">About Moberg</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- === FAQ === -->
+<section class="section section--alt">
+  <div class="container" style="max-width:760px">
+    <div class="sec-head"><span class="sec-num">08</span> FAQ</div>
+    <h2>Common questions.</h2>
+
+    <div class="faq" style="margin-top:36px">
+      <details>
+        <summary>Does MTK only work with Claude Code?<span class="chev">›</span></summary>
+        <p>No. MTK is Claude-Code-native (plugin marketplace, skills, agents) but generates native config for Cursor, GitHub Copilot, Windsurf, Gemini CLI, and Cline. The rules, standards, and review criteria stay consistent across all six harnesses.</p>
+      </details>
+
+      <details>
+        <summary>Is this finance-specific?<span class="chev">›</span></summary>
+        <p>No — MTK is tech-stack-agnostic and domain-flexible. A finance supplement ships with it (regulated state, sensitive data, audit requirements) because it was born in a fintech team, but any serious-software team benefits. Healthcare, infrastructure, and compliance-heavy domains fit the same workflow.</p>
+      </details>
+
+      <details>
+        <summary>Doesn't this slow the AI down?<span class="chev">›</span></summary>
+        <p>Per-feature wall-clock is slightly longer. Net throughput is dramatically higher because the drift tax — rework, production incidents, review rounds, "that looked fine to me" postmortems — drops. Engineers stop babysitting AI output and start shipping.</p>
+      </details>
+
+      <details>
+        <summary>Can I use it on an existing codebase?<span class="chev">›</span></summary>
+        <p>Yes. <code>/mtk-setup</code> audits your repo, extracts architecture principles from existing code, pulls team coding guidelines, and generates a project-specific CLAUDE.md. Run <code>/mtk-setup --merge</code> across multiple repos to produce one team-wide standard.</p>
+      </details>
+
+      <details>
+        <summary>Is it open source?<span class="chev">›</span></summary>
+        <p>Yes — MIT licensed. Fork it, extend it, add your own tech stack pack. Contributions welcome via PR on <a href="https://github.com/moberghr/claude-helpers">GitHub</a>.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- === FOOTER === -->
+<footer class="footer">
+  <div class="container footer-inner">
+    <div style="display:inline-flex;align-items:center;gap:12px">
+      <img src="assets/favicon.svg" alt="" width="22" height="22" aria-hidden="true" style="border-radius:5px">
+      <span>MTK — built by <a href="https://www.moberg.hr">Moberg</a>. Serious engineering, infinite possibilities.</span>
+    </div>
+    <div class="footer-links">
+      <a href="https://github.com/moberghr/claude-helpers">GitHub</a>
+      <a href="https://github.com/moberghr/claude-helpers/blob/main/CHANGELOG.md">Changelog</a>
+      <a href="https://github.com/moberghr/claude-helpers/blob/main/CONTRIBUTING.md">Contribute</a>
+      <span class="footer-legal">MIT</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
