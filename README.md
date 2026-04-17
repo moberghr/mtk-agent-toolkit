@@ -6,7 +6,8 @@
 
 **A multi-agent toolkit that enforces your team's coding standards, security policies, and review discipline on every AI-generated line of code. Language-agnostic workflows with pluggable tech stacks for .NET, Python, and TypeScript.**
 
-[![Version](https://img.shields.io/badge/version-6.3.0-blue.svg)](https://github.com/moberghr/claude-helpers/releases)
+[![Version](https://img.shields.io/badge/version-6.3.0-blue.svg)](https://github.com/moberghr/mtk-agent-toolkit/releases)
+[![Website](https://img.shields.io/badge/website-moberghr.github.io-6d28d9.svg)](https://moberghr.github.io/mtk-agent-toolkit/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-supported-purple.svg)](https://claude.ai/code)
 [![Cursor](https://img.shields.io/badge/Cursor-supported-blue.svg)](https://cursor.sh)
 [![Copilot](https://img.shields.io/badge/GitHub%20Copilot-supported-green.svg)](https://github.com/features/copilot)
@@ -15,6 +16,8 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg)](https://python.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0%2B-3178C6.svg)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+**[moberghr.github.io/mtk-agent-toolkit](https://moberghr.github.io/mtk-agent-toolkit/)** — the MTK website.
 
 [Quick Start](#-quick-start) · [What It Does](#what-it-does) · [Multi-Agent Support](#-multi-agent-support) · [Examples](#-examples) · [Architecture](#-architecture) · [Skills](#-skills) · [Review Agents](#-review-agents) · [Tech Stacks](#-tech-stacks) · [FAQ](#-faq)
 
