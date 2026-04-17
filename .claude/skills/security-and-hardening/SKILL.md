@@ -62,11 +62,7 @@ Treat security and compliance as design constraints, not final review polish. Ch
 
 ## Common Rationalizations
 
-| Rationalization | Reality |
-|---|---|
-| "This is an internal endpoint" | Internal boundaries move. Security requirements do not disappear because something feels internal. |
-| "This doesn't look like regulated data" | If it affects audited state, reporting, audit records, or downstream consumers, it is in scope. Check the domain supplement for concrete examples. |
-| "The framework probably handles that for us" | Probably is not a security control. Verify the behavior. |
+See `.claude/skills/context-engineering/SKILL.md` for the shared table. Security-specific traps: "this is an internal endpoint" (internal boundaries move — security requirements don't disappear because something feels internal), and "this doesn't look like regulated data" (if it affects audited state, reporting, audit records, or downstream consumers, it is in scope — check the domain supplement).
 
 ## Red Flags
 

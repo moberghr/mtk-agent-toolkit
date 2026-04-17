@@ -45,17 +45,15 @@ Before writing any skill content:
 
 1. Follow the anatomy defined in `docs/skill-anatomy.md`:
    - Required: frontmatter (`name`, `description`), `# Title`, `## Overview`, `## When To Use`, `## Workflow`, `## Verification`
-   - Recommended: `### When NOT To Use`, `## Common Rationalizations`, `## Red Flags`, `## Rules`
+   - Recommended: `### When NOT To Use`, `## Red Flags`, `## Rules`
+   - The shared MTK rationalization table lives in `.claude/skills/context-engineering/SKILL.md`. Do **not** duplicate universal rationalizations here. Only add a short `## Common Rationalizations` section if the skill has one or two traps that are genuinely specific (and reference the shared table at the top).
 
 2. **Apply the CSO principle:** The `description` in frontmatter must trigger on conditions, not summarize the workflow.
    - Bad: "Create implementation plans with acceptance criteria and dependency ordering"
    - Good: "Use after a spec is approved and before multi-file implementation begins"
    - Why: Workflow summaries cause the agent to follow the description instead of reading the full SKILL.md
 
-3. **Build the rationalization table:** For every step the agent might skip, write:
-   - The rationalization the agent would use
-   - The reality that counters it
-   - Draw from the Phase 1 baseline observations
+3. **Identify skill-specific rationalizations:** The shared table in `context-engineering` covers universal shortcuts. For each step this specific skill might be skipped over, note whether the shortcut is truly unique to this skill. If yes, add a 1-2 entry `## Common Rationalizations` section referencing the shared table. If no, rely on the shared table alone.
 
 4. **Write verification checklist:** Every claim the skill makes about outcomes must have a verification step.
 
@@ -119,12 +117,7 @@ tests alone are sufficient for advisory skills.
 
 ## Common Rationalizations
 
-| Rationalization | Reality |
-|---|---|
-| "The skill is obvious, I don't need to test it" | Obvious skills get ignored by agents. Test to find the gaps. |
-| "I'll add the rationalization table later" | The table IS the skill's defense. Without it, the skill is a suggestion, not a discipline. |
-| "This description summarizes the skill well" | Summarizing triggers the agent to follow the summary, not the full content. Use conditions. |
-| "500 lines is too short for this topic" | If it takes more than 500 lines, split into core workflow and reference files. |
+See `.claude/skills/context-engineering/SKILL.md` for the shared table. Writing-skills specific traps: "the skill is obvious, I don't need to test it" (obvious skills get ignored — test to find the gaps), and "this description summarizes the skill well" (summarizing triggers the agent to follow the summary instead of reading the full content — use trigger conditions).
 
 ## Red Flags
 

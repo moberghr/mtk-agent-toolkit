@@ -48,11 +48,7 @@ When framework behavior matters, memory is not enough. Verify unfamiliar APIs ag
 
 ## Common Rationalizations
 
-| Rationalization | Reality |
-|---|---|
-| "This API probably behaves like the last one I used" | Similar names cause production bugs. Verify the actual contract. |
-| "The repo uses something like this, so it's fine" | Similar is not identical. Check the exact API and version. |
-| "I'll fix it if it breaks" | Source checks are cheaper than post-failure recovery. |
+See `.claude/skills/context-engineering/SKILL.md` for the shared table. Source-driven-specific traps: "this API probably behaves like the last one I used" (similar names cause production bugs — verify the actual contract for this version), and "I'll fix it if it breaks" (source checks are cheaper than post-failure recovery, especially for transaction or security behavior).
 
 ## Red Flags
 

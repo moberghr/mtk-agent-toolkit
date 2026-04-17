@@ -8,6 +8,7 @@
 <meta property="og:title" content="MTK · Moberg — Serious engineering for AI-assisted development" />
 <meta property="og:description" content="Stop shipping vibes. Enforce evidence-first AI workflows across Claude Code, Cursor, Copilot, Windsurf, Gemini, and Cline." />
 <meta property="og:type" content="website" />
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -103,14 +104,10 @@
     border-bottom: 1px solid var(--border);
   }
   .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
-  .brand { display: inline-flex; align-items: baseline; gap: 10px; text-decoration: none; color: var(--text); }
-  .brand-mark { display: inline-flex; align-items: center; gap: 8px; }
-  .brand-logo {
-    font-family: var(--font-body);
-    font-weight: 300;
-    font-size: 22px;
-    letter-spacing: -0.01em;
-    color: var(--text);
+  .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+  .brand-wordmark { display: block; height: 22px; width: auto; }
+  @media (prefers-color-scheme: dark) {
+    .brand-wordmark { content: url("assets/logo-wordmark.svg"); }
   }
   .brand-sep { color: var(--text-dim); font-weight: 300; }
   .brand-product {
@@ -640,20 +637,8 @@
 <!-- === NAV === -->
 <header class="nav">
   <div class="container nav-inner">
-    <a href="#" class="brand">
-      <span class="brand-mark">
-        <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true">
-          <rect width="28" height="28" rx="7" fill="url(#mbg)"/>
-          <text x="14" y="19" font-family="Helvetica Neue, sans-serif" font-weight="300" font-size="16" fill="#fff" text-anchor="middle" letter-spacing="-0.5">m</text>
-          <defs>
-            <linearGradient id="mbg" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
-              <stop stop-color="#4E0EFF"/>
-              <stop offset="1" stop-color="#230083"/>
-            </linearGradient>
-          </defs>
-        </svg>
-        <span class="brand-logo">moberg</span>
-      </span>
+    <a href="#" class="brand" aria-label="Moberg · MTK home">
+      <img src="assets/logo-wordmark-dark.svg" alt="Moberg" class="brand-wordmark" height="22">
       <span class="brand-sep">·</span>
       <span class="brand-product">MTK</span>
     </a>
@@ -1173,16 +1158,7 @@
 <footer class="footer">
   <div class="container footer-inner">
     <div style="display:inline-flex;align-items:center;gap:12px">
-      <svg width="22" height="22" viewBox="0 0 28 28" aria-hidden="true">
-        <rect width="28" height="28" rx="7" fill="url(#mbg2)"/>
-        <text x="14" y="19" font-family="Helvetica Neue, sans-serif" font-weight="300" font-size="16" fill="#fff" text-anchor="middle" letter-spacing="-0.5">m</text>
-        <defs>
-          <linearGradient id="mbg2" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
-            <stop stop-color="#4E0EFF"/>
-            <stop offset="1" stop-color="#230083"/>
-          </linearGradient>
-        </defs>
-      </svg>
+      <img src="assets/favicon.svg" alt="" width="22" height="22" aria-hidden="true" style="border-radius:5px">
       <span>MTK — built by <a href="https://www.moberg.hr">Moberg</a>. Serious engineering, infinite possibilities.</span>
     </div>
     <div class="footer-links">

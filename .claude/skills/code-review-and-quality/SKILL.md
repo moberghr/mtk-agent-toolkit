@@ -90,12 +90,7 @@ If reviewing a PR or branch with CI runs, check CI status:
 
 ## Common Rationalizations
 
-| Rationalization | Reality |
-|---|---|
-| "The tests pass, so this is fine" | Passing tests do not clear architecture, security, or performance risks. |
-| "I wrote it, so I already reviewed it" | Authors are blind to their own assumptions. Review is a separate activity. |
-| "This is mostly style" | Real review starts with correctness and risk, not formatting. |
-| "I'll mention the issue softly so I don't block progress" | Soft-pedaling a real production risk is a review failure. |
+See `.claude/skills/context-engineering/SKILL.md` for the shared MTK rationalization table. Review-specific traps: authors are blind to their own assumptions (self-review isn't review), "mostly style" is a dodge (real review starts with correctness and risk), and soft-pedaling a real production risk to avoid blocking progress is a review failure.
 
 ## Red Flags
 

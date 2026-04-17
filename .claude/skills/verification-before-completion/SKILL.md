@@ -66,13 +66,7 @@ No completion claim is valid without fresh evidence from an actual command execu
 
 ## Common Rationalizations
 
-| Rationalization | Reality |
-|---|---|
-| "The change is trivial, it obviously works" | Trivial changes cause production incidents. Verify anyway. |
-| "I just ran the tests a few minutes ago" | You changed code since then. The prior result is stale. |
-| "The build passed, so the tests probably pass too" | Build success and test success are different claims requiring different evidence. |
-| "I'll verify after the review" | Review assumes verification already happened. Unverified code wastes reviewer time. |
-| "It compiled without errors, that's good enough" | Compilation proves syntax. It does not prove behavior, correctness, or safety. |
+See `.claude/skills/context-engineering/SKILL.md` — the shared MTK rationalization table covers the universal shortcuts. Skill-specific traps to watch for here: running tests a few minutes ago (stale once you touched code), treating build success as test success (different claims, different evidence), and assuming compilation proves behavior (it proves syntax only).
 
 ## Red Flags
 

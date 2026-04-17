@@ -64,12 +64,7 @@ Implement in thin slices. Each slice must compile, test, and remain explainable 
 
 ## Common Rationalizations
 
-| Rationalization | Reality |
-|---|---|
-| "I'll finish the feature and test later" | Late testing turns a small bug into a multi-batch excavation. |
-| "This abstraction will help future work" | Future work is hypothetical. Current complexity is real. Earn abstractions. |
-| "Since I'm in the file already, I'll clean this up too" | That is how slices become unreadable and impossible to review. |
-| "The docs probably say this API works like the last one I used" | Probably is not good enough. Verify unfamiliar APIs from the source. |
+See `.claude/skills/context-engineering/SKILL.md` for the shared table. Incremental-implementation-specific traps: "since I'm in the file already, I'll clean this up too" (that is how slices become unreadable and impossible to review — stay scoped per batch), and "this abstraction will help future work" (future work is hypothetical, current complexity is real — earn abstractions from duplication, don't pre-build them).
 
 ## Red Flags
 

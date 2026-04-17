@@ -102,13 +102,7 @@ Phase 2.5 did not cover the final code. Detect divergence before review.
 
 ## Common Rationalizations
 
-| Rationalization | Reality |
-|---|---|
-| "The extra file was just a helper, it's basically in scope" | If it wasn't in the change_manifest, the approval gate did not cover it. Flag it. |
-| "The missing file in the manifest was replaced by a better approach" | That is a scope decision. Surface it so the engineer can amend the spec or revert. |
-| "security_impact was 'none' but this auth change is tiny" | If the diff touches auth, payments, or audit — even tiny — the security_impact field was wrong. Flag it. |
-| "This drift is minor, I'll just fix it silently" | Silent drift is the exact compliance failure this skill exists to prevent. Emit the finding. |
-| "The spec is outdated; the implementation is right" | Then amend the spec via `spec-driven-development`, re-approve, and re-run. Drift checks run against the current spec, not a hypothetical one. |
+See `.claude/skills/context-engineering/SKILL.md` for the shared table. Drift-specific traps: "the extra file was just a helper, it's basically in scope" (if it wasn't in the change_manifest, the approval gate did not cover it — flag it), "security_impact was 'none' but this auth change is tiny" (if the diff touches auth, payments, or audit — even tiny — the field was wrong), and "this drift is minor, I'll just fix it silently" (silent drift is the exact compliance failure this skill exists to prevent — emit the finding).
 
 ## Red Flags
 

@@ -94,12 +94,7 @@ git branch -d <branch-name>  # only if merged
 
 ## Common Rationalizations
 
-| Rationalization | Reality |
-|---|---|
-| "I'll just work on the main branch, it's faster" | Faster until you need to undo half-finished work blocking someone else. |
-| "The gitignore is probably fine" | Committing a worktree directory is a mess that wastes everyone's time. Verify. |
-| "Dependencies are already installed" | The worktree is a fresh checkout. It has no node_modules, no bin/obj, no venv. |
-| "I'll skip baseline tests, I know the tests pass" | Pre-existing failures get blamed on your changes. Prove the starting state. |
+See `.claude/skills/context-engineering/SKILL.md` for the shared table. Worktree-specific traps: "dependencies are already installed" (the worktree is a fresh checkout — it has no node_modules, no bin/obj, no venv), "the gitignore is probably fine" (committing a worktree directory wastes everyone's time — verify first), and "I'll skip baseline tests, I know the tests pass" (pre-existing failures get blamed on your changes — prove the starting state).
 
 ## Red Flags
 

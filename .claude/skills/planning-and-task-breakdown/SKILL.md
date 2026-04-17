@@ -64,11 +64,7 @@ Convert the approved plan into small, executable tasks that can be verified one 
 
 ## Common Rationalizations
 
-| Rationalization | Reality |
-|---|---|
-| "I'll just keep the tasks in my head" | Hidden plans drift fastest. Write the task list so implementation and review can check reality against it. |
-| "This batch is a bit large, but it saves time" | Oversized batches hide breakage and make checkpoints meaningless. |
-| "I'll add verification steps later" | A task without verification is not a task. It's a wish. |
+See `.claude/skills/context-engineering/SKILL.md` for the shared table. Planning-specific traps: "I'll just keep the tasks in my head" (hidden plans drift fastest — write the list so implementation and review can check reality against it), "this batch is a bit large, but it saves time" (oversized batches hide breakage and make checkpoints meaningless), and "I'll add verification steps later" (a task without verification is not a task, it's a wish).
 
 ## Red Flags
 

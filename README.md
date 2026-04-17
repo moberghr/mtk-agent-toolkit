@@ -6,7 +6,7 @@
 
 **A multi-agent toolkit that enforces your team's coding standards, security policies, and review discipline on every AI-generated line of code. Language-agnostic workflows with pluggable tech stacks for .NET, Python, and TypeScript.**
 
-[![Version](https://img.shields.io/badge/version-6.1.4-blue.svg)](https://github.com/moberghr/claude-helpers/releases)
+[![Version](https://img.shields.io/badge/version-6.3.0-blue.svg)](https://github.com/moberghr/claude-helpers/releases)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-supported-purple.svg)](https://claude.ai/code)
 [![Cursor](https://img.shields.io/badge/Cursor-supported-blue.svg)](https://cursor.sh)
 [![Copilot](https://img.shields.io/badge/GitHub%20Copilot-supported-green.svg)](https://github.com/features/copilot)
@@ -52,7 +52,7 @@ MTK closes that gap with **workflow enforcement** (planning, TDD, batched implem
 /plugin install mtk@moberghr
 
 # 2. Bootstrap your repo (one-time)
-/mtk setup this repo
+/mtk-setup
 
 # 3. Implement a feature
 /mtk add user notification preferences with email and SMS channels
@@ -178,7 +178,7 @@ Drift Analysis: docs/specs/2026-04-14-payment-retry.json
 Verdict: NEEDS_CHANGES — implementation drifted from approved spec
 ```
 
-### What a `/mtk implement` session looks like
+### What a `/mtk <feature>` session looks like
 
 ```
 > /mtk add payment retry logic for failed card transactions
@@ -294,11 +294,11 @@ BENCHMARKS (7 deterministic test suites)
   └── validate-toolkit — structural integrity of manifest, skills, and agents
 ```
 
-### How `/mtk implement` Composes Skills
+### How `/mtk <feature>` Composes Skills
 
 ```mermaid
 graph LR
-    CMD["/mtk implement"] --> P0
+    CMD["/mtk &lt;feature&gt;"] --> P0
 
     subgraph Phases
         direction TB
@@ -319,50 +319,55 @@ graph LR
 
 ## Entry-Point Skills
 
-| Skill | Purpose | When to use |
-|:---|:---|:---|
-| **`/mtk implement`** | Full feature workflow: plan, build in batches, TDD, two-stage review | Multi-file features, new endpoints, breaking changes |
-| **`/mtk fix`** | Lightweight bug fix: reproduce, fix, verify | 1-3 file changes, contained scope |
-| **`/mtk pre-commit-review`** | Pre-commit security gate: deterministic linters + AI review | Before every `git commit` |
-| **`/mtk setup-bootstrap`** | One-time repo setup: detect stack, audit codebase, generate CLAUDE.md | First time using MTK in a repo |
-| **`/mtk setup-audit`** | Extract architecture principles from codebase patterns | Document what IS (not what should be) |
-| **`/mtk`** | Natural language router: intent detection routes to the right skill | When you don't want to remember command names |
+MTK has just **two** user-invocable commands. Everything else is a workflow skill routed through `/mtk`.
 
-### The `/mtk` unified entry point
+| Command | Purpose | When to use |
+|:---|:---|:---|
+| **`/mtk-setup`** | One-time bootstrap + re-audit dispatcher (`--audit` refreshes principles, `--merge` unifies multi-repo audits) | First time in a repo, or after architectural change |
+| **`/mtk <description>`** | Natural-language router — dispatches to fix, implement, pre-commit-review, or context-report based on intent | Everything else |
+
+### The `/mtk` router
 
 You don't need to remember skill names. Just describe what you want:
 
 ```bash
-/mtk set up this repo              → setup-bootstrap
 /mtk add user auth                 → implement
 /mtk fix the null check            → fix
 /mtk review before commit          → pre-commit-review
 /mtk what's loaded?                → context-report
-/mtk help                          → lists all available commands
+/mtk help                          → lists all routed workflows
 ```
 
-### implement
+### implement workflow (via `/mtk <feature>`)
 
-Composes 11 skills across 7 phases. Includes an explicit approval gate at Phase 2.5 where you can approve autonomously, go interactive, edit, or revise.
+Composes 11 skills across 7 phases. Includes an explicit approval gate at Phase 2.5 where you can approve autonomously, go interactive, edit, or revise. Stage 2 reviewers (test + architecture) run in parallel.
 
 ```bash
 /mtk Add user notification preferences with email and SMS channels
 ```
 
-### fix
+### fix workflow (via `/mtk fix …`)
 
-Has a built-in scope guard — if the change grows beyond 3 files, it tells you to switch to `implement`.
+Has a built-in scope guard — if the change grows beyond 3 files, it tells you to switch to the implement workflow.
 
 ```bash
 /mtk fix null reference in PaymentProcessor when amount is zero
 ```
 
-### pre-commit-review
+### pre-commit-review workflow (via `/mtk review before commit`)
 
 Two-pass review: deterministic linter scan (secrets, SQL injection, PII in logs, slopwatch) at confidence 100, then AI review for judgment calls. Both feed the same finding schema.
 
 ```bash
 /mtk review before commit
+```
+
+### Updating MTK
+
+MTK is a Claude Code plugin. Use the plugin marketplace to upgrade — there is no in-repo update command.
+
+```bash
+/plugin update mtk@moberghr
 ```
 
 ---
@@ -652,13 +657,13 @@ These files are never overwritten by plugin updates:
 claude-helpers/
 ├── .claude/
 │   ├── skills/                # 28 skills (2 entry-point + 20 workflow + 3 tech stack + 3 enabling)
-│   │   ├── mtk/               # unified router entry point
-│   │   ├── implement/         # full feature loop
-│   │   ├── fix/               # lightweight task loop
-│   │   ├── pre-commit-review/ # security gate entry point
-│   │   ├── setup-bootstrap/   # one-time repo setup
-│   │   ├── setup-audit/       # architecture principle extractor
-│   │   ├── setup-update/      # toolkit updater
+│   │   ├── mtk/               # natural-language router (user-invocable)
+│   │   ├── mtk-setup/         # bootstrap + audit dispatcher (user-invocable)
+│   │   ├── implement/         # full feature loop (routed)
+│   │   ├── fix/               # lightweight task loop (routed)
+│   │   ├── pre-commit-review/ # security gate (routed)
+│   │   ├── setup-bootstrap/   # one-time repo setup (called by mtk-setup)
+│   │   ├── setup-audit/       # architecture principle extractor (called by mtk-setup)
 │   │   ├── context-engineering/
 │   │   ├── spec-driven-development/
 │   │   ├── planning-and-task-breakdown/
@@ -747,11 +752,11 @@ MTK is not a replacement for human review. It's a first pass that catches the me
 
 No. The reference documents, AGENTS.md routing rules, and linter scripts work with any AI coding tool. Use `bash scripts/generate-tool-configs.sh --all` to generate native config files for Cursor (`.cursor/rules/*.mdc`), Copilot (`.github/copilot-instructions.md`), Windsurf (`.windsurfrules`), Gemini (`GEMINI.md`), and Cline (`.clinerules`).
 
-Claude Code unlocks the full skill routing (e.g., `/mtk implement`) and automatic hook enforcement. Other tools get the same reference content delivered in their native format.
+Claude Code unlocks the full `/mtk` and `/mtk-setup` routing and automatic hook enforcement. Other tools get the same reference content delivered in their native format.
 </details>
 
 <details>
-<summary><b>Do I need to run setup-bootstrap on every branch?</b></summary>
+<summary><b>Do I need to run /mtk-setup on every branch?</b></summary>
 
 No. Run it once per repository. The generated CLAUDE.md and rules are committed and shared across branches.
 </details>
@@ -759,7 +764,7 @@ No. Run it once per repository. The generated CLAUDE.md and rules are committed 
 <details>
 <summary><b>Can I customize the generated rules?</b></summary>
 
-Yes. After setup-bootstrap generates the files, edit them freely. Plugin updates never overwrite CLAUDE.md, rules, or architecture-principles.md.
+Yes. After `/mtk-setup` generates the files, edit them freely. Plugin updates never overwrite CLAUDE.md, rules, or architecture-principles.md.
 </details>
 
 <details>
@@ -771,7 +776,7 @@ Dismiss it and move on. If the same false positive recurs, add a clarification t
 <details>
 <summary><b>How does this differ from writing a CLAUDE.md manually?</b></summary>
 
-Three things: (1) setup-bootstrap generates CLAUDE.md from your actual codebase, not guesswork; (2) MTK provides workflow enforcement (planning, TDD, review, evidence gates), not just rules; (3) adversarial review agents actively find violations with confidence-scored structured output.
+Three things: (1) `/mtk-setup` generates CLAUDE.md from your actual codebase, not guesswork; (2) MTK provides workflow enforcement (planning, TDD, review, evidence gates), not just rules; (3) adversarial review agents actively find violations with confidence-scored structured output.
 </details>
 
 <details>
@@ -852,7 +857,7 @@ MIT. See [LICENSE](LICENSE).
 
 <div align="center">
 
-**MTK — Moberg Toolkit** v6.1.4 · [Moberg d.o.o.](https://www.moberg.hr)
+**MTK — Moberg Toolkit** v6.3.0 · [Moberg d.o.o.](https://www.moberg.hr)
 
 Built for teams that ship production code, not prototypes.
 

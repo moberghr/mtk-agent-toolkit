@@ -69,18 +69,13 @@ Where `[mode]` is one of: `bootstrap`, `audit`, `merge`.
 
 ## MTK File Resolution
 
-MTK skills and shared references may be in the project (local install) or the plugin cache (marketplace install). Resolve once before loading any skill:
+MTK skills and shared references live either in the project (local install) or the plugin cache (marketplace install). Resolve once:
 
-1. Check: does `.claude/skills/context-engineering/SKILL.md` exist in the project root?
-2. If yes → **local install**. All `.claude/skills/` and `.claude/references/` paths work as-is.
-3. If no → **marketplace install**. Find the MTK plugin root:
-   ```bash
-   find ~/.claude/plugins -maxdepth 8 -name "SKILL.md" -path "*/mtk/*/context-engineering/*" -type f 2>/dev/null | head -1 | sed 's|/.claude/skills/context-engineering/SKILL.md||'
-   ```
-   Prefix all `.claude/skills/...` and `.claude/references/{stack}/...` reads with the resolved root path.
-4. If the find returns nothing → MTK skills are unavailable. Warn the engineer and stop.
+1. If `$CLAUDE_PLUGIN_ROOT` is set, prefix `.claude/skills/` and `.claude/references/` reads with it.
+2. Otherwise, if `.claude/skills/context-engineering/SKILL.md` exists locally → project-relative paths work as-is.
+3. Otherwise, fall back to `find ~/.claude/plugins -maxdepth 8 -name "SKILL.md" -path "*/mtk/*/context-engineering/*" -type f 2>/dev/null | head -1 | sed 's|/.claude/skills/context-engineering/SKILL.md||'`. If empty, MTK skills are unavailable — warn the engineer and proceed with `CLAUDE.md` only.
 
-**Always project-relative** (never prefixed): `CLAUDE.md`, `.claude/tech-stack`, `.claude/rules/`, `tasks/`, `docs/`, `.claude/references/architecture-principles.md`, `.claude/references/pre-commit-review-list.md`.
+Always project-relative (never prefixed): `CLAUDE.md`, `.claude/tech-stack`, `.claude/rules/`, `tasks/`, `docs/`, `.claude/references/architecture-principles.md`, `.claude/references/pre-commit-review-list.md`.
 
 ## Verification
 

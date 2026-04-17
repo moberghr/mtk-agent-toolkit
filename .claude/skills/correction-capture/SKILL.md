@@ -74,12 +74,7 @@ When an engineer corrects your approach, that correction contains knowledge that
 
 ## Common Rationalizations
 
-| Rationalization | Reality |
-|---|---|
-| "This correction is too specific to save" | Extract the general principle. "Don't use InMemory for this test" becomes "Use the project's standard test provider for relational behavior." |
-| "I'll remember this for next time" | You won't. You have no persistent memory without explicit capture. |
-| "The engineer is being nitpicky" | If they took the time to correct you, it matters to them. Capture it. |
-| "This is already in the coding guidelines" | Then you missed it. Note which guideline and why it was missed — that's the real lesson. |
+See `.claude/skills/context-engineering/SKILL.md` for the shared table. Correction-specific traps: "this correction is too specific to save" (extract the general principle — the specific instance becomes a reusable rule), "the engineer is being nitpicky" (if they took the time to correct you, it matters — capture it), and "this is already in the coding guidelines" (then you missed it — note which guideline and why, that's the real lesson).
 
 ## Red Flags
 

@@ -69,7 +69,7 @@ Good output depends on good context. Load the minimum relevant context needed to
 
 ## Context Budget Tracking
 
-Track the cumulative context loaded in the session. Research shows LLMs reliably follow ~150 instructions, with degradation starting as more are loaded.
+Track the cumulative context loaded in the session. Fewer, focused instructions beat many, diluted ones — every extra rule competes with the ones that actually matter most for the current task.
 
 **Budget guidelines:**
 - CLAUDE.md: target under 200 lines (~50 instructions)
@@ -123,11 +123,22 @@ Agent frontmatter `model:` sets the model for subagents. Entry-point skills run 
 
 ## Common Rationalizations
 
+**Shared table for all MTK skills.** Individual skills reference this section instead of repeating their own tables. If you catch yourself thinking one of these, stop and re-read what the current skill actually requires.
+
 | Rationalization | Reality |
 |---|---|
-| "I'll just start coding and adjust later" | Early wrong assumptions produce the most expensive rework. |
+| "I'll just start coding and adjust later" | Early wrong assumptions produce the most expensive rework. Read before writing. |
 | "More context is always better" | No. Irrelevant context crowds out the rules that actually matter. |
 | "I already read a similar file in another project" | Local codebase patterns win over generic memory. |
+| "This change is trivial, it obviously works" | Trivial changes cause production incidents. Verify anyway. |
+| "I'll verify / test / document it later" | Later rarely happens. Do it now or it won't happen. |
+| "I know where the bug / issue is without reproducing it" | You have a hunch, not evidence. Reproduce first. |
+| "It's only one more file" | Hidden scope creep is how quick fixes become feature work. Escalate instead. |
+| "Probably works / should work / the framework handles it" | Probably is not a control. Verify the actual behavior. |
+| "The tests pass, so this is fine" | Passing tests do not clear architecture, security, or performance risks. |
+| "I'll remember this for next time" | You won't — no persistent memory without explicit capture. Write it down. |
+| "The approach is obvious — skip planning / approval / alternatives" | Obvious to whom? Planning and approval exist to catch the mis-framings that feel obvious. |
+| "The spec is outdated; the implementation is right" | Then amend the spec and re-approve. Drift checks run against the current spec, not a hypothetical one. |
 
 ## Red Flags
 
