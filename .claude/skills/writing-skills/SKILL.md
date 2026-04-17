@@ -106,6 +106,19 @@ tests alone are sufficient for advisory skills.
 3. Update `docs/skill-anatomy.md` if the skill establishes a new pattern.
 4. Run `bash scripts/validate-toolkit.sh` to verify the skill passes validation.
 
+## Cache-Stable Prefixes
+
+When a skill runs repeatedly across sessions — especially a reviewer agent or an entry-point skill that the whole team loads on every run — prompt caching cuts token cost dramatically. Caching works by matching an **exact prefix** of the prompt. If the prefix changes every session (because a date, branch, or diff stat is at the top), the cache misses.
+
+**Rule:** put invariants first, volatile state last.
+
+- Invariants (top): persona statement, output contract, standards checklist, rationalization table, red flags. These never change between sessions.
+- Dynamic state (bottom): current branch, diff stats, touched files, behavioral diff. Inject these via `` !`command` `` fenced blocks or at the call site, not woven through the static body.
+
+A good reviewer agent has the same top ~80% byte-for-byte across every invocation, with only the diff + behavioral-diff injected at the end. That prefix caches; subsequent sessions pay only for the tail.
+
+Entry-point skills follow the same pattern — Phase 0 load instructions stay identical, only the user-supplied task description varies.
+
 ## Rules
 
 - No skill without baseline failure observations.
@@ -114,6 +127,7 @@ tests alone are sufficient for advisory skills.
 - Descriptions trigger on conditions, never summarize workflows (CSO principle).
 - Keep frequently-loaded skills under 500 lines.
 - Test discipline-enforcing skills with adversarial pressure scenarios.
+- Cache-stable prefix for reviewer agents and high-traffic entry-point skills: invariants top, dynamic state bottom.
 
 ## Common Rationalizations
 

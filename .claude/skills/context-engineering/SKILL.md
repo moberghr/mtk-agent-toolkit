@@ -67,6 +67,12 @@ Good output depends on good context. Load the minimum relevant context needed to
    enter scope, re-run the path-scoped match and load any newly-applicable
    references.
 
+## Parallel Loading
+
+Reference reads in load-context steps are independent — issue multiple `Read` calls in a single message, not sequentially. Same applies to independent `Glob`/`Grep` discovery and to reviewer agents fanning out on orthogonal axes. If Call B's input would mention Call A's output, force them sequential; otherwise batch them.
+
+See `docs/parallelism-patterns.md` for canonical patterns (parallel ref load, Stage 2 reviewer fan-out, batch deferred-tool hydration).
+
 ## Context Budget Tracking
 
 Track the cumulative context loaded in the session. Fewer, focused instructions beat many, diluted ones — every extra rule competes with the ones that actually matter most for the current task.

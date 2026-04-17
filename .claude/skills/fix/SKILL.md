@@ -1,6 +1,6 @@
 ---
 name: fix
-description: Lightweight fix/task workflow for 1-3 file changes that do not require feature planning
+description: Use when a change stays within 1-3 files and does not need a formal spec — bug fixes, validation tweaks, small config changes. Self-escalates to implement if scope grows.
 type: skill
 ---
 
@@ -61,6 +61,8 @@ Follow the phases below in order. Each phase loads what it needs and no more.
 
 **Progressive disclosure principle:** Small fixes do not need all references loaded. Load what's relevant to the specific fix, then load additional references if the scope shifts.
 
+**Parallel loading:** Independent reference reads go out in one message, not sequentially. See `docs/parallelism-patterns.md`.
+
 ## Execute The Fix Workflow
 
 Follow `.claude/skills/debugging-and-error-recovery/SKILL.md`.
@@ -75,11 +77,23 @@ If behavior changed, add or update tests.
 
 ## Scope Guard
 
-Stop and escalate if any of these become true:
+If any of these become true, **self-escalate to `/mtk implement`** instead of expanding scope in place:
 
 - a 4th file is required
 - a new handler/entity/slice is needed
 - the fix requires architectural re-planning
+
+**Self-escalation procedure:**
+
+1. Summarize what's been discovered so far (root cause, files identified, why the scope grew).
+2. Invoke the router skill with the original fix description plus the discovered scope:
+   ```
+   Skill(skill: "mtk", args: "<original description> — escalated from fix: <short reason>")
+   ```
+3. Do NOT continue editing. The router picks `implement` based on the escalation keyword.
+4. If the engineer prefers to keep the fix narrow, they can override by re-invoking `/mtk fix` with a scoped-down description.
+
+Silent scope creep past 3 files is a red flag — always escalate rather than quietly expanding.
 
 ## Final Report
 

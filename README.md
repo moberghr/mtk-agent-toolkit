@@ -335,12 +335,13 @@ You don't need to remember skill names. Just describe what you want:
 /mtk fix the null check            → fix
 /mtk review before commit          → pre-commit-review
 /mtk what's loaded?                → context-report
+/mtk toolkit health                → toolkit-health (usage analytics)
 /mtk help                          → lists all routed workflows
 ```
 
 ### implement workflow (via `/mtk <feature>`)
 
-Composes 11 skills across 7 phases. Includes an explicit approval gate at Phase 2.5 where you can approve autonomously, go interactive, edit, or revise. Stage 2 reviewers (test + architecture) run in parallel.
+Composes 11 skills across 7 phases. Includes an explicit approval gate at Phase 2.5 where you can approve autonomously, go interactive, edit, or revise. Stage 2 reviewers (`test-reviewer` + `architecture-reviewer`) spawn in a single parallel `Agent` call — see [`docs/parallelism-patterns.md`](docs/parallelism-patterns.md) for the canonical pattern used by entry skills.
 
 ```bash
 /mtk Add user notification preferences with email and SMS channels
@@ -348,7 +349,7 @@ Composes 11 skills across 7 phases. Includes an explicit approval gate at Phase 
 
 ### fix workflow (via `/mtk fix …`)
 
-Has a built-in scope guard — if the change grows beyond 3 files, it tells you to switch to the implement workflow.
+Has a built-in scope guard — if the change grows beyond 3 files, it **self-escalates** to the implement workflow via the `/mtk` router (no manual switch required).
 
 ```bash
 /mtk fix null reference in PaymentProcessor when amount is zero
@@ -374,7 +375,7 @@ MTK is a Claude Code plugin. Use the plugin marketplace to upgrade — there is 
 
 ## Skills
 
-28 skills total: 2 entry-point skills, 20 language-agnostic workflow skills, 3 tech stack skills, 3 enabling skills. Entry-point skills (`/mtk-setup` and `/mtk`) orchestrate workflow skills.
+29 skills total: 2 entry-point skills, 21 language-agnostic workflow skills, 3 tech stack skills, 3 enabling skills. Entry-point skills (`/mtk-setup` and `/mtk`) orchestrate workflow skills. Workflow skill count includes the new `toolkit-health` (v6.3.0) diagnostic for usage-pulse reports.
 
 ### Workflow Skills
 
@@ -397,6 +398,7 @@ MTK is a Claude Code plugin. Use the plugin marketplace to upgrade — there is 
 | **handoff** | Captures session state for recovery across context boundaries (model-invoked) |
 | **writing-skills** | Meta-skill for authoring new skills with TDD discipline and pressure tests |
 | **context-report** | Diagnostic snapshot of active MTK configuration — tech stack, references, linter packs, domains, hooks, and rules |
+| **toolkit-health** | Historical usage-pulse report from `.claude/analytics.json` — session trends, specs/lessons ratios, anomaly flags with suggested actions |
 
 ### Skill Anatomy
 
@@ -656,7 +658,7 @@ These files are never overwritten by plugin updates:
 ```
 claude-helpers/
 ├── .claude/
-│   ├── skills/                # 28 skills (2 entry-point + 20 workflow + 3 tech stack + 3 enabling)
+│   ├── skills/                # 29 skills (2 entry-point + 21 workflow + 3 tech stack + 3 enabling)
 │   │   ├── mtk/               # natural-language router (user-invocable)
 │   │   ├── mtk-setup/         # bootstrap + audit dispatcher (user-invocable)
 │   │   ├── implement/         # full feature loop (routed)

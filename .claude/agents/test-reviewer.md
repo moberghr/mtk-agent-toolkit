@@ -4,7 +4,12 @@ description: Focused reviewer for test coverage, assertion quality, and verifica
 allowed-tools: Read, Glob, Grep, Bash
 model: sonnet
 effort: high
+context: fork
 ---
+
+<!-- Cache-stable prefix: persona + output contract below is identical across every
+     invocation. Dynamic state (diff, behavioral diff) is injected at the call site. -->
+
 
 # Test Reviewer
 

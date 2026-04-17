@@ -49,34 +49,7 @@
     --container: 1120px;
   }
 
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #13181E;
-      --surface: #1a1f28;
-      --surface2: #222832;
-      --surface-elevated: #262d38;
-
-      --border: rgba(255, 255, 255, 0.08);
-      --border-bright: rgba(255, 255, 255, 0.14);
-
-      --text: #F0F2F5;
-      --text-dim: #8b95a2;
-      --text-muted: #a0a8b4;
-
-      --accent: #7b4dff;
-      --accent-light: #9b7aff;
-      --accent-dark: #5634FF;
-      --accent-dim: rgba(123, 77, 255, 0.12);
-      --accent-gradient: linear-gradient(135deg, #7b4dff 0%, #4E0EFF 100%);
-
-      --success: #4ade80;
-      --success-dim: rgba(74, 222, 128, 0.1);
-      --warning: #fbbf24;
-      --warning-dim: rgba(251, 191, 36, 0.1);
-      --danger: #f87171;
-      --danger-dim: rgba(248, 113, 113, 0.1);
-    }
-  }
+  :root { color-scheme: light; }
 
   *, *::before, *::after { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
@@ -106,9 +79,6 @@
   .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
   .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
   .brand-wordmark { display: block; height: 22px; width: auto; }
-  @media (prefers-color-scheme: dark) {
-    .brand-wordmark { content: url("assets/logo-wordmark.svg"); }
-  }
   .brand-sep { color: var(--text-dim); font-weight: 300; }
   .brand-product {
     font-family: var(--font-body);
@@ -200,9 +170,6 @@
     box-shadow: 0 4px 16px rgba(78, 14, 255, 0.22);
     transform: translateY(-1px);
   }
-  @media (prefers-color-scheme: dark) {
-    .btn--primary:hover { background: var(--accent-light); }
-  }
   .btn--secondary {
     background: var(--surface2);
     color: var(--text);
@@ -232,9 +199,6 @@
     font-family: var(--font-mono);
     font-size: 13px;
     line-height: 1.75;
-  }
-  @media (prefers-color-scheme: dark) {
-    .terminal { box-shadow: 0 20px 50px -10px rgba(0,0,0,0.6); }
   }
   .terminal-bar {
     display: flex; align-items: center; gap: 6px;
@@ -337,9 +301,6 @@
     background: var(--surface-elevated);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   }
-  @media (prefers-color-scheme: dark) {
-    .card--elevated { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
-  }
   .card p { color: var(--text-muted); margin: 0; font-size: 14.5px; line-height: 1.6; }
   .card-icon {
     width: 36px; height: 36px; border-radius: 10px;
@@ -403,9 +364,6 @@
     letter-spacing: 1px;
     padding: 14px 18px;
     text-align: left;
-  }
-  @media (prefers-color-scheme: dark) {
-    thead th { background: #262d38; color: var(--text); }
   }
   thead th.th--danger { color: #ffaab4; }
   thead th.th--purple { color: #c4b3ff; }
@@ -630,6 +588,183 @@
 
   a { color: var(--accent-light); text-decoration: underline; text-underline-offset: 2px; }
   a:hover { color: var(--accent); }
+
+  /* === FOUNDATIONS STRIP === */
+  .foundations {
+    padding: 64px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .foundations-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 32px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+  .foundations-head .lbl {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .foundations-head h3 {
+    margin: 10px 0 0;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text);
+    max-width: 520px;
+  }
+  .foundations-head p {
+    margin: 0;
+    font-size: 14.5px;
+    color: var(--text-muted);
+    max-width: 440px;
+    line-height: 1.55;
+  }
+  .foundations-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+  }
+  @media (max-width: 960px) {
+    .foundations-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 540px) {
+    .foundations-grid { grid-template-columns: 1fr; }
+  }
+  .foundation {
+    background: var(--surface);
+    padding: 22px 22px 20px;
+  }
+  .foundation-num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    display: block;
+    margin-bottom: 14px;
+  }
+  .foundation-name {
+    font-family: var(--font-body);
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 6px;
+  }
+  .foundation-desc {
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  /* === PIPELINE DIAGRAM === */
+  .pipeline-diagram {
+    margin: 28px 0 48px;
+    padding: 28px 28px 22px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+  }
+  .pipeline-diagram figcaption {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .pipeline-diagram .pipe-label {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .pipeline-diagram .pipe-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .pipeline-svg-wrap {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -4px;
+  }
+  .pipeline-diagram svg {
+    display: block;
+    width: 100%;
+    min-width: 880px;
+    height: auto;
+  }
+  .pipeline-legend {
+    display: flex;
+    gap: 24px;
+    margin-top: 12px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+    font-family: var(--font-body);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .pipeline-legend .lg {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pipeline-legend .lg::before {
+    content: '';
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .pipeline-legend .lg-stage::before    { background: var(--accent); }
+  .pipeline-legend .lg-gate::before     { background: var(--success); border-radius: 50%; }
+  .pipeline-legend .lg-artifact::before { background: var(--surface2); border: 1px solid var(--border); }
+  .pipeline-legend .lg-fail::before     { background: transparent; border: 1px dashed var(--text-dim); }
+
+  .pd-endpoint-box          { fill: var(--surface2); stroke: var(--border-bright); stroke-width: 1; }
+  .pd-endpoint-box--success { fill: var(--success-dim); stroke: var(--success); stroke-width: 1; opacity: .9; }
+  .pd-endpoint-label  { font-family: var(--font-body); font-size: 10px; font-weight: 700; letter-spacing: 1.5px; fill: var(--text-dim); }
+  .pd-endpoint-sub    { font-family: var(--font-body); font-size: 11px; fill: var(--text-muted); }
+  .pd-endpoint-value  { font-family: var(--font-mono); font-size: 11px; fill: var(--text); }
+  .pd-endpoint-done   { font-family: var(--font-body); font-size: 10px; font-weight: 700; letter-spacing: 1.5px; fill: var(--success); }
+
+  .pd-stage-box    { fill: var(--surface); stroke: var(--border-bright); stroke-width: 1; }
+  .pd-stage-stripe { fill: var(--accent); }
+  .pd-stage-num    { font-family: var(--font-body); font-size: 11px; font-weight: 700; letter-spacing: 1.5px; fill: var(--accent); }
+  .pd-stage-title  { font-family: var(--font-body); font-size: 17px; font-weight: 700; fill: var(--text); letter-spacing: -0.01em; }
+  .pd-stage-sub    { font-family: var(--font-body); font-size: 11px; fill: var(--text-muted); }
+
+  .pd-arrow        { stroke: var(--text); stroke-width: 1.5; fill: none; }
+  .pd-arrow-head   { fill: var(--text); }
+  .pd-arrow-head-dim { fill: var(--text-dim); }
+
+  .pd-gate-circle  { fill: var(--success); }
+  .pd-gate-check   { fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .pd-gate-label   { font-family: var(--font-body); font-size: 10.5px; font-weight: 600; fill: var(--success); }
+
+  .pd-artifact-line  { stroke: var(--border-bright); stroke-width: 1; fill: none; }
+  .pd-artifact-box   { fill: var(--surface2); stroke: var(--border); stroke-width: 1; }
+  .pd-artifact-label { font-family: var(--font-body); font-size: 9px; font-weight: 700; letter-spacing: 1.5px; fill: var(--text-dim); }
+  .pd-artifact-value { font-family: var(--font-mono); font-size: 11.5px; fill: var(--text); }
+
+  .pd-loopback       { stroke: var(--text-dim); stroke-width: 1.2; fill: none; }
+  .pd-loopback-label { font-family: var(--font-body); font-size: 11px; fill: var(--text-dim); font-style: italic; }
 </style>
 </head>
 <body>
@@ -678,7 +813,7 @@
     </div>
     <div class="hero-stats">
       <span>MIT licensed</span>
-      <span>31 skills · 3 review agents</span>
+      <span>32 skills · 3 review agents</span>
       <span>6 AI assistants supported</span>
     </div>
 
@@ -762,7 +897,45 @@
   </div>
 </section>
 
-<div class="divider"></div>
+<!-- === FOUNDATIONS === -->
+<section class="foundations">
+  <div class="container">
+    <div class="foundations-head">
+      <div>
+        <div class="lbl">Foundations</div>
+        <h3>No new methodology. Proven disciplines, enforced on the AI.</h3>
+      </div>
+      <p>MTK industrialises the engineering practices enterprise teams already trust — specification, verification, adversarial review — and makes the harness enforce them, not the reviewer.</p>
+    </div>
+    <div class="foundations-grid">
+      <div class="foundation">
+        <span class="foundation-num">F.01</span>
+        <h4 class="foundation-name">Spec-driven</h4>
+        <p class="foundation-desc">Written intent before code. Scope, files, security, and tests approved up front.</p>
+      </div>
+      <div class="foundation">
+        <span class="foundation-num">F.02</span>
+        <h4 class="foundation-name">Test-driven</h4>
+        <p class="foundation-desc">Failing test first. Green build per batch. No test, no merge path.</p>
+      </div>
+      <div class="foundation">
+        <span class="foundation-num">F.03</span>
+        <h4 class="foundation-name">Peer review</h4>
+        <p class="foundation-desc">Adversarial reviewers in isolated, forked contexts — running in parallel on orthogonal axes. The author never reviews alone.</p>
+      </div>
+      <div class="foundation">
+        <span class="foundation-num">F.04</span>
+        <h4 class="foundation-name">Evidence-based</h4>
+        <p class="foundation-desc">Exit codes, test counts, citations. Completion is a receipt, not a feeling.</p>
+      </div>
+      <div class="foundation">
+        <span class="foundation-num">F.05</span>
+        <h4 class="foundation-name">Deterministic gates</h4>
+        <p class="foundation-desc">Hooks and linters enforce the rules. 100% compliance, not 80%.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- === HOW IT WORKS === -->
 <section class="section" id="how">
@@ -772,6 +945,148 @@
     <p class="lede">
       Every feature flows through four stages. Each stage has its own skills, its own gates, its own adversarial checks. Your AI doesn't get to skip steps — the harness enforces them.
     </p>
+
+    <figure class="pipeline-diagram" aria-labelledby="pipe-title">
+      <figcaption>
+        <span class="pipe-label">Figure 01 · Request → Commit</span>
+        <span class="pipe-meta">4 stages · 4 artifacts · 1 evidence trail</span>
+      </figcaption>
+      <div class="pipeline-svg-wrap">
+        <svg viewBox="0 0 1120 415" role="img" aria-labelledby="pipe-title pipe-desc" preserveAspectRatio="xMidYMid meet">
+          <title id="pipe-title">MTK request-to-commit pipeline</title>
+          <desc id="pipe-desc">Four stages — Spec, Implement, Review, Gate — each producing an auditable artifact. Review findings loop the work back to Implement.</desc>
+
+          <defs>
+            <marker id="pd-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" class="pd-arrow-head"/>
+            </marker>
+            <marker id="pd-arrow-dim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" class="pd-arrow-head-dim"/>
+            </marker>
+          </defs>
+
+          <!-- ENGINEER request -->
+          <g>
+            <rect x="10" y="85" width="130" height="90" rx="8" class="pd-endpoint-box"/>
+            <text x="75" y="112" text-anchor="middle" class="pd-endpoint-label">ENGINEER</text>
+            <text x="75" y="134" text-anchor="middle" class="pd-endpoint-sub">plain-English request</text>
+            <text x="75" y="158" text-anchor="middle" class="pd-endpoint-value">/mtk "add 2FA"</text>
+          </g>
+          <line x1="142" y1="130" x2="158" y2="130" class="pd-arrow" marker-end="url(#pd-arrow)"/>
+
+          <!-- STAGE 01 SPEC -->
+          <g>
+            <rect x="160" y="55" width="180" height="150" rx="8" class="pd-stage-box"/>
+            <rect x="160" y="55" width="4" height="150" class="pd-stage-stripe"/>
+            <text x="180" y="82" class="pd-stage-num">01</text>
+            <text x="180" y="115" class="pd-stage-title">Spec</text>
+            <text x="180" y="140" class="pd-stage-sub">Brainstorm, plan,</text>
+            <text x="180" y="156" class="pd-stage-sub">engineer approves</text>
+            <g transform="translate(180,176)">
+              <circle cx="7" cy="7" r="7" class="pd-gate-circle"/>
+              <path d="M 3.5 7 L 6 9.5 L 10.5 4.5" class="pd-gate-check"/>
+              <text x="20" y="11" class="pd-gate-label">spec approved</text>
+            </g>
+          </g>
+          <line x1="340" y1="130" x2="368" y2="130" class="pd-arrow" marker-end="url(#pd-arrow)"/>
+
+          <!-- STAGE 02 IMPLEMENT -->
+          <g>
+            <rect x="370" y="55" width="180" height="150" rx="8" class="pd-stage-box"/>
+            <rect x="370" y="55" width="4" height="150" class="pd-stage-stripe"/>
+            <text x="390" y="82" class="pd-stage-num">02</text>
+            <text x="390" y="115" class="pd-stage-title">Implement</text>
+            <text x="390" y="140" class="pd-stage-sub">Batched TDD,</text>
+            <text x="390" y="156" class="pd-stage-sub">build + test per batch</text>
+            <g transform="translate(390,176)">
+              <circle cx="7" cy="7" r="7" class="pd-gate-circle"/>
+              <path d="M 3.5 7 L 6 9.5 L 10.5 4.5" class="pd-gate-check"/>
+              <text x="20" y="11" class="pd-gate-label">green build</text>
+            </g>
+          </g>
+          <line x1="550" y1="130" x2="578" y2="130" class="pd-arrow" marker-end="url(#pd-arrow)"/>
+
+          <!-- STAGE 03 REVIEW -->
+          <g>
+            <rect x="580" y="55" width="180" height="150" rx="8" class="pd-stage-box"/>
+            <rect x="580" y="55" width="4" height="150" class="pd-stage-stripe"/>
+            <text x="600" y="82" class="pd-stage-num">03</text>
+            <text x="600" y="115" class="pd-stage-title">Review</text>
+            <text x="600" y="140" class="pd-stage-sub">Linters · compliance ·</text>
+            <text x="600" y="156" class="pd-stage-sub">test · architecture</text>
+            <g transform="translate(600,176)">
+              <circle cx="7" cy="7" r="7" class="pd-gate-circle"/>
+              <path d="M 3.5 7 L 6 9.5 L 10.5 4.5" class="pd-gate-check"/>
+              <text x="20" y="11" class="pd-gate-label">findings = 0</text>
+            </g>
+          </g>
+          <line x1="760" y1="130" x2="788" y2="130" class="pd-arrow" marker-end="url(#pd-arrow)"/>
+
+          <!-- STAGE 04 GATE -->
+          <g>
+            <rect x="790" y="55" width="180" height="150" rx="8" class="pd-stage-box"/>
+            <rect x="790" y="55" width="4" height="150" class="pd-stage-stripe"/>
+            <text x="810" y="82" class="pd-stage-num">04</text>
+            <text x="810" y="115" class="pd-stage-title">Gate</text>
+            <text x="810" y="140" class="pd-stage-sub">Spec-drift check,</text>
+            <text x="810" y="156" class="pd-stage-sub">evidence citation</text>
+            <g transform="translate(810,176)">
+              <circle cx="7" cy="7" r="7" class="pd-gate-circle"/>
+              <path d="M 3.5 7 L 6 9.5 L 10.5 4.5" class="pd-gate-check"/>
+              <text x="20" y="11" class="pd-gate-label">evidence cited</text>
+            </g>
+          </g>
+          <line x1="970" y1="130" x2="998" y2="130" class="pd-arrow" marker-end="url(#pd-arrow)"/>
+
+          <!-- COMMIT -->
+          <g>
+            <rect x="1000" y="85" width="110" height="90" rx="8" class="pd-endpoint-box--success"/>
+            <text x="1055" y="112" text-anchor="middle" class="pd-endpoint-label">COMMIT</text>
+            <text x="1055" y="134" text-anchor="middle" class="pd-endpoint-sub">with receipts</text>
+            <text x="1055" y="158" text-anchor="middle" class="pd-endpoint-done">✓ MERGE-READY</text>
+          </g>
+
+          <!-- artifact drop lines -->
+          <line x1="250" y1="205" x2="250" y2="243" class="pd-artifact-line" stroke-dasharray="3 3"/>
+          <line x1="460" y1="205" x2="460" y2="243" class="pd-artifact-line" stroke-dasharray="3 3"/>
+          <line x1="670" y1="205" x2="670" y2="243" class="pd-artifact-line" stroke-dasharray="3 3"/>
+          <line x1="880" y1="205" x2="880" y2="243" class="pd-artifact-line" stroke-dasharray="3 3"/>
+
+          <!-- artifact boxes -->
+          <g>
+            <rect x="180" y="243" width="140" height="52" rx="6" class="pd-artifact-box"/>
+            <text x="250" y="263" text-anchor="middle" class="pd-artifact-label">ARTIFACT 01</text>
+            <text x="250" y="283" text-anchor="middle" class="pd-artifact-value">spec.json</text>
+          </g>
+          <g>
+            <rect x="390" y="243" width="140" height="52" rx="6" class="pd-artifact-box"/>
+            <text x="460" y="263" text-anchor="middle" class="pd-artifact-label">ARTIFACT 02</text>
+            <text x="460" y="283" text-anchor="middle" class="pd-artifact-value">39/39 tests pass</text>
+          </g>
+          <g>
+            <rect x="600" y="243" width="140" height="52" rx="6" class="pd-artifact-box"/>
+            <text x="670" y="263" text-anchor="middle" class="pd-artifact-label">ARTIFACT 03</text>
+            <text x="670" y="283" text-anchor="middle" class="pd-artifact-value">findings.json</text>
+          </g>
+          <g>
+            <rect x="810" y="243" width="140" height="52" rx="6" class="pd-artifact-box"/>
+            <text x="880" y="263" text-anchor="middle" class="pd-artifact-label">ARTIFACT 04</text>
+            <text x="880" y="283" text-anchor="middle" class="pd-artifact-value">evidence.log</text>
+          </g>
+
+          <!-- loopback: findings → rebatch -->
+          <path d="M 670 295 L 670 370 L 360 370 L 360 130 L 368 130"
+                class="pd-loopback" stroke-dasharray="5 4" marker-end="url(#pd-arrow-dim)"/>
+          <text x="515" y="390" text-anchor="middle" class="pd-loopback-label">if findings open → rebatch stage 02</text>
+        </svg>
+      </div>
+      <div class="pipeline-legend">
+        <span class="lg lg-stage">Pipeline stage</span>
+        <span class="lg lg-gate">Passed gate</span>
+        <span class="lg lg-artifact">Auditable artifact</span>
+        <span class="lg lg-fail">Failure loopback</span>
+      </div>
+    </figure>
 
     <div class="grid grid--2">
       <div class="step">
@@ -957,7 +1272,7 @@
           <tr>
             <td class="td-key">Review pass</td>
             <td>Same model reviews own work</td>
-            <td class="td-good">Isolated context · adversarial persona · tools restricted</td>
+            <td class="td-good">Forked context · adversarial persona · tools restricted · parallel Stage 2 fan-out</td>
           </tr>
           <tr>
             <td class="td-key">Cross-harness</td>
@@ -974,7 +1289,7 @@
 <section class="section section--alt" id="components">
   <div class="container">
     <div class="sec-head"><span class="sec-num">05</span> Components</div>
-    <h2>31 skills. 3 agents. 8 hooks. One discipline.</h2>
+    <h2>32 skills. 3 agents. 8 hooks. One discipline.</h2>
     <p class="lede">MTK is composed of small, pressure-tested pieces that snap together. Invoke one entry point — the rest orchestrate themselves.</p>
 
     <div class="grid grid--2">

@@ -4,6 +4,15 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [6.3.0] - 2026-04-17
 
+### Added (Opus 4.7 modernization)
+- **Parallelism patterns** — new `docs/parallelism-patterns.md` reference documenting parallel reference loading, reviewer fan-out, and deferred-tool batch hydration. `implement`, `fix`, and `context-engineering` skills now explicitly direct parallel loading in their load-context phases.
+- **Parallel Stage 2 review** — `/mtk implement` Phase 4 Stage 2 now spawns `test-reviewer` and `architecture-reviewer` in a single message, halving wall-clock review time.
+- **`fix` self-escalation** — `fix` Scope Guard now self-invokes `/mtk implement` when scope grows beyond 3 files (via escalation marker), instead of stopping silently. Router recognizes `escalated from fix` as a fast-path to `implement`.
+- **Cache-stable prefixes** — new `## Cache-Stable Prefixes` section in `writing-skills` documents invariants-first ordering for prompt caching. The three reviewer agents (`compliance`, `test`, `architecture`) now declare `context: fork` and carry a stable preface comment, for consistent isolation and higher cache hit rate across sessions.
+- **`toolkit-health` skill** — new read-only diagnostic that reads `.claude/analytics.json` and reports session trends, specs/lessons ratios, and anomaly flags with suggested actions. Includes pressure test (`tests/pressure-tests/toolkit-health-pressure.md`) covering corrupt analytics, stale data, empty state, and noise-to-anomaly pressure. Routed via `/mtk health` / `/mtk usage stats`.
+- **Route priority** — `/mtk` router now routes unambiguous inputs silently (no disambiguation question), with a new row for `toolkit-health` and a fast-path row for fix→implement escalations.
+- **Manifest version sync** — `.claude/manifest.json` bumped 6.2.0 → 6.3.0 to match `plugin.json` and `marketplace.json` (fixes pre-existing drift that `validate-toolkit.sh` now catches consistently).
+
 ### Changed (breaking for muscle memory, not for functionality)
 - **Consolidated to two user-invocable entry points:** `/mtk` (natural-language router) and `/mtk-setup` (bootstrap + audit dispatcher). Previous slash commands (`/mtk:implement`, `/mtk:fix`, `/mtk:pre-commit-review`, `/mtk:setup-bootstrap`, `/mtk:setup-audit`) are now workflow skills reached through the `/mtk` router — e.g., `/mtk fix the null check`, `/mtk review before commit`.
 - `setup-bootstrap` and `setup-audit` merged behind the new `/mtk-setup` entry point (`--audit` flag re-runs audit, `--merge` unifies multi-repo audits).

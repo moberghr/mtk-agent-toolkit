@@ -355,6 +355,7 @@ The rule file templates are largely the same as before — adapt the content per
 - Be specific to THIS project — skip technologies not in use.
 - **Don't duplicate** content from `.claude/references/` — point to the file instead.
 - Skip rules files for sections that don't apply.
+- **Cache-stable ordering:** put invariants (Critical Rules, Standards Reference, Tech Stack commands) near the top; volatile state (project profile with versions, monorepo layout) below. This keeps the prompt prefix stable across sessions so prompt caching stays warm. See `.claude/skills/writing-skills/SKILL.md` `## Cache-Stable Prefixes`.
 
 ## STEP 3.5a: Verify Generated References
 

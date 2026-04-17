@@ -1,0 +1,48 @@
+{
+  "slug": "opus-47-toolkit-updates",
+  "date": "2026-04-17",
+  "scope": "new-feature",
+  "version_target": "6.3.0",
+  "change_manifest": [
+    "docs/parallelism-patterns.md",
+    ".claude/skills/implement/SKILL.md",
+    ".claude/skills/fix/SKILL.md",
+    ".claude/skills/context-engineering/SKILL.md",
+    ".claude/skills/mtk/SKILL.md",
+    ".claude/skills/writing-skills/SKILL.md",
+    ".claude/skills/setup-bootstrap/SKILL.md",
+    ".claude/agents/compliance-reviewer.md",
+    ".claude/agents/test-reviewer.md",
+    ".claude/agents/architecture-reviewer.md",
+    ".claude/skills/toolkit-health/SKILL.md",
+    "tests/pressure-tests/toolkit-health-pressure.md",
+    ".claude/manifest.json",
+    "CHANGELOG.md",
+    "README.md"
+  ],
+  "intentionally_dropped": [
+    ".claude/skills/debugging-and-error-recovery/SKILL.md",
+    ".claude/skills/planning-and-task-breakdown/SKILL.md",
+    ".claude/skills/spec-driven-development/SKILL.md",
+    ".claude/skills/incremental-implementation/SKILL.md"
+  ],
+  "intentionally_dropped_reason": "Descriptions already CSO-style and non-overlapping at implementation time. Sharpening would have been cosmetic. Verified by reading each frontmatter during Batch B.",
+  "public_contracts": [
+    "new skill: toolkit-health (read-only diagnostic, invocable via /mtk status or directly)",
+    "shared doc: docs/parallelism-patterns.md referenced by writing-skills and entry skills"
+  ],
+  "security_impact": "none",
+  "out_of_scope": [
+    "removal of Common Rationalizations tables",
+    "softening of hooks/verify-completion keyword matcher",
+    "new analytics schema fields",
+    "deduplication of MTK File Resolution blocks"
+  ],
+  "batches": [
+    { "id": "A", "name": "parallelism-patterns", "files": ["docs/parallelism-patterns.md", ".claude/skills/implement/SKILL.md", ".claude/skills/fix/SKILL.md", ".claude/skills/context-engineering/SKILL.md"] },
+    { "id": "B", "name": "route-and-descriptions", "files": [".claude/skills/mtk/SKILL.md", ".claude/skills/fix/SKILL.md", ".claude/skills/debugging-and-error-recovery/SKILL.md", ".claude/skills/planning-and-task-breakdown/SKILL.md", ".claude/skills/spec-driven-development/SKILL.md", ".claude/skills/incremental-implementation/SKILL.md"] },
+    { "id": "C", "name": "cache-stable-prefix", "files": [".claude/skills/writing-skills/SKILL.md", ".claude/skills/setup-bootstrap/SKILL.md", ".claude/agents/compliance-reviewer.md", ".claude/agents/test-reviewer.md", ".claude/agents/architecture-reviewer.md"] },
+    { "id": "D", "name": "toolkit-health-skill", "files": [".claude/skills/toolkit-health/SKILL.md", "tests/pressure-tests/toolkit-health-pressure.md"] },
+    { "id": "E", "name": "release-bump", "files": [".claude/manifest.json", "CHANGELOG.md"] }
+  ]
+}

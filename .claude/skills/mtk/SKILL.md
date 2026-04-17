@@ -16,7 +16,9 @@ Match the user's input against these patterns. Check from top to bottom; first m
 
 | Pattern (keywords / intent) | Route to | Example inputs |
 |---|---|---|
+| `escalated from fix` (internal marker from fix Scope Guard) | `.claude/skills/implement/SKILL.md` | — internal self-escalation only |
 | `review`, `check`, `commit`, `staged`, `pre-commit`, `before I commit` | `.claude/skills/pre-commit-review/SKILL.md` | "review before commit", "check staged changes" |
+| `health`, `usage`, `stats`, `analytics`, `adoption` | `.claude/skills/toolkit-health/SKILL.md` | "toolkit health", "show usage stats" |
 | `fix`, `bug`, `broken`, `error`, `typo`, `patch`, `wrong`, `failing` | `.claude/skills/fix/SKILL.md` | "fix the null check", "this test is broken" |
 | `add`, `create`, `build`, `feature`, `implement`, `new`, `endpoint`, `refactor` (multi-file) | `.claude/skills/implement/SKILL.md` | "add user auth", "create a payment endpoint" |
 | `status`, `report`, `what's loaded`, `diagnostic`, `context` | `.claude/skills/context-report/SKILL.md` | "what's loaded?", "show toolkit status" |
@@ -26,10 +28,12 @@ Match the user's input against these patterns. Check from top to bottom; first m
 ## Routing Rules
 
 1. **Strip flags first.** If the input starts with `--terse`, `--verbose`, `--staged-only`, `--preview`, `--merge`, `--non-interactive`, pass them through to the target skill.
-2. **Ambiguous → ask.** If input matches two routes equally (e.g., "fix the auth feature" could be fix or implement), ask one clarifying question: "Is this a small fix (1-3 files) or a larger feature?"
-3. **No input → help.** If invoked with no argument, print the help text.
-4. **Pass description through.** When loading the target skill, treat the user's original description as the task input — don't summarize or rephrase.
-5. **Setup requests → redirect.** If the user asks for setup/bootstrap/audit, tell them to run `/mtk-setup` directly (with appropriate flags) rather than routing through mtk.
+2. **Unambiguous → route silently.** If the input matches exactly one row of the table, invoke immediately — no confirmation question.
+3. **Escalation marker → implement.** If the input literally contains `escalated from fix`, route straight to `implement` (produced only by the `fix` Scope Guard).
+4. **Ambiguous → ask, but only if genuinely ambiguous.** If input matches two rows with similar specificity (e.g., "fix the auth feature" — fix verb + feature-sized noun), ask one clarifying question: "Is this a small fix (1-3 files) or a larger feature?" Do not ask for inputs that clearly match one row.
+5. **No input → help.** If invoked with no argument, print the help text.
+6. **Pass description through.** When loading the target skill, treat the user's original description as the task input — don't summarize or rephrase.
+7. **Setup requests → redirect.** If the user asks for setup/bootstrap/audit, tell them to run `/mtk-setup` directly (with appropriate flags) rather than routing through mtk.
 
 ## Help Output
 

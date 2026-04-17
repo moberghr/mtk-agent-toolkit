@@ -879,6 +879,24 @@
       "action": "sync",
       "description": "Diagnostic snapshot of active MTK configuration — tech stack, linter packs, domains, hooks, references"
     },
+    "skills/toolkit-health/SKILL.md": {
+      "source": ".claude/skills/toolkit-health/SKILL.md",
+      "target": ".claude/skills/toolkit-health/SKILL.md",
+      "action": "sync",
+      "description": "Historical usage-pulse report from .claude/analytics.json with anomaly flags and suggested actions"
+    },
+    "tests/pressure-tests/toolkit-health-pressure.md": {
+      "source": "tests/pressure-tests/toolkit-health-pressure.md",
+      "target": "tests/pressure-tests/toolkit-health-pressure.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for toolkit-health (corrupt analytics, stale data, empty state, noise-to-anomaly)"
+    },
+    "docs/parallelism-patterns.md": {
+      "source": "docs/parallelism-patterns.md",
+      "target": "docs/parallelism-patterns.md",
+      "action": "sync",
+      "description": "Reference for parallel tool-call patterns (ref loading, reviewer fan-out, deferred-tool batch) used by entry skills"
+    },
     "scripts/ci-lint.sh": {
       "source": "scripts/ci-lint.sh",
       "target": "scripts/ci-lint.sh",
