@@ -2,8 +2,6 @@
 name: setup-audit
 description: Audit the repo to extract architecture principles, or with --merge unify audits from multiple repos into a single team-wide document
 type: skill
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
-argument-hint: [--merge]
 ---
 
 # MTK Setup Audit — Extract or Unify Architecture Principles
@@ -49,7 +47,7 @@ PYTHON=$(find . -maxdepth 2 -name "pyproject.toml" -o -name "setup.py" -o -name 
 
 If multiple stacks detected, ask the engineer which to audit first. Multi-stack repos may need multiple audits.
 
-If no supported stack detected, stop and tell the engineer to run `/mtk:setup-bootstrap` first or add a tech stack skill.
+If no supported stack detected, stop and tell the engineer to run `/mtk-setup` first or add a tech stack skill.
 
 Then load `.claude/skills/tech-stack-{stack}/SKILL.md`. The `## Scan Recipes` section provides the bash commands for that stack.
 
@@ -296,8 +294,8 @@ Inconsistencies found: [N]
 Next steps:
   1. Review the generated document — edit anything that's wrong
   2. Decide how to resolve any inconsistencies flagged
-  3. Run /mtk:setup-bootstrap to generate the full CLAUDE.md (if not already done)
-  4. To unify with audits from other repos: copy this doc to <hub>/.claude/references/audits/<repo>.md and run /mtk:setup-audit --merge there
+  3. Run /mtk-setup to generate the full CLAUDE.md (if not already done)
+  4. To unify with audits from other repos: copy this doc to <hub>/.claude/references/audits/<repo>.md and run /mtk-setup --merge there
 ```
 
 ---
@@ -325,12 +323,12 @@ Each file is an architecture audit from a different project (e.g., `payfac.md`, 
 
 If the directory is empty or doesn't exist, tell the engineer:
 > "No audit files found. To use --merge:
-> 1. Run `/mtk:setup-audit` (without --merge) in each repo (payfac, collection-system, etc.)
+> 1. Run `/mtk-setup --audit` (without --merge) in each repo (payfac, collection-system, etc.)
 > 2. Copy each generated `.claude/references/architecture-principles.md` into THIS repo at:
 >    `.claude/references/audits/payfac.md`
 >    `.claude/references/audits/collection-system.md`
 >    etc.
-> 3. Run `/mtk:setup-audit --merge` again."
+> 3. Run `/mtk-setup --merge` again."
 
 ## STEP 1: Analyze Across Audits
 

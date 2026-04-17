@@ -31,7 +31,7 @@ Phase 2.5 did not cover the final code. Detect divergence before review.
 
 ### When NOT To Use
 
-- Quick fixes that ran through `/mtk:fix` without a spec
+- Quick fixes that ran through the fix workflow without a spec
 - Typo fixes and config updates
 - Sessions where no spec manifest was ever produced
 

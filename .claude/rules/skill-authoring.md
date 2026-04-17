@@ -15,7 +15,7 @@ paths:
 - **S2.1** Every SKILL.md must have YAML frontmatter with at minimum: `name`, `description`, `type: skill` (or `type: tech-stack` for tech stack skills).
 - **S2.2** Required sections for workflow skills in order: `## Overview`, `## When To Use`, `## Workflow`, `## Verification`. Entry-point skills (with `allowed-tools` frontmatter) are exempt — they use phase-based structure instead.
 - **S2.3** Skill name in frontmatter must match the containing directory name exactly.
-- **S2.4** Entry-point skills (user-invocable via `/mtk:<name>`) include `allowed-tools` and `argument-hint` in frontmatter. Workflow skills are reusable building blocks loaded by entry-point skills.
+- **S2.4** Entry-point skills (user-invocable slash commands, e.g. `/mtk` and `/mtk-setup`) include `allowed-tools` and `argument-hint` in frontmatter. Workflow skills are reusable building blocks loaded by entry-point skills.
 
 ## Tech Stack Skills
 

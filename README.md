@@ -245,15 +245,17 @@ Phase 6: Done
 ### Component Model
 
 ```
-ENTRY POINTS (7 user-invocable skills)
-  └── implement, fix, pre-commit-review, setup-bootstrap, setup-audit, setup-update, mtk
+ENTRY POINTS (2 user-invocable skills)
+  ├── /mtk-setup  (first-time bootstrap + audit)
+  └── /mtk <description>  (natural language router)
 
       ↓ orchestrate
 
-SKILLS (17+ reusable workflow blocks)
-  ├── 17 language-agnostic workflow skills
+WORKFLOW SKILLS (23 reusable blocks)
+  ├── 17 language-agnostic workflow skills (fix, implement, pre-commit-review,
+  │   context-engineering, spec-driven-development, …, setup-bootstrap, setup-audit)
   ├── 3 tech stack skills (.NET, Python, TypeScript)
-  └── 1 enabling skill (using-git-worktrees)
+  └── 3 enabling skills (brainstorming, using-git-worktrees, writing-skills)
 
       ↓ route to
 
@@ -344,7 +346,7 @@ You don't need to remember skill names. Just describe what you want:
 Composes 11 skills across 7 phases. Includes an explicit approval gate at Phase 2.5 where you can approve autonomously, go interactive, edit, or revise.
 
 ```bash
-/mtk:implement Add user notification preferences with email and SMS channels
+/mtk Add user notification preferences with email and SMS channels
 ```
 
 ### fix
@@ -352,7 +354,7 @@ Composes 11 skills across 7 phases. Includes an explicit approval gate at Phase 
 Has a built-in scope guard — if the change grows beyond 3 files, it tells you to switch to `implement`.
 
 ```bash
-/mtk:fix Fix null reference in PaymentProcessor when amount is zero
+/mtk fix null reference in PaymentProcessor when amount is zero
 ```
 
 ### pre-commit-review
@@ -360,14 +362,14 @@ Has a built-in scope guard — if the change grows beyond 3 files, it tells you 
 Two-pass review: deterministic linter scan (secrets, SQL injection, PII in logs, slopwatch) at confidence 100, then AI review for judgment calls. Both feed the same finding schema.
 
 ```bash
-/mtk:pre-commit-review
+/mtk review before commit
 ```
 
 ---
 
 ## Skills
 
-29 skills total: 7 entry-point skills, 17 language-agnostic workflow skills, 3 tech stack skills, 1 enabling skill. Entry-point skills (invoked via `/mtk:<name>`) orchestrate workflow skills.
+28 skills total: 2 entry-point skills, 20 language-agnostic workflow skills, 3 tech stack skills, 3 enabling skills. Entry-point skills (`/mtk-setup` and `/mtk`) orchestrate workflow skills.
 
 ### Workflow Skills
 
@@ -649,7 +651,7 @@ These files are never overwritten by plugin updates:
 ```
 claude-helpers/
 ├── .claude/
-│   ├── skills/                # 29 skills (7 entry-point + 17 workflow + 3 tech stack + 1 enabling)
+│   ├── skills/                # 28 skills (2 entry-point + 20 workflow + 3 tech stack + 3 enabling)
 │   │   ├── mtk/               # unified router entry point
 │   │   ├── implement/         # full feature loop
 │   │   ├── fix/               # lightweight task loop
@@ -775,7 +777,7 @@ Three things: (1) setup-bootstrap generates CLAUDE.md from your actual codebase,
 <details>
 <summary><b>Can I use this alongside other Claude Code plugins?</b></summary>
 
-Yes. The toolkit's permissions and hooks merge with other plugins' settings. The `/mtk:` namespace prevents command conflicts.
+Yes. The toolkit's permissions and hooks merge with other plugins' settings. The `/mtk` and `/mtk-setup` commands use unique names to prevent conflicts.
 </details>
 
 <details>
@@ -808,7 +810,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Create the skill directory, add a SKILL.
 
 | Symptom | Fix |
 |:---|:---|
-| `implement` says "run setup-bootstrap first" | Run `/mtk:setup-bootstrap` |
+| `implement` says "run setup-bootstrap first" | Run `/mtk-setup` |
 | Review agent reports `BLOCKED` | Check `.claude/references/` exists; re-run setup-bootstrap |
 | "Verification gap" fires constantly | Working as intended — cite build/test output in your completion |
 | Toolkit version mismatch | Run `/plugin update mtk@moberghr` |

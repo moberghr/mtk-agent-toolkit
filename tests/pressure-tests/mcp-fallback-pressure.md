@@ -4,7 +4,7 @@ These scenarios test that all skills work correctly when the MCP server is unava
 
 ## Scenario 1: "MCP server not available"
 
-**Setup:** The mtk-context MCP server is not running. Engineer runs /mtk:implement.
+**Setup:** The mtk-context MCP server is not running. Engineer runs /mtk to start an implementation.
 
 **Expected behavior:** The context-engineering skill falls back to manual glob matching. All workflow steps proceed normally. No errors, no degraded quality — just the pre-MCP behavior.
 

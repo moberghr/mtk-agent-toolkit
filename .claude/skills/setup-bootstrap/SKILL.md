@@ -2,8 +2,6 @@
 name: setup-bootstrap
 description: One-time repo setup that detects tech stack, audits the codebase, pulls coding guidelines, and generates a project-specific CLAUDE.md
 type: skill
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
-argument-hint: [--preview] [--non-interactive]
 ---
 
 # MTK Setup Bootstrap — Prepare Repository for AI-Assisted Development
@@ -25,7 +23,7 @@ MTK skills and shared references may be in the project (local install) or the pl
 
 ---
 
-You are setting up a repository for the `/mtk:implement` workflow.
+You are setting up a repository for the `/mtk` workflows.
 Your job is to detect the tech stack, audit the codebase, and generate a tailored `CLAUDE.md` that the implementation and review agents will use as their source of truth.
 
 This bootstrap also prepares the repo for the shared skill layer and OpenCode routing.
@@ -137,9 +135,9 @@ If the fetch fails (network restrictions), check if the file already exists. If 
 Check if `.claude/references/architecture-principles.md` exists.
 
 - **If it exists:** leave it alone — init respects prior architecture decisions.
-- **If it does NOT exist:** auto-generate it from the Step 2 audit findings using the same template as `/mtk:setup-audit` (descriptive audit of actual patterns, with "⚠️ Inconsistency" flags where the codebase disagrees with itself). No prompt — this is the one-time bootstrap.
+- **If it does NOT exist:** auto-generate it from the Step 2 audit findings using the same template as `/mtk-setup --audit` (descriptive audit of actual patterns, with "⚠️ Inconsistency" flags where the codebase disagrees with itself). No prompt — this is the one-time bootstrap.
 
-To refresh the file later as the architecture evolves, the engineer runs `/mtk:setup-audit` explicitly.
+To refresh the file later as the architecture evolves, the engineer runs `/mtk-setup --audit` explicitly.
 
 ## STEP 2: Audit the Codebase
 
@@ -249,9 +247,9 @@ Create `CLAUDE.md` and `.claude/rules/` files following the templates below.
 
 | What you need | Skill | When |
 |---|---|---|
-| Build a feature | `/mtk:implement <description>` | New endpoints, tables, handlers, multi-file work |
-| Quick fix | `/mtk:fix <description>` | Bug fixes, config tweaks, 1-3 file changes |
-| Pre-commit check | `/mtk:pre-commit-review` | Before every commit — fast security-focused review |
+| Build a feature | `/mtk <feature description>` | New endpoints, tables, handlers, multi-file work (routes to implement) |
+| Quick fix | `/mtk fix <description>` | Bug fixes, config tweaks, 1-3 file changes |
+| Pre-commit check | `/mtk review before commit` | Before every commit — fast security-focused review |
 
 **Decision rule:** If unsure, start with `fix`. If the change grows beyond 3 files, switch to `implement`.
 
@@ -510,7 +508,7 @@ HOOK_SOURCE="hooks/git-hooks/pre-commit"
      exec hooks/git-hooks/pre-commit
    ```
 
-The hook runs `hooks/pre-commit-linters.sh --cached` (< 1 second) and blocks on critical findings. Engineers bypass with `git commit --no-verify`. The full AI review (`/mtk:pre-commit-review`) remains a separate, manual step.
+The hook runs `hooks/pre-commit-linters.sh --cached` (< 1 second) and blocks on critical findings. Engineers bypass with `git commit --no-verify`. The full AI review (`/mtk review before commit`) remains a separate, manual step.
 
 ### Skills and Agents
 Ensure the following files exist:
@@ -533,7 +531,7 @@ If any are missing, tell the engineer to re-install the MTK plugin from the mark
 
 ### Reference File Customization
 
-Shared reference files ship as generic, multi-stack guidance with "match existing" placeholders. After confirming they exist, substitute those placeholders with concrete scan findings so that every subsequent `/mtk:implement` and review agent run gets project-specific guidance without re-scanning.
+Shared reference files ship as generic, multi-stack guidance with "match existing" placeholders. After confirming they exist, substitute those placeholders with concrete scan findings so that every subsequent `/mtk` implement and review run gets project-specific guidance without re-scanning.
 
 **When to customize:** Only when the scan found exactly ONE tool in a category (unambiguous evidence).
 **When NOT to customize:** If the scan found multiple tools (e.g., both xUnit and NUnit), or zero matches — leave the generic guidance intact.
@@ -838,13 +836,13 @@ Codebase findings:
   [stack-specific summary based on scan]
 
 Skills available:
-  /mtk:implement         — Full feature loop
-  /mtk:fix               — Quick fix (1-3 files)
-  /mtk:pre-commit-review — Fast security-focused review of staged changes
-  /mtk:setup-audit       — Re-run architecture audit
+  /mtk <feature>         — Full feature loop
+  /mtk fix <description> — Quick fix (1-3 files)
+  /mtk review before commit — Fast security-focused review of staged changes
+  /mtk-setup --audit     — Re-run architecture audit
 
 Next: Try it with:
-  /mtk:implement Add [your feature description here]
+  /mtk Add [your feature description here]
 ```
 
 ## IMPORTANT

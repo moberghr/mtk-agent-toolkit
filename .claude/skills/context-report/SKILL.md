@@ -18,7 +18,7 @@ Diagnostic snapshot of the MTK toolkit's active configuration. Shows what's load
 
 ## When To Use
 
-- After running `/mtk:setup-bootstrap` to verify configuration
+- After running `/mtk-setup` to verify configuration
 - When a review misses something and you want to see what references loaded
 - When onboarding to a new repo to understand the MTK setup
 - When debugging linter false positives or false negatives

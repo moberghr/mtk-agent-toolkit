@@ -2,7 +2,7 @@
 
 > Compatible with: Claude Code, Codex CLI, Cursor, Copilot, Windsurf, and other AI coding tools that read AGENTS.md.
 
-This repository uses **skills** as both user-facing entry points and reusable workflow blocks, and **agents** as specialist reviewers. Entry-point skills (invoked via `/mtk:<name>`) orchestrate workflow skills.
+This repository uses **skills** as both user-facing entry points and reusable workflow blocks, and **agents** as specialist reviewers. There are two user-invocable slash commands — `/mtk-setup` (first-time setup + re-audit) and `/mtk <description>` (router for everything else). Workflow skills are composed by these entry points.
 
 ---
 
@@ -45,14 +45,23 @@ flowchart TD
 
 ## Entry-Point Skills
 
-| Skill | Workflow Composition |
+There are just two user-invocable skills:
+
+| Skill | Purpose |
 |:---|:---|
-| `/mtk:implement` | brainstorm *(optional)* → context → spec *(+ JSON sidecar)* → task breakdown → TDD → source-driven impl → **spec-drift-detection** → two-stage review → simplification |
-| `/mtk:fix` | debugging/error recovery → focused verification |
-| `/mtk:pre-commit-review` | static linter pass *(confidence 100)* → AI review *(confidence-scored)*, merged via `.claude/references/review-finding-schema.md` |
-| `/mtk:setup-bootstrap` | bootstrap project standards, AGENTS.md, and pre-commit review assets |
-| `/mtk:setup-audit` | extract architecture (default) or unify multi-repo audits (`--merge`) |
-| `/mtk:setup-update` | sync non-protected files, merge settings, detect version drift |
+| `/mtk-setup` | First-time setup (bootstrap + audit), `--audit` to re-audit, `--merge` to unify multi-repo audits |
+| `/mtk <description>` | Natural-language router — dispatches to fix / implement / pre-commit-review / context-report workflow skills |
+
+**Routed workflow skills** (not directly invocable; reached via `/mtk <description>`):
+
+| Workflow | Composition |
+|:---|:---|
+| fix | debugging/error recovery → focused verification |
+| implement | brainstorm *(optional)* → context → spec *(+ JSON sidecar)* → task breakdown → TDD → source-driven impl → **spec-drift-detection** → two-stage review → simplification |
+| pre-commit-review | static linter pass *(confidence 100)* → AI review *(confidence-scored)*, merged via `.claude/references/review-finding-schema.md` |
+| context-report | diagnostic snapshot of active MTK configuration |
+
+**Updates:** MTK ships as a Claude Code plugin — use the plugin manager to upgrade. No in-repo update command.
 
 ### Review Output Schema (v5.5+)
 
@@ -108,10 +117,10 @@ The toolkit uses pluggable tech stacks. The active stack is recorded in `.claude
 - Build and test commands
 - ORM and framework patterns
 - Stack-specific reference file paths
-- Scan recipes for `setup-bootstrap` and `setup-audit`
-- Settings to merge during `setup-bootstrap`
+- Scan recipes for `setup-bootstrap` and `setup-audit` (invoked by `/mtk-setup`)
+- Settings to merge during setup
 
-If a repo has no `.claude/tech-stack` file, run `/mtk:setup-bootstrap` first.
+If a repo has no `.claude/tech-stack` file, run `/mtk-setup` first.
 
 ## Reference Loading
 
@@ -131,7 +140,7 @@ Load shared references **progressively** — only what the current phase needs:
 1. Always read `CLAUDE.md` first when present — it is the project-specific source of truth
 2. If an entry-point skill exists for the task, prefer it — it orchestrates the underlying workflow skills
 3. Do not skip planning, testing, review, or verification when the chosen skill requires them
-4. For toolkit structural health (toolkit maintainers only), run `bash scripts/validate-toolkit.sh`. For onboarding a new repo, install the MTK plugin from the marketplace (`/plugin install mtk@moberghr`) then run `/mtk:setup-bootstrap`.
+4. For toolkit structural health (toolkit maintainers only), run `bash scripts/validate-toolkit.sh`. For onboarding a new repo, install the MTK plugin from the marketplace (`/plugin install mtk@moberghr`) then run `/mtk-setup`.
 
 ## Agent Self-Escalation
 

@@ -1,6 +1,6 @@
 {
-  "version": "6.2.0",
-  "updated": "2026-04-16",
+  "version": "6.3.0",
+  "updated": "2026-04-17",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
   "files": {
@@ -789,23 +789,11 @@
       "action": "sync",
       "description": "Adversarial pressure test for analyzer integration (no pre-commit builds, stale output, fabrication)"
     },
-    "skills/setup-update/SKILL.md": {
-      "source": ".claude/skills/setup-update/SKILL.md",
-      "target": ".claude/skills/setup-update/SKILL.md",
-      "action": "sync",
-      "description": "Update a bootstrapped repo to the latest MTK version with protected-file safety"
-    },
     "hooks/merge-settings.sh": {
       "source": "hooks/merge-settings.sh",
       "target": "hooks/merge-settings.sh",
       "action": "sync",
       "description": "Merges two settings.json files by unioning arrays (allowedTools, deny, hooks) without clobbering"
-    },
-    "tests/pressure-tests/update-safety-pressure.md": {
-      "source": "tests/pressure-tests/update-safety-pressure.md",
-      "target": "tests/pressure-tests/update-safety-pressure.md",
-      "action": "sync",
-      "description": "Adversarial pressure test for setup-update (protected files, downgrades, approval gate)"
     },
     "CHANGELOG.md": {
       "source": "CHANGELOG.md",
@@ -877,7 +865,13 @@
       "source": ".claude/skills/mtk/SKILL.md",
       "target": ".claude/skills/mtk/SKILL.md",
       "action": "sync",
-      "description": "Unified entry point — routes natural language to the right MTK skill (fix, implement, review, setup)"
+      "description": "Unified entry point — routes natural language to the right MTK workflow skill (fix, implement, review, status)"
+    },
+    "skills/mtk-setup/SKILL.md": {
+      "source": ".claude/skills/mtk-setup/SKILL.md",
+      "target": ".claude/skills/mtk-setup/SKILL.md",
+      "action": "sync",
+      "description": "Unified setup entry point — dispatches to bootstrap (first-time) or audit (re-scan) workflow skills"
     },
     "skills/context-report/SKILL.md": {
       "source": ".claude/skills/context-report/SKILL.md",

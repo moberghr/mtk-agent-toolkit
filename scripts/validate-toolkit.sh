@@ -52,8 +52,8 @@ done < <(find hooks/ scripts/ -type f \( -name '*.sh' -o -name 'pre-commit' -o -
 # The git pre-commit hook and linter script must agree on supported flags.
 grep -q -- '--cached' hooks/pre-commit-linters.sh || fail "hooks/pre-commit-linters.sh must support --cached for git hooks"
 
-# Update skill must exist
-require_file ".claude/skills/setup-update/SKILL.md"
+# Unified setup entry point must exist
+require_file ".claude/skills/mtk-setup/SKILL.md"
 
 # Changelog must exist
 require_file "CHANGELOG.md"
@@ -112,6 +112,10 @@ for skill in "${manifest_skill_paths[@]+"${manifest_skill_paths[@]}"}"; do
     require_section "$skill" '^## Overview'
     require_section "$skill" '^## When To Use'
     require_section "$skill" '^## Verification'
+  elif grep -qE '^## (Phase [0-9]|STEP [0-9]|Process|Modes|Route Table)' "$skill"; then
+    # Phase-based workflow skills (ex-entry-points dispatched via /mtk router).
+    # They use phase/step headers instead of the standard anatomy. At least one ## section required.
+    require_section "$skill" '^## '
   else
     # Workflow skills require full anatomy.
     require_section "$skill" '^## Overview'
@@ -138,10 +142,13 @@ for skill in "${manifest_skill_paths[@]+"${manifest_skill_paths[@]}"}"; do
   skill_lines="$(wc -l < "$skill")"
   # Tech stack skills are larger — they carry scan recipes and full reference paths.
   # Entry-point skills (with allowed-tools) orchestrate full workflows, so 1000-line budget.
+  # Phase-based workflow skills (ex-entry-points routed via /mtk) also get the 1000-line budget.
   if echo "$skill" | grep -q 'tech-stack-'; then
     [ "$skill_lines" -le 1000 ] || fail "Tech stack skill $skill exceeds 1000-line budget ($skill_lines lines). Split scan recipes or references into companion files."
   elif grep -q '^allowed-tools:' "$skill"; then
     [ "$skill_lines" -le 1000 ] || fail "Entry-point skill $skill exceeds 1000-line budget ($skill_lines lines). Split into core + companion files."
+  elif grep -qE '^## (Phase [0-9]|STEP [0-9]|Process|Modes)' "$skill"; then
+    [ "$skill_lines" -le 1000 ] || fail "Phase-based workflow skill $skill exceeds 1000-line budget ($skill_lines lines). Split into core + companion files."
   else
     [ "$skill_lines" -le 500 ] || fail "Skill $skill exceeds 500-line budget ($skill_lines lines). Split into core + reference files"
   fi

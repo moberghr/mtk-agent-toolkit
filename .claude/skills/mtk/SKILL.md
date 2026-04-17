@@ -8,7 +8,7 @@ argument-hint: <what you want to do>
 
 # MTK — Unified Entry Point
 
-You are a router. Classify the user's intent from their input and invoke the correct MTK skill. Do NOT do the work yourself — delegate to the matched skill by invoking it with the Skill tool.
+You are a router. Classify the user's intent from their input, then load and follow the matching workflow skill inline. Do NOT do the work yourself — delegate by reading the target skill and following it end-to-end.
 
 ## Route Table
 
@@ -16,50 +16,48 @@ Match the user's input against these patterns. Check from top to bottom; first m
 
 | Pattern (keywords / intent) | Route to | Example inputs |
 |---|---|---|
-| `setup`, `bootstrap`, `init`, `initialize`, `first time`, `prepare repo` | `/mtk:setup-bootstrap` | "set up this repo", "initialize MTK", "first time setup" |
-| `update`, `upgrade`, `sync`, `latest version` | `/mtk:setup-update` | "update to latest MTK", "sync toolkit" |
-| `audit`, `architecture`, `principles`, `scan conventions` | `/mtk:setup-audit` | "audit this repo", "extract architecture principles" |
-| `review`, `check`, `commit`, `staged`, `pre-commit`, `before I commit` | `/mtk:pre-commit-review` | "review before commit", "check staged changes" |
-| `fix`, `bug`, `broken`, `error`, `typo`, `patch`, `wrong`, `failing` | `/mtk:fix` | "fix the null check", "this test is broken" |
-| `add`, `create`, `build`, `feature`, `implement`, `new`, `endpoint`, `refactor` (multi-file) | `/mtk:implement` | "add user auth", "create a payment endpoint" |
-| `status`, `report`, `what's loaded`, `diagnostic`, `context` | context-report skill | "what's loaded?", "show toolkit status" |
-| `help`, `commands`, `what can you do` | (print route table below) | "help", "what commands are there?" |
+| `review`, `check`, `commit`, `staged`, `pre-commit`, `before I commit` | `.claude/skills/pre-commit-review/SKILL.md` | "review before commit", "check staged changes" |
+| `fix`, `bug`, `broken`, `error`, `typo`, `patch`, `wrong`, `failing` | `.claude/skills/fix/SKILL.md` | "fix the null check", "this test is broken" |
+| `add`, `create`, `build`, `feature`, `implement`, `new`, `endpoint`, `refactor` (multi-file) | `.claude/skills/implement/SKILL.md` | "add user auth", "create a payment endpoint" |
+| `status`, `report`, `what's loaded`, `diagnostic`, `context` | `.claude/skills/context-report/SKILL.md` | "what's loaded?", "show toolkit status" |
+| `setup`, `bootstrap`, `init`, `initialize`, `first time`, `prepare repo`, `audit`, `architecture`, `principles` | `/mtk-setup` (direct the user) | "set up this repo", "audit this repo" |
+| `help`, `commands`, `what can you do` | (print help below) | "help", "what commands are there?" |
 
 ## Routing Rules
 
-1. **Strip flags first.** If the input starts with `--terse`, `--verbose`, `--staged-only`, `--preview`, `--merge`, `--non-interactive`, or `--source`, pass them through to the routed skill.
-2. **Ambiguous → ask.** If the input genuinely matches two routes (e.g., "fix the auth feature" could be fix or implement), ask one clarifying question: "Is this a small fix (1-3 files) or a larger feature? I'll route to `/mtk:fix` or `/mtk:implement`."
-3. **No input → help.** If invoked with no argument, print the help table.
-4. **Pass the description through.** When routing, pass the user's original description as the argument to the target skill. Don't summarize or rephrase it.
+1. **Strip flags first.** If the input starts with `--terse`, `--verbose`, `--staged-only`, `--preview`, `--merge`, `--non-interactive`, pass them through to the target skill.
+2. **Ambiguous → ask.** If input matches two routes equally (e.g., "fix the auth feature" could be fix or implement), ask one clarifying question: "Is this a small fix (1-3 files) or a larger feature?"
+3. **No input → help.** If invoked with no argument, print the help text.
+4. **Pass description through.** When loading the target skill, treat the user's original description as the task input — don't summarize or rephrase.
+5. **Setup requests → redirect.** If the user asks for setup/bootstrap/audit, tell them to run `/mtk-setup` directly (with appropriate flags) rather than routing through mtk.
 
 ## Help Output
 
 When the user asks for help or provides no input, respond with:
 
 ```
-MTK — available commands:
+MTK — two entry points:
 
-  /mtk set up this repo          → bootstrap (first-time setup)
-  /mtk update to latest          → update toolkit version
-  /mtk audit architecture        → extract architecture principles
-  /mtk review before commit      → pre-commit security review
-  /mtk fix <description>         → small fix (1-3 files)
-  /mtk <feature description>     → full implementation workflow
+  /mtk-setup                     → first-time setup (bootstrap + audit)
+  /mtk-setup --audit             → re-run architecture audit
+  /mtk-setup --merge             → merge multi-repo audits
 
-  Power users: /mtk:fix, /mtk:implement, /mtk:pre-commit-review,
-               /mtk:setup-bootstrap, /mtk:setup-audit, /mtk:setup-update
+  /mtk <description>             → everything else:
+    /mtk review before commit      → pre-commit security review
+    /mtk fix <description>         → small fix (1-3 files)
+    /mtk <feature description>     → full implementation workflow
+    /mtk status                    → show what's loaded
 
-  Diagnostics: /mtk status       → show what's loaded
+Update: MTK is distributed as a Claude Code plugin — use the plugin
+manager to update rather than an in-repo update skill.
 ```
 
 ## Execution
 
-Once you've matched the route, invoke it immediately using the Skill tool:
+Once matched, read the target skill file and follow every step of that workflow. Do not summarize; do not skip verification. The target skill owns its own acceptance criteria.
 
-```
-Skill(skill: "mtk:<matched-skill>", args: "<user's original input>")
-```
+If the route is `/mtk-setup` (setup family), tell the user:
 
-For the context-report workflow skill (not an entry point), read and follow `.claude/skills/context-report/SKILL.md` directly instead of using the Skill tool.
+> "Setup lives at `/mtk-setup` — run that directly. Flags: `--audit` re-audits only, `--merge` unifies multi-repo audits, `--preview` shows planned changes, `--non-interactive` skips interview."
 
-Do not add preamble, explanation, or commentary before routing. Just route.
+Do not add preamble or commentary before routing. Just route.
