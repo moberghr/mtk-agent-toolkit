@@ -914,6 +914,60 @@
       "target": "templates/ci/pr-review.yml",
       "action": "sync",
       "description": "GitHub Actions template — deterministic lint + Claude Code AI review on PRs (requires ANTHROPIC_API_KEY)"
+    },
+    "examples/README.md": {
+      "source": "examples/README.md",
+      "target": "examples/README.md",
+      "action": "sync",
+      "description": "Index of real-world CLAUDE.md templates grouped by tech stack"
+    },
+    "examples/dotnet-akka-cluster-CLAUDE.md": {
+      "source": "examples/dotnet-akka-cluster-CLAUDE.md",
+      "target": "examples/dotnet-akka-cluster-CLAUDE.md",
+      "action": "sync",
+      "description": "CLAUDE.md template for .NET 8 + Akka.NET cluster projects (finance domain example)"
+    },
+    "examples/python-fastapi-CLAUDE.md": {
+      "source": "examples/python-fastapi-CLAUDE.md",
+      "target": "examples/python-fastapi-CLAUDE.md",
+      "action": "sync",
+      "description": "CLAUDE.md template for Python 3.12 + FastAPI + SQLAlchemy 2.0 projects"
+    },
+    "examples/typescript-nextjs-CLAUDE.md": {
+      "source": "examples/typescript-nextjs-CLAUDE.md",
+      "target": "examples/typescript-nextjs-CLAUDE.md",
+      "action": "sync",
+      "description": "CLAUDE.md template for TypeScript + Next.js 15 (App Router) + Prisma + tRPC projects"
+    },
+    "examples/user-level-CLAUDE.md": {
+      "source": "examples/user-level-CLAUDE.md",
+      "target": "examples/user-level-CLAUDE.md",
+      "action": "sync",
+      "description": "Personal overrides template for ~/.claude/CLAUDE.md — layers on top of project rules"
+    },
+    "docs/assets/foundations.png": {
+      "source": "docs/assets/foundations.png",
+      "target": "docs/assets/foundations.png",
+      "action": "sync",
+      "description": "Foundations diagram used in README (Architecture section) and docs/index.html"
+    },
+    "docs/assets/pipeline-diagram.png": {
+      "source": "docs/assets/pipeline-diagram.png",
+      "target": "docs/assets/pipeline-diagram.png",
+      "action": "sync",
+      "description": "Pipeline hero diagram used at top of README and in docs/index.html"
+    },
+    "docs/assets/pipeline-section.png": {
+      "source": "docs/assets/pipeline-section.png",
+      "target": "docs/assets/pipeline-section.png",
+      "action": "sync",
+      "description": "Install-in-one-command screenshot used in docs/index.html"
+    },
+    "docs/assets/mobile-diagram.png": {
+      "source": "docs/assets/mobile-diagram.png",
+      "target": "docs/assets/mobile-diagram.png",
+      "action": "sync",
+      "description": "Mobile-viewport crop of the pipeline diagram used in docs/index.html"
     }
   },
   "protected": [
