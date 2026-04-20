@@ -82,6 +82,10 @@ Write the result to `.claude/tech-stack` (plain text, single word):
 echo "dotnet" > .claude/tech-stack
 ```
 
+> ⚠️ **`.claude/tech-stack` is a FILE, not a directory.** Never include it in a `mkdir -p` list — that will create it as a directory and the `echo > .claude/tech-stack` below will then fail. If you later need to create `.claude/rules/` or other dirs (STEP 4), run that `mkdir -p` separately without `.claude/tech-stack` in the argument list.
+>
+> ⚠️ **Do not chain `mkdir` + `rm -rf` + `echo >` into one shell command.** Conservative permission modes reject any command that contains `rm -rf`, causing the entire chain to abort. Run each step as its own Bash call so a single denied command doesn't take down the bootstrap.
+
 Then load `.claude/skills/tech-stack-{stack}/SKILL.md` — this is the source of truth for build commands, scan recipes, and reference paths used in the rest of init.
 
 ### Tool Prerequisites Check
@@ -471,6 +475,8 @@ Create `.claude/rules/` if it doesn't exist:
 ```bash
 mkdir -p .claude/rules
 ```
+
+> ⚠️ Do NOT add `.claude/tech-stack` to this `mkdir -p` — it is a file, written in STEP 0. Only directories belong here.
 
 ### Settings Merge
 
