@@ -1,6 +1,6 @@
 {
-  "version": "6.3.0",
-  "updated": "2026-04-17",
+  "version": "6.3.1",
+  "updated": "2026-04-20",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
   "files": {
@@ -124,6 +124,12 @@
       "action": "sync",
       "description": "Generic performance checklist — load alongside the active stack's performance supplement"
     },
+    "references/recommended-tooling.md": {
+      "source": ".claude/references/recommended-tooling.md",
+      "target": ".claude/references/recommended-tooling.md",
+      "action": "sync",
+      "description": "Stack-agnostic recommended MCPs, plugins, and editor integrations printed during setup-bootstrap (recommend-only, never auto-installed)"
+    },
     "references/dotnet/coding-guidelines.md": {
       "source": ".claude/references/dotnet/coding-guidelines.md",
       "target": ".claude/references/dotnet/coding-guidelines.md",
@@ -183,6 +189,13 @@
       "stack": "dotnet",
       "description": ".NET-specific performance rules (EF Core, HttpClient, Lambda cold starts)"
     },
+    "references/dotnet/recommended-tooling.md": {
+      "source": ".claude/references/dotnet/recommended-tooling.md",
+      "target": ".claude/references/dotnet/recommended-tooling.md",
+      "action": "sync",
+      "stack": "dotnet",
+      "description": ".NET recommended MCPs, plugins, and editor integrations (csharp-lsp, dotnet-claude-kit, microsoft-learn, JetBrains MCP)"
+    },
     "references/python/coding-guidelines.md": {
       "source": ".claude/references/python/coding-guidelines.md",
       "target": ".claude/references/python/coding-guidelines.md",
@@ -240,6 +253,13 @@
       "action": "sync",
       "stack": "python",
       "description": "Python performance rules (async, connection pooling, GIL, Lambda)"
+    },
+    "references/python/recommended-tooling.md": {
+      "source": ".claude/references/python/recommended-tooling.md",
+      "target": ".claude/references/python/recommended-tooling.md",
+      "action": "sync",
+      "stack": "python",
+      "description": "Python recommended MCPs, plugins, and editor integrations (context7, Pyright/basedpyright, Ruff LSP)"
     },
     "references/typescript/coding-guidelines.md": {
       "source": ".claude/references/typescript/coding-guidelines.md",
@@ -302,6 +322,13 @@
       "action": "sync",
       "stack": "typescript",
       "description": "Bundle size, rendering, SSR, Node I/O, serverless cold-start, and Tauri IPC performance rules"
+    },
+    "references/typescript/recommended-tooling.md": {
+      "source": ".claude/references/typescript/recommended-tooling.md",
+      "target": ".claude/references/typescript/recommended-tooling.md",
+      "action": "sync",
+      "stack": "typescript",
+      "description": "TypeScript recommended MCPs, plugins, and editor integrations (context7, playwright, editor LSPs, frontend-design plugin)"
     },
     "skills/spec-driven-development/SKILL.md": {
       "source": ".claude/skills/spec-driven-development/SKILL.md",

@@ -2,6 +2,13 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.3.1] - 2026-04-20
+
+### Added
+- **Recommended Tooling references** — new `.claude/references/recommended-tooling.md` (stack-agnostic) plus `{dotnet,python,typescript}/recommended-tooling.md`. Curated list of MCP servers (context7, playwright, csharp-lsp, microsoft-learn, github, atlassian, jetbrains, gitnexus), plugins (claude-mem, dotnet-claude-kit, pr-review-toolkit, visual-explainer, frontend-design), and editor integrations (Claude for Chrome, Claude Code IDE extensions, Pyright/Ruff/TS/Biome LSPs) that noticeably boost Claude Code productivity.
+- **`setup-bootstrap` prints recommended tooling** — new "Recommended Tooling" sub-block in STEP 4 prints the shared + stack-specific references verbatim during bootstrap. **Recommend-only** — MTK never auto-installs MCPs or plugins on behalf of the engineer.
+- **Tech-stack skills link to recommended tooling** — `tech-stack-dotnet`, `tech-stack-python`, and `tech-stack-typescript` each gain a `## Recommended Tooling` section pointing at their stack-specific reference.
+
 ## [6.3.0] - 2026-04-17
 
 ### Added (Opus 4.7 modernization)

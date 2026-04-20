@@ -126,6 +126,10 @@ Lint with analyzer capture:
 ruff check --output-format json . | hooks/parse-build-diagnostics.sh --format ruff > .mtk/analyzer-output.json
 ```
 
+## Recommended Tooling
+
+See `.claude/references/python/recommended-tooling.md` for MCP servers, plugins, and editor integrations that noticeably improve Claude Code productivity on Python projects — notably `context7` (current framework docs), Pyright/basedpyright LSP, and Ruff LSP. Paired with the stack-agnostic `.claude/references/recommended-tooling.md`. `setup-bootstrap` prints both during onboarding; install is manual.
+
 ## Reference Files
 
 These files are loaded by commands and review agents when the active stack is `python`:
@@ -135,6 +139,7 @@ These files are loaded by commands and review agents when the active stack is `p
 - `.claude/references/python/fastapi-patterns.md` — FastAPI/Django patterns
 - `.claude/references/python/testing-supplement.md` — pytest patterns, fixtures, mocking
 - `.claude/references/python/performance-supplement.md` — async, connection pooling, profiling
+- `.claude/references/python/recommended-tooling.md` — Recommended MCPs / plugins / editor integrations for Python
 
 ## Settings Additions
 
