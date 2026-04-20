@@ -19,7 +19,13 @@
 
 **[moberghr.github.io/mtk-agent-toolkit](https://moberghr.github.io/mtk-agent-toolkit/)** — the MTK website.
 
-[Quick Start](#-quick-start) · [What It Does](#what-it-does) · [Multi-Agent Support](#-multi-agent-support) · [Examples](#-examples) · [Architecture](#-architecture) · [Skills](#-skills) · [Review Agents](#-review-agents) · [Tech Stacks](#-tech-stacks) · [FAQ](#-faq)
+[Quick Start](#quick-start) · [What's New](#whats-new) · [What It Does](#what-it-does) · [Multi-Agent Support](#multi-agent-support) · [Examples](#examples) · [Architecture](#architecture) · [Skills](#skills) · [Review Agents](#review-agents) · [Tech Stacks](#tech-stacks) · [FAQ](#faq)
+
+<br/>
+
+<a href="https://moberghr.github.io/mtk-agent-toolkit/"><img src="docs/assets/pipeline-diagram.png" alt="MTK pipeline — Spec → Implement → Review → Gate → Merge-ready commit with receipts" width="100%" /></a>
+
+<sub><i>Every feature flows through four gated stages. Each stage emits an auditable artifact. No gate, no merge.</i></sub>
 
 </div>
 
@@ -43,6 +49,25 @@ MTK closes that gap with **workflow enforcement** (planning, TDD, batched implem
 | Security checks happen if you remember to ask | Security-and-hardening skill activates automatically for auth/secrets/audit changes |
 | Review is one prompt: "review this code" | Two-stage pipeline: compliance first, then test + architecture specialists in parallel |
 | Findings are vague: "consider adding tests" | Findings are structured JSON with severity, confidence scores, rule citations, and file:line references |
+
+---
+
+## What's New
+
+### v6.3.0 — Opus 4.7 modernization (2026-04-17)
+- **Parallelism patterns** — reviewer fan-out and reference loading now run in parallel; Stage 2 review halves in wall-clock time
+- **`fix` self-escalation** — `fix` workflow now escalates to `implement` automatically when scope grows beyond 3 files
+- **`toolkit-health` skill** — read-only usage-pulse report from `.claude/analytics.json` routed via `/mtk health`
+- **Cache-stable prefixes** — the 3 reviewer agents declare `context: fork` with stable preface for higher cache hit rate
+- **Consolidated entry points** — two user-invocable skills: `/mtk` (natural-language router) and `/mtk-setup` (bootstrap + audit)
+
+### v6.1.3 — Frontmatter visibility (2026-04-14)
+- User-invocable frontmatter now controls skill visibility; entry-point surface limited to 6
+
+### v6.1.0 — Skills-first architecture (2026-04-13)
+- Commands merged into skills per Claude Code v2.1.101; all entry points live in `.claude/skills/`
+
+See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
 ---
 
@@ -81,6 +106,23 @@ bash .mtk/scripts/generate-tool-configs.sh --all
 ```
 
 The toolkit detects your tech stack (`.sln` = .NET, `pyproject.toml` = Python, `package.json` = TypeScript) and from then on every implementation session runs through planning, TDD, two-stage review, and evidence-gated verification.
+
+### Which command should I use?
+
+Two entry points. Everything else is a workflow routed through `/mtk`.
+
+| I want to... | Run this | Under the hood |
+|:---|:---|:---|
+| Bootstrap a fresh repo | `/mtk-setup` | Detects stack, audits architecture, generates CLAUDE.md |
+| Ship a new feature | `/mtk <description>` | spec → plan → TDD batches → two-stage review → evidence gate |
+| Fix a bug (1–3 files) | `/mtk fix <what's broken>` | Scope-guarded; self-escalates to `implement` if scope grows |
+| Review before committing | `/mtk review before commit` | Deterministic linters + AI judgment in one pass |
+| See what MTK has loaded | `/mtk status` | Active stack, references, hooks, domain packs |
+| Check toolkit usage trends | `/mtk health` | Usage-pulse report from `.claude/analytics.json` |
+| Re-audit architecture | `/mtk-setup --audit` | Refreshes `architecture-principles.md` |
+| Unify multi-repo audits | `/mtk-setup --merge` | Merges per-repo audits into team-wide standard |
+
+For a real-world walkthrough of a `/mtk <feature>` session, see [Examples](#examples). For copy-paste project templates, see [`examples/`](examples/).
 
 ---
 
@@ -231,6 +273,12 @@ Phase 6: Done
 ---
 
 ## Architecture
+
+<p align="center">
+  <img src="docs/assets/foundations.png" alt="MTK foundations — Spec-driven, Test-driven, Peer review, Evidence-based, Deterministic gates" width="100%" />
+</p>
+
+<sub><i>No new methodology. Proven disciplines — specification, verification, adversarial review — made enforceable by the harness itself.</i></sub>
 
 ### Design Principles
 

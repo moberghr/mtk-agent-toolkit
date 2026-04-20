@@ -647,6 +647,34 @@ If NOT found, recommend installation:
 
 If found, note it in the bootstrap output: "dotnet-claude-kit detected — Roslyn MCP tools available for the review pipeline."
 
+### Recommended Tooling (recommend-only, all stacks)
+
+After the stack-specific Companion Plugin block, print a consolidated list of recommended MCP servers, plugins, and editor integrations that noticeably boost Claude Code productivity on this stack. **Never auto-install** — these are pointers with copy-pasteable commands. The engineer decides what to install.
+
+**Procedure:**
+
+1. Read the shared reference: `.claude/references/recommended-tooling.md` (editor-level integrations, cross-stack MCPs like `context7`, `playwright`, `github`, Claude for Chrome, `claude-mem`).
+2. Read the stack-specific reference for the detected stack: `.claude/references/{stack}/recommended-tooling.md`.
+3. Print both — do not summarize aggressively; the install commands and the "why it matters" column are the value. Keep the user in one place.
+4. Output format (paste content under these two headers):
+   ```
+   ━━━ Recommended Tooling — Stack-agnostic ━━━
+   [contents of .claude/references/recommended-tooling.md]
+
+   ━━━ Recommended Tooling — {stack} ━━━
+   [contents of .claude/references/{stack}/recommended-tooling.md]
+   ```
+5. Close the block with: `Install manually when you're ready — MTK works without any of these.`
+
+**Do not:**
+- Run `claude mcp add`, `/plugin install`, or any installer on the engineer's behalf.
+- Ask per-tool install questions. This is a batch recommendation, not a wizard.
+- Suppress the list because "some tools are already installed" — printing it again is cheap and surfaces new recommendations when MTK updates the reference files.
+
+**Skip this block when:**
+- The reference files are missing (warn once, continue).
+- The engineer passed `--non-interactive` AND a follow-up `--quiet-recommendations` flag (not yet defined — for now, always print).
+
 ### Version Stamp
 
 Write the MTK version stamp so `setup-update` can track which version this repo was bootstrapped with:

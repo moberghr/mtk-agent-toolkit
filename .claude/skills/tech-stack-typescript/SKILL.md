@@ -187,6 +187,10 @@ Type check with analyzer capture:
 npx tsc --noEmit 2>&1 | hooks/parse-build-diagnostics.sh --format tsc > .mtk/analyzer-output.json
 ```
 
+## Recommended Tooling
+
+See `.claude/references/typescript/recommended-tooling.md` for MCP servers, plugins, and editor integrations that noticeably improve Claude Code productivity on TypeScript projects — notably `context7` (current framework docs), `playwright` MCP (browser automation for UI verification), and editor-integrated TypeScript / Biome language servers. Paired with the stack-agnostic `.claude/references/recommended-tooling.md`. `setup-bootstrap` prints both during onboarding; install is manual.
+
 ## Reference Files
 
 These files are loaded by commands and review agents when the active stack is `typescript`:
@@ -196,6 +200,7 @@ These files are loaded by commands and review agents when the active stack is `t
 - `.claude/references/typescript/framework-patterns.md` — React / Next.js / Tauri / Node backend patterns
 - `.claude/references/typescript/testing-supplement.md` — Vitest / Jest / Playwright / MSW patterns
 - `.claude/references/typescript/performance-supplement.md` — Bundle size, rendering, caching, Node I/O
+- `.claude/references/typescript/recommended-tooling.md` — Recommended MCPs / plugins / editor integrations for TypeScript
 
 ## Settings Additions
 

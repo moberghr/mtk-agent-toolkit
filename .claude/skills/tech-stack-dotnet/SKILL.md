@@ -124,6 +124,10 @@ If `codewithmukesh/dotnet-claude-kit` is installed, its 15 Roslyn MCP tools are 
 
 **Graceful degradation:** If dotnet-claude-kit is not installed, all MTK skills fall back to build output parsing (`hooks/parse-build-diagnostics.sh`) and AI-based review. The workflow is the same; the deterministic layer is thinner.
 
+## Recommended Tooling
+
+See `.claude/references/dotnet/recommended-tooling.md` for MCP servers, plugins, and editor integrations that noticeably improve Claude Code productivity on .NET projects — notably `csharp-lsp` (Roslyn semantic navigation), `dotnet-claude-kit` (Roslyn analyzer pack), and `microsoft-learn` (official Azure/.NET docs). Paired with the stack-agnostic `.claude/references/recommended-tooling.md`. `setup-bootstrap` prints both during onboarding; install is manual.
+
 ## Reference Files
 
 These files are loaded by commands and review agents when the active stack is `dotnet`:
@@ -133,6 +137,7 @@ These files are loaded by commands and review agents when the active stack is `d
 - `.claude/references/dotnet/mediatr-slice-patterns.md` — MediatR/CQRS slice conventions
 - `.claude/references/dotnet/testing-supplement.md` — .NET-specific testing guidance (EF Core providers)
 - `.claude/references/dotnet/performance-supplement.md` — .NET-specific performance rules
+- `.claude/references/dotnet/recommended-tooling.md` — Recommended MCPs / plugins / editor integrations for .NET
 
 ## Settings Additions
 
