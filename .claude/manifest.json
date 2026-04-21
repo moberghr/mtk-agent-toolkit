@@ -1,6 +1,6 @@
 {
-  "version": "6.3.1",
-  "updated": "2026-04-20",
+  "version": "6.3.2",
+  "updated": "2026-04-21",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
   "files": {
@@ -845,6 +845,12 @@
       "target": "mcp/tsconfig.json",
       "action": "sync",
       "description": "TypeScript config for MCP server compilation"
+    },
+    "mcp/build.mjs": {
+      "source": "mcp/build.mjs",
+      "target": "mcp/build.mjs",
+      "action": "sync",
+      "description": "Cross-platform esbuild runner — invokes esbuild's JS API so the shebang banner passes through cmd.exe, bash, and zsh without shell-quoting pitfalls"
     },
     "mcp/src/index.ts": {
       "source": "mcp/src/index.ts",
