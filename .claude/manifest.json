@@ -1,5 +1,5 @@
 {
-  "version": "6.4.0",
+  "version": "6.5.0",
   "updated": "2026-04-22",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
@@ -1055,6 +1055,66 @@
       "target": "tests/pressure-tests/hooks-skill-invocation-pressure.md",
       "action": "sync",
       "description": "Adversarial pressure test for hooks-as-skill-invocation (false positives, TTL, dedupe, killswitch)"
+    },
+    ".claude/toolsets/read-only.yaml": {
+      "source": ".claude/toolsets/read-only.yaml",
+      "target": ".claude/toolsets/read-only.yaml",
+      "action": "sync",
+      "description": "Read-only toolset — inspection-only tool surface for review, audit, and drift-detection skills (S2.19)"
+    },
+    ".claude/toolsets/git-safe.yaml": {
+      "source": ".claude/toolsets/git-safe.yaml",
+      "target": ".claude/toolsets/git-safe.yaml",
+      "action": "sync",
+      "description": "Git-safe toolset — read-only plus non-destructive staging (no push/reset/branch-delete)"
+    },
+    ".claude/toolsets/code-edit.yaml": {
+      "source": ".claude/toolsets/code-edit.yaml",
+      "target": ".claude/toolsets/code-edit.yaml",
+      "action": "sync",
+      "description": "Standard implementation toolset — read/write/edit code, run build and test commands"
+    },
+    ".claude/toolsets/README.md": {
+      "source": ".claude/toolsets/README.md",
+      "target": ".claude/toolsets/README.md",
+      "action": "sync",
+      "description": "Toolset registry docs — schema, usage in skill frontmatter, and built-in toolset table (S2.19–21)"
+    },
+    "scripts/resolve-toolsets.sh": {
+      "source": "scripts/resolve-toolsets.sh",
+      "target": "scripts/resolve-toolsets.sh",
+      "action": "sync",
+      "description": "Resolves named toolsets into a flat allowed-tools list (bash 3.2 compatible, no jq)"
+    },
+    "scripts/build-triggers-index.sh": {
+      "source": "scripts/build-triggers-index.sh",
+      "target": "scripts/build-triggers-index.sh",
+      "action": "sync",
+      "description": "Scans skill frontmatter `triggers:` and emits .claude/triggers.index (S2.22–24)"
+    },
+    "hooks/lib/trigger-hints.sh": {
+      "source": "hooks/lib/trigger-hints.sh",
+      "target": "hooks/lib/trigger-hints.sh",
+      "action": "sync",
+      "description": "Keyword-triggered skill hint emitter — sourced by userprompt-dispatch.sh (OpenHands microagents pattern)"
+    },
+    ".claude/triggers.index": {
+      "source": ".claude/triggers.index",
+      "target": ".claude/triggers.index",
+      "action": "sync",
+      "description": "Generated keyword → skill index; rebuild via scripts/build-triggers-index.sh"
+    },
+    ".claude/schemas/handoff.schema.json": {
+      "source": ".claude/schemas/handoff.schema.json",
+      "target": ".claude/schemas/handoff.schema.json",
+      "action": "sync",
+      "description": "JSON schema for the typed handoff artifact shared across spec/plan/implement phases (MetaGPT pattern)"
+    },
+    "scripts/validate-handoff.sh": {
+      "source": "scripts/validate-handoff.sh",
+      "target": "scripts/validate-handoff.sh",
+      "action": "sync",
+      "description": "Deterministic file-level and security-impact drift check against a handoff JSON artifact"
     }
   },
   "protected": [

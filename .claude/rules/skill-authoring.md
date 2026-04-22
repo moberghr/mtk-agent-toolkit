@@ -45,3 +45,15 @@ paths:
 
 - **S2.10** Skills should only load references they need for the current phase. Don't front-load all references.
 - **S2.11** Commands that orchestrate multiple skills should specify which references each phase needs.
+
+## Toolset Scoping
+
+- **S2.19** Skills may declare `required-toolsets: [<name>, ...]` and `forbidden-toolsets: [<name>, ...]` in frontmatter. Toolset names resolve against `.claude/toolsets/<name>.yaml`. The `/mtk` router (and any other orchestrator) expands them into `allowed-tools` when dispatching. Explicit `allowed-tools` in the skill, if present, takes precedence over toolset expansion.
+- **S2.20** Every toolset name referenced in frontmatter must exist as `.claude/toolsets/<name>.yaml`. The validator enforces this. Review, audit, and drift-detection skills should declare `required-toolsets: [read-only]` unless they genuinely need to write.
+- **S2.21** `forbidden-toolsets` wins on overlap. If a skill requires `git-safe` and forbids `code-edit`, the merged list stays inside `git-safe` even though `code-edit` extends `git-safe`.
+
+## Keyword Triggers (OpenHands pattern)
+
+- **S2.22** Skills may declare `triggers: [<keyword>, ...]` in frontmatter. On every user prompt, `hooks/lib/trigger-hints.sh` grep-scans the prompt against `.claude/triggers.index` and surfaces `💡 consider skill: <name> (matched: <keyword>)` hints in `additionalContext`. Hints are advisory; they never block.
+- **S2.23** Keywords should be single words or hyphen-joined phrases — grep match is case-insensitive with word-boundary matching. Pick words specific enough that false positives are rare (`oauth` is good; `user` is not).
+- **S2.24** `.claude/triggers.index` is generated from skill frontmatter by `scripts/build-triggers-index.sh`. Rebuild after adding or changing `triggers:` on a skill. The validator asserts the index is in sync.

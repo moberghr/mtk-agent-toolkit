@@ -5,6 +5,7 @@ description: >
   coding-guidelines.md, architecture-principles.md, and existing codebase patterns.
   Adversarial persona — finds problems, doesn't approve easily.
 allowed-tools: Read, Glob, Grep, Bash
+required-toolsets: [read-only]
 model: opus
 effort: high
 context: fork

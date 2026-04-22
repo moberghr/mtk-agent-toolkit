@@ -48,11 +48,25 @@ Convert the approved plan into small, executable tasks that can be verified one 
    - batches with checkboxes
    - post-implementation review items
 7. If a spec file exists in `docs/specs/`, persist the plan alongside it:
-   - Save to `docs/plans/YYYY-MM-DD-<feature-slug>.md` using the same date and slug.
+   - Save the human-readable plan to `docs/plans/YYYY-MM-DD-<feature-slug>.md` using the same date and slug.
    - Create `docs/plans/` if it does not exist.
    - Add `docs/plans/` to `.gitignore` if not already present.
    - This enables session recovery and plan reuse across sessions.
-8. Keep the task list synchronized with reality. If a new file is needed, re-plan before continuing.
+8. **Append the `plan` section to the existing JSON handoff artifact** at
+   `docs/specs/<date>-<slug>.json` (created by spec-driven-development).
+   Schema: `.claude/schemas/handoff.schema.json`. Required keys:
+   ```json
+   "plan": {
+     "batches": [
+       { "id": "B1", "files": ["src/X.cs"], "acceptance": "...",
+         "verification": "...", "boundary": "...", "depends": [],
+         "parallel_safe": false }
+     ]
+   }
+   ```
+   Every `files` entry must already exist in the top-level `change_manifest`.
+   If it does not, re-plan first — don't quietly widen scope here.
+9. Keep the task list synchronized with reality. If a new file is needed, re-plan before continuing.
 
 ## Rules
 

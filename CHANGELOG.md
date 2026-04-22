@@ -2,6 +2,18 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.5.0] - 2026-04-22
+
+### Added (three borrows from the agent-toolkit landscape)
+
+- **Task-class toolset scoping (HolmesGPT pattern)** — new `.claude/toolsets/*.yaml` registry (`read-only`, `git-safe`, `code-edit`) with `extends:` inheritance. Skills and agents may declare `required-toolsets:` / `forbidden-toolsets:` in frontmatter; `/mtk` router expands them into `allowed-tools` on dispatch. `scripts/resolve-toolsets.sh` flattens the DAG (bash 3.2 compatible, no jq). Seeded on `compliance-reviewer`, `architecture-reviewer`, `test-reviewer`, and `spec-drift-detection`. New rules S2.19–21.
+- **Keyword-triggered skill hints (OpenHands microagents pattern)** — skills may declare `triggers: [kw1, kw2]` in frontmatter. `scripts/build-triggers-index.sh` generates `.claude/triggers.index`; `hooks/lib/trigger-hints.sh` (sourced by the existing UserPromptSubmit dispatcher) grep-scans the prompt and surfaces `💡 consider skill: X (matched: kw)` nudges. Seeded on `security-and-hardening`, `debugging-and-error-recovery`, `test-driven-development`. New rules S2.22–24.
+- **Typed handoff artifacts (MetaGPT pattern)** — new `.claude/schemas/handoff.schema.json` codifies the shared spec→plan→implement contract. `spec-driven-development` already emitted the spec sidecar; `planning-and-task-breakdown` and `incremental-implementation` now append typed `plan` and `implement` sections to the same `docs/specs/<date>-<slug>.json`. `scripts/validate-handoff.sh` performs deterministic file-level and security-impact drift detection (no jq, no git hard-dependency). `spec-drift-detection` now prefers this path over judgment-based diffs.
+
+### Changed
+
+- Validator (`scripts/validate-toolkit.sh`) now enforces: every `required-toolsets` / `forbidden-toolsets` reference resolves to a real `.claude/toolsets/*.yaml`, `.claude/triggers.index` is in sync with skill frontmatter, and all new scripts/hooks are present and executable.
+
 ## [6.3.1] - 2026-04-20
 
 ### Added

@@ -10,6 +10,7 @@ trigger: post-implementation|pre-review|spec-approved|ship-gate
 skip_when: no-spec|typo-fix|single-line-change
 user-invocable: false
 effort: high
+required-toolsets: [read-only]
 ---
 
 # Spec-Drift Detection
@@ -53,12 +54,16 @@ Phase 2.5 did not cover the final code. Detect divergence before review.
    - `security_impact` — enum string
 
 3. **Collect actual change data:**
-   - `git diff --name-status HEAD` (or against branch base) for touched files
-   - For each touched source file, grep for added/modified public contracts
-     (controller routes, handler classes, exported functions, etc., per active
-     tech stack)
-   - Security-surface files touched — any path matching auth, payments,
-     audit, secrets, infra (use path-scoped globs when Phase 4 lands)
+   - **Preferred (deterministic):** run
+     `bash scripts/validate-handoff.sh docs/specs/<date>-<slug>.json`
+     to compute file-level and security-impact drift against the
+     manifest. Treat its output as authoritative for those axes.
+   - If the handoff has an `implement.actual_files` array, diff it
+     against `change_manifest[].path` directly — no git invocation needed.
+   - Otherwise, fall back to `git diff --name-status <base>...HEAD`.
+   - For contract-level drift (not covered by the script): grep the diff
+     for added/modified public contracts (controller routes, handler
+     classes, exported functions, etc., per active tech stack).
 
 4. **Compare and emit findings** per
    `.claude/references/review-finding-schema.md`, with `source: "drift"`:

@@ -21,6 +21,11 @@ if [ -f "${SCRIPT_DIR}/lib/prompt-nudges.sh" ]; then
   # shellcheck disable=SC1091
   source "${SCRIPT_DIR}/lib/prompt-nudges.sh"
 fi
+# trigger-hints.sh (S2.22) — keyword-triggered skill hints; optional.
+if [ -f "${SCRIPT_DIR}/lib/trigger-hints.sh" ]; then
+  # shellcheck disable=SC1091
+  source "${SCRIPT_DIR}/lib/trigger-hints.sh"
+fi
 
 # Kill-switch short-circuits the whole dispatcher.
 mtk_queue_enabled || exit 0
@@ -39,6 +44,12 @@ fi
 NUDGES=""
 if declare -F mtk_collect_prompt_nudges >/dev/null 2>&1; then
   NUDGES="$(mtk_collect_prompt_nudges "$PROMPT" 2>/dev/null || printf '')"
+fi
+
+# Collect keyword-triggered skill hints (S2.22).
+TRIGGER_HINTS=""
+if declare -F mtk_collect_trigger_hints >/dev/null 2>&1; then
+  TRIGGER_HINTS="$(mtk_collect_trigger_hints "$PROMPT" 2>/dev/null || printf '')"
 fi
 
 # Drain tier-2 queue.
@@ -102,6 +113,10 @@ fi
 OUTPUT=""
 if [ -n "$NUDGES" ]; then
   OUTPUT="MTK-NUDGE:"$'\n'"${NUDGES}"
+fi
+if [ -n "$TRIGGER_HINTS" ]; then
+  [ -n "$OUTPUT" ] && OUTPUT="${OUTPUT}"$'\n'
+  OUTPUT="${OUTPUT}MTK-TRIGGERS:"$'\n'"${TRIGGER_HINTS}"
 fi
 if [ -n "$DRAIN_LINES" ]; then
   [ -n "$OUTPUT" ] && OUTPUT="${OUTPUT}"$'\n'

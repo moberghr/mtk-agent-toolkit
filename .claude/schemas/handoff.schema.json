@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/moberghr/claude-helpers/schemas/handoff.schema.json",
+  "title": "MTK Handoff Artifact",
+  "description": "Typed handoff artifact between spec-driven-development, planning-and-task-breakdown, incremental-implementation, and spec-drift-detection (MetaGPT-pattern). Lives at docs/specs/<date>-<slug>.json. Each phase appends its section; later sections must reference earlier ones deterministically so drift detection becomes a diff rather than a judgment call.",
+  "type": "object",
+  "required": ["slug", "date", "scope", "change_manifest", "success_criteria", "security_impact"],
+  "properties": {
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "scope": { "enum": ["new-feature", "internal-refactoring", "breaking-change"] },
+    "change_manifest": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "action", "purpose"],
+        "properties": {
+          "path": { "type": "string" },
+          "action": { "enum": ["create", "modify", "delete"] },
+          "purpose": { "type": "string" }
+        }
+      }
+    },
+    "public_contracts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "signature", "change"],
+        "properties": {
+          "kind": { "enum": ["endpoint", "handler", "method", "event", "cli-flag", "schema"] },
+          "signature": { "type": "string" },
+          "change": { "enum": ["new", "modified", "removed"] }
+        }
+      }
+    },
+    "success_criteria": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "description", "verification"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^SC[0-9]+$" },
+          "description": { "type": "string" },
+          "verification": { "type": "string" }
+        }
+      }
+    },
+    "test_manifest": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "covers"],
+        "properties": {
+          "path": { "type": "string" },
+          "covers": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "out_of_scope": { "type": "array", "items": { "type": "string" } },
+    "security_impact": {
+      "enum": ["none", "requires-audit-trail", "new-auth-path", "secrets-change", "pii-exposure", "iam-change"]
+    },
+    "assumptions": { "type": "array", "items": { "type": "string" } },
+    "risks": { "type": "array", "items": { "type": "string" } },
+
+    "plan": {
+      "type": "object",
+      "description": "Appended by planning-and-task-breakdown after spec approval.",
+      "required": ["batches"],
+      "properties": {
+        "batches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "files", "acceptance", "verification"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^B[0-9]+$" },
+              "files": { "type": "array", "items": { "type": "string" } },
+              "acceptance": { "type": "string" },
+              "verification": { "type": "string" },
+              "boundary": { "type": "string" },
+              "depends": { "type": "array", "items": { "type": "string" } },
+              "parallel_safe": { "type": "boolean", "default": false }
+            }
+          }
+        }
+      }
+    },
+
+    "implement": {
+      "type": "object",
+      "description": "Appended by incremental-implementation after all batches complete.",
+      "required": ["actual_files", "completed_batches"],
+      "properties": {
+        "actual_files": {
+          "type": "array",
+          "description": "Output of `git diff --name-only <base>..HEAD` at completion.",
+          "items": { "type": "string" }
+        },
+        "completed_batches": { "type": "array", "items": { "type": "string" } },
+        "deviations": {
+          "type": "array",
+          "description": "Files touched that were NOT in change_manifest, or contracts added that were NOT in public_contracts. Must be populated honestly; spec-drift-detection diffs against this.",
+          "items": {
+            "type": "object",
+            "required": ["kind", "detail", "justification"],
+            "properties": {
+              "kind": { "enum": ["extra-file", "missing-file", "extra-contract", "missing-contract", "scope-creep"] },
+              "detail": { "type": "string" },
+              "justification": { "type": "string" }
+            }
+          }
+        },
+        "behavioral_diff": { "type": "string" }
+      }
+    }
+  }
+}

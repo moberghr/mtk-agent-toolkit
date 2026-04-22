@@ -2,6 +2,7 @@
 name: fix
 description: Use when a change stays within 1-3 files and does not need a formal spec — bug fixes, validation tweaks, small config changes. Self-escalates to implement if scope grows.
 type: skill
+user-invocable: false
 ---
 
 # MTK Fix — Lightweight Task Loop

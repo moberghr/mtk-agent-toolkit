@@ -2,6 +2,7 @@
 name: setup-bootstrap
 description: One-time repo setup that detects tech stack, audits the codebase, pulls coding guidelines, and generates a project-specific CLAUDE.md
 type: skill
+user-invocable: false
 ---
 
 # MTK Setup Bootstrap — Prepare Repository for AI-Assisted Development

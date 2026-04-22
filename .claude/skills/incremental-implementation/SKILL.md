@@ -52,6 +52,24 @@ Implement in thin slices. Each slice must compile, test, and remain explainable 
    - If changes exceed 500 lines without a review, stop and run `compliance-reviewer` before continuing
    - This catches large unplanned changes mid-implementation rather than at the end
 10. After all batches, run the full test command from the tech stack and write an explicit behavioral diff.
+11. **Append the `implement` section to the JSON handoff artifact** at
+    `docs/specs/<date>-<slug>.json`. Schema:
+    `.claude/schemas/handoff.schema.json`. Required keys:
+    ```json
+    "implement": {
+      "actual_files": ["..."],         // git diff --name-only <base>...HEAD
+      "completed_batches": ["B1","B2"],
+      "deviations": [
+        { "kind": "extra-file", "detail": "src/Helper.cs",
+          "justification": "needed to unblock B2; spec did not anticipate" }
+      ],
+      "behavioral_diff": "..."
+    }
+    ```
+    Be honest about deviations — `spec-drift-detection` will diff
+    `change_manifest` against `actual_files` regardless. Run
+    `bash scripts/validate-handoff.sh docs/specs/<date>-<slug>.json` to
+    surface drift before handing off to review.
 
 ## Rules
 

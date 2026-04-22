@@ -62,6 +62,40 @@ grep -q 'MTK_HOOKS_TIER2' hooks/lib/skill-queue.sh || fail "skill-queue.sh missi
 grep -q 'UserPromptSubmit' .claude/settings.json || fail "settings.json missing UserPromptSubmit hook entry for dispatcher"
 grep -q 'MTK_HOOKS_TIER2' .claude/settings.json || fail "settings.json missing MTK_HOOKS_TIER2 env declaration"
 
+# Keyword-triggered skill hints (S2.22–24)
+require_file "scripts/build-triggers-index.sh"
+require_file "hooks/lib/trigger-hints.sh"
+if [ -f ".claude/triggers.index" ]; then
+  # Index must be in sync with skill frontmatter.
+  expected="$(bash scripts/build-triggers-index.sh >/dev/null && grep -v '^#' .claude/triggers.index | sort)"
+  actual="$(grep -v '^#' .claude/triggers.index | sort)"
+  [ "$expected" = "$actual" ] || fail ".claude/triggers.index out of sync — run: bash scripts/build-triggers-index.sh"
+  # Every skill referenced in the index must exist.
+  while IFS=$'\t' read -r _ skill; do
+    [ -n "$skill" ] || continue
+    [ -f ".claude/skills/${skill}/SKILL.md" ] || fail "triggers.index references missing skill: $skill"
+  done < <(grep -v '^#' .claude/triggers.index)
+fi
+
+# Toolset registry (S2.19–21)
+require_file ".claude/toolsets/read-only.yaml"
+require_file ".claude/toolsets/git-safe.yaml"
+require_file ".claude/toolsets/code-edit.yaml"
+require_file "scripts/resolve-toolsets.sh"
+
+# Every toolset referenced in skill/agent frontmatter must resolve.
+while IFS= read -r ref_file; do
+  # Extract toolset names from `required-toolsets: [a, b]` or `forbidden-toolsets: [a, b]`
+  toolset_refs="$(grep -E '^(required|forbidden)-toolsets:' "$ref_file" 2>/dev/null | \
+    sed -E 's/^[a-z-]+:[[:space:]]*\[([^]]*)\].*/\1/' | \
+    tr ',' '\n' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//' || true)"
+  [ -z "$toolset_refs" ] && continue
+  while IFS= read -r ts; do
+    [ -n "$ts" ] || continue
+    [ -f ".claude/toolsets/${ts}.yaml" ] || fail "$ref_file references unknown toolset: $ts (no .claude/toolsets/${ts}.yaml) — violates S2.20"
+  done <<< "$toolset_refs"
+done < <(find .claude/skills .claude/agents -name '*.md' 2>/dev/null)
+
 # Unified setup entry point must exist
 require_file ".claude/skills/mtk-setup/SKILL.md"
 

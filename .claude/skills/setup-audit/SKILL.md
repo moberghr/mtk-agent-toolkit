@@ -2,6 +2,7 @@
 name: setup-audit
 description: Audit the repo to extract architecture principles, or with --merge unify audits from multiple repos into a single team-wide document
 type: skill
+user-invocable: false
 ---
 
 # MTK Setup Audit — Extract or Unify Architecture Principles

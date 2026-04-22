@@ -1,6 +1,6 @@
 # claude-helpers — MTK Standards
 
-> Updated 2026-04-22 for v6.4.0 (two entry points: `/mtk` and `/mtk-setup`; previous slash commands route through `/mtk`; tier-2 skill-invoking hooks layer added).
+> Updated 2026-04-22 for v6.5.0 (adds task-class toolset scoping, keyword-triggered skill hints, and typed handoff artifacts on top of the v6.4.0 tier-2 hooks layer).
 >
 > This file + `.claude/rules/` are the source of truth for AI agents.
 > Detailed standards live in `.claude/rules/`. Reference docs live in `.claude/references/` (shared) and `.claude/references/{stack}/` (stack-specific).

@@ -71,7 +71,10 @@ Write the implementation spec before writing code. The spec is the shared source
 ## Machine-Parseable Manifest (JSON Sidecar)
 
 Every spec is accompanied by a structured manifest at
-`docs/specs/<date>-<slug>.json`. This is the source of truth for drift detection.
+`docs/specs/<date>-<slug>.json`, validated against
+`.claude/schemas/handoff.schema.json`. This is the source of truth for
+drift detection and for the `plan` and `implement` sections appended
+later by downstream skills (MetaGPT typed-handoff pattern).
 
 ```json
 {

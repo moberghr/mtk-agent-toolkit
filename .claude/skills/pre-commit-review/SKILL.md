@@ -2,6 +2,7 @@
 name: pre-commit-review
 description: Fast security-focused review of staged changes before every commit, checking only critical compliance rules
 type: skill
+user-invocable: false
 ---
 
 # Pre-Commit Security Review
