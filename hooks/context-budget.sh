@@ -9,31 +9,27 @@ set -euo pipefail
 #   40+ modifications      → commit a checkpoint
 #   120+ total operations  → consider handoff
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/lib/hook-io.sh"
+
 INPUT=$(cat)
 
-TOOL_NAME=$(echo "$INPUT" | grep -o '"tool_name"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*: *"//;s/"$//' 2>/dev/null || echo "")
+TOOL_NAME=$(mtk_extract_tool_name "$INPUT" 2>/dev/null || echo "")
 [ -z "$TOOL_NAME" ] && exit 0
 
 # Session-scoped state file (per-project, per-day)
-PROJECT_ID=$(pwd | cksum | cut -d' ' -f1)
-SESSION_FILE="${TMPDIR:-/tmp}/mtk-context-budget-${PROJECT_ID}-$(date +%Y%m%d)"
-
-# Initialize if missing
-if [ ! -f "$SESSION_FILE" ]; then
-  printf "reads=0\nfiles=''\nmods=0\nops=0\nwarned_files=0\nwarned_mods=0\nwarned_ops=0\n" > "$SESSION_FILE"
-fi
-
-# Source current counters (files field is single-quoted to protect | separators)
-# shellcheck disable=SC1090
-. "$SESSION_FILE"
+SESSION_FILE="$(mtk_session_file)"
+mtk_load_session_state "$SESSION_FILE"
 
 # Update counters based on tool type
 case "$TOOL_NAME" in
   Read)
+    event_seq=$((event_seq + 1))
     reads=$((reads + 1))
     ops=$((ops + 1))
     # Track unique file paths
-    FILE_PATH=$(echo "$INPUT" | grep -o '"file_path"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*: *"//;s/"$//' 2>/dev/null || echo "")
+    FILE_PATH=$(mtk_extract_file_path "$INPUT" 2>/dev/null || echo "")
     if [ -n "$FILE_PATH" ]; then
       if ! echo "$files" | grep -qF "$FILE_PATH"; then
         files="${files:+$files|}$FILE_PATH"
@@ -41,13 +37,29 @@ case "$TOOL_NAME" in
     fi
     ;;
   Edit|Write)
+    event_seq=$((event_seq + 1))
     mods=$((mods + 1))
     ops=$((ops + 1))
+    last_edit_epoch=$(date +%s)
+    last_edit_seq=$event_seq
     ;;
-  Glob|Grep|Bash)
+  Bash)
+    event_seq=$((event_seq + 1))
+    ops=$((ops + 1))
+    COMMAND=$(mtk_extract_command "$INPUT" 2>/dev/null || echo "")
+    if [ -n "$COMMAND" ] && mtk_command_is_verification "$COMMAND"; then
+      last_verification_epoch=$(date +%s)
+      last_verification_seq=$event_seq
+      last_verification_command=$(mtk_verification_summary_for_command "$COMMAND")
+      last_verification_summary="$last_verification_command"
+    fi
+    ;;
+  Glob|Grep)
+    event_seq=$((event_seq + 1))
     ops=$((ops + 1))
     ;;
   *)
+    event_seq=$((event_seq + 1))
     ops=$((ops + 1))
     ;;
 esac
@@ -58,16 +70,7 @@ if [ -n "$files" ]; then
   unique_files=$(echo "$files" | tr '|' '\n' | wc -l | tr -d ' ')
 fi
 
-# Save state (single-quote the files field to protect | separators)
-cat > "$SESSION_FILE" <<EOF
-reads=$reads
-files='$files'
-mods=$mods
-ops=$ops
-warned_files=$warned_files
-warned_mods=$warned_mods
-warned_ops=$warned_ops
-EOF
+mtk_save_session_state "$SESSION_FILE"
 
 # Check thresholds (warn once per threshold)
 if [ "$unique_files" -ge 30 ] && [ "$warned_files" -eq 0 ]; then

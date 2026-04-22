@@ -30,7 +30,8 @@ say so — a zero-finding pass with a clear rationale is better than manufacture
 Your output MUST follow `.claude/references/review-finding-schema.md`:
 
 1. A markdown table of surfaced findings (findings with `confidence >= threshold`)
-2. A fenced ```json block containing the full structured result (verdict, summary, findings, rationale)
+2. A fenced ```json block containing the full structured result (verdict,
+   summary, findings, optional top-level context fields, rationale)
 
 Read `.claude/review-config.json` to determine the threshold (default 80). If
 `.claude/review-config.local.json` exists, it overrides. Apply the **confidence

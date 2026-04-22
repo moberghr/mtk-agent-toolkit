@@ -78,7 +78,9 @@ check engineers should run before every commit.
 Emit the schema-conformant output per `.claude/references/review-finding-schema.md`:
 
 1. **Markdown table** of surfaced findings (rows where `confidence >= threshold`).
-2. **Fenced JSON block** with the full structured result.
+2. **Fenced JSON block** with the full structured result. If you need extra
+   context fields, stay within the canonical review envelope defined in
+   `.claude/references/review-finding-schema.md`.
 
 Read `.claude/review-config.json` for the threshold (default 80; `.claude/review-config.local.json` overrides if present). Apply the **confidence rubric** and the **anti-inflation rule**.
 

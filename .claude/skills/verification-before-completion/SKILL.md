@@ -54,13 +54,20 @@ No completion claim is valid without fresh evidence from an actual command execu
    - test pass/fail counts
 4. Confirm the output supports the specific claim being made.
 5. Only then state the result, citing the evidence.
+6. Re-check freshness against the latest edit. MTK's hook state tracks the most
+   recent file edit and the latest verification command in the session; a
+   completion claim is stale when the verification event happened before the
+   latest code-change event, even if both landed in the same wall-clock second.
 
 ## Rules
 
 - Every completion claim must cite a specific command and its output.
 - Partial verification is not verification. Run the full command.
 - Cached results from earlier in the session do not count as fresh evidence.
-- Evidence is stale if the cited command output predates the most recent file write to any file in the change set. Compare timestamps — the verification command must have run AFTER the last edit. Gut feel is not a timestamp.
+- Evidence is stale if the latest verification event in session state predates
+  the most recent file-write event to any file in the change set. MTK records
+  both timestamps and event order in the hook session file; completion claims
+  must use verification that happened after the last edit.
 - If the verification fails, the task is not complete. Do not report it as complete with caveats.
 - Re-verify after any fix-up, even a trivial one.
 
@@ -81,6 +88,10 @@ See `.claude/skills/context-engineering/SKILL.md` — the shared MTK rationaliza
 This skill is enforced via hooks in `settings.json`:
 
 - **Stop hook:** When the agent finishes responding, a prompt hook checks whether completion claims cite specific command output. If not, the agent is reminded to run verification and cite evidence.
+- **Freshness check:** `hooks/context-budget.sh` records the latest edit time and
+  the latest verification command run in the session. `hooks/verify-completion`
+  compares those timestamps and warns with `VERIFICATION GAP:` when the evidence
+  is stale or missing.
 
 The Stop hook is the enforcement mechanism. The skill documentation above is the contract; the hook is the guardrail.
 

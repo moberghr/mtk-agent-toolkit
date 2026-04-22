@@ -696,6 +696,12 @@
       "action": "sync",
       "description": "PostToolUse hook that tracks session activity and warns when context budget is getting heavy"
     },
+    "hooks/lib/hook-io.sh": {
+      "source": "hooks/lib/hook-io.sh",
+      "target": "hooks/lib/hook-io.sh",
+      "action": "sync",
+      "description": "Shared hook helpers for parsing Claude Code payloads and persisting session-scoped state"
+    },
     "hooks/capture-learnings.sh": {
       "source": "hooks/capture-learnings.sh",
       "target": "hooks/capture-learnings.sh",
