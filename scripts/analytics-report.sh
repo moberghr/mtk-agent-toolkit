@@ -33,9 +33,11 @@ bench_score=$(read_str "benchmark_last_score")
 # Calculate averages
 avg_ops=0
 avg_mods=0
+scope_warn_rate="n/a"
 if [ "$sessions" -gt 0 ]; then
   avg_ops=$((total_ops / sessions))
   avg_mods=$((total_mods / sessions))
+  scope_warn_rate=$(awk "BEGIN { printf \"%.2f\", $scope_warns / $sessions }")
 fi
 
 printf '
@@ -53,11 +55,12 @@ printf '
 │ Specs created:        %-18s│
 │ Lessons captured:     %-18s│
 │ Scope guard warnings: %-18s│
+│ Scope warn/session:   %-18s│
 ├─────────────────────────────────────────┤
 │ Benchmarks run:       %-18s│
 │ Last benchmark score: %-18s│
 └─────────────────────────────────────────┘
 ' "$first" "$last" "$sessions" \
   "$total_ops" "$total_mods" "$avg_ops" "$avg_mods" \
-  "$specs" "$lessons" "$scope_warns" \
+  "$specs" "$lessons" "$scope_warns" "$scope_warn_rate" \
   "$benchmarks" "${bench_score:-n/a}"

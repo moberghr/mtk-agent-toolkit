@@ -91,6 +91,7 @@ done <<< "$ALLOWED_FILES"
 
 if [ "$MATCHED" -eq 0 ]; then
   SPEC_NAME=$(basename "$SPEC_JSON" .json)
+  mtk_record_scope_guard_warning
   echo "SCOPE GUARD: ${REL_PATH} is not in the approved spec (${SPEC_NAME}). If this change is necessary, update the spec's change_manifest first. Undeclared file modifications are the #1 source of spec drift."
 fi
 

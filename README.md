@@ -6,7 +6,7 @@
 
 **A multi-agent toolkit that enforces your team's coding standards, security policies, and review discipline on every AI-generated line of code. Language-agnostic workflows with pluggable tech stacks for .NET, Python, and TypeScript.**
 
-[![Version](https://img.shields.io/badge/version-6.3.0-blue.svg)](https://github.com/moberghr/mtk-agent-toolkit/releases)
+[![Version](https://img.shields.io/badge/version-6.3.2-blue.svg)](https://github.com/moberghr/mtk-agent-toolkit/releases)
 [![Website](https://img.shields.io/badge/website-moberghr.github.io-6d28d9.svg)](https://moberghr.github.io/mtk-agent-toolkit/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-supported-purple.svg)](https://claude.ai/code)
 [![Cursor](https://img.shields.io/badge/Cursor-supported-blue.svg)](https://cursor.sh)
@@ -53,6 +53,11 @@ MTK closes that gap with **workflow enforcement** (planning, TDD, batched implem
 ---
 
 ## What's New
+
+### v6.3.2 — Verification hardening and hook parsing cleanup (2026-04-22)
+- **Fresh verification enforcement** — completion claims now require a verification command that ran after the most recent edit; same-second edits no longer slip through stale-evidence checks
+- **Structured hook payload parsing** — security gate, scope guard, and context budget now understand both flat and nested `tool_input` hook payloads
+- **Benchmark coverage expanded** — deterministic benchmarks now exercise nested payload parsing and stale-evidence scenarios directly
 
 ### v6.3.0 — Opus 4.7 modernization (2026-04-17)
 - **Parallelism patterns** — reviewer fan-out and reference loading now run in parallel; Stage 2 review halves in wall-clock time
@@ -105,7 +110,7 @@ bash .mtk/scripts/generate-tool-configs.sh --all
 # 3. Follow AGENTS.md for routing to the right skills
 ```
 
-The toolkit detects your tech stack (`.sln` = .NET, `pyproject.toml` = Python, `package.json` = TypeScript) and from then on every implementation session runs through planning, TDD, two-stage review, and evidence-gated verification.
+The toolkit detects your tech stack (`.sln` = .NET, `pyproject.toml` = Python, `package.json` = TypeScript). In Claude Code, that unlocks the full workflow: planning, TDD, two-stage review, hook-enforced verification, and session recovery. In other tools, MTK exports the same standards and routing guidance, but hook enforcement remains Claude Code-specific.
 
 ### Which command should I use?
 
@@ -128,17 +133,17 @@ For a real-world walkthrough of a `/mtk <feature>` session, see [Examples](#exam
 
 ## Multi-Agent Support
 
-MTK is not a Claude Code-only plugin. The workflows and standards work with any AI coding assistant that can read markdown files.
+MTK is not Claude Code-only, but the experience is not identical across tools. Claude Code gets the full runtime. Other tools get exported standards, routing guidance, and native config files.
 
 | Tool | Integration method | What you get |
 |:---|:---|:---|
 | **Claude Code** | Plugin marketplace install | Full `/mtk` skill routing, hooks, session recovery |
-| **Cursor** | `.cursor/rules/mtk-*.mdc` (glob-scoped) | Coding guidelines, security rules, test patterns — loaded per file type |
-| **GitHub Copilot** | `.github/copilot-instructions.md` | All reference content in Copilot's native format |
-| **Windsurf** | `.windsurfrules` | Full reference content |
-| **Gemini CLI / AI Studio** | `GEMINI.md` | Full reference content |
-| **Cline / Roo** | `.clinerules` | Full reference content |
-| **Any AGENTS.md-compatible tool** | `AGENTS.md` routing rules | Skill routing decision tree for the active task type |
+| **Cursor** | `.cursor/rules/mtk-*.mdc` (glob-scoped) | Exported standards and path-scoped guidance; no MTK hook runtime |
+| **GitHub Copilot** | `.github/copilot-instructions.md` | Exported standards in Copilot format; no `/mtk` command surface |
+| **Windsurf** | `.windsurfrules` | Exported standards; no Claude-style hook enforcement |
+| **Gemini CLI / AI Studio** | `GEMINI.md` | Exported standards and routing guidance |
+| **Cline / Roo** | `.clinerules` | Exported standards and routing guidance |
+| **Any AGENTS.md-compatible tool** | `AGENTS.md` routing rules | Task routing and workflow guidance; runtime enforcement depends on the host tool |
 
 Generate all native configs in one command:
 
@@ -187,7 +192,7 @@ When the compliance-reviewer runs, it outputs structured findings — not vague 
 }
 ```
 
-Every finding has a `confidence` score (50-100), a `source` (`ai`, `linter`, or `drift`), and a citation to the specific rule violated. Findings below the confidence threshold (default 80) are filtered out — no noise.
+Every finding has a `confidence` score (50-100), a `source` (`ai`, `linter`, `drift`, or `analyzer`), and a citation to the specific rule violated. Findings below the confidence threshold (default 80) are filtered out — no noise.
 
 ### What the deterministic linter catches
 
@@ -600,7 +605,7 @@ Seven benchmark suites, 21+ assertions:
 | **linter/known-good** | Linter does NOT fire on clean code (false-positive check) |
 | **security-gate** | Blocks `DROP TABLE`, `rm -rf .`, force push to main; allows normal commands |
 | **scope-guard** | Warns on out-of-spec edits; silent for allowed files and meta-files |
-| **verify-completion** | Rejects evidence-less "done" claims; accepts claims with build output |
+| **verify-completion** | Rejects evidence-less or stale "done" claims; requires fresh verification after the latest edit |
 | **prerequisites** | Reports missing recommended tools (shellcheck, jq, stack toolchain) |
 | **validate-toolkit** | Structural integrity: manifest, frontmatter, skill anatomy, file paths |
 
@@ -610,7 +615,7 @@ The benchmarks run against fixture diffs (`benchmarks/fixtures/`) so results are
 
 ## Analytics
 
-MTK tracks your usage across sessions in `.claude/analytics.json` (gitignored). Run the report at any time:
+MTK tracks your usage across sessions in `.claude/analytics.json` (gitignored in bootstrapped repos). Run the report at any time:
 
 ```bash
 bash scripts/analytics-report.sh
@@ -637,7 +642,7 @@ bash scripts/analytics-report.sh
 └─────────────────────────────────────────┘
 ```
 
-Useful for understanding how much scope drift you're generating, how many corrections are being captured, and whether the toolkit is being used consistently.
+Useful for understanding how much scope drift you're generating, whether the toolkit is being used consistently, and whether behavioral checks have been run recently. Treat it as an operational pulse, not a hard productivity score.
 
 ---
 
@@ -791,7 +796,7 @@ claude-helpers/
 |:---|:---|:---|
 | **Just CLAUDE.md** | Advisory rules, ~80% adherence | No enforcement, no workflow, no review |
 | **CLAUDE.md + rules/** | Scoped rules, better adherence | No structured review, no evidence gates, no spec tracking |
-| **MTK** | Workflow enforcement, adversarial review, deterministic linters, evidence gates, spec-drift detection, scope guard, session analytics, multi-tool native configs | Requires Claude Code for full skill routing; reference docs work everywhere |
+| **MTK** | Workflow enforcement, adversarial review, deterministic linters, evidence gates, spec-drift detection, scope guard, session analytics, multi-tool native configs | Requires Claude Code for full runtime enforcement; other tools get exported standards and routing guidance |
 | **CodeRabbit / SaaS review** | Mature review with 40+ linters | External service, monthly cost, no workflow enforcement, no spec tracking |
 
 MTK is not a replacement for human review. It's a first pass that catches the mechanical stuff — so your human reviewers can focus on design, product, and things the AI can't judge.
@@ -803,9 +808,9 @@ MTK is not a replacement for human review. It's a first pass that catches the me
 <details>
 <summary><b>Do I need Claude Code to use this?</b></summary>
 
-No. The reference documents, AGENTS.md routing rules, and linter scripts work with any AI coding tool. Use `bash scripts/generate-tool-configs.sh --all` to generate native config files for Cursor (`.cursor/rules/*.mdc`), Copilot (`.github/copilot-instructions.md`), Windsurf (`.windsurfrules`), Gemini (`GEMINI.md`), and Cline (`.clinerules`).
+No. The reference documents, AGENTS.md routing rules, and generated tool configs work with any AI coding tool. Use `bash scripts/generate-tool-configs.sh --all` to generate native config files for Cursor (`.cursor/rules/*.mdc`), Copilot (`.github/copilot-instructions.md`), Windsurf (`.windsurfrules`), Gemini (`GEMINI.md`), and Cline (`.clinerules`).
 
-Claude Code unlocks the full `/mtk` and `/mtk-setup` routing and automatic hook enforcement. Other tools get the same reference content delivered in their native format.
+Claude Code unlocks the full `/mtk` and `/mtk-setup` routing, session recovery, and automatic hook enforcement. Other tools get the same standards content and routing guidance, but not identical runtime behavior.
 </details>
 
 <details>
@@ -870,7 +875,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Create the skill directory, add a SKILL.
 |:---|:---|
 | `implement` says "run setup-bootstrap first" | Run `/mtk-setup` |
 | Review agent reports `BLOCKED` | Check `.claude/references/` exists; re-run setup-bootstrap |
-| "Verification gap" fires constantly | Working as intended — cite build/test output in your completion |
+| "Verification gap" fires constantly | Run verification after your latest edit, then cite that command output in your completion |
 | Toolkit version mismatch | Run `/plugin update mtk@moberghr` |
 | Skills not loading after update | Run `/plugin update mtk@moberghr` then restart session |
 | Scope guard fires on every edit | Check `docs/specs/*.json` — you have an active spec; update its `change_manifest` or remove it |
@@ -910,7 +915,7 @@ MIT. See [LICENSE](LICENSE).
 
 <div align="center">
 
-**MTK — Moberg Toolkit** v6.3.0 · [Moberg d.o.o.](https://www.moberg.hr)
+**MTK — Moberg Toolkit** v6.3.2 · [Moberg d.o.o.](https://www.moberg.hr)
 
 Built for teams that ship production code, not prototypes.
 

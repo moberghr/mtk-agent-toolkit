@@ -82,6 +82,9 @@ ops=0
 warned_files=0
 warned_mods=0
 warned_ops=0
+scope_guard_warnings=0
+benchmarks_run=0
+benchmark_last_score=''
 event_seq=0
 last_edit_epoch=0
 last_edit_seq=0
@@ -97,6 +100,24 @@ mtk_load_session_state() {
   mtk_init_session_state "$session_file"
   # shellcheck disable=SC1090
   . "$session_file"
+
+  reads=${reads:-0}
+  files=${files:-}
+  mods=${mods:-0}
+  ops=${ops:-0}
+  warned_files=${warned_files:-0}
+  warned_mods=${warned_mods:-0}
+  warned_ops=${warned_ops:-0}
+  scope_guard_warnings=${scope_guard_warnings:-0}
+  benchmarks_run=${benchmarks_run:-0}
+  benchmark_last_score=${benchmark_last_score:-}
+  event_seq=${event_seq:-0}
+  last_edit_epoch=${last_edit_epoch:-0}
+  last_edit_seq=${last_edit_seq:-0}
+  last_verification_epoch=${last_verification_epoch:-0}
+  last_verification_seq=${last_verification_seq:-0}
+  last_verification_command=${last_verification_command:-}
+  last_verification_summary=${last_verification_summary:-}
 }
 
 mtk_save_session_state() {
@@ -110,6 +131,9 @@ ops=$ops
 warned_files=$warned_files
 warned_mods=$warned_mods
 warned_ops=$warned_ops
+scope_guard_warnings=${scope_guard_warnings:-0}
+benchmarks_run=${benchmarks_run:-0}
+benchmark_last_score='${benchmark_last_score:-}'
 event_seq=${event_seq:-0}
 last_edit_epoch=${last_edit_epoch:-0}
 last_edit_seq=${last_edit_seq:-0}
@@ -144,4 +168,22 @@ mtk_verification_summary_for_command() {
   local command
   command=$(mtk_trim_whitespace "$1")
   printf '%s\n' "$command"
+}
+
+mtk_record_scope_guard_warning() {
+  local session_file
+  session_file="$(mtk_session_file)"
+  mtk_load_session_state "$session_file"
+  scope_guard_warnings=$((scope_guard_warnings + 1))
+  mtk_save_session_state "$session_file"
+}
+
+mtk_record_benchmark_run() {
+  local score="$1"
+  local session_file
+  session_file="$(mtk_session_file)"
+  mtk_load_session_state "$session_file"
+  benchmarks_run=$((benchmarks_run + 1))
+  benchmark_last_score="$score"
+  mtk_save_session_state "$session_file"
 }

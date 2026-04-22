@@ -575,7 +575,7 @@ Shared reference files ship as generic, multi-stack guidance with "match existin
    ```markdown
    <!-- Customized by setup-bootstrap on [date]. Detected: [list of substituted values]. -->
    ```
-   This makes it obvious which files were patched and allows `setup-update` to re-customize if the reference template changes upstream.
+    This makes it obvious which files were patched and allows future bootstrap/audit passes to re-customize if the reference template changes upstream.
 
 **Rule:** Only narrow when the evidence is unambiguous (single tool, zero alternatives detected). Never remove sections about tools the project doesn't use YET — only remove sections about tools from a different category (e.g., remove TanStack Query guidance from a project with no React). The goal is to prevent shared references from contradicting the repo-specific `.claude/rules/` files while keeping useful guidance for future adoption.
 
@@ -683,7 +683,7 @@ After the stack-specific Companion Plugin block, print a consolidated list of re
 
 ### Version Stamp
 
-Write the MTK version stamp so `setup-update` can track which version this repo was bootstrapped with:
+Write the MTK version stamp so the installed toolkit version is visible in the repo and session-start can detect plugin drift:
 
 ```bash
 echo '{"version":"VERSION","installed":"DATE","source":"https://github.com/moberghr/claude-helpers"}' > .claude/mtk-version.json

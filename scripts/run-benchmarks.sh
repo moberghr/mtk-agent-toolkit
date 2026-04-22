@@ -11,6 +11,9 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
+# shellcheck disable=SC1091
+source hooks/lib/hook-io.sh
+
 VERBOSE=0
 [ "${1:-}" = "--verbose" ] && VERBOSE=1
 
@@ -325,5 +328,7 @@ else
   printf 'BENCHMARKS: %d passed, %d FAILED (of %d)\n' "$PASS" "$FAIL" "$TOTAL"
 fi
 printf '══════════════════════════════════════\n'
+
+mtk_record_benchmark_run "${PASS}/${TOTAL}"
 
 exit "$FAIL"
