@@ -228,6 +228,18 @@ assert_exit "blocks nested DROP TABLE payload (exit 2)" "$NESTED_DROP_EXIT" 2
 PARSE_FAIL_EXIT=$(gate_exit '{"tool_name":"Bash","tool_input":{}}')
 assert_exit "blocks unparseable Bash payload (exit 2)" "$PARSE_FAIL_EXIT" 2
 
+# Destructive command hidden behind JSON-escaped quotes — previous regex parser
+# truncated at the first \" and let this slip past.
+ESCAPED_DROP_EXIT=$(gate_exit '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"msg\" && psql -c DROP TABLE users"}}')
+assert_exit "blocks DROP TABLE after escaped quotes (exit 2)" "$ESCAPED_DROP_EXIT" 2
+
+ESCAPED_RMRF_EXIT=$(gate_exit '{"tool_name":"Bash","tool_input":{"command":"echo \"hi\" && rm -rf /"}}')
+assert_exit "blocks rm -rf / after escaped quotes (exit 2)" "$ESCAPED_RMRF_EXIT" 2
+
+# Benign command with escaped quotes must still be allowed (no over-blocking)
+ESCAPED_ECHO_EXIT=$(gate_exit '{"tool_name":"Bash","tool_input":{"command":"echo \"hello world\""}}')
+assert_exit "allows benign echo with escaped quotes (exit 0)" "$ESCAPED_ECHO_EXIT" 0
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # BENCHMARK 4: Scope Guard — detects out-of-scope edits
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -277,24 +289,43 @@ SESSION_FILE="$(mtk_session_file)"
 rm -f "$SESSION_FILE"
 
 # Claim without evidence should warn
-NO_EV_OUT=$(bash hooks/verify-completion "The feature is done and complete." 2>&1 || true)
+NO_EV_OUT=$(bash hooks/verify-completion "All done. Task complete." 2>&1 || true)
 assert_match "rejects evidence-less done claim" "$NO_EV_OUT" "VERIFICATION GAP"
 
 # Fresh verification command recorded in session state should satisfy the hook
 printf '{"tool_name":"Bash","tool_input":{"command":"bash scripts/validate-toolkit.sh"}}' | bash hooks/context-budget.sh >/dev/null 2>&1 || true
 
 # Claim with evidence should pass silently
-EV_OUT=$(bash hooks/verify-completion "The feature is done. Toolkit validation passed, exit code 0." 2>&1 || true)
+EV_OUT=$(bash hooks/verify-completion "All done. Toolkit validation passed, exit code 0." 2>&1 || true)
 assert_no_match "accepts claim with evidence" "$EV_OUT" "VERIFICATION GAP"
 
 # A later edit makes the verification stale
 printf '{"tool_name":"Edit","tool_input":{"file_path":"%s/README.md"}}' "$(pwd)" | bash hooks/context-budget.sh >/dev/null 2>&1 || true
-STALE_OUT=$(bash hooks/verify-completion "The feature is done. Toolkit validation passed, exit code 0." 2>&1 || true)
+STALE_OUT=$(bash hooks/verify-completion "All done. Toolkit validation passed, exit code 0." 2>&1 || true)
 assert_match "rejects stale evidence after edit" "$STALE_OUT" "VERIFICATION GAP"
 
 # Non-completion message should be silent
 NC_OUT=$(bash hooks/verify-completion "I'll now work on the next file." 2>&1 || true)
 assert_no_match "non-completion message is silent" "$NC_OUT" "VERIFICATION GAP"
+
+# Descriptive phrases like "the migration is complete" must NOT trigger the
+# completion-claim gate — they describe state, not task completion.
+DESCR_OUT=$(bash hooks/verify-completion "The migration is complete in the DB, now I'll wire up the UI." 2>&1 || true)
+assert_no_match "descriptive 'is complete' phrase is silent" "$DESCR_OUT" "VERIFICATION GAP"
+
+# Verification command behind a prefix (cd && ...) must register as verification
+rm -f "$SESSION_FILE"
+printf '{"tool_name":"Bash","tool_input":{"command":"cd services/api && dotnet test"}}' | bash hooks/context-budget.sh >/dev/null 2>&1 || true
+PREFIX_OUT=$(bash hooks/verify-completion "All done. Build succeeded, 42 tests passed, exit code 0." 2>&1 || true)
+assert_no_match "accepts cd && dotnet test as verification" "$PREFIX_OUT" "VERIFICATION GAP"
+
+# Single-quoted arg in a verification command must round-trip through session
+# state without corruption (previous save wrote bare single quotes).
+rm -f "$SESSION_FILE"
+printf '{"tool_name":"Bash","tool_input":{"command":"pytest -k %snot slow%s -x"}}' "'" "'" | bash hooks/context-budget.sh >/dev/null 2>&1 || true
+# Re-source session file in a subshell and verify the command survived.
+ROUND_TRIP=$(bash -c "set -euo pipefail; . '$SESSION_FILE'; printf '%s' \"\$last_verification_command\"")
+assert_match "single-quoted pytest arg survives state round-trip" "$ROUND_TRIP" "pytest -k 'not slow' -x"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # BENCHMARK 6: Prerequisites Check — reports missing tools

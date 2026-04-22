@@ -18,8 +18,11 @@ INPUT=$(cat)
 TOOL_NAME=$(mtk_extract_tool_name "$INPUT" 2>/dev/null || echo "")
 [ -z "$TOOL_NAME" ] && exit 0
 
-# Session-scoped state file (per-project, per-day)
+# Session-scoped state file (per-project, per-day). Hold the advisory lock for
+# the full load→modify→save cycle so concurrent PreToolUse/PostToolUse firings
+# don't lose counter updates through last-writer-wins races.
 SESSION_FILE="$(mtk_session_file)"
+mtk_session_lock_acquire
 mtk_load_session_state "$SESSION_FILE"
 
 # Update counters based on tool type
@@ -50,7 +53,7 @@ case "$TOOL_NAME" in
     if [ -n "$COMMAND" ] && mtk_command_is_verification "$COMMAND"; then
       last_verification_epoch=$(date +%s)
       last_verification_seq=$event_seq
-      last_verification_command=$(mtk_verification_summary_for_command "$COMMAND")
+      last_verification_command=$(mtk_trim_whitespace "$COMMAND")
       last_verification_summary="$last_verification_command"
     fi
     ;;
@@ -71,6 +74,7 @@ if [ -n "$files" ]; then
 fi
 
 mtk_save_session_state "$SESSION_FILE"
+mtk_session_lock_release
 
 # Check thresholds (warn once per threshold)
 if [ "$unique_files" -ge 30 ] && [ "$warned_files" -eq 0 ]; then

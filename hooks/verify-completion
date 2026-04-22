@@ -12,11 +12,10 @@ source "${SCRIPT_DIR}/lib/hook-io.sh"
 MSG="$*"
 
 # Strong completion claim: a deliberate top-level "task is done" statement.
-# Avoid firing on casual phrases like "I fixed the typo, now let's...".
-# Matches: bolded ✅ done, explicit "all done"/"task complete"/"ready for review",
-# common "is done/complete" phrasing, or a bare completion verb followed by
-# punctuation at the start of a line.
-STRONG_CLAIM='(all done|task complete|work complete|implementation complete|ready for review|fully verified|✅ ?done|🟢 ?done|\bis[[:space:]]+done\b|\bis[[:space:]]+complete\b|\b(done|complete)[[:space:]]+and[[:space:]]+complete\b)|(^|\n)[[:space:]]*(done|completed|fixed|verified|finished)[[:space:]]*[\.\!:]'
+# Avoid firing on casual phrases like "I fixed the typo, now let's..." and
+# avoid over-broad matches like "the migration is complete" which describe
+# state rather than claim task completion.
+STRONG_CLAIM='(all done|task complete|work complete|implementation complete|ready for review|fully verified|✅ ?done|🟢 ?done)|(^|\n)[[:space:]]*(done|completed|fixed|verified|finished)[[:space:]]*[\.\!:]'
 
 if echo "$MSG" | grep -qiE "$STRONG_CLAIM"; then
   SESSION_FILE="$(mtk_session_file)"
