@@ -1,0 +1,69 @@
+{
+  "slug": "hooks-as-skill-invocation",
+  "date": "2026-04-20",
+  "scope": "new-feature",
+  "change_manifest": [
+    { "path": "hooks/lib/skill-queue.sh", "action": "create", "purpose": "Shared helper: queue_skill <skill> <reason> <context-json> with atomic write and dedup key" },
+    { "path": "hooks/userprompt-drain.sh", "action": "create", "purpose": "UserPromptSubmit drain: surface queue entries as additionalContext with TTL and 3-entry cap" },
+    { "path": "hooks/correction-trigger.sh", "action": "create", "purpose": "UserPromptSubmit pre-drain: regex-match correction keywords, queue correction-capture" },
+    { "path": "hooks/spec-approval-trigger.sh", "action": "create", "purpose": "PostToolUse Edit|Write on docs/specs/*.md: detect status: approved transition, queue planning-and-task-breakdown" },
+    { "path": "tests/pressure-tests/hooks-skill-invocation-pressure.md", "action": "create", "purpose": "Five adversarial scenarios covering false-positive corrections, pollution, dedup, kill-switch, TTL" },
+    { "path": "tests/hooks/test-correction-trigger.sh", "action": "create", "purpose": "SC1 integration test — correction keyword triggers queue write and drain emission" },
+    { "path": "tests/hooks/test-spec-approval-trigger.sh", "action": "create", "purpose": "SC2 integration test — spec status: approved transition queues planning-and-task-breakdown" },
+    { "path": "tests/hooks/test-killswitch.sh", "action": "create", "purpose": "SC3 integration test — MTK_HOOKS_TIER2=0 silences all tier-2 behavior" },
+    { "path": "tests/hooks/test-queue-expiry.sh", "action": "create", "purpose": "SC4 integration test — 24h-old queue entries are skipped and counted as expired" },
+    { "path": ".claude/settings.json", "action": "modify", "purpose": "Wire UserPromptSubmit (correction-trigger + drain) and extend PostToolUse Edit|Write with spec-approval-trigger; add MTK_HOOKS_TIER2 env" },
+    { "path": ".claude/rules/hooks-and-scripts.md", "action": "modify", "purpose": "Add S3.13 tier classification, S3.14 queue protocol, S3.15 kill-switch requirement" },
+    { "path": "hooks/session-analytics.sh", "action": "modify", "purpose": "Persist queue_writes, queue_drains, queue_expired counters" },
+    { "path": ".claude/manifest.json", "action": "modify", "purpose": "Register new files; bump version to 6.4.0; update updated date" },
+    { "path": ".claude-plugin/plugin.json", "action": "modify", "purpose": "Bump version to 6.4.0 to sync with manifest per C0.1" },
+    { "path": ".gitignore", "action": "modify", "purpose": "Add .claude/queue/ so queue entries are never committed" },
+    { "path": "CLAUDE.md", "action": "modify", "purpose": "Add one-line row documenting MTK_HOOKS_TIER2 kill-switch in Skill Routing section" },
+    { "path": "scripts/validate-toolkit.sh", "action": "modify", "purpose": "Validate new manifest entries exist, new S3.13-15 rule IDs present, skill-queue.sh is executable" }
+  ],
+  "public_contracts": [
+    { "kind": "cli-flag", "signature": "env MTK_HOOKS_TIER2=0|1", "change": "new" },
+    { "kind": "event", "signature": "hook event UserPromptSubmit -> hooks/correction-trigger.sh, hooks/userprompt-drain.sh", "change": "new" },
+    { "kind": "event", "signature": "hook event PostToolUse[Edit|Write] -> hooks/spec-approval-trigger.sh (additive alongside existing scope-guard)", "change": "modified" },
+    { "kind": "event", "signature": "analytics schema: .claude/analytics.json adds fields queue_writes, queue_drains, queue_expired (integer)", "change": "new" }
+  ],
+  "success_criteria": [
+    { "id": "SC1", "description": "With MTK_HOOKS_TIER2=1, correction keyword in user prompt queues correction-capture and the next turn's additionalContext lists it", "verification": "tests/hooks/test-correction-trigger.sh" },
+    { "id": "SC2", "description": "With MTK_HOOKS_TIER2=1, writing a spec with status: approved queues planning-and-task-breakdown with the spec path", "verification": "tests/hooks/test-spec-approval-trigger.sh" },
+    { "id": "SC3", "description": "With MTK_HOOKS_TIER2=0, no triggers write to the queue and the drain is silent", "verification": "tests/hooks/test-killswitch.sh" },
+    { "id": "SC4", "description": "Queue entries older than 24 hours are skipped by the drain and counted as expired in analytics", "verification": "tests/hooks/test-queue-expiry.sh" },
+    { "id": "SC5", "description": ".claude/analytics.json gains queue_writes, queue_drains, queue_expired counters that increment correctly", "verification": "diff analytics.json before and after a hook run" },
+    { "id": "SC6", "description": "All five pressure scenarios (casual no, long session, repeat-save dedup, kill-switch, TTL) pass when run against a live session", "verification": "manual per tests/pressure-tests/hooks-skill-invocation-pressure.md" },
+    { "id": "SC7", "description": "bash scripts/validate-toolkit.sh passes after all batches — manifest entries exist, frontmatter valid, versions synced", "verification": "bash scripts/validate-toolkit.sh" }
+  ],
+  "test_manifest": [
+    { "path": "tests/hooks/test-correction-trigger.sh", "covers": ["SC1"] },
+    { "path": "tests/hooks/test-spec-approval-trigger.sh", "covers": ["SC2"] },
+    { "path": "tests/hooks/test-killswitch.sh", "covers": ["SC3"] },
+    { "path": "tests/hooks/test-queue-expiry.sh", "covers": ["SC4"] },
+    { "path": "tests/pressure-tests/hooks-skill-invocation-pressure.md", "covers": ["SC6"] }
+  ],
+  "out_of_scope": [
+    "Phase 2: hooks/hook-registry.json + scripts/generate-hooks.sh declarative registry",
+    "Phase 2: additional triggers — SessionEnd->handoff, test-failure nudge, commit->spec-drift-detection",
+    "Phase 3: headless parallel reviewer fanout via claude -p sub-agents on gh pr create",
+    "Cross-repo analytics aggregation (nightly GitHub Action, separate from the plugin)",
+    "Team-shared queue across machines — queue stays per-workspace"
+  ],
+  "security_impact": "none",
+  "assumptions": [
+    "Claude Code UserPromptSubmit hook produces {\"additionalContext\": \"...\"} on stdout (confirmed in Batch 1; fallback to {\"context\": ...} shape if not)",
+    "PostToolUse Edit|Write hooks receive stdin JSON with tool_input.file_path — already used by scope-guard.sh",
+    "${CLAUDE_PLUGIN_ROOT} and relative hooks/ paths both resolve correctly in settings.json hook commands",
+    "Engineer consents to small prompt excerpt (<=500 chars) in gitignored local queue files for <=24h",
+    "Spec approval is expressed via '- **Status:** approved' or YAML frontmatter status: approved — a convention spec-driven-development will adopt going forward"
+  ],
+  "risks": [
+    "R1 False-positive correction detection on casual 'no' in long sentences — mitigated by tight regex and pressure scenario 1",
+    "R2 Context pollution from unbounded drain emission — mitigated by 3-entry cap, duplicate collapse, 24h TTL",
+    "R3 Race between concurrent hook fires writing queue entries — mitigated by atomic temp-file-then-rename with hash-suffixed filenames",
+    "R4 Agent ignores drain reminder — accepted; tier-2 is propose-not-act; toolkit-health surfaces the drain-but-not-invoked ratio",
+    "R5 Spec approval detection is convention-based and may miss non-conforming markers — documented convention, revisited if misses are frequent",
+    "R6 Pre-existing version drift (manifest 6.3.2 vs plugin 6.3.1, C0.1 violation) — resolved incidentally by bumping both to 6.4.0 in Batch 4"
+  ]
+}

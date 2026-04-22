@@ -52,6 +52,16 @@ done < <(find hooks/ scripts/ -type f \( -name '*.sh' -o -name 'pre-commit' -o -
 # The git pre-commit hook and linter script must agree on supported flags.
 grep -q -- '--cached' hooks/pre-commit-linters.sh || fail "hooks/pre-commit-linters.sh must support --cached for git hooks"
 
+# Tier-2 skill-invocation queue (S3.13–15)
+require_file "hooks/lib/skill-queue.sh"
+require_file "hooks/lib/prompt-nudges.sh"
+require_file "hooks/userprompt-dispatch.sh"
+require_file "hooks/spec-approval-trigger.sh"
+grep -q 'queue_skill' hooks/lib/skill-queue.sh || fail "skill-queue.sh missing queue_skill writer"
+grep -q 'MTK_HOOKS_TIER2' hooks/lib/skill-queue.sh || fail "skill-queue.sh missing MTK_HOOKS_TIER2 kill-switch gate"
+grep -q 'UserPromptSubmit' .claude/settings.json || fail "settings.json missing UserPromptSubmit hook entry for dispatcher"
+grep -q 'MTK_HOOKS_TIER2' .claude/settings.json || fail "settings.json missing MTK_HOOKS_TIER2 env declaration"
+
 # Unified setup entry point must exist
 require_file ".claude/skills/mtk-setup/SKILL.md"
 

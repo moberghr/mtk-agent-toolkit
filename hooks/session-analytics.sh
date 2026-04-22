@@ -61,7 +61,10 @@ if [ ! -f "$ANALYTICS" ]; then
   "lessons_captured": 0,
   "scope_guard_warnings": 0,
   "benchmarks_run": 0,
-  "benchmark_last_score": ""
+  "benchmark_last_score": "",
+  "queue_writes": 0,
+  "queue_drains": 0,
+  "queue_expired": 0
 }
 EOF
 fi
@@ -82,6 +85,9 @@ lessons=$(read_field "lessons_captured")
 scope_warns=$(read_field "scope_guard_warnings")
 benchmarks=$(read_field "benchmarks_run")
 bench_score=$(read_str "benchmark_last_score")
+queue_writes=$(read_field "queue_writes")
+queue_drains=$(read_field "queue_drains")
+queue_expired=$(read_field "queue_expired")
 
 # Update counters
 sessions=$((sessions + 1))
@@ -124,7 +130,10 @@ cat > "$ANALYTICS_TMP" <<EOF
   "lessons_captured": $lessons,
   "scope_guard_warnings": $scope_warns,
   "benchmarks_run": $benchmarks,
-  "benchmark_last_score": "$bench_score"
+  "benchmark_last_score": "$bench_score",
+  "queue_writes": $queue_writes,
+  "queue_drains": $queue_drains,
+  "queue_expired": $queue_expired
 }
 EOF
 mv "$ANALYTICS_TMP" "$ANALYTICS"

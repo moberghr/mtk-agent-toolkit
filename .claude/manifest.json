@@ -1,6 +1,6 @@
 {
-  "version": "6.3.2",
-  "updated": "2026-04-20",
+  "version": "6.4.0",
+  "updated": "2026-04-22",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
   "files": {
@@ -1001,6 +1001,60 @@
       "target": "docs/assets/mobile-diagram.png",
       "action": "sync",
       "description": "Mobile-viewport crop of the pipeline diagram used in docs/index.html"
+    },
+    "hooks/lib/skill-queue.sh": {
+      "source": "hooks/lib/skill-queue.sh",
+      "target": "hooks/lib/skill-queue.sh",
+      "action": "sync",
+      "description": "Tier-2 skill-invocation queue primitive — atomic queue_skill writer, drain helpers, kill-switch, analytics counters"
+    },
+    "hooks/lib/prompt-nudges.sh": {
+      "source": "hooks/lib/prompt-nudges.sh",
+      "target": "hooks/lib/prompt-nudges.sh",
+      "action": "sync",
+      "description": "Tier-1 prompt nudges sourced by the dispatcher — correction-keyword detection with agreement filter"
+    },
+    "hooks/userprompt-dispatch.sh": {
+      "source": "hooks/userprompt-dispatch.sh",
+      "target": "hooks/userprompt-dispatch.sh",
+      "action": "sync",
+      "description": "UserPromptSubmit hook — merges tier-1 nudges and tier-2 queue drain into one additionalContext payload"
+    },
+    "hooks/spec-approval-trigger.sh": {
+      "source": "hooks/spec-approval-trigger.sh",
+      "target": "hooks/spec-approval-trigger.sh",
+      "action": "sync",
+      "description": "PostToolUse hook (Edit|Write) that queues planning-and-task-breakdown when a spec transitions to status: approved"
+    },
+    "tests/hooks/test-correction-nudge.sh": {
+      "source": "tests/hooks/test-correction-nudge.sh",
+      "target": "tests/hooks/test-correction-nudge.sh",
+      "action": "sync",
+      "description": "SC1 integration test — tier-1 correction-nudge fires on correction keywords and stays silent on agreement phrasing"
+    },
+    "tests/hooks/test-killswitch.sh": {
+      "source": "tests/hooks/test-killswitch.sh",
+      "target": "tests/hooks/test-killswitch.sh",
+      "action": "sync",
+      "description": "SC3 integration test — MTK_HOOKS_TIER2=0 silences nudges, drains, and queue writes"
+    },
+    "tests/hooks/test-spec-approval-trigger.sh": {
+      "source": "tests/hooks/test-spec-approval-trigger.sh",
+      "target": "tests/hooks/test-spec-approval-trigger.sh",
+      "action": "sync",
+      "description": "SC2 integration test — spec-approval transition queues planning-and-task-breakdown and does not re-fire on re-edit"
+    },
+    "tests/hooks/test-queue-expiry.sh": {
+      "source": "tests/hooks/test-queue-expiry.sh",
+      "target": "tests/hooks/test-queue-expiry.sh",
+      "action": "sync",
+      "description": "SC4 integration test — queue entries older than ttl_hours are skipped and removed"
+    },
+    "tests/pressure-tests/hooks-skill-invocation-pressure.md": {
+      "source": "tests/pressure-tests/hooks-skill-invocation-pressure.md",
+      "target": "tests/pressure-tests/hooks-skill-invocation-pressure.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for hooks-as-skill-invocation (false positives, TTL, dedupe, killswitch)"
     }
   },
   "protected": [

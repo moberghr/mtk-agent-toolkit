@@ -1,6 +1,6 @@
 # claude-helpers — MTK Standards
 
-> Updated 2026-04-22 for v6.3.2 (two entry points: `/mtk` and `/mtk-setup`; previous slash commands route through `/mtk`).
+> Updated 2026-04-22 for v6.4.0 (two entry points: `/mtk` and `/mtk-setup`; previous slash commands route through `/mtk`; tier-2 skill-invoking hooks layer added).
 >
 > This file + `.claude/rules/` are the source of truth for AI agents.
 > Detailed standards live in `.claude/rules/`. Reference docs live in `.claude/references/` (shared) and `.claude/references/{stack}/` (stack-specific).
@@ -16,6 +16,7 @@
 | Merge multi-repo audits | `/mtk-setup --merge` | Unify per-repo audits in `.claude/references/audits/` into a team-wide doc |
 | Everything else | `/mtk <description>` | Natural language — routes to fix / implement / pre-commit-review / context-report |
 | Validate toolkit | `bash scripts/validate-toolkit.sh` | Before every commit — structural check of manifest, plugin.json, and skill anatomy |
+| Disable tier-2 hooks | `MTK_HOOKS_TIER2=0` in `.claude/settings.local.json` env | Silences skill-invoking hooks (queue + drain) without touching shared settings |
 
 **Decision rule for `/mtk`:** Say what you want in plain English. The router picks the right workflow skill — fix (1-3 file changes), implement (new features / multi-file), pre-commit-review (security check before commit), or context-report (diagnostic).
 

@@ -1,5 +1,8 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "MTK_HOOKS_TIER2": "1"
+  },
   "permissions": {
     "allowedTools": [
       "Read",
@@ -66,6 +69,16 @@
             "timeout": 3
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "hooks/spec-approval-trigger.sh",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PostCompact": [
@@ -74,6 +87,17 @@
           {
             "type": "command",
             "command": "hooks/post-compact.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "hooks/userprompt-dispatch.sh",
             "timeout": 5
           }
         ]
