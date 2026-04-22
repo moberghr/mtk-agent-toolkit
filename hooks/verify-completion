@@ -5,20 +5,38 @@
 # (pytest, vitest, jest, dotnet, biome, ruff, tsc) and toolkit validators.
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/lib/hook-io.sh"
+
 MSG="$*"
 
 # Strong completion claim: a deliberate top-level "task is done" statement.
-# Avoid firing on casual phrases like "I fixed the typo, now let's...".
-# Matches: bolded ✅ done, explicit "all done"/"task complete"/"ready for review",
-# or a bare completion verb followed by punctuation at the start of a line.
+# Avoid firing on casual phrases like "I fixed the typo, now let's..." and
+# avoid over-broad matches like "the migration is complete" which describe
+# state rather than claim task completion.
 STRONG_CLAIM='(all done|task complete|work complete|implementation complete|ready for review|fully verified|✅ ?done|🟢 ?done)|(^|\n)[[:space:]]*(done|completed|fixed|verified|finished)[[:space:]]*[\.\!:]'
 
 if echo "$MSG" | grep -qiE "$STRONG_CLAIM"; then
-  # Evidence of actual execution: exit codes, shell prompts, fenced blocks,
-  # diagnostic counts, or output from common test/build tools.
-  EVIDENCE='(exit code|Build succeeded|Build FAILED|Passed!|Failed!|PASSED|FAILED|\$ |```|Tests:|Test Files|tests? ran|[0-9]+ (passed|failed|errors?|warnings?)|Checked [0-9]+ file|[Ff]ound [0-9]+ (error|warning|issue)|Toolkit validation passed|No issues found)'
-  if echo "$MSG" | grep -qE "$EVIDENCE"; then
+  SESSION_FILE="$(mtk_session_file)"
+  mtk_load_session_state "$SESSION_FILE"
+
+  if [ "${last_verification_epoch:-0}" -eq 0 ]; then
+    echo "VERIFICATION GAP: completion claim without a fresh verification command. Run the verification command from your active tech stack (.claude/skills/tech-stack-{stack}/SKILL.md → ## Build & Test Commands) and cite exit code + pass/fail counts. For toolkit work: 'bash scripts/validate-toolkit.sh' and cite 'Toolkit validation passed.'"
     exit 0
   fi
-  echo "Advisory: completion claim without cited command output. Run the verification command from your active tech stack (.claude/skills/tech-stack-{stack}/SKILL.md → ## Build & Test Commands) and cite exit code + pass/fail counts. For toolkit work: 'bash scripts/validate-toolkit.sh' and cite 'Toolkit validation passed.'"
+
+  if [ "${last_edit_seq:-0}" -gt "${last_verification_seq:-0}" ]; then
+    echo "VERIFICATION GAP: cited evidence is stale. The latest verification command (${last_verification_command:-unknown}) ran before the most recent edit. Re-run verification after your latest change before claiming completion."
+    exit 0
+  fi
+
+  # Evidence of actual execution: exit codes, shell prompts, fenced blocks,
+  # diagnostic counts, or output from common test/build tools. Keep this as a
+  # secondary signal so the final message still cites the command output, but do
+  # not treat it as a substitute for fresh session evidence.
+  EVIDENCE='(exit code|Build succeeded|Build FAILED|Passed!|Failed!|PASSED|FAILED|\$ |```|Tests:|Test Files|tests? ran|[0-9]+ (passed|failed|errors?|warnings?)|Checked [0-9]+ file|[Ff]ound [0-9]+ (error|warning|issue)|Toolkit validation passed|No issues found)'
+  if ! echo "$MSG" | grep -qE "$EVIDENCE"; then
+    echo "VERIFICATION GAP: completion claim is missing cited command output. Reuse the fresh verification result from '${last_verification_command:-the latest verification command}' and include exit code plus pass/fail counts in the final message."
+  fi
 fi

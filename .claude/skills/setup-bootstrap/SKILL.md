@@ -82,6 +82,10 @@ Write the result to `.claude/tech-stack` (plain text, single word):
 echo "dotnet" > .claude/tech-stack
 ```
 
+> ⚠️ **`.claude/tech-stack` is a FILE, not a directory.** Never include it in a `mkdir -p` list — that will create it as a directory and the `echo > .claude/tech-stack` below will then fail. If you later need to create `.claude/rules/` or other dirs (STEP 4), run that `mkdir -p` separately without `.claude/tech-stack` in the argument list.
+>
+> ⚠️ **Do not chain `mkdir` + `rm -rf` + `echo >` into one shell command.** Conservative permission modes reject any command that contains `rm -rf`, causing the entire chain to abort. Run each step as its own Bash call so a single denied command doesn't take down the bootstrap.
+
 Then load `.claude/skills/tech-stack-{stack}/SKILL.md` — this is the source of truth for build commands, scan recipes, and reference paths used in the rest of init.
 
 ### Tool Prerequisites Check
@@ -472,6 +476,8 @@ Create `.claude/rules/` if it doesn't exist:
 mkdir -p .claude/rules
 ```
 
+> ⚠️ Do NOT add `.claude/tech-stack` to this `mkdir -p` — it is a file, written in STEP 0. Only directories belong here.
+
 ### Settings Merge
 
 Read the active tech stack skill's `## Settings Additions` section. Merge those entries into `.claude/settings.json`:
@@ -569,7 +575,7 @@ Shared reference files ship as generic, multi-stack guidance with "match existin
    ```markdown
    <!-- Customized by setup-bootstrap on [date]. Detected: [list of substituted values]. -->
    ```
-   This makes it obvious which files were patched and allows `setup-update` to re-customize if the reference template changes upstream.
+    This makes it obvious which files were patched and allows future bootstrap/audit passes to re-customize if the reference template changes upstream.
 
 **Rule:** Only narrow when the evidence is unambiguous (single tool, zero alternatives detected). Never remove sections about tools the project doesn't use YET — only remove sections about tools from a different category (e.g., remove TanStack Query guidance from a project with no React). The goal is to prevent shared references from contradicting the repo-specific `.claude/rules/` files while keeping useful guidance for future adoption.
 
@@ -677,7 +683,7 @@ After the stack-specific Companion Plugin block, print a consolidated list of re
 
 ### Version Stamp
 
-Write the MTK version stamp so `setup-update` can track which version this repo was bootstrapped with:
+Write the MTK version stamp so the installed toolkit version is visible in the repo and session-start can detect plugin drift:
 
 ```bash
 echo '{"version":"VERSION","installed":"DATE","source":"https://github.com/moberghr/claude-helpers"}' > .claude/mtk-version.json

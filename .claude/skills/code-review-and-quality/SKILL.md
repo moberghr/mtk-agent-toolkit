@@ -73,11 +73,14 @@ If reviewing a PR or branch with CI runs, check CI status:
    - `test-reviewer` for coverage and verification quality
    - `architecture-reviewer` for boundary and slice integrity concerns
 5. Categorize findings per the schema in `.claude/references/review-finding-schema.md`:
-   - `critical`, `warning`, `suggestion` severities
-   - `confidence` score 0–100 per the rubric
+    - `critical`, `warning`, `suggestion` severities
+    - `confidence` score 0–100 per the rubric
+    - Optional top-level fields only when they add real signal: `internet_facing`
+      for boundary exposure and `needs_human_review` for axes the AI cannot
+      honestly clear from the diff alone
 6. Emit output in the canonical format:
-   - Markdown table of surfaced findings (confidence >= threshold from `.claude/review-config.json`, default 80)
-   - Fenced JSON block with the full structured result (verdict, summary, findings, below_threshold_rationale)
+    - Markdown table of surfaced findings (confidence >= threshold from `.claude/review-config.json`, default 80)
+    - Fenced JSON block with the full structured result (verdict, summary, findings, below_threshold_rationale)
 7. If `findings[]` has fewer than 2 entries, populate `below_threshold_rationale` explicitly stating what axes were checked and why the code is genuinely clean. Silent empty reviews are invalid.
 
 ## Rules

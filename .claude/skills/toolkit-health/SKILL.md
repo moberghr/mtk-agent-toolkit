@@ -25,7 +25,7 @@ if [ -f tasks/lessons.md ]; then grep -c '^## ' tasks/lessons.md 2>/dev/null || 
 
 ## Overview
 
-`hooks/session-analytics.sh` persists session stats to `.claude/analytics.json`. This skill reads that file plus on-disk artifacts (specs, lessons, MTK-related commits) and produces a human-readable health report with anomaly flags and suggested actions. Read-only — never mutates state.
+`hooks/session-analytics.sh` persists session stats to `.claude/analytics.json`. This skill reads that file plus on-disk artifacts (specs, lessons, MTK-related commits) and produces a human-readable health report with anomaly flags and suggested actions. Treat the analytics as an operational pulse, not a formal KPI dashboard: some counters are activity metrics, others are lightweight workflow signals. Read-only — never mutates state.
 
 ## When To Use
 
@@ -43,7 +43,7 @@ if [ -f tasks/lessons.md ]; then grep -c '^## ' tasks/lessons.md 2>/dev/null || 
 ## Workflow
 
 1. **Load the data sources in parallel** (independent reads — see `docs/parallelism-patterns.md`):
-   - `.claude/analytics.json` (session counts, ops, mods, specs_created, lessons_captured, scope_guard_warnings)
+   - `.claude/analytics.json` (session counts, ops, mods, specs_created, lessons_captured, scope_guard_warnings, benchmarks_run, benchmark_last_score)
    - `tasks/lessons.md` if present (count `^## ` entries)
    - `docs/specs/` and `docs/plans/` directory listings
    - `git log --since="30 days ago" --oneline --grep='mtk\|MTK\|toolkit'` for MTK-related commits
@@ -65,9 +65,10 @@ if [ -f tasks/lessons.md ]; then grep -c '^## ' tasks/lessons.md 2>/dev/null || 
    |---|---|---|
    | `specs_created / sessions` | ≥ 0.05 over 20+ sessions | "Very few specs — team may skip `/mtk implement` for features" |
    | `lessons_captured` | growing over time | "Lessons stagnant — Phase 7 compound step may be skipped" |
-   | `scope_guard_warnings / sessions` | < 0.3 | "Frequent scope-guard warnings — specs may be too narrow or team is expanding scope inline" |
-   | `total_modifications / total_operations` | 0.1–0.6 | "Very low mod ratio" → mostly reads (discovery-heavy); "very high" → little verification |
-   | `benchmark_last_score` | matches latest baseline | stale score → benchmarks haven't been re-run after toolkit changes |
+    | `scope_guard_warnings / sessions` | < 0.3 | "Frequent scope-guard warnings — specs may be too narrow or team is expanding scope inline" |
+    | `total_modifications / total_operations` | 0.1–0.6 | "Very low mod ratio" → mostly reads (discovery-heavy); "very high" → little verification |
+    | `benchmarks_run` | > 0 after toolkit changes | "No benchmark runs recorded — behavioral checks may be stale" |
+    | `benchmark_last_score` | matches latest baseline | stale score → benchmarks have run, but the last result may no longer reflect current hooks |
 
 5. **Output format:**
    - Human-readable markdown section (sessions, date range, key ratios, anomaly flags).
@@ -83,6 +84,7 @@ if [ -f tasks/lessons.md ]; then grep -c '^## ' tasks/lessons.md 2>/dev/null || 
 - **Read-only.** Never modify `.claude/analytics.json`, `tasks/lessons.md`, or `docs/specs/`. Reports the engineer's state; doesn't change it.
 - **Honest "insufficient data".** If the sample is too small, say so — do not produce spurious percentages that imply statistical weight.
 - **No fabrication.** Every reported number must come from a cited source file. If something cannot be computed, omit it rather than guess.
+- **Separate activity from effectiveness.** Sessions, ops, and mods are activity. Scope-guard warnings and benchmark stats are workflow signals, not proof of engineering quality.
 - **Parallel loading.** Load all data sources in one message, per `docs/parallelism-patterns.md`.
 
 ## Common Rationalizations

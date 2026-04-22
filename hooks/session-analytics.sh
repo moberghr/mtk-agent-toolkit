@@ -21,18 +21,25 @@ set -euo pipefail
 
 ANALYTICS=".claude/analytics.json"
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/lib/hook-io.sh"
+
 # Read session counters from context-budget temp file
-PROJECT_ID=$(pwd | cksum | cut -d' ' -f1)
-SESSION_FILE="${TMPDIR:-/tmp}/mtk-context-budget-${PROJECT_ID}-$(date +%Y%m%d)"
+SESSION_FILE="$(mtk_session_file)"
 
 session_ops=0
 session_mods=0
-files=''
+session_scope_warns=0
+session_benchmarks=0
+session_bench_score=""
 if [ -f "$SESSION_FILE" ]; then
-  # shellcheck disable=SC1090
-  . "$SESSION_FILE"
+  mtk_load_session_state "$SESSION_FILE"
   session_ops=$ops
   session_mods=$mods
+  session_scope_warns=${scope_guard_warnings:-0}
+  session_benchmarks=${benchmarks_run:-0}
+  session_bench_score=${benchmark_last_score:-}
 fi
 
 # Skip trivial sessions (< 5 operations)
@@ -80,6 +87,11 @@ bench_score=$(read_str "benchmark_last_score")
 sessions=$((sessions + 1))
 total_ops=$((total_ops + session_ops))
 total_mods=$((total_mods + session_mods))
+scope_warns=$((scope_warns + session_scope_warns))
+benchmarks=$((benchmarks + session_benchmarks))
+if [ -n "$session_bench_score" ]; then
+  bench_score="$session_bench_score"
+fi
 
 # Count specs created today
 if [ -d docs/specs ]; then

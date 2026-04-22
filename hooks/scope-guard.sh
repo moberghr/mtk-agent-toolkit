@@ -8,10 +8,14 @@ set -euo pipefail
 # Advisory only (exit 0) — prints a warning, never blocks.
 # No-op when there is no active spec JSON sidecar.
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/lib/hook-io.sh"
+
 INPUT=$(cat)
 
 # Extract file_path from the tool input JSON
-FILE_PATH=$(echo "$INPUT" | grep -o '"file_path"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*: *"//;s/"$//' 2>/dev/null || echo "")
+FILE_PATH=$(mtk_extract_file_path "$INPUT" 2>/dev/null || echo "")
 [ -z "$FILE_PATH" ] && exit 0
 
 # Make the path relative to the repo root for comparison
@@ -87,6 +91,7 @@ done <<< "$ALLOWED_FILES"
 
 if [ "$MATCHED" -eq 0 ]; then
   SPEC_NAME=$(basename "$SPEC_JSON" .json)
+  mtk_record_scope_guard_warning
   echo "SCOPE GUARD: ${REL_PATH} is not in the approved spec (${SPEC_NAME}). If this change is necessary, update the spec's change_manifest first. Undeclared file modifications are the #1 source of spec drift."
 fi
 
