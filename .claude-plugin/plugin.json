@@ -30,5 +30,6 @@
     "./.claude/agents/compliance-reviewer.md",
     "./.claude/agents/test-reviewer.md"
   ],
-  "settings.json": "./.claude/settings.json"
+  "settings.json": "./.claude/settings.json",
+  "hooks": "./hooks/hooks.json"
 }
