@@ -224,7 +224,7 @@ var numberDivisibleByTen = numbers
 
 ```C#
 var blogs = await dbContext.Blogs
-    .Where(x => b.Rating > 3)
+    .Where(x => x.Rating > 3)
     .ToListAsync();
 ```
 
@@ -731,7 +731,7 @@ When you have complicated expression in if statement, it is better to add this e
 
 ```C#
 var list1AndList2ContainsSameElements = !list1.Except(list2).Any()
-    && list2.Except(list1).Any();
+    && !list2.Except(list1).Any();
 
 if (list1AndList2ContainsSameElements)
 {
@@ -746,7 +746,7 @@ if (list1AndList2ContainsSameElements)
 ```C#
 // bad
 foreach(var number in numbers
-    .Where(x => x / 2 == 0)
+    .Where(x => x % 2 == 0)
     .ToList())
 {
     ...
@@ -855,8 +855,8 @@ var blogsData = blogs
     .Select(x =>
         new BlogData
         {
-            Name = blog.Name,
-            Rating = blog.Rating
+            Name = x.Name,
+            Rating = x.Rating
         })
     .ToList();
 ```

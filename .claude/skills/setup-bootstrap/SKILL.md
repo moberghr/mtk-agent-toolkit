@@ -250,7 +250,7 @@ Create `CLAUDE.md` and `.claude/rules/` files following the templates below.
 | Quick fix | `/mtk fix <description>` | Bug fixes, config tweaks, 1-3 file changes |
 | Pre-commit check | `/mtk review before commit` | Before every commit — fast security-focused review |
 
-**Decision rule:** If unsure, start with `fix`. If the change grows beyond 3 files, switch to `implement`.
+**Decision rule:** If unsure, start with `/mtk fix <description>`. If the change grows beyond 3 files, switch to `/mtk <feature description>` (routes to implement).
 
 ---
 
