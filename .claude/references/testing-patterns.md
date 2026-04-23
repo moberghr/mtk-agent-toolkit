@@ -1,15 +1,8 @@
 ---
-paths:
-  - "**/tests/**"
-  - "**/*.Tests/**"
-  - "**/*Tests.cs"
-  - "**/test_*.py"
-  - "**/*_test.py"
-  - "**/*.test.ts"
-  - "**/*.test.tsx"
-  - "**/*.spec.ts"
+description: Generic testing guidance — patterns, coverage heuristics, anti-patterns
+globs: ["**/*Test*", "**/*test_*", "**/*.spec.*", "**/*.test.*"]
+alwaysApply: false
 ---
-
 # Testing Patterns
 
 Shared, language-agnostic testing guidance. For stack-specific rules, see the active tech stack skill's `## Test Level Guidance` and the testing supplement in `.claude/references/{stack}/`.

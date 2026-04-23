@@ -1,3 +1,8 @@
+---
+description: Critical rules checked by the pre-commit-review skill before every commit
+globs: ["**/*"]
+alwaysApply: false
+---
 # Pre-Commit Review List
 
 > Toolkit-specific inline verification. Read by implement and fix after each batch, and by pre-commit-review before each commit.

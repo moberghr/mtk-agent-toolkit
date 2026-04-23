@@ -1,3 +1,8 @@
+---
+description: Cross-stack recommended tooling (shellcheck, shfmt, jq, etc.)
+globs: ["**/*"]
+alwaysApply: false
+---
 # Recommended Tooling (Stack-Agnostic)
 
 > Curated list of MCP servers, plugins, and editor integrations that noticeably improve Claude Code productivity on any stack. Stack-specific recommendations live in `.claude/references/{stack}/recommended-tooling.md`.

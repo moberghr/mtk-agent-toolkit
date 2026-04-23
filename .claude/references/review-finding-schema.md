@@ -1,3 +1,8 @@
+---
+description: Schema for review findings emitted by code-review-and-quality
+globs: ["**/*"]
+alwaysApply: false
+---
 # Review Finding Schema
 
 Canonical output format for reviews across the toolkit: `pre-commit-review`,

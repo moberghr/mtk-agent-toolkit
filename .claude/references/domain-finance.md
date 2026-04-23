@@ -1,15 +1,8 @@
 ---
-paths:
-  - "**/payments/**"
-  - "**/transactions/**"
-  - "**/billing/**"
-  - "**/ledger/**"
-  - "**/settlements/**"
-  - "**/accounting/**"
-  - "**/reconciliation/**"
-  - "**/fees/**"
+description: Finance domain supplement — money/payment/ledger invariants and audit requirements
+globs: ["**/Money*.cs", "**/Payment*.cs", "**/Ledger*.cs", "**/*Transaction*.py", "**/*.test.ts"]
+alwaysApply: false
 ---
-
 # Domain Supplement — Finance
 
 Finance-specific examples for the universal review and security skills. The core toolkit is written for any team building serious software; this file captures what "serious" means concretely in fintech, investment banking, and trading systems. Teams in other regulated domains (healthcare, legal, regulated SaaS) can author analogous supplements and wire them into the skills the same way.

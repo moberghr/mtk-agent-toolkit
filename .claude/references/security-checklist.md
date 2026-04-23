@@ -1,13 +1,8 @@
 ---
-paths:
-  - "**/auth/**"
-  - "**/authentication/**"
-  - "**/authorization/**"
-  - "**/security/**"
-  - "**/secrets/**"
-  - "**/middleware/**"
+description: Baseline security checklist for any serious software change
+globs: ["**/*"]
+alwaysApply: true
 ---
-
 # Security Checklist
 
 Fast security and compliance reference for serious software.
