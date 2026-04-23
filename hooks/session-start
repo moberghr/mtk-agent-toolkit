@@ -46,14 +46,14 @@ if [ -f .claude/mtk-version.json ]; then
     if [ -f "$SOURCE_MANIFEST" ]; then
       SOURCE_VERSION="$(grep -o '"version": "[^"]*"' "$SOURCE_MANIFEST" | head -1 | sed 's/"version": "//;s/"//' || true)"
       if [ -n "$SOURCE_VERSION" ] && [ "$INSTALLED_VERSION" != "$SOURCE_VERSION" ]; then
-        VERSION_MSG="MTK update available: ${INSTALLED_VERSION} → ${SOURCE_VERSION}. Run /mtk:setup-update to sync."
+        VERSION_MSG="MTK update available: ${INSTALLED_VERSION} → ${SOURCE_VERSION}. Use the Claude Code plugin manager to upgrade."
       fi
     fi
   fi
 fi
 
 # Build the context message
-BASE_MSG="Moberg toolkit is active. Available commands: implement, fix, pre-commit-review, setup-bootstrap, setup-audit, setup-update. Skills loaded on demand via progressive disclosure."
+BASE_MSG="Moberg toolkit is active. Available entry points: /mtk and /mtk-setup. Skills load on demand via progressive disclosure."
 CONTEXT="$BASE_MSG"
 [[ -n "$RECOVERY_MSG" ]] && CONTEXT="${CONTEXT} ${RECOVERY_MSG}"
 [[ -n "$VERSION_MSG" ]] && CONTEXT="${CONTEXT} ${VERSION_MSG}"

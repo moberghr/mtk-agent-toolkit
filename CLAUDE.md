@@ -1,6 +1,6 @@
 # claude-helpers — MTK Standards
 
-> Updated 2026-04-16 for v6.3.0 (consolidated to two entry points: `/mtk` and `/mtk-setup`; previous slash commands routed through `/mtk`).
+> Updated 2026-04-22 for v6.3.2 (two entry points: `/mtk` and `/mtk-setup`; previous slash commands route through `/mtk`).
 >
 > This file + `.claude/rules/` are the source of truth for AI agents.
 > Detailed standards live in `.claude/rules/`. Reference docs live in `.claude/references/` (shared) and `.claude/references/{stack}/` (stack-specific).

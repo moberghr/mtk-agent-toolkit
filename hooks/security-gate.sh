@@ -11,14 +11,24 @@ set -euo pipefail
 # - Destructive operations disguised with flags or pipes
 # - Database drop/truncate commands
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/lib/hook-io.sh"
+
 INPUT=$(cat)
 
-# Extract the command from the JSON input
-COMMAND=$(echo "$INPUT" | grep -o '"command"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*: *"//;s/"$//' 2>/dev/null || echo "")
+TOOL_NAME=$(mtk_extract_tool_name "$INPUT" 2>/dev/null || echo "")
+COMMAND=$(mtk_extract_command "$INPUT" 2>/dev/null || echo "")
 
-# If we can't parse the command, allow it (fail-open for usability)
-if [ -z "$COMMAND" ]; then
+# If this is not a Bash payload, ignore it.
+if [ -n "$TOOL_NAME" ] && [ "$TOOL_NAME" != "Bash" ]; then
   exit 0
+fi
+
+# Fail closed for Bash payloads we cannot parse.
+if [ -z "$COMMAND" ]; then
+  echo "BLOCKED: Unable to parse Bash command from hook payload. Re-run the command after fixing the hook payload shape." >&2
+  exit 2
 fi
 
 # Block: database destructive operations

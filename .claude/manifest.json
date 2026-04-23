@@ -1,6 +1,6 @@
 {
-  "version": "6.3.2",
-  "updated": "2026-04-21",
+  "version": "6.3.5",
+  "updated": "2026-04-23",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
   "files": {
@@ -695,6 +695,12 @@
       "target": "hooks/context-budget.sh",
       "action": "sync",
       "description": "PostToolUse hook that tracks session activity and warns when context budget is getting heavy"
+    },
+    "hooks/lib/hook-io.sh": {
+      "source": "hooks/lib/hook-io.sh",
+      "target": "hooks/lib/hook-io.sh",
+      "action": "sync",
+      "description": "Shared hook helpers for parsing Claude Code payloads and persisting session-scoped state"
     },
     "hooks/capture-learnings.sh": {
       "source": "hooks/capture-learnings.sh",
