@@ -1,3 +1,8 @@
+---
+description: TypeScript performance guidance — bundle size, render perf, memo patterns
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: false
+---
 # TypeScript Performance Supplement
 
 Stack-specific performance rules for TypeScript projects. Read alongside `.claude/references/performance-checklist.md`.

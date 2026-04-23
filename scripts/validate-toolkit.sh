@@ -205,4 +205,23 @@ if [ -d ".claude/rules" ]; then
   done < <(find .claude/rules -name '*.md' | sort)
 fi
 
+# Root CLAUDE.md ceiling (S1-related — compliance degrades past ~150 lines)
+if [ -f CLAUDE.md ]; then
+  claude_lines="$(wc -l < CLAUDE.md)"
+  [ "$claude_lines" -le 120 ] || fail "CLAUDE.md exceeds 120-line hard cap ($claude_lines lines). Move sections to .claude/rules/ or references."
+fi
+
+# Every .claude/references/**/*.md must have description/globs/alwaysApply frontmatter.
+while IFS= read -r ref; do
+  head -20 "$ref" | head -1 | grep -q '^---$' || fail "$ref missing YAML frontmatter"
+  head -20 "$ref" | grep -q '^description:' || fail "$ref frontmatter missing 'description:'"
+  head -20 "$ref" | grep -q '^globs:' || fail "$ref frontmatter missing 'globs:'"
+  head -20 "$ref" | grep -q '^alwaysApply:' || fail "$ref frontmatter missing 'alwaysApply:'"
+done < <(find .claude/references -name '*.md' -type f | sort)
+
+# References index must be in sync with frontmatter (only if it exists; gitignored).
+if [ -f .claude/references.index ]; then
+  bash scripts/build-references-index.sh --check
+fi
+
 printf 'Toolkit validation passed.\n'

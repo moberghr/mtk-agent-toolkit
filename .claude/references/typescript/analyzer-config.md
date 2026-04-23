@@ -1,11 +1,8 @@
 ---
-paths:
-  - "**/*.ts"
-  - "**/*.tsx"
-  - "**/tsconfig.json"
-  - "**/biome.json"
+description: TypeScript analyzer configuration (tsconfig.json, biome.json)
+globs: ["**/*.ts", "**/*.tsx", "**/tsconfig.json", "**/biome.json"]
+alwaysApply: false
 ---
-
 # TypeScript Analyzer Configuration
 
 Recommended type checker and linter configuration for serious TypeScript software.

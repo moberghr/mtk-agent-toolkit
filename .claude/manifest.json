@@ -1,8 +1,15 @@
 {
-  "version": "6.5.0",
-  "updated": "2026-04-22",
+  "version": "7.0.0",
+  "updated": "2026-04-23",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
+  "coding-guidelines": {
+    "repo": "moberghr/coding-guidelines",
+    "sha": "4043387ca2c70ed0cd76e005861f5c471908c3bb",
+    "files": {
+      "CodingStyle.md": "sha256:006df483a80bc503fedab94ec27c0aa8b8f6e4afec31caecedad3cc852ed2445"
+    }
+  },
   "files": {
     "skills/implement/SKILL.md": {
       "source": ".claude/skills/implement/SKILL.md",
@@ -453,6 +460,12 @@
       "stack": "typescript",
       "description": "TypeScript tech stack: package manager auto-detect (bun/pnpm/yarn/npm), React/Next.js/Tauri/Node patterns, Prisma/Drizzle/TanStack Query guidance, scan recipes"
     },
+    "tests/pressure-tests/mtk-setup-rerun.md": {
+      "source": "tests/pressure-tests/mtk-setup-rerun.md",
+      "target": "tests/pressure-tests/mtk-setup-rerun.md",
+      "action": "sync",
+      "description": "Adversarial scenarios for --audit re-run 3-way merge, migration path, and cache retention"
+    },
     "tests/pressure-tests/security-hardening-pressure.md": {
       "source": "tests/pressure-tests/security-hardening-pressure.md",
       "target": "tests/pressure-tests/security-hardening-pressure.md",
@@ -581,6 +594,48 @@
       "target": "scripts/validate-toolkit.sh",
       "action": "sync",
       "description": "Validation script for toolkit integrity (stack-aware)"
+    },
+    "scripts/secret-scan.sh": {
+      "source": "scripts/secret-scan.sh",
+      "target": "scripts/secret-scan.sh",
+      "action": "sync",
+      "description": "Grep-based pre-write secret detector called by setup-bootstrap before any Write"
+    },
+    "scripts/count-tokens.sh": {
+      "source": "scripts/count-tokens.sh",
+      "target": "scripts/count-tokens.sh",
+      "action": "sync",
+      "description": "Approximate line and token counter used by setup-bootstrap preview to enforce the CLAUDE.md size ceiling"
+    },
+    "scripts/build-references-index.sh": {
+      "source": "scripts/build-references-index.sh",
+      "target": "scripts/build-references-index.sh",
+      "action": "sync",
+      "description": "Emit .claude/references.index from reference frontmatter; --check mode used by validator"
+    },
+    "scripts/repomap.sh": {
+      "source": "scripts/repomap.sh",
+      "target": "scripts/repomap.sh",
+      "action": "sync",
+      "description": "Deterministic symbol-graph extractor feeding setup-audit; delegates to csharp-lsp MCP / tree-sitter / fallback"
+    },
+    "scripts/repomap-tree-sitter.py": {
+      "source": "scripts/repomap-tree-sitter.py",
+      "target": "scripts/repomap-tree-sitter.py",
+      "action": "sync",
+      "description": "Tree-sitter AST walker with PageRank-ish ranking and binary-search token-budget fit"
+    },
+    "scripts/migrate-reference-frontmatter.py": {
+      "source": "scripts/migrate-reference-frontmatter.py",
+      "target": "scripts/migrate-reference-frontmatter.py",
+      "action": "sync",
+      "description": "One-shot migration script — ensures every reference file has description/globs/alwaysApply frontmatter"
+    },
+    "tests/fixtures/known-secrets.txt": {
+      "source": "tests/fixtures/known-secrets.txt",
+      "target": "tests/fixtures/known-secrets.txt",
+      "action": "sync",
+      "description": "Fake credentials covering every secret-scan pattern (self-test fixture, not real secrets)"
     },
     "scripts/run-evals.sh": {
       "source": "scripts/run-evals.sh",

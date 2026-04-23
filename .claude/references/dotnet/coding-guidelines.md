@@ -1,3 +1,8 @@
+---
+description: .NET coding guidelines (pulled from moberghr/coding-guidelines at pinned SHA)
+globs: ["**/*.cs", "**/*.csproj"]
+alwaysApply: false
+---
 # Coding style
 
 ## Summary

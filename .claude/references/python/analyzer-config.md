@@ -1,10 +1,8 @@
 ---
-paths:
-  - "**/*.py"
-  - "**/pyproject.toml"
-  - "**/ruff.toml"
+description: Python analyzer configuration (ruff.toml, pyproject.toml)
+globs: ["**/*.py", "**/pyproject.toml", "**/ruff.toml"]
+alwaysApply: false
 ---
-
 # Python Analyzer Configuration
 
 Recommended linter and type checker configuration for serious Python software.

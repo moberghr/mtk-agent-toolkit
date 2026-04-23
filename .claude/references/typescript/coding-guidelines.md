@@ -1,3 +1,8 @@
+---
+description: TypeScript coding guidelines (strict tsconfig, Biome, ESM, naming)
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: false
+---
 # TypeScript Coding Guidelines — Placeholder
 
 > **STATUS: To be authored when the team formalizes TypeScript conventions.**

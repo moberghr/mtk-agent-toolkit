@@ -32,6 +32,104 @@ Pick based on the argument. If the engineer passed `--merge`, jump to **MERGE MO
 
 You are a senior architect performing an architectural audit of this repository. Document what the codebase ACTUALLY does, not what it should do. If you find inconsistencies, flag them as "⚠️ Inconsistency" — let the team decide which pattern to standardize on.
 
+## STEP -1: Versioned Re-Run Detection
+
+Before regenerating anything, resolve whether this is a re-run and whether a previous template cache exists.
+
+1. **Read current manifest version:**
+   ```bash
+   CURRENT_VERSION=$(python3 -c 'import json; print(json.load(open(".claude/manifest.json"))["version"])')
+   ```
+
+2. **Read previous version from existing CLAUDE.md footer:**
+   ```bash
+   PREVIOUS_VERSION=$(grep -oE 'mtk-setup: v[0-9.]+' CLAUDE.md 2>/dev/null | head -1 | awk '{print $2}' | sed 's/^v//')
+   ```
+   If CLAUDE.md is absent or has no footer, `PREVIOUS_VERSION` is empty.
+
+3. **Locate previous template cache:**
+   ```bash
+   PREV_CACHE=".claude/.mtk-cache/v${PREVIOUS_VERSION}"
+   ```
+
+4. **Classify:**
+
+   | Case | Condition | Action |
+   |---|---|---|
+   | **First v7+ run on an existing repo** | CLAUDE.md exists but no footer OR cache missing | Go to **Migration Path** below |
+   | **Clean re-run** | Footer present and `$PREV_CACHE` exists | Go to **Re-Run Merge Logic** below |
+   | **Fresh bootstrap** | CLAUDE.md absent | Proceed directly to STEP 0 — no merge needed |
+
+### Migration Path (pre-v7 → v7+)
+
+The engineer is running `--audit` on a repo that was bootstrapped before the versioned cache existed. Prompt via `AskUserQuestion`:
+
+```
+question: "No previous template cache found. How should I treat the current generated files?"
+header: "v7.0.0 migration"
+options:
+  - label: "hand-edited"
+    description: "Current files contain engineer edits. I'll diff the new template against them and surface conflicts — won't clobber your edits."
+  - label: "stock"
+    description: "Current files are unmodified from the last bootstrap. Safe to overwrite with the new template."
+  - label: "cancel"
+    description: "Stop — I'll investigate first."
+```
+
+On `hand-edited`: treat existing on-disk files as `current`, use them also as the `previous_template` (so any diff shows as intentional engineer change). Proceed to Re-Run Merge Logic.
+
+On `stock`: copy existing files into `.claude/.mtk-cache/v${CURRENT_VERSION}-migration/` as pseudo-previous-template, then proceed to Re-Run Merge Logic. New template will cleanly overwrite.
+
+On `cancel`: exit without modifying anything.
+
+### Re-Run Merge Logic
+
+For each file the audit would regenerate (`.claude/references/architecture-principles.md` is the primary target — other files only if bootstrap-mode and this section is reused from there):
+
+```bash
+PREV="${PREV_CACHE}/<file>"    # ancestor: previous stock template
+NEW="/tmp/mtk-new/<file>"       # ours: freshly generated template
+CURRENT="<file>"                # theirs: what's on disk now
+
+if [ ! -f "$CURRENT" ]; then
+  # No existing file — just write the new one.
+  cp "$NEW" "<file>"
+  continue
+fi
+if cmp -s "$CURRENT" "$PREV"; then
+  # No engineer edits — safe to overwrite.
+  cp "$NEW" "<file>"
+  continue
+fi
+# Engineer edits present. Attempt 3-way merge.
+cp "$CURRENT" "/tmp/mtk-merge/<file>.merged"
+if git merge-file --union "/tmp/mtk-merge/<file>.merged" "$PREV" "$NEW"; then
+  # Clean merge or union-merge success.
+  cp "/tmp/mtk-merge/<file>.merged" "<file>"
+else
+  # Conflicts — leave the merged file with conflict markers on disk.
+  cp "/tmp/mtk-merge/<file>.merged" "<file>"
+  echo "CONFLICT: <file> — resolve markers manually before next run" >&2
+  CONFLICTS_FOUND=1
+fi
+```
+
+At end of STEP -1, print a re-run summary:
+```
+📋 RE-RUN PLAN
+
+FILE                                           CLASSIFICATION    RESULT
+.claude/references/architecture-principles.md  engineer-edited   MERGED (no conflicts)
+CLAUDE.md                                      stock             OVERWRITE
+.claude/rules/security.md                      protected         SKIP
+```
+
+If `CONFLICTS_FOUND=1`, print: "Re-run left <N> file(s) with conflict markers. Resolve before the next `--audit` run." Do **not** update the `.mtk-cache/` copy for files that had conflicts — only update cache entries for files whose merge succeeded cleanly.
+
+**Protected files** (from `manifest.protected`) are never merged — they're left as-is and reported as `SKIP`.
+
+After re-run merge, update `.claude/.mtk-cache/v${CURRENT_VERSION}/` with the successfully-merged template outputs, then proceed to the report step (do not re-run STEP 0-4; the merge already produced the new content).
+
 ## STEP 0: Determine The Tech Stack
 
 Read `.claude/tech-stack` to determine the active stack. If missing, detect it:
@@ -46,6 +144,29 @@ If multiple stacks detected, ask the engineer which to audit first. Multi-stack 
 If no supported stack detected, stop and tell the engineer to run `/mtk-setup` first or add a tech stack skill.
 
 Then load `.claude/skills/tech-stack-{stack}/SKILL.md`. The `## Scan Recipes` section provides the bash commands for that stack.
+
+## STEP 0.5: Build the Ranked Symbol Graph (repomap)
+
+Before running ad-hoc scan recipes, produce a deterministic symbol graph. This is the **primary input** to the audit — scan recipes remain a supplement, not the source of truth.
+
+```bash
+bash scripts/repomap.sh <stack> --budget=4000 --out=.claude/.mtk-cache/repomap.json
+```
+
+Read the resulting JSON. The `fit` field tells you the quality tier:
+
+| `fit` value | Meaning | Audit behavior |
+|---|---|---|
+| `full` | All symbols fit within budget | Cite freely — full graph available |
+| `ranked` | Top-N by in-edge count (PageRank-ish) | Cite top symbols; acknowledge truncation in provenance section |
+| `defer-to-mcp` | .NET only — call `mcp__csharp-lsp__csharp_symbols` directly to enrich | Use MCP tool for the ranked pass, then cite |
+| `fallback` | No tree-sitter / no LSP available | Audit degrades to scan-recipes-only; **provenance section must state this** |
+
+When `fit != "fallback"`, the audit prompt changes character — instead of "read the codebase and extract principles", become:
+
+> "The following ranked symbols are the structural backbone of this codebase (top by incoming-reference count). For each architectural principle you propose, cite at least one symbol from this list that evidences it. Do not claim a principle you cannot evidence."
+
+Pass the ranked JSON into the prompt context. Keep the symbol list visible while writing principles.
 
 ## STEP 1: Run The Scan Recipes
 
@@ -259,6 +380,33 @@ Based on EVERYTHING you found, create `.claude/references/architecture-principle
 - If a pattern is only used in some places, note its adoption percentage
 - Be specific about file locations so engineers can find examples
 - Don't skip sections — if you found nothing for a section, say "Not found in this codebase"
+
+## STEP 3.5: Provenance Section (mandatory)
+
+Append a `## Provenance` section to `architecture-principles.md`. This proves each principle is evidence-based, not invented:
+
+```markdown
+## Provenance
+
+Generated by setup-audit at <ISO8601_UTC> against mtk-setup v<version>.
+
+**Repomap input:**
+- Symbol graph: `.claude/.mtk-cache/repomap.json` (fit: `<fit>`, <N>/<total> symbols, <files> files)
+- Fallback reason (if any): <reason or "n/a">
+
+**Symbol evidence per principle:**
+
+| Principle | Evidencing symbols |
+|---|---|
+| CQRS via MediatR | `InvoiceCommandHandler`, `IMediator`, `OrderQueryHandler` (3 handlers, 47 refs) |
+| Value objects for money | `Money`, `Currency`, `IMoney` (3 symbols, 72 refs) |
+| ... | ... |
+```
+
+When `fit == "fallback"`, replace the symbol evidence table with:
+> "⚠️ No deterministic symbol graph available (tree-sitter/LSP missing). Principles below are derived from scan recipes only — re-run with tree-sitter installed for evidence-backed output."
+
+The provenance section is not optional. If you produced principles without evidence from the repomap, you either hallucinated or the repomap fell back — either way, disclosure is required.
 
 ## STEP 4: Present Results
 

@@ -2,6 +2,8 @@
 .claude/settings.local.json
 .claude/review-config.local.json
 .claude/queue/
+.claude/references.index
+.claude/.mtk-cache/
 !.claude/skills/
 !AGENTS.md
 tasks/todo.md

@@ -1,3 +1,8 @@
+---
+description: MediatR vertical-slice patterns for CQRS handler design
+globs: ["**/Handlers/**/*.cs", "**/Features/**/*.cs"]
+alwaysApply: false
+---
 # MediatR Slice Patterns
 
 Shared conventions for Moberg CQRS/MediatR-style codebases.

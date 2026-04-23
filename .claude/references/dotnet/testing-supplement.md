@@ -1,3 +1,8 @@
+---
+description: .NET testing supplement — xUnit, fixtures, TestContainers, snapshot testing
+globs: ["**/*Tests.cs", "**/*.Tests/**/*.cs"]
+alwaysApply: false
+---
 # .NET Testing Supplement
 
 > **Precedence:** This is a shared reference file. Project-specific overrides in `.claude/rules/testing.md` take precedence over guidance here. If `testing.md` says "xUnit only", that overrides the generic framework list below.

@@ -1,3 +1,8 @@
+---
+description: TypeScript data-layer checklist (Drizzle/Prisma/Kysely conventions)
+globs: ["**/*.ts"]
+alwaysApply: false
+---
 # TypeScript Data Layer Checklist
 
 Project-level reminders for reviewing and writing data access code in TypeScript projects. Covers Prisma, Drizzle, and TanStack Query (client-side). The TypeScript ecosystem lacks a single dominant ORM — match whatever the project already uses.

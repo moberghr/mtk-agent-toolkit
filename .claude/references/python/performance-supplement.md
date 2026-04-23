@@ -1,3 +1,8 @@
+---
+description: Python performance guidance — async, C extensions, profiler usage
+globs: ["**/*.py"]
+alwaysApply: false
+---
 # Python Performance Supplement
 
 Stack-specific performance rules for Python projects. Read alongside `.claude/references/performance-checklist.md`.

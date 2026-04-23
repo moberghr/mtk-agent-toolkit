@@ -1,3 +1,8 @@
+---
+description: .NET-specific performance guidance — allocation, Span<T>, async, EF query shape
+globs: ["**/*.cs"]
+alwaysApply: false
+---
 # .NET Performance Supplement
 
 Stack-specific performance rules for .NET projects. Read alongside `.claude/references/performance-checklist.md`.

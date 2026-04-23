@@ -1,3 +1,8 @@
+---
+description: Python recommended tooling (ruff, mypy, pytest, uv)
+globs: ["**/*.py", "**/pyproject.toml"]
+alwaysApply: false
+---
 # Recommended Tooling — Python
 
 > Stack-specific MCP servers, plugins, and integrations that noticeably improve Claude Code productivity on Python projects. Pair with `.claude/references/recommended-tooling.md` (shared).
