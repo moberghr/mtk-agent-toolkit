@@ -6,7 +6,7 @@
 
 **A multi-agent toolkit that enforces your team's coding standards, security policies, and review discipline on every AI-generated line of code. Language-agnostic workflows with pluggable tech stacks for .NET, Python, and TypeScript.**
 
-[![Version](https://img.shields.io/badge/version-6.3.2-blue.svg)](https://github.com/moberghr/mtk-agent-toolkit/releases)
+[![Version](https://img.shields.io/badge/version-6.3.3-blue.svg)](https://github.com/moberghr/mtk-agent-toolkit/releases)
 [![Website](https://img.shields.io/badge/website-moberghr.github.io-6d28d9.svg)](https://moberghr.github.io/mtk-agent-toolkit/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-supported-purple.svg)](https://claude.ai/code)
 [![Cursor](https://img.shields.io/badge/Cursor-supported-blue.svg)](https://cursor.sh)
@@ -53,6 +53,9 @@ MTK closes that gap with **workflow enforcement** (planning, TDD, batched implem
 ---
 
 ## What's New
+
+### v6.3.3 — Fix duplicate hooks.json load (2026-04-23)
+- **Plugin manifest fix** — `.claude-plugin/plugin.json` no longer declares `"hooks": "./hooks/hooks.json"`; Claude Code auto-loads that path, and the explicit reference caused a duplicate-hooks load error on `/reload-plugins`
 
 ### v6.3.2 — Verification hardening and hook parsing cleanup (2026-04-22)
 - **Fresh verification enforcement** — completion claims now require a verification command that ran after the most recent edit; same-second edits no longer slip through stale-evidence checks
@@ -915,7 +918,7 @@ MIT. See [LICENSE](LICENSE).
 
 <div align="center">
 
-**MTK — Moberg Toolkit** v6.3.2 · [Moberg d.o.o.](https://www.moberg.hr)
+**MTK — Moberg Toolkit** v6.3.3 · [Moberg d.o.o.](https://www.moberg.hr)
 
 Built for teams that ship production code, not prototypes.
 
