@@ -2,6 +2,11 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [6.3.3] - 2026-04-23
+
+### Fixed
+- **Plugin manifest duplicate hooks entry** — removed `"hooks": "./hooks/hooks.json"` from `.claude-plugin/plugin.json`. Claude Code auto-loads `hooks/hooks.json` from the plugin root, so the explicit reference produced a `Duplicate hooks file detected` error on `/reload-plugins`. `manifest.hooks` is reserved for *additional* hook files only.
+
 ## [6.3.1] - 2026-04-20
 
 ### Added
