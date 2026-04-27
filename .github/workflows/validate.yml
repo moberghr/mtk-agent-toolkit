@@ -55,7 +55,7 @@ jobs:
 
           EXIT_CODE=0
           for pattern in "${PATTERNS[@]}"; do
-            if git grep -InE "$pattern" -- ':!*.yml' ':!dist/' ':!*.lock' 2>/dev/null; then
+            if git grep -InE "$pattern" -- ':!*.yml' ':!dist/' ':!*.lock' ':!tests/fixtures/known-secrets.txt' 2>/dev/null; then
               echo "ERROR: Potential secret found matching pattern: $pattern"
               EXIT_CODE=1
             fi
