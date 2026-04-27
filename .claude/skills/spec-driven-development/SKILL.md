@@ -62,8 +62,17 @@ Write the implementation spec before writing code. The spec is the shared source
 8. Run an elegance check: reduce file count, new abstractions, and moving parts if a simpler design exists.
 9. Persist the spec to disk:
    - Create `docs/specs/` if it does not exist.
-   - Save the human-readable spec to `docs/specs/YYYY-MM-DD-<feature-slug>.md` using the current date and a kebab-case slug of the feature name.
-   - **Also emit a machine-parseable sidecar** at `docs/specs/YYYY-MM-DD-<feature-slug>.json` with the schema in the next section. This sidecar drives `spec-drift-detection` after implementation.
+   - Compute the base target: `docs/specs/YYYY-MM-DD-<feature-slug>` (no extension yet).
+   - **Version detection:** Check whether `docs/specs/YYYY-MM-DD-<feature-slug>.md` already exists.
+     - If it does NOT exist → write to `docs/specs/YYYY-MM-DD-<feature-slug>.md` (no suffix).
+     - If it DOES exist → find the highest existing `-vN` suffix:
+       ```bash
+       ls docs/specs/YYYY-MM-DD-<slug>*.md 2>/dev/null | grep -oE '\-v[0-9]+' | sort -V | tail -1
+       ```
+       If a `-vN` suffix is found, write as `-v(N+1)`. If the file exists but no `-vN` variants do, write as `-v2`.
+     - The JSON sidecar gets the **same version suffix** (e.g., `docs/specs/YYYY-MM-DD-<slug>-v2.json`).
+     - Emit one line before writing: `Writing spec → docs/specs/<final-filename>.md` so the engineer can confirm the version chosen.
+   - **Also emit a machine-parseable sidecar** at `docs/specs/<final-filename>.json` with the schema in the next section. This sidecar drives `spec-drift-detection` after implementation.
    - This enables session recovery, human review outside chat, and reuse across sessions.
    - Add `docs/specs/` to `.gitignore` if not already present — specs are working artifacts, not committed deliverables.
 10. Always stop for approval before implementation. When invoked from the implement workflow, this means handing control back to Phase 2.5 approval gate (which uses `AskUserQuestion`). Do not silently continue to implementation.

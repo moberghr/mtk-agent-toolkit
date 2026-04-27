@@ -169,6 +169,74 @@ if [ -n "$STACK" ] && [ -d ".claude/references/$STACK" ]; then
 fi
 ```
 
+#### 1h. Reference Footprint
+
+```!
+echo "--- Reference Footprint ---"
+total_lines=0
+STACK="$(cat .claude/tech-stack 2>/dev/null | tr -d '[:space:]')"
+
+for f in .claude/references/*.md; do
+  [ -f "$f" ] || continue
+  lines=$(wc -l < "$f" | tr -d ' ')
+  tokens=$((lines * 13))
+  printf "  %-45s %4d lines  (~%dk tokens)\n" "$(basename "$f")" "$lines" "$((tokens / 1000 + 1))"
+  total_lines=$((total_lines + lines))
+done
+
+if [ -n "$STACK" ] && [ -d ".claude/references/$STACK" ]; then
+  for f in ".claude/references/$STACK"/*.md; do
+    [ -f "$f" ] || continue
+    lines=$(wc -l < "$f" | tr -d ' ')
+    tokens=$((lines * 13))
+    printf "  %-45s %4d lines  (~%dk tokens)\n" "$STACK/$(basename "$f")" "$lines" "$((tokens / 1000 + 1))"
+    total_lines=$((total_lines + lines))
+  done
+fi
+
+total_tokens=$((total_lines * 13))
+echo "  ──────────────────────────────────────────────────────────────────"
+printf "  Total available: %d lines  (~%dk tokens)\n" "$total_lines" "$((total_tokens / 1000 + 1))"
+echo "  (actual load depends on path-scoped matching in context-engineering)"
+```
+
+#### 1i. Active Specs
+
+```!
+echo "--- Active Specs ---"
+if [ -d docs/specs ]; then
+  # Group by slug (strip date prefix, -vN suffix, and extension)
+  declare -A slugs 2>/dev/null || true
+  for f in docs/specs/*.md; do
+    [ -f "$f" ] || continue
+    base="$(basename "$f" .md)"
+    # Strip leading date (YYYY-MM-DD-)
+    slug="${base#????-??-??-}"
+    # Strip trailing -vN suffix
+    slug="$(echo "$slug" | sed 's/-v[0-9]*$//')"
+    echo "  $f"
+  done | sort
+  # Show version groups
+  echo ""
+  echo "  Version groups:"
+  for f in docs/specs/*.json; do
+    [ -f "$f" ] || continue
+    base="$(basename "$f" .json)"
+    slug="${base#????-??-??-}"
+    slug="$(echo "$slug" | sed 's/-v[0-9]*$//')"
+    version_marker=""
+    if echo "$base" | grep -qE '\-v[0-9]+$'; then
+      version_marker=" $(echo "$base" | grep -oE 'v[0-9]+$')"
+    else
+      version_marker=" v1"
+    fi
+    printf "    slug=%-35s  file=%s\n" "$slug" "$(basename "$f")"
+  done
+else
+  echo "  (no docs/specs/ directory)"
+fi
+```
+
 ### STEP 2 — Report
 
 Present the gathered data as a clean summary. Flag any issues:

@@ -51,7 +51,7 @@ A handoff captures the current session state — branch, in-progress work, decis
    - Recent commits on this branch: `git log --oneline -10`
    - Uncommitted changes: `git status --short`
    - Open tasks: read `tasks/todo.md` if it exists
-   - Active spec or plan: check `docs/specs/` and `docs/plans/` for recent files
+   - Active spec or plan: check `docs/specs/` and `docs/plans/` for recent files. Record the **full path** of the active spec including any version suffix (e.g., `docs/specs/2026-04-23-foo-v2.md`) — this becomes `spec_path` in the artifact.
    - Lessons captured this session: check `tasks/lessons.md` for today's entries
 
 2. **Summarize decisions.** Without restating the conversation:
@@ -69,6 +69,9 @@ A handoff captures the current session state — branch, in-progress work, decis
 
    ## Branch
    [current branch name]
+
+   ## Active Spec
+   spec_path: [full path to active spec including version suffix, e.g. docs/specs/2026-04-23-foo-v2.md — or "(none)" if no active spec]
 
    ## Goal
    [what this session set out to accomplish]

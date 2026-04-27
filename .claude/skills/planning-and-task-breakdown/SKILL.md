@@ -48,7 +48,8 @@ Convert the approved plan into small, executable tasks that can be verified one 
    - batches with checkboxes
    - post-implementation review items
 7. If a spec file exists in `docs/specs/`, persist the plan alongside it:
-   - Save the human-readable plan to `docs/plans/YYYY-MM-DD-<feature-slug>.md` using the same date and slug.
+   - Use the **full filename stem of the active spec**, including any version suffix (e.g., `-v2`, `-v3`). If the spec was written as `docs/specs/2026-04-23-foo-v2.md`, the plan is `docs/plans/2026-04-23-foo-v2.md`.
+   - If no spec path is available (standalone planning run), use `YYYY-MM-DD-<feature-slug>.md` with no suffix.
    - Create `docs/plans/` if it does not exist.
    - Add `docs/plans/` to `.gitignore` if not already present.
    - This enables session recovery and plan reuse across sessions.
