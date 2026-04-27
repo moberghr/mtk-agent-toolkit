@@ -36,9 +36,16 @@ Your output MUST follow `.claude/references/review-finding-schema.md`:
 
 Read `.claude/review-config.json` to determine the threshold (default 80). If
 `.claude/review-config.local.json` exists, it overrides. Apply the **confidence
-rubric** and the **anti-inflation rule** from the schema. Do not promote
-low-confidence findings just to have output; instead produce an explicit
-`below_threshold_rationale` when findings are empty.
+rubric**, the **anti-inflation rule**, and the **False-Positive Exclusion List**
+from the schema. Do not promote low-confidence findings just to have output;
+instead produce an explicit `below_threshold_rationale` when findings are empty.
+
+**Drop FP candidates before scoring** — pre-existing issues outside the diff,
+linter/typechecker-catchable items, unjustified style nits not in the loaded
+guidelines, explicitly-justified silences, plausibly-intentional behavior
+shifts, and generic concerns without a concrete vector are non-findings, not
+low-confidence findings. They must not enter `findings[]` and must not be
+counted in `summary.filtered_below_threshold`.
 
 ## Step 1: Load Your Standards
 

@@ -1,6 +1,6 @@
 {
-  "version": "7.0.0",
-  "updated": "2026-04-23",
+  "version": "7.2.0",
+  "updated": "2026-04-27",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
   "coding-guidelines": {
@@ -58,6 +58,12 @@
       "target": ".claude/agents/architecture-reviewer.md",
       "action": "sync",
       "description": "Focused reviewer for architectural fit and slice boundaries"
+    },
+    "agents/silent-failure-hunter.md": {
+      "source": ".claude/agents/silent-failure-hunter.md",
+      "target": ".claude/agents/silent-failure-hunter.md",
+      "action": "sync",
+      "description": "Focused reviewer for silent failures, swallowed errors, and unjustified diagnostic silences in error-handling diffs"
     },
     "settings.json": {
       "source": ".claude/settings.json",
@@ -396,6 +402,42 @@
       "target": ".claude/skills/code-simplification/SKILL.md",
       "action": "sync",
       "description": "Reusable behavior-preserving cleanup and simplification skill"
+    },
+    "skills/claude-md-audit/SKILL.md": {
+      "source": ".claude/skills/claude-md-audit/SKILL.md",
+      "target": ".claude/skills/claude-md-audit/SKILL.md",
+      "action": "sync",
+      "description": "Re-grade loop for existing CLAUDE.md files — six-criterion rubric, currency cross-checks, append-only diffs"
+    },
+    "tests/pressure-tests/claude-md-audit-pressure.md": {
+      "source": "tests/pressure-tests/claude-md-audit-pressure.md",
+      "target": "tests/pressure-tests/claude-md-audit-pressure.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for claude-md-audit (stale commands, anti-sandbagging, refuse-rewrite, partial-approval)"
+    },
+    "scripts/skill-eval/run-eval.sh": {
+      "source": "scripts/skill-eval/run-eval.sh",
+      "target": "scripts/skill-eval/run-eval.sh",
+      "action": "sync",
+      "description": "Runs eval prompts for a single skill, grades each response with a sub-agent, writes per-run JSON results"
+    },
+    "scripts/skill-eval/aggregate.sh": {
+      "source": "scripts/skill-eval/aggregate.sh",
+      "target": "scripts/skill-eval/aggregate.sh",
+      "action": "sync",
+      "description": "Runs N iterations of run-eval.sh and reports per-prompt pass-rate plus standard deviation"
+    },
+    "scripts/skill-eval/grader-prompt.md": {
+      "source": "scripts/skill-eval/grader-prompt.md",
+      "target": "scripts/skill-eval/grader-prompt.md",
+      "action": "sync",
+      "description": "Sub-agent system prompt used by the eval grader — strict three-grade scale with single-line JSON output"
+    },
+    "evals/code-review-and-quality/prompts.jsonl": {
+      "source": "evals/code-review-and-quality/prompts.jsonl",
+      "target": "evals/code-review-and-quality/prompts.jsonl",
+      "action": "sync",
+      "description": "Starter eval prompt set for code-review-and-quality — covers FP discipline, confidence threshold, output schema, dispatch triggers"
     },
     "skills/verification-before-completion/SKILL.md": {
       "source": ".claude/skills/verification-before-completion/SKILL.md",
@@ -985,6 +1027,12 @@
       "action": "sync",
       "description": "Adversarial pressure test for toolkit-health (corrupt analytics, stale data, empty state, noise-to-anomaly)"
     },
+    "tests/pressure-tests/silent-failure-hunter-pressure.md": {
+      "source": "tests/pressure-tests/silent-failure-hunter-pressure.md",
+      "target": "tests/pressure-tests/silent-failure-hunter-pressure.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for silent-failure-hunter (audited paths, justified silences, FP discipline, empty-with-rationale)"
+    },
     "docs/parallelism-patterns.md": {
       "source": "docs/parallelism-patterns.md",
       "target": "docs/parallelism-patterns.md",
@@ -1110,6 +1158,12 @@
       "target": "tests/hooks/test-queue-expiry.sh",
       "action": "sync",
       "description": "SC4 integration test — queue entries older than ttl_hours are skipped and removed"
+    },
+    "tests/hooks/test-context-estimator.sh": {
+      "source": "tests/hooks/test-context-estimator.sh",
+      "target": "tests/hooks/test-context-estimator.sh",
+      "action": "sync",
+      "description": "SC5+SC6 benchmark — bytes_read accumulates for unique files; estimated_context_tokens computed correctly"
     },
     "tests/pressure-tests/hooks-skill-invocation-pressure.md": {
       "source": "tests/pressure-tests/hooks-skill-invocation-pressure.md",
