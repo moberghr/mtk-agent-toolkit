@@ -29,15 +29,24 @@ lessons=$(read_field "lessons_captured")
 scope_warns=$(read_field "scope_guard_warnings")
 benchmarks=$(read_field "benchmarks_run")
 bench_score=$(read_str "benchmark_last_score")
+estimated_tokens=$(read_field "estimated_context_tokens")
 
 # Calculate averages
 avg_ops=0
 avg_mods=0
 scope_warn_rate="n/a"
+avg_tokens="n/a"
 if [ "$sessions" -gt 0 ]; then
   avg_ops=$((total_ops / sessions))
   avg_mods=$((total_mods / sessions))
   scope_warn_rate=$(awk "BEGIN { printf \"%.2f\", $scope_warns / $sessions }")
+  avg_tokens=$((estimated_tokens / sessions))
+fi
+
+# Format token count for display
+tokens_display="n/a"
+if [ "$estimated_tokens" -gt 0 ]; then
+  tokens_display="${estimated_tokens} (~${avg_tokens}/session)"
 fi
 
 printf '
@@ -59,8 +68,11 @@ printf '
 ├─────────────────────────────────────────┤
 │ Benchmarks run:       %-18s│
 │ Last benchmark score: %-18s│
+├─────────────────────────────────────────┤
+│ Est. context tokens:  %-18s│
 └─────────────────────────────────────────┘
 ' "$first" "$last" "$sessions" \
   "$total_ops" "$total_mods" "$avg_ops" "$avg_mods" \
   "$specs" "$lessons" "$scope_warns" "$scope_warn_rate" \
-  "$benchmarks" "${bench_score:-n/a}"
+  "$benchmarks" "${bench_score:-n/a}" \
+  "$tokens_display"

@@ -1,3 +1,8 @@
+---
+description: Python coding guidelines (placeholder until team formalizes)
+globs: ["**/*.py"]
+alwaysApply: false
+---
 # Python Coding Guidelines — Placeholder
 
 > **STATUS: To be authored when the team starts its first Python project.**

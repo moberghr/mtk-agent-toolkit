@@ -1,3 +1,8 @@
+---
+description: .NET recommended tooling (dotnet-format, BenchmarkDotNet, Verify, etc.)
+globs: ["**/*.cs", "**/*.csproj"]
+alwaysApply: false
+---
 # Recommended Tooling — .NET
 
 > Stack-specific MCP servers, plugins, and integrations that noticeably improve Claude Code productivity on .NET projects. Pair with `.claude/references/recommended-tooling.md` (shared).

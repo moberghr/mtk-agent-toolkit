@@ -2,6 +2,7 @@
 name: implement
 description: Full feature implementation loop orchestrating planning, batching, verification, and review skills
 type: skill
+user-invocable: false
 ---
 
 # MTK Implement — Full Feature Loop

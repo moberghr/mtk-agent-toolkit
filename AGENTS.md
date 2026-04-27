@@ -107,6 +107,7 @@ flowchart LR
 **Stage 2 (quality and coverage):** Only after Stage 1 passes with no Critical issues.
 - Test completeness or missing coverage → `test-reviewer`
 - Architecture or slice boundary concerns → `architecture-reviewer`
+- Error-handling diff (catch/except/`?.`/`??`/eslint-disable/Skip) → `silent-failure-hunter` (runs in parallel with `compliance-reviewer` in Stage 1 when triggered)
 
 ---
 

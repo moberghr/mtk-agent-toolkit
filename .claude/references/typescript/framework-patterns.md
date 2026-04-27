@@ -1,3 +1,8 @@
+---
+description: TypeScript framework patterns (React, Next.js, Tauri, Node)
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: false
+---
 # TypeScript Framework Patterns
 
 Shared conventions for React, Next.js, Tauri, and Node backend codebases. Match project conventions first; this file captures defaults when conventions are absent.

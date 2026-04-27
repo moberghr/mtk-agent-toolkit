@@ -3,7 +3,7 @@ name: mtk-setup
 description: One-stop setup entry point that bootstraps a repo or re-runs architecture audit
 type: skill
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
-argument-hint: [--audit|--audit-only] [--merge] [--preview] [--non-interactive]
+argument-hint: [--audit|--audit-only] [--merge] [--preview] [--non-interactive] [--update-guidelines]
 ---
 
 # MTK Setup — Unified Entry Point for Bootstrap and Audit
@@ -36,16 +36,37 @@ Parse the argument string into a mode and flags:
 | `--merge` | Multi-repo unification mode (implies audit) |
 | `--preview` | Show proposed changes, ask before writing (bootstrap only) |
 | `--non-interactive` | Skip interview questions (bootstrap only) |
+| `--update-guidelines` | Bump the pinned `moberghr/coding-guidelines` SHA in `.claude/manifest.json` to current HEAD and refresh recorded sha256 hashes. Does **not** re-run bootstrap; engineer must invoke `/mtk-setup` afterward if they want the new guidelines applied. Cannot be combined with other flags. |
 
 Default mode (no flags): **bootstrap**.
+
+Flag combination rules:
+- `--update-guidelines` is mutually exclusive with every other flag. Reject with a clear message if combined.
+- `--merge` implies audit and is mutually exclusive with `--non-interactive`.
 
 ### STEP 1: Decide the Target Skill
 
 | Argument pattern | Invoke |
 |---|---|
+| `--update-guidelines` present | Inline workflow (see below). Does not invoke a target skill. |
 | `--merge` present | `.claude/skills/setup-audit/SKILL.md` (pass `--merge`) |
 | `--audit` or `--audit-only` present | `.claude/skills/setup-audit/SKILL.md` (no flags) |
 | None of the above | `.claude/skills/setup-bootstrap/SKILL.md` (pass `--preview` / `--non-interactive` through) |
+
+**Inline workflow for `--update-guidelines`:**
+
+1. Resolve current HEAD SHA:
+   ```bash
+   CURRENT_SHA=$(git ls-remote https://github.com/moberghr/coding-guidelines HEAD | awk '{print $1}')
+   ```
+2. Read pinned SHA from `.claude/manifest.json` (`coding-guidelines.sha`). If identical, report "Already at HEAD ($SHA). Nothing to do." and exit.
+3. For each file listed in `coding-guidelines.files`, fetch at the new SHA and compute sha256:
+   ```bash
+   curl -sL "https://raw.githubusercontent.com/moberghr/coding-guidelines/$CURRENT_SHA/$PATH" | sha256sum | awk '{print $1}'
+   ```
+4. Print a diff summary: old SHA → new SHA, plus any sha256 changes per file.
+5. Update `.claude/manifest.json` in place (update `coding-guidelines.sha` and each `coding-guidelines.files.<path>` value).
+6. Tell the engineer: "Guidelines pin updated. Run `/mtk-setup --audit` or `/mtk-setup` to apply the new guidelines to this repo." Do **not** auto-invoke bootstrap — the engineer decides when to apply.
 
 **Ambiguity check:** if the repo has no `.claude/tech-stack` file and the engineer passed `--audit`, warn:
 

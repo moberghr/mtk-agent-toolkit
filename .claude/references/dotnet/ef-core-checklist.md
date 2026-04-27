@@ -1,3 +1,8 @@
+---
+description: EF Core checklist — NoTracking, query splitting, migrations, projection pitfalls
+globs: ["**/*.cs", "**/Migrations/**/*.cs"]
+alwaysApply: false
+---
 # EF Core Checklist
 
 Project-level reminders for reviewing and writing EF Core code.

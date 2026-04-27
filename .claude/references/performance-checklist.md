@@ -1,3 +1,8 @@
+---
+description: Generic performance checklist — applies to hot paths and release-blocking changes
+globs: ["**/*"]
+alwaysApply: false
+---
 # Performance Checklist
 
 Shared, language-agnostic performance rules. For stack-specific rules, see the active tech stack skill's reference files (e.g., `.claude/references/dotnet/performance-supplement.md`).

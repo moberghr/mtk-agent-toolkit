@@ -1,3 +1,8 @@
+---
+description: TypeScript testing supplement — Vitest, Testing Library, Playwright
+globs: ["**/*.test.ts", "**/*.spec.ts", "**/*.test.tsx"]
+alwaysApply: false
+---
 # TypeScript Testing Supplement
 
 Stack-specific testing guidance for TypeScript projects. Read alongside `.claude/references/testing-patterns.md`.

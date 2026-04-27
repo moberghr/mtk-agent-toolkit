@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Re-export shrink-guard helpers so any hook sourcing hook-io gets mtk_guarded_write.
+# shellcheck source=shrink-guard.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/shrink-guard.sh"
+
 # Shared helpers for Claude Code hook payload parsing and session-scoped state.
 # Supports both legacy flat payloads ({"command": ...}) and nested tool_input
 # payloads ({"tool_input": {"command": ...}}) using only the portable tools
@@ -153,6 +157,7 @@ last_verification_epoch=0
 last_verification_seq=0
 last_verification_command=''
 last_verification_summary=''
+bytes_read=0
 EOF
 }
 
@@ -179,6 +184,7 @@ mtk_load_session_state() {
   last_verification_seq=${last_verification_seq:-0}
   last_verification_command=${last_verification_command:-}
   last_verification_summary=${last_verification_summary:-}
+  bytes_read=${bytes_read:-0}
 }
 
 # Write the session state via escaped-single-quoted values and an atomic
@@ -211,6 +217,7 @@ mtk_save_session_state() {
     printf "last_verification_seq=%s\n" "${last_verification_seq:-0}"
     printf "last_verification_command='%s'\n" "$cmd_esc"
     printf "last_verification_summary='%s'\n" "$sum_esc"
+    printf "bytes_read=%s\n" "${bytes_read:-0}"
   } > "$tmp"
   mv "$tmp" "$session_file"
 }

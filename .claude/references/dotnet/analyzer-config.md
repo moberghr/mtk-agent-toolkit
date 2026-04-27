@@ -1,10 +1,8 @@
 ---
-paths:
-  - "**/*.cs"
-  - "**/*.csproj"
-  - "**/Directory.Build.props"
+description: .NET analyzer configuration (Directory.Build.props, .editorconfig conventions)
+globs: ["**/*.cs", "**/*.csproj", "**/Directory.Build.props"]
+alwaysApply: false
 ---
-
 # .NET Analyzer Configuration
 
 Recommended Roslyn analyzer packages and configuration for serious .NET software. These analyzers surface semantic issues that regex-based linting cannot detect.

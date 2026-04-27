@@ -1,3 +1,8 @@
+---
+description: TypeScript recommended tooling (Biome, Vitest, Playwright)
+globs: ["**/*.ts", "**/*.tsx", "**/package.json"]
+alwaysApply: false
+---
 # Recommended Tooling — TypeScript
 
 > Stack-specific MCP servers, plugins, and integrations that noticeably improve Claude Code productivity on TypeScript/JavaScript projects (React, Next.js, Tauri, Node). Pair with `.claude/references/recommended-tooling.md` (shared).

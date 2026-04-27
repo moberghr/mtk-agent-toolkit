@@ -1,3 +1,8 @@
+---
+description: FastAPI patterns — dependency injection, pydantic models, router composition
+globs: ["**/*.py"]
+alwaysApply: false
+---
 # FastAPI / Django Patterns
 
 Shared conventions for Python web service codebases.

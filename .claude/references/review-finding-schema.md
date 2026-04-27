@@ -1,3 +1,8 @@
+---
+description: Schema for review findings emitted by code-review-and-quality
+globs: ["**/*"]
+alwaysApply: false
+---
 # Review Finding Schema
 
 Canonical output format for reviews across the toolkit: `pre-commit-review`,
@@ -115,6 +120,46 @@ Confidence is bounded by evidence, not by the reviewer's desire to hit the
 ≥2-findings bar. If the honest confidence is 65, report it as 65 (and it
 will be filtered). Do **not** promote it to 80 to force a surface. Inflating
 confidence to manufacture findings is a review failure.
+
+## False-Positive Exclusion List
+
+Before assigning confidence, drop the candidate entirely if it falls into any
+of these categories. These are not "low-confidence findings to suppress" —
+they are not findings at all and must not enter the schema.
+
+1. **Pre-existing issues outside the diff.** A bug exists, but the lines that
+   produce it were not touched in this change. Out of scope for this review.
+2. **Linter / typechecker / compiler-catchable issues.** Missing imports, type
+   errors, formatting, broken builds. CI handles these. Do not surface them
+   from `source: "ai"`. Deterministic sources (`linter` / `analyzer`) emit
+   them with `confidence: 100` — that is the correct path.
+3. **Pedantic style nits not enumerated in the loaded coding guidelines.** If
+   the rule is not in the active tech stack's coding guidelines, in
+   `.claude/rules/*.md`, or in a loaded reference, the reviewer's personal
+   preference is not a finding.
+4. **Issues silenced explicitly in code with a stated reason.** A
+   `// eslint-disable — <why>`, `# noqa: E501  # <why>`, or inline comment
+   justifying the deviation is an accepted trade-off. Flag only when the
+   silence carries no justification.
+5. **Plausibly intentional functional changes related to the stated purpose.**
+   If the diff's stated purpose plausibly explains the behavior shift, do not
+   flag it as a regression. Behavioral-diff mismatches still count — they are
+   the explicit signal that actual code diverges from declared intent.
+6. **Generic concerns without a concrete vector.** "Could be more secure",
+   "lacks tests" without naming the missing path, "might not scale". Either
+   produce a specific finding (file, line, named risk) or drop it.
+7. **Issues that depend on context the reviewer did not load.** If three more
+   files would be needed to confirm, either read them or escalate to
+   `NEEDS_CONTEXT`. Do not emit a guess as a finding.
+
+When a candidate matches one of these categories, **do not** count it in
+`summary.filtered_below_threshold`. That counter tracks honest findings that
+fell below the confidence floor, not non-findings excluded by category.
+
+If a candidate is borderline between "real but low-confidence" and "FP
+category", prefer the FP category and drop it. The cost of a noisy review is
+higher than the cost of a missed minor issue — major issues survive any
+honest filter.
 
 ## Verdict Mapping
 

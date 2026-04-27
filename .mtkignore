@@ -1,0 +1,23 @@
+# .mtkignore — paths excluded from all MTK scans.
+#
+# Used by: scripts/repomap.sh, scripts/build-references-index.sh, setup-audit,
+# setup-bootstrap. Same syntax as .gitignore. Committed intentionally so the
+# whole team shares a single source of truth.
+#
+# Precedence: .mtkignore > .gitignore > built-in defaults (node_modules/, .git/,
+# dist/, bin/, obj/, .venv/, __pycache__/).
+#
+# Missing file is non-fatal: scans fall back to .gitignore + defaults.
+
+# Generated artifacts
+graphify-out/
+.playwright-mcp/
+docs/translations/
+
+# Skill invocation files (don't ingest our own instructions as code)
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+
+# MTK's own dist bundle (built just-in-time, gitignored, not interesting to scan)
+dist/

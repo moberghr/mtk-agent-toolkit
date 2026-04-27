@@ -1,3 +1,8 @@
+---
+description: Python testing supplement — pytest fixtures, parametrize, hypothesis
+globs: ["**/test_*.py", "**/*_test.py", "**/tests/**/*.py"]
+alwaysApply: false
+---
 # Python Testing Supplement
 
 Stack-specific testing guidance for Python projects. Read alongside `.claude/references/testing-patterns.md`.

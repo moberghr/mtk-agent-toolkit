@@ -52,6 +52,50 @@ done < <(find hooks/ scripts/ -type f \( -name '*.sh' -o -name 'pre-commit' -o -
 # The git pre-commit hook and linter script must agree on supported flags.
 grep -q -- '--cached' hooks/pre-commit-linters.sh || fail "hooks/pre-commit-linters.sh must support --cached for git hooks"
 
+# Tier-2 skill-invocation queue (S3.13–15)
+require_file "hooks/lib/skill-queue.sh"
+require_file "hooks/lib/prompt-nudges.sh"
+require_file "hooks/userprompt-dispatch.sh"
+require_file "hooks/spec-approval-trigger.sh"
+grep -q 'queue_skill' hooks/lib/skill-queue.sh || fail "skill-queue.sh missing queue_skill writer"
+grep -q 'MTK_HOOKS_TIER2' hooks/lib/skill-queue.sh || fail "skill-queue.sh missing MTK_HOOKS_TIER2 kill-switch gate"
+grep -q 'UserPromptSubmit' .claude/settings.json || fail "settings.json missing UserPromptSubmit hook entry for dispatcher"
+grep -q 'MTK_HOOKS_TIER2' .claude/settings.json || fail "settings.json missing MTK_HOOKS_TIER2 env declaration"
+
+# Keyword-triggered skill hints (S2.22–24)
+require_file "scripts/build-triggers-index.sh"
+require_file "hooks/lib/trigger-hints.sh"
+if [ -f ".claude/triggers.index" ]; then
+  # Index must be in sync with skill frontmatter.
+  expected="$(bash scripts/build-triggers-index.sh >/dev/null && grep -v '^#' .claude/triggers.index | sort)"
+  actual="$(grep -v '^#' .claude/triggers.index | sort)"
+  [ "$expected" = "$actual" ] || fail ".claude/triggers.index out of sync — run: bash scripts/build-triggers-index.sh"
+  # Every skill referenced in the index must exist.
+  while IFS=$'\t' read -r _ skill; do
+    [ -n "$skill" ] || continue
+    [ -f ".claude/skills/${skill}/SKILL.md" ] || fail "triggers.index references missing skill: $skill"
+  done < <(grep -v '^#' .claude/triggers.index)
+fi
+
+# Toolset registry (S2.19–21)
+require_file ".claude/toolsets/read-only.yaml"
+require_file ".claude/toolsets/git-safe.yaml"
+require_file ".claude/toolsets/code-edit.yaml"
+require_file "scripts/resolve-toolsets.sh"
+
+# Every toolset referenced in skill/agent frontmatter must resolve.
+while IFS= read -r ref_file; do
+  # Extract toolset names from `required-toolsets: [a, b]` or `forbidden-toolsets: [a, b]`
+  toolset_refs="$(grep -E '^(required|forbidden)-toolsets:' "$ref_file" 2>/dev/null | \
+    sed -E 's/^[a-z-]+:[[:space:]]*\[([^]]*)\].*/\1/' | \
+    tr ',' '\n' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//' || true)"
+  [ -z "$toolset_refs" ] && continue
+  while IFS= read -r ts; do
+    [ -n "$ts" ] || continue
+    [ -f ".claude/toolsets/${ts}.yaml" ] || fail "$ref_file references unknown toolset: $ts (no .claude/toolsets/${ts}.yaml) — violates S2.20"
+  done <<< "$toolset_refs"
+done < <(find .claude/skills .claude/agents -name '*.md' 2>/dev/null)
+
 # Unified setup entry point must exist
 require_file ".claude/skills/mtk-setup/SKILL.md"
 
@@ -159,6 +203,34 @@ if [ -d ".claude/rules" ]; then
     rule_lines="$(wc -l < "$rule")"
     [ "$rule_lines" -le 120 ] || fail "Rule file $rule exceeds 120-line budget ($rule_lines lines). Tighten wording or split"
   done < <(find .claude/rules -name '*.md' | sort)
+fi
+
+# Root CLAUDE.md ceiling (S1-related — compliance degrades past ~150 lines)
+if [ -f CLAUDE.md ]; then
+  claude_lines="$(wc -l < CLAUDE.md)"
+  [ "$claude_lines" -le 120 ] || fail "CLAUDE.md exceeds 120-line hard cap ($claude_lines lines). Move sections to .claude/rules/ or references."
+fi
+
+# Every .claude/references/**/*.md must have description/globs/alwaysApply frontmatter.
+while IFS= read -r ref; do
+  head -20 "$ref" | head -1 | grep -q '^---$' || fail "$ref missing YAML frontmatter"
+  head -20 "$ref" | grep -q '^description:' || fail "$ref frontmatter missing 'description:'"
+  head -20 "$ref" | grep -q '^globs:' || fail "$ref frontmatter missing 'globs:'"
+  head -20 "$ref" | grep -q '^alwaysApply:' || fail "$ref frontmatter missing 'alwaysApply:'"
+done < <(find .claude/references -name '*.md' -type f | sort)
+
+# References index must be in sync with frontmatter (only if it exists; gitignored).
+if [ -f .claude/references.index ]; then
+  bash scripts/build-references-index.sh --check
+fi
+
+# Read-only enforcement for mcp/src/tools/ — no fs writes, no shell exec.
+# Agent-callable tools must not mutate state or spawn processes.
+if [ -d mcp/src/tools ]; then
+  if grep -rE 'fs\.(write|append|unlink|rm|mkdir|chmod|chown|symlink|rename|truncate)|child_process|execSync|[^a-zA-Z]spawn\(' mcp/src/tools/ >/dev/null 2>&1; then
+    grep -rEn 'fs\.(write|append|unlink|rm|mkdir|chmod|chown|symlink|rename|truncate)|child_process|execSync|[^a-zA-Z]spawn\(' mcp/src/tools/ >&2 || true
+    fail "mcp/src/tools/ must be read-only — write API or shell exec detected"
+  fi
 fi
 
 printf 'Toolkit validation passed.\n'

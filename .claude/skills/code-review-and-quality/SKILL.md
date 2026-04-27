@@ -72,7 +72,17 @@ If reviewing a PR or branch with CI runs, check CI status:
    - `compliance-reviewer` for security/compliance-sensitive work
    - `test-reviewer` for coverage and verification quality
    - `architecture-reviewer` for boundary and slice integrity concerns
+   - `silent-failure-hunter` when the diff touches error handling — dispatch
+     when `git diff` matches any of `\b(catch|except|finally)\b`,
+     `\.catch\(`, `\?\?`, `\|\|`, or adds `// eslint-disable`, `# noqa`,
+     `@ts-ignore`, `@ts-expect-error`, `Skip =`, `it\.skip`, `xit\(`.
+     Run in parallel with `compliance-reviewer`; merge findings, dedupe by
+     `(file, line, rule)`. The hunter emits `category: "error-handling"`
+     so dedupe is straightforward.
 5. Categorize findings per the schema in `.claude/references/review-finding-schema.md`:
+    - Apply the **False-Positive Exclusion List** in that schema before
+      scoring confidence — drop candidates that match an FP category rather
+      than scoring them low
     - `critical`, `warning`, `suggestion` severities
     - `confidence` score 0–100 per the rubric
     - Optional top-level fields only when they add real signal: `internet_facing`
@@ -110,4 +120,5 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared MTK rationaliza
 - [ ] Review verdict matches the actual risk level of the change
 - [ ] Output follows `.claude/references/review-finding-schema.md` (markdown table + fenced JSON)
 - [ ] Confidence scores follow the rubric; no inflation to hit finding-count bars
+- [ ] False-Positive Exclusion List was applied before scoring (no pre-existing-issue, linter-catchable, or unjustified-stylistic items in `findings[]`)
 - [ ] `below_threshold_rationale` is populated when fewer than 2 findings surface

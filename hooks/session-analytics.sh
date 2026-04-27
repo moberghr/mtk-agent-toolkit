@@ -33,6 +33,7 @@ session_mods=0
 session_scope_warns=0
 session_benchmarks=0
 session_bench_score=""
+session_bytes_read=0
 if [ -f "$SESSION_FILE" ]; then
   mtk_load_session_state "$SESSION_FILE"
   session_ops=$ops
@@ -40,6 +41,7 @@ if [ -f "$SESSION_FILE" ]; then
   session_scope_warns=${scope_guard_warnings:-0}
   session_benchmarks=${benchmarks_run:-0}
   session_bench_score=${benchmark_last_score:-}
+  session_bytes_read=${bytes_read:-0}
 fi
 
 # Skip trivial sessions (< 5 operations)
@@ -61,7 +63,12 @@ if [ ! -f "$ANALYTICS" ]; then
   "lessons_captured": 0,
   "scope_guard_warnings": 0,
   "benchmarks_run": 0,
-  "benchmark_last_score": ""
+  "benchmark_last_score": "",
+  "queue_writes": 0,
+  "queue_drains": 0,
+  "queue_expired": 0,
+  "bytes_read": 0,
+  "estimated_context_tokens": 0
 }
 EOF
 fi
@@ -82,6 +89,11 @@ lessons=$(read_field "lessons_captured")
 scope_warns=$(read_field "scope_guard_warnings")
 benchmarks=$(read_field "benchmarks_run")
 bench_score=$(read_str "benchmark_last_score")
+queue_writes=$(read_field "queue_writes")
+queue_drains=$(read_field "queue_drains")
+queue_expired=$(read_field "queue_expired")
+total_bytes_read=$(read_field "bytes_read")
+total_estimated_tokens=$(read_field "estimated_context_tokens")
 
 # Update counters
 sessions=$((sessions + 1))
@@ -92,6 +104,8 @@ benchmarks=$((benchmarks + session_benchmarks))
 if [ -n "$session_bench_score" ]; then
   bench_score="$session_bench_score"
 fi
+total_bytes_read=$((total_bytes_read + session_bytes_read))
+total_estimated_tokens=$((total_bytes_read / 4))
 
 # Count specs created today
 if [ -d docs/specs ]; then
@@ -124,7 +138,12 @@ cat > "$ANALYTICS_TMP" <<EOF
   "lessons_captured": $lessons,
   "scope_guard_warnings": $scope_warns,
   "benchmarks_run": $benchmarks,
-  "benchmark_last_score": "$bench_score"
+  "benchmark_last_score": "$bench_score",
+  "queue_writes": $queue_writes,
+  "queue_drains": $queue_drains,
+  "queue_expired": $queue_expired,
+  "bytes_read": $total_bytes_read,
+  "estimated_context_tokens": $total_estimated_tokens
 }
 EOF
 mv "$ANALYTICS_TMP" "$ANALYTICS"

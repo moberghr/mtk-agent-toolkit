@@ -2,6 +2,7 @@
 name: architecture-reviewer
 description: Focused reviewer for slice boundaries, dependency direction, and architectural fit of code changes.
 allowed-tools: Read, Glob, Grep, Bash
+required-toolsets: [read-only]
 model: sonnet
 effort: high
 context: fork

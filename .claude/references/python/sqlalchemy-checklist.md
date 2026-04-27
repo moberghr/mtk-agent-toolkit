@@ -1,3 +1,8 @@
+---
+description: SQLAlchemy checklist — session scope, N+1, eager loading, migrations
+globs: ["**/*.py"]
+alwaysApply: false
+---
 # SQLAlchemy Checklist
 
 Project-level reminders for reviewing and writing SQLAlchemy code (2.0 style).

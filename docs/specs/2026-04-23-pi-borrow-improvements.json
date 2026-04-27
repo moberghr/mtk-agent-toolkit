@@ -1,0 +1,71 @@
+{
+  "slug": "pi-borrow-improvements",
+  "date": "2026-04-23",
+  "scope": "new-feature",
+  "change_manifest": [
+    { "path": ".claude/skills/spec-driven-development/SKILL.md", "action": "modify", "purpose": "Add version detection step: check for existing date+slug file; write -vN+1 suffix if found" },
+    { "path": ".claude/skills/planning-and-task-breakdown/SKILL.md", "action": "modify", "purpose": "Align plan filename to same version suffix as the spec that created it" },
+    { "path": ".claude/skills/handoff/SKILL.md", "action": "modify", "purpose": "Add spec_path field (with version suffix) to handoff artifact schema" },
+    { "path": ".claude/skills/context-report/SKILL.md", "action": "modify", "purpose": "Add spec version listing and reference footprint section" },
+    { "path": "hooks/context-budget.sh", "action": "modify", "purpose": "Accumulate bytes_read for unique files read per session" },
+    { "path": "hooks/lib/hook-io.sh", "action": "modify", "purpose": "Add bytes_read field to session state schema (init, load, save)" },
+    { "path": "hooks/session-analytics.sh", "action": "modify", "purpose": "Read bytes_read, compute estimated_context_tokens = bytes_read/4, write to analytics.json" },
+    { "path": "scripts/analytics-report.sh", "action": "modify", "purpose": "Show estimated_context_tokens in report output" },
+    { "path": "tests/hooks/test-context-estimator.sh", "action": "create", "purpose": "SC5+SC6 benchmark: fire mock Read events; assert bytes_read and estimated_context_tokens in session state and analytics" },
+    { "path": ".claude/skills/context-engineering/SKILL.md", "action": "modify", "purpose": "Add Context Footprint output step after each phase's reference loading" },
+    { "path": ".claude/manifest.json", "action": "modify", "purpose": "Register test-context-estimator.sh; bump version to 7.1.0; update date" },
+    { "path": ".claude-plugin/plugin.json", "action": "modify", "purpose": "Bump version to 7.1.0 (C0.1 sync with manifest)" },
+    { "path": "CHANGELOG.md", "action": "modify", "purpose": "Add v7.1.0 entry documenting three pi-borrow improvements" }
+  ],
+  "public_contracts": [
+    { "kind": "file-convention", "signature": "docs/specs/<date>-<slug>[-vN].md|.json", "change": "extended — vN suffix now used on revision instead of overwrite" },
+    { "kind": "file-convention", "signature": "docs/plans/<date>-<slug>[-vN].md", "change": "extended — version suffix mirrors spec" },
+    { "kind": "artifact-field", "signature": "handoff artifact JSON: spec_path (string, versioned path)", "change": "new" },
+    { "kind": "analytics-field", "signature": "analytics.json: bytes_read (int), estimated_context_tokens (int)", "change": "new" },
+    { "kind": "output", "signature": "context-engineering Phase 0 output: Context Footprint block", "change": "new" },
+    { "kind": "output", "signature": "context-report output: Reference footprint section", "change": "new" }
+  ],
+  "success_criteria": [
+    { "id": "SC1", "description": "Spec-driven-development writes -v2 suffix when same date+slug file already exists; original file untouched", "verification": "manual: run spec-driven-development twice for same slug" },
+    { "id": "SC2", "description": "Plan file uses same version suffix as spec (e.g., plan -v2 when spec is -v2)", "verification": "manual: inspect docs/plans after SC1" },
+    { "id": "SC3", "description": "Handoff artifact JSON includes spec_path field with full versioned path", "verification": "manual: trigger handoff after versioned spec; read artifact" },
+    { "id": "SC4", "description": "Context-report lists all spec versions for a slug; marks active one", "verification": "manual: with two spec versions on disk, run /mtk status" },
+    { "id": "SC5", "description": "context-budget.sh accumulates bytes_read for unique files read in session", "verification": "tests/hooks/test-context-estimator.sh" },
+    { "id": "SC6", "description": "session-analytics.sh writes estimated_context_tokens to analytics.json", "verification": "tests/hooks/test-context-estimator.sh" },
+    { "id": "SC7", "description": "analytics-report.sh shows Estimated context tokens in output", "verification": "manual: bash scripts/analytics-report.sh" },
+    { "id": "SC8", "description": "context-engineering outputs Context Footprint block after Phase 0 reference loading", "verification": "manual: run a session through Phase 0" },
+    { "id": "SC9", "description": "context-report output includes Reference footprint section with wc-l table", "verification": "manual: run /mtk status" },
+    { "id": "SC10", "description": "bash scripts/validate-toolkit.sh passes — manifest entries correct, versions synced", "verification": "bash scripts/validate-toolkit.sh" }
+  ],
+  "test_manifest": [
+    { "path": "tests/hooks/test-context-estimator.sh", "covers": ["SC5", "SC6"] },
+    { "path": "manual: spec revision run", "covers": ["SC1", "SC2", "SC3"] },
+    { "path": "manual: context-report with multiple spec versions", "covers": ["SC4", "SC9"] },
+    { "path": "manual: context-engineering Phase 0", "covers": ["SC8"] },
+    { "path": "manual: analytics-report.sh", "covers": ["SC7"] },
+    { "path": "bash scripts/validate-toolkit.sh", "covers": ["SC10"] }
+  ],
+  "out_of_scope": [
+    "True token counting from Claude Code API (no hook API for session token metadata today)",
+    "Spec branching UI / tree navigation (Pi's /tree) — requires Claude Code TUI investment",
+    "npm package distribution — separate initiative",
+    "Session export / share to HTML or gist — separate initiative",
+    "Multi-provider support — architectural decision",
+    "lean --flag for setup-bootstrap (setup-bootstrap already enforces 60-80 line target; this gap is already addressed)"
+  ],
+  "security_impact": "none",
+  "assumptions": [
+    "wc -c and wc -l produce consistent output on macOS (BSD) and Linux (GNU) after tr -d ' ' normalization",
+    "The pipe-separated $files list in session state is the canonical unique-file tracker",
+    "hook-io.sh load/save uses key=value format extensible with new fields; existing readers ignore unknown fields",
+    "Context-engineering footprint output is visible in Claude Code chat (not silenced)",
+    "Version suffix -vN is sortable numerically; ls -v or sort -V handles v2 < v3 < v10"
+  ],
+  "risks": [
+    "R1: wc -c on large incidental files inflates bytes_read — mitigated by 100k per-file cap with flag",
+    "R2: Spec versioning false-fire on similar slug — mitigated by exact date+slug match requirement",
+    "R3: hook-io.sh extension breaks existing readers — mitigated by initializing new fields with 0 defaults",
+    "R4: Footprint output adds Phase 0 noise — mitigated by collapsible section header format",
+    "R5: context-report slow on many files — mitigated by limiting to active tech stack globs only"
+  ]
+}

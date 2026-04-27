@@ -22,6 +22,7 @@ Match the user's input against these patterns. Check from top to bottom; first m
 | `fix`, `bug`, `broken`, `error`, `typo`, `patch`, `wrong`, `failing` | `.claude/skills/fix/SKILL.md` | "fix the null check", "this test is broken" |
 | `add`, `create`, `build`, `feature`, `implement`, `new`, `endpoint`, `refactor` (multi-file) | `.claude/skills/implement/SKILL.md` | "add user auth", "create a payment endpoint" |
 | `status`, `report`, `what's loaded`, `diagnostic`, `context` | `.claude/skills/context-report/SKILL.md` | "what's loaded?", "show toolkit status" |
+| `audit claude.md`, `claude.md audit`, `is claude.md still good`, `claude.md stale`, `memory rot`, `claude.md quality` | `.claude/skills/claude-md-audit/SKILL.md` | "audit CLAUDE.md", "is CLAUDE.md still good?" |
 | `setup`, `bootstrap`, `init`, `initialize`, `first time`, `prepare repo`, `audit`, `architecture`, `principles` | `/mtk-setup` (direct the user) | "set up this repo", "audit this repo" |
 | `help`, `commands`, `what can you do` | (print help below) | "help", "what commands are there?" |
 
@@ -55,6 +56,16 @@ MTK — two entry points:
 Update: MTK is distributed as a Claude Code plugin — use the plugin
 manager to update rather than an in-repo update skill.
 ```
+
+## Toolset Expansion (S2.19)
+
+Before loading the target skill, read its frontmatter:
+
+- If it declares `required-toolsets: [<name>, ...]`, resolve via `bash scripts/resolve-toolsets.sh <name> ...`. Treat the result as the advisory tool scope for the dispatched skill — do not invoke tools outside that list without a written escalation note.
+- If it declares `forbidden-toolsets: [<name>, ...]`, the tools resolved from those names are off-limits for the duration of the dispatch, even if `required-toolsets` or explicit `allowed-tools` would otherwise allow them.
+- If it has an explicit `allowed-tools:` in frontmatter, that list wins (no surprise widening). Toolset expansion is for skills that leave tool scope to the dispatcher.
+
+Log the resolved scope to analytics (via existing `hooks/session-analytics.sh` pipeline) when a skill declares toolsets, so adoption is visible.
 
 ## Execution
 

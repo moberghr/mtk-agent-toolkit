@@ -10,6 +10,7 @@ trigger: post-implementation|pre-review|spec-approved|ship-gate
 skip_when: no-spec|typo-fix|single-line-change
 user-invocable: false
 effort: high
+required-toolsets: [read-only]
 ---
 
 # Spec-Drift Detection
@@ -53,12 +54,16 @@ Phase 2.5 did not cover the final code. Detect divergence before review.
    - `security_impact` — enum string
 
 3. **Collect actual change data:**
-   - `git diff --name-status HEAD` (or against branch base) for touched files
-   - For each touched source file, grep for added/modified public contracts
-     (controller routes, handler classes, exported functions, etc., per active
-     tech stack)
-   - Security-surface files touched — any path matching auth, payments,
-     audit, secrets, infra (use path-scoped globs when Phase 4 lands)
+   - **Preferred (deterministic):** run
+     `bash scripts/validate-handoff.sh docs/specs/<date>-<slug>.json`
+     to compute file-level and security-impact drift against the
+     manifest. Treat its output as authoritative for those axes.
+   - If the handoff has an `implement.actual_files` array, diff it
+     against `change_manifest[].path` directly — no git invocation needed.
+   - Otherwise, fall back to `git diff --name-status <base>...HEAD`.
+   - For contract-level drift (not covered by the script): grep the diff
+     for added/modified public contracts (controller routes, handler
+     classes, exported functions, etc., per active tech stack).
 
 4. **Compare and emit findings** per
    `.claude/references/review-finding-schema.md`, with `source: "drift"`:
@@ -99,6 +104,23 @@ Phase 2.5 did not cover the final code. Detect divergence before review.
   stop and ask the engineer to amend the spec and re-approve.
 - A clean `PASS` does not mean the code is good — only that it matches what
   was approved. Code quality still goes through `compliance-reviewer`.
+
+## Architecture Principle Drift (S1.15)
+
+In addition to manifest drift, also compare the implementation against tagged
+principles in `.claude/references/architecture-principles.md`. Severity is
+determined by the principle's confidence tag:
+
+| Tag | Contradicting change → |
+|---|---|
+| `[EXTRACTED]` | **block** (critical drift) — the principle was directly observed in code; violating it is a regression. |
+| `[INFERRED:>=0.7]` | **flag** (medium drift) — likely-correct pattern; surface for engineer decision. |
+| `[INFERRED:<0.7]` | **note** (low drift) — weak inference; mention but do not block. |
+| `[AMBIGUOUS]` | **note** — sources disagree; surface both options. Do not block. |
+
+If `architecture-principles.md` is missing or has no tags (legacy format),
+skip principle drift and continue with manifest drift only — emit a one-line
+note that principle drift was unavailable.
 
 ## Common Rationalizations
 

@@ -93,6 +93,27 @@ Track the cumulative context loaded in the session. Fewer, focused instructions 
 - Full reference files loaded when only a section is needed
 - Same context loaded multiple times (after compaction recovery)
 
+## Context Footprint
+
+After completing reference loading at the end of Phase 0 (and after any subsequent phase that loads new references), emit a one-block footprint report so the engineer can see the cost of what was loaded:
+
+```bash
+# Run wc -l on each loaded reference file, then format the output:
+# Example output:
+#
+# Context footprint (Phase 0):
+#   security-checklist.md                         78 lines  (~2k tokens)
+#   testing-patterns.md                          112 lines  (~2k tokens)
+#   dotnet/coding-guidelines.md                  195 lines  (~3k tokens)
+#   ─────────────────────────────────────────────────────────────────
+#   Total: 3 files, 385 lines (~5k tokens)
+#   (actual load depends on path-scoped matching — unmatched refs not counted)
+```
+
+**Token estimate:** 1 line ≈ 13 tokens (median for reference docs at ~65 chars/line ÷ 5 chars/token). This is a proxy, not an exact count.
+
+**Omit the block** if no references were loaded in that phase (e.g., a Bash-only phase that touched no reference files). Keep it skimmable — one line per file, one totals line. Engineers can skip past it if they already know their setup.
+
 ## Rules
 
 - Read before writing.

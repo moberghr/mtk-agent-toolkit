@@ -23,3 +23,11 @@
 
 - **S1.12** Skill directory names use kebab-case matching the frontmatter `name:` field exactly.
 - **S1.13** Agent files use kebab-case: `compliance-reviewer.md`.
+
+## Ignore Files
+
+- **S1.14** `.mtkignore` at the repo root is the single source of truth for paths that MTK scans should skip (`scripts/repomap.sh`, `setup-audit`). Same syntax as `.gitignore`. Precedence: `.mtkignore` > `.gitignore` > built-in defaults. Missing file is non-fatal. The file is committed (not gitignored) so the team shares one set of exclusions. Bash callers use `hooks/lib/mtkignore.sh`; the Python tree-sitter walker reads `.mtkignore` directly via `load_ignore_patterns()`.
+
+## Confidence Tagging
+
+- **S1.15** Every principle in `architecture-principles.md` carries a tag: `[EXTRACTED]` (directly observed), `[INFERRED:0.0–1.0]` (pattern inference with confidence), or `[AMBIGUOUS]` (sources disagree). Each tagged line cites evidence. Drift detection treats tags as severity gradient: EXTRACTED contradiction blocks; INFERRED ≥0.7 contradiction flags medium; INFERRED <0.7 or AMBIGUOUS contradiction is a low-severity note. Merge mode (`--merge`) downgrades when sources disagree.

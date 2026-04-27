@@ -1,0 +1,18 @@
+name: read-only
+description: Inspection-only toolset for review, audit, and analysis skills. No writes, no state change.
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Bash(git diff:*)
+  - Bash(git status:*)
+  - Bash(git log:*)
+  - Bash(git show:*)
+  - Bash(git blame:*)
+  - Bash(ls:*)
+  - Bash(cat:*)
+  - Bash(find:*)
+  - Bash(head:*)
+  - Bash(tail:*)
+  - Bash(wc:*)
+  - Bash(grep:*)

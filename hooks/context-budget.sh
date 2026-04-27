@@ -31,11 +31,17 @@ case "$TOOL_NAME" in
     event_seq=$((event_seq + 1))
     reads=$((reads + 1))
     ops=$((ops + 1))
-    # Track unique file paths
+    # Track unique file paths and accumulate bytes read (for context load estimator)
     FILE_PATH=$(mtk_extract_file_path "$INPUT" 2>/dev/null || echo "")
     if [ -n "$FILE_PATH" ]; then
       if ! echo "$files" | grep -qF "$FILE_PATH"; then
         files="${files:+$files|}$FILE_PATH"
+        # Accumulate bytes only for new unique files; cap at 100k to avoid inflating on large incidental reads
+        if [ -f "$FILE_PATH" ]; then
+          file_bytes=$(wc -c < "$FILE_PATH" 2>/dev/null | tr -d ' ' || echo 0)
+          [ "$file_bytes" -gt 100000 ] && file_bytes=100000
+          bytes_read=$((bytes_read + file_bytes))
+        fi
       fi
     fi
     ;;

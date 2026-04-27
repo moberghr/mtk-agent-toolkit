@@ -101,11 +101,16 @@ assemble_all_content() {
   # Architecture principles
   emit_section "Architecture Principles" "$REFS_DIR/architecture-principles.md"
 
-  # Coding guidelines (from active tech stack)
+  # Coding guidelines — emit as pointer, not full body.
+  # Full upstream guidelines can be 800+ lines; inlining them into copilot-instructions.md
+  # (read on every Copilot request) wastes context. Tools that need the full text read
+  # the referenced file directly.
   if [ -n "$stack" ] && [ -f "$REFS_DIR/${stack}/coding-guidelines.md" ]; then
     local display_stack
     display_stack="$(echo "$stack" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')"
-    emit_section "Coding Guidelines ($display_stack)" "$REFS_DIR/${stack}/coding-guidelines.md"
+    printf '## Coding Guidelines (%s)\n\n' "$display_stack"
+    printf 'Full guide: `.claude/references/%s/coding-guidelines.md`.\n' "$stack"
+    printf 'Project-specific overrides: `.claude/rules/coding-style.md`.\n\n'
   fi
 
   # Core references
@@ -291,7 +296,19 @@ usage() {
 formats=()
 while [ $# -gt 0 ]; do
   case "$1" in
-    --all)          formats=(cursor-rules copilot windsurf gemini cline); shift ;;
+    --all)
+      # If the project pins a format list in .claude/tool-configs.conf,
+      # honor it; otherwise generate every supported format.
+      if [ -f .claude/tool-configs.conf ]; then
+        while IFS= read -r line || [ -n "$line" ]; do
+          line="${line%%#*}"; line="$(echo "$line" | tr -d '[:space:]')"
+          [ -n "$line" ] && formats+=("$line")
+        done < .claude/tool-configs.conf
+      else
+        formats=(cursor-rules copilot windsurf gemini cline)
+      fi
+      shift
+      ;;
     --format)       [ $# -ge 2 ] || usage; formats+=("$2"); shift 2 ;;
     -h|--help)      usage ;;
     *)              usage ;;

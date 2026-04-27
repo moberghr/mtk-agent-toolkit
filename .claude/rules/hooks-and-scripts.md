@@ -24,6 +24,16 @@ paths:
 - **S3.8** Session-start hook must support multiple platforms: Claude Code, Cursor, Copilot CLI, Gemini CLI.
 - **S3.11** The PostCompact hook (`hooks/post-compact.sh`) re-injects on-disk state (tech stack, active specs/plans, incomplete tasks, handoff artifacts) after auto-compaction. It emits `{"context": "..."}` JSON — no blocking, no side effects.
 
+## Hook Tiers
+
+- **S3.13** Hooks are classified into two tiers. Tier 1 (text-nudging) emits advisory `additionalContext`/`context` or blocks (exit 2) — used when the action is obvious and the main thread has enough context. Tier 2 (skill-invoking) writes a queue entry under `.claude/queue/` that the `UserPromptSubmit` dispatcher surfaces next turn — used when the action should defer, survive session boundaries, or trigger from a non-prompt event. Tier 2 must never modify source code.
+- **S3.14** Tier-2 queue entries follow the schema in `hooks/lib/skill-queue.sh`: `queued_at`, `queued_epoch`, `skill`, `reason`, `context.excerpt`, `ttl_hours` (default 24), `source_hook`. Writes are atomic (tmp-then-rename). Drain collapses duplicates by `skill + source_hook`, caps surfaced entries at 3 per turn, and deletes expired files.
+- **S3.15** Every tier-2 hook must respect `MTK_HOOKS_TIER2` (default `1`). When `0`, writers return early and the dispatcher exits silently. The env var is declared in `.claude/settings.json` under `env`; engineers override per-machine via `.claude/settings.local.json`.
+
+## Shrink-Guarded Writes
+
+- **S3.16** Protected artifacts that get regenerated (`architecture-principles.md`, `references.index`, in-place rewrites of `tasks/lessons.md`) must be written through `mtk_guarded_write` from `hooks/lib/shrink-guard.sh`. The helper refuses writes that shrink the target by > 50% bytes or > 20% lines. Override with `MTK_SHRINK_GUARD_OVERRIDE=1` for intentional rewrites. Pure appends are exempt — they cannot shrink.
+
 ## Validation Script
 
 - **S3.9** `scripts/validate-toolkit.sh` is the gate. It checks: required files exist, versions match, frontmatter present, skill anatomy valid, manifest paths exist, README/CONTRIBUTING/AGENTS coverage.

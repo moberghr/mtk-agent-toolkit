@@ -47,6 +47,7 @@ When an engineer corrects your approach, that correction contains knowledge that
    ```bash
    grep -i "<keyword>" tasks/lessons.md
    ```
+   When *replacing* an existing lesson (vs. appending), write to a temp file and promote via `mtk_guarded_write` so a partial regenerate cannot truncate the file. Pure appends are safe — append never shrinks.
 
 4. **Capture the lesson.** Append to `tasks/lessons.md` (resolve path to main worktree if in a worktree):
    ```markdown

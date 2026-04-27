@@ -2,6 +2,7 @@
 name: setup-bootstrap
 description: One-time repo setup that detects tech stack, audits the codebase, pulls coding guidelines, and generates a project-specific CLAUDE.md
 type: skill
+user-invocable: false
 ---
 
 # MTK Setup Bootstrap — Prepare Repository for AI-Assisted Development
@@ -119,16 +120,23 @@ If multiple lockfiles exist (e.g. both `yarn.lock` and `package-lock.json`), tha
 
 Check the active tech stack skill's `## Coding Style Reference` section. If it lists a remote source URL, fetch it:
 
+Read the pinned revision and expected sha256 from `.claude/manifest.json` (`coding-guidelines.sha` and `coding-guidelines.files`). **Never fetch from `main`.** The pin is bumped by `/mtk-setup --update-guidelines` only — this guarantees every bootstrap is reproducible and auditable.
+
 For `dotnet`:
-```
-curl -sL https://raw.githubusercontent.com/moberghr/coding-guidelines/main/CodingStyle.md -o .claude/references/dotnet/coding-guidelines.md
+```bash
+SHA=$(python3 -c 'import json; print(json.load(open(".claude/manifest.json"))["coding-guidelines"]["sha"])')
+EXPECTED=$(python3 -c 'import json; print(json.load(open(".claude/manifest.json"))["coding-guidelines"]["files"]["CodingStyle.md"].split(":",1)[1])')
+OUT=.claude/references/dotnet/coding-guidelines.md
+curl -sL "https://raw.githubusercontent.com/moberghr/coding-guidelines/${SHA}/CodingStyle.md" -o "$OUT"
+ACTUAL=$(sha256sum "$OUT" | awk '{print $1}')
+[ "$ACTUAL" = "$EXPECTED" ] || { echo "coding-guidelines sha256 mismatch: got $ACTUAL expected $EXPECTED" >&2; rm -f "$OUT"; exit 1; }
 ```
 
 For `python`: see the placeholder in `.claude/references/python/coding-guidelines.md`. If it's empty, leave it for the team to fill in when starting their first Python project.
 
 For `typescript`: see the placeholder in `.claude/references/typescript/coding-guidelines.md`. The defaults in the placeholder (strict `tsconfig.json`, Biome, ESM, naming conventions) are reasonable until the team formalizes its own guide.
 
-If the fetch fails (network restrictions), check if the file already exists. If not, tell the engineer to manually place it.
+If the fetch fails (network restrictions), check if the file already exists. If not, tell the engineer to manually place it. Do **not** silently fall back to an unpinned fetch — that breaks reproducibility.
 
 ### Architecture Principles
 Check if `.claude/references/architecture-principles.md` exists.
@@ -227,6 +235,16 @@ Create `CLAUDE.md` and `.claude/rules/` files following the templates below.
 ### Root CLAUDE.md Template
 
 **Target: 60–80 lines. Hard cap: 120 lines.** If it's longer, move detail to `.claude/rules/` or delete speculative rules entirely. Count before finishing.
+
+**Mandatory footer** at end of CLAUDE.md (HTML comment — invisible to humans reading markdown, but required for `--audit` re-runs and compliance audits):
+
+```html
+<!-- mtk-setup: v{MANIFEST_VERSION}
+     coding-guidelines: moberghr/coding-guidelines@{MANIFEST_SHA}
+     generated: {ISO8601_UTC_NOW} -->
+```
+
+Resolve `{MANIFEST_VERSION}` and `{MANIFEST_SHA}` from `.claude/manifest.json`. `{ISO8601_UTC_NOW}` is `date -u +%Y-%m-%dT%H:%M:%SZ`.
 
 ````markdown
 # [Project Name] — Engineering Standards
@@ -428,29 +446,38 @@ Before writing files (or presenting preview), validate every concrete directory,
 If the engineer passed `--preview`, **do not write any files yet**. Instead:
 
 1. Hold the generated content in memory (CLAUDE.md body, each `.claude/rules/*.md` body, AGENTS.md, pre-commit-review-list).
-2. Print a plan summary:
+2. For each pending file, stage it to a temp path and compute size with `scripts/count-tokens.sh`:
+   ```bash
+   TMP=$(mktemp); echo "$CONTENT" > "$TMP"
+   read -r LINES TOKENS < <(bash scripts/count-tokens.sh "$TMP")
+   ```
+3. Print a plan summary in table form (fixed columns, right-aligned numbers):
    ```
    📋 PROPOSED CHANGES (preview — nothing written yet)
 
-   CLAUDE.md                                   [NEW | MERGE | REPLACE — N lines, cap 120]
-   .claude/rules/security.md                   [NEW — N lines]
-   .claude/rules/architecture.md               [NEW — N lines]
-   .claude/rules/testing.md                    [NEW — N lines]
-   .claude/rules/data-layer.md                 [NEW — N lines]
-   .claude/rules/project-specific.md           [NEW — N lines]
-   .claude/references/pre-commit-review-list.md [NEW — N items]
-   AGENTS.md                                   [NEW | SKIP — already exists]
+   FILE                                          STATUS     LINES  ~TOKENS
+   CLAUDE.md                                     NEW          178     1843   (cap 120 ← FAIL)
+   .claude/rules/security.md                     NEW           47      512
+   .claude/rules/architecture.md                 NEW           62      698
+   .claude/rules/testing.md                      NEW           41      452
+   .claude/rules/data-layer.md                   NEW           38      401
+   .claude/rules/project-specific.md             NEW           29      314
+   .claude/references/pre-commit-review-list.md  NEW           24      268
+   AGENTS.md                                     NEW           23      287
+   ```
+   If any row shows `FAIL`, refuse to proceed: print "Generated CLAUDE.md exceeds 120 lines — move <section> to .claude/rules/<name>.md" and abort. This gate fires even without `--preview`.
 
+   Follow the table with a one-block summary:
+   ```
    Critical Rules (top of CLAUDE.md):
      §0.1 [first rule]
      §0.2 [second rule]
      ...
-
    Tech stack:  [stack]
    Package mgr: [pm, if ts]
    ```
-3. Print the full CLAUDE.md body inline (inside a fenced code block) so the engineer can review it.
-4. Ask via `AskUserQuestion`:
+4. Print the full CLAUDE.md body inline (inside a fenced code block) so the engineer can review it.
+5. Ask via `AskUserQuestion`:
    ```
    question: "Proceed with writing these files?"
    header: "Bootstrap confirmation"
@@ -462,11 +489,31 @@ If the engineer passed `--preview`, **do not write any files yet**. Instead:
      - label: "Cancel"
        description: "Discard the proposed output"
    ```
-5. On "Cancel", stop and leave the repo untouched.
-6. On "skip CLAUDE.md", write everything except root CLAUDE.md.
-7. On "Yes, write all", proceed to STEP 4.
+6. On "Cancel", stop and leave the repo untouched.
+7. On "skip CLAUDE.md", write everything except root CLAUDE.md.
+8. On "Yes, write all", proceed to STEP 4.
 
-Without `--preview`, skip this step and write directly.
+Without `--preview`, still compute the lines/tokens table and enforce the 120-line ceiling on CLAUDE.md — just skip the confirmation prompt.
+
+## STEP 3.5c: Secret Scan Gate (always)
+
+Before **any** `Write` of a generated file, run the secret scan on the content. This runs regardless of `--preview` — it is a safety gate, not a UX flourish.
+
+For each file you are about to write, use a temp file to stage content and scan it:
+
+```bash
+TMP=$(mktemp)
+# write content to $TMP, then:
+bash scripts/secret-scan.sh "$TMP" || { echo "secret-scan blocked write of <filename>"; rm -f "$TMP"; exit 1; }
+mv "$TMP" "<target-path>"
+```
+
+If the scan exits non-zero:
+- Print the offending lines (the scan writes `<file>:<line>: <pattern>` to stderr).
+- Abort the bootstrap entirely — do not proceed with remaining writes.
+- Instruct the engineer to investigate the audit output or coding-guidelines for the suspected leak.
+
+**Escape hatch:** `MTK_SECRET_SCAN_SKIP=1` bypasses the scan. Use only when a confirmed false positive blocks progress; log the bypass prominently in STEP 5's report.
 
 ## STEP 4: Set Up Supporting Files & Directories
 
@@ -620,6 +667,10 @@ mkdir -p tasks
 Create `tasks/lessons.md` if it doesn't exist (header only).
 
 Add `tasks/todo.md` to `.gitignore` if not already there. Do NOT gitignore `tasks/lessons.md`.
+
+### .mtkignore (S1.14)
+
+Create `.mtkignore` at the repo root if missing — same syntax as `.gitignore`, single source of truth for MTK scans (audit, repomap). Idempotent: never overwrite existing. Starter content: `graphify-out/`, `docs/translations/`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`. Committed so the team shares one set of exclusions.
 
 ### Analyzer Configuration (opt-in)
 
@@ -834,6 +885,51 @@ Claude loads package-level `CLAUDE.md` files automatically when working in that 
 ```
 
 If the root is already near 120 lines, collapse each entry to a single line and skip the one-line purpose.
+
+## STEP 4.8: Seed Template Cache (for future re-runs)
+
+After every generated file is written to disk, also write an **unmodified copy of the template output** to `.claude/.mtk-cache/v<MANIFEST_VERSION>/`. This cache is what `--audit` re-runs diff against for 3-way merges. The cache is gitignored.
+
+Files to snapshot (skip any the engineer declined in `--preview`):
+- `CLAUDE.md`
+- `AGENTS.md`
+- `.claude/rules/*.md`
+- `.claude/references/pre-commit-review-list.md`
+
+Layout:
+```
+.claude/.mtk-cache/
+  v7.0.0/
+    CLAUDE.md
+    AGENTS.md
+    rules/
+      security.md
+      ...
+    references/
+      pre-commit-review-list.md
+```
+
+Implementation:
+```bash
+VERSION=$(python3 -c 'import json; print(json.load(open(".claude/manifest.json"))["version"])')
+CACHE_DIR=".claude/.mtk-cache/v${VERSION}"
+mkdir -p "$CACHE_DIR/rules" "$CACHE_DIR/references"
+# For each generated file, copy the pre-write version (not the on-disk edited one):
+cp /tmp/mtk-staging/CLAUDE.md "$CACHE_DIR/CLAUDE.md"
+# ...etc for each file
+```
+
+Retention: keep at most the 2 most recent versions. Older versions are pruned at this step.
+
+## STEP 4.9: Rebuild References Index
+
+After all reference files are written (including any newly emitted ones), rebuild the generated index:
+
+```bash
+bash scripts/build-references-index.sh
+```
+
+This produces `.claude/references.index` — a tab-separated file used by routing logic to auto-select references by file-pattern match. The index is gitignored (regenerated on every bootstrap and audit).
 
 ## STEP 5: Verify & Report
 
