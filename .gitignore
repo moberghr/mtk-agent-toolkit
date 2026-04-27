@@ -4,10 +4,14 @@
 .claude/queue/
 .claude/references.index
 .claude/.mtk-cache/
+.claude/analytics.json
 !.claude/skills/
 !AGENTS.md
 tasks/todo.md
 evals/results/
+
+# Tool caches (Playwright MCP, etc.)
+.playwright-mcp/
 
 ### macOS
 # Finder metadata
