@@ -6,7 +6,7 @@
 
 **A multi-agent toolkit that enforces your team's coding standards, security policies, and review discipline on every AI-generated line of code. Language-agnostic workflows with pluggable tech stacks for .NET, Python, and TypeScript.**
 
-[![Version](https://img.shields.io/badge/version-6.3.3-blue.svg)](https://github.com/moberghr/mtk-agent-toolkit/releases)
+[![Version](https://img.shields.io/badge/version-7.2.0-blue.svg)](https://github.com/moberghr/mtk-agent-toolkit/releases)
 [![Website](https://img.shields.io/badge/website-moberghr.github.io-6d28d9.svg)](https://moberghr.github.io/mtk-agent-toolkit/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-supported-purple.svg)](https://claude.ai/code)
 [![Cursor](https://img.shields.io/badge/Cursor-supported-blue.svg)](https://cursor.sh)
@@ -53,6 +53,39 @@ MTK closes that gap with **workflow enforcement** (planning, TDD, batched implem
 ---
 
 ## What's New
+
+### v7.2.0 — Graphify + official-plugin borrow improvements (2026-04-27)
+- **`.mtkignore`** at repo root — single source of truth for paths excluded from MTK scans (same syntax as `.gitignore`); honored by `repomap`, `setup-audit`, and the tree-sitter walker. New rule **S1.14**.
+- **Confidence-tagged audit principles** — `setup-audit` emits `[EXTRACTED]`, `[INFERRED:0.0–1.0]`, or `[AMBIGUOUS]` tags with evidence pointers; `spec-drift-detection` uses tags as a severity gradient. New rule **S1.15**.
+- **Shrink-guarded writes** — `hooks/lib/shrink-guard.sh` refuses rewrites that shrink targets >50% bytes or >20% lines. Wired into references-index build, `setup-audit`, and `correction-capture`. New rule **S3.16**.
+- **MCP server expanded to 7 tools** (was 2) — read-only `mtk_manifest`, `mtk_analytics`, `mtk_audit`, `mtk_references_index`, `mtk_active_stack`; read-only enforced by validator grep gate.
+- **Post-commit auto-refresh** — opt-in `hooks/git-hooks/post-commit-refresh.sh` rebuilds derived artifacts when their inputs change.
+- **False-Positive Exclusion List** added to the review schema — seven explicit categories dropped before confidence scoring rather than scored low.
+- **`silent-failure-hunter` reviewer agent** — pattern catalogue for catch/promise/fallback/silenced-diagnostic/test-erosion; dispatched in parallel with `compliance-reviewer` when the diff matches error-handling tokens.
+- **Skill eval harness** at `scripts/skill-eval/` — bash runner + Haiku grader, pass-rate + stddev across N iterations; starter eval for `code-review-and-quality`.
+- **`claude-md-audit` skill** — re-grade loop for existing `CLAUDE.md` files with six-criterion rubric and append-only diffs.
+
+### v7.1.0 — pi.dev borrow improvements (2026-04-23)
+- **Versioned specs** — `spec-driven-development` writes `-v2`, `-v3` instead of overwriting; JSON sidecars, plan files, and handoff artifacts use the same suffix.
+- **Context load estimator** — `context-budget.sh` accumulates `bytes_read`; analytics report surfaces `estimated_context_tokens`.
+- **Per-phase context footprint** — `context-engineering` emits a footprint block (lines + estimated tokens per file) after reference loading.
+
+### v7.0.0 — Reproducibility, output guards, deterministic audit (2026-04-23)
+- **Pinned `coding-guidelines` SHA** in the manifest with sha256 verification at bootstrap; `--update-guidelines` bumps the pin.
+- **Secret-scan pre-write gate** (`scripts/secret-scan.sh`) — 10 patterns, blocks `Write` on match; self-test included.
+- **CLAUDE.md 120-line cap** now enforced (skill + validator), with a per-file `LINES / ~TOKENS / STATUS` preview before write.
+- **Reference frontmatter normalized** across all 28 references (`description`, `globs`, `alwaysApply`); `.claude/references.index` generated and validated.
+- **Versioned re-runs** — `setup-audit` performs a 3-way merge between cached template, fresh template, and on-disk file (no silent overwrite).
+- **Deterministic audit input** — `scripts/repomap.sh` + tree-sitter walker rank symbols by in-edge count and fit a token budget; audits cite at least one symbol per principle.
+- **Breaking** — `--audit` re-run contract changed; reference frontmatter required; manifest gained `coding-guidelines` block.
+
+### v6.5.0 — Toolset scoping, keyword triggers, typed handoffs (2026-04-22)
+- **Task-class toolset scoping** — `.claude/toolsets/*.yaml` registry with `extends:`; skills/agents declare `required-toolsets:` / `forbidden-toolsets:` (S2.19–21).
+- **Keyword-triggered skill hints** — frontmatter `triggers:` plus `.claude/triggers.index`; UserPromptSubmit dispatcher surfaces "💡 consider skill" nudges (S2.22–24).
+- **Typed handoff artifacts** — shared `handoff.schema.json` codifies the spec→plan→implement contract; `validate-handoff.sh` performs deterministic drift detection.
+
+### v6.4.0 — Tier-2 skill-invoking hooks layer (2026-04-22)
+- Hook infrastructure refactored to a shared library with strict event sequencing; tier-2 hooks queue and drain skill invocations (toggle via `MTK_HOOKS_TIER2=0`).
 
 ### v6.3.3 — Fix duplicate hooks.json load (2026-04-23)
 - **Plugin manifest fix** — `.claude-plugin/plugin.json` no longer declares `"hooks": "./hooks/hooks.json"`; Claude Code auto-loads that path, and the explicit reference caused a duplicate-hooks load error on `/reload-plugins`
@@ -434,7 +467,7 @@ MTK is a Claude Code plugin. Use the plugin marketplace to upgrade — there is 
 
 ## Skills
 
-29 skills total: 2 entry-point skills, 21 language-agnostic workflow skills, 3 tech stack skills, 3 enabling skills. Entry-point skills (`/mtk-setup` and `/mtk`) orchestrate workflow skills. Workflow skill count includes the new `toolkit-health` (v6.3.0) diagnostic for usage-pulse reports.
+31 skills total: 2 entry-point skills, 23 language-agnostic workflow skills, 3 tech stack skills, 3 enabling skills. Entry-point skills (`/mtk-setup` and `/mtk`) orchestrate workflow skills. Recent additions: `toolkit-health` (v6.3.0) and `claude-md-audit` (v7.2.0).
 
 ### Workflow Skills
 
@@ -519,6 +552,10 @@ Narrow specialist for test quality. Checks coverage gaps, weak assertions ("does
 ### architecture-reviewer
 
 Narrow specialist for structural fit. Checks dependency direction, handler/controller/service splits, naming consistency, unjustified abstractions, cross-layer leaks.
+
+### silent-failure-hunter
+
+Conditional Stage 1 specialist (v7.2.0). Dispatched in parallel with `compliance-reviewer` when the diff matches error-handling tokens (`catch`, `except`, `?.`, `??`, `eslint-disable`, `Skip =`, `it.skip`, …). Pattern catalogue covers swallowed catches, silenced promises, optimistic fallbacks, suppressed diagnostics, and test erosion. Severity escalates to Critical on audited paths.
 
 ### Self-Escalation
 
