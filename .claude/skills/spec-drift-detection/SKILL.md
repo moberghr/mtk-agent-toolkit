@@ -105,6 +105,23 @@ Phase 2.5 did not cover the final code. Detect divergence before review.
 - A clean `PASS` does not mean the code is good — only that it matches what
   was approved. Code quality still goes through `compliance-reviewer`.
 
+## Architecture Principle Drift (S1.15)
+
+In addition to manifest drift, also compare the implementation against tagged
+principles in `.claude/references/architecture-principles.md`. Severity is
+determined by the principle's confidence tag:
+
+| Tag | Contradicting change → |
+|---|---|
+| `[EXTRACTED]` | **block** (critical drift) — the principle was directly observed in code; violating it is a regression. |
+| `[INFERRED:>=0.7]` | **flag** (medium drift) — likely-correct pattern; surface for engineer decision. |
+| `[INFERRED:<0.7]` | **note** (low drift) — weak inference; mention but do not block. |
+| `[AMBIGUOUS]` | **note** — sources disagree; surface both options. Do not block. |
+
+If `architecture-principles.md` is missing or has no tags (legacy format),
+skip principle drift and continue with manifest drift only — emit a one-line
+note that principle drift was unavailable.
+
 ## Common Rationalizations
 
 See `.claude/skills/context-engineering/SKILL.md` for the shared table. Drift-specific traps: "the extra file was just a helper, it's basically in scope" (if it wasn't in the change_manifest, the approval gate did not cover it — flag it), "security_impact was 'none' but this auth change is tiny" (if the diff touches auth, payments, or audit — even tiny — the field was wrong), and "this drift is minor, I'll just fix it silently" (silent drift is the exact compliance failure this skill exists to prevent — emit the finding).

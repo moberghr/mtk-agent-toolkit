@@ -2,6 +2,9 @@
 # build-references-index.sh — emit .claude/references.index from frontmatter.
 set -euo pipefail
 
+# shellcheck source=../hooks/lib/shrink-guard.sh
+. "$(cd "$(dirname "$0")/../hooks/lib" && pwd)/shrink-guard.sh"
+
 # Contract:
 #   build-references-index.sh
 #     Scans .claude/references/**/*.md for YAML frontmatter with
@@ -56,6 +59,13 @@ if [[ "${1:-}" == "--check" ]]; then
     exit 1
   fi
 else
-  build > "$INDEX"
-  echo "wrote $INDEX ($(wc -l < "$INDEX" | tr -d ' ') lines)"
+  TMP_INDEX="${INDEX}.tmp.$$"
+  build > "$TMP_INDEX"
+  if mtk_guarded_write "$INDEX" "$TMP_INDEX"; then
+    echo "wrote $INDEX ($(wc -l < "$INDEX" | tr -d ' ') lines)"
+  else
+    rc=$?
+    rm -f "$TMP_INDEX"
+    exit "$rc"
+  fi
 fi

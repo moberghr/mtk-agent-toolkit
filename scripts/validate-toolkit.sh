@@ -224,4 +224,13 @@ if [ -f .claude/references.index ]; then
   bash scripts/build-references-index.sh --check
 fi
 
+# Read-only enforcement for mcp/src/tools/ — no fs writes, no shell exec.
+# Agent-callable tools must not mutate state or spawn processes.
+if [ -d mcp/src/tools ]; then
+  if grep -rE 'fs\.(write|append|unlink|rm|mkdir|chmod|chown|symlink|rename|truncate)|child_process|execSync|[^a-zA-Z]spawn\(' mcp/src/tools/ >/dev/null 2>&1; then
+    grep -rEn 'fs\.(write|append|unlink|rm|mkdir|chmod|chown|symlink|rename|truncate)|child_process|execSync|[^a-zA-Z]spawn\(' mcp/src/tools/ >&2 || true
+    fail "mcp/src/tools/ must be read-only — write API or shell exec detected"
+  fi
+fi
+
 printf 'Toolkit validation passed.\n'

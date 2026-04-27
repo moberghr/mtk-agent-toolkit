@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Re-export shrink-guard helpers so any hook sourcing hook-io gets mtk_guarded_write.
+# shellcheck source=shrink-guard.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/shrink-guard.sh"
+
 # Shared helpers for Claude Code hook payload parsing and session-scoped state.
 # Supports both legacy flat payloads ({"command": ...}) and nested tool_input
 # payloads ({"tool_input": {"command": ...}}) using only the portable tools

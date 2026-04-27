@@ -381,6 +381,37 @@ Based on EVERYTHING you found, create `.claude/references/architecture-principle
 - Be specific about file locations so engineers can find examples
 - Don't skip sections — if you found nothing for a section, say "Not found in this codebase"
 
+### Confidence Tagging (S1.15)
+
+Every principle (or sub-bullet) the audit emits must carry a **confidence tag** so downstream tools (drift detection, code review) know how strict to be. Three tags:
+
+- `[EXTRACTED]` — directly observed in the code. High trust. Drift detection blocks on contradictions.
+- `[INFERRED:0.0–1.0]` — pattern inference with explicit confidence (`0.9` strong, `0.7–0.89` reasonable, `<0.7` weak). Drift detection flags rather than blocks.
+- `[AMBIGUOUS]` — sources disagree, or the pattern is split. Drift detection notes without verdict.
+
+**Every tagged line must cite evidence** — file:line, a path glob with a hit count, or a commit SHA. No tag without evidence.
+
+Format the principles section so each line follows this shape:
+
+```markdown
+## 4. API Design
+- [EXTRACTED] All controllers return `ApiResponse<T>` envelope. Evidence: `src/Api/Controllers/*.cs` (23 of 23 hits).
+- [INFERRED:0.85] Versioning convention is URL-segment `v1/`, `v2/`. Evidence: 11 of 13 routes follow this; 2 in `Legacy/` use header versioning.
+- [AMBIGUOUS] Authorization model — split between `[Authorize]` attributes (handlers) and middleware-based policies (controllers). Evidence: see `Auth/AuthorizationMiddleware.cs:42` and `Api/Handlers/UserHandler.cs:15`.
+```
+
+Add a legend block at the top of `architecture-principles.md` (right after the header):
+
+```markdown
+> **Confidence legend:**
+> `[EXTRACTED]` = directly observed in code (high trust — drift detection blocks).
+> `[INFERRED:0.0–1.0]` = pattern inference with confidence score (drift detection flags).
+> `[AMBIGUOUS]` = sources disagree or pattern is split (drift detection notes without verdict).
+> Every tag must cite evidence (file:line, glob with hit count, or commit SHA).
+```
+
+Aim for `[EXTRACTED]` whenever you can; downgrade to `[INFERRED]` only when fewer than 100% of cases match. Use `[AMBIGUOUS]` sparingly — it's an explicit "team decision needed" marker, not a way to dodge analysis.
+
 ## STEP 3.5: Provenance Section (mandatory)
 
 Append a `## Provenance` section to `architecture-principles.md`. This proves each principle is evidence-based, not invented:
@@ -450,6 +481,12 @@ Next steps:
 - If `.claude/references/architecture-principles.md` already exists, use AskUserQuestion before overwriting
 - Create `.claude/references/` directory if it doesn't exist
 - The actual scan commands live in the tech stack skill — do not duplicate them here. If they need updating, update the tech stack skill.
+- **Ignore patterns (S1.14):** Tree walks honor `.mtkignore` at the repo root. Patterns are loaded automatically by `scripts/repomap-tree-sitter.py` (which `scripts/repomap.sh` invokes). Engineers control what the audit "sees" by editing `.mtkignore` — same syntax as `.gitignore`. Missing file is non-fatal; falls back to built-in defaults. Do **not** invent ad-hoc exclude logic in this skill.
+- **Shrink-guarded write (S3.16):** When writing or regenerating `architecture-principles.md`, write to a temp file first then promote it via `mtk_guarded_write`. This refuses silent truncation if a partial regenerate would shrink the file > 50% bytes or > 20% lines. Override with `MTK_SHRINK_GUARD_OVERRIDE=1` for intentional rewrites.
+  ```bash
+  . hooks/lib/shrink-guard.sh
+  mtk_guarded_write .claude/references/architecture-principles.md "$tmp"
+  ```
 
 ---
 
@@ -488,6 +525,15 @@ For each section of the architecture doc, compare across all audits:
 
 ### What's Unique (project-specific)
 - Patterns that only appear in one project → document as project-specific, not team-wide
+
+### Confidence Tag Merge Rules (S1.15)
+
+Per-repo audits already carry `[EXTRACTED] / [INFERRED:N] / [AMBIGUOUS]` tags (see STEP 3 of single-repo audit). When merging:
+
+- All sources tag the principle `[EXTRACTED]` and agree → keep `[EXTRACTED]`.
+- Mixed tags or one source `[INFERRED]` → output `[INFERRED:min(confidences)]`. Cite both source repos.
+- Sources contradict the principle itself → output `[AMBIGUOUS]` with both source pointers.
+- A principle appears in only one repo → keep its original tag, mark as project-specific.
 
 ## STEP 2: Generate Unified Document
 

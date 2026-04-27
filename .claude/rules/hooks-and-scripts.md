@@ -30,6 +30,10 @@ paths:
 - **S3.14** Tier-2 queue entries follow the schema in `hooks/lib/skill-queue.sh`: `queued_at`, `queued_epoch`, `skill`, `reason`, `context.excerpt`, `ttl_hours` (default 24), `source_hook`. Writes are atomic (tmp-then-rename). Drain collapses duplicates by `skill + source_hook`, caps surfaced entries at 3 per turn, and deletes expired files.
 - **S3.15** Every tier-2 hook must respect `MTK_HOOKS_TIER2` (default `1`). When `0`, writers return early and the dispatcher exits silently. The env var is declared in `.claude/settings.json` under `env`; engineers override per-machine via `.claude/settings.local.json`.
 
+## Shrink-Guarded Writes
+
+- **S3.16** Protected artifacts that get regenerated (`architecture-principles.md`, `references.index`, in-place rewrites of `tasks/lessons.md`) must be written through `mtk_guarded_write` from `hooks/lib/shrink-guard.sh`. The helper refuses writes that shrink the target by > 50% bytes or > 20% lines. Override with `MTK_SHRINK_GUARD_OVERRIDE=1` for intentional rewrites. Pure appends are exempt — they cannot shrink.
+
 ## Validation Script
 
 - **S3.9** `scripts/validate-toolkit.sh` is the gate. It checks: required files exist, versions match, frontmatter present, skill anatomy valid, manifest paths exist, README/CONTRIBUTING/AGENTS coverage.

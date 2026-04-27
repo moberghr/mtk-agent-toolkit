@@ -799,6 +799,60 @@
       "action": "sync",
       "description": "Shared hook helpers for parsing Claude Code payloads and persisting session-scoped state"
     },
+    "hooks/lib/shrink-guard.sh": {
+      "source": "hooks/lib/shrink-guard.sh",
+      "target": "hooks/lib/shrink-guard.sh",
+      "action": "sync",
+      "description": "Shrink-guarded write helper — refuses to truncate protected artifacts by >50% bytes or >20% lines (S3.16)"
+    },
+    "hooks/lib/mtkignore.sh": {
+      "source": "hooks/lib/mtkignore.sh",
+      "target": "hooks/lib/mtkignore.sh",
+      "action": "sync",
+      "description": "Loader for .mtkignore patterns used by MTK scans (S1.14)"
+    },
+    "hooks/git-hooks/post-commit-refresh.sh": {
+      "source": "hooks/git-hooks/post-commit-refresh.sh",
+      "target": "hooks/git-hooks/post-commit-refresh.sh",
+      "action": "sync",
+      "description": "Opt-in git post-commit hook that rebuilds derived MTK artifacts when their inputs change"
+    },
+    "scripts/refresh-derived.sh": {
+      "source": "scripts/refresh-derived.sh",
+      "target": "scripts/refresh-derived.sh",
+      "action": "sync",
+      "description": "Single entry point that rebuilds derived MTK artifacts on demand (references, triggers, manifest validation)"
+    },
+    "tests/hooks/test-shrink-guard.sh": {
+      "source": "tests/hooks/test-shrink-guard.sh",
+      "target": "tests/hooks/test-shrink-guard.sh",
+      "action": "sync",
+      "description": "Fixture-based tests for hooks/lib/shrink-guard.sh"
+    },
+    "tests/pressure-tests/spec-drift-tags.md": {
+      "source": "tests/pressure-tests/spec-drift-tags.md",
+      "target": "tests/pressure-tests/spec-drift-tags.md",
+      "action": "sync",
+      "description": "Pressure test scenarios for spec-drift-detection — confidence-tagged principle severity gradation"
+    },
+    "docs/integrations/mtk-mcp.md": {
+      "source": "docs/integrations/mtk-mcp.md",
+      "target": "docs/integrations/mtk-mcp.md",
+      "action": "sync",
+      "description": "Integration guide for the mtk-context MCP server — tool inventory, bash fallbacks, .mcp.json registration"
+    },
+    ".mtkignore": {
+      "source": ".mtkignore",
+      "target": ".mtkignore",
+      "action": "sync",
+      "description": "Single source of truth for paths excluded from MTK scans (S1.14)"
+    },
+    "mcp/src/tools/state.ts": {
+      "source": "mcp/src/tools/state.ts",
+      "target": "mcp/src/tools/state.ts",
+      "action": "sync",
+      "description": "MCP read-only tools — manifest, analytics, audit, references_index, active_stack"
+    },
     "hooks/capture-learnings.sh": {
       "source": "hooks/capture-learnings.sh",
       "target": "hooks/capture-learnings.sh",

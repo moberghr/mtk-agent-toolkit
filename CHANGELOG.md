@@ -4,6 +4,16 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [7.2.0] - 2026-04-27
 
+### Added — graphify borrow improvements
+
+Five patterns adapted from `safishamsi/graphify`. See `docs/plans/2026-04-27-graphify-borrow.md`.
+
+- **`.mtkignore`** at repo root — single source of truth for paths excluded from MTK scans. Same syntax as `.gitignore`. Loader at `hooks/lib/mtkignore.sh`; tree-sitter walker reads it directly. `setup-bootstrap` generates a starter file. New rule **S1.14**.
+- **Confidence-tagged audit principles.** `setup-audit` emits `[EXTRACTED]`, `[INFERRED:0.0–1.0]`, or `[AMBIGUOUS]` tags plus evidence pointers. `spec-drift-detection` uses tags as a severity gradient: EXTRACTED blocks, INFERRED ≥0.7 flags, INFERRED <0.7 / AMBIGUOUS notes. Merge mode downgrades on disagreement. Pressure test in `tests/pressure-tests/spec-drift-tags.md`. New rule **S1.15**.
+- **Shrink-guarded writes.** `hooks/lib/shrink-guard.sh` refuses rewrites that shrink targets >50% bytes or >20% lines (override: `MTK_SHRINK_GUARD_OVERRIDE=1`). Wired into `build-references-index.sh`, `setup-audit`, `correction-capture`. 17-case fixture test. New rule **S3.16**.
+- **MCP server expanded** to 7 tools (was 2). Added read-only `mtk_manifest`, `mtk_analytics`, `mtk_audit` (parses tagged principles), `mtk_references_index`, `mtk_active_stack`. Read-only enforced by validator grep gate. Server bumped to 0.2.0. `hooks/session-start` rebuild trigger now fires on `mcp/src/**` mtime change. Bash fallbacks documented in `docs/integrations/mtk-mcp.md` (S3.12).
+- **Post-commit auto-refresh.** `hooks/git-hooks/post-commit-refresh.sh` (opt-in) rebuilds derived artifacts via `scripts/refresh-derived.sh` when their inputs change. Silent on no-op, never blocks.
+
 ### Added — official Claude plugin borrow improvements
 
 Four targeted improvements drawn from a comparative analysis of Anthropic's official Claude Code plugins (`code-review`, `pr-review-toolkit`, `skill-creator`, `claude-md-management`). See `docs/specs/2026-04-25-official-plugin-borrow-improvements.md`.

@@ -71,14 +71,81 @@ def fallback(out_path: Path, stack: str, reason: str) -> int:
     return 0
 
 
+def load_ignore_patterns(root: Path) -> list[str]:
+    """Read .mtkignore (gitignore-like) plus built-in defaults.
+
+    Patterns are returned as a flat list. fnmatch-style globs work directly;
+    leading-slash anchors are stripped (we always match relative to root);
+    trailing slashes are kept so we can detect directory-only patterns.
+    """
+    defaults = [
+        ".git/", "node_modules/", "dist/", "bin/", "obj/",
+        ".venv/", "venv/", "__pycache__/",
+    ]
+    patterns: list[str] = []
+    mtkignore = root / ".mtkignore"
+    if mtkignore.is_file():
+        for line in mtkignore.read_text().splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            patterns.append(line.lstrip("/"))
+    patterns.extend(defaults)
+    # dedup preserving order
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for p in patterns:
+        if p not in seen:
+            seen.add(p)
+            deduped.append(p)
+    return deduped
+
+
+def _is_dir_ignored(rel_dir: str, dir_name: str, patterns: list[str]) -> bool:
+    import fnmatch
+    candidates = (rel_dir + "/") if rel_dir else f"{dir_name}/"
+    for pat in patterns:
+        if pat.endswith("/"):
+            if fnmatch.fnmatch(dir_name + "/", pat) or fnmatch.fnmatch(candidates, pat):
+                return True
+        else:
+            if fnmatch.fnmatch(dir_name, pat) or fnmatch.fnmatch(rel_dir, pat):
+                return True
+    return False
+
+
+def _is_file_ignored(rel_path: str, file_name: str, patterns: list[str]) -> bool:
+    import fnmatch
+    for pat in patterns:
+        if pat.endswith("/"):
+            continue
+        if fnmatch.fnmatch(file_name, pat) or fnmatch.fnmatch(rel_path, pat):
+            return True
+    return False
+
+
 def collect_files(root: Path, exts: list[str]) -> list[Path]:
-    ignore_dirs = {".git", "node_modules", "bin", "obj", "dist", ".venv", "venv", "__pycache__"}
+    patterns = load_ignore_patterns(root)
     files: list[Path] = []
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d not in ignore_dirs and not d.startswith(".")]
+        rel_root = os.path.relpath(dirpath, root) if dirpath != str(root) else ""
+        kept_dirs: list[str] = []
+        for d in dirnames:
+            if d.startswith("."):
+                # Hidden dirs except those explicitly un-ignored later — match prior behavior.
+                continue
+            rel_child = f"{rel_root}/{d}" if rel_root else d
+            if _is_dir_ignored(rel_child, d, patterns):
+                continue
+            kept_dirs.append(d)
+        dirnames[:] = kept_dirs
         for fn in filenames:
-            if any(fn.endswith(ext) for ext in exts):
-                files.append(Path(dirpath) / fn)
+            if not any(fn.endswith(ext) for ext in exts):
+                continue
+            rel_file = f"{rel_root}/{fn}" if rel_root else fn
+            if _is_file_ignored(rel_file, fn, patterns):
+                continue
+            files.append(Path(dirpath) / fn)
     return files
 
 
