@@ -2,16 +2,13 @@
 
 # MTK — Moberg Toolkit for AI-Assisted Engineering
 
-### Turn any AI coding assistant into a disciplined engineering partner
+### Turn Claude Code into a disciplined engineering partner
 
-**A multi-agent toolkit that enforces your team's coding standards, security policies, and review discipline on every AI-generated line of code. Language-agnostic workflows with pluggable tech stacks for .NET, Python, and TypeScript.**
+**A Claude Code plugin that enforces your team's coding standards, security policies, and review discipline on every AI-generated line of code. Language-agnostic workflows with pluggable tech stacks for .NET, Python, and TypeScript.**
 
-[![Version](https://img.shields.io/badge/version-7.2.0-blue.svg)](https://github.com/moberghr/mtk-agent-toolkit/releases)
+[![Version](https://img.shields.io/badge/version-7.2.0-blue.svg)](https://github.com/moberghr/claude-helpers/releases)
 [![Website](https://img.shields.io/badge/website-moberghr.github.io-6d28d9.svg)](https://moberghr.github.io/mtk-agent-toolkit/)
-[![Claude Code](https://img.shields.io/badge/Claude%20Code-supported-purple.svg)](https://claude.ai/code)
-[![Cursor](https://img.shields.io/badge/Cursor-supported-blue.svg)](https://cursor.sh)
-[![Copilot](https://img.shields.io/badge/GitHub%20Copilot-supported-green.svg)](https://github.com/features/copilot)
-[![Windsurf](https://img.shields.io/badge/Windsurf-supported-teal.svg)](https://codeium.com/windsurf)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-purple.svg)](https://claude.ai/code)
 [![.NET](https://img.shields.io/badge/.NET-8.0%2B-512BD4.svg)](https://dotnet.microsoft.com/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg)](https://python.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0%2B-3178C6.svg)](https://www.typescriptlang.org/)
@@ -19,7 +16,7 @@
 
 **[moberghr.github.io/mtk-agent-toolkit](https://moberghr.github.io/mtk-agent-toolkit/)** — the MTK website.
 
-[Quick Start](#quick-start) · [What's New](#whats-new) · [What It Does](#what-it-does) · [Multi-Agent Support](#multi-agent-support) · [Examples](#examples) · [Architecture](#architecture) · [Skills](#skills) · [Review Agents](#review-agents) · [Tech Stacks](#tech-stacks) · [FAQ](#faq)
+[Quick Start](#quick-start) · [What's New](#whats-new) · [What It Does](#what-it-does) · [Examples](#examples) · [Architecture](#architecture) · [Skills](#skills) · [Review Agents](#review-agents) · [Tech Stacks](#tech-stacks) · [FAQ](#faq)
 
 <br/>
 
@@ -133,20 +130,18 @@ See [CHANGELOG.md](CHANGELOG.md) for the full history.
 /mtk review before commit
 ```
 
-**Cursor, Copilot, Windsurf, and other tools:**
-```bash
-# 1. Clone the toolkit
-git clone https://github.com/moberghr/claude-helpers .mtk
+The toolkit detects your tech stack (`.sln` = .NET, `pyproject.toml` = Python, `package.json` = TypeScript) and unlocks the full workflow: planning, TDD, two-stage review, hook-enforced verification, and session recovery.
 
-# 2. Generate native config for your tool
-bash .mtk/scripts/generate-tool-configs.sh --all
-# Writes: .cursor/rules/mtk-*.mdc, .github/copilot-instructions.md,
-#         .windsurfrules, GEMINI.md, .clinerules
+### What runs on session start
 
-# 3. Follow AGENTS.md for routing to the right skills
-```
+When Claude Code starts a session with this plugin enabled, the `SessionStart` hook (`hooks/session-start`) runs locally and:
 
-The toolkit detects your tech stack (`.sln` = .NET, `pyproject.toml` = Python, `package.json` = TypeScript). In Claude Code, that unlocks the full workflow: planning, TDD, two-stage review, hook-enforced verification, and session recovery. In other tools, MTK exports the same standards and routing guidance, but hook enforcement remains Claude Code-specific.
+- Looks for in-progress specs in `docs/specs/` and plans in `docs/plans/` to surface a session-recovery message.
+- Checks `tasks/todo.md` for incomplete items.
+- Performs an advisory toolkit version-drift check against `.claude/mtk-version.json`.
+- **If `node` is installed and `mcp/src/**` is newer than `dist/mtk-mcp-server.cjs`, runs `bash scripts/build-mcp.sh --quiet` to compile the bundled MCP server.** This is a local Node build of code shipped in the repo — no network, no package install. The MCP server is optional; every skill has a bash fallback (rule S3.12). To skip the build, delete the `dist/` directory or remove the hook from `hooks/hooks.json`.
+
+No network calls are made. All writes stay inside the working directory. To disable tier-2 hooks (queue/drain skill triggers), set `MTK_HOOKS_TIER2=0` in `.claude/settings.local.json`.
 
 ### Which command should I use?
 
@@ -164,32 +159,6 @@ Two entry points. Everything else is a workflow routed through `/mtk`.
 | Unify multi-repo audits | `/mtk-setup --merge` | Merges per-repo audits into team-wide standard |
 
 For a real-world walkthrough of a `/mtk <feature>` session, see [Examples](#examples). For copy-paste project templates, see [`examples/`](examples/).
-
----
-
-## Multi-Agent Support
-
-MTK is not Claude Code-only, but the experience is not identical across tools. Claude Code gets the full runtime. Other tools get exported standards, routing guidance, and native config files.
-
-| Tool | Integration method | What you get |
-|:---|:---|:---|
-| **Claude Code** | Plugin marketplace install | Full `/mtk` skill routing, hooks, session recovery |
-| **Cursor** | `.cursor/rules/mtk-*.mdc` (glob-scoped) | Exported standards and path-scoped guidance; no MTK hook runtime |
-| **GitHub Copilot** | `.github/copilot-instructions.md` | Exported standards in Copilot format; no `/mtk` command surface |
-| **Windsurf** | `.windsurfrules` | Exported standards; no Claude-style hook enforcement |
-| **Gemini CLI / AI Studio** | `GEMINI.md` | Exported standards and routing guidance |
-| **Cline / Roo** | `.clinerules` | Exported standards and routing guidance |
-| **Any AGENTS.md-compatible tool** | `AGENTS.md` routing rules | Task routing and workflow guidance; runtime enforcement depends on the host tool |
-
-Generate all native configs in one command:
-
-```bash
-bash scripts/generate-tool-configs.sh --all
-# or selectively:
-bash scripts/generate-tool-configs.sh --format cursor-rules --format copilot
-```
-
-Regenerate any time you update the toolkit or change your tech stack. Generated files are prefixed `mtk-` and never conflict with your own rules.
 
 ---
 
@@ -592,7 +561,7 @@ Hooks are deterministic — they fire every time, unlike CLAUDE.md instructions 
 
 | Hook | Event | What it does |
 |:---|:---|:---|
-| **session-start** | SessionStart | Multi-platform init (Claude Code, Cursor, Copilot CLI, Gemini CLI); detects in-progress specs/plans for session recovery |
+| **session-start** | SessionStart | Detects in-progress specs/plans for session recovery; compiles bundled MCP server on first use if `node` is present |
 | **security-gate.sh** | PreToolUse (Bash) | Blocks destructive operations: DB drops, force-push to main, `rm -rf` on broad paths |
 | **scope-guard.sh** | PreToolUse (Edit/Write) | Warns when a file edit falls outside the active spec's `change_manifest` — real-time scope creep detection |
 | **context-budget.sh** | PostToolUse | Tracks session activity (files read, edits, operations); warns at 30 unique files / 40 modifications / 120 total ops |
@@ -823,7 +792,7 @@ claude-helpers/
 │   ├── validate-toolkit.sh    # Structural integrity check
 │   ├── run-benchmarks.sh      # Deterministic hook/linter tests
 │   ├── analytics-report.sh    # Print usage stats
-│   └── generate-tool-configs.sh  # Generate Cursor/Copilot/Windsurf/Gemini/Cline configs
+│   └── generate-tool-configs.sh  # (experimental) emits non-Claude tool configs; not currently supported
 ├── AGENTS.md                  # Routing rules for AI agents (all tools)
 └── README.md
 ```
@@ -848,9 +817,7 @@ MTK is not a replacement for human review. It's a first pass that catches the me
 <details>
 <summary><b>Do I need Claude Code to use this?</b></summary>
 
-No. The reference documents, AGENTS.md routing rules, and generated tool configs work with any AI coding tool. Use `bash scripts/generate-tool-configs.sh --all` to generate native config files for Cursor (`.cursor/rules/*.mdc`), Copilot (`.github/copilot-instructions.md`), Windsurf (`.windsurfrules`), Gemini (`GEMINI.md`), and Cline (`.clinerules`).
-
-Claude Code unlocks the full `/mtk` and `/mtk-setup` routing, session recovery, and automatic hook enforcement. Other tools get the same standards content and routing guidance, but not identical runtime behavior.
+Yes. MTK is currently a Claude Code plugin. Hooks, skill routing (`/mtk`, `/mtk-setup`), session recovery, and the bundled MCP server all rely on Claude Code's runtime. The reference documents in `.claude/references/` are useful reading on their own, but the workflow enforcement only runs under Claude Code.
 </details>
 
 <details>
@@ -920,7 +887,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Create the skill directory, add a SKILL.
 | Skills not loading after update | Run `/plugin update mtk@moberghr` then restart session |
 | Scope guard fires on every edit | Check `docs/specs/*.json` — you have an active spec; update its `change_manifest` or remove it |
 | Context budget warning fires early | Expected on large sessions — consider committing a checkpoint or using the handoff skill |
-| Cursor rules not loading | Re-run `bash scripts/generate-tool-configs.sh --format cursor-rules` after updating the toolkit |
 
 Toolkit maintainers: run `bash scripts/validate-toolkit.sh` and `bash scripts/run-benchmarks.sh` to verify structural and behavioral integrity.
 
@@ -947,6 +913,28 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). The short version:
 
 ---
 
+## Uninstall
+
+```bash
+# 1. Remove the plugin from Claude Code
+/plugin uninstall mtk@moberghr
+/plugin marketplace remove moberghr/claude-helpers
+
+# 2. (Optional) Remove generated artifacts from your repo
+rm -rf .claude/references .claude/skills .claude/agents .claude/rules
+rm -f  .claude/manifest.json .claude/settings.json .claude/analytics.json
+rm -f  .claude/mtk-version.json .claude/references.index .claude/tech-stack
+rm -f  .mtkignore CLAUDE.md AGENTS.md
+rm -rf docs/specs docs/plans tasks/
+
+# 3. (Optional) Remove the opt-in post-commit hook if you enabled it
+rm -f .git/hooks/post-commit
+```
+
+The plugin only writes inside the working directory and `~/.claude-plugin/` (Claude Code's standard plugin location). Nothing is installed system-wide and nothing persists outside your repo. Step 2 is optional — `CLAUDE.md` and the rules are designed to be committed and live on independently of the plugin.
+
+---
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
@@ -955,7 +943,7 @@ MIT. See [LICENSE](LICENSE).
 
 <div align="center">
 
-**MTK — Moberg Toolkit** v6.3.3 · [Moberg d.o.o.](https://www.moberg.hr)
+**MTK — Moberg Toolkit** v7.2.0 · [Moberg d.o.o.](https://www.moberg.hr)
 
 Built for teams that ship production code, not prototypes.
 
