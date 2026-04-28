@@ -6,7 +6,7 @@
 
 **A Claude Code plugin that enforces your team's coding standards, security policies, and review discipline on every AI-generated line of code. Language-agnostic workflows with pluggable tech stacks for .NET, Python, and TypeScript.**
 
-[![Version](https://img.shields.io/badge/version-7.2.0-blue.svg)](https://github.com/moberghr/claude-helpers/releases)
+[![Version](https://img.shields.io/badge/version-7.2.0-blue.svg)](https://github.com/moberghr/mtk-agent-toolkit/releases)
 [![Website](https://img.shields.io/badge/website-moberghr.github.io-6d28d9.svg)](https://moberghr.github.io/mtk-agent-toolkit/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-purple.svg)](https://claude.ai/code)
 [![.NET](https://img.shields.io/badge/.NET-8.0%2B-512BD4.svg)](https://dotnet.microsoft.com/)
@@ -114,7 +114,7 @@ See [CHANGELOG.md](CHANGELOG.md) for the full history.
 **Claude Code (plugin marketplace):**
 ```bash
 # 1. Install the plugin
-/plugin marketplace add moberghr/claude-helpers
+/plugin marketplace add moberghr/mtk-agent-toolkit
 /plugin install mtk@moberghr
 
 # 2. Bootstrap your repo (one-time)
@@ -918,7 +918,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). The short version:
 ```bash
 # 1. Remove the plugin from Claude Code
 /plugin uninstall mtk@moberghr
-/plugin marketplace remove moberghr/claude-helpers
+/plugin marketplace remove moberghr/mtk-agent-toolkit
 
 # 2. (Optional) Remove generated artifacts from your repo
 rm -rf .claude/references .claude/skills .claude/agents .claude/rules

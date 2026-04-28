@@ -6,8 +6,8 @@
     "name": "Moberg d.o.o.",
     "url": "https://www.moberg.hr"
   },
-  "homepage": "https://github.com/moberghr/claude-helpers",
-  "repository": "https://github.com/moberghr/claude-helpers",
+  "homepage": "https://github.com/moberghr/mtk-agent-toolkit",
+  "repository": "https://github.com/moberghr/mtk-agent-toolkit",
   "license": "MIT",
   "keywords": [
     "dotnet",
