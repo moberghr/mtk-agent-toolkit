@@ -58,11 +58,21 @@ if [ -f .claude/mtk-version.json ]; then
   fi
 fi
 
+# Personal lessons (gitignored, per-engineer rules captured by correction-capture)
+PERSONAL_LESSONS_MSG=""
+if [ -f ".claude/lessons/personal.md" ] && [ -s ".claude/lessons/personal.md" ]; then
+  PL_COUNT="$(grep -c '^## ' .claude/lessons/personal.md 2>/dev/null || echo 0)"
+  if [ "$PL_COUNT" -gt 0 ]; then
+    PERSONAL_LESSONS_MSG="Personal lessons active: ${PL_COUNT} entries in .claude/lessons/personal.md (gitignored, individual rules). Read them when work touches their topics. Promote to tasks/lessons.md via /promote-lesson when they apply team-wide."
+  fi
+fi
+
 # Build the context message
 BASE_MSG="Moberg toolkit is active. Available entry points: /mtk and /mtk-setup. Skills load on demand via progressive disclosure."
 CONTEXT="$BASE_MSG"
 [[ -n "$RECOVERY_MSG" ]] && CONTEXT="${CONTEXT} ${RECOVERY_MSG}"
 [[ -n "$VERSION_MSG" ]] && CONTEXT="${CONTEXT} ${VERSION_MSG}"
+[[ -n "$PERSONAL_LESSONS_MSG" ]] && CONTEXT="${CONTEXT} ${PERSONAL_LESSONS_MSG}"
 
 # Escape for JSON (bash parameter substitution — no external deps)
 json_escape() {

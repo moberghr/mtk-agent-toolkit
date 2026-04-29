@@ -502,6 +502,24 @@
       "stack": "typescript",
       "description": "TypeScript tech stack: package manager auto-detect (bun/pnpm/yarn/npm), React/Next.js/Tauri/Node patterns, Prisma/Drizzle/TanStack Query guidance, scan recipes"
     },
+    "tests/pressure-tests/precompact-snapshot.md": {
+      "source": "tests/pressure-tests/precompact-snapshot.md",
+      "target": "tests/pressure-tests/precompact-snapshot.md",
+      "action": "sync",
+      "description": "Pressure test for PreCompact snapshot hook — verifies stash on dirty tree, skip on clean/rebase/manual, recovery flow"
+    },
+    "tests/pressure-tests/lessons-split.md": {
+      "source": "tests/pressure-tests/lessons-split.md",
+      "target": "tests/pressure-tests/lessons-split.md",
+      "action": "sync",
+      "description": "Pressure test for personal vs team lessons split — defaulting heuristic, SessionStart announcement, /promote-lesson flow"
+    },
+    "tests/pressure-tests/mtk-doctor.md": {
+      "source": "tests/pressure-tests/mtk-doctor.md",
+      "target": "tests/pressure-tests/mtk-doctor.md",
+      "action": "sync",
+      "description": "Pressure test for mtk-doctor — clean repo passes, deprecated models / version drift / skill mismatch are FAIL, --strict elevates WARN"
+    },
     "tests/pressure-tests/mtk-setup-rerun.md": {
       "source": "tests/pressure-tests/mtk-setup-rerun.md",
       "target": "tests/pressure-tests/mtk-setup-rerun.md",
@@ -573,6 +591,36 @@
       "target": "hooks/post-compact.sh",
       "action": "sync",
       "description": "PostCompact hook that re-injects tech stack, in-progress specs, plans, and task state after auto-compaction"
+    },
+    "hooks/pre-compact-snapshot.sh": {
+      "source": "hooks/pre-compact-snapshot.sh",
+      "target": "hooks/pre-compact-snapshot.sh",
+      "action": "sync",
+      "description": "PreCompact hook that stashes uncommitted work before auto-compaction so context loss never costs in-flight changes"
+    },
+    "skills/promote-lesson/SKILL.md": {
+      "source": ".claude/skills/promote-lesson/SKILL.md",
+      "target": ".claude/skills/promote-lesson/SKILL.md",
+      "action": "sync",
+      "description": "Promote a personal lesson from .claude/lessons/personal.md to the team-wide tasks/lessons.md"
+    },
+    "scripts/mtk-recover.sh": {
+      "source": "scripts/mtk-recover.sh",
+      "target": "scripts/mtk-recover.sh",
+      "action": "sync",
+      "description": "Interactive recovery for PreCompact snapshots — lists saved stashes and applies the chosen one"
+    },
+    "scripts/mtk-doctor.sh": {
+      "source": "scripts/mtk-doctor.sh",
+      "target": "scripts/mtk-doctor.sh",
+      "action": "sync",
+      "description": "Health check across core files, components, hooks, and integrity. Supports --json/--fix/--strict."
+    },
+    "skills/mtk-doctor/SKILL.md": {
+      "source": ".claude/skills/mtk-doctor/SKILL.md",
+      "target": ".claude/skills/mtk-doctor/SKILL.md",
+      "action": "sync",
+      "description": "Entry-point skill wrapping mtk-doctor.sh — categorized health check for MTK installation"
     },
     "hooks/git-hooks/pre-commit": {
       "source": "hooks/git-hooks/pre-commit",

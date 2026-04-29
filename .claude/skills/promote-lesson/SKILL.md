@@ -1,0 +1,65 @@
+---
+name: promote-lesson
+description: Promote a personal lesson from .claude/lessons/personal.md to the team-wide tasks/lessons.md, optionally rewording for team applicability.
+type: skill
+allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
+argument-hint: [keyword to filter lessons]
+user-invocable: true
+---
+
+# Promote Lesson
+
+## Overview
+
+Personal lessons in `.claude/lessons/personal.md` are gitignored — they belong to the engineer, not the team. When a personal lesson matures into a rule that every contributor should follow, promote it to the committed `tasks/lessons.md`. This skill is the explicit, audited path for that move.
+
+## When To Use
+
+- The engineer asks to "share a personal lesson with the team"
+- A personal lesson has recurred 3+ times and clearly applies to others
+- The engineer says "promote", "share", "make this team-wide", "add this to lessons"
+
+### When NOT To Use
+
+- Lesson is genuinely personal preference (style, individual workflow)
+- Lesson is already in `tasks/lessons.md`
+- The personal file does not exist or is empty (nothing to promote)
+
+## Workflow
+
+1. **Locate the personal file.** Resolve to main worktree if in a worktree. If `.claude/lessons/personal.md` does not exist, tell the engineer there is nothing to promote and stop.
+
+2. **List candidates.** Read `.claude/lessons/personal.md` and extract every `## ` header with its block. If the engineer passed a keyword argument, filter blocks whose body matches the keyword (case-insensitive). Show the list, numbered, with the title and a one-line excerpt.
+
+3. **Ask which to promote.** Use `AskUserQuestion` with the numbered list. Accept multiple selections.
+
+4. **Reword for team.** For each selected lesson, rewrite first-person language (`I`, `my`) into team-applicable phrasing (`engineers`, `the codebase`, `we`). Show the proposed reworded text and confirm with the engineer before writing — wording matters when it lands in a committed file.
+
+5. **Append to team file.** Append the reworded entry to `tasks/lessons.md` at the bottom (newest last, matching the existing convention). Keep the structure: `## [Date] — [Title]`, `**Correction:**`, `**Rule:**`, `**Why:**`, `**Applies to:**`. Add a `**Promoted from personal:**` note with the original date so provenance is auditable.
+
+6. **Remove from personal file.** Delete the promoted entry from `.claude/lessons/personal.md`. Do not leave a duplicate — the team file is now authoritative for that rule.
+
+7. **Suggest CLAUDE.md promotion.** If the lesson is foundational (architectural rule, security constraint, repeated correction), tell the engineer this might belong in `CLAUDE.md` or `.claude/rules/` rather than `tasks/lessons.md`. CLAUDE.md is for permanent standards; lessons.md is for accumulated patterns.
+
+## Rules
+
+- Never auto-promote based on heuristics. Promotion is always explicit.
+- Never silently rewrite — show the proposed team wording and get confirmation.
+- Preserve the original capture date; mark the promotion date separately.
+- A promoted lesson must be removed from `personal.md` — duplication defeats the split.
+- If `tasks/lessons.md` does not exist (new repo), create it with the standard header before appending.
+
+## Verification
+
+- [ ] Selected lessons appended to `tasks/lessons.md`
+- [ ] First-person language rewritten and confirmed by the engineer
+- [ ] Selected lessons removed from `.claude/lessons/personal.md`
+- [ ] Provenance note (`Promoted from personal: <date>`) preserved
+- [ ] Engineer notified if any lesson belongs in CLAUDE.md instead
+
+## Red Flags
+
+- Promoting without the engineer's explicit selection
+- Leaving the lesson in both files (creates two sources of truth)
+- Promoting style preferences ("I prefer 4-space indents") that should stay personal
+- Mass-promoting all personal lessons in one go without per-lesson confirmation

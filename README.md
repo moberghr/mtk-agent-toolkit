@@ -155,6 +155,9 @@ Two entry points. Everything else is a workflow routed through `/mtk`.
 | Review before committing | `/mtk review before commit` | Deterministic linters + AI judgment in one pass |
 | See what MTK has loaded | `/mtk status` | Active stack, references, hooks, domain packs |
 | Check toolkit usage trends | `/mtk health` | Usage-pulse report from `.claude/analytics.json` |
+| Run health check across the install | `/mtk-doctor` | Categorized PASS/WARN/FAIL — deprecated models, version sync, hook integrity, gitignore coverage |
+| Recover from PreCompact snapshot | `bash scripts/mtk-recover.sh` | Apply a stash created automatically before auto-compaction |
+| Promote a personal lesson to the team | `/promote-lesson` | Move from gitignored `.claude/lessons/personal.md` into committed `tasks/lessons.md` |
 | Re-audit architecture | `/mtk-setup --audit` | Refreshes `architecture-principles.md` |
 | Unify multi-repo audits | `/mtk-setup --merge` | Merges per-repo audits into team-wide standard |
 

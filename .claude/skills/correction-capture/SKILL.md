@@ -43,27 +43,37 @@ When an engineer corrects your approach, that correction contains knowledge that
    - "Understood — I'll use X instead of Y because [reason]."
    - Do not say "You're absolutely right!" or "Great point!" — just state the correction and act on it.
 
-3. **Check for prior lessons.** Before capturing, grep `tasks/lessons.md` for keywords related to this correction. If a similar lesson already exists, update it instead of duplicating. This prevents lessons.md from growing unbounded and strengthens recurring patterns.
+3. **Decide where it belongs — personal or team.** Two destinations:
+   - `.claude/lessons/personal.md` (gitignored) — default. Personal preferences, individual workflow tweaks, "I prefer X here".
+   - `tasks/lessons.md` (committed) — team-wide rules. Architectural patterns, repeated team-wide mistakes, conventions every contributor should follow.
+
+   **Heuristic:**
+   - First-person language ("I", "my", "for me") → personal.
+   - References to team/architecture/codebase patterns ("the team's...", "we always...", "this codebase uses...") → ask before writing to team file.
+   - When in doubt → personal. Promotion to team is explicit via `/promote-lesson`.
+
+4. **Check for prior lessons.** Before capturing, grep both files for keywords related to this correction. If a similar lesson already exists, update it instead of duplicating.
    ```bash
-   grep -i "<keyword>" tasks/lessons.md
+   grep -i "<keyword>" .claude/lessons/personal.md tasks/lessons.md 2>/dev/null
    ```
    When *replacing* an existing lesson (vs. appending), write to a temp file and promote via `mtk_guarded_write` so a partial regenerate cannot truncate the file. Pure appends are safe — append never shrinks.
 
-4. **Capture the lesson.** Append to `tasks/lessons.md` (resolve path to main worktree if in a worktree):
+5. **Capture the lesson.** Append to the chosen file (create `.claude/lessons/` if missing). Resolve path to main worktree if in a worktree.
    ```markdown
    ## [Date] — [Short title]
-   
+
    **Correction:** [What the engineer said]
    **Rule:** [The reusable rule extracted from the correction]
    **Why:** [Why this matters — the underlying principle]
    **Applies to:** [When this rule should activate in future work]
    ```
 
-5. **Check for pattern.** If this is the second or third time a similar correction has been captured:
-   - Escalate: suggest adding the rule to `CLAUDE.md` as a permanent standard
-   - Reference the prior lessons as evidence of a pattern
+6. **Check for pattern.** If this is the second or third time a similar correction has been captured:
+   - For personal lessons: still personal — repetition just means a stable preference.
+   - For team lessons: escalate — suggest adding the rule to `CLAUDE.md` as a permanent standard. Reference the prior lessons as evidence of a pattern.
+   - Cross-file: if a personal lesson keeps recurring AND clearly applies to others, suggest promotion via `/promote-lesson`.
 
-6. **Apply immediately.** Adjust your current work to follow the correction. Do not wait for the next task.
+7. **Apply immediately.** Adjust your current work to follow the correction. Do not wait for the next task.
 
 ## Rules
 

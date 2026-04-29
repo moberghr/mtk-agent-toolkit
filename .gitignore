@@ -5,6 +5,8 @@
 .claude/references.index
 .claude/.mtk-cache/
 .claude/analytics.json
+.claude/observability/
+.claude/lessons/personal.md
 !.claude/skills/
 !AGENTS.md
 tasks/todo.md

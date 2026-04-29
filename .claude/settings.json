@@ -81,6 +81,17 @@
         ]
       }
     ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "hooks/pre-compact-snapshot.sh",
+            "timeout": 8
+          }
+        ]
+      }
+    ],
     "PostCompact": [
       {
         "hooks": [
