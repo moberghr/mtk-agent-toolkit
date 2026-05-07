@@ -12,9 +12,9 @@ set -euo pipefail
 #   build-references-index.sh --check
 #     Exit 1 if on-disk index differs from freshly built index (used by validator).
 
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$ROOT_DIR"
-
+# Operate on the caller's CWD (the project repo), not the script's location.
+# When invoked via $CLAUDE_PLUGIN_ROOT/scripts/... from a project bootstrap,
+# cd-ing to the script's parent would scan the plugin's references instead.
 INDEX=.claude/references.index
 
 extract_field() {
