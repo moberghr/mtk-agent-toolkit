@@ -84,6 +84,17 @@ The helper writes the new value to `gates.{name}` in `{uuid}.json` AND appends a
 
 Advancing a phase without recording the corresponding gate is treated the same as advancing on `fail`. The validator and reviewers may treat a missing gate event as drift. If you genuinely have no information to evaluate, leave the gate `pending` and stop — do not invent `pass`.
 
+## Interaction with `MTK_AUTO_PROCEED`
+
+When `MTK_AUTO_PROCEED=1` is set in `.claude/settings.local.json` `env`, the orchestrator MAY default the recommended option on `plan_trust_gate` only when ALL of:
+
+- The spec has zero open decisions
+- No `plan-gap-reviewer` `BLOCKING` findings are unresolved
+- `skill_precedence_gate` is `pass`
+- Scope is not classified as breaking change or high `security_impact`
+
+Auto-proceed never overrides explicit user standards, open plan decisions, or `failure_stop_gate`. When applied, the orchestrator records the bypass via a `gate_decided` event with `reason: "AUTO_PROCEED — all preconditions met"` so audit can replay the decision.
+
 ## Cross-references
 
 - Schema: `.claude/references/workflow-artifact-schema.md`

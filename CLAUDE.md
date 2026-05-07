@@ -17,6 +17,7 @@
 | Everything else | `/mtk <description>` | Natural language — routes to fix / implement / pre-commit-review / context-report |
 | Validate toolkit | `bash scripts/validate-toolkit.sh` | Before every commit — structural check of manifest, plugin.json, and skill anatomy |
 | Disable tier-2 hooks | `MTK_HOOKS_TIER2=0` in `.claude/settings.local.json` env | Silences skill-invoking hooks (queue + drain) without touching shared settings |
+| Auto-approve safe plans | `MTK_AUTO_PROCEED=1` in `.claude/settings.local.json` env | Skips Phase 2.5 prompt only when spec has no open decisions and no plan-gap BLOCKING findings |
 
 **Decision rule for `/mtk`:** Say what you want in plain English. The router picks the right workflow skill — fix (1-3 file changes), implement (new features / multi-file), pre-commit-review (security check before commit), or context-report (diagnostic).
 

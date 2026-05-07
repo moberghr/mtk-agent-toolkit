@@ -112,6 +112,15 @@ Mandatory. Before starting Phase 3, ask via the `AskUserQuestion` tool.
 
 First, print a one-paragraph summary: scope classification, spec/plan/todo paths, batch count, total files in the change manifest.
 
+**`MTK_AUTO_PROCEED` opt-in.** If `MTK_AUTO_PROCEED=1` is set in the environment (typically via `.claude/settings.local.json` `env`), the orchestrator MAY default the recommended option on this gate (`Approve & run until done`) without an `AskUserQuestion` round-trip — but only when ALL of the following hold:
+
+- The spec has zero open decisions (`open_decisions` array empty in the JSON sidecar).
+- No plan-gap-reviewer `BLOCKING` findings are unresolved.
+- `skill_precedence_gate` is `pass`.
+- The scope classification is not "breaking change" or "high security_impact".
+
+If any condition fails, AUTO_PROCEED MUST NOT be applied — fall back to `AskUserQuestion`. Auto-proceed never overrides explicit user standards, open plan decisions, or the failure-stop gate. When AUTO_PROCEED is applied, log the bypass on the workflow artifact: `scripts/workflow-artifact.sh event "$MTK_WF_UUID" gate_decided --data '{"gate":"plan_trust_gate","result":"pass","reason":"AUTO_PROCEED — all preconditions met"}'`.
+
 Then invoke `AskUserQuestion` with:
 
 - **Question:** "Plan and todo are written. How would you like to proceed?"
