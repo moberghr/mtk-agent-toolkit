@@ -33,8 +33,10 @@ log_warn() {
 
 run_formatter() {
   local label="$1"; shift
-  if ! "$@" >/dev/null 2>&1; then
-    log_warn "${label} failed for ${FILE_PATH} (exit $?)"
+  local rc=0
+  "$@" >/dev/null 2>&1 || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    log_warn "${label} failed for ${FILE_PATH} (exit ${rc})"
     return 1
   fi
   return 0
