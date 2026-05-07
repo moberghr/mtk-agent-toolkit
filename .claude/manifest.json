@@ -1373,6 +1373,12 @@
       "action": "sync",
       "description": "Schema and lifecycle for durable workflow artifacts under .mtk/workflows/"
     },
+    "references/orchestration-gates.md": {
+      "source": ".claude/references/orchestration-gates.md",
+      "target": ".claude/references/orchestration-gates.md",
+      "action": "sync",
+      "description": "Five named fail-closed gates the implement workflow records on the workflow artifact before advancing"
+    },
     "scripts/workflow-artifact.sh": {
       "source": "scripts/workflow-artifact.sh",
       "target": "scripts/workflow-artifact.sh",

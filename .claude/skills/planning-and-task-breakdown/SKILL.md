@@ -68,6 +68,7 @@ Convert the approved plan into small, executable tasks that can be verified one 
    Every `files` entry must already exist in the top-level `change_manifest`.
    If it does not, re-plan first — don't quietly widen scope here.
 9. Keep the task list synchronized with reality. If a new file is needed, re-plan before continuing.
+10. Record the plan/todo paths on the workflow artifact and leave `plan_trust_gate` at `pending` — only the engineer's Phase 2.5 approval flips it to `pass`. See `.claude/references/orchestration-gates.md`.
 
 ## Rules
 

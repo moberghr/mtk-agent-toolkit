@@ -135,6 +135,10 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared table. Drift-sp
 - Out-of-scope items marked as acceptable scope expansion without engineer
   confirmation
 
+## Gate
+
+If the workflow artifact is active, drift findings flip the `phase_exit_gate` for the review phase. Critical drift → `phase_exit_gate fail` (triggers remediation). Spec amendment with engineer approval → re-evaluate `plan_trust_gate` from `pending`. See `.claude/references/orchestration-gates.md`.
+
 ## Verification
 
 - [ ] Spec manifest was loaded from disk, not reconstructed from memory
