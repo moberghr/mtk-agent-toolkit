@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Diagnostic: emit hook name + exit code on non-zero exit (silent on success).
+_mtk_hook_diag() { local c=$?; [[ $c -ne 0 ]] && echo "[mtk-hook:$(basename "$0")] exit $c" >&2 2>/dev/null || true; return 0; }
+trap _mtk_hook_diag EXIT
+
 # PreToolUse security gate for Bash commands.
 # Receives JSON on stdin with tool_name, tool_input, etc.
 # Exit 0 = allow, exit 2 = block.

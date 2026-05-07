@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Diagnostic: emit hook name + exit code on non-zero exit (silent on success).
+_mtk_hook_diag() { local c=$?; [[ $c -ne 0 ]] && echo "[mtk-hook:$(basename "$0")] exit $c" >&2 2>/dev/null || true; return 0; }
+trap _mtk_hook_diag EXIT
+
 # Stop hook: persists session stats to .claude/analytics.json.
 # Accumulates across sessions so teams can track MTK adoption and effectiveness.
 # The file is gitignored (added to .gitignore by setup-bootstrap).

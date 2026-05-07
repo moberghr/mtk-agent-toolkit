@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Diagnostic: emit hook name + exit code on non-zero exit (silent on success).
+_mtk_hook_diag() { local c=$?; [[ $c -ne 0 ]] && echo "[mtk-hook:$(basename "$0")] exit $c" >&2 2>/dev/null || true; return 0; }
+trap _mtk_hook_diag EXIT
+
 # Stop hook: reminds the agent to capture learnings after substantial sessions.
 # Checks if corrections were captured in tasks/lessons.md. If the session was
 # substantial but no lessons were recorded, prompts the agent.

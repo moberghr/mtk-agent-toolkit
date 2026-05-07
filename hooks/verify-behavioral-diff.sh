@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Diagnostic: emit hook name + exit code on non-zero exit (silent on success).
+_mtk_hook_diag() { local c=$?; [[ $c -ne 0 ]] && echo "[mtk-hook:$(basename "$0")] exit $c" >&2 2>/dev/null || true; return 0; }
+trap _mtk_hook_diag EXIT
+
 # Behavioral diff advisory check
 # Emits a warning when a recent spec exists but lacks a behavioral diff.
 # Non-blocking — advisory only, per team adoption strategy.

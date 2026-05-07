@@ -612,7 +612,7 @@
       "source": "hooks/post-compact.sh",
       "target": "hooks/post-compact.sh",
       "action": "sync",
-      "description": "PostCompact hook that re-injects tech stack, in-progress specs, plans, and task state after auto-compaction"
+      "description": "PostCompact hook that re-injects tech stack, in-progress specs, plans, task state, and active workflow artifacts (.mtk/workflows/) after auto-compaction"
     },
     "hooks/pre-compact-snapshot.sh": {
       "source": "hooks/pre-compact-snapshot.sh",

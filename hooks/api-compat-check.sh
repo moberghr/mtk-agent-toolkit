@@ -5,7 +5,9 @@ set -euo pipefail
 # breaking changes: removed routes, changed DTOs, removed public properties.
 # Emits findings in review-finding-schema JSON with source: "linter".
 
-set -euo pipefail
+# Diagnostic: emit hook name + exit code on non-zero exit (silent on success).
+_mtk_hook_diag() { local c=$?; [[ $c -ne 0 ]] && echo "[mtk-hook:$(basename "$0")] exit $c" >&2 2>/dev/null || true; return 0; }
+trap _mtk_hook_diag EXIT
 
 BASE_BRANCH="${1:-main}"
 STACK=""
