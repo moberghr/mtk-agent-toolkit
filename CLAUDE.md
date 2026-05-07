@@ -1,6 +1,6 @@
 # claude-helpers — MTK Standards
 
-> Updated 2026-04-22 for v6.5.0 (adds task-class toolset scoping, keyword-triggered skill hints, and typed handoff artifacts on top of the v6.4.0 tier-2 hooks layer).
+> Updated 2026-05-07 for v7.4.0 (adds durable workflow artifacts, five named orchestration gates, anti-anchored plan-gap-reviewer, claim extraction in verification, JSON router-decision fixtures, and MTK_AUTO_PROCEED env knob — borrows from cc10x).
 >
 > This file + `.claude/rules/` are the source of truth for AI agents.
 > Detailed standards live in `.claude/rules/`. Reference docs live in `.claude/references/` (shared) and `.claude/references/{stack}/` (stack-specific).

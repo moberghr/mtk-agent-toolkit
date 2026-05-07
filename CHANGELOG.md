@@ -2,6 +2,25 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.4.0] - 2026-05-07
+
+### Added — cc10x borrow improvements
+
+Six patterns adapted from `romiluz13/cc10x` after a comparative analysis against MTK's orchestration model.
+
+- **Durable workflow artifacts.** New `workflow-artifacts` skill plus `scripts/workflow-artifact.sh` helper persist orchestration state under `.mtk/workflows/{uuid}.json` (overwritten in place) and `{uuid}.events.jsonl` (append-only). Schema in `.claude/references/workflow-artifact-schema.md`. State lives outside `.claude/` to escape Claude Code's sensitive-file gate. `.mtk/` added to `.gitignore`. Wired into `implement` Phase 0 (init/resume), spec/plan persistence (`results.spec_path`, `results.plan_path`), Phase 2.5 (`plan_trust_gate`), Phase 3 (`phase_exit_gate` + per-batch progress), and Phase 7 (`memory_sync_gate` + `status=completed`).
+- **Five named orchestration gates.** `.claude/references/orchestration-gates.md` defines `plan_trust_gate`, `phase_exit_gate`, `failure_stop_gate`, `memory_sync_gate`, `skill_precedence_gate` as fail-closed contracts the implement workflow records before advancing. Skipping a gate is treated the same as advancing on `fail`. Cited from `incremental-implementation`, `planning-and-task-breakdown`, `spec-drift-detection`.
+- **Anti-anchored plan reviewer.** New `plan-gap-reviewer` agent (`.claude/agents/plan-gap-reviewer.md`) is forbidden from loading `tasks/lessons.md`, prior reviewer output, or the workflow artifact — bias sources. Six finding categories (`repo_mismatches`, `missing_surfaces`, `execution_order_issues`, `hidden_assumptions`, `under_scoped_integrations`, `open_decisions_presented_as_settled`) with `BLOCKING` / `ADVISORY` severity. Wired into `planning-and-task-breakdown` step 11 before the Phase 2.5 gate. Pressure test covers persuasive prose, conflicting lessons, phase-order bugs, missing route registries, and tone contamination.
+- **Claim extraction in verification.** `verification-before-completion` now requires extracting every factual claim from upstream agents (builders, reviewers, integration verifiers), marking each `UNVERIFIED`, and reconciling to `VERIFIED` / `CONTRADICTED` / `UNVERIFIABLE` before completion. A claim that affects the verdict and stays `UNVERIFIED` is a stop condition. New pressure test scenario 5b exercises the rubber-stamp failure mode.
+- **JSON router-decision fixtures.** Six fixtures under `tests/fixtures/` (`build-happy-path`, `build-phase-blocked`, `plan-gap-found`, `failure-stop-triggered`, `auto-proceed-respects-decisions`, `resume-active-workflow`) exercise the orchestrator's documented decisions. `scripts/run-fixtures.sh` structurally validates each fixture: gate names must come from `orchestration-gates.md`, `next_action` must be one of six documented actions, `abort` requires `failure_stop_gate: fail`, every fixture needs a non-trivial rationale. Wired into `validate-toolkit.sh`.
+- **`MTK_AUTO_PROCEED` env knob.** Opt-in (off by default) lets the orchestrator default the recommended option on the Phase 2.5 approval gate only when ALL hold: spec has zero open decisions, no plan-gap-reviewer `BLOCKING` findings, `skill_precedence_gate` is `pass`, scope is not breaking change or high `security_impact`. Otherwise falls back to `AskUserQuestion`. Never overrides explicit user standards, open plan decisions, or `failure_stop_gate`. Documented in `setup-bootstrap`, root `CLAUDE.md` routing table, and the gates reference.
+
+### Changed
+
+- `implement/SKILL.md` Phase 0 inits or resumes a workflow artifact; Phase 1 records `results.spec_path`; Phase 2 records plan/todo paths; Phase 2.5 records `plan_trust_gate` decision and supports `MTK_AUTO_PROCEED`; Phase 3 records per-batch `phase_exit_gate`; Final Report closes `memory_sync_gate` and emits `workflow_completed`.
+- `validate-toolkit.sh` runs `scripts/run-fixtures.sh` whenever fixtures exist.
+- README "What's New" and "Skills" counts updated for the new skill and agent (32 skills, 4 reviewer agents).
+
 ## [7.3.0] - 2026-05-07
 
 ### Added — superpowers borrow improvements
