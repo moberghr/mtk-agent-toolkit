@@ -1,0 +1,30 @@
+{
+  "id": "plan-gap-found",
+  "description": "plan-gap-reviewer returned BLOCKING findings — orchestrator must NOT open the approval gate; revise the plan first.",
+  "workflow_type": "BUILD",
+  "input": {
+    "phase_cursor": "phase-2",
+    "gates": {
+      "plan_trust_gate": "pending",
+      "phase_exit_gate": "pending",
+      "failure_stop_gate": "pending",
+      "memory_sync_gate": "pending",
+      "skill_precedence_gate": "pass"
+    },
+    "agent_outputs": {
+      "plan_gap_reviewer": {
+        "verdict": "FINDINGS",
+        "blocking_count": 2,
+        "advisory_count": 1,
+        "categories": ["execution_order_issues", "under_scoped_integrations"]
+      }
+    },
+    "engineer_choice": null
+  },
+  "expected": {
+    "next_action": "remediate",
+    "gate_to_record": null,
+    "phase_cursor_after": "phase-1",
+    "rationale": "BLOCKING findings from plan-gap-reviewer require returning to spec-driven-development / planning-and-task-breakdown before the Phase 2.5 gate is opened — plan_trust_gate stays pending."
+  }
+}

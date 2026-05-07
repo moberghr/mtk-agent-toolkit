@@ -1,0 +1,35 @@
+{
+  "id": "failure-stop-triggered",
+  "description": "Third remediation iteration on the same finding — orchestrator must trip failure_stop_gate and abort.",
+  "workflow_type": "BUILD",
+  "input": {
+    "phase_cursor": "phase-3",
+    "gates": {
+      "plan_trust_gate": "pass",
+      "phase_exit_gate": "fail",
+      "failure_stop_gate": "pending",
+      "memory_sync_gate": "pending",
+      "skill_precedence_gate": "pass"
+    },
+    "agent_outputs": {
+      "builder": {
+        "status": "FAIL",
+        "batch_id": "B2",
+        "tests_total": 9,
+        "tests_passed": 7,
+        "tests_failed": 2,
+        "exit_code": 1,
+        "files_in_manifest": true,
+        "remediation_iterations": 3,
+        "same_finding_as_prior_iterations": true
+      }
+    },
+    "engineer_choice": null
+  },
+  "expected": {
+    "next_action": "abort",
+    "gate_to_record": "failure_stop_gate: fail",
+    "phase_cursor_after": "phase-3",
+    "rationale": "Three iterations on the same finding without progress is unrecoverable per orchestration-gates.md — failure_stop_gate fail terminates the workflow and surfaces to the engineer."
+  }
+}

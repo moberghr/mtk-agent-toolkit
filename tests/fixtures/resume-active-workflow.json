@@ -1,0 +1,29 @@
+{
+  "id": "resume-active-workflow",
+  "description": "Engineer starts /mtk implement; one active BUILD workflow exists from a prior session — orchestrator offers resume, does not start fresh.",
+  "workflow_type": "BUILD",
+  "input": {
+    "phase_cursor": "phase-3",
+    "gates": {
+      "plan_trust_gate": "pass",
+      "phase_exit_gate": "pending",
+      "failure_stop_gate": "pending",
+      "memory_sync_gate": "pending",
+      "skill_precedence_gate": "pass"
+    },
+    "agent_outputs": {
+      "workflow_artifact_list": {
+        "active_count": 1,
+        "active_uuid": "wf-20260507T100000Z-abcdef",
+        "active_type": "BUILD"
+      }
+    },
+    "engineer_choice": null
+  },
+  "expected": {
+    "next_action": "resume_existing",
+    "gate_to_record": null,
+    "phase_cursor_after": "phase-3",
+    "rationale": "Resume protocol in workflow-artifacts skill requires offering resume when exactly one active workflow of the same type exists; the orchestrator must AskUserQuestion before initing a new uuid."
+  }
+}

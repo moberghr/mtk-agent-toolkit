@@ -1,0 +1,33 @@
+{
+  "id": "build-happy-path",
+  "description": "Engineer approved plan, batch 1 tests green — orchestrator advances phase and records phase_exit_gate pass.",
+  "workflow_type": "BUILD",
+  "input": {
+    "phase_cursor": "phase-3",
+    "gates": {
+      "plan_trust_gate": "pass",
+      "phase_exit_gate": "pending",
+      "failure_stop_gate": "pending",
+      "memory_sync_gate": "pending",
+      "skill_precedence_gate": "pass"
+    },
+    "agent_outputs": {
+      "builder": {
+        "status": "PASS",
+        "batch_id": "B1",
+        "tests_total": 14,
+        "tests_passed": 14,
+        "tests_failed": 0,
+        "exit_code": 0,
+        "files_in_manifest": true
+      }
+    },
+    "engineer_choice": null
+  },
+  "expected": {
+    "next_action": "advance_phase",
+    "gate_to_record": "phase_exit_gate: pass",
+    "phase_cursor_after": "phase-3",
+    "rationale": "Builder reports all batch tests green inside the manifest — phase_exit_gate passes for the batch and the cursor stays in phase-3 until all batches complete."
+  }
+}
