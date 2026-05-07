@@ -2,12 +2,15 @@
 description: Python coding guidelines (placeholder until team formalizes)
 globs: ["**/*.py"]
 alwaysApply: false
+status: placeholder
 ---
 # Python Coding Guidelines — Placeholder
 
-> **STATUS: To be authored when the team starts its first Python project.**
+> **STATUS: placeholder — `setup-bootstrap` will NOT ship this file to target repos.**
 >
-> This file exists so the toolkit's Python tech stack has a stable reference path.
+> When the team starts its first Python project, replace this content with the real guidelines and remove `status: placeholder` from the frontmatter. From then on, `setup-bootstrap` will include the file.
+>
+> This file exists in the toolkit so the Python tech stack has a stable reference path.
 > When you start a Python project, fill this in with team-specific style decisions.
 
 ## Default Starting Point

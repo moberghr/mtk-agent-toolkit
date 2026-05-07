@@ -2,6 +2,7 @@
 description: TypeScript data-layer checklist (Drizzle/Prisma/Kysely conventions)
 globs: ["**/*.ts"]
 alwaysApply: false
+tools: [prisma, drizzle, kysely, tanstack-query]
 ---
 # TypeScript Data Layer Checklist
 

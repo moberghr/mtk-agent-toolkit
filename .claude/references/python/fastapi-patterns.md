@@ -2,6 +2,7 @@
 description: FastAPI patterns — dependency injection, pydantic models, router composition
 globs: ["**/*.py"]
 alwaysApply: false
+tools: [fastapi, django, flask]
 ---
 # FastAPI / Django Patterns
 

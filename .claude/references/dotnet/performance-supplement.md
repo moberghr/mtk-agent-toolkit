@@ -2,6 +2,7 @@
 description: .NET-specific performance guidance — allocation, Span<T>, async, EF query shape
 globs: ["**/*.cs"]
 alwaysApply: false
+tools: [aspnetcore, efcore, dotnet]
 ---
 # .NET Performance Supplement
 

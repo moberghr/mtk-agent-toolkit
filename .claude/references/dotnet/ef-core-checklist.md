@@ -2,6 +2,7 @@
 description: EF Core checklist — NoTracking, query splitting, migrations, projection pitfalls
 globs: ["**/*.cs", "**/Migrations/**/*.cs"]
 alwaysApply: false
+tools: [efcore]
 ---
 # EF Core Checklist
 

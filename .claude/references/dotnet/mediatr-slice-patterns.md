@@ -2,6 +2,7 @@
 description: MediatR vertical-slice patterns for CQRS handler design
 globs: ["**/Handlers/**/*.cs", "**/Features/**/*.cs"]
 alwaysApply: false
+tools: [mediatr]
 ---
 # MediatR Slice Patterns
 

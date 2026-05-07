@@ -2,6 +2,7 @@
 description: .NET testing supplement — xUnit, fixtures, TestContainers, snapshot testing
 globs: ["**/*Tests.cs", "**/*.Tests/**/*.cs"]
 alwaysApply: false
+tools: [xunit, nunit, mstest, testcontainers, verify]
 ---
 # .NET Testing Supplement
 

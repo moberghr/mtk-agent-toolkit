@@ -2,6 +2,7 @@
 description: Python testing supplement — pytest fixtures, parametrize, hypothesis
 globs: ["**/test_*.py", "**/*_test.py", "**/tests/**/*.py"]
 alwaysApply: false
+tools: [pytest, hypothesis]
 ---
 # Python Testing Supplement
 

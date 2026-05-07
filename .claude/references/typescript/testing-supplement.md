@@ -2,6 +2,7 @@
 description: TypeScript testing supplement — Vitest, Testing Library, Playwright
 globs: ["**/*.test.ts", "**/*.spec.ts", "**/*.test.tsx"]
 alwaysApply: false
+tools: [vitest, jest, playwright, cypress, testing-library, msw]
 ---
 # TypeScript Testing Supplement
 

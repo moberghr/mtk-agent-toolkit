@@ -2,6 +2,7 @@
 description: Python performance guidance — async, C extensions, profiler usage
 globs: ["**/*.py"]
 alwaysApply: false
+tools: [python, asyncio, aws-lambda]
 ---
 # Python Performance Supplement
 

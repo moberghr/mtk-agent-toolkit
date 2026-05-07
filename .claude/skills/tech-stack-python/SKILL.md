@@ -28,8 +28,8 @@ Python is interpreted, so there's no separate compile step. Use type checking an
 - **Type check (compile-equivalent):** `mypy .` or `pyright` (whichever the project uses)
 - **Test (batch):** `pytest <path/to/module>` or `pytest -k <pattern>`
 - **Test (full):** `pytest`
-- **Format:** `ruff format "$CLAUDE_FILE"` (or `black "$CLAUDE_FILE"` if the project uses black)
-- **Lint:** `ruff check "$CLAUDE_FILE"` (or `flake8` / `pylint` per project)
+- **Format:** `ruff format <path>` (or `black <path>` if the project uses black). The PostToolUse hook is wired through `hooks/format-on-edit.sh`, which extracts `tool_input.file_path` from stdin JSON. Do NOT use `$CLAUDE_FILE` — it is not a Claude Code env var.
+- **Lint:** `ruff check <path>` (or `flake8` / `pylint` per project)
 
 If the project uses `tox`, the full test command is `tox`. If Poetry: `poetry run pytest`. If a Makefile or `justfile` exists, prefer the project-defined targets (`make test`, `just test`).
 
@@ -128,7 +128,7 @@ ruff check --output-format json . | hooks/parse-build-diagnostics.sh --format ru
 
 ## Recommended Tooling
 
-See `.claude/references/python/recommended-tooling.md` for MCP servers, plugins, and editor integrations that noticeably improve Claude Code productivity on Python projects — notably `context7` (current framework docs), Pyright/basedpyright LSP, and Ruff LSP. Paired with the stack-agnostic `.claude/references/recommended-tooling.md`. `setup-bootstrap` prints both during onboarding; install is manual.
+See `docs/recommended-tooling/python.md` for MCP servers, plugins, and editor integrations that noticeably improve Claude Code productivity on Python projects — notably `context7` (current framework docs), Pyright/basedpyright LSP, and Ruff LSP. Paired with the stack-agnostic `docs/recommended-tooling/shared.md`. `setup-bootstrap` prints both during onboarding; install is manual.
 
 ## Reference Files
 
@@ -139,7 +139,7 @@ These files are loaded by commands and review agents when the active stack is `p
 - `.claude/references/python/fastapi-patterns.md` — FastAPI/Django patterns
 - `.claude/references/python/testing-supplement.md` — pytest patterns, fixtures, mocking
 - `.claude/references/python/performance-supplement.md` — async, connection pooling, profiling
-- `.claude/references/python/recommended-tooling.md` — Recommended MCPs / plugins / editor integrations for Python
+- `docs/recommended-tooling/python.md` — Recommended MCPs / plugins / editor integrations for Python
 
 ## Settings Additions
 
@@ -161,16 +161,21 @@ Merge these into the project's `.claude/settings.json` during `setup-bootstrap`:
 - `Read(**/secrets.yaml)`
 
 ### hooks.PostToolUse (merge: append)
-- matcher: `Write(*.py)|Edit(*.py)`
-- command: `ruff format "$CLAUDE_FILE" 2>/dev/null && ruff check --fix "$CLAUDE_FILE" 2>/dev/null || true`
+- matcher: `Edit|Write`
+- command: `bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh`
+
+The matcher field accepts a regex on **tool name** only — `Write(*.py)` is NOT valid Claude Code syntax and will silently never fire. File-extension dispatch happens inside `format-on-edit.sh`.
 
 ## Format Command
 
 ```bash
-ruff format "$CLAUDE_FILE" 2>/dev/null && ruff check --fix "$CLAUDE_FILE" 2>/dev/null || true
+# Wired via PostToolUse hook (see Settings Additions above):
+bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh
+# Manual invocation:
+ruff format <file> && ruff check --fix <file>   # or black <file>
 ```
 
-Triggered on: `Write(*.py)|Edit(*.py)`
+The wrapper picks `ruff` → `black` based on what's installed. Failures log to stderr but never block the edit.
 
 ## Scan Recipes
 

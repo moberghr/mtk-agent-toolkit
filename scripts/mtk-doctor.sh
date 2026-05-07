@@ -56,13 +56,34 @@ record() {
 # ──────────────────────────────────────────────
 # CORE FILES
 # ──────────────────────────────────────────────
-for f in .claude/manifest.json .claude-plugin/plugin.json README.md AGENTS.md scripts/validate-toolkit.sh; do
+# Resolve manifest location: target-repo installs no longer ship .claude/manifest.json,
+# so fall back to the plugin root if a project-local copy is absent.
+if [ -f ".claude/manifest.json" ]; then
+  DOCTOR_MANIFEST=".claude/manifest.json"
+elif [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/.claude/manifest.json" ]; then
+  DOCTOR_MANIFEST="${CLAUDE_PLUGIN_ROOT}/.claude/manifest.json"
+else
+  DOCTOR_MANIFEST=""
+fi
+
+for f in .claude-plugin/plugin.json README.md AGENTS.md scripts/validate-toolkit.sh; do
   if [ -f "$f" ]; then
     record PASS core "$f present"
   else
     record FAIL core "$f missing" "required by toolkit baseline"
   fi
 done
+
+if [ -n "$DOCTOR_MANIFEST" ]; then
+  record PASS core "manifest.json located" "$DOCTOR_MANIFEST"
+else
+  record FAIL core "manifest.json missing" "set CLAUDE_PLUGIN_ROOT or run from a plugin clone"
+fi
+
+# Target-repo provenance file (single source of truth for installed version).
+if [ -f ".claude/mtk-version.json" ]; then
+  record PASS core ".claude/mtk-version.json present"
+fi
 
 # CLAUDE.md may not exist in the source repo (it's a target-repo artifact),
 # but if it exists, check the line budget.
@@ -79,7 +100,10 @@ fi
 # COMPONENTS
 # ──────────────────────────────────────────────
 # Manifest version sync
-MANIFEST_VERSION="$(grep -o '"version": *"[^"]*"' .claude/manifest.json | head -1 | sed 's/.*"\([^"]*\)".*/\1/')"
+MANIFEST_VERSION=""
+if [ -n "$DOCTOR_MANIFEST" ]; then
+  MANIFEST_VERSION="$(grep -o '"version": *"[^"]*"' "$DOCTOR_MANIFEST" | head -1 | sed 's/.*"\([^"]*\)".*/\1/')"
+fi
 PLUGIN_VERSION="$(grep -o '"version": *"[^"]*"' .claude-plugin/plugin.json | head -1 | sed 's/.*"\([^"]*\)".*/\1/')"
 if [ "$MANIFEST_VERSION" = "$PLUGIN_VERSION" ] && [ -n "$MANIFEST_VERSION" ]; then
   record PASS components "version sync" "$MANIFEST_VERSION"
@@ -183,7 +207,7 @@ fi
 MISSING_PATHS=()
 while IFS= read -r src; do
   [ -e "$src" ] || MISSING_PATHS+=("$src")
-done < <(grep -oE '"source": *"[^"]+"' .claude/manifest.json | sed 's/.*"\([^"]*\)".*/\1/' | sort -u | head -50)
+done < <(grep -oE '"source": *"[^"]+"' "${DOCTOR_MANIFEST:-/dev/null}" | sed 's/.*"\([^"]*\)".*/\1/' | sort -u | head -50)
 
 if [ "${#MISSING_PATHS[@]}" -eq 0 ]; then
   record PASS integrity "manifest paths present (sample of 50)"

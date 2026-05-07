@@ -53,8 +53,8 @@ fi
 - **Build:** `<pm> run build` (verifies full toolchain — bundler, type check, assets)
 - **Test (batch):** `<pm> test <path/to/file>` or `<pm> run test -- <pattern>` (vitest/jest support filter flags; check `package.json` scripts)
 - **Test (full):** `<pm> test` or `<pm> run test`
-- **Format:** `<pm> run format` if defined, else `npx prettier --write "$CLAUDE_FILE"` or `npx biome format --write "$CLAUDE_FILE"` based on project config
-- **Lint:** `<pm> run lint` if defined, else `npx eslint "$CLAUDE_FILE"` or `npx biome check "$CLAUDE_FILE"` based on project config
+- **Format:** `<pm> run format` if defined, else `npx prettier --write <path>` or `npx biome format --write <path>` based on project config. The PostToolUse hook is wired through `hooks/format-on-edit.sh`, which extracts `tool_input.file_path` from stdin JSON and dispatches to biome → prettier by extension. Do NOT use `$CLAUDE_FILE` — it is not a Claude Code env var.
+- **Lint:** `<pm> run lint` if defined, else `npx eslint <path>` or `npx biome check <path>` based on project config
 
 **Tauri addendum (when `src-tauri/` exists):**
 - **Rust build:** `cd src-tauri && cargo check` (fast) or `cargo build` (full)
@@ -189,7 +189,7 @@ npx tsc --noEmit 2>&1 | hooks/parse-build-diagnostics.sh --format tsc > .mtk/ana
 
 ## Recommended Tooling
 
-See `.claude/references/typescript/recommended-tooling.md` for MCP servers, plugins, and editor integrations that noticeably improve Claude Code productivity on TypeScript projects — notably `context7` (current framework docs), `playwright` MCP (browser automation for UI verification), and editor-integrated TypeScript / Biome language servers. Paired with the stack-agnostic `.claude/references/recommended-tooling.md`. `setup-bootstrap` prints both during onboarding; install is manual.
+See `docs/recommended-tooling/typescript.md` for MCP servers, plugins, and editor integrations that noticeably improve Claude Code productivity on TypeScript projects — notably `context7` (current framework docs), `playwright` MCP (browser automation for UI verification), and editor-integrated TypeScript / Biome language servers. Paired with the stack-agnostic `.claude/references/recommended-tooling.md`. `setup-bootstrap` prints both during onboarding; install is manual.
 
 ## Reference Files
 
@@ -200,7 +200,7 @@ These files are loaded by commands and review agents when the active stack is `t
 - `.claude/references/typescript/framework-patterns.md` — React / Next.js / Tauri / Node backend patterns
 - `.claude/references/typescript/testing-supplement.md` — Vitest / Jest / Playwright / MSW patterns
 - `.claude/references/typescript/performance-supplement.md` — Bundle size, rendering, caching, Node I/O
-- `.claude/references/typescript/recommended-tooling.md` — Recommended MCPs / plugins / editor integrations for TypeScript
+- `docs/recommended-tooling/typescript.md` — Recommended MCPs / plugins / editor integrations for TypeScript
 
 ## Settings Additions
 
@@ -222,16 +222,22 @@ Merge these into the project's `.claude/settings.json` during `setup-bootstrap`:
 - `Bash(*publish*)` — npm publish requires explicit approval
 
 ### hooks.PostToolUse (merge: append)
-- matcher: `Write(*.ts)|Edit(*.ts)|Write(*.tsx)|Edit(*.tsx)|Write(*.js)|Edit(*.js)|Write(*.jsx)|Edit(*.jsx)`
-- command: `(npx biome format --write "$CLAUDE_FILE" 2>/dev/null || npx prettier --write "$CLAUDE_FILE" 2>/dev/null) || true`
+- matcher: `Edit|Write`
+- command: `bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh`
+
+The matcher field accepts a regex on **tool name** only — `Write(*.ts)` is NOT valid Claude Code syntax and will silently never fire. File-extension dispatch happens inside `format-on-edit.sh`, which parses `tool_input.file_path` from stdin JSON.
 
 ## Format Command
 
 ```bash
-(npx biome format --write "$CLAUDE_FILE" 2>/dev/null || npx prettier --write "$CLAUDE_FILE" 2>/dev/null) || true
+# Wired via PostToolUse hook (see Settings Additions above):
+bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh
+# Manual invocation (for the human-readable CLAUDE.md, drop the wrapper):
+npx biome format --write <file>   # or
+npx prettier --write <file>
 ```
 
-Triggered on: `Write(*.{ts,tsx,js,jsx})|Edit(*.{ts,tsx,js,jsx})`
+The wrapper picks biome → prettier based on what's installed and dispatches by extension (`.ts/.tsx/.js/.jsx/.mjs/.cjs`). Failures log to stderr (visible in Claude Code's hook log) but never block the edit.
 
 ## Scan Recipes
 

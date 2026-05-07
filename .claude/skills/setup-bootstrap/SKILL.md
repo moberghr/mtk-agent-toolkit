@@ -120,21 +120,20 @@ If multiple lockfiles exist (e.g. both `yarn.lock` and `package-lock.json`), tha
 
 Check the active tech stack skill's `## Coding Style Reference` section. If it lists a remote source URL, fetch it:
 
-Read the pinned revision and expected sha256 from `.claude/manifest.json` (`coding-guidelines.sha` and `coding-guidelines.files`). **Never fetch from `main`.** The pin is bumped by `/mtk-setup --update-guidelines` only — this guarantees every bootstrap is reproducible and auditable.
+Read the pinned revision and expected sha256 from the **plugin's** manifest at `${CLAUDE_PLUGIN_ROOT}/.claude/manifest.json` (`coding-guidelines.sha` and `coding-guidelines.files`). The slim `.claude/mtk-version.json` written into the target repo also carries this pin so re-fetches without a plugin context still work. **Never fetch from `main`.** The pin is bumped by `/mtk-setup --update-guidelines` only — this guarantees every bootstrap is reproducible and auditable.
 
 For `dotnet`:
 ```bash
-SHA=$(python3 -c 'import json; print(json.load(open(".claude/manifest.json"))["coding-guidelines"]["sha"])')
-EXPECTED=$(python3 -c 'import json; print(json.load(open(".claude/manifest.json"))["coding-guidelines"]["files"]["CodingStyle.md"].split(":",1)[1])')
+PLUGIN_MANIFEST="${CLAUDE_PLUGIN_ROOT:-.}/.claude/manifest.json"
+SHA=$(python3 -c "import json; print(json.load(open('$PLUGIN_MANIFEST'))['coding-guidelines']['sha'])")
+EXPECTED=$(python3 -c "import json; print(json.load(open('$PLUGIN_MANIFEST'))['coding-guidelines']['files']['CodingStyle.md'].split(':',1)[1])")
 OUT=.claude/references/dotnet/coding-guidelines.md
 curl -sL "https://raw.githubusercontent.com/moberghr/coding-guidelines/${SHA}/CodingStyle.md" -o "$OUT"
 ACTUAL=$(sha256sum "$OUT" | awk '{print $1}')
 [ "$ACTUAL" = "$EXPECTED" ] || { echo "coding-guidelines sha256 mismatch: got $ACTUAL expected $EXPECTED" >&2; rm -f "$OUT"; exit 1; }
 ```
 
-For `python`: see the placeholder in `.claude/references/python/coding-guidelines.md`. If it's empty, leave it for the team to fill in when starting their first Python project.
-
-For `typescript`: see the placeholder in `.claude/references/typescript/coding-guidelines.md`. The defaults in the placeholder (strict `tsconfig.json`, Biome, ESM, naming conventions) are reasonable until the team formalizes its own guide.
+For `python` / `typescript`: placeholder coding-guidelines live in `.claude/references/{stack}/coding-guidelines.md` with `status: placeholder` in frontmatter. **Bootstrap skips any reference file whose first frontmatter block contains `status:[[:space:]]*placeholder` — it is not copied into the target repo and not cited in CLAUDE.md/AGENTS.md.** Detect with awk on the first `---`…`---` block. When the team formalizes guidelines and removes the `status: placeholder` line, the next bootstrap ships the file automatically.
 
 If the fetch fails (network restrictions), check if the file already exists. If not, tell the engineer to manually place it. Do **not** silently fall back to an unpinned fetch — that breaks reproducibility.
 
@@ -277,7 +276,7 @@ Resolve `{MANIFEST_VERSION}` and `{MANIFEST_SHA}` from `.claude/manifest.json`. 
 - **Active stack:** [from `.claude/tech-stack`]
 - **Build command:** [from tech stack skill `## Build & Test Commands`]
 - **Test command:** [from tech stack skill `## Build & Test Commands`]
-- **Format:** [human-readable form of the format command from tech stack skill `## Format Command` — strip `$CLAUDE_FILE` and show the base command, e.g., `dotnet format --verbosity quiet` not `dotnet format --include "$CLAUDE_FILE"`. The hook in settings.json handles per-file targeting; CLAUDE.md is for human readers.]
+- **Format:** [human-readable form of the format command from tech stack skill `## Format Command` — show the manual project-wide form, e.g., `dotnet format --verbosity quiet`, `npx biome format --write <file>`, `ruff format <file>`. The PostToolUse hook (`hooks/format-on-edit.sh`) handles per-file targeting via stdin JSON; CLAUDE.md is for human readers.]
 
 For framework-specific guidance, see `.claude/skills/tech-stack-{stack}/SKILL.md`.
 
@@ -515,6 +514,25 @@ If the scan exits non-zero:
 
 **Escape hatch:** `MTK_SECRET_SCAN_SKIP=1` bypasses the scan. Use only when a confirmed false positive blocks progress; log the bypass prominently in STEP 5's report.
 
+## STEP 3.6: Prune Stack Reference Files Against Detected Tools
+
+`setup-audit` writes `.claude/detected-tools.json` (see audit STEP 2.6). Reference files under `.claude/references/{stack}/` declare a `tools:` array in their YAML frontmatter listing which tools they cover. **Skip files whose `tools:` array does not intersect the detected tools** — this is what stops e.g. Drizzle/Prisma/TanStack-Query data-layer guidance from shipping into a Prismic-only repo.
+
+**Procedure:**
+
+1. If `.claude/detected-tools.json` is missing → ship every stack reference (current bloat-prone behavior). Print a one-line warning so the engineer knows pruning was skipped.
+2. Otherwise, build the union set: `detected = framework ∪ data_layer ∪ test_framework ∪ additional ∪ {stack}`.
+3. For each candidate stack reference (every file under `.claude/references/{stack}/` not already excluded by `status: placeholder`):
+   - Read its frontmatter `tools:` array.
+   - **No `tools:` declared** → ship (treat as alwaysApply for the stack).
+   - **`tools:` ∩ `detected` non-empty** → ship.
+   - **`tools:` ∩ `detected` empty** → SKIP. Do NOT copy into the target repo.
+4. Print one summary line per stack: `references: shipped <N>, pruned <M> (no detected tool match)`. List the pruned filenames so the engineer can override if a tool was missed in detection.
+
+**Override:** Engineers who want a pruned file anyway can either (a) add the relevant tool to `detected-tools.json` and re-run setup, or (b) `cp` the file from `$CLAUDE_PLUGIN_ROOT/.claude/references/{stack}/<file>.md` into their repo manually. Bootstrap never deletes manually-placed reference files.
+
+**Detection cache:** `setup-bootstrap` re-runs `setup-audit` (or skips if a recent `detected-tools.json` exists, < 7 days old by default — same TTL convention as the architecture-principles cache).
+
 ## STEP 4: Set Up Supporting Files & Directories
 
 ### .claude/rules/ Directory
@@ -706,41 +724,39 @@ If found, note it in the bootstrap output: "dotnet-claude-kit detected — Rosly
 
 ### Recommended Tooling (recommend-only, all stacks)
 
-After the stack-specific Companion Plugin block, print a consolidated list of recommended MCP servers, plugins, and editor integrations that noticeably boost Claude Code productivity on this stack. **Never auto-install** — these are pointers with copy-pasteable commands. The engineer decides what to install.
+Print a consolidated list of recommended MCP servers, plugins, and editor integrations. **Never auto-install** — these are user-preference, not per-repo artifacts.
 
-**Procedure:**
+The docs live in the plugin only at `$CLAUDE_PLUGIN_ROOT/docs/recommended-tooling/{shared,<stack>}.md`. `setup-bootstrap` reads them and prints inline; do **not** copy into the target repo. Output two headed blocks:
 
-1. Read the shared reference: `.claude/references/recommended-tooling.md` (editor-level integrations, cross-stack MCPs like `context7`, `playwright`, `github`, Claude for Chrome, `claude-mem`).
-2. Read the stack-specific reference for the detected stack: `.claude/references/{stack}/recommended-tooling.md`.
-3. Print both — do not summarize aggressively; the install commands and the "why it matters" column are the value. Keep the user in one place.
-4. Output format (paste content under these two headers):
-   ```
-   ━━━ Recommended Tooling — Stack-agnostic ━━━
-   [contents of .claude/references/recommended-tooling.md]
+```
+━━━ Recommended Tooling — Stack-agnostic ━━━
+[contents of docs/recommended-tooling/shared.md]
 
-   ━━━ Recommended Tooling — {stack} ━━━
-   [contents of .claude/references/{stack}/recommended-tooling.md]
-   ```
-5. Close the block with: `Install manually when you're ready — MTK works without any of these.`
+━━━ Recommended Tooling — {stack} ━━━
+[contents of docs/recommended-tooling/{stack}.md]
+```
 
-**Do not:**
-- Run `claude mcp add`, `/plugin install`, or any installer on the engineer's behalf.
-- Ask per-tool install questions. This is a batch recommendation, not a wizard.
-- Suppress the list because "some tools are already installed" — printing it again is cheap and surfaces new recommendations when MTK updates the reference files.
+Close with: `Install manually when you're ready — MTK works without any of these.`
 
-**Skip this block when:**
-- The reference files are missing (warn once, continue).
-- The engineer passed `--non-interactive` AND a follow-up `--quiet-recommendations` flag (not yet defined — for now, always print).
+**Do not:** auto-install, ask per-tool questions, copy these files into the repo, or suppress on re-run (printing is cheap and surfaces new recommendations after MTK updates).
+
+**Skip when:** plugin docs are missing (warn once, continue).
 
 ### Version Stamp
 
-Write the MTK version stamp so the installed toolkit version is visible in the repo and session-start can detect plugin drift:
+Write **one** provenance file: `.claude/mtk-version.json`. It records the installed MTK version (for session-start drift detection) and pins the external coding-guidelines fetch (sha + sha256, for reproducible re-fetch by `--update-guidelines`). Do **NOT** write a slim `.claude/manifest.json` into target repos — the toolkit's full manifest lives only at `$CLAUDE_PLUGIN_ROOT/.claude/manifest.json`. Scripts (`generate-tool-configs.sh`, `mtk-doctor.sh`) resolve it from the plugin root.
 
 ```bash
-echo '{"version":"VERSION","installed":"DATE","source":"https://github.com/moberghr/claude-helpers"}' > .claude/mtk-version.json
+PM="${CLAUDE_PLUGIN_ROOT:-.}/.claude/manifest.json"
+V=$(python3 -c "import json; print(json.load(open('$PM'))['version'])")
+SHA=$(python3 -c "import json; print(json.load(open('$PM'))['coding-guidelines']['sha'])" 2>/dev/null || echo "")
+S256=$(python3 -c "import json; print(json.load(open('$PM'))['coding-guidelines']['files']['CodingStyle.md'])" 2>/dev/null || echo "")
+cat > .claude/mtk-version.json <<EOF
+{"version":"$V","installed":"$(date -u +%Y-%m-%d)","source":"https://github.com/moberghr/claude-helpers","coding-guidelines":{"repo":"moberghr/coding-guidelines","sha":"$SHA","files":{"CodingStyle.md":"$S256"}}}
+EOF
 ```
 
-Replace VERSION with the manifest version and DATE with today's date. This file is committed (not gitignored) so the team can track MTK versions across repos.
+Omit the `coding-guidelines` block when no external guidelines were pinned (placeholder stacks). Committed (not gitignored).
 
 ### Cross-Agent Compatibility
 

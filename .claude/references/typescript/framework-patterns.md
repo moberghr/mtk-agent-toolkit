@@ -2,6 +2,7 @@
 description: TypeScript framework patterns (React, Next.js, Tauri, Node)
 globs: ["**/*.ts", "**/*.tsx"]
 alwaysApply: false
+tools: [react, nextjs-pages, nextjs-app, tauri, express, fastify, hono, nest]
 ---
 # TypeScript Framework Patterns
 

@@ -182,6 +182,14 @@ Execute each scan recipe block from the active tech stack skill in order. The st
 
 For each block, sample 2-3 representative files in detail to understand intent — not just file counts.
 
+**Verbatim version extraction (MANDATORY).** Framework and runtime versions in `architecture-principles.md`, `CLAUDE.md`, and `detected-tools.json` MUST be quoted verbatim from the manifest file — never paraphrased, rounded, or restated from training-data knowledge. Always read and cite:
+
+- TypeScript / Node: `cat package.json | jq '.dependencies.next, .dependencies.react, .devDependencies.typescript, .engines.node'` (or `grep -E '"(next|react|typescript|node)"'` if `jq` unavailable). Quote the actual range string (e.g., `next: ^15.0.3` → write "Next.js 15", NOT "Next.js 16").
+- Python: `grep -E '^\s*(python|django|fastapi|flask|sqlalchemy)\s*=' pyproject.toml` (or the `[project] dependencies` block).
+- .NET: `grep -hE '<TargetFramework[s]?>|<PackageReference Include=' **/*.csproj` — quote both `TargetFramework(s)` (e.g., `net9.0`) and the explicit `Version=` on each `PackageReference`.
+
+If the manifest file is missing or unparseable, write `unknown` — never guess. Hallucinated versions ("Next.js 16" when `package.json` says `^15.0.3`) are a recurring audit failure; this rule exists to block them.
+
 ## STEP 2: Run Stack-Agnostic Cross-Cutting Scans
 
 These apply to any tech stack:
@@ -290,6 +298,32 @@ Generate `.claude/references/conventions.md`:
 ```
 
 This file is NOT protected (it gets regenerated on re-audit) and is loaded by the compliance-reviewer alongside architecture-principles.md.
+
+## STEP 2.6: Emit Detected Tools Manifest
+
+Before writing prose architecture documents, emit a machine-readable manifest of the tools and frameworks actually present in this repo. `setup-bootstrap` reads this file to **prune stack reference files that don't apply** (e.g., don't ship a Drizzle data-layer checklist when the repo uses Prismic).
+
+Write to `.claude/detected-tools.json`:
+
+```json
+{
+  "stack": "typescript | python | dotnet",
+  "framework": ["nextjs-pages" | "nextjs-app" | "express" | "fastapi" | "fastify" | "nest" | "tauri" | "aspnetcore" | "flask" | "django" | ...],
+  "data_layer": ["prismic" | "prisma" | "drizzle" | "tanstack-query" | "sqlalchemy" | "efcore" | "dapper" | "raw-sql" | ...],
+  "test_framework": ["vitest" | "jest" | "playwright" | "cypress" | "pytest" | "xunit" | "nunit"] | [],
+  "package_manager": "yarn | pnpm | npm | bun | pip | poetry | uv | nuget",
+  "deployment": ["vercel" | "aws" | "azure" | "gcp" | "self-hosted" | ...],
+  "additional": ["styled-components", "tailwind", "algolia", "sentry", "...any notable libs"]
+}
+```
+
+**Rules:**
+- Use empty arrays (`[]`) when nothing is detected — never use `null` or omit keys. `setup-bootstrap` treats absence as "unknown" and falls back to "ship everything", which is the current bloat behavior we are fixing.
+- Use lowercase, hyphenated identifiers. These match the `tools:` arrays in stack reference frontmatter.
+- Detection sources: Step 1 scan recipes (project structure, data layer, infrastructure, testing patterns), `package.json` / `pyproject.toml` / `*.csproj` dependency lists, lockfiles, and config files (`next.config.js`, `vitest.config.ts`, `Startup.cs`, etc.).
+- When uncertain, include the candidate AND add a note in `additional` (e.g., `"react-query-v3-limited"`) so reviewers can verify.
+
+This file is regenerated on every audit. It is consumed by `setup-bootstrap`'s reference-pruning step (`STEP 3.6`).
 
 ## STEP 3: Generate Architecture Principles Document
 

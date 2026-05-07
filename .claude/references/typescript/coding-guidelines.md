@@ -2,13 +2,15 @@
 description: TypeScript coding guidelines (strict tsconfig, Biome, ESM, naming)
 globs: ["**/*.ts", "**/*.tsx"]
 alwaysApply: false
+status: placeholder
 ---
 # TypeScript Coding Guidelines — Placeholder
 
-> **STATUS: To be authored when the team formalizes TypeScript conventions.**
+> **STATUS: placeholder — `setup-bootstrap` will NOT ship this file to target repos.**
 >
-> This file exists so the toolkit's TypeScript tech stack has a stable reference path.
-> When the team agrees on conventions, replace this placeholder with real guidelines.
+> When the team formalizes TypeScript conventions, replace this content with the real guidelines and remove `status: placeholder` from the frontmatter. From then on, `setup-bootstrap` will include the file.
+>
+> This file exists in the toolkit so the TypeScript tech stack has a stable reference path; it is not a project deliverable.
 
 ## Default Starting Point
 

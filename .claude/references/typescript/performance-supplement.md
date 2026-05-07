@@ -2,6 +2,7 @@
 description: TypeScript performance guidance — bundle size, render perf, memo patterns
 globs: ["**/*.ts", "**/*.tsx"]
 alwaysApply: false
+tools: [react, nextjs-pages, nextjs-app, tauri, node, vercel, edge-runtime, tanstack-query]
 ---
 # TypeScript Performance Supplement
 

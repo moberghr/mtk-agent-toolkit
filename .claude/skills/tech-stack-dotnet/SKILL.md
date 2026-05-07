@@ -26,8 +26,7 @@ Loaded automatically by commands and skills when the active tech stack is `dotne
 - **Compile:** `dotnet build`
 - **Test (batch):** `dotnet test` or `dotnet test --filter <project>`
 - **Test (full):** `dotnet test`
-- **Format:** `dotnet format --include "$CLAUDE_FILE" --verbosity quiet`
-  - `$CLAUDE_FILE` is a Claude Code built-in hook variable — expanded to the edited file path when a `PostToolUse` hook fires. Do not use in manual terminal commands or document in human-facing CLAUDE.md; use `dotnet format --verbosity quiet` there instead.
+- **Format:** `dotnet format --verbosity quiet` (project-wide). Per-file formatting in PostToolUse is wired via `hooks/format-on-edit.sh`, which extracts `tool_input.file_path` from stdin JSON and runs `dotnet format --include <file>`. Do NOT reference `$CLAUDE_FILE` — it is not a Claude Code env var; hook input arrives via stdin.
 
 ## File Extensions & Markers
 
@@ -126,7 +125,7 @@ If `codewithmukesh/dotnet-claude-kit` is installed, its 15 Roslyn MCP tools are 
 
 ## Recommended Tooling
 
-See `.claude/references/dotnet/recommended-tooling.md` for MCP servers, plugins, and editor integrations that noticeably improve Claude Code productivity on .NET projects — notably `csharp-lsp` (Roslyn semantic navigation), `dotnet-claude-kit` (Roslyn analyzer pack), and `microsoft-learn` (official Azure/.NET docs). Paired with the stack-agnostic `.claude/references/recommended-tooling.md`. `setup-bootstrap` prints both during onboarding; install is manual.
+See `docs/recommended-tooling/dotnet.md` for MCP servers, plugins, and editor integrations that noticeably improve Claude Code productivity on .NET projects — notably `csharp-lsp` (Roslyn semantic navigation), `dotnet-claude-kit` (Roslyn analyzer pack), and `microsoft-learn` (official Azure/.NET docs). Paired with the stack-agnostic `docs/recommended-tooling/shared.md`. `setup-bootstrap` prints both during onboarding; install is manual.
 
 ## Reference Files
 
@@ -137,7 +136,7 @@ These files are loaded by commands and review agents when the active stack is `d
 - `.claude/references/dotnet/mediatr-slice-patterns.md` — MediatR/CQRS slice conventions
 - `.claude/references/dotnet/testing-supplement.md` — .NET-specific testing guidance (EF Core providers)
 - `.claude/references/dotnet/performance-supplement.md` — .NET-specific performance rules
-- `.claude/references/dotnet/recommended-tooling.md` — Recommended MCPs / plugins / editor integrations for .NET
+- `docs/recommended-tooling/dotnet.md` — Recommended MCPs / plugins / editor integrations for .NET
 
 ## Settings Additions
 
@@ -154,18 +153,21 @@ Merge these into the project's `.claude/settings.json` during `setup-bootstrap`:
 - `Bash(dotnet publish:*)`
 
 ### hooks.PostToolUse (merge: append)
-- matcher: `Write(*.cs)|Edit(*.cs)`
-- command: `dotnet format --include "$CLAUDE_FILE" --verbosity quiet 2>/dev/null || true`
+- matcher: `Edit|Write`
+- command: `bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh`
+
+The matcher field accepts a regex on **tool name** only — `Write(*.cs)` is NOT valid Claude Code syntax and will silently never fire. File-extension dispatch happens inside `format-on-edit.sh`, which parses `tool_input.file_path` from stdin JSON.
 
 ## Format Command
 
 ```bash
-# $CLAUDE_FILE: Claude Code built-in — expanded to the edited file path by PostToolUse hooks.
-# In human-facing CLAUDE.md, show only: dotnet format --verbosity quiet
-dotnet format --include "$CLAUDE_FILE" --verbosity quiet 2>/dev/null || true
+# Wired via PostToolUse hook (see Settings Additions above):
+bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh
+# Manual invocation (project-wide):
+dotnet format --verbosity quiet
 ```
 
-Triggered on: `Write(*.cs)|Edit(*.cs)`
+The wrapper runs `dotnet format --include <file> --verbosity quiet` per edit. Failures log to stderr but never block.
 
 ## Scan Recipes
 

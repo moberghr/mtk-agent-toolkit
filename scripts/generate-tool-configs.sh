@@ -20,7 +20,15 @@ set -euo pipefail
 #   bash scripts/generate-tool-configs.sh --format copilot --format windsurf
 
 REFS_DIR=".claude/references"
-MANIFEST=".claude/manifest.json"
+# In a marketplace install, manifest lives in the plugin root; in a local clone,
+# it lives at the repo root. Prefer project-local; fall back to plugin root.
+if [ -f ".claude/manifest.json" ]; then
+  MANIFEST=".claude/manifest.json"
+elif [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/.claude/manifest.json" ]; then
+  MANIFEST="${CLAUDE_PLUGIN_ROOT}/.claude/manifest.json"
+else
+  MANIFEST=".claude/manifest.json"  # let downstream fail with a clear missing-file error
+fi
 TECH_STACK_FILE=".claude/tech-stack"
 
 # ─── Helpers ───────────────────────────────────────────────────────────────────

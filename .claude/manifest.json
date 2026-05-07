@@ -137,11 +137,12 @@
       "action": "sync",
       "description": "Generic performance checklist — load alongside the active stack's performance supplement"
     },
-    "references/recommended-tooling.md": {
-      "source": ".claude/references/recommended-tooling.md",
-      "target": ".claude/references/recommended-tooling.md",
+    "docs/recommended-tooling/shared.md": {
+      "source": "docs/recommended-tooling/shared.md",
+      "target": "docs/recommended-tooling/shared.md",
       "action": "sync",
-      "description": "Stack-agnostic recommended MCPs, plugins, and editor integrations printed during setup-bootstrap (recommend-only, never auto-installed)"
+      "distribute": false,
+      "description": "Stack-agnostic recommended MCPs/plugins/editor integrations. Per-user preference, not per-repo — setup-bootstrap PRINTS the contents during onboarding but does NOT copy this file into target repos."
     },
     "references/dotnet/coding-guidelines.md": {
       "source": ".claude/references/dotnet/coding-guidelines.md",
@@ -202,12 +203,13 @@
       "stack": "dotnet",
       "description": ".NET-specific performance rules (EF Core, HttpClient, Lambda cold starts)"
     },
-    "references/dotnet/recommended-tooling.md": {
-      "source": ".claude/references/dotnet/recommended-tooling.md",
-      "target": ".claude/references/dotnet/recommended-tooling.md",
+    "docs/recommended-tooling/dotnet.md": {
+      "source": "docs/recommended-tooling/dotnet.md",
+      "target": "docs/recommended-tooling/dotnet.md",
       "action": "sync",
+      "distribute": false,
       "stack": "dotnet",
-      "description": ".NET recommended MCPs, plugins, and editor integrations (csharp-lsp, dotnet-claude-kit, microsoft-learn, JetBrains MCP)"
+      "description": ".NET recommended MCPs/plugins/editor integrations (csharp-lsp, dotnet-claude-kit, microsoft-learn, JetBrains MCP). Per-user preference — setup-bootstrap prints but does not copy into target repos."
     },
     "references/python/coding-guidelines.md": {
       "source": ".claude/references/python/coding-guidelines.md",
@@ -267,12 +269,13 @@
       "stack": "python",
       "description": "Python performance rules (async, connection pooling, GIL, Lambda)"
     },
-    "references/python/recommended-tooling.md": {
-      "source": ".claude/references/python/recommended-tooling.md",
-      "target": ".claude/references/python/recommended-tooling.md",
+    "docs/recommended-tooling/python.md": {
+      "source": "docs/recommended-tooling/python.md",
+      "target": "docs/recommended-tooling/python.md",
       "action": "sync",
+      "distribute": false,
       "stack": "python",
-      "description": "Python recommended MCPs, plugins, and editor integrations (context7, Pyright/basedpyright, Ruff LSP)"
+      "description": "Python recommended MCPs/plugins/editor integrations (context7, Pyright/basedpyright, Ruff LSP). Per-user preference — setup-bootstrap prints but does not copy into target repos."
     },
     "references/typescript/coding-guidelines.md": {
       "source": ".claude/references/typescript/coding-guidelines.md",
@@ -336,12 +339,13 @@
       "stack": "typescript",
       "description": "Bundle size, rendering, SSR, Node I/O, serverless cold-start, and Tauri IPC performance rules"
     },
-    "references/typescript/recommended-tooling.md": {
-      "source": ".claude/references/typescript/recommended-tooling.md",
-      "target": ".claude/references/typescript/recommended-tooling.md",
+    "docs/recommended-tooling/typescript.md": {
+      "source": "docs/recommended-tooling/typescript.md",
+      "target": "docs/recommended-tooling/typescript.md",
       "action": "sync",
+      "distribute": false,
       "stack": "typescript",
-      "description": "TypeScript recommended MCPs, plugins, and editor integrations (context7, playwright, editor LSPs, frontend-design plugin)"
+      "description": "TypeScript recommended MCPs/plugins/editor integrations (context7, playwright, editor LSPs, frontend-design plugin). Per-user preference — setup-bootstrap prints but does not copy into target repos."
     },
     "skills/spec-driven-development/SKILL.md": {
       "source": ".claude/skills/spec-driven-development/SKILL.md",
@@ -591,6 +595,12 @@
       "target": "hooks/pre-commit-linters.sh",
       "action": "sync",
       "description": "Deterministic static-check pass: scans staged diff for known-bad patterns, emits findings with source:linter and confidence:100"
+    },
+    "hooks/format-on-edit.sh": {
+      "source": "hooks/format-on-edit.sh",
+      "target": "hooks/format-on-edit.sh",
+      "action": "sync",
+      "description": "PostToolUse wrapper that parses tool_input.file_path from stdin JSON and dispatches to the right formatter (biome/prettier/ruff/black/dotnet format) by file extension"
     },
     "hooks/security-gate.sh": {
       "source": "hooks/security-gate.sh",

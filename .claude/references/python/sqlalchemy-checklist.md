@@ -2,6 +2,7 @@
 description: SQLAlchemy checklist — session scope, N+1, eager loading, migrations
 globs: ["**/*.py"]
 alwaysApply: false
+tools: [sqlalchemy, alembic]
 ---
 # SQLAlchemy Checklist
 
