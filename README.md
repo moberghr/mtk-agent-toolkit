@@ -6,7 +6,7 @@
 
 **A Claude Code plugin that enforces your team's coding standards, security policies, and review discipline on every AI-generated line of code. Language-agnostic workflows with pluggable tech stacks for .NET, Python, and TypeScript.**
 
-[![Version](https://img.shields.io/badge/version-7.2.0-blue.svg)](https://github.com/moberghr/mtk-agent-toolkit/releases)
+[![Version](https://img.shields.io/badge/version-7.3.0-blue.svg)](https://github.com/moberghr/mtk-agent-toolkit/releases)
 [![Website](https://img.shields.io/badge/website-moberghr.github.io-6d28d9.svg)](https://moberghr.github.io/mtk-agent-toolkit/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-purple.svg)](https://claude.ai/code)
 [![.NET](https://img.shields.io/badge/.NET-8.0%2B-512BD4.svg)](https://dotnet.microsoft.com/)
@@ -50,6 +50,11 @@ MTK closes that gap with **workflow enforcement** (planning, TDD, batched implem
 ---
 
 ## What's New
+
+### v7.3.0 — Superpowers borrow improvements (2026-05-07)
+- **`subagent-implementation` skill** — new per-batch implementer-subagent path for large features. `implement` Phase 3 forks: above the threshold (≥3 batches OR ≥6 files OR non-none `security_impact`) it dispatches the new skill; below threshold it stays on inline `incremental-implementation`. Asks once for implementer model (Sonnet/Opus), then loops one fresh subagent per batch with a structured JSON contract; orchestrator-side drift micro-checks auto-amend the sidecar for in-package extras and re-open Phase 2.5 for cross-package or new-public-contract drift. Phase 3.5 spec-drift and Phase 4 review run unchanged.
+- **GraphViz `dot` decision graphs** added inside `mtk/`, `fix/`, and `spec-driven-development/` SKILL.md at the branch points where models most often misroute (router ambiguity, fix scope-guard escalation, spec skip-vs-write + `security_impact` honesty), each accompanied by a Red Flags rationalization table.
+- **Pre-draft ambiguity gate** — `spec-driven-development` now resolves ambiguity via `AskUserQuestion` *before* drafting the spec. Phase 2.5 is a go/no-go on a fully-informed plan, not a place to surface new questions.
 
 ### v7.2.0 — Graphify + official-plugin borrow improvements (2026-04-27)
 - **`.mtkignore`** at repo root — single source of truth for paths excluded from MTK scans (same syntax as `.gitignore`); honored by `repomap`, `setup-audit`, and the tree-sitter walker. New rule **S1.14**.
@@ -946,7 +951,7 @@ MIT. See [LICENSE](LICENSE).
 
 <div align="center">
 
-**MTK — Moberg Toolkit** v7.2.0 · [Moberg d.o.o.](https://www.moberg.hr)
+**MTK — Moberg Toolkit** v7.3.0 · [Moberg d.o.o.](https://www.moberg.hr)
 
 Built for teams that ship production code, not prototypes.
 
