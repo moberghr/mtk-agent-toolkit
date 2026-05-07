@@ -24,6 +24,7 @@ You are a senior engineer building serious software. This skill is the user-faci
 The skill itself is intentionally thin. The source of truth for workflow behavior is the skill layer:
 
 - `.claude/skills/context-engineering/SKILL.md`
+- `.claude/skills/workflow-artifacts/SKILL.md`
 - `.claude/skills/spec-driven-development/SKILL.md`
 - `.claude/skills/planning-and-task-breakdown/SKILL.md`
 - `.claude/skills/incremental-implementation/SKILL.md`
@@ -41,6 +42,11 @@ The skill itself is intentionally thin. The source of truth for workflow behavio
 
 Before doing anything else:
 
+0. Init or resume a workflow artifact (`.claude/skills/workflow-artifacts/SKILL.md`).
+   - Run `scripts/workflow-artifact.sh list`.
+   - If a single active `BUILD` workflow exists for this feature, ask via `AskUserQuestion` whether to resume that uuid or start a new one.
+   - Otherwise: `MTK_WF_UUID=$(scripts/workflow-artifact.sh init BUILD --goal "<one-line user goal>")` and remember the uuid for the rest of the session.
+   - Emit `phase_started phase-0` immediately after init/resume.
 1. Follow `.claude/skills/context-engineering/SKILL.md`.
 2. Read `CLAUDE.md`. If missing, stop and tell the engineer to run `/mtk-setup`.
 3. **Load the active tech stack:** read `.claude/tech-stack` (plain text, single word like `dotnet` or `python`). Then read `.claude/skills/tech-stack-{stack}/SKILL.md`. This provides build/test commands, ORM guidance, framework patterns, and reference file paths used throughout the workflow. If `.claude/tech-stack` is missing, stop and tell the engineer to run `/mtk-setup`.
@@ -85,6 +91,9 @@ The resulting plan must include:
 
 **Persist the spec to disk before continuing.** Save to `docs/specs/YYYY-MM-DD-<feature-slug>.md` using today's date and a kebab-case slug. Create `docs/specs/` if missing. This is mandatory — the engineer must be able to read and edit the spec outside of chat.
 
+After the spec lands, record its path on the workflow artifact:
+`scripts/workflow-artifact.sh set "$MTK_WF_UUID" results.spec_path=docs/specs/<file>`
+
 ## Phase 2: Write The Task Breakdown
 
 Follow `.claude/skills/planning-and-task-breakdown/SKILL.md`.
@@ -94,7 +103,8 @@ Write **both** files (mandatory, not optional):
 1. `tasks/todo.md` — checkable batches and post-implementation review items
 2. `docs/plans/YYYY-MM-DD-<feature-slug>.md` — full plan alongside the spec, same date and slug as Phase 1
 
-Create `docs/plans/` if missing.
+Create `docs/plans/` if missing. Then record both paths on the workflow artifact:
+`scripts/workflow-artifact.sh set "$MTK_WF_UUID" results.plan_path=docs/plans/<file> results.todo_path=tasks/todo.md`
 
 ## Phase 2.5: Approval Gate (STOP HERE)
 
@@ -115,6 +125,10 @@ Then invoke `AskUserQuestion` with:
 If `AskUserQuestion` is deferred in this session, call `ToolSearch` with `select:AskUserQuestion` first. If the harness does not expose it (e.g. Cursor, Copilot CLI, Gemini CLI), stop and print one line: "Approval gate requires AskUserQuestion (unavailable in this harness). Tell me: Approve & run until done / Approve (interactive) / Edit first / Revise." Wait for the engineer — do not proceed.
 
 Until the engineer answers: read-only Bash only, no Edit/Write on source code, no Phase 3. Proceed to Phase 3 only after `Approve & run until done` or `Approve (interactive)`. In autonomous mode, never call `AskUserQuestion` again for Phases 3-7 — stop and report instead.
+
+On approval, record the gate decision on the workflow artifact:
+`scripts/workflow-artifact.sh gate "$MTK_WF_UUID" plan_trust_gate pass --reason "<approve mode>"`
+On `Revise` or `Edit first`, leave the gate `pending` and emit a `field_updated` event. See `.claude/references/orchestration-gates.md` for full gate semantics.
 
 Note: this gate controls when *Claude* asks. Harness tool-permission prompts (file-write/Bash approvals) are a separate layer — autonomous mode does not bypass them.
 
@@ -143,6 +157,10 @@ After all batches:
 
 - run the full test command from the active tech stack skill
 - write an explicit behavioral diff
+- emit `phase_exit_gate pass` (or `fail` and stop) on the workflow artifact
+
+Record per-batch progress:
+`scripts/workflow-artifact.sh set "$MTK_WF_UUID" results.batches_completed=<n>`
 
 ## Phase 3.5: Spec-Drift Check
 
@@ -236,6 +254,13 @@ This phase is not optional cleanup — it is how the toolkit gets smarter over t
 6. **State the compound.** In the final report, include a "What compounded" section listing what future sessions will benefit from.
 
 ## Final Report
+
+Close the workflow artifact:
+```bash
+scripts/workflow-artifact.sh gate "$MTK_WF_UUID" memory_sync_gate pass --reason "lessons captured"
+scripts/workflow-artifact.sh set "$MTK_WF_UUID" status=completed
+scripts/workflow-artifact.sh event "$MTK_WF_UUID" workflow_completed --data '{"summary":"<short>"}'
+```
 
 Report:
 

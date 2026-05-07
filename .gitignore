@@ -1,4 +1,5 @@
 ### Claude Code
+.mtk/
 .claude/settings.local.json
 .claude/review-config.local.json
 .claude/queue/

@@ -1,0 +1,243 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# workflow-artifact.sh — manage durable workflow state under .mtk/workflows/
+#
+# Subcommands:
+#   init <type> [--goal "<text>"]    Create a new workflow artifact, print UUID
+#   event <uuid> <type> [--data '<json>']  Append event to .events.jsonl
+#   set <uuid> <key=value>...        Update top-level fields in {uuid}.json
+#   read <uuid>                      Print {uuid}.json to stdout
+#   list                             List active workflows (id, type, status, updated)
+#   gate <uuid> <gate_name> <pass|fail> [--reason "<text>"]
+#                                    Record gate decision as event + status update
+#
+# Storage: .mtk/workflows/{uuid}.json + .mtk/workflows/{uuid}.events.jsonl
+# Artifacts live OUTSIDE .claude/ to avoid Claude Code's sensitive-file gate.
+# Add `.mtk/` to .gitignore in target repos (not committed by default).
+
+ROOT_DIR="$(pwd)"
+WF_DIR="${ROOT_DIR}/.mtk/workflows"
+
+fail() { printf 'workflow-artifact: %s\n' "$1" >&2; exit 1; }
+
+ensure_dir() {
+  mkdir -p "$WF_DIR"
+}
+
+iso_now() {
+  date -u +"%Y-%m-%dT%H:%M:%SZ"
+}
+
+new_uuid() {
+  # Compact ULID-like id: timestamp + 6 random hex chars. No external deps.
+  local stamp rand
+  stamp="$(date -u +"%Y%m%dT%H%M%SZ")"
+  rand="$(LC_ALL=C tr -dc 'a-f0-9' </dev/urandom | head -c 6 || true)"
+  if [ -z "$rand" ]; then
+    rand="$(printf '%06x' "$$")"
+  fi
+  printf 'wf-%s-%s' "$stamp" "$rand"
+}
+
+json_escape() {
+  python3 -c 'import json,sys; sys.stdout.write(json.dumps(sys.stdin.read()))'
+}
+
+cmd_init() {
+  local wf_type="${1:-}"
+  shift || true
+  [ -n "$wf_type" ] || fail "init requires <type> (BUILD|DEBUG|REVIEW|PLAN|FIX)"
+  case "$wf_type" in BUILD|DEBUG|REVIEW|PLAN|FIX) ;; *) fail "unknown workflow type: $wf_type" ;; esac
+
+  local goal=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --goal) goal="${2:-}"; shift 2 ;;
+      *) fail "unknown flag: $1" ;;
+    esac
+  done
+
+  ensure_dir
+  local uuid created
+  uuid="$(new_uuid)"
+  created="$(iso_now)"
+
+  local goal_json
+  goal_json="$(printf '%s' "$goal" | json_escape)"
+
+  cat > "${WF_DIR}/${uuid}.json" <<EOF
+{
+  "workflow_uuid": "${uuid}",
+  "workflow_type": "${wf_type}",
+  "schema_version": 1,
+  "created_at": "${created}",
+  "updated_at": "${created}",
+  "status": "active",
+  "phase_cursor": "phase-0",
+  "intent": { "goal": ${goal_json} },
+  "gates": {
+    "plan_trust_gate": "pending",
+    "phase_exit_gate": "pending",
+    "failure_stop_gate": "pending",
+    "memory_sync_gate": "pending",
+    "skill_precedence_gate": "pending"
+  },
+  "results": {},
+  "remediation_history": []
+}
+EOF
+
+  : > "${WF_DIR}/${uuid}.events.jsonl"
+  cmd_event "$uuid" "workflow_started" --data "{\"workflow_type\":\"${wf_type}\"}" >/dev/null
+
+  printf '%s\n' "$uuid"
+}
+
+cmd_event() {
+  local uuid="${1:-}"
+  local etype="${2:-}"
+  shift 2 || true
+  [ -n "$uuid" ] || fail "event requires <uuid>"
+  [ -n "$etype" ] || fail "event requires <type>"
+  [ -f "${WF_DIR}/${uuid}.events.jsonl" ] || fail "no event log for $uuid (run init first)"
+
+  local data="{}"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --data) data="${2-}"; [ -n "$data" ] || data="{}"; shift 2 ;;
+      *) fail "unknown flag: $1" ;;
+    esac
+  done
+
+  local now
+  now="$(iso_now)"
+  python3 - "$uuid" "$etype" "$now" "$data" >> "${WF_DIR}/${uuid}.events.jsonl" <<'PY'
+import json, sys
+uuid, etype, now, data_raw = sys.argv[1:5]
+try:
+    data = json.loads(data_raw) if data_raw else {}
+except json.JSONDecodeError as e:
+    print(f"workflow-artifact: invalid --data JSON: {e}", file=sys.stderr)
+    sys.exit(1)
+sys.stdout.write(json.dumps({
+    "ts": now,
+    "workflow_uuid": uuid,
+    "event": etype,
+    "data": data
+}, separators=(",", ":")) + "\n")
+PY
+
+  # Bump updated_at on the main artifact.
+  python3 - "${WF_DIR}/${uuid}.json" "$now" <<'PY'
+import json, sys
+path, now = sys.argv[1:3]
+with open(path) as f: doc = json.load(f)
+doc["updated_at"] = now
+with open(path, "w") as f: json.dump(doc, f, indent=2)
+PY
+}
+
+cmd_set() {
+  local uuid="${1:-}"
+  shift || true
+  [ -n "$uuid" ] || fail "set requires <uuid>"
+  [ -f "${WF_DIR}/${uuid}.json" ] || fail "no artifact for $uuid"
+  [ $# -gt 0 ] || fail "set requires at least one key=value"
+
+  python3 - "${WF_DIR}/${uuid}.json" "$(iso_now)" "$@" <<'PY'
+import json, sys
+path = sys.argv[1]
+now = sys.argv[2]
+pairs = sys.argv[3:]
+with open(path) as f: doc = json.load(f)
+for pair in pairs:
+    if "=" not in pair:
+        print(f"workflow-artifact: bad pair: {pair}", file=sys.stderr); sys.exit(1)
+    k, v = pair.split("=", 1)
+    # Dotted path: gates.plan_trust_gate=pass
+    parts = k.split(".")
+    target = doc
+    for p in parts[:-1]:
+        target = target.setdefault(p, {})
+    # Try JSON-decode value (numbers, bools, arrays); else string.
+    try: parsed = json.loads(v)
+    except json.JSONDecodeError: parsed = v
+    target[parts[-1]] = parsed
+doc["updated_at"] = now
+with open(path, "w") as f: json.dump(doc, f, indent=2)
+PY
+  cmd_event "$uuid" "field_updated" --data "{\"keys\":$(printf '%s\n' "$@" | python3 -c 'import sys, json; print(json.dumps([l.split("=",1)[0] for l in sys.stdin.read().splitlines() if l]))')}" >/dev/null
+}
+
+cmd_read() {
+  local uuid="${1:-}"
+  [ -n "$uuid" ] || fail "read requires <uuid>"
+  [ -f "${WF_DIR}/${uuid}.json" ] || fail "no artifact for $uuid"
+  cat "${WF_DIR}/${uuid}.json"
+}
+
+cmd_list() {
+  ensure_dir
+  if ! ls "${WF_DIR}"/*.json >/dev/null 2>&1; then
+    printf '(no workflows)\n'
+    return 0
+  fi
+  printf '%-44s %-7s %-10s %s\n' "UUID" "TYPE" "STATUS" "UPDATED"
+  for f in "${WF_DIR}"/*.json; do
+    python3 - "$f" <<'PY'
+import json, sys
+with open(sys.argv[1]) as f: d = json.load(f)
+print(f"{d.get('workflow_uuid',''):<44} {d.get('workflow_type',''):<7} {d.get('status',''):<10} {d.get('updated_at','')}")
+PY
+  done
+}
+
+cmd_gate() {
+  local uuid="${1:-}"
+  local gate="${2:-}"
+  local result="${3:-}"
+  shift 3 || true
+  [ -n "$uuid" ] && [ -n "$gate" ] && [ -n "$result" ] || fail "gate requires <uuid> <gate_name> <pass|fail>"
+  case "$result" in pass|fail) ;; *) fail "gate result must be 'pass' or 'fail'" ;; esac
+  case "$gate" in
+    plan_trust_gate|phase_exit_gate|failure_stop_gate|memory_sync_gate|skill_precedence_gate) ;;
+    *) fail "unknown gate: $gate (see .claude/references/orchestration-gates.md)" ;;
+  esac
+
+  local reason=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --reason) reason="${2:-}"; shift 2 ;;
+      *) fail "unknown flag: $1" ;;
+    esac
+  done
+
+  cmd_set "$uuid" "gates.${gate}=${result}" >/dev/null
+  local reason_json
+  reason_json="$(printf '%s' "$reason" | json_escape)"
+  cmd_event "$uuid" "gate_decided" --data "{\"gate\":\"${gate}\",\"result\":\"${result}\",\"reason\":${reason_json}}" >/dev/null
+  printf 'gate %s -> %s\n' "$gate" "$result"
+}
+
+usage() {
+  sed -n '4,18p' "$0"
+}
+
+main() {
+  local sub="${1:-}"
+  shift || true
+  case "$sub" in
+    init)  cmd_init "$@" ;;
+    event) cmd_event "$@" ;;
+    set)   cmd_set "$@" ;;
+    read)  cmd_read "$@" ;;
+    list)  cmd_list ;;
+    gate)  cmd_gate "$@" ;;
+    ""|-h|--help) usage ;;
+    *) fail "unknown subcommand: $sub" ;;
+  esac
+}
+
+main "$@"

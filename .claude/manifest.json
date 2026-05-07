@@ -1360,6 +1360,24 @@
       "target": "scripts/validate-handoff.sh",
       "action": "sync",
       "description": "Deterministic file-level and security-impact drift check against a handoff JSON artifact"
+    },
+    "skills/workflow-artifacts/SKILL.md": {
+      "source": ".claude/skills/workflow-artifacts/SKILL.md",
+      "target": ".claude/skills/workflow-artifacts/SKILL.md",
+      "action": "sync",
+      "description": "Create, update, and read durable workflow state under .mtk/workflows/ so orchestration survives compaction and restart"
+    },
+    "references/workflow-artifact-schema.md": {
+      "source": ".claude/references/workflow-artifact-schema.md",
+      "target": ".claude/references/workflow-artifact-schema.md",
+      "action": "sync",
+      "description": "Schema and lifecycle for durable workflow artifacts under .mtk/workflows/"
+    },
+    "scripts/workflow-artifact.sh": {
+      "source": "scripts/workflow-artifact.sh",
+      "target": "scripts/workflow-artifact.sh",
+      "action": "sync",
+      "description": "Helper for init/event/set/read/list/gate operations against .mtk/workflows/{uuid}.json"
     }
   },
   "protected": [
