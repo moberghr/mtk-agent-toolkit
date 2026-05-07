@@ -119,7 +119,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "hooks/verify-completion \"$ARGUMENTS\""
+            "command": "$CLAUDE_PROJECT_DIR/hooks/verify-completion \"$ARGUMENTS\""
           }
         ]
       },
@@ -127,7 +127,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "hooks/capture-learnings.sh"
+            "command": "$CLAUDE_PROJECT_DIR/hooks/capture-learnings.sh"
           }
         ]
       },
@@ -135,7 +135,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "hooks/session-analytics.sh"
+            "command": "$CLAUDE_PROJECT_DIR/hooks/session-analytics.sh"
           }
         ]
       }
