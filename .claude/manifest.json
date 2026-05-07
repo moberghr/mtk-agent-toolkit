@@ -1444,6 +1444,30 @@
       "target": "tests/fixtures/resume-active-workflow.json",
       "action": "sync",
       "description": "Fixture: one active BUILD workflow exists → offer resume rather than init new uuid"
+    },
+    "scripts/mtk-compress.sh": {
+      "source": "scripts/mtk-compress.sh",
+      "target": "scripts/mtk-compress.sh",
+      "action": "sync",
+      "description": "Pipe-friendly token compressor for tool output (json/logs/tests/html/auto modes) with session analytics"
+    },
+    "hooks/compress-monitor.sh": {
+      "source": "hooks/compress-monitor.sh",
+      "target": "hooks/compress-monitor.sh",
+      "action": "sync",
+      "description": "PostToolUse hook that flags large Bash outputs that did not go through mtk-compress.sh"
+    },
+    "references/output-compression.md": {
+      "source": ".claude/references/output-compression.md",
+      "target": ".claude/references/output-compression.md",
+      "action": "sync",
+      "description": "When and how to compress long tool output via scripts/mtk-compress.sh"
+    },
+    "references/stub-detection.md": {
+      "source": ".claude/references/stub-detection.md",
+      "target": ".claude/references/stub-detection.md",
+      "action": "sync",
+      "description": "Grep patterns to catch stub implementations, placeholder code, mock data, and unwired components in code review"
     }
   },
   "protected": [

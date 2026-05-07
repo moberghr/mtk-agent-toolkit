@@ -62,7 +62,7 @@ If reviewing a PR or branch with CI runs, check CI status:
 4. If `hooks/ci-status.sh` is not available or `gh` is not installed, proceed without CI context
 
 3. Review across these axes:
-   - correctness
+   - correctness — including **stub detection** per `.claude/references/stub-detection.md` (empty bodies, `NotImplementedException`, suspect `return null`/`[]`/`{}`, mock data in production paths, unwired handlers)
    - readability and simplicity
    - architectural fit
    - security and compliance

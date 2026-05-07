@@ -79,6 +79,16 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "hooks/compress-monitor.sh",
+            "timeout": 3
+          }
+        ]
       }
     ],
     "PreCompact": [
