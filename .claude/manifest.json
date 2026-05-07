@@ -1,5 +1,5 @@
 {
-  "version": "7.3.0",
+  "version": "7.4.0",
   "updated": "2026-05-07",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
@@ -1360,6 +1360,90 @@
       "target": "scripts/validate-handoff.sh",
       "action": "sync",
       "description": "Deterministic file-level and security-impact drift check against a handoff JSON artifact"
+    },
+    "skills/workflow-artifacts/SKILL.md": {
+      "source": ".claude/skills/workflow-artifacts/SKILL.md",
+      "target": ".claude/skills/workflow-artifacts/SKILL.md",
+      "action": "sync",
+      "description": "Create, update, and read durable workflow state under .mtk/workflows/ so orchestration survives compaction and restart"
+    },
+    "references/workflow-artifact-schema.md": {
+      "source": ".claude/references/workflow-artifact-schema.md",
+      "target": ".claude/references/workflow-artifact-schema.md",
+      "action": "sync",
+      "description": "Schema and lifecycle for durable workflow artifacts under .mtk/workflows/"
+    },
+    "references/orchestration-gates.md": {
+      "source": ".claude/references/orchestration-gates.md",
+      "target": ".claude/references/orchestration-gates.md",
+      "action": "sync",
+      "description": "Five named fail-closed gates the implement workflow records on the workflow artifact before advancing"
+    },
+    "scripts/workflow-artifact.sh": {
+      "source": "scripts/workflow-artifact.sh",
+      "target": "scripts/workflow-artifact.sh",
+      "action": "sync",
+      "description": "Helper for init/event/set/read/list/gate operations against .mtk/workflows/{uuid}.json"
+    },
+    "agents/plan-gap-reviewer.md": {
+      "source": ".claude/agents/plan-gap-reviewer.md",
+      "target": ".claude/agents/plan-gap-reviewer.md",
+      "action": "sync",
+      "description": "Anti-anchored fresh review of a saved plan against the current codebase — does not load lessons or prior reviewer output"
+    },
+    "tests/pressure-tests/plan-gap-reviewer-pressure.md": {
+      "source": "tests/pressure-tests/plan-gap-reviewer-pressure.md",
+      "target": "tests/pressure-tests/plan-gap-reviewer-pressure.md",
+      "action": "sync",
+      "description": "Pressure tests for plan-gap-reviewer's anti-anchoring contract"
+    },
+    "scripts/run-fixtures.sh": {
+      "source": "scripts/run-fixtures.sh",
+      "target": "scripts/run-fixtures.sh",
+      "action": "sync",
+      "description": "Validates router-decision fixtures under tests/fixtures/ — structural check, asserts gate names and action consistency without running Claude"
+    },
+    "tests/fixtures/README.md": {
+      "source": "tests/fixtures/README.md",
+      "target": "tests/fixtures/README.md",
+      "action": "sync",
+      "description": "Fixture format and authoring guide for router-decision fixtures"
+    },
+    "tests/fixtures/build-happy-path.json": {
+      "source": "tests/fixtures/build-happy-path.json",
+      "target": "tests/fixtures/build-happy-path.json",
+      "action": "sync",
+      "description": "Fixture: builder green inside manifest → advance phase, record phase_exit_gate pass"
+    },
+    "tests/fixtures/build-phase-blocked.json": {
+      "source": "tests/fixtures/build-phase-blocked.json",
+      "target": "tests/fixtures/build-phase-blocked.json",
+      "action": "sync",
+      "description": "Fixture: failed batch tests → remediate, record phase_exit_gate fail"
+    },
+    "tests/fixtures/plan-gap-found.json": {
+      "source": "tests/fixtures/plan-gap-found.json",
+      "target": "tests/fixtures/plan-gap-found.json",
+      "action": "sync",
+      "description": "Fixture: plan-gap-reviewer BLOCKING findings → return to planning, plan_trust_gate stays pending"
+    },
+    "tests/fixtures/failure-stop-triggered.json": {
+      "source": "tests/fixtures/failure-stop-triggered.json",
+      "target": "tests/fixtures/failure-stop-triggered.json",
+      "action": "sync",
+      "description": "Fixture: third remediation iteration on same finding → failure_stop_gate fail and abort"
+    },
+    "tests/fixtures/auto-proceed-respects-decisions.json": {
+      "source": "tests/fixtures/auto-proceed-respects-decisions.json",
+      "target": "tests/fixtures/auto-proceed-respects-decisions.json",
+      "action": "sync",
+      "description": "Fixture: AUTO_PROCEED set but plan has open decisions → request engineer, do not auto-default"
+    },
+    "tests/fixtures/resume-active-workflow.json": {
+      "source": "tests/fixtures/resume-active-workflow.json",
+      "target": "tests/fixtures/resume-active-workflow.json",
+      "action": "sync",
+      "description": "Fixture: one active BUILD workflow exists → offer resume rather than init new uuid"
     }
   },
   "protected": [

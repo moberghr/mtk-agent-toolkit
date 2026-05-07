@@ -51,6 +51,14 @@ MTK closes that gap with **workflow enforcement** (planning, TDD, batched implem
 
 ## What's New
 
+### v7.4.0 — cc10x borrow: durable orchestration + anti-anchored review (2026-05-07)
+- **Durable workflow artifacts** — `.mtk/workflows/{uuid}.json` plus append-only `{uuid}.events.jsonl` survive compaction and crash; new `workflow-artifacts` skill and `scripts/workflow-artifact.sh` helper with `init/event/set/read/list/gate` subcommands
+- **Five named orchestration gates** — `plan_trust_gate`, `phase_exit_gate`, `failure_stop_gate`, `memory_sync_gate`, `skill_precedence_gate` are fail-closed contracts the implement workflow must record before advancing (`.claude/references/orchestration-gates.md`)
+- **Anti-anchored plan reviewer** — new `plan-gap-reviewer` agent forbidden from loading lessons / prior reviewer output / workflow artifact; six finding categories with BLOCKING/ADVISORY severity; runs before the Phase 2.5 approval gate
+- **Claim extraction in verification** — `verification-before-completion` now requires extracting every factual claim from upstream agents, marking each UNVERIFIED, and reconciling to VERIFIED / CONTRADICTED / UNVERIFIABLE before completion
+- **JSON router-decision fixtures** — 6 fixtures under `tests/fixtures/` exercise advance / remediate / abort / resume / request_engineer paths; `scripts/run-fixtures.sh` validates structure and gate naming, wired into `validate-toolkit.sh`
+- **`MTK_AUTO_PROCEED` env knob** — opt-in (off by default) auto-defaults the Phase 2.5 prompt only when spec has zero open decisions, no plan-gap BLOCKING findings, and the change is not high-impact
+
 ### v7.3.0 — Superpowers borrow improvements (2026-05-07)
 - **`subagent-implementation` skill** — new per-batch implementer-subagent path for large features. `implement` Phase 3 forks: above the threshold (≥3 batches OR ≥6 files OR non-none `security_impact`) it dispatches the new skill; below threshold it stays on inline `incremental-implementation`. Asks once for implementer model (Sonnet/Opus), then loops one fresh subagent per batch with a structured JSON contract; orchestrator-side drift micro-checks auto-amend the sidecar for in-package extras and re-open Phase 2.5 for cross-package or new-public-contract drift. Phase 3.5 spec-drift and Phase 4 review run unchanged.
 - **GraphViz `dot` decision graphs** added inside `mtk/`, `fix/`, and `spec-driven-development/` SKILL.md at the branch points where models most often misroute (router ambiguity, fix scope-guard escalation, spec skip-vs-write + `security_impact` honesty), each accompanied by a Red Flags rationalization table.
@@ -101,7 +109,7 @@ MTK closes that gap with **workflow enforcement** (planning, TDD, batched implem
 - **Parallelism patterns** — reviewer fan-out and reference loading now run in parallel; Stage 2 review halves in wall-clock time
 - **`fix` self-escalation** — `fix` workflow now escalates to `implement` automatically when scope grows beyond 3 files
 - **`toolkit-health` skill** — read-only usage-pulse report from `.claude/analytics.json` routed via `/mtk health`
-- **Cache-stable prefixes** — the 3 reviewer agents declare `context: fork` with stable preface for higher cache hit rate
+- **Cache-stable prefixes** — the 4 reviewer agents declare `context: fork` with stable preface for higher cache hit rate
 - **Consolidated entry points** — two user-invocable skills: `/mtk` (natural-language router) and `/mtk-setup` (bootstrap + audit)
 
 ### v6.1.3 — Frontmatter visibility (2026-04-14)
@@ -320,9 +328,9 @@ ENTRY POINTS (2 user-invocable skills)
 
       ↓ orchestrate
 
-WORKFLOW SKILLS (23 reusable blocks)
-  ├── 17 language-agnostic workflow skills (fix, implement, pre-commit-review,
-  │   context-engineering, spec-driven-development, …, setup-bootstrap, setup-audit)
+WORKFLOW SKILLS (24 reusable blocks)
+  ├── 18 language-agnostic workflow skills (fix, implement, pre-commit-review,
+  │   context-engineering, spec-driven-development, workflow-artifacts, …, setup-bootstrap, setup-audit)
   ├── 3 tech stack skills (.NET, Python, TypeScript)
   └── 3 enabling skills (brainstorming, using-git-worktrees, writing-skills)
 
@@ -444,7 +452,7 @@ MTK is a Claude Code plugin. Use the plugin marketplace to upgrade — there is 
 
 ## Skills
 
-31 skills total: 2 entry-point skills, 23 language-agnostic workflow skills, 3 tech stack skills, 3 enabling skills. Entry-point skills (`/mtk-setup` and `/mtk`) orchestrate workflow skills. Recent additions: `toolkit-health` (v6.3.0) and `claude-md-audit` (v7.2.0).
+32 skills total: 2 entry-point skills, 24 language-agnostic workflow skills, 3 tech stack skills, 3 enabling skills. Entry-point skills (`/mtk-setup` and `/mtk`) orchestrate workflow skills. Recent additions: `workflow-artifacts` (v7.4.0), `claude-md-audit` (v7.2.0), `toolkit-health` (v6.3.0).
 
 ### Workflow Skills
 

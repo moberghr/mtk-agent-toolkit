@@ -1,0 +1,33 @@
+{
+  "id": "build-phase-blocked",
+  "description": "Builder reports tests failed — orchestrator must remediate, not advance, and gate stays fail until fix.",
+  "workflow_type": "BUILD",
+  "input": {
+    "phase_cursor": "phase-3",
+    "gates": {
+      "plan_trust_gate": "pass",
+      "phase_exit_gate": "pending",
+      "failure_stop_gate": "pending",
+      "memory_sync_gate": "pending",
+      "skill_precedence_gate": "pass"
+    },
+    "agent_outputs": {
+      "builder": {
+        "status": "FAIL",
+        "batch_id": "B2",
+        "tests_total": 9,
+        "tests_passed": 7,
+        "tests_failed": 2,
+        "exit_code": 1,
+        "files_in_manifest": true
+      }
+    },
+    "engineer_choice": null
+  },
+  "expected": {
+    "next_action": "remediate",
+    "gate_to_record": "phase_exit_gate: fail",
+    "phase_cursor_after": "phase-3",
+    "rationale": "phase_exit_gate is fail-closed — non-zero exit and 2 failing tests block advancement; remediation loop runs before the next phase."
+  }
+}

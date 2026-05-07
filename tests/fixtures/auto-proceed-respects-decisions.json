@@ -1,0 +1,31 @@
+{
+  "id": "auto-proceed-respects-decisions",
+  "description": "MTK_AUTO_PROCEED=1 is set, but the spec has open decisions — orchestrator MUST NOT auto-default the approval gate.",
+  "workflow_type": "BUILD",
+  "input": {
+    "phase_cursor": "phase-2",
+    "gates": {
+      "plan_trust_gate": "pending",
+      "phase_exit_gate": "pending",
+      "failure_stop_gate": "pending",
+      "memory_sync_gate": "pending",
+      "skill_precedence_gate": "pass"
+    },
+    "agent_outputs": {
+      "spec_check": {
+        "open_decisions_count": 1,
+        "open_decision_ids": ["choose_token_storage_strategy"]
+      }
+    },
+    "engineer_choice": null,
+    "env": {
+      "MTK_AUTO_PROCEED": "1"
+    }
+  },
+  "expected": {
+    "next_action": "request_engineer",
+    "gate_to_record": null,
+    "phase_cursor_after": "phase-2",
+    "rationale": "AUTO_PROCEED never overrides explicit user standards or open plan decisions per orchestration-gates.md and AUTO_PROCEED contract — orchestrator must surface the open decision to the engineer."
+  }
+}

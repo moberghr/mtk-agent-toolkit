@@ -224,6 +224,11 @@ if [ -f .claude/references.index ]; then
   bash scripts/build-references-index.sh --check
 fi
 
+# Router-decision fixtures (S3.10): validate JSON shape and gate names.
+if [ -d tests/fixtures ] && ls tests/fixtures/*.json >/dev/null 2>&1; then
+  bash scripts/run-fixtures.sh >/dev/null || fail "router-decision fixtures failed (run: bash scripts/run-fixtures.sh)"
+fi
+
 # Read-only enforcement for mcp/src/tools/ — no fs writes, no shell exec.
 # Agent-callable tools must not mutate state or spawn processes.
 if [ -d mcp/src/tools ]; then
