@@ -69,6 +69,7 @@ Convert the approved plan into small, executable tasks that can be verified one 
    If it does not, re-plan first — don't quietly widen scope here.
 9. Keep the task list synchronized with reality. If a new file is needed, re-plan before continuing.
 10. Record the plan/todo paths on the workflow artifact and leave `plan_trust_gate` at `pending` — only the engineer's Phase 2.5 approval flips it to `pass`. See `.claude/references/orchestration-gates.md`.
+11. **Anti-anchored gap check.** Before surfacing the plan to the engineer, dispatch the `plan-gap-reviewer` agent with the original user request and the saved plan path (and the spec path if it exists). The agent runs in a forked context and is forbidden from reading lessons, prior reviewer output, or the workflow artifact — its job is to challenge the plan against the repo with no anchors. Surface every `BLOCKING` finding back to the planner and revise before the approval gate. Surface `ADVISORY` findings unchanged at the approval gate so the engineer decides.
 
 ## Rules
 

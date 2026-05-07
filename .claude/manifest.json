@@ -1384,6 +1384,18 @@
       "target": "scripts/workflow-artifact.sh",
       "action": "sync",
       "description": "Helper for init/event/set/read/list/gate operations against .mtk/workflows/{uuid}.json"
+    },
+    "agents/plan-gap-reviewer.md": {
+      "source": ".claude/agents/plan-gap-reviewer.md",
+      "target": ".claude/agents/plan-gap-reviewer.md",
+      "action": "sync",
+      "description": "Anti-anchored fresh review of a saved plan against the current codebase — does not load lessons or prior reviewer output"
+    },
+    "tests/pressure-tests/plan-gap-reviewer-pressure.md": {
+      "source": "tests/pressure-tests/plan-gap-reviewer-pressure.md",
+      "target": "tests/pressure-tests/plan-gap-reviewer-pressure.md",
+      "action": "sync",
+      "description": "Pressure tests for plan-gap-reviewer's anti-anchoring contract"
     }
   },
   "protected": [

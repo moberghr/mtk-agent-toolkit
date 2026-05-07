@@ -28,7 +28,8 @@
   "agents": [
     "./.claude/agents/architecture-reviewer.md",
     "./.claude/agents/compliance-reviewer.md",
-    "./.claude/agents/test-reviewer.md"
+    "./.claude/agents/test-reviewer.md",
+    "./.claude/agents/plan-gap-reviewer.md"
   ],
   "settings.json": "./.claude/settings.json"
 }
