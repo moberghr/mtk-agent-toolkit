@@ -59,6 +59,29 @@ No completion claim is valid without fresh evidence from an actual command execu
    completion claim is stale when the verification event happened before the
    latest code-change event, even if both landed in the same wall-clock second.
 
+## Claim Extraction (When Verifying Upstream Agent Work)
+
+When the work being verified came from a prior agent — a builder subagent, a reviewer, an integration verifier — do NOT trust their summary. Extract their factual claims and reconcile each one independently before stating completion.
+
+**Procedure:**
+
+1. **List every factual claim** from the upstream agent's output. A claim is any sentence asserting a fact the verifier can re-check: "tests pass", "no SQL injection found", "the migration is reversible", "all error paths log", "Batch 2 is complete". Quote each one verbatim with its source.
+2. **Mark each claim `UNVERIFIED`** in your working notes.
+3. **Reconcile each claim** to one of:
+   - `VERIFIED` — you ran a command or read a file and the evidence supports the claim. Cite the evidence.
+   - `CONTRADICTED` — evidence shows the claim is false. The work is not complete; do not advance the gate. Block.
+   - `UNVERIFIABLE` — the claim cannot be checked from current state (no test exists, the codepath is not exercised, the assertion is opinion). Treat as a finding: ask the upstream agent for evidence or downgrade the verdict.
+4. **A claim that affects your verdict and remains `UNVERIFIED` is a stop condition.** State explicitly that you cannot complete verification, list the unverified claims, and return control without claiming pass.
+
+**Why:** Upstream agents have an incentive to declare success. A neutral readback that re-asserts their summary is not verification — it is laundering. The reconciliation step forces you to see the difference between "they said it" and "I checked it".
+
+**Example:**
+
+> Builder claim: "All Batch 2 tests pass."
+> → Run the same test command. Exit 0 with N/N → `VERIFIED: dotnet test --filter Batch2 → 14/14 pass`.
+> → Exit 0 with 0/0 (no tests collected) → `CONTRADICTED: 0 tests in Batch2 — claim is false`.
+> → Cannot run the test command in this environment → `UNVERIFIABLE: no test runner available; downgrade verdict and surface to engineer`.
+
 ## Rules
 
 - Every completion claim must cite a specific command and its output.
@@ -112,3 +135,4 @@ Forcing past a stuck state produces garbage output. Admitting difficulty is alwa
 - [ ] The output directly supports the claim
 - [ ] The evidence is from after the most recent code change
 - [ ] No warnings or failures were silently ignored
+- [ ] If verifying upstream agent work, every factual claim was extracted and reconciled (`VERIFIED`, `CONTRADICTED`, or `UNVERIFIABLE`) — none left `UNVERIFIED`
