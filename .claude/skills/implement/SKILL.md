@@ -73,6 +73,8 @@ Skip this phase when:
 
 Follow `.claude/skills/spec-driven-development/SKILL.md`.
 
+**Resolve ambiguity before drafting, not at the approval gate.** The spec skill's ambiguity gate (step 6) is mandatory — if two or more plausible designs, undefined scope edges, or unresolved architectural choices exist, ask via `AskUserQuestion` *before* writing the spec. The Phase 2.5 approval gate is a go/no-go on a fully-informed plan, not a place to surface open questions for the first time.
+
 The resulting plan must include:
 
 - scope classification
@@ -106,7 +108,7 @@ Then invoke `AskUserQuestion` with:
 - **Options:**
   - `Approve & run until done` — autonomous mode. Proceed through Phases 3-7; stop only on blocking issues (build failures needing design input, unexpected security findings, or scope expansion beyond the manifest). Set internal flag `autonomous = true` for the rest of the session.
   - `Approve (interactive)` — proceed, but ask focused follow-ups when decisions materially affect the implementation.
-  - `Edit first` — pause so the engineer can edit the spec/plan/todo files; wait for their next message.
+  - `Edit first` — pause so the engineer can edit the spec/plan/todo files; wait for their next message. (Open questions should already be resolved in Phase 1's ambiguity gate — use this for fine-tuning, not for surfacing new ambiguity.)
   - `Revise` — rewrite Phase 1/2 (overwriting the same file paths) and return to this gate.
   - `Show plan in terminal` — print the plan file's full contents, then re-ask this gate.
 
@@ -118,14 +120,18 @@ Note: this gate controls when *Claude* asks. Harness tool-permission prompts (fi
 
 ## Phase 3: Implement In Batches
 
-Follow `.claude/skills/incremental-implementation/SKILL.md`.
-Also follow:
+**Fork — pick the implementation path from the JSON sidecar at `docs/specs/<date>-<slug>.json`:**
+
+- **Subagent path** (`.claude/skills/subagent-implementation/SKILL.md`) — when **any** of: `plan.batches.length >= 3`, `change_manifest.length >= 6`, `security_impact != "none"`. Dispatches one fresh implementer subagent per batch with orchestrator-side drift micro-checks. Asks once which model (Sonnet/Opus) to use for the implementer.
+- **Inline path** (`.claude/skills/incremental-implementation/SKILL.md`) — for everything below threshold. Smaller features stay in the main context.
+
+Always also follow:
 
 - `.claude/skills/test-driven-development/SKILL.md`
 - `.claude/skills/source-driven-development/SKILL.md` when framework or SDK behavior is uncertain
 - `.claude/skills/security-and-hardening/SKILL.md` when the scope touches auth, financial state, secrets, or infra
 
-For every batch:
+Whichever path runs, every batch must:
 
 1. implement only in-manifest files
 2. add or update tests in the same batch
@@ -249,6 +255,7 @@ Report:
 - Phase 2.5 approval gate skipped or merged into Phase 3
 - Phase 3 started without an explicit approval answer from the engineer
 - Approval gate answered by prose prompt instead of `AskUserQuestion`
+- Spec drafted with material ambiguity unresolved (open questions deferred to "Open questions" section instead of asked via `AskUserQuestion` before drafting)
 - Files touched outside the change manifest
 - Checkpoints skipped
 - No behavioral diff before review

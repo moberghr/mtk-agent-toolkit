@@ -10,6 +10,72 @@ argument-hint: <what you want to do>
 
 You are a router. Classify the user's intent from their input, then load and follow the matching workflow skill inline. Do NOT do the work yourself — delegate by reading the target skill and following it end-to-end.
 
+## Routing Decision Graph
+
+This graph is the canonical decision flow. The Route Table below is the lookup; this graph is the order. Walk the diamonds top to bottom; first match wins.
+
+```dot
+digraph mtk_routing {
+  rankdir=TB;
+  node [shape=box, style=rounded, fontname="Helvetica"];
+  edge [fontname="Helvetica", fontsize=10];
+
+  start    [label="user input"];
+  empty    [label="empty / help?", shape=diamond];
+  help     [label="print help", style="rounded,filled", fillcolor="#e8f0ff"];
+  esc      [label="contains\n'escalated from fix'?", shape=diamond];
+  setup    [label="setup / bootstrap /\naudit / init / first time?", shape=diamond];
+  redirect [label="redirect: /mtk-setup", style="rounded,filled", fillcolor="#e8f0ff"];
+  rev      [label="review / commit /\nstaged / pre-commit?", shape=diamond];
+  pcr      [label="pre-commit-review", style="rounded,filled", fillcolor="#e0f0e0"];
+  hlth     [label="health / usage /\nstats / analytics?", shape=diamond];
+  th       [label="toolkit-health", style="rounded,filled", fillcolor="#e0f0e0"];
+  fixv     [label="fix / bug / broken /\nerror / typo / failing?", shape=diamond];
+  feat     [label="add / create / build /\nfeature / implement / new?", shape=diamond];
+  ambig    [label="ALSO matches feature\n(e.g. 'fix the auth feature')?", shape=diamond];
+  ask      [label="ask ONE Q:\nsmall fix (1-3 files) or\nlarger feature?", style="rounded,filled", fillcolor="#fff8d0"];
+  fix      [label="fix", style="rounded,filled", fillcolor="#e0f0e0"];
+  impl     [label="implement", style="rounded,filled", fillcolor="#e0f0e0"];
+  stat     [label="status / report /\nwhat's loaded / diagnostic?", shape=diamond];
+  cr       [label="context-report", style="rounded,filled", fillcolor="#e0f0e0"];
+  cmd      [label="audit claude.md /\nclaude.md stale?", shape=diamond];
+  cma      [label="claude-md-audit", style="rounded,filled", fillcolor="#e0f0e0"];
+
+  start -> empty;
+  empty -> help [label="yes"];
+  empty -> esc  [label="no"];
+  esc   -> impl [label="yes (internal marker)"];
+  esc   -> setup [label="no"];
+  setup -> redirect [label="yes"];
+  setup -> rev  [label="no"];
+  rev   -> pcr  [label="yes"];
+  rev   -> hlth [label="no"];
+  hlth  -> th   [label="yes"];
+  hlth  -> fixv [label="no"];
+  fixv  -> ambig [label="yes"];
+  ambig -> ask  [label="yes"];
+  ambig -> fix  [label="no"];
+  ask   -> fix  [label="user: small"];
+  ask   -> impl [label="user: larger"];
+  fixv  -> feat [label="no"];
+  feat  -> impl [label="yes"];
+  feat  -> stat [label="no"];
+  stat  -> cr   [label="yes"];
+  stat  -> cmd  [label="no"];
+  cmd   -> cma  [label="yes"];
+  cmd   -> help [label="no match → help"];
+}
+```
+
+**Red flags while routing:**
+
+| Rationalization | Reality |
+|---|---|
+| "User said 'fix' so just route to fix" | Check for feature-sized nouns first ("fix the auth system") — that's the ambig branch, ask once. |
+| "Setup-ish wording, I'll route to implement" | Setup is `/mtk-setup` only. Always redirect, never absorb. |
+| "I'll summarize what they want before routing" | Pass the original description through verbatim (Rule 6). |
+| "Two diamonds match, I'll just pick one" | If both match with similar specificity, ask one Q. Silent guessing = wrong half the time. |
+
 ## Route Table
 
 Match the user's input against these patterns. Check from top to bottom; first match wins.

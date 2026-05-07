@@ -2,6 +2,20 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.3.0] - 2026-05-07
+
+### Added — superpowers borrow improvements
+
+Two patterns adapted from `obra/superpowers` after a comparative analysis against MTK's positioning.
+
+- **GraphViz `dot` decision graphs** added inside `mtk/`, `fix/`, and `spec-driven-development/` SKILL.md. Each graph encodes the exact branch points where models most often misroute (router ambiguity, fix scope-guard escalation, spec skip-vs-write + `security_impact` honesty), accompanied by a Red Flags rationalization table. Models follow visual decision flow more reliably than equivalent prose. Anatomy preserved per S2.2 — graphs live inside existing `## Workflow` / Route Table sections.
+- **`subagent-implementation` skill.** New per-batch implementer-subagent path for large features. Phase 3 of `implement` now forks: above the threshold (≥3 batches OR ≥6 files OR non-none `security_impact`) it dispatches the new skill; below threshold it stays on inline `incremental-implementation`. The new skill asks once via `AskUserQuestion` for implementer model (Sonnet/Opus), then loops one fresh subagent per batch with a structured JSON contract (`actual_files`, `build`, `tests`, `behavioral_diff`, `deviations`). Drift micro-check is orchestrator-side and synchronous: in-package extra files auto-amend the sidecar, cross-package or new-public-contract drift re-opens Phase 2.5. Phase 3.5 spec-drift and Phase 4 two-stage review run unchanged. Pressure test covers 10 adversarial scenarios.
+
+### Changed
+
+- `implement/SKILL.md` Phase 1 explicitly delegates ambiguity resolution to the spec skill's pre-draft gate — Phase 2.5 is a go/no-go on a fully-informed plan, not the place to surface new questions for the first time.
+- `spec-driven-development/SKILL.md` decision graph includes an explicit `ambig?` diamond before drafting; clarifying questions go through `AskUserQuestion` upfront.
+
 ## [7.2.0] - 2026-04-27
 
 ### Added — graphify borrow improvements

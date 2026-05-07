@@ -46,6 +46,61 @@ If the work grows beyond 3 files, introduces new architecture, or needs a formal
 
 Follow the phases below in order. Each phase loads what it needs and no more.
 
+### Decision Graph
+
+The scope guard is the part that gets skipped most. This graph makes the escalation triggers explicit — any `yes` on the red diamonds means STOP and escalate, not "expand quietly."
+
+```dot
+digraph fix_flow {
+  rankdir=TB;
+  node [shape=box, style=rounded, fontname="Helvetica"];
+  edge [fontname="Helvetica", fontsize=10];
+
+  start  [label="fix requested"];
+  load   [label="load context\n(CLAUDE.md, tech stack,\nrelevant refs only)"];
+  repro  [label="reproduce root cause\n(debugging-and-error-recovery)"];
+  edit   [label="edit target file(s)"];
+
+  files4 [label="4th file\nrequired?", shape=diamond, style="filled", fillcolor="#ffe0e0"];
+  slice  [label="new handler /\nentity / slice?", shape=diamond, style="filled", fillcolor="#ffe0e0"];
+  arch   [label="needs architectural\nre-planning?", shape=diamond, style="filled", fillcolor="#ffe0e0"];
+  esc    [label="STOP — self-escalate:\nSkill('mtk', '<desc> —\nescalated from fix: <reason>')",
+          style="rounded,filled", fillcolor="#ff9090"];
+
+  tdd    [label="behavior\nchanged?", shape=diamond];
+  test   [label="add/update tests\n(test-driven-development)"];
+  build  [label="run build +\nrelevant tests"];
+  green  [label="all green?", shape=diamond];
+  fix2   [label="debug; do NOT\nweaken the test"];
+  report [label="final report:\nfiles, root cause,\ntests, build/test result",
+          style="rounded,filled", fillcolor="#e0f0e0"];
+
+  start -> load -> repro -> edit -> files4;
+  files4 -> esc   [label="yes"];
+  files4 -> slice [label="no"];
+  slice  -> esc   [label="yes"];
+  slice  -> arch  [label="no"];
+  arch   -> esc   [label="yes"];
+  arch   -> tdd   [label="no — scope holds"];
+  tdd    -> test  [label="yes"];
+  tdd    -> build [label="no"];
+  test   -> build;
+  build  -> green;
+  green  -> fix2   [label="no"];
+  fix2   -> build;
+  green  -> report [label="yes"];
+}
+```
+
+**Red flags inside the loop:**
+
+| Rationalization | Reality |
+|---|---|
+| "Just one more file and I'm done" | That's the 4th file. Stop. Escalate. |
+| "I'll add the new handler quickly, it's still a fix" | New slice = new feature. Escalate. |
+| "The test fails but the fix is right, I'll relax the assertion" | Debug the implementation, don't weaken the test. |
+| "Scope grew but the engineer wants it fast" | Escalation is faster than a half-broken sprawl. The router still routes; you just hand off. |
+
 ### Load Context (Progressive Disclosure)
 
 1. Follow `.claude/skills/context-engineering/SKILL.md`.

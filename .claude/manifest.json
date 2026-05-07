@@ -1,6 +1,6 @@
 {
-  "version": "7.2.0",
-  "updated": "2026-04-27",
+  "version": "7.3.0",
+  "updated": "2026-05-07",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
   "coding-guidelines": {
@@ -361,6 +361,12 @@
       "action": "sync",
       "description": "Language-agnostic batched implementation discipline"
     },
+    "skills/subagent-implementation/SKILL.md": {
+      "source": ".claude/skills/subagent-implementation/SKILL.md",
+      "target": ".claude/skills/subagent-implementation/SKILL.md",
+      "action": "sync",
+      "description": "Per-batch subagent-driven implementation for large features (3+ batches, 6+ files, or non-none security_impact); orchestrator-side drift checks"
+    },
     "skills/debugging-and-error-recovery/SKILL.md": {
       "source": ".claude/skills/debugging-and-error-recovery/SKILL.md",
       "target": ".claude/skills/debugging-and-error-recovery/SKILL.md",
@@ -543,6 +549,12 @@
       "target": "tests/pressure-tests/code-review-pressure.md",
       "action": "sync",
       "description": "Adversarial pressure test for code-review skill"
+    },
+    "tests/pressure-tests/subagent-implementation-pressure.md": {
+      "source": "tests/pressure-tests/subagent-implementation-pressure.md",
+      "target": "tests/pressure-tests/subagent-implementation-pressure.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for subagent-implementation skill"
     },
     "tests/pressure-tests/confidence-scoring-pressure.md": {
       "source": "tests/pressure-tests/confidence-scoring-pressure.md",

@@ -34,6 +34,69 @@ Write the implementation spec before writing code. The spec is the shared source
 
 ## Workflow
 
+### Decision Graph
+
+This graph drives the two questions models get wrong most often: *"do I need a spec at all?"* and *"can I start coding after writing one?"* The red node is the hard stop — implementation never begins inside this skill.
+
+```dot
+digraph spec_flow {
+  rankdir=TB;
+  node [shape=box, style=rounded, fontname="Helvetica"];
+  edge [fontname="Helvetica", fontsize=10];
+
+  start    [label="task arrived"];
+  trivial  [label="typo / 1-line config /\nclear quick fix?", shape=diamond];
+  skip     [label="skip spec\n(use fix workflow)", style="rounded,filled", fillcolor="#e0f0e0"];
+  multi    [label="multi-file OR new endpoint /\nhandler / migration OR\nbreaking change?", shape=diamond];
+  long     [label="longer than a short\nfocused session?", shape=diamond];
+
+  load     [label="load standards:\nCLAUDE.md, coding guidelines,\nsecurity, testing, architecture,\nrelevant lessons"];
+  assume   [label="surface assumptions\n(runtime, arch, storage,\nauth, boundaries)"];
+  classify [label="classify scope:\ninternal-refactoring /\nnew-feature / breaking-change"];
+  pattern  [label="read 2-3 nearby files\nfor local pattern"];
+  ambig    [label="ambiguity present?\n(≥2 plausible designs OR\nundefined scope edge OR\nunresolved arch choice)", shape=diamond];
+  ask      [label="ask via AskUserQuestion\nBEFORE drafting\n(resolve open Qs upfront)"];
+  draft    [label="draft spec sections:\nsummary · success criteria ·\narch · security impact ·\nchange manifest · test manifest ·\nbatches · risks · open Qs"];
+  elegance [label="elegance check:\nfewer files? fewer\nabstractions? fewer\nmoving parts?"];
+  sec      [label="security_impact\nhonest?", shape=diamond];
+  fixsec   [label="upgrade security_impact\n(spec-drift will catch lies)",
+            style="rounded,filled", fillcolor="#fff8d0"];
+  persist  [label="write to disk:\ndocs/specs/<date>-<slug>.md\n+ <date>-<slug>.json sidecar\n(version-suffix if exists)"];
+  approve  [label="STOP — hand to approval gate.\nDo NOT implement.\nDo NOT merge into batch 1.",
+            style="rounded,filled", fillcolor="#ff9090"];
+
+  start -> trivial;
+  trivial -> skip  [label="yes"];
+  trivial -> multi [label="no"];
+  multi   -> load  [label="yes"];
+  multi   -> long  [label="no"];
+  long    -> load  [label="yes"];
+  long    -> skip  [label="no"];
+
+  load -> assume -> classify -> pattern -> ambig;
+  ambig -> ask   [label="yes"];
+  ambig -> draft [label="no"];
+  ask   -> draft;
+  draft -> elegance -> sec;
+  sec  -> fixsec  [label="no — auth/payments/\naudit/secrets/PII/IAM\nbut marked 'none'"];
+  fixsec -> persist;
+  sec  -> persist [label="yes"];
+  persist -> approve;
+}
+```
+
+**Red flags inside the loop:**
+
+| Rationalization | Reality |
+|---|---|
+| "I'll write the spec after I implement it" | That's documentation, not specification. The value is deciding *before* coding. |
+| "Small enough to skip approval" | Multi-file work creates risk regardless of size. The gate catches bad direction early. |
+| "I already know which files will change" | You have a hypothesis. Read neighboring files; prove the manifest. |
+| "security_impact is `none`, it's just a small change" | If the diff touches auth / payments / audit trails / secrets / PII / IAM, it isn't `none`. spec-drift-detection blocks. |
+| "I'll start batch 1 while waiting for approval" | No. The approval gate is the hard stop. |
+
+### Steps
+
 1. Read standards in this order:
    - `CLAUDE.md`
    - The coding guidelines from the active tech stack skill's `## Reference Files`
@@ -48,7 +111,17 @@ Write the implementation spec before writing code. The spec is the shared source
    - `new-feature`
    - `breaking-change`
 5. Read 2-3 nearby files that represent the local pattern to follow.
-6. Ask clarifying questions only for ambiguities that would materially change the plan.
+6. **Ambiguity gate (BEFORE drafting).** Detect whether the task has genuine ambiguity that would change the spec. Trigger if **any** of:
+   - Two or more plausible designs exist and the request doesn't pick one (e.g., reflection vs source-gen, sync vs async, single vs split package).
+   - Scope edges are undefined (e.g., "users" — authenticated only? including service accounts? soft-deleted?).
+   - An architectural choice is unresolved (e.g., new boundary, new persistence target, cross-slice contract).
+   - A success criterion would be untestable as stated.
+
+   If triggered: stop and call `AskUserQuestion` with one question per ambiguity (max 4). Each question presents 2–4 concrete options with the tradeoff in the description. Wait for answers, then proceed to drafting with answers folded into the spec — do NOT defer them to "Open questions" in the spec body.
+
+   If `AskUserQuestion` is deferred, load it via `ToolSearch` with `select:AskUserQuestion`. If the harness doesn't expose it, print the questions as a numbered list and stop until the engineer answers.
+
+   Skip the gate when: the engineer's request already specifies the approach, the task follows an obvious existing pattern, or only one viable design fits the constraints. Document the skip in one line ("ambiguity gate skipped: <reason>") so it's visible in the session log.
 7. Produce a spec with these sections:
    - Summary
    - Success criteria
