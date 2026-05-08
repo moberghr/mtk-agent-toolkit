@@ -161,14 +161,49 @@ After the checklist, explicitly:
 2. For each, verify a test exists that calls it
 3. Flag gaps as **Warnings** (or **Critical** if the method handles money, auth, or data mutation)
 
-## Step 5: Output
+## Step 5: Score the Five Dimensions
+
+Borrowed from sanmak/specops (`core/evaluation.md`). After enumerating findings, assign a 1–10 score for each of the five dimensions and cite at least one **file:line evidence quote** per score (whether the score is high or low — "no issues found" is itself an evidentiary claim).
+
+| Dimension | What it measures |
+|---|---|
+| **correctness** | Does the code do what the spec said? Are edge cases handled? Are invariants preserved? |
+| **security** | Auth, secrets, input validation, audit, supply chain. |
+| **test_coverage** | Are new public behaviors tested? Are error paths exercised? Are tests meaningful? |
+| **architecture_fit** | Does the change respect the codebase's slices, boundaries, and patterns? |
+| **simplicity** | Could the same outcome be achieved with fewer files, abstractions, or moving parts? |
+
+### Score rubric (1–10)
+
+| Score | Meaning |
+|---|---|
+| 9–10 | Exemplary on this axis. Cite the evidence quote that earned it. |
+| 7–8  | Acceptable. Minor improvements possible but not blocking. |
+| 4–6  | Concerning. Blocks merge — the engineer must address before re-review. |
+| 1–3  | Severe. Multiple critical findings on this axis. |
+
+### Auto-fail rules
+
+1. **Block on any dimension < 7.** Verdict becomes `NEEDS_CHANGES` regardless of how few critical findings you logged. The score is the gate — not the count.
+2. **Uniform-score auto-fail.** If you assign the same score to every dimension (all 8s, all 9s, etc.), the review is rejected as **non-discriminating**. A real review distinguishes axes. Vary the scores or revisit the work — at least one dimension should differ from the rest.
+3. **Evidence-or-zero.** A score without a `file:line` evidence quote is treated as 0 (auto-fail). "Looks fine" is not evidence.
+
+### Iteration cap (escalation rule)
+
+The orchestrating workflow caps remediation at **2 iterations on the same blocking dimension**. If a third iteration produces a score < 7 on a dimension that has already been below 7 twice, stop and escalate to a human — automated remediation has stopped converging. State the dimension, the iteration count, and the remaining findings.
+
+## Step 6: Output
 
 Emit the schema-conformant output per `.claude/references/review-finding-schema.md`:
 
 1. **Markdown table** of surfaced findings (confidence >= threshold), one row each.
-2. **Fenced JSON block** — the structured result, including every finding (even below-threshold ones are counted in `summary.filtered_below_threshold`). This is the source of truth.
-3. **Untested code paths** — bullet list of new/modified public methods without test coverage (separate from the schema table; these map to `warning` or `critical` findings depending on whether they touch money/auth/mutation).
-4. **What's good** — short acknowledgement of things done well (not part of the JSON; humans only).
+2. **Scores block** — markdown table of the 5 dimensions with score, evidence file:line, and one-line rationale.
+3. **Fenced JSON block** — the structured result, including every finding (even below-threshold ones are counted in `summary.filtered_below_threshold`) **plus** the `scores` object (see schema). This is the source of truth.
+4. **Untested code paths** — bullet list of new/modified public methods without test coverage (separate from the schema table; these map to `warning` or `critical` findings depending on whether they touch money/auth/mutation).
+5. **What's good** — short acknowledgement of things done well (not part of the JSON; humans only).
+
+If a workflow artifact is active (`MTK_WF_UUID` set), the orchestrator records the scores via:
+`scripts/workflow-artifact.sh set "$MTK_WF_UUID" results.review_scores.<dimension>=<n>` for each of the five dimensions, plus `results.review_iteration=<n>` for the current cycle.
 
 If `findings[]` is empty after filtering, include a `below_threshold_rationale` citing:
 - How many below-threshold findings were suppressed
@@ -185,6 +220,7 @@ If you cannot complete the review, report your status honestly:
 Never produce a low-confidence review to avoid reporting BLOCKED. A clear escalation is more valuable than a garbage approval.
 
 ## Rules for You
+- NEVER approve code with any scored dimension < 7
 - NEVER approve code with Critical issues
 - **Find real problems, not just style nits.** Security holes, missing tests, broken data integrity, incorrect assumptions are what matter most. Style issues are the easy part.
 - Be specific: file paths, line numbers, exact rule references

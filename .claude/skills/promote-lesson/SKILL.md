@@ -35,7 +35,16 @@ Personal lessons in `.claude/lessons/personal.md` are gitignored — they belong
 
 4. **Reword for team.** For each selected lesson, rewrite first-person language (`I`, `my`) into team-applicable phrasing (`engineers`, `the codebase`, `we`). Show the proposed reworded text and confirm with the engineer before writing — wording matters when it lands in a committed file.
 
-5. **Append to team file.** Append the reworded entry to `tasks/lessons.md` at the bottom (newest last, matching the existing convention). Keep the structure: `## [Date] — [Title]`, `**Correction:**`, `**Rule:**`, `**Why:**`, `**Applies to:**`. Add a `**Promoted from personal:**` note with the original date so provenance is auditable.
+5. **Append to team store.**
+   - **Structured (preferred when `scripts/learnings.sh` is present).** Add a JSONL entry with `--scope team --source promotion` and the reworded body, then `learnings.sh regen-markdown` to rebuild `tasks/lessons.md`:
+     ```bash
+     bash scripts/learnings.sh add --scope team --source promotion \
+       --severity warn --phase any \
+       --title "<reworded title>" --body "<reworded body>" \
+       --rule "<rule>" --applies-when "<when>"
+     bash scripts/learnings.sh regen-markdown
+     ```
+   - **Markdown fallback.** Append the reworded entry to `tasks/lessons.md` at the bottom (newest last). Keep the structure: `## [Date] — [Title]`, `**Correction:**`, `**Rule:**`, `**Why:**`, `**Applies to:**`. Add a `**Promoted from personal:**` note with the original date so provenance is auditable.
 
 6. **Remove from personal file.** Delete the promoted entry from `.claude/lessons/personal.md`. Do not leave a duplicate — the team file is now authoritative for that rule.
 

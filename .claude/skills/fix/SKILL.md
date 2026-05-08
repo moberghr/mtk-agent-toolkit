@@ -112,7 +112,11 @@ digraph fix_flow {
    - **If fix touches auth/secrets/financial:** `.claude/references/security-checklist.md`
    - **If adding tests:** `.claude/references/testing-patterns.md` plus the testing supplement from the tech stack
    - **Before commit:** `.claude/references/pre-commit-review-list.md` if present
-5. Resolve and scan relevant lessons from `tasks/lessons.md`.
+5. Resolve and scan relevant lessons. When `scripts/learnings.sh` is present, prefer the structured query (5-layer filter — proximity / recurrence / severity / validity / phase) over the flat markdown file:
+   ```bash
+   bash scripts/learnings.sh query --phase implement --files "<target file paths>" --max 8
+   ```
+   Falls back to scanning `tasks/lessons.md` directly when the script is absent (older repos).
 6. Read the target file and its closest neighbors before editing.
 
 **Progressive disclosure principle:** Small fixes do not need all references loaded. Load what's relevant to the specific fix, then load additional references if the scope shifts.

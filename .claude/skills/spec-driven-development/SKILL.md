@@ -103,7 +103,7 @@ digraph spec_flow {
    - `.claude/references/security-checklist.md`
    - `.claude/references/testing-patterns.md`
    - `.claude/references/architecture-principles.md` if present
-   - Relevant lessons from `tasks/lessons.md`
+   - Relevant lessons via `bash scripts/learnings.sh query --phase spec --files "<comma-separated paths from initial scope>" --max 8` (5-layer retrieval: proximity / recurrence / severity / validity / phase). Falls back to reading `tasks/lessons.md` directly if `scripts/learnings.sh` is absent (older repos).
 2. Resolve the lessons path using the main worktree when in a worktree.
 3. Surface assumptions before planning. State what you believe about runtime, architecture, storage, auth, and boundaries. Do not silently fill in major gaps.
 4. Classify scope:
@@ -132,7 +132,9 @@ digraph spec_flow {
    - Implementation batches
    - Risks and assumptions
    - Open questions
+   - **Requirements** — every requirement-bearing bullet uses EARS notation (see `## Requirements Format (EARS)` below). Run the ANT self-check before continuing.
 8. Run an elegance check: reduce file count, new abstractions, and moving parts if a simpler design exists.
+8a. **EARS + ANT lint.** Run `bash scripts/lint-ears.sh docs/specs/<file>.md` after persisting the spec (step 9). Zero violations required before handing to the approval gate. If the script is absent (older repos), at minimum eyeball the Requirements section against the rules in `## Requirements Format (EARS)`.
 9. Persist the spec to disk:
    - Create `docs/specs/` if it does not exist.
    - Compute the base target: `docs/specs/YYYY-MM-DD-<feature-slug>` (no extension yet).
@@ -149,6 +151,56 @@ digraph spec_flow {
    - This enables session recovery, human review outside chat, and reuse across sessions.
    - Add `docs/specs/` to `.gitignore` if not already present — specs are working artifacts, not committed deliverables.
 10. Always stop for approval before implementation. When invoked from the implement workflow, this means handing control back to Phase 2.5 approval gate (which uses `AskUserQuestion`). Do not silently continue to implementation.
+
+## Requirements Format (EARS)
+
+Every requirement-bearing bullet in the spec's `## Requirements` section uses **EARS** (Easy Approach to Requirements Syntax). EARS makes requirements testable by forcing a predicate-with-trigger shape; flowery prose has nowhere to hide.
+
+Borrowed from sanmak/specops (`core/writing-quality.md`).
+
+### The five templates
+
+| Variant | Template | Example |
+|---|---|---|
+| **Ubiquitous** (always) | The system **shall** \<response\>. | The system shall persist every audit event for at least 7 years. |
+| **Event-driven** | **When** \<trigger\>, the system **shall** \<response\>. | When a payment fails three times, the system shall lock the account. |
+| **State-driven** | **While** \<state\>, the system **shall** \<response\>. | While a migration is running, the system shall reject new write requests. |
+| **Optional** | **Where** \<feature\>, the system **may** \<response\>. | Where multi-factor auth is enabled, the system may skip the SMS step. |
+| **Unwanted** | **If** \<trigger\>, **then** the system **shall** \<response\>. | If the request lacks a tenant ID, then the system shall reject it with HTTP 400. |
+
+### ANT (Anti-Null-Tautology) check
+
+A requirement that **cannot be falsified** carries no information. After drafting Requirements, walk each bullet and ask: *what would a counter-example look like?* If you cannot describe one, the bullet fails the ANT test and must be rewritten or dropped.
+
+Common ANT failures (auto-flagged by `lint-ears.sh`):
+
+- "The system shall be reliable / performant / scalable / secure / robust / clean."
+- "The code shall follow best practices."
+- "The system shall handle errors gracefully."
+- "Where appropriate" / "as needed" / "if necessary" with no concrete trigger.
+
+The lint scopes only to the `## Requirements` section (and its EARS subsections); narrative sections (Summary, Risks, Goals) are not checked.
+
+### Subsection layout (recommended)
+
+```markdown
+## Requirements
+
+### Ubiquitous
+- The system shall ...
+
+### Event-driven
+- When X, the system shall ...
+
+### State-driven
+- While Y, the system shall ...
+
+### Optional
+- Where Z, the system may ...
+
+### Unwanted behaviours
+- If W, then the system shall ...
+```
 
 ## Machine-Parseable Manifest (JSON Sidecar)
 
@@ -231,3 +283,4 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared table. Spec-spe
       and security_impact
 - [ ] `security_impact` honestly reflects touched trust boundaries (not `none`
       if auth / payments / audit / secrets / PII / IAM are involved)
+- [ ] `bash scripts/lint-ears.sh <spec.md>` returns 0 (EARS + ANT clean)

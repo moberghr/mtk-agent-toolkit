@@ -1,6 +1,6 @@
 {
-  "version": "7.4.0",
-  "updated": "2026-05-07",
+  "version": "7.5.0",
+  "updated": "2026-05-08",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
   "coding-guidelines": {
@@ -136,6 +136,31 @@
       "target": ".claude/references/performance-checklist.md",
       "action": "sync",
       "description": "Generic performance checklist — load alongside the active stack's performance supplement"
+    },
+    "references/dependency-intake-checklist.md": {
+      "source": ".claude/references/dependency-intake-checklist.md",
+      "target": ".claude/references/dependency-intake-checklist.md",
+      "action": "sync",
+      "applyTo": [
+        "**/package.json",
+        "**/*.csproj",
+        "**/Directory.Packages.props",
+        "**/requirements.txt",
+        "**/pyproject.toml",
+        "**/Pipfile",
+        "**/poetry.lock",
+        "**/go.mod",
+        "**/Cargo.toml",
+        "**/Gemfile",
+        "**/composer.json"
+      ],
+      "description": "Five-criteria gate (scope/maintenance/size/security/license) for any new third-party dependency — borrowed from sanmak/specops"
+    },
+    "references/learnings-schema.md": {
+      "source": ".claude/references/learnings-schema.md",
+      "target": ".claude/references/learnings-schema.md",
+      "action": "sync",
+      "description": "Schema for structured learnings stored at .mtk/learnings.jsonl — machine-readable mirror of tasks/lessons.md with 5-layer retrieval"
     },
     "docs/recommended-tooling/shared.md": {
       "source": "docs/recommended-tooling/shared.md",
@@ -1384,6 +1409,18 @@
       "target": "scripts/workflow-artifact.sh",
       "action": "sync",
       "description": "Helper for init/event/set/read/list/gate operations against .mtk/workflows/{uuid}.json"
+    },
+    "scripts/learnings.sh": {
+      "source": "scripts/learnings.sh",
+      "target": "scripts/learnings.sh",
+      "action": "sync",
+      "description": "Manage structured learnings (.mtk/learnings.jsonl) — add | query | regen-markdown | migrate. Drives 5-layer retrieval at start of spec/fix."
+    },
+    "scripts/lint-ears.sh": {
+      "source": "scripts/lint-ears.sh",
+      "target": "scripts/lint-ears.sh",
+      "action": "sync",
+      "description": "Structural EARS + ANT lint over the Requirements section of spec markdown — borrowed from sanmak/specops"
     },
     "agents/plan-gap-reviewer.md": {
       "source": ".claude/agents/plan-gap-reviewer.md",

@@ -52,7 +52,8 @@ Treat security and compliance as design constraints, not final review polish. Ch
 6. Check audit requirements for state changes that require an audit trail.
 7. Check query safety, transaction boundaries, and error exposure.
 8. For infra, check least privilege, blast radius, and secret access scope.
-9. If a requirement is unclear, stop and ask rather than guessing.
+9. **Supply chain — dependency intake.** If the diff adds or replaces a third-party dep (any of `package.json`, `*.csproj`, `Directory.Packages.props`, `requirements.txt`, `pyproject.toml`, `Pipfile`, `go.mod`, `Cargo.toml`, `Gemfile`, `composer.json`), walk the new dep through `.claude/references/dependency-intake-checklist.md` — scope, maintenance, size, security, license. Two `Poor` ratings block; one `Poor` requires written override. Cite concrete evidence (CVE id, last-release date, license SPDX) per Poor rating.
+10. If a requirement is unclear, stop and ask rather than guessing.
 
 ## Rules
 
@@ -60,6 +61,7 @@ Treat security and compliance as design constraints, not final review polish. Ch
 - No unaudited state mutation where the domain requires audit trails.
 - No trust in external input without validation.
 - No wildcard IAM/resource access without explicit justification.
+- No new third-party dep that fails the 5-criteria intake gate (`.claude/references/dependency-intake-checklist.md`).
 
 ## Common Rationalizations
 
@@ -79,3 +81,4 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared table. Security
 - [ ] Audit requirements were checked (domain supplement consulted if present)
 - [ ] No secrets or PII leakage is introduced
 - [ ] Infra permissions remain least-privilege
+- [ ] Any new third-party dep cleared the intake checklist (or has documented override)

@@ -43,6 +43,13 @@ full review envelope expected from review skills and reviewer agents.
       "suggested_fix": "One-line description of the remediation."
     }
   ],
+  "scores": {
+    "correctness": { "value": 8, "evidence": "src/Order.cs:142", "rationale": "Edge cases for partial fills handled" },
+    "security": { "value": 9, "evidence": "src/AuthMiddleware.cs:30", "rationale": "RBAC at service layer; no PII in logs" },
+    "test_coverage": { "value": 6, "evidence": "tests/OrderTests.cs:1", "rationale": "Happy path only; cancellation path untested" },
+    "architecture_fit": { "value": 8, "evidence": "src/Orders/", "rationale": "Stays within slice; no cross-project access" },
+    "simplicity": { "value": 7, "evidence": "src/Orders/Handlers.cs:55", "rationale": "Could collapse two helpers but acceptable" }
+  },
   "internet_facing": false,
   "needs_human_review": [
     {
@@ -165,6 +172,26 @@ honest filter.
 
 - Any `critical` finding at or above threshold → `NEEDS_CHANGES`
 - Any finding with `gate: "mandatory"` → `NEEDS_CHANGES`
+- **Any `scores.<dim>.value < 7` → `NEEDS_CHANGES`** (per the scored-evaluator contract)
+- **Uniform `scores` (all five values equal) → `NEEDS_CHANGES` with reason `non-discriminating`**
 - Otherwise → `PASS`
 
 Warnings and suggestions do not force `NEEDS_CHANGES` but should be addressed.
+
+## Scores Block (Scored Adversarial Evaluator)
+
+Borrowed from sanmak/specops (`core/evaluation.md`). Every review (compliance and code-review-and-quality) MUST emit a `scores` object with five dimensions: `correctness`, `security`, `test_coverage`, `architecture_fit`, `simplicity`.
+
+**Per-dimension contract:**
+- `value` — integer 1–10 (9–10 exemplary · 7–8 acceptable · 4–6 blocks · 1–3 severe).
+- `evidence` — file:line citation. A score without evidence is treated as 0 (auto-fail).
+- `rationale` — one-line explanation tying the score to the evidence.
+
+**Auto-fail rules** (enforced by reviewers, not the schema):
+1. Any `value < 7` → block.
+2. All five `value`s equal → reject as `non-discriminating`.
+3. Missing `evidence` → score becomes 0 → block.
+
+**Iteration cap.** Orchestrators cap remediation at 2 iterations on the same blocking dimension. A third iteration that would still score < 7 on the same dimension escalates to a human reviewer.
+
+**Workflow artifact integration.** When `MTK_WF_UUID` is set, the orchestrator emits per-dimension scores into `results.review_scores.<dim>` plus `results.review_iteration` for cycle tracking.
