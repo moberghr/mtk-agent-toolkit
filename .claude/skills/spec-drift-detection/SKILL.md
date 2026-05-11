@@ -65,6 +65,16 @@ Phase 2.5 did not cover the final code. Detect divergence before review.
      for added/modified public contracts (controller routes, handler
      classes, exported functions, etc., per active tech stack).
 
+3a. **EARS / ANT structural lint of the spec itself.** Run
+   `bash scripts/lint-ears.sh <spec.md>` (the markdown spec next to the JSON
+   sidecar). EARS / ANT violations on the spec count as drift of the spec
+   from its own contract — emit one finding per violation with
+   `source: "drift"`, `severity: "warning"`, `confidence: 100`,
+   `rule: "EARS / ANT"`. They do not block on their own (warning, not
+   critical), but they signal a spec that should be tightened before the
+   next iteration. If `scripts/lint-ears.sh` is absent, skip with a one-line
+   note in the output.
+
 4. **Compare and emit findings** per
    `.claude/references/review-finding-schema.md`, with `source: "drift"`:
 
@@ -149,3 +159,5 @@ If the workflow artifact is active, drift findings flip the `phase_exit_gate` fo
       `source: "drift"`
 - [ ] Verdict matches the severity of the drift (critical → NEEDS_CHANGES)
 - [ ] No silent spec edits were made to suppress drift findings
+- [ ] `bash scripts/lint-ears.sh` was run against the spec markdown (or
+      explicitly skipped with a note when the script is unavailable)

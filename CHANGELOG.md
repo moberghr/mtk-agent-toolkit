@@ -2,6 +2,29 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.5.0] - 2026-05-08
+
+### Added — SpecOps borrow improvements
+
+Four patterns adapted from `sanmak/specops` after a comparative analysis against MTK's spec-driven workflow.
+
+- **EARS notation + ANT test in spec authoring.** `spec-driven-development` now requires every requirement-bearing bullet under `## Requirements` to use EARS phrasing (Ubiquitous / Event-driven / State-driven / Optional / Unwanted) and pass the Anti-Null-Tautology check (a requirement that cannot be falsified carries no information). New `scripts/lint-ears.sh` runs as part of spec authoring and `spec-drift-detection` — flags non-EARS bullets and tautological phrasing ("be reliable", "follow best practices", "as needed"). Borrowed from `core/writing-quality.md`.
+- **Scored adversarial evaluator in code review.** `compliance-reviewer` and `code-review-and-quality` now emit per-dimension 1–10 scores across `correctness`, `security`, `test_coverage`, `architecture_fit`, and `simplicity` with mandatory `file:line` evidence quotes. Auto-fail rules: any dimension < 7 → `NEEDS_CHANGES`; uniform scores → rejected as `non-discriminating`; missing evidence → score treated as 0. Remediation capped at 2 iterations on the same blocking dimension; third escalates to a human. Schema extended in `.claude/references/review-finding-schema.md` with a new `scores` block. Workflow artifact gains optional `results.review_scores.<dim>` and `results.review_iteration` fields. Borrowed from `core/evaluation.md`.
+- **Dependency-introduction gate.** New `.claude/references/dependency-intake-checklist.md` defines a 5-criteria rubric — scope, maintenance, size, security, license — each scored Good / Acceptable / Poor with required evidence (CVE id, last-release date, license SPDX). Two `Poor` ratings on a single new dependency block; one `Poor` requires explicit override. Wired into `pre-commit-review` (detects `package.json`, `*.csproj`, `requirements.txt`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `Gemfile`, `composer.json` changes) and `security-and-hardening` (supply-chain step). Borrowed from `core/dependency-introduction.md`.
+- **Spec-linked structured learnings.** New `.mtk/learnings.jsonl` (gitignored, JSON Lines for pure-bash tooling per S3.3) is the machine-readable mirror of `tasks/lessons.md`. Schema in `.claude/references/learnings-schema.md`: `{id, spec_id, workflow_uuid, scope, source, captured_at, files, directories, phase, severity, validity, recurrence, title, body, rule, applies_when}`. New `scripts/learnings.sh` provides `add | query | regen-markdown | migrate | list`. The `query` subcommand applies a 5-layer retrieval filter (proximity / recurrence / severity / validity / phase) used at the start of `spec-driven-development` and `fix`. `correction-capture` and `promote-lesson` now write through `learnings.sh add` first, then regenerate the markdown view. The committed `tasks/lessons.md` remains the team-canonical store; manual edits are preserved across regen. Borrowed from `core/learnings.md`.
+
+### Changed
+
+- `spec-driven-development/SKILL.md` — added `## Requirements Format (EARS)` section, ANT self-check step, lessons retrieval via `learnings.sh query`, EARS lint verification line.
+- `spec-drift-detection/SKILL.md` — runs `lint-ears.sh` against the spec markdown; EARS / ANT violations emitted as `severity: warning`, `confidence: 100`, `source: "drift"` findings.
+- `code-review-and-quality/SKILL.md` and `compliance-reviewer.md` — new "Score the Five Dimensions" step with rubric, auto-fail rules, iteration cap, and workflow-artifact integration.
+- `pre-commit-review/SKILL.md` — new dependency-intake step (4.7) with manifest-file detection.
+- `security-and-hardening/SKILL.md` — new supply-chain step referencing the dependency-intake checklist.
+- `correction-capture/SKILL.md` — captures structured + markdown forms; structured form drives 5-layer retrieval.
+- `promote-lesson/SKILL.md` — appends through `learnings.sh add --scope team --source promotion`, regenerates markdown.
+- `fix/SKILL.md` — calls `learnings.sh query --phase implement` instead of flat lessons scan.
+- `tasks/lessons.md` — added mirror note pointing at `.mtk/learnings.jsonl`; existing entries preserved verbatim and seeded into the structured store.
+
 ## [7.4.0] - 2026-05-07
 
 ### Added — cc10x borrow improvements

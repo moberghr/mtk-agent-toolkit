@@ -1,8 +1,16 @@
 # Lessons Learned
 
 > This file captures patterns and mistakes discovered during AI-assisted development.
-> It is read at the start of every `/moberg:implement` session.
+> It is read at the start of every `/mtk` workflow.
 > Commit this file — it is institutional memory for the team.
+>
+> **Structured mirror (v7.5.0+):** every lesson here is also stored in
+> `.mtk/learnings.jsonl` (gitignored, machine-readable) for 5-layer retrieval
+> at the start of specs and fixes. New lessons added via `correction-capture`
+> or `promote-lesson` flow through `scripts/learnings.sh add` and write to
+> both stores. Manual edits to this markdown file remain canonical for the
+> team; the JSON store is rebuildable. See
+> `.claude/references/learnings-schema.md`.
 
 ## 2026-04-23 — marketplace.json is a third version file the validator checks
 

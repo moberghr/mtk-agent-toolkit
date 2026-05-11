@@ -58,7 +58,26 @@ When an engineer corrects your approach, that correction contains knowledge that
    ```
    When *replacing* an existing lesson (vs. appending), write to a temp file and promote via `mtk_guarded_write` so a partial regenerate cannot truncate the file. Pure appends are safe — append never shrinks.
 
-5. **Capture the lesson.** Append to the chosen file (create `.claude/lessons/` if missing). Resolve path to main worktree if in a worktree.
+5. **Capture the lesson — structured + markdown.**
+
+   **a. Structured (preferred when `scripts/learnings.sh` is present).** Append a JSONL entry to `.mtk/learnings.jsonl` (gitignored, machine-readable). Then regenerate the markdown view:
+   ```bash
+   bash scripts/learnings.sh add \
+     --workflow "${MTK_WF_UUID:-manual}" \
+     --scope "personal|team" \
+     --source correction \
+     --severity "info|warn|block" \
+     --phase "spec|plan|implement|review|any" \
+     --files "comma,separated,paths" \
+     --title "Short title" \
+     --body  "What the engineer said" \
+     --rule  "The reusable rule extracted" \
+     --applies-when "When this rule should activate"
+   bash scripts/learnings.sh regen-markdown   # rebuilds tasks/lessons.md
+   ```
+   Schema: `.claude/references/learnings-schema.md`.
+
+   **b. Markdown fallback (older repos without `learnings.sh`).** Append to the chosen file (create `.claude/lessons/` if missing). Resolve path to main worktree if in a worktree.
    ```markdown
    ## [Date] — [Short title]
 
@@ -67,6 +86,8 @@ When an engineer corrects your approach, that correction contains knowledge that
    **Why:** [Why this matters — the underlying principle]
    **Applies to:** [When this rule should activate in future work]
    ```
+
+   The structured form enables 5-layer retrieval (proximity / recurrence / severity / validity / phase) at the start of the next spec or fix. The markdown form remains the team-canonical, committed view.
 
 6. **Check for pattern.** If this is the second or third time a similar correction has been captured:
    - For personal lessons: still personal — repetition just means a stable preference.
@@ -101,3 +122,4 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared table. Correcti
 - [ ] The lesson includes: correction, rule, why, and applies-to
 - [ ] Current work was adjusted to follow the correction
 - [ ] Repeated patterns were flagged for CLAUDE.md promotion
+- [ ] When `scripts/learnings.sh` is present, the lesson was added to `.mtk/learnings.jsonl` and `tasks/lessons.md` regenerated (single source flows through the JSON store)

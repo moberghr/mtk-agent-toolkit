@@ -1,0 +1,54 @@
+{
+  "spec_id": "2026-05-08-v7.5.0-specops-borrows",
+  "workflow_uuid": "wf-20260508T061101Z-af6eff",
+  "scope_classification": "feature",
+  "security_impact": "none",
+  "change_manifest": [
+    ".claude/skills/spec-driven-development/SKILL.md",
+    ".claude/skills/spec-drift-detection/SKILL.md",
+    ".claude/skills/code-review-and-quality/SKILL.md",
+    ".claude/agents/compliance-reviewer.md",
+    ".claude/skills/pre-commit-review/SKILL.md",
+    ".claude/skills/security-and-hardening/SKILL.md",
+    ".claude/skills/correction-capture/SKILL.md",
+    ".claude/skills/promote-lesson/SKILL.md",
+    ".claude/skills/fix/SKILL.md",
+    ".claude/references/dependency-intake-checklist.md",
+    ".claude/references/learnings-schema.md",
+    ".claude/references/review-finding-schema.md",
+    "scripts/learnings.sh",
+    "scripts/lint-ears.sh",
+    ".claude/manifest.json",
+    ".claude-plugin/plugin.json",
+    "tasks/lessons.md"
+  ],
+  "test_manifest": [
+    "scripts/validate-toolkit.sh",
+    "scripts/lint-ears.sh",
+    "scripts/learnings.sh"
+  ],
+  "public_contracts": [
+    "env:MTK_LEARNINGS_PATH",
+    "script:scripts/learnings.sh",
+    "script:scripts/lint-ears.sh",
+    "ref:.claude/references/dependency-intake-checklist.md",
+    "ref:.claude/references/learnings-schema.md",
+    "workflow_artifact_field:results.review_scores",
+    "workflow_artifact_field:results.dep_gate"
+  ],
+  "out_of_scope": [
+    "multi-spec decomposition",
+    "JSON schema for specs",
+    "monolithic skill format",
+    "multi-IDE generator"
+  ],
+  "open_decisions": [],
+  "batches": [
+    "infrastructure-and-schemas",
+    "ears-ant",
+    "scored-evaluator",
+    "dep-gate",
+    "structured-learnings",
+    "manifest-and-validate"
+  ]
+}

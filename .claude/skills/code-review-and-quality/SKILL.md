@@ -88,10 +88,30 @@ If reviewing a PR or branch with CI runs, check CI status:
     - Optional top-level fields only when they add real signal: `internet_facing`
       for boundary exposure and `needs_human_review` for axes the AI cannot
       honestly clear from the diff alone
-6. Emit output in the canonical format:
+6. **Score the five dimensions (1–10).** Borrowed from sanmak/specops (`core/evaluation.md`).
+   Assign one score per dimension and cite at least one **file:line evidence quote** per score (high or low):
+   - `correctness` — does the code do what the spec said? Edge cases? Invariants?
+   - `security` — auth, secrets, input validation, audit, supply chain
+   - `test_coverage` — public behaviors tested? error paths exercised? assertions meaningful?
+   - `architecture_fit` — slices, boundaries, patterns honored?
+   - `simplicity` — fewer files / abstractions / moving parts feasible?
+
+   **Score rubric:** 9–10 exemplary · 7–8 acceptable · 4–6 blocks merge · 1–3 severe.
+
+   **Auto-fail rules:**
+   - Any dimension < 7 → verdict `NEEDS_CHANGES` regardless of finding count.
+   - Uniform scores across all five dimensions → review rejected as **non-discriminating**. Vary the scores or revisit; at least one must differ.
+   - A score without a `file:line` evidence quote → treated as 0 (auto-fail).
+
+   **Iteration cap.** If a dimension has scored < 7 in two prior iterations and a third iteration would also score it < 7, **stop and escalate to a human**. Automated remediation has stopped converging. Report the dimension, iteration count, and remaining findings.
+
+7. Emit output in the canonical format:
     - Markdown table of surfaced findings (confidence >= threshold from `.claude/review-config.json`, default 80)
-    - Fenced JSON block with the full structured result (verdict, summary, findings, below_threshold_rationale)
-7. If `findings[]` has fewer than 2 entries, populate `below_threshold_rationale` explicitly stating what axes were checked and why the code is genuinely clean. Silent empty reviews are invalid.
+    - **Scores table** — 5 dimensions × {score, evidence file:line, one-line rationale}
+    - Fenced JSON block with the full structured result (verdict, summary, findings, **scores object**, below_threshold_rationale)
+8. If `findings[]` has fewer than 2 entries, populate `below_threshold_rationale` explicitly stating what axes were checked and why the code is genuinely clean. Silent empty reviews are invalid.
+9. If a workflow artifact is active (`MTK_WF_UUID` set), record scores:
+    `scripts/workflow-artifact.sh set "$MTK_WF_UUID" results.review_scores.<dimension>=<n>` for each of the five dimensions, and `results.review_iteration=<n>` for the current cycle.
 
 ## Rules
 
@@ -122,3 +142,6 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared MTK rationaliza
 - [ ] Confidence scores follow the rubric; no inflation to hit finding-count bars
 - [ ] False-Positive Exclusion List was applied before scoring (no pre-existing-issue, linter-catchable, or unjustified-stylistic items in `findings[]`)
 - [ ] `below_threshold_rationale` is populated when fewer than 2 findings surface
+- [ ] All five dimensions are scored 1–10 with a file:line evidence quote each
+- [ ] No uniform-score review; verdict is `NEEDS_CHANGES` when any dimension < 7
+- [ ] Iteration cap respected — third < 7 on the same dimension escalates to human

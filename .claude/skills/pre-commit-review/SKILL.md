@@ -46,6 +46,22 @@ check engineers should run before every commit.
    `source: "analyzer"`, `confidence: 100`. This is fast (analyzes specific
    files, not full build) and catches EF Core, async, and disposal patterns
    that the regex linter misses. If the tool is not available, skip this step.
+4.7. **Dependency-introduction gate (if a manifest changed).** Detect whether
+   the staged diff touches any of these manifest files:
+   `package.json`, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`,
+   `*.csproj`, `Directory.Packages.props`, `requirements.txt`, `pyproject.toml`,
+   `Pipfile`, `poetry.lock`, `go.mod`, `Cargo.toml`, `Cargo.lock`,
+   `Gemfile`, `Gemfile.lock`, `composer.json`. If any matches, list the
+   **newly added** dependencies (lines beginning with `+` introducing a new
+   package name) and walk each through the 5-criteria rubric in
+   `.claude/references/dependency-intake-checklist.md` — scope, maintenance,
+   size, security, license. Two `Poor` ratings on a single dep blocks the
+   commit; one `Poor` requires explicit override in the PR description.
+   Emit each problematic dep as a `category: "dependency"` finding with
+   `source: "ai"` and confidence ≥ 85 for `Poor` ratings backed by evidence
+   (CVE id, last-release date, license SPDX). Pure version bumps within the
+   same major skip the rubric (vulnerability scan only). Skip the gate
+   entirely when the checklist file is absent (older repos).
 5. Run the AI review pass on the same diff to catch issues the linter can't
    reach (design, intent, context-sensitive rules). AI findings use
    `source: "ai"` and their own confidence scores per the rubric.
@@ -60,6 +76,7 @@ check engineers should run before every commit.
 - **Audit Missing**: Any state-changing operations on financial data without audit log writes?
 - **Secrets in Env**: Any connection strings or passwords hardcoded in `appsettings.json` or CDK environment vars?
 - **IAM Blast Radius**: Any new IAM grants with `*` resource that should be scoped?
+- **Dependency Intake**: New third-party dep added — does it pass the 5-criteria gate in `.claude/references/dependency-intake-checklist.md`? (Two `Poor` ratings block.)
 
 ## COMMON RATIONALIZATIONS — Do Not Fall For These
 
