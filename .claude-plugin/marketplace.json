@@ -1,6 +1,6 @@
 {
-  "name": "moberghr-claude-helpers",
-  "description": "Marketplace for Moberg HR engineering Claude plugins",
+  "name": "moberghr",
+  "description": "Marketplace for Moberg d.o.o. serious engineering Claude plugins",
   "owner": {
     "name": "Moberg HR",
     "url": "https://github.com/moberghr"
