@@ -11,5 +11,14 @@
     "otherwise": "PASS"
   },
   "minSurfacedFindings": 2,
-  "belowThresholdRationaleRequired": true
+  "belowThresholdRationaleRequired": true,
+  "decision_origin": {
+    "required": true,
+    "$doc": "When true, reviewer findings and learnings entries must carry a decision_origin field. Enforced by scripts/learnings.sh add and by review-output validators."
+  },
+  "sycophancy_index": {
+    "warn_threshold": 0.70,
+    "window_days": 30,
+    "$doc": "π = approved / (approved + modified + rejected) over the last window_days. Status flips to warn when pi >= warn_threshold. Surfaced by toolkit-health and scripts/learnings.sh metrics."
+  }
 }

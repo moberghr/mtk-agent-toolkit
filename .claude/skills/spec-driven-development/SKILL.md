@@ -135,6 +135,21 @@ digraph spec_flow {
    - **Requirements** — every requirement-bearing bullet uses EARS notation (see `## Requirements Format (EARS)` below). Run the ANT self-check before continuing.
 8. Run an elegance check: reduce file count, new abstractions, and moving parts if a simpler design exists.
 8a. **EARS + ANT lint.** Run `bash scripts/lint-ears.sh docs/specs/<file>.md` after persisting the spec (step 9). Zero violations required before handing to the approval gate. If the script is absent (older repos), at minimum eyeball the Requirements section against the rules in `## Requirements Format (EARS)`.
+8b. **Claude-Ready (INVEST+C) check.** Score the draft against
+   `.claude/references/claude-ready-checklist.md`. The +C section is hard —
+   any failing item among +C #1..#16 must be fixed before the spec leaves
+   this skill. Specs scoring ≤13/16 are sent back to draft (no approval).
+   Cite failing item numbers in the lint output so the engineer can see
+   exactly what to tighten. The classic INVEST half is a soft check —
+   surface failures, do not block on them.
+8c. **Prior-work check.** Invoke the `prior-work-check` skill against the
+   draft (see `.claude/skills/prior-work-check/SKILL.md`). Three deterministic
+   queries run: `search_prior_work`, `get_constraints`, `get_risk_profile`.
+   Any BLOCK finding (existing implementation, EXTRACTED contradiction,
+   mis-classified `security_impact`) holds the approval gate — the spec
+   must be revised. FLAG findings are surfaced to the engineer for explicit
+   acknowledgement. Output is appended under a `## Prior Work Check` section
+   in the spec markdown so reviewers can see what was checked.
 9. Persist the spec to disk:
    - Create `docs/specs/` if it does not exist.
    - Compute the base target: `docs/specs/YYYY-MM-DD-<feature-slug>` (no extension yet).
@@ -156,7 +171,6 @@ digraph spec_flow {
 
 Every requirement-bearing bullet in the spec's `## Requirements` section uses **EARS** (Easy Approach to Requirements Syntax). EARS makes requirements testable by forcing a predicate-with-trigger shape; flowery prose has nowhere to hide.
 
-Borrowed from sanmak/specops (`core/writing-quality.md`).
 
 ### The five templates
 

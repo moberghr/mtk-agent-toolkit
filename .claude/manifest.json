@@ -1,6 +1,6 @@
 {
-  "version": "7.5.0",
-  "updated": "2026-05-08",
+  "version": "7.7.0",
+  "updated": "2026-05-18",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
   "coding-guidelines": {
@@ -154,13 +154,31 @@
         "**/Gemfile",
         "**/composer.json"
       ],
-      "description": "Five-criteria gate (scope/maintenance/size/security/license) for any new third-party dependency — borrowed from sanmak/specops"
+      "description": "Five-criteria gate (scope/maintenance/size/security/license) for any new third-party dependency"
     },
     "references/learnings-schema.md": {
       "source": ".claude/references/learnings-schema.md",
       "target": ".claude/references/learnings-schema.md",
       "action": "sync",
       "description": "Schema for structured learnings stored at .mtk/learnings.jsonl — machine-readable mirror of tasks/lessons.md with 5-layer retrieval"
+    },
+    "references/claude-ready-checklist.md": {
+      "source": ".claude/references/claude-ready-checklist.md",
+      "target": ".claude/references/claude-ready-checklist.md",
+      "action": "sync",
+      "description": "INVEST+C spec-quality checklist — 16-item Claude-Ready gate used by spec-driven-development before approval"
+    },
+    "references/code-index-template.md": {
+      "source": ".claude/references/code-index-template.md",
+      "target": ".claude/references/code-index-template.md",
+      "action": "sync",
+      "description": "Capability-index template for CODE_INDEX.md — seeded by setup-bootstrap, consumed by code-simplification --audit-duplicates"
+    },
+    "skills/prior-work-check/SKILL.md": {
+      "source": ".claude/skills/prior-work-check/SKILL.md",
+      "target": ".claude/skills/prior-work-check/SKILL.md",
+      "action": "sync",
+      "description": "Three deterministic queries (search_prior_work / get_constraints / get_risk_profile) run before spec approval and before planning to prevent duplicate work and mis-classified risk"
     },
     "docs/recommended-tooling/shared.md": {
       "source": "docs/recommended-tooling/shared.md",
@@ -1420,7 +1438,7 @@
       "source": "scripts/lint-ears.sh",
       "target": "scripts/lint-ears.sh",
       "action": "sync",
-      "description": "Structural EARS + ANT lint over the Requirements section of spec markdown — borrowed from sanmak/specops"
+      "description": "Structural EARS + ANT lint over the Requirements section of spec markdown"
     },
     "agents/plan-gap-reviewer.md": {
       "source": ".claude/agents/plan-gap-reviewer.md",

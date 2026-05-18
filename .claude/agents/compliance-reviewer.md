@@ -163,7 +163,7 @@ After the checklist, explicitly:
 
 ## Step 5: Score the Five Dimensions
 
-Borrowed from sanmak/specops (`core/evaluation.md`). After enumerating findings, assign a 1–10 score for each of the five dimensions and cite at least one **file:line evidence quote** per score (whether the score is high or low — "no issues found" is itself an evidentiary claim).
+After enumerating findings, assign a 1–10 score for each of the five dimensions and cite at least one **file:line evidence quote** per score (whether the score is high or low — "no issues found" is itself an evidentiary claim).
 
 | Dimension | What it measures |
 |---|---|

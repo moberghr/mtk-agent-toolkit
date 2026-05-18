@@ -89,6 +89,7 @@ cmd_add() {
   local spec_id="" workflow_uuid="manual" scope="personal" source_kind="correction"
   local files_csv="" dirs_csv="" phase="any" severity="warn"
   local title="" body="" rule="" applies_when=""
+  local decision_origin=""
   local dry_run=0
 
   while [ $# -gt 0 ]; do
@@ -105,6 +106,7 @@ cmd_add() {
       --body) body="$2"; shift 2 ;;
       --rule) rule="$2"; shift 2 ;;
       --applies-when) applies_when="$2"; shift 2 ;;
+      --decision-origin) decision_origin="$2"; shift 2 ;;
       --dry-run) dry_run=1; shift ;;
       *) printf 'unknown flag: %s\n' "$1" >&2; exit 2 ;;
     esac
@@ -113,17 +115,35 @@ cmd_add() {
   [ -n "$title" ] || { printf 'add requires --title\n' >&2; exit 2; }
   [ -n "$body" ] || body="$title"
 
+  # Decision-origin: required for capture sources that imply a decision,
+  # auto-classified for deterministic sources.
+  case "$source_kind" in
+    manual|migrate) [ -n "$decision_origin" ] || decision_origin="system-inferred" ;;
+    incident)       [ -n "$decision_origin" ] || decision_origin="system-inferred" ;;
+    *)
+      if [ -z "$decision_origin" ]; then
+        printf 'add: --decision-origin is required for source=%s (one of: user-directed | claude-recommended-approved | claude-recommended-modified | claude-recommended-rejected | system-inferred)\n' "$source_kind" >&2
+        exit 2
+      fi
+      ;;
+  esac
+  case "$decision_origin" in
+    user-directed|claude-recommended-approved|claude-recommended-modified|claude-recommended-rejected|system-inferred) ;;
+    *) printf 'add: invalid --decision-origin "%s"\n' "$decision_origin" >&2; exit 2 ;;
+  esac
+
   local id; id="$(next_id)"
   local now; now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   local exp; exp="$(expires_at_default)"
 
   local entry
-  entry="$(printf '{"id":"%s","spec_id":"%s","workflow_uuid":"%s","scope":"%s","source":"%s","captured_at":"%s","files":%s,"directories":%s,"phase":"%s","severity":"%s","validity":{"expires_at":"%s","reconfirmed_at":null,"expired":false},"recurrence":{"count":1,"last_seen_at":"%s","related_ids":[]},"title":"%s","body":"%s","rule":"%s","applies_when":"%s"}' \
+  entry="$(printf '{"id":"%s","spec_id":"%s","workflow_uuid":"%s","scope":"%s","source":"%s","decision_origin":"%s","captured_at":"%s","files":%s,"directories":%s,"phase":"%s","severity":"%s","validity":{"expires_at":"%s","reconfirmed_at":null,"expired":false},"recurrence":{"count":1,"last_seen_at":"%s","related_ids":[]},"title":"%s","body":"%s","rule":"%s","applies_when":"%s"}' \
     "$id" \
     "$(json_escape "$spec_id")" \
     "$(json_escape "$workflow_uuid")" \
     "$scope" \
     "$source_kind" \
+    "$decision_origin" \
     "$now" \
     "$(csv_to_json_array "$files_csv")" \
     "$(csv_to_json_array "$dirs_csv")" \
@@ -329,11 +349,70 @@ cmd_list() {
   done < "$LEARNINGS_PATH"
 }
 
+# metrics — sycophancy index (π) plus decision_origin totals over a rolling window.
+# Default window = 30 days. Override with --window-days N.
+# Threshold read from .claude/review-config.json (sycophancy_index.warn_threshold), default 0.70.
+cmd_metrics() {
+  ensure_store
+  local window_days=30
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --window-days) window_days="$2"; shift 2 ;;
+      *) printf 'unknown flag: %s\n' "$1" >&2; exit 2 ;;
+    esac
+  done
+
+  local threshold="0.70"
+  if [ -f .claude/review-config.json ]; then
+    # Best-effort extraction; tolerate missing key.
+    local extracted
+    extracted="$(sed -nE 's/.*"warn_threshold"[[:space:]]*:[[:space:]]*([0-9]+(\.[0-9]+)?).*/\1/p' .claude/review-config.json | head -1)"
+    [ -n "$extracted" ] && threshold="$extracted"
+  fi
+
+  local cutoff_epoch
+  cutoff_epoch="$(date -u -v -"${window_days}"d +%s 2>/dev/null || date -u -d "${window_days} days ago" +%s)"
+
+  local ud=0 cra=0 crm=0 crr=0 si=0
+  if [ -s "$LEARNINGS_PATH" ]; then
+    while IFS= read -r line; do
+      [ -z "$line" ] && continue
+      local captured_at; captured_at="$(jl_field "$line" captured_at)"
+      [ -z "$captured_at" ] && continue
+      local entry_epoch
+      entry_epoch="$(date -u -j -f '%Y-%m-%dT%H:%M:%SZ' "$captured_at" +%s 2>/dev/null || date -u -d "$captured_at" +%s 2>/dev/null || echo 0)"
+      [ "$entry_epoch" -lt "$cutoff_epoch" ] && continue
+      local origin; origin="$(jl_field "$line" decision_origin)"
+      case "$origin" in
+        user-directed) ud=$((ud+1)) ;;
+        claude-recommended-approved) cra=$((cra+1)) ;;
+        claude-recommended-modified) crm=$((crm+1)) ;;
+        claude-recommended-rejected) crr=$((crr+1)) ;;
+        system-inferred) si=$((si+1)) ;;
+      esac
+    done < "$LEARNINGS_PATH"
+  fi
+
+  local denom=$((cra + crm + crr))
+  local pi="0.000"
+  if [ "$denom" -gt 0 ]; then
+    pi="$(awk -v a="$cra" -v d="$denom" 'BEGIN { printf("%.3f", a / d) }')"
+  fi
+  local status="ok"
+  if awk -v p="$pi" -v t="$threshold" 'BEGIN { exit (p >= t ? 0 : 1) }'; then
+    [ "$denom" -gt 0 ] && status="warn"
+  fi
+
+  printf '{"window_days":%d,"totals":{"user-directed":%d,"claude-recommended-approved":%d,"claude-recommended-modified":%d,"claude-recommended-rejected":%d,"system-inferred":%d},"pi":%s,"warn_threshold":%s,"status":"%s"}\n' \
+    "$window_days" "$ud" "$cra" "$crm" "$crr" "$si" "$pi" "$threshold" "$status"
+}
+
 main() {
   local sub="${1:-}"; [ $# -gt 0 ] && shift
   case "$sub" in
     add) cmd_add "$@" ;;
     query) cmd_query "$@" ;;
+    metrics) cmd_metrics "$@" ;;
     regen-markdown) cmd_regen_markdown ;;
     migrate) cmd_migrate ;;
     list) cmd_list ;;

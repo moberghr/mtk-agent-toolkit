@@ -20,6 +20,64 @@ require_section() {
   grep -q "$pattern" "$file" || fail "Missing section '$pattern' in $file"
 }
 
+# --task-scoped <comma-separated file list>
+# Verifies that every touched skill / hook / agent / reference is fully wired:
+#   - frontmatter `name:` matches dir for skills
+#   - file is registered in .claude/manifest.json
+#   - hooks are chmod +x and referenced from .claude/settings.json OR hooks/hooks.json
+#   - agent files appear in .claude-plugin/plugin.json
+#   - reference files are listed in .claude/references.index (if the index exists)
+# Exits non-zero on the first unwired artifact. Returns silently on success.
+if [ "${1:-}" = "--task-scoped" ]; then
+  shift
+  files_csv="${1:-}"
+  [ -n "$files_csv" ] || fail "--task-scoped requires a comma-separated file list"
+  manifest=".claude/manifest.json"
+  settings=".claude/settings.json"
+  hooks_json="hooks/hooks.json"
+  plugin=".claude-plugin/plugin.json"
+  refidx=".claude/references.index"
+  IFS=',' read -r -a files <<< "$files_csv"
+  for f in "${files[@]}"; do
+    [ -n "$f" ] || continue
+    [ -f "$f" ] || fail "wiring: file does not exist: $f"
+    case "$f" in
+      .claude/skills/*/SKILL.md)
+        dir="$(dirname "$f")"; expected="$(basename "$dir")"
+        actual="$(awk '/^name:/ { print $2; exit }' "$f")"
+        [ "$expected" = "$actual" ] || fail "wiring: $f frontmatter name='$actual' does not match dir '$expected'"
+        grep -q "\"skills/${expected}/SKILL.md\"" "$manifest" || fail "wiring: skill '$expected' is not registered in $manifest"
+        ;;
+      hooks/*.sh|hooks/git-hooks/*.sh|hooks/lib/*.sh|hooks/*/*.sh)
+        [ -x "$f" ] || fail "wiring: hook script $f is not executable (chmod +x)"
+        if ! grep -q "$(basename "$f")" "$settings" 2>/dev/null && ! grep -q "$(basename "$f")" "$hooks_json" 2>/dev/null; then
+          # Library files in hooks/lib/ are sourced by other hooks — accept if referenced anywhere under hooks/.
+          if ! grep -rq "$(basename "$f")" hooks/ 2>/dev/null; then
+            fail "wiring: hook $f is not referenced from $settings, $hooks_json, or any other hook"
+          fi
+        fi
+        ;;
+      .claude/agents/*.md)
+        rel="./${f}"
+        grep -q "\"${rel}\"" "$plugin" || grep -q "\"${f}\"" "$plugin" || fail "wiring: agent $f is not registered in $plugin"
+        ;;
+      .claude/references/*.md)
+        if [ -f "$refidx" ]; then
+          grep -q "^${f}\b" "$refidx" || fail "wiring: reference $f is not in $refidx (run scripts/build-references-index.sh)"
+        fi
+        ;;
+      .claude/manifest.json|.claude/settings.json|.claude-plugin/plugin.json|.claude-plugin/marketplace.json)
+        # configuration files are themselves the wiring registry — no check
+        ;;
+      *)
+        # unknown file type — defer to the regular validator semantics
+        ;;
+    esac
+  done
+  printf 'Task-scoped wiring check passed (%s).\n' "$files_csv"
+  exit 0
+fi
+
 # Always-required files (stack-agnostic)
 require_file ".claude/manifest.json"
 require_file ".claude-plugin/plugin.json"

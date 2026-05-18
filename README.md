@@ -6,7 +6,7 @@
 
 **A Claude Code plugin that enforces your team's coding standards, security policies, and review discipline on every AI-generated line of code. Language-agnostic workflows with pluggable tech stacks for .NET, Python, and TypeScript.**
 
-[![Version](https://img.shields.io/badge/version-7.3.0-blue.svg)](https://github.com/moberghr/mtk-agent-toolkit/releases)
+[![Version](https://img.shields.io/badge/version-7.7.0-blue.svg)](https://github.com/moberghr/mtk-agent-toolkit/releases)
 [![Website](https://img.shields.io/badge/website-moberghr.github.io-6d28d9.svg)](https://moberghr.github.io/mtk-agent-toolkit/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-purple.svg)](https://claude.ai/code)
 [![.NET](https://img.shields.io/badge/.NET-8.0%2B-512BD4.svg)](https://dotnet.microsoft.com/)
@@ -51,7 +51,25 @@ MTK closes that gap with **workflow enforcement** (planning, TDD, batched implem
 
 ## What's New
 
-### v7.4.0 — cc10x borrow: durable orchestration + anti-anchored review (2026-05-07)
+### v7.7.0 — Decision provenance and end-to-end wiring verification (2026-05-18)
+- **Decision-origin tagging** — every entry in the structured learnings store and every reviewer finding carries a `decision_origin` field (`user-directed` / `claude-recommended-approved` / `claude-recommended-modified` / `claude-recommended-rejected` / `system-inferred`). Surfaces how much of the design is the engineer's vs. the model's, so over-deference can be measured and corrected.
+- **Sycophancy index (π)** — `scripts/learnings.sh metrics` computes `π = approved / (approved + modified + rejected)`; ≥0.70 raises a warning that the model's recommendations are being accepted without enough pushback. Threshold tunable via review-config.
+- **Wiring check as Definition of Done** — `verification-before-completion` and `validate-toolkit.sh --task-scoped` confirm every skill, hook, agent, and reference touched in a batch is fully registered (frontmatter `name:` matches dir, hooks `chmod +x` and referenced in `settings.json`, manifest entries present, references-index in sync). Authoring a file without wiring it now fails the gate.
+
+### v7.6.0 — Claude-Ready spec gate, prior-work check, drift breadth (2026-05-18)
+- **INVEST+C Claude-Ready checklist** — new 16-item gate at `.claude/references/claude-ready-checklist.md` runs in `spec-driven-development` Phase 1 before the approval prompt. Specs scoring ≤13/16 are sent back to draft; failing item numbers are cited so revisions are targeted.
+- **`prior-work-check` skill** — three deterministic queries (`search_prior_work` / `get_constraints` / `get_risk_profile`) run before spec approval and again at planning if the spec is stale. Catches duplicate capabilities and mis-classified `security_impact` before code is written.
+- **Context fatigue signals** — four lightweight signals (token utilization / scope scatter / re-read ratio / error density) added to `context-engineering`; surfaced in `handoff` so the next session knows which parts of the half-done state to mistrust.
+- **Drift breadth — three new axes in `spec-drift-detection`** — ownership (cross-slice creep), dependency-shift (undeclared package adds, critical), usage (stale call-sites after rename, critical).
+- **`CODE_INDEX.md`** — capability-oriented index of the codebase, seeded by `setup-bootstrap` and consumed by `code-simplification --audit-duplicates`. Organized by what the code does, not where it lives.
+
+### v7.5.0 — EARS+ANT requirements, scored review, dependency gate, structured learnings (2026-05-08)
+- **EARS + ANT requirements** — every requirement-bearing bullet in a spec follows Easy Approach to Requirements Syntax (EARS) and survives the ANT self-check (Ambiguous / Negation-by-omission / Time-unbounded). `scripts/lint-ears.sh` is run by `spec-driven-development` and re-run by `spec-drift-detection` after implementation.
+- **Five-dimension scored review** — `compliance-reviewer` and `code-review-and-quality` emit a `scores` object with 1–10 ratings for correctness, security, test coverage, architecture fit, and simplicity, each cited to file:line evidence.
+- **Dependency-introduction gate** — `pre-commit-review` and `security-and-hardening` invoke a five-criteria gate (scope / maintenance / size / security / license) whenever a dependency manifest changes. Two Poors block; any Poor requires explicit override.
+- **Structured learnings store** — `.mtk/learnings.jsonl` mirror of `tasks/lessons.md` with five-layer retrieval (proximity / recurrence / severity / validity / phase) wired into `correction-capture`, `promote-lesson`, and `fix`.
+
+### v7.4.0 — Durable orchestration and anti-anchored review (2026-05-07)
 - **Durable workflow artifacts** — `.mtk/workflows/{uuid}.json` plus append-only `{uuid}.events.jsonl` survive compaction and crash; new `workflow-artifacts` skill and `scripts/workflow-artifact.sh` helper with `init/event/set/read/list/gate` subcommands
 - **Five named orchestration gates** — `plan_trust_gate`, `phase_exit_gate`, `failure_stop_gate`, `memory_sync_gate`, `skill_precedence_gate` are fail-closed contracts the implement workflow must record before advancing (`.claude/references/orchestration-gates.md`)
 - **Anti-anchored plan reviewer** — new `plan-gap-reviewer` agent forbidden from loading lessons / prior reviewer output / workflow artifact; six finding categories with BLOCKING/ADVISORY severity; runs before the Phase 2.5 approval gate
@@ -59,12 +77,12 @@ MTK closes that gap with **workflow enforcement** (planning, TDD, batched implem
 - **JSON router-decision fixtures** — 6 fixtures under `tests/fixtures/` exercise advance / remediate / abort / resume / request_engineer paths; `scripts/run-fixtures.sh` validates structure and gate naming, wired into `validate-toolkit.sh`
 - **`MTK_AUTO_PROCEED` env knob** — opt-in (off by default) auto-defaults the Phase 2.5 prompt only when spec has zero open decisions, no plan-gap BLOCKING findings, and the change is not high-impact
 
-### v7.3.0 — Superpowers borrow improvements (2026-05-07)
+### v7.3.0 — Subagent-driven implementation and decision graphs (2026-05-07)
 - **`subagent-implementation` skill** — new per-batch implementer-subagent path for large features. `implement` Phase 3 forks: above the threshold (≥3 batches OR ≥6 files OR non-none `security_impact`) it dispatches the new skill; below threshold it stays on inline `incremental-implementation`. Asks once for implementer model (Sonnet/Opus), then loops one fresh subagent per batch with a structured JSON contract; orchestrator-side drift micro-checks auto-amend the sidecar for in-package extras and re-open Phase 2.5 for cross-package or new-public-contract drift. Phase 3.5 spec-drift and Phase 4 review run unchanged.
 - **GraphViz `dot` decision graphs** added inside `mtk/`, `fix/`, and `spec-driven-development/` SKILL.md at the branch points where models most often misroute (router ambiguity, fix scope-guard escalation, spec skip-vs-write + `security_impact` honesty), each accompanied by a Red Flags rationalization table.
 - **Pre-draft ambiguity gate** — `spec-driven-development` now resolves ambiguity via `AskUserQuestion` *before* drafting the spec. Phase 2.5 is a go/no-go on a fully-informed plan, not a place to surface new questions.
 
-### v7.2.0 — Graphify + official-plugin borrow improvements (2026-04-27)
+### v7.2.0 — Ignore syntax, confidence-tagged audit, MCP expansion (2026-04-27)
 - **`.mtkignore`** at repo root — single source of truth for paths excluded from MTK scans (same syntax as `.gitignore`); honored by `repomap`, `setup-audit`, and the tree-sitter walker. New rule **S1.14**.
 - **Confidence-tagged audit principles** — `setup-audit` emits `[EXTRACTED]`, `[INFERRED:0.0–1.0]`, or `[AMBIGUOUS]` tags with evidence pointers; `spec-drift-detection` uses tags as a severity gradient. New rule **S1.15**.
 - **Shrink-guarded writes** — `hooks/lib/shrink-guard.sh` refuses rewrites that shrink targets >50% bytes or >20% lines. Wired into references-index build, `setup-audit`, and `correction-capture`. New rule **S3.16**.
@@ -75,7 +93,7 @@ MTK closes that gap with **workflow enforcement** (planning, TDD, batched implem
 - **Skill eval harness** at `scripts/skill-eval/` — bash runner + Haiku grader, pass-rate + stddev across N iterations; starter eval for `code-review-and-quality`.
 - **`claude-md-audit` skill** — re-grade loop for existing `CLAUDE.md` files with six-criterion rubric and append-only diffs.
 
-### v7.1.0 — pi.dev borrow improvements (2026-04-23)
+### v7.1.0 — Versioned specs, context budget, footprint reporting (2026-04-23)
 - **Versioned specs** — `spec-driven-development` writes `-v2`, `-v3` instead of overwriting; JSON sidecars, plan files, and handoff artifacts use the same suffix.
 - **Context load estimator** — `context-budget.sh` accumulates `bytes_read`; analytics report surfaces `estimated_context_tokens`.
 - **Per-phase context footprint** — `context-engineering` emits a footprint block (lines + estimated tokens per file) after reference loading.

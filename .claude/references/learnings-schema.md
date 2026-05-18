@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Structured Learnings Schema
 
-Borrowed from sanmak/specops (`core/learnings.md`), adapted to MTK's two-tier model:
+Two-tier model:
 
 - **`tasks/lessons.md`** — committed, team-canonical, human-readable. Source of truth for cross-machine sharing.
 - **`.mtk/learnings.jsonll`** — local-only (gitignored), machine-readable JSON Lines (one entry per line), indexed for retrieval. Generated from `tasks/lessons.md` and updated by `correction-capture` / `promote-lesson`. JSONL is used (rather than a single JSON array) so pure-bash tooling can append and grep without an external JSON parser, per S3.3.
@@ -18,10 +18,11 @@ Manual edits to `tasks/lessons.md` are preserved on next migrate (re-emitted as 
 ```json
 {
   "id": "L-2026-05-08-001",
-  "spec_id": "2026-05-08-v7.5.0-specops-borrows",
+  "spec_id": "2026-05-08-v7.5.0",
   "workflow_uuid": "wf-20260508T061101Z-af6eff",
   "scope": "personal | team",
   "source": "correction | promotion | manual | review-finding | incident",
+  "decision_origin": "user-directed | claude-recommended-approved | claude-recommended-modified | claude-recommended-rejected | system-inferred",
   "captured_at": "2026-05-08T08:42:00Z",
 
   "files": ["scripts/learnings.sh"],
@@ -58,6 +59,13 @@ Manual edits to `tasks/lessons.md` are preserved on next migrate (re-emitted as 
   - `manual` — preserved verbatim from `tasks/lessons.md` markdown additions.
   - `review-finding` — a recurring review finding got escalated.
   - `incident` — postmortem-derived lesson.
+- **`decision_origin`** — provenance of the decision that produced this lesson:
+  - `user-directed` — engineer dictated the decision.
+  - `claude-recommended-approved` — model proposed, engineer accepted unchanged.
+  - `claude-recommended-modified` — model proposed, engineer accepted with edits.
+  - `claude-recommended-rejected` — model proposed, engineer rejected; lesson captures the rejected path.
+  - `system-inferred` — emerged from a deterministic gate or lint, not from a human or model decision.
+  Required at emit time — entries missing the field are rejected by `learnings.sh add`. Aggregated by `learnings.sh metrics` into the sycophancy index π = approved / (approved + modified + rejected).
 - **`files`** / **`directories`** — used by the proximity layer of retrieval. Either or both may be empty.
 - **`phase`** — when this lesson should fire. `any` is valid but discouraged — narrow when possible.
 - **`severity`**:
@@ -120,3 +128,25 @@ tasks/lessons.md         ← markdown view; `## Auto-generated` and `## Manual` 
 - `expires_at`: `captured_at + 12 months`
 
 Migration is idempotent. Re-running does not duplicate entries when matched by title hash.
+
+## Sycophancy Index (π)
+
+`bash scripts/learnings.sh metrics` aggregates `decision_origin` across the last 30 days (configurable via `--window-days`) and emits:
+
+```json
+{
+  "window_days": 30,
+  "totals": {
+    "user-directed": 12,
+    "claude-recommended-approved": 18,
+    "claude-recommended-modified": 6,
+    "claude-recommended-rejected": 3,
+    "system-inferred": 4
+  },
+  "pi": 0.667,
+  "warn_threshold": 0.70,
+  "status": "ok | warn"
+}
+```
+
+`pi = approved / (approved + modified + rejected)`. Excludes `user-directed` and `system-inferred` (they are not model recommendations). `status: "warn"` when `pi >= warn_threshold`. Threshold tunable via `.claude/review-config.json → sycophancy_index.warn_threshold`. Surfaced by `toolkit-health`.

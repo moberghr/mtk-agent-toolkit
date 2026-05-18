@@ -32,6 +32,12 @@ Convert the approved plan into small, executable tasks that can be verified one 
 ## Workflow
 
 1. Start from the approved change manifest and test manifest.
+1a. **Prior-work freshness check.** If the spec's `## Prior Work Check`
+   section is missing OR was generated more than one session ago (different
+   branch HEAD, different day), re-run `prior-work-check` against the
+   current branch state. Risk profiles and lessons can shift between
+   approval and planning. A BLOCK verdict here means planning stops until
+   the spec is amended and re-approved.
 2. Break work into batches of 2-4 related files, dependency-ordered.
 3. For each task, write:
    - task description

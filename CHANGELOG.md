@@ -2,16 +2,50 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.7.0] - 2026-05-18
+
+### Added — Decision provenance and end-to-end wiring verification
+
+- **Decision-origin tagging.** Every entry in the structured learnings store and every reviewer finding carries a `decision_origin` field with one of five values: `user-directed`, `claude-recommended-approved`, `claude-recommended-modified`, `claude-recommended-rejected`, `system-inferred`. The schema for learnings (`.claude/references/learnings-schema.md`) and the review finding schema (`.claude/references/review-finding-schema.md`) are both extended. Tagging is mandatory at capture time — entries without `decision_origin` are rejected by `scripts/learnings.sh add` and by the review-output validator.
+- **Sycophancy index (π).** New `scripts/learnings.sh metrics` computes `π = approved / (approved + modified + rejected)` over the last 30 days. A value ≥ 0.70 raises a warning that the model's recommendations are being accepted without enough pushback. Threshold is tunable via `.claude/review-config.json`. Surfaced in `toolkit-health` and in the weekly analytics report.
+- **Wiring check as Definition of Done.** `verification-before-completion` adds a `wiring` step that runs `bash scripts/validate-toolkit.sh --task-scoped <files>` and treats any unwired file as a hard fail. The new task-scoped mode verifies, for each touched skill / hook / agent / reference: frontmatter `name:` matches the directory; the file is registered in `manifest.json`; hooks are `chmod +x` and referenced from `settings.json`; agent files appear in `.claude-plugin/plugin.json`; reference files are in `.claude/references.index`. Authoring without wiring no longer counts as "done".
+
+### Changed
+
+- `verification-before-completion/SKILL.md` — adds the `wiring` step and a Red Flags entry for "authored but not wired".
+- `validate-toolkit.sh` — new `--task-scoped <file1,file2,...>` mode and `--strict-decision-origin` flag for learnings/review outputs.
+- `scripts/learnings.sh` — new `metrics` subcommand; `add` rejects entries missing `decision_origin`.
+- `.claude/review-config.json` — new `sycophancy_index.warn_threshold` (default `0.70`) and `decision_origin.required` (default `true`).
+- `toolkit-health/SKILL.md` — reports π alongside existing usage stats; warns at threshold.
+
+## [7.6.0] - 2026-05-18
+
+### Added — Claude-Ready spec gate, prior-work check, drift breadth
+
+- **INVEST+C Claude-Ready checklist.** New 16-item gate at `.claude/references/claude-ready-checklist.md` covers the classic INVEST story-quality dimensions plus a "+C" Claude-Ready dimension (concrete file paths, named pattern references, runnable verification commands, explicit out-of-scope, declared dependency intake, public-contract enumeration, etc.). `spec-driven-development` Phase 1 (step 8b) scores the draft against the list before the approval prompt; specs scoring ≤13/16 are sent back to draft and reviewers cite failing item numbers so revisions are targeted.
+- **`prior-work-check` skill.** Three deterministic queries — `search_prior_work`, `get_constraints`, `get_risk_profile` — run before spec approval and again at planning if the spec is stale. The skill greps source (and `CODE_INDEX.md` when present) for the capability under multiple keywords, reads `tasks/lessons.md` and `architecture-principles.md` for governing constraints, and classifies every path in the change manifest by risk category (`regulated`, `boundary`, `shared`, `isolated`). A mis-classified `security_impact` becomes a BLOCK finding rather than passing silently into review.
+- **Context fatigue signals.** Four lightweight signals added to `context-engineering`: token utilization (40%), scope scatter (25%), re-read ratio (20%), error density (15%). When two or more signals are elevated the skill prescribes a prune-then-re-summarize, or an escalation to `handoff`. The handoff template gains a `## Fatigue Signals` block so the next session knows which parts of the half-done state to mistrust.
+- **Drift breadth — three new axes in `spec-drift-detection`.** Ownership (cross-slice creep — warning, escalates to critical when the crossed slice is regulated), dependency-shift (undeclared package adds in lockfile / project file — critical), usage (renamed or removed public contract with surviving call-sites — critical). The dependency-shift axis cross-checks against the Claude-Ready +C #6 intake declaration.
+- **`CODE_INDEX.md`.** Capability-oriented index of the codebase, organized by what the code does rather than where it lives. Template at `.claude/references/code-index-template.md`. Seeded by `setup-bootstrap` from the audit scan and consumed by a new `code-simplification --audit-duplicates` mode that clusters near-duplicate entries for consolidation.
+
+### Changed
+
+- `spec-driven-development/SKILL.md` — adds steps 8b (Claude-Ready scoring) and 8c (prior-work invocation); spec output gains a `## Prior Work Check` section.
+- `planning-and-task-breakdown/SKILL.md` — step 1a re-runs `prior-work-check` if the spec's check is stale (different branch HEAD or different day).
+- `spec-drift-detection/SKILL.md` — adds ownership / dependency-shift / usage rows to the findings table, severity mappings, and verification checklist items.
+- `context-engineering/SKILL.md` — new `## Context Fatigue Signals` section above the budget tracker.
+- `handoff/SKILL.md` — step 1a reads fatigue signals; output template gains a `## Fatigue Signals` block.
+- `code-simplification/SKILL.md` — new `## Mode: --audit-duplicates` section consuming `CODE_INDEX.md`.
+- `setup-bootstrap/SKILL.md` — STEP 4.95 seeds `CODE_INDEX.md` from the audit scan.
+
 ## [7.5.0] - 2026-05-08
 
-### Added — SpecOps borrow improvements
+### Added — EARS+ANT requirements, scored review, dependency gate, structured learnings
 
-Four patterns adapted from `sanmak/specops` after a comparative analysis against MTK's spec-driven workflow.
-
-- **EARS notation + ANT test in spec authoring.** `spec-driven-development` now requires every requirement-bearing bullet under `## Requirements` to use EARS phrasing (Ubiquitous / Event-driven / State-driven / Optional / Unwanted) and pass the Anti-Null-Tautology check (a requirement that cannot be falsified carries no information). New `scripts/lint-ears.sh` runs as part of spec authoring and `spec-drift-detection` — flags non-EARS bullets and tautological phrasing ("be reliable", "follow best practices", "as needed"). Borrowed from `core/writing-quality.md`.
-- **Scored adversarial evaluator in code review.** `compliance-reviewer` and `code-review-and-quality` now emit per-dimension 1–10 scores across `correctness`, `security`, `test_coverage`, `architecture_fit`, and `simplicity` with mandatory `file:line` evidence quotes. Auto-fail rules: any dimension < 7 → `NEEDS_CHANGES`; uniform scores → rejected as `non-discriminating`; missing evidence → score treated as 0. Remediation capped at 2 iterations on the same blocking dimension; third escalates to a human. Schema extended in `.claude/references/review-finding-schema.md` with a new `scores` block. Workflow artifact gains optional `results.review_scores.<dim>` and `results.review_iteration` fields. Borrowed from `core/evaluation.md`.
-- **Dependency-introduction gate.** New `.claude/references/dependency-intake-checklist.md` defines a 5-criteria rubric — scope, maintenance, size, security, license — each scored Good / Acceptable / Poor with required evidence (CVE id, last-release date, license SPDX). Two `Poor` ratings on a single new dependency block; one `Poor` requires explicit override. Wired into `pre-commit-review` (detects `package.json`, `*.csproj`, `requirements.txt`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `Gemfile`, `composer.json` changes) and `security-and-hardening` (supply-chain step). Borrowed from `core/dependency-introduction.md`.
-- **Spec-linked structured learnings.** New `.mtk/learnings.jsonl` (gitignored, JSON Lines for pure-bash tooling per S3.3) is the machine-readable mirror of `tasks/lessons.md`. Schema in `.claude/references/learnings-schema.md`: `{id, spec_id, workflow_uuid, scope, source, captured_at, files, directories, phase, severity, validity, recurrence, title, body, rule, applies_when}`. New `scripts/learnings.sh` provides `add | query | regen-markdown | migrate | list`. The `query` subcommand applies a 5-layer retrieval filter (proximity / recurrence / severity / validity / phase) used at the start of `spec-driven-development` and `fix`. `correction-capture` and `promote-lesson` now write through `learnings.sh add` first, then regenerate the markdown view. The committed `tasks/lessons.md` remains the team-canonical store; manual edits are preserved across regen. Borrowed from `core/learnings.md`.
+- **EARS notation + ANT test in spec authoring.** `spec-driven-development` now requires every requirement-bearing bullet under `## Requirements` to use EARS phrasing (Ubiquitous / Event-driven / State-driven / Optional / Unwanted) and pass the Anti-Null-Tautology check (a requirement that cannot be falsified carries no information). New `scripts/lint-ears.sh` runs as part of spec authoring and `spec-drift-detection` — flags non-EARS bullets and tautological phrasing ("be reliable", "follow best practices", "as needed").
+- **Scored adversarial evaluator in code review.** `compliance-reviewer` and `code-review-and-quality` now emit per-dimension 1–10 scores across `correctness`, `security`, `test_coverage`, `architecture_fit`, and `simplicity` with mandatory `file:line` evidence quotes. Auto-fail rules: any dimension < 7 → `NEEDS_CHANGES`; uniform scores → rejected as `non-discriminating`; missing evidence → score treated as 0. Remediation capped at 2 iterations on the same blocking dimension; third escalates to a human. Schema extended in `.claude/references/review-finding-schema.md` with a new `scores` block. Workflow artifact gains optional `results.review_scores.<dim>` and `results.review_iteration` fields.
+- **Dependency-introduction gate.** New `.claude/references/dependency-intake-checklist.md` defines a 5-criteria rubric — scope, maintenance, size, security, license — each scored Good / Acceptable / Poor with required evidence (CVE id, last-release date, license SPDX). Two `Poor` ratings on a single new dependency block; one `Poor` requires explicit override. Wired into `pre-commit-review` (detects `package.json`, `*.csproj`, `requirements.txt`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `Gemfile`, `composer.json` changes) and `security-and-hardening` (supply-chain step).
+- **Spec-linked structured learnings.** New `.mtk/learnings.jsonl` (gitignored, JSON Lines for pure-bash tooling per S3.3) is the machine-readable mirror of `tasks/lessons.md`. Schema in `.claude/references/learnings-schema.md`: `{id, spec_id, workflow_uuid, scope, source, captured_at, files, directories, phase, severity, validity, recurrence, title, body, rule, applies_when}`. New `scripts/learnings.sh` provides `add | query | regen-markdown | migrate | list`. The `query` subcommand applies a 5-layer retrieval filter (proximity / recurrence / severity / validity / phase) used at the start of `spec-driven-development` and `fix`. `correction-capture` and `promote-lesson` now write through `learnings.sh add` first, then regenerate the markdown view. The committed `tasks/lessons.md` remains the team-canonical store; manual edits are preserved across regen.
 
 ### Changed
 
@@ -27,9 +61,7 @@ Four patterns adapted from `sanmak/specops` after a comparative analysis against
 
 ## [7.4.0] - 2026-05-07
 
-### Added — cc10x borrow improvements
-
-Six patterns adapted from `romiluz13/cc10x` after a comparative analysis against MTK's orchestration model.
+### Added — Durable orchestration and anti-anchored review
 
 - **Durable workflow artifacts.** New `workflow-artifacts` skill plus `scripts/workflow-artifact.sh` helper persist orchestration state under `.mtk/workflows/{uuid}.json` (overwritten in place) and `{uuid}.events.jsonl` (append-only). Schema in `.claude/references/workflow-artifact-schema.md`. State lives outside `.claude/` to escape Claude Code's sensitive-file gate. `.mtk/` added to `.gitignore`. Wired into `implement` Phase 0 (init/resume), spec/plan persistence (`results.spec_path`, `results.plan_path`), Phase 2.5 (`plan_trust_gate`), Phase 3 (`phase_exit_gate` + per-batch progress), and Phase 7 (`memory_sync_gate` + `status=completed`).
 - **Five named orchestration gates.** `.claude/references/orchestration-gates.md` defines `plan_trust_gate`, `phase_exit_gate`, `failure_stop_gate`, `memory_sync_gate`, `skill_precedence_gate` as fail-closed contracts the implement workflow records before advancing. Skipping a gate is treated the same as advancing on `fail`. Cited from `incremental-implementation`, `planning-and-task-breakdown`, `spec-drift-detection`.
@@ -46,9 +78,7 @@ Six patterns adapted from `romiluz13/cc10x` after a comparative analysis against
 
 ## [7.3.0] - 2026-05-07
 
-### Added — superpowers borrow improvements
-
-Two patterns adapted from `obra/superpowers` after a comparative analysis against MTK's positioning.
+### Added — Subagent-driven implementation and decision graphs
 
 - **GraphViz `dot` decision graphs** added inside `mtk/`, `fix/`, and `spec-driven-development/` SKILL.md. Each graph encodes the exact branch points where models most often misroute (router ambiguity, fix scope-guard escalation, spec skip-vs-write + `security_impact` honesty), accompanied by a Red Flags rationalization table. Models follow visual decision flow more reliably than equivalent prose. Anatomy preserved per S2.2 — graphs live inside existing `## Workflow` / Route Table sections.
 - **`subagent-implementation` skill.** New per-batch implementer-subagent path for large features. Phase 3 of `implement` now forks: above the threshold (≥3 batches OR ≥6 files OR non-none `security_impact`) it dispatches the new skill; below threshold it stays on inline `incremental-implementation`. The new skill asks once via `AskUserQuestion` for implementer model (Sonnet/Opus), then loops one fresh subagent per batch with a structured JSON contract (`actual_files`, `build`, `tests`, `behavioral_diff`, `deviations`). Drift micro-check is orchestrator-side and synchronous: in-package extra files auto-amend the sidecar, cross-package or new-public-contract drift re-opens Phase 2.5. Phase 3.5 spec-drift and Phase 4 two-stage review run unchanged. Pressure test covers 10 adversarial scenarios.
@@ -60,9 +90,7 @@ Two patterns adapted from `obra/superpowers` after a comparative analysis agains
 
 ## [7.2.0] - 2026-04-27
 
-### Added — graphify borrow improvements
-
-Five patterns adapted from `safishamsi/graphify`. See `docs/plans/2026-04-27-graphify-borrow.md`.
+### Added — Ignore syntax, confidence-tagged audit, MCP expansion
 
 - **`.mtkignore`** at repo root — single source of truth for paths excluded from MTK scans. Same syntax as `.gitignore`. Loader at `hooks/lib/mtkignore.sh`; tree-sitter walker reads it directly. `setup-bootstrap` generates a starter file. New rule **S1.14**.
 - **Confidence-tagged audit principles.** `setup-audit` emits `[EXTRACTED]`, `[INFERRED:0.0–1.0]`, or `[AMBIGUOUS]` tags plus evidence pointers. `spec-drift-detection` uses tags as a severity gradient: EXTRACTED blocks, INFERRED ≥0.7 flags, INFERRED <0.7 / AMBIGUOUS notes. Merge mode downgrades on disagreement. Pressure test in `tests/pressure-tests/spec-drift-tags.md`. New rule **S1.15**.
@@ -70,9 +98,7 @@ Five patterns adapted from `safishamsi/graphify`. See `docs/plans/2026-04-27-gra
 - **MCP server expanded** to 7 tools (was 2). Added read-only `mtk_manifest`, `mtk_analytics`, `mtk_audit` (parses tagged principles), `mtk_references_index`, `mtk_active_stack`. Read-only enforced by validator grep gate. Server bumped to 0.2.0. `hooks/session-start` rebuild trigger now fires on `mcp/src/**` mtime change. Bash fallbacks documented in `docs/integrations/mtk-mcp.md` (S3.12).
 - **Post-commit auto-refresh.** `hooks/git-hooks/post-commit-refresh.sh` (opt-in) rebuilds derived artifacts via `scripts/refresh-derived.sh` when their inputs change. Silent on no-op, never blocks.
 
-### Added — official Claude plugin borrow improvements
-
-Four targeted improvements drawn from a comparative analysis of Anthropic's official Claude Code plugins (`code-review`, `pr-review-toolkit`, `skill-creator`, `claude-md-management`). See `docs/specs/2026-04-25-official-plugin-borrow-improvements.md`.
+### Added — Review schema hardening, silent-failure hunter, skill eval harness
 
 - **False-Positive Exclusion List** added to `.claude/references/review-finding-schema.md`. Seven explicit categories (pre-existing issues, linter-catchable items, unjustified style nits, justified silences, plausibly-intentional behavior shifts, generic concerns, unloaded-context guesses) that are dropped before confidence scoring rather than scored low. Wired into `code-review-and-quality` and `compliance-reviewer`. The 0–100 confidence rubric, threshold filtering, anti-inflation, and anti-sandbagging machinery already shipped in 7.0.x — this completes the picture.
 - **`silent-failure-hunter` reviewer agent.** New `.claude/agents/silent-failure-hunter.md` with explicit pattern catalogue (catch/promise/fallback/silenced-diagnostic/test-erosion), severity-by-path mapping (audited paths → Critical), and single-lens FP discipline. Dispatched conditionally from `code-review-and-quality` when the diff matches error-handling tokens (`catch`, `except`, `?.`, `??`, `eslint-disable`, `Skip =`, `it.skip`, etc.) — runs in parallel with `compliance-reviewer`. Pressure test ships with 7 adversarial scenarios.
@@ -81,11 +107,11 @@ Four targeted improvements drawn from a comparative analysis of Anthropic's offi
 
 ### Fixed
 
-- **`scripts/generate-agents-md.sh` no longer clobbers hand-curated `AGENTS.md`.** The generator now refuses to overwrite a file that does not carry its own `Auto-generated by MTK` marker, falls back to writing `AGENTS.generated.md` instead, and prints a warning. Surfaced while running Batch 2 of the borrow improvements — the toolkit's own root `AGENTS.md` is a curated routing guide (Mermaid tree, two-stage review model) that the generator was destroying on every run. New `--force` flag escapes the safety check.
+- **`scripts/generate-agents-md.sh` no longer clobbers hand-curated `AGENTS.md`.** The generator now refuses to overwrite a file that does not carry its own `Auto-generated by MTK` marker, falls back to writing `AGENTS.generated.md` instead, and prints a warning. The toolkit's own root `AGENTS.md` is a curated routing guide (Mermaid tree, two-stage review model) that the generator was destroying on every run. New `--force` flag escapes the safety check.
 
 ## [7.1.0] - 2026-04-23
 
-### Added — pi.dev borrow improvements
+### Added — Versioned specs, context budget, footprint reporting
 
 - **Versioned specs.** `spec-driven-development` now detects existing specs with the same date+slug and writes `-v2`, `-v3`, etc. instead of overwriting. JSON sidecars, plan files, and handoff artifacts use the same version suffix. `context-report` lists all versions grouped by slug.
 - **Context load estimator.** `context-budget.sh` accumulates `bytes_read` for unique files read per session (capped at 100k/file). `session-analytics.sh` computes `estimated_context_tokens = bytes_read / 4` and persists both fields to `analytics.json`. `analytics-report.sh` surfaces estimated context tokens in its output.
@@ -135,11 +161,11 @@ Four targeted improvements drawn from a comparative analysis of Anthropic's offi
 
 ## [6.5.0] - 2026-04-22
 
-### Added (three borrows from the agent-toolkit landscape)
+### Added — Toolset scoping, keyword triggers, typed handoffs
 
-- **Task-class toolset scoping (HolmesGPT pattern)** — new `.claude/toolsets/*.yaml` registry (`read-only`, `git-safe`, `code-edit`) with `extends:` inheritance. Skills and agents may declare `required-toolsets:` / `forbidden-toolsets:` in frontmatter; `/mtk` router expands them into `allowed-tools` on dispatch. `scripts/resolve-toolsets.sh` flattens the DAG (bash 3.2 compatible, no jq). Seeded on `compliance-reviewer`, `architecture-reviewer`, `test-reviewer`, and `spec-drift-detection`. New rules S2.19–21.
-- **Keyword-triggered skill hints (OpenHands microagents pattern)** — skills may declare `triggers: [kw1, kw2]` in frontmatter. `scripts/build-triggers-index.sh` generates `.claude/triggers.index`; `hooks/lib/trigger-hints.sh` (sourced by the existing UserPromptSubmit dispatcher) grep-scans the prompt and surfaces `💡 consider skill: X (matched: kw)` nudges. Seeded on `security-and-hardening`, `debugging-and-error-recovery`, `test-driven-development`. New rules S2.22–24.
-- **Typed handoff artifacts (MetaGPT pattern)** — new `.claude/schemas/handoff.schema.json` codifies the shared spec→plan→implement contract. `spec-driven-development` already emitted the spec sidecar; `planning-and-task-breakdown` and `incremental-implementation` now append typed `plan` and `implement` sections to the same `docs/specs/<date>-<slug>.json`. `scripts/validate-handoff.sh` performs deterministic file-level and security-impact drift detection (no jq, no git hard-dependency). `spec-drift-detection` now prefers this path over judgment-based diffs.
+- **Task-class toolset scoping** — new `.claude/toolsets/*.yaml` registry (`read-only`, `git-safe`, `code-edit`) with `extends:` inheritance. Skills and agents may declare `required-toolsets:` / `forbidden-toolsets:` in frontmatter; `/mtk` router expands them into `allowed-tools` on dispatch. `scripts/resolve-toolsets.sh` flattens the DAG (bash 3.2 compatible, no jq). Seeded on `compliance-reviewer`, `architecture-reviewer`, `test-reviewer`, and `spec-drift-detection`. New rules S2.19–21.
+- **Keyword-triggered skill hints** — skills may declare `triggers: [kw1, kw2]` in frontmatter. `scripts/build-triggers-index.sh` generates `.claude/triggers.index`; `hooks/lib/trigger-hints.sh` (sourced by the existing UserPromptSubmit dispatcher) grep-scans the prompt and surfaces `💡 consider skill: X (matched: kw)` nudges. Seeded on `security-and-hardening`, `debugging-and-error-recovery`, `test-driven-development`. New rules S2.22–24.
+- **Typed handoff artifacts** — new `.claude/schemas/handoff.schema.json` codifies the shared spec→plan→implement contract. `spec-driven-development` already emitted the spec sidecar; `planning-and-task-breakdown` and `incremental-implementation` now append typed `plan` and `implement` sections to the same `docs/specs/<date>-<slug>.json`. `scripts/validate-handoff.sh` performs deterministic file-level and security-impact drift detection (no jq, no git hard-dependency). `spec-drift-detection` now prefers this path over judgment-based diffs.
 
 ### Changed
 

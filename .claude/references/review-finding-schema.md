@@ -40,7 +40,8 @@ full review envelope expected from review skills and reviewer agents.
       "file": "relative/path/to/file.ext",
       "line": 42,
       "rationale": "One-line statement of why this is a problem.",
-      "suggested_fix": "One-line description of the remediation."
+      "suggested_fix": "One-line description of the remediation.",
+      "decision_origin": "user-directed | claude-recommended-approved | claude-recommended-modified | claude-recommended-rejected | system-inferred"
     }
   ],
   "scores": {
@@ -180,7 +181,7 @@ Warnings and suggestions do not force `NEEDS_CHANGES` but should be addressed.
 
 ## Scores Block (Scored Adversarial Evaluator)
 
-Borrowed from sanmak/specops (`core/evaluation.md`). Every review (compliance and code-review-and-quality) MUST emit a `scores` object with five dimensions: `correctness`, `security`, `test_coverage`, `architecture_fit`, `simplicity`.
+Every review (compliance and code-review-and-quality) MUST emit a `scores` object with five dimensions: `correctness`, `security`, `test_coverage`, `architecture_fit`, `simplicity`.
 
 **Per-dimension contract:**
 - `value` — integer 1–10 (9–10 exemplary · 7–8 acceptable · 4–6 blocks · 1–3 severe).
@@ -195,3 +196,25 @@ Borrowed from sanmak/specops (`core/evaluation.md`). Every review (compliance an
 **Iteration cap.** Orchestrators cap remediation at 2 iterations on the same blocking dimension. A third iteration that would still score < 7 on the same dimension escalates to a human reviewer.
 
 **Workflow artifact integration.** When `MTK_WF_UUID` is set, the orchestrator emits per-dimension scores into `results.review_scores.<dim>` plus `results.review_iteration` for cycle tracking.
+
+## Decision-Origin Tagging
+
+Every finding carries a `decision_origin` field that records who or what produced the underlying decision. The five values map to authorship in the conversation:
+
+| Value | Meaning |
+|---|---|
+| `user-directed` | The decision under review was explicitly directed by the engineer (e.g. "use repository pattern", "no cache layer"). The reviewer is checking conformance to a stated requirement. |
+| `claude-recommended-approved` | The model proposed an approach, the engineer accepted it without modification. The reviewer is checking a model-proposed design that wasn't pushed back on. |
+| `claude-recommended-modified` | The model proposed an approach, the engineer modified it before accepting. The final shape reflects engineer judgement applied to a model proposal. |
+| `claude-recommended-rejected` | The model proposed an approach, the engineer rejected it; the implementation went a different way. The reviewer is checking the engineer-chosen alternative. |
+| `system-inferred` | Neither user-directed nor model-proposed — emerged from a deterministic gate, lint rule, or schema constraint. |
+
+**Required at emit time.** Reviewer agents and skills emit `decision_origin` for every finding. Findings with a missing or invalid value are rejected by the review-output validator (run by `validate-toolkit.sh --strict-decision-origin`).
+
+**Why it matters.** The distribution of `decision_origin` values across a workstream reveals provenance: a stream dominated by `claude-recommended-approved` signals that the engineer is accepting model recommendations without pushback (sycophancy risk). The metric is operationalised as the **sycophancy index (π)**:
+
+```
+π = approved / (approved + modified + rejected)
+```
+
+Computed over the last 30 days of learnings and reviews by `bash scripts/learnings.sh metrics`. The default warn threshold is `0.70` and is tunable via `.claude/review-config.json` (`sycophancy_index.warn_threshold`). Crossing the threshold is a process signal, not an error — it surfaces in `toolkit-health` and prompts a deliberate re-read of the last few recommendations.

@@ -39,6 +39,7 @@ Personal lessons in `.claude/lessons/personal.md` are gitignored — they belong
    - **Structured (preferred when `scripts/learnings.sh` is present).** Add a JSONL entry with `--scope team --source promotion` and the reworded body, then `learnings.sh regen-markdown` to rebuild `tasks/lessons.md`:
      ```bash
      bash scripts/learnings.sh add --scope team --source promotion \
+       --decision-origin "<inherit from the personal entry being promoted>" \
        --severity warn --phase any \
        --title "<reworded title>" --body "<reworded body>" \
        --rule "<rule>" --applies-when "<when>"
