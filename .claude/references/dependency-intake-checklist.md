@@ -8,8 +8,6 @@ alwaysApply: false
 
 Adding a third-party dependency is a long-lived decision. This gate runs whenever a dependency manifest changes (`pre-commit-review` and `security-and-hardening` invoke it). Score each criterion **Good / Acceptable / Poor** with a one-line rationale citing evidence. **Two Poors block; any single Poor requires explicit engineer override.**
 
-Borrowed from sanmak/specops (`core/dependency-introduction.md`).
-
 ## The Five Criteria
 
 ### 1. Scope — does this dep solve a problem we couldn't solve in <50 LOC ourselves?

@@ -58,6 +58,21 @@ No completion claim is valid without fresh evidence from an actual command execu
    recent file edit and the latest verification command in the session; a
    completion claim is stale when the verification event happened before the
    latest code-change event, even if both landed in the same wall-clock second.
+7. **Wiring check.** For every skill, hook, agent, or reference touched in
+   this task, run:
+   ```bash
+   bash scripts/validate-toolkit.sh --task-scoped <comma-separated paths>
+   ```
+   The check verifies that each file is fully registered — skill `name:`
+   matches its directory and appears in `manifest.json`, hooks are
+   executable and referenced from `settings.json` / `hooks/hooks.json`,
+   agents appear in `plugin.json`, references appear in
+   `.claude/references.index`. Authoring without wiring is a hard fail:
+   the toolkit ships features by registration, not by file existence, so
+   an unwired file is dead code that produces nothing at runtime. The
+   touched-files list comes from `git diff --name-only HEAD` (or the
+   spec's `change_manifest` when running inside a workflow). If the file
+   list is empty (no toolkit artifacts touched), this step is a no-op.
 
 ## Claim Extraction (When Verifying Upstream Agent Work)
 
@@ -105,6 +120,7 @@ See `.claude/skills/context-engineering/SKILL.md` — the shared MTK rationaliza
 - Partial test run used to claim full verification
 - Stale evidence from before the latest edit
 - Success claimed despite warnings or skipped tests in the output
+- New skill / hook / agent / reference authored but not wired (no manifest entry, hook not chmod +x or not referenced from settings, agent missing from plugin.json) — files exist on disk but nothing dispatches them
 
 ## Signal-Based Enforcement
 

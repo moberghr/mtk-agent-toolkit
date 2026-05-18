@@ -19,9 +19,9 @@ required-toolsets: [read-only]
 
 Before writing new code, confirm the codebase doesn't already do this. The
 single most common cause of waste in mature codebases is re-implementing a
-capability that already exists under a different name. Borrowed from the
-maggy/iCPG "three mandatory pre-task queries" pattern, adapted to MTK's
-file-based artifacts (lessons, specs, code index).
+capability that already exists under a different name. Three deterministic
+pre-task queries run against MTK's file-based artifacts (lessons, specs,
+code index) before a spec is approved or a planner opens a batch.
 
 Three deterministic queries run against the repo. Each must complete before
 the spec is handed to the approval gate or the planner begins task breakdown.

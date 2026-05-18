@@ -171,7 +171,6 @@ digraph spec_flow {
 
 Every requirement-bearing bullet in the spec's `## Requirements` section uses **EARS** (Easy Approach to Requirements Syntax). EARS makes requirements testable by forcing a predicate-with-trigger shape; flowery prose has nowhere to hide.
 
-Borrowed from sanmak/specops (`core/writing-quality.md`).
 
 ### The five templates
 

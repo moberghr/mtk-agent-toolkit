@@ -40,9 +40,10 @@ Simplify only after behavior is proven. The goal is to reduce complexity, remove
 
 ## Mode: `--audit-duplicates`
 
-Borrowed from the maggy "check before you write" pattern. Optional audit
-that scans the repo for near-duplicate capabilities so they can be
-consolidated before they multiply.
+Optional audit that scans the repo for near-duplicate capabilities so
+they can be consolidated before they multiply. Use the "check before
+you write" reflex during spec writing; this mode is the periodic sweep
+that catches duplicates that slipped past it.
 
 1. Read `CODE_INDEX.md` at the repo root (template:
    `.claude/references/code-index-template.md`). If absent, generate it

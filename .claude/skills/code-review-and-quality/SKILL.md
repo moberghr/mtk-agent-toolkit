@@ -88,7 +88,7 @@ If reviewing a PR or branch with CI runs, check CI status:
     - Optional top-level fields only when they add real signal: `internet_facing`
       for boundary exposure and `needs_human_review` for axes the AI cannot
       honestly clear from the diff alone
-6. **Score the five dimensions (1–10).** Borrowed from sanmak/specops (`core/evaluation.md`).
+6. **Score the five dimensions (1–10).**
    Assign one score per dimension and cite at least one **file:line evidence quote** per score (high or low):
    - `correctness` — does the code do what the spec said? Edge cases? Invariants?
    - `security` — auth, secrets, input validation, audit, supply chain

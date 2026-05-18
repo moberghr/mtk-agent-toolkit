@@ -75,9 +75,9 @@ See `docs/parallelism-patterns.md` for canonical patterns (parallel ref load, St
 
 ## Context Fatigue Signals
 
-Borrowed from maggy/Mnemos. Track four lightweight signals during a session
-and flag fatigue early — refresh, prune, or hand off before output quality
-collapses. None of these require tooling; estimate from session state.
+Track four lightweight signals during a session and flag fatigue early
+— refresh, prune, or hand off before output quality collapses. None of
+these require tooling; estimate from session state.
 
 | Signal | Weight | Read as |
 |---|---|---|

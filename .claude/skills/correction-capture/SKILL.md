@@ -66,6 +66,7 @@ When an engineer corrects your approach, that correction contains knowledge that
      --workflow "${MTK_WF_UUID:-manual}" \
      --scope "personal|team" \
      --source correction \
+     --decision-origin "claude-recommended-rejected|claude-recommended-modified|user-directed" \
      --severity "info|warn|block" \
      --phase "spec|plan|implement|review|any" \
      --files "comma,separated,paths" \
@@ -74,6 +75,11 @@ When an engineer corrects your approach, that correction contains knowledge that
      --rule  "The reusable rule extracted" \
      --applies-when "When this rule should activate"
    bash scripts/learnings.sh regen-markdown   # rebuilds tasks/lessons.md
+
+   # decision-origin guidance:
+   #   claude-recommended-rejected — engineer stopped the approach the model proposed
+   #   claude-recommended-modified — engineer accepted the proposal with edits, captured the edit as the rule
+   #   user-directed — correction is enforcing a pre-stated engineer constraint the model missed
    ```
    Schema: `.claude/references/learnings-schema.md`.
 

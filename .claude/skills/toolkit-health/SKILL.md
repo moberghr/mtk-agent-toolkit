@@ -79,6 +79,16 @@ if [ -f tasks/lessons.md ]; then grep -c '^## ' tasks/lessons.md 2>/dev/null || 
    - "Review `tasks/lessons.md` for promotion candidates to `CLAUDE.md`" (if `lessons_captured > 15`)
    - "Run `bash scripts/run-benchmarks.sh` to refresh the effectiveness baseline" (if benchmarks stale)
 
+7. **Decision-origin and sycophancy index.** Run `bash scripts/learnings.sh metrics` and parse the resulting JSON. Surface:
+   - the totals per `decision_origin` value (`user-directed`, `claude-recommended-approved`, `claude-recommended-modified`, `claude-recommended-rejected`, `system-inferred`)
+   - π (sycophancy index) and its status (`ok` / `warn`)
+
+   When `status: "warn"`, suggest one of:
+   - "π = <value> over the last <window_days> days — review the recent stream of approved recommendations; the model is rarely being pushed back on. Either confirm the recommendations are genuinely strong, or invite more dissent on the next batch."
+   - "Tune the threshold in `.claude/review-config.json → sycophancy_index.warn_threshold` if the default is too tight for the current phase of work."
+
+   When the denominator (`approved + modified + rejected`) is below 10, label the reading "insufficient sample — π not yet meaningful" rather than warning on a noisy estimate.
+
 ## Rules
 
 - **Read-only.** Never modify `.claude/analytics.json`, `tasks/lessons.md`, or `docs/specs/`. Reports the engineer's state; doesn't change it.

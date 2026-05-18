@@ -1,12 +1,12 @@
 ---
-description: INVEST+C 16-item Claude-Ready spec checklist — gate run by spec-driven-development before approval (maggy borrow)
+description: INVEST+C 16-item Claude-Ready spec checklist — gate run by spec-driven-development before approval
 globs: ["docs/specs/**/*.md"]
 alwaysApply: false
 ---
 
 # Claude-Ready Spec Checklist (INVEST+C)
 
-> Borrowed from the maggy/iCPG "INVEST+C" framework. The "+C" extends Bill Wake's INVEST acronym with a Claude-Ready dimension: a spec must be self-sufficient enough that an LLM can execute it without asking clarifying questions.
+> Extends Bill Wake's INVEST acronym with a Claude-Ready ("+C") dimension: a spec must be self-sufficient enough that an LLM can execute it without asking clarifying questions.
 
 Apply this checklist during Phase 1 of `spec-driven-development` once the draft sections (summary, success criteria, change manifest, etc.) exist. A spec that fails 4+ items should be revised before approval — it will produce drift, rework, or fabricated assumptions during implementation.
 

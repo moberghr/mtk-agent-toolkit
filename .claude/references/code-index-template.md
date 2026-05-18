@@ -1,12 +1,12 @@
 ---
-description: Template for CODE_INDEX.md — repo-root capability index seeded by setup-bootstrap, consumed by code-simplification --audit-duplicates (maggy borrow)
+description: Template for CODE_INDEX.md — repo-root capability index seeded by setup-bootstrap, consumed by code-simplification --audit-duplicates
 globs: ["CODE_INDEX.md"]
 alwaysApply: false
 ---
 
 # CODE_INDEX.md — Capability Index
 
-> Borrowed from the maggy "check before you write" pattern. CODE_INDEX is a capability-oriented index of the codebase, organized by **what the code does** rather than by **where it lives**. Its purpose is to make duplication visible before new code is written.
+> CODE_INDEX is a capability-oriented index of the codebase, organized by **what the code does** rather than by **where it lives**. Its purpose is to make duplication visible before new code is written.
 
 `setup-bootstrap` generates an initial CODE_INDEX.md at the repo root during first-time setup. `code-simplification` (in `--audit-duplicates` mode) refreshes it and surfaces near-duplicate capabilities for consolidation.
 
