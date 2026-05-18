@@ -54,6 +54,14 @@ A handoff captures the current session state — branch, in-progress work, decis
    - Active spec or plan: check `docs/specs/` and `docs/plans/` for recent files. Record the **full path** of the active spec including any version suffix (e.g., `docs/specs/2026-04-23-foo-v2.md`) — this becomes `spec_path` in the artifact.
    - Lessons captured this session: check `tasks/lessons.md` for today's entries
 
+1a. **Read fatigue signals.** Use the four-signal heuristic from
+    `context-engineering` (token util / scope scatter / re-read ratio /
+    error density) to decide whether this handoff is "clean snapshot" or
+    "salvage". When 2+ signals are elevated, lead the handoff with the
+    elevated signals so the next session knows what to mistrust about the
+    half-done state (e.g., "scope scattered across 4 unrelated modules —
+    revisit the goal before continuing batch 3").
+
 2. **Summarize decisions.** Without restating the conversation:
    - What was the goal of this session?
    - What decisions were made and why?
@@ -93,6 +101,11 @@ A handoff captures the current session state — branch, in-progress work, decis
 
    ## Resume Instructions
    [specific steps to pick up where this left off]
+
+   ## Fatigue Signals (if elevated)
+   [name the elevated signals — token util / scope scatter / re-read ratio /
+   error density — and what the next session should mistrust because of them.
+   Omit this section entirely if no signals are elevated.]
    ```
 
 4. **Ensure gitignored.** Add `docs/handoffs/` to `.gitignore` if not already there. Handoffs are working artifacts, not committed deliverables.

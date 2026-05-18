@@ -73,6 +73,28 @@ Reference reads in load-context steps are independent — issue multiple `Read` 
 
 See `docs/parallelism-patterns.md` for canonical patterns (parallel ref load, Stage 2 reviewer fan-out, batch deferred-tool hydration).
 
+## Context Fatigue Signals
+
+Borrowed from maggy/Mnemos. Track four lightweight signals during a session
+and flag fatigue early — refresh, prune, or hand off before output quality
+collapses. None of these require tooling; estimate from session state.
+
+| Signal | Weight | Read as |
+|---|---|---|
+| **Token utilization** | 40% | Approaching the conversation's context limit (e.g., compaction warnings appearing). High = imminent fatigue. |
+| **Scope scatter** | 25% | Number of distinct directories or features touched this session. >3 unrelated areas = scope creep, recall degrades. |
+| **Re-read ratio** | 20% | How often the same file is re-loaded because earlier reads aged out. >2 re-reads of the same file = context evicted. |
+| **Error density** | 15% | Build/test failures, corrections from the engineer, or tool-call retries per phase. Rising density = signal-to-noise dropping. |
+
+**Composite reading.** If 2+ signals are elevated simultaneously:
+
+1. Pause before the next phase.
+2. Prune: drop references no longer relevant; release skills not in active use.
+3. Re-summarize the active goal (3-5 lines) so the next phase anchors on a clean restatement, not on accumulated noise.
+4. If pruning isn't enough, escalate to `handoff` — capture state, end the session, resume in a fresh context.
+
+**Honest reporting.** These are heuristics, not measurements. When you report fatigue, name which signals are elevated and why — don't hide behind a composite score.
+
 ## Context Budget Tracking
 
 Track the cumulative context loaded in the session. Fewer, focused instructions beat many, diluted ones — every extra rule competes with the ones that actually matter most for the current task.

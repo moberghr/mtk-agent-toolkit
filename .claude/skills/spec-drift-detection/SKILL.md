@@ -87,6 +87,26 @@ Phase 2.5 did not cover the final code. Detect divergence before review.
    | Security impact | `security_impact: none` but auth/payments/audit files touched | 95+ |
    | Out-of-scope | Declared out_of_scope item that appears to be implemented | 80–90 |
    | Success criteria | Criterion has no mapped test in the diff | 80 |
+   | Ownership | Touched a slice/module not listed in the spec's declared ownership (cross-slice creep) | 80–90 |
+   | Dependency shift | New package, SDK, or external service in the diff that was not declared in the spec's dependency intake | 90–100 |
+   | Usage | Public contract removed/renamed but call-sites in other slices weren't updated | 85–95 |
+
+   **Ownership.** Parse the spec's declared slice/module ownership (from the
+   architecture-and-design section or `change_manifest[].path` prefixes) and
+   compare against the slice prefixes of every touched file. Cross-slice
+   touches without justification are drift.
+
+   **Dependency shift.** Diff the lockfile / project file (`packages.lock.json`,
+   `*.csproj <PackageReference>`, `requirements.txt`, `pyproject.toml`,
+   `package.json` + `package-lock.json`, `pnpm-lock.yaml`, `Cargo.toml`) and
+   list any added/upgraded dependencies. Cross-check against the spec's
+   declared dependency intake (Claude-Ready checklist +C #6). Undeclared
+   dependencies are drift — they should have triggered the security/license
+   review gate during spec writing.
+
+   **Usage.** For removed/renamed public contracts in `public_contracts`,
+   grep the repo for remaining call-sites. Any unupdated call-site is a
+   usage-drift critical finding.
 
 5. **Emit the schema-conformant output** (markdown table + fenced JSON).
    Drift findings mix with any AI review findings downstream. `severity`
@@ -96,6 +116,10 @@ Phase 2.5 did not cover the final code. Detect divergence before review.
    - Security-impact understated → `critical`
    - Success criterion unmapped → `warning`
    - Out-of-scope hit → `warning`
+   - Ownership / cross-slice creep → `warning` (escalates to `critical` if
+     the crossed slice is regulated — auth, payments, audit)
+   - Dependency shift (undeclared) → `critical`
+   - Usage drift (stale call-site after rename) → `critical`
 
 6. **Verdict:**
    - Any `critical` drift → `NEEDS_CHANGES`. The engineer either fixes the
@@ -161,3 +185,9 @@ If the workflow artifact is active, drift findings flip the `phase_exit_gate` fo
 - [ ] No silent spec edits were made to suppress drift findings
 - [ ] `bash scripts/lint-ears.sh` was run against the spec markdown (or
       explicitly skipped with a note when the script is unavailable)
+- [ ] Ownership axis: every touched slice was compared against the spec's
+      declared ownership; cross-slice creep was flagged
+- [ ] Dependency axis: lockfile/project-file diff was inspected; undeclared
+      additions were flagged as critical
+- [ ] Usage axis: renamed/removed public contracts were grepped for
+      remaining call-sites

@@ -947,6 +947,7 @@ bash scripts/build-references-index.sh
 
 This produces `.claude/references.index` — a tab-separated file used by routing logic to auto-select references by file-pattern match. The index is gitignored (regenerated on every bootstrap and audit).
 
+## STEP 4.95: Seed CODE_INDEX.md — from `.claude/references/code-index-template.md` (handlers/controllers/services by domain); skip if exists; consumed by `code-simplification --audit-duplicates`.
 ## STEP 5: Verify & Report
 
 ```
