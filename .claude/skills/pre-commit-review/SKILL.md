@@ -62,6 +62,14 @@ check engineers should run before every commit.
    (CVE id, last-release date, license SPDX). Pure version bumps within the
    same major skip the rubric (vulnerability scan only). Skip the gate
    entirely when the checklist file is absent (older repos).
+4.8. **Monorepo ripple check.** Run
+   `bash scripts/monorepo-ripple.sh $(git diff --cached --name-only)`.
+   On a non-monorepo it exits 0 with no output (no false positives). On a
+   monorepo, each `RIPPLE <pkg>: affects <downstream>` line becomes a
+   `category: "ripple"`, `severity: "warning"`, `source: "linter"`,
+   `confidence: 90` finding. Ripples never block the commit on their own —
+   they exist to make the author aware that staged changes will affect
+   downstream packages. Pattern borrowed from `github.com/johnpapa/ai-ready`.
 5. Run the AI review pass on the same diff to catch issues the linter can't
    reach (design, intent, context-sensitive rules). AI findings use
    `source: "ai"` and their own confidence scores per the rubric.

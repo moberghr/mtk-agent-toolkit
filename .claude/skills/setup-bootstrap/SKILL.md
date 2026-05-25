@@ -438,7 +438,7 @@ Before writing files (or presenting preview), validate every concrete directory,
 - If a solution references a project that doesn't exist on disk → note the stale solution entry but do NOT modify the `.sln` file.
 - Re-run this check after any file deletions or renames in the same session.
 
-**Rule:** Never infer disk presence from solution membership, package manifests, or lock files alone. The `test -d` / `test -f` check is the source of truth. The generated content must reflect the repository state AT THE TIME OF WRITING, not at the time of scanning.
+**Rule:** Never infer disk presence from solution membership, package manifests, or lock files alone. The `test -d` / `test -f` check is the source of truth. The generated content must reflect the repository state AT THE TIME OF WRITING, not at the time of scanning. **Claim-level grounding (MANDATORY):** after writing each generated doc, run `bash scripts/verify-claims.sh <file>` and apply `.claude/references/audit-grounding.md` (rule tags `[ENFORCED]/[CONVENTION]/[ASPIRATIONAL]`, `<!-- mtk-stamp -->` footer on CLAUDE.md, zero-hit downgrades, transient-state and terminology flags, paste-ready weak-claims report).
 
 ## STEP 3.5b: Preview Gate (if `--preview`)
 

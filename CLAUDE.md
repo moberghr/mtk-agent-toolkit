@@ -14,7 +14,8 @@
 | First-time repo setup | `/mtk-setup` | Bootstrap — detects tech stack, pulls guidelines, generates CLAUDE.md and architecture-principles.md |
 | Re-run audit | `/mtk-setup --audit` | Refresh `.claude/references/architecture-principles.md` after architectural change |
 | Merge multi-repo audits | `/mtk-setup --merge` | Unify per-repo audits in `.claude/references/audits/` into a team-wide doc |
-| Everything else | `/mtk <description>` | Natural language — routes to fix / implement / pre-commit-review / context-report |
+| Everything else | `/mtk <description>` | Natural language — routes to fix / implement / pre-commit-review / repo-health / context-report |
+| Periodic readiness check | `/mtk repo-health` or `bash scripts/repo-health-score.sh` | 12-asset scorecard + PR review mining (last 10 merged PRs) |
 | Validate toolkit | `bash scripts/validate-toolkit.sh` | Before every commit — structural check of manifest, plugin.json, and skill anatomy |
 | Disable tier-2 hooks | `MTK_HOOKS_TIER2=0` in `.claude/settings.local.json` env | Silences skill-invoking hooks (queue + drain) without touching shared settings |
 | Auto-approve safe plans | `MTK_AUTO_PROCEED=1` in `.claude/settings.local.json` env | Skips Phase 2.5 prompt only when spec has no open decisions and no plan-gap BLOCKING findings |
