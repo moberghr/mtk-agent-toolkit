@@ -127,6 +127,20 @@ Phase 2.5 did not cover the final code. Detect divergence before review.
      re-runs through the Phase 2.5 approval gate.
    - No critical drift → `PASS`. Continue to Phase 4 review.
 
+## Monorepo Ripple Check
+
+After comparing the manifest, also run a cross-package ripple check on the change manifest. This catches "one-package change with many-package impact" surprises.
+
+```bash
+bash scripts/monorepo-ripple.sh $(git diff --name-only HEAD)
+```
+
+- Exits 0 on non-monorepo (no output) — no false positives.
+- On a monorepo, emits lines `RIPPLE <pkg>: affects <downstream>`.
+- Treat ≥1 ripple line as a **warning-level** drift finding (not blocking), unless the spec's `change_manifest` already lists the downstream packages — then it's expected and silent.
+
+Pattern borrowed from `github.com/johnpapa/ai-ready` (cross-package dependency mapping).
+
 ## Rules
 
 - No drift check without a spec manifest. If the manifest is missing,

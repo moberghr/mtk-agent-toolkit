@@ -1,6 +1,6 @@
 {
-  "version": "7.7.0",
-  "updated": "2026-05-18",
+  "version": "7.8.0",
+  "updated": "2026-05-19",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
   "coding-guidelines": {
@@ -1523,6 +1523,84 @@
       "target": ".claude/references/stub-detection.md",
       "action": "sync",
       "description": "Grep patterns to catch stub implementations, placeholder code, mock data, and unwired components in code review"
+    },
+    "skills/repo-health/SKILL.md": {
+      "source": ".claude/skills/repo-health/SKILL.md",
+      "target": ".claude/skills/repo-health/SKILL.md",
+      "action": "sync",
+      "description": "Periodic AI-readiness report combining the 12-asset scorecard and PR review mining"
+    },
+    "skills/pr-review-mining/SKILL.md": {
+      "source": ".claude/skills/pr-review-mining/SKILL.md",
+      "target": ".claude/skills/pr-review-mining/SKILL.md",
+      "action": "sync",
+      "description": "Mine repeated reviewer-feedback phrases from recent merged PRs and surface them as suggest-only [MINED:feedback] candidates"
+    },
+    "scripts/pr-review-mine.sh": {
+      "source": "scripts/pr-review-mine.sh",
+      "target": "scripts/pr-review-mine.sh",
+      "action": "sync",
+      "description": "Fetch recent merged PR review threads via gh and cluster repeated reviewer-feedback phrases"
+    },
+    "scripts/repo-health-score.sh": {
+      "source": "scripts/repo-health-score.sh",
+      "target": "scripts/repo-health-score.sh",
+      "action": "sync",
+      "description": "Score a repo against 12 named AI-readiness assets across 3 buckets and emit a medal"
+    },
+    "scripts/monorepo-ripple.sh": {
+      "source": "scripts/monorepo-ripple.sh",
+      "target": "scripts/monorepo-ripple.sh",
+      "action": "sync",
+      "description": "Detect monorepo type and list cross-package ripples for input files; no-op on non-monorepos"
+    },
+    "references/repo-health-assets.md": {
+      "source": ".claude/references/repo-health-assets.md",
+      "target": ".claude/references/repo-health-assets.md",
+      "action": "sync",
+      "description": "Canonical 12-asset checklist with pass/partial/fail rubric and medal thresholds for the repo-health scorecard"
+    },
+    "references/pr-mining-patterns.md": {
+      "source": ".claude/references/pr-mining-patterns.md",
+      "target": ".claude/references/pr-mining-patterns.md",
+      "action": "sync",
+      "description": "Heuristics, denylist, and output schema for mining recurring reviewer-feedback phrases from PRs"
+    },
+    "tests/pressure-tests/repo-health.md": {
+      "source": "tests/pressure-tests/repo-health.md",
+      "target": "tests/pressure-tests/repo-health.md",
+      "action": "sync",
+      "description": "Adversarial scenarios for the repo-health skill — fabricated scores, auto-promotion, route conflicts"
+    },
+    "tests/pressure-tests/pr-review-mining.md": {
+      "source": "tests/pressure-tests/pr-review-mining.md",
+      "target": "tests/pressure-tests/pr-review-mining.md",
+      "action": "sync",
+      "description": "Adversarial scenarios for pr-review-mining — single-PR false positives, denylist bypass, hallucinated phrases"
+    },
+    "scripts/verify-claims.sh": {
+      "source": "scripts/verify-claims.sh",
+      "target": "scripts/verify-claims.sh",
+      "action": "sync",
+      "description": "Grep-verify cited evidence anchors in generated docs; downgrade zero-hit tags in place; emit weak-claims report"
+    },
+    "scripts/audit-drift-check.sh": {
+      "source": "scripts/audit-drift-check.sh",
+      "target": "scripts/audit-drift-check.sh",
+      "action": "sync",
+      "description": "Compare a stamped audit doc against current HEAD; flag cited paths that have changed since the stamped SHA"
+    },
+    "references/audit-grounding.md": {
+      "source": ".claude/references/audit-grounding.md",
+      "target": ".claude/references/audit-grounding.md",
+      "action": "sync",
+      "description": "Rules generators must follow when emitting CLAUDE.md and architecture-principles.md — rule tags, transient ban, partial-list policy, terminology denylist, SHA stamp"
+    },
+    "tests/pressure-tests/audit-grounding.md": {
+      "source": "tests/pressure-tests/audit-grounding.md",
+      "target": "tests/pressure-tests/audit-grounding.md",
+      "action": "sync",
+      "description": "Adversarial scenarios for grounded-audit — fabricated paths, partial lists, transient branch names, terminology traps, drift on unstamped docs"
     }
   },
   "protected": [

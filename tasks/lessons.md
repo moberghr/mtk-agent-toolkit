@@ -45,3 +45,13 @@
 **Why:** Prompt hooks on state-change events can interfere with the state change itself. The `TaskCompleted` hook was designed to be informational but it silently prevents tasks from reaching `completed` status.
 
 **Applies to:** Any settings.json configuration that uses hooks on TaskCompleted events.
+
+## 2026-05-19 — Quoted heredoc in $(...) still tokenizes backticks
+
+**What happened:** `$(python3 - <<'PY' ... PY)` with backticks inside the PY heredoc body caused bash on macOS to fail with "unexpected EOF while looking for matching `". Even though `<<'PY'` (quoted delimiter) should suppress expansion, the tokenizer inside `$(...)` still trips on raw backticks in the body.
+
+**Rule:** Avoid literal backticks inside any heredoc nested in `$(...)`. Use `BT = chr(96)` in Python or write the script to a temp file with `cat > "$f" <<'PY'` and `python3 "$f"` instead of inlining.
+
+**Why:** Triggers a confusing failure that looks like a heredoc-termination bug but is actually `$(...)` tokenization. Cost ~15 minutes of debugging.
+
+**Applies to:** Any bash script that embeds Python or shell snippets containing backticks via heredoc within command substitution.

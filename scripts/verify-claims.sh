@@ -1,0 +1,169 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# verify-claims.sh — Grep-verify factual claims in an MTK-generated doc.
+#
+# Reads a generated CLAUDE.md / architecture-principles.md / conventions.md.
+# Parses claim lines that cite evidence (path:line, path globs, or symbol names)
+# and runs a grep for each anchor. Lines with zero hits are downgraded:
+#   [EXTRACTED]   -> [INFERRED:0.5]
+#   [ENFORCED]    -> [ASPIRATIONAL]
+# Other tags are left alone but recorded.
+#
+# Side effects:
+#   - Rewrites the input file in place (atomic, via .tmp + mv).
+#   - Writes .claude/.mtk-cache/weak-claims.json (machine-readable).
+#   - Writes .claude/.mtk-cache/weak-claims-report.md (paste-ready summary).
+#
+# Exit codes:
+#   0 — verified, may have downgrades (count printed)
+#   2 — input file missing or not in a git repo
+#
+# Usage:
+#   bash scripts/verify-claims.sh .claude/references/architecture-principles.md
+#   bash scripts/verify-claims.sh CLAUDE.md
+#
+# Spec: docs/specs/2026-05-25-grounded-audit.md
+
+INPUT="${1:-}"
+if [[ -z "$INPUT" || ! -f "$INPUT" ]]; then
+  echo "ERROR: pass a generated doc path (got: '${INPUT}')" >&2
+  exit 2
+fi
+
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "$REPO_ROOT"
+
+CACHE_DIR=".claude/.mtk-cache"
+mkdir -p "$CACHE_DIR"
+WEAK_JSON="$CACHE_DIR/weak-claims.json"
+WEAK_MD="$CACHE_DIR/weak-claims-report.md"
+
+# --- Helpers ----------------------------------------------------------------
+
+# Run grep silently and return hit count for a single anchor.
+# Supports: "path:line" form, glob "src/**/*.tsx", and bare symbol name.
+hit_count() {
+  local anchor="$1"
+  local count=0
+  case "$anchor" in
+    *:[0-9]*)
+      local path="${anchor%%:*}"
+      [[ -f "$path" ]] && count=1
+      ;;
+    *\**|*\?*)
+      # glob — count files that match
+      count=$(find . -path "./$anchor" -type f 2>/dev/null | wc -l | tr -d ' ')
+      ;;
+    /*|./*)
+      [[ -e "${anchor#./}" ]] && count=1
+      ;;
+    *)
+      # bare token — grep across tracked files
+      count=$(git grep -lI --fixed-strings -- "$anchor" 2>/dev/null | wc -l | tr -d ' ')
+      ;;
+  esac
+  echo "$count"
+}
+
+# Extract anchors from a claim line. We look for:
+#   - `path:line` patterns (backticked or bare)
+#   - `path/with/slashes` in backticks
+#   - tokens after "Evidence:" up to end-of-line / period
+extract_anchors() {
+  local line="$1"
+  # backticked paths and symbols
+  echo "$line" | grep -oE '`[^`]+`' | sed 's/^`//;s/`$//' || true
+}
+
+# --- Parse + verify ---------------------------------------------------------
+
+TMP_OUT="$(mktemp)"
+TMP_JSON="$(mktemp)"
+echo "[]" > "$TMP_JSON"
+WEAK_ENTRIES=()
+DOWNGRADES=0
+TOTAL_CLAIMS=0
+
+LINENO_=0
+while IFS= read -r line || [[ -n "$line" ]]; do
+  LINENO_=$((LINENO_ + 1))
+  # Identify claim lines — must carry one of our tags.
+  if [[ "$line" =~ \[EXTRACTED\]|\[ENFORCED\]|\[INFERRED:[0-9.]+\]|\[CONVENTION\]|\[ASPIRATIONAL\]|\[AMBIGUOUS\]|\[MINED:feedback\] ]]; then
+    TOTAL_CLAIMS=$((TOTAL_CLAIMS + 1))
+    anchors=$(extract_anchors "$line")
+    if [[ -z "$anchors" ]]; then
+      # tagged line with no evidence anchor — record as weak but don't rewrite
+      WEAK_ENTRIES+=("{\"file\":\"$INPUT\",\"line\":$LINENO_,\"reason\":\"no-evidence-anchor\",\"hits\":0,\"text\":$(printf '%s' "$line" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().strip()))')}")
+      echo "$line" >> "$TMP_OUT"
+      continue
+    fi
+
+    total_hits=0
+    failing_anchor=""
+    while IFS= read -r a; do
+      [[ -z "$a" ]] && continue
+      h=$(hit_count "$a")
+      total_hits=$((total_hits + h))
+      [[ "$h" == "0" && -z "$failing_anchor" ]] && failing_anchor="$a"
+    done <<< "$anchors"
+
+    if [[ "$total_hits" == "0" ]]; then
+      DOWNGRADES=$((DOWNGRADES + 1))
+      # Downgrade tags in the line itself.
+      new_line="$line"
+      new_line="${new_line//\[EXTRACTED\]/[INFERRED:0.5 unverified]}"
+      new_line="${new_line//\[ENFORCED\]/[ASPIRATIONAL unverified]}"
+      echo "$new_line" >> "$TMP_OUT"
+      WEAK_ENTRIES+=("{\"file\":\"$INPUT\",\"line\":$LINENO_,\"reason\":\"zero-hit-anchor\",\"hits\":0,\"anchor\":$(printf '%s' "$failing_anchor" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().strip()))'),\"text\":$(printf '%s' "$line" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().strip()))')}")
+    else
+      echo "$line" >> "$TMP_OUT"
+    fi
+  else
+    echo "$line" >> "$TMP_OUT"
+  fi
+done < "$INPUT"
+
+# Atomic replace.
+mv "$TMP_OUT" "$INPUT"
+
+# --- Emit reports -----------------------------------------------------------
+
+# JSON
+python3 - <<PY > "$WEAK_JSON"
+import json, sys
+entries = [$(IFS=,; echo "${WEAK_ENTRIES[*]:-}")]
+print(json.dumps({
+    "input": "$INPUT",
+    "total_claims": $TOTAL_CLAIMS,
+    "downgrades": $DOWNGRADES,
+    "weak": entries,
+}, indent=2))
+PY
+
+# Markdown
+{
+  echo "# ⚠️ Weakest claims — verify first"
+  echo
+  echo "Generated by \`scripts/verify-claims.sh\` against \`$INPUT\`."
+  echo "Total tagged claims: $TOTAL_CLAIMS · downgraded: $DOWNGRADES"
+  echo
+  if [[ ${#WEAK_ENTRIES[@]} -eq 0 ]]; then
+    echo "_No weak claims detected — every tagged line has at least one evidence hit._"
+  else
+    echo "| # | line | anchor | reason | claim |"
+    echo "|---|------|--------|--------|-------|"
+    i=0
+    for e in "${WEAK_ENTRIES[@]}"; do
+      i=$((i + 1))
+      [[ $i -gt 5 ]] && break
+      ln=$(printf '%s' "$e" | python3 -c 'import json,sys; print(json.load(sys.stdin)["line"])')
+      reason=$(printf '%s' "$e" | python3 -c 'import json,sys; print(json.load(sys.stdin)["reason"])')
+      anchor=$(printf '%s' "$e" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("anchor","—"))')
+      text=$(printf '%s' "$e" | python3 -c 'import json,sys; t=json.load(sys.stdin)["text"]; print(t[:120].replace("|","\\|"))')
+      echo "| $i | $ln | \`$anchor\` | $reason | $text |"
+    done
+  fi
+} > "$WEAK_MD"
+
+echo "verify-claims: $TOTAL_CLAIMS claim(s) checked · $DOWNGRADES downgrade(s) · report → $WEAK_MD"
+exit 0

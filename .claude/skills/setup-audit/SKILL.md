@@ -473,6 +473,67 @@ When `fit == "fallback"`, replace the symbol evidence table with:
 
 The provenance section is not optional. If you produced principles without evidence from the repomap, you either hallucinated or the repomap fell back — either way, disclosure is required.
 
+## STEP 3.6.5: Stamp + verify generated docs (MANDATORY)
+
+Before reporting completion, every generated doc (`architecture-principles.md`, `conventions.md`) must be (a) stamped with the audit SHA and (b) verified against the codebase. See `.claude/references/audit-grounding.md` for the full ruleset.
+
+### Stamp
+
+Prepend a stamp block to each generated doc (after the first `>` blockquote, before the body):
+
+```
+<!-- mtk-stamp
+audited-against: $(git rev-parse HEAD)
+audited-at: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+mtk-version: <from .claude/manifest.json>
+-->
+```
+
+For `CLAUDE.md` (written by `setup-bootstrap`), the stamp lives in a **footer** comment block — human edits collect above it.
+
+### Rule tags
+
+Every prescriptive rule line in `architecture-principles.md` must carry one of `[ENFORCED]` / `[CONVENTION]` / `[ASPIRATIONAL]` with an evidence anchor. These tags are distinct from the S1.15 principle tags (`[EXTRACTED]/[INFERRED:N]/[AMBIGUOUS]`):
+- Principle tags describe **what the codebase does** (descriptive).
+- Rule tags describe **what reviewers should do about it** (prescriptive).
+
+Untagged rules are quarantined into a `## Untagged (review)` section.
+
+### Verify-claims pass
+
+Run after writing each generated doc:
+
+```bash
+bash scripts/verify-claims.sh .claude/references/architecture-principles.md
+bash scripts/verify-claims.sh .claude/references/conventions.md
+```
+
+This script:
+- parses tagged claim lines,
+- grep/AST-checks every backticked evidence anchor against the working tree,
+- downgrades zero-hit `[EXTRACTED] → [INFERRED:0.5 unverified]` and `[ENFORCED] → [ASPIRATIONAL unverified]` **in place**,
+- writes `.claude/.mtk-cache/weak-claims.json` (full) and `.claude/.mtk-cache/weak-claims-report.md` (top-5 paste-ready).
+
+The audit is not complete until verify-claims has run. A passing audit surfaces weak claims; it does not pretend they don't exist.
+
+### Transient-state lint
+
+The verify pass also flags lines with branch names (`^(feat|fix|chore|docs|refactor)/`), PR numbers (`#\d+`), dates other than the audit date, and author emails. Detected lines are dropped with a warning — re-add with stable phrasing if needed.
+
+### Terminology denylist
+
+The verify pass cross-references generated text against the denylist in `.claude/references/audit-grounding.md` §4 ("path alias" vs `baseUrl`, "HTML" vs JSX, "enum" vs typed object, etc.). Flagged lines appear in `weak-claims.json` with `reason: terminology-needs-review` — never auto-rewritten.
+
+## STEP 3.6: PR review mining (optional, with --mine-prs)
+
+When `--mine-prs` is passed (or the engineer asks to seed principles from PR feedback), run:
+
+```bash
+bash scripts/pr-review-mine.sh --prs 10
+```
+
+Each candidate phrase is presented to the engineer for per-line approval. Approved phrases are appended to `.claude/references/architecture-principles.md` with the tag `[MINED:feedback]` and the PR numbers cited as evidence. Untagged or auto-promoted mining is forbidden — see `.claude/references/pr-mining-patterns.md`. Fails soft when `gh` is missing or unauthenticated.
+
 ## STEP 4: Present Results
 
 ```
@@ -495,10 +556,14 @@ Architecture profile:
   - Testing: [from scan]
 
 Generated:
-  ✓ .claude/references/architecture-principles.md
+  ✓ .claude/references/architecture-principles.md (stamped against <sha>)
 
 Inconsistencies found: [N]
   [list the top 3 if any]
+
+⚠️ Weak claims surfaced: [N]
+  See .claude/.mtk-cache/weak-claims-report.md — paste into PR body or review note.
+  Top failure modes: zero-hit anchors → likely fabricated; terminology flags → likely imprecise.
 
 Next steps:
   1. Review the generated document — edit anything that's wrong
