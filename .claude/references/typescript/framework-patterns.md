@@ -2,11 +2,11 @@
 description: TypeScript framework patterns (React, Next.js, Tauri, Node)
 globs: ["**/*.ts", "**/*.tsx"]
 alwaysApply: false
-tools: [react, nextjs-pages, nextjs-app, tauri, express, fastify, hono, nest]
+tools: [react, react-native, expo, nextjs-pages, nextjs-app, tauri, express, fastify, hono, nest]
 ---
 # TypeScript Framework Patterns
 
-Shared conventions for React, Next.js, Tauri, and Node backend codebases. Match project conventions first; this file captures defaults when conventions are absent.
+Shared conventions for React, React Native / Expo, Next.js, Tauri, and Node backend codebases. Match project conventions first; this file captures defaults when conventions are absent.
 
 ## React
 
@@ -16,6 +16,17 @@ Shared conventions for React, Next.js, Tauri, and Node backend codebases. Match 
 - **Co-locate by feature.** A component's styles, tests, and sub-components belong in the same directory, not in parallel `styles/` / `tests/` trees.
 - **SSR-safe browser access.** `window`, `document`, `localStorage` access must be inside `useEffect` or guarded by `typeof window !== 'undefined'`. Direct access at module scope breaks SSR and static generation.
 - **Keys on lists must be stable and unique.** Array indexes as keys cause rendering bugs on insertion/deletion.
+
+## React Native / Expo
+
+- **No DOM, no web APIs.** There is no `window`, `document`, `localStorage`, or `<div>`. Use `View`, `Text`, `Image`, `Pressable` from `react-native`; web-only libraries that touch the DOM will not work. Check a library targets RN before adding it.
+- **Persistence is async.** Use `@react-native-async-storage/async-storage` (or `expo-secure-store` for secrets/tokens) — all reads/writes are Promises, so no synchronous `localStorage`-style access. Never store secrets in AsyncStorage; it is unencrypted.
+- **Navigation is a library, not a router file.** React Navigation (`@react-navigation/*`) or Expo Router (file-based, under `app/`). Pick one per app — don't mix navigation paradigms. Type your route params (`NativeStackScreenProps` / typed routes) so params aren't `any`.
+- **Platform-specific code is explicit.** `Platform.OS === 'ios'` / `Platform.select(...)` for small branches; `Component.ios.tsx` / `Component.android.tsx` file extensions (Metro resolves them automatically) for larger divergence. `.native.tsx` separates RN from web in a shared codebase.
+- **Native modules / Expo SDK over reinventing.** Camera, location, notifications, filesystem: reach for the Expo SDK module (`expo-camera`, `expo-location`, `expo-notifications`, `expo-file-system`) or a vetted community native module. Don't write a native module unless the SDK genuinely lacks it.
+- **Expo managed vs bare / dev builds.** Managed workflow avoids touching native `ios/`/`android/` dirs; adding a module with native code requires a config plugin and a custom dev build (`expo prebuild` / EAS Build), not Expo Go. Know which workflow the project is in before adding native dependencies.
+- **Metro is the bundler.** `metro.config.*` governs resolution and asset handling — not Webpack/Vite. Symlinks, monorepo resolution, and SVG/asset transformers go through Metro config.
+- **Lists use `FlatList`/`SectionList`, never `.map()` in a `ScrollView`.** Long lists rendered eagerly in a `ScrollView` mount every row and jank the UI. Use `FlatList` with a stable `keyExtractor`; reserve `ScrollView` for small, bounded content.
 
 ## Next.js (App Router)
 
@@ -57,4 +68,5 @@ Shared conventions for React, Next.js, Tauri, and Node backend codebases. Match 
 - Are cross-cutting concerns in the right layer (middleware / provider / context) rather than duplicated?
 - For Tauri: is the allowlist minimal? Are IPC commands scoped narrowly?
 - For Next.js: is `'use client'` pushed as far down the tree as possible?
+- For React Native: are long lists virtualized (`FlatList`/`SectionList`, not `.map()` in `ScrollView`)? Are secrets in `expo-secure-store` rather than AsyncStorage? Is platform divergence handled explicitly (`Platform`/`.ios.tsx`/`.android.tsx`)?
 - For backends: are structured errors, timeouts, and input validation in place at every endpoint?

@@ -2,6 +2,31 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.10.1] - 2026-05-29
+
+### Fixed
+
+- `scripts/verify-references.sh` — the Check-1 path scan now strips a trailing `path:line` / `path:Symbol` citation suffix before resolving, so `architecture-principles.md` line citations and `CODE_INDEX.md` `path:Symbol` entries no longer false-positive as stale. Advisory-only check; no impact on committed docs.
+
+## [7.10.0] - 2026-05-29
+
+### Fixed — setup bootstrap/audit grounding (9-repo evaluation)
+
+Driven by a 9-repo bootstrap evaluation (6 C#, 3 TS) with per-repo adversarial fact-checking. The audit/bootstrap now grounds claims against code instead of asserting from thin or dead evidence:
+
+- **Counter-example gate before absolute rules** — `setup-bootstrap` and `setup-audit` must grep for counter-examples before emitting any `NEVER`/`ALWAYS`/`all`/`every`/`must` rule; if any exist, soften to `[CONVENTION]` rather than `[ENFORCED]`.
+- **Capability requires a usage site** — `setup-audit` must find an instantiation/call/registration, not a bare `using`/import/package ref, before asserting a capability or integration.
+- **Security-claim grounding** — never assert a sanitization/validation/audit/secret path *exists* unless imported AND called; absence is a GAP, not a convention.
+- **Reproducible counts + majority-verified conventions** — numeric claims carry the command that produced them; convention claims report the dominant form with its proportion (or `[AMBIGUOUS]`), never a cherry-picked minority.
+- **Versions verbatim from manifests**, including nested/secondary `package.json`.
+- **Confidence-tag grading** — directly-observable facts with a file:line citation are `[EXTRACTED]`, not under-tagged `[INFERRED]`; absence claims are `[EXTRACTED]` only with a cited zero-result command.
+- `scripts/verify-claims.sh` — skips the confidence-legend block (no longer corrupts its own tag definitions), tests all anchors on a line, resolves bare filenames / `a|b` alternations / dotted paths, preserves absence claims, and writes per-doc reports.
+- `scripts/repomap.sh` — scans the target repo (no longer `cd`s into its own plugin dir) and emits a stub JSON on fallback so downstream `json.load` never throws.
+- `CODE_INDEX.md` seeding — template example rows marked illustrative; bootstrap populates from the audit (every `path:Symbol` verified) or writes an explicitly-empty index, never ships ghost rows.
+- **React Native / Expo support** — detected in `setup-bootstrap`/`setup-audit`; `framework-patterns.md` and `performance-supplement.md` no longer pruned for RN/Expo repos and now carry RN-specific guidance; `tech-stack-typescript` covers RN/Expo markers and patterns.
+- `setup-bootstrap` — AGENTS.md size budget + `git check-ignore` warning; git pre-commit hook resolves an absolute `$CLAUDE_PLUGIN_ROOT` source and guards against dangling symlinks.
+- `.claude/manifest.json` — removed a duplicate `tests/hooks/test-context-estimator.sh` key.
+
 ## [7.9.0] - 2026-05-29
 
 ### Added — Session-learnings capture for CLAUDE.md
