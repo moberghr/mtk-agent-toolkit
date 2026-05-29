@@ -2,6 +2,25 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.9.0] - 2026-05-29
+
+### Added — Session-learnings capture for CLAUDE.md
+
+- **`claude-md-capture` skill.** A session-end reflection loop that captures context `CLAUDE.md` was missing — discovered commands, gotchas, env/config quirks, and non-obvious codebase patterns — and proposes them as minimal, append-only additions. It shows each candidate as a diff with a one-line rationale, stops for approval before any edit, and uses `Edit` (never `Write`) to honor the S1.5 protected-file rule. It is distinct from `claude-md-audit` (which re-grades existing content against a rubric) and `correction-capture` (which records engineer corrections as lessons in `lessons.md`): capture adds *new project facts* to the prompt every session loads. Routed via `/mtk` ("save what we learned to CLAUDE.md", "update CLAUDE.md with this session"). Ships with `tests/pressure-tests/claude-md-capture-pressure.md` covering anti-manufacture, the approval gate, personal-vs-team routing, append-not-rewrite, the 120-line budget, and the no-CLAUDE.md redirect.
+- **`.claude.local.md` support in `setup-bootstrap`.** Bootstrap now adds the personal, opt-in `CLAUDE.md` companion to `.gitignore` (idempotent; never auto-created) so per-engineer preferences and machine-specific notes stay out of git. `claude-md-capture` writes personal learnings here.
+- **Bootstrap completion tip.** The setup completion summary now surfaces the `#` mid-session shortcut (append a learning to `CLAUDE.md` instantly) and `claude-md-capture`, so teams know how to keep project memory current over time.
+
+### Changed
+
+- `/mtk` router — new route-table row and decision-graph node for `claude-md-capture`; the "no" branch of the CLAUDE.md-audit diamond now flows to the capture diamond before falling through to help.
+- `setup-bootstrap/SKILL.md` — `.gitignore` step covers `.claude.local.md`; STEP 5 completion summary adds the keep-CLAUDE.md-fresh tip.
+- **`setup-bootstrap/SKILL.md` slimmed 1000 → 831 lines** via progressive disclosure (S2.10). Extracted the monorepo per-package template, generation rules, and root Monorepo Layout block to `.claude/references/monorepo-bootstrap.md` (read on-demand only when a monorepo is confirmed), and the three per-stack reference-customization tables to `.claude/references/bootstrap-customization.md`. Compressed the dotnet-claude-kit companion note, deduped the repeated 60–80/120-line budget rule, and removed the duplicate `mkdir`/`.claude/tech-stack` warning. Moved the per-stack pre-commit-review item lists into each tech-stack skill's new `## Pre-Commit Review Items` section (bootstrap now reads and filters by detected tool); the three stack-agnostic always-include items stay inline. Extracted STEP 3.5a's inline reference-existence checks (directory `test -d`, `.csproj` existence, framework dump, `.sln` membership-vs-disk) into the new `scripts/verify-references.sh` — STEP 3.5a now calls it and keeps the stale-handling policy and the "never infer disk presence" rule inline. No capability change — detection logic, gates, and grounding all stay inline.
+
+### Added — Bootstrap reference companions
+
+- `.claude/references/monorepo-bootstrap.md` and `.claude/references/bootstrap-customization.md` — on-demand companions for `setup-bootstrap`, registered in the manifest and distributed to target repos.
+- `scripts/verify-references.sh` — read-only checker that flags directories, `.csproj` projects, and `.sln` members referenced in generated docs that don't exist on disk (exit 3 if any stale). Distinct from `verify-claims.sh` (which downgrades zero-hit rule tags). The directory scan only considers path-like tokens inside backtick code spans (resolved against root, `src/`, and the git index), so prose tokens like `REST/`, `I/O`, or npm scopes don't false-positive.
+
 ## [7.7.0] - 2026-05-18
 
 ### Added — Decision provenance and end-to-end wiring verification

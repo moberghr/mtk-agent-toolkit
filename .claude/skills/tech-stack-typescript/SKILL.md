@@ -239,6 +239,18 @@ npx prettier --write <file>
 
 The wrapper picks biome → prettier based on what's installed and dispatches by extension (`.ts/.tsx/.js/.jsx/.mjs/.cjs`). Failures log to stderr (visible in Claude Code's hook log) but never block the edit.
 
+## Pre-Commit Review Items
+
+Conditional, tool-keyed items for the generated `pre-commit-review-list.md`.
+`setup-bootstrap` selects items whose trigger tool was detected in the scan,
+adds the three stack-agnostic always-include items, and caps the list at 10.
+
+- [React] Rules of Hooks, SSR-safe browser access, stable list keys
+- [Next.js] `'use client'` at the boundary, server actions validated, `next/image` / `next/font` over raw tags
+- [Tauri] allowlist discipline, every `#[tauri::command]` validates input, no `all: true`
+- [Prisma / Drizzle] `select` projection over `include`, indexes on foreign keys, paginated list queries
+- [TanStack Query] explicit `staleTime`, stable `queryKey`, no server-state duplication in `useState`
+
 ## Scan Recipes
 
 These bash commands are used by `setup-audit.md` when auditing a TypeScript repository.

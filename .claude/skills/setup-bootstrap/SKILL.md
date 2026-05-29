@@ -204,7 +204,7 @@ If `--non-interactive` is passed, skip this entire step but print a notice:
 ## STEP 3: Generate CLAUDE.md + Rules Files
 
 The generated output follows Claude Code best practices:
-- **Root `CLAUDE.md`** target **60–80 lines**, hard cap **120 lines** (ETH Zurich benchmark + HumanLayer + Anthropic cookbook). Past ~150 instructions, compliance degrades uniformly — every line must earn its place.
+- **Root `CLAUDE.md`** target **60–80 lines**, hard cap **120 lines** (see Research-backed constraints above for the why) — every line must earn its place.
 - **`.claude/rules/*.md`** files hold detailed, topic-specific rules (auto-loaded by Claude Code)
 - **`.claude/references/`** files are read on-demand by skills and agents (not duplicated)
 - **Hooks / `settings.json` deny-list** handle anything mechanically enforceable (formatting, secret scanning, banned commands) — do NOT duplicate those rules in CLAUDE.md.
@@ -369,7 +369,6 @@ The rule file templates are largely the same as before — adapt the content per
 - `project-specific.md` — anything unique
 
 ### Rules for Generation
-- **Root CLAUDE.md target 60–80 lines, hard cap 120.** Count before finishing. If over 120, move detail to rules files or delete speculative rules.
 - Every rule in `.claude/rules/` must have a section number (§X.Y) for review agents to cite.
 - Include **code examples** from the actual codebase where possible.
 - Flag conflicts: "⚠️ Guideline says X, but codebase does Y. Standardize on: [recommendation]"
@@ -384,51 +383,13 @@ Before writing files (or presenting preview), validate every concrete directory,
 
 **Scope:** Verify claims in ALL generated files — `CLAUDE.md`, `.claude/references/architecture-principles.md`, every `.claude/rules/*.md`, and (if monorepo) every per-package `CLAUDE.md`.
 
-**Verification procedure:**
+**Verification procedure:** run `scripts/verify-references.sh` over every generated doc. It performs all four mechanical checks — directory claims (`test -d`), `.csproj` project-file existence, an informational framework/version dump for cross-checking, and solution-membership vs disk reality — and prints `STALE …` lines (exit 3 if any found, 0 if clean). Rules files are passed in, which also covers their project/dir proper-noun references.
 
-1. **Directory claims — use `test -d`, not inference.** For every directory mentioned as existing or containing something, run `test -d`:
-   ```bash
-   # Collect all directory-like references from generated content.
-   # Catch both PascalCase (src/Infrastructure/) and lowercase (apps/api/, packages/core/).
-   for file in CLAUDE.md .claude/references/architecture-principles.md .claude/rules/*.md; do
-     [ -f "$file" ] || continue
-     grep -oE '[a-zA-Z0-9_./-]+/' "$file" | grep -v '^//' | grep -v '^\.' | sort -u | while read dir; do
-       # Skip obvious non-paths: URLs, code patterns, comment fragments
-       case "$dir" in http*|ftp*|//|.*/) continue ;; esac
-       [ ! -d "$dir" ] && echo "STALE in $file: directory '$dir' referenced but not found on disk"
-     done
-   done
-   ```
-
-2. **Project file claims — verify each named file exists.** For `.csproj`, `package.json`, `pyproject.toml`, or any project marker referenced by name:
-   ```bash
-   # .NET
-   for file in CLAUDE.md .claude/references/architecture-principles.md .claude/rules/*.md; do
-     [ -f "$file" ] || continue
-     grep -oE '[A-Za-z0-9._-]+\.csproj' "$file" 2>/dev/null | sort -u | while read proj; do
-       find . -name "$proj" -not -path "*/bin/*" -not -path "*/obj/*" 2>/dev/null | grep -q . || echo "STALE in $file: $proj not found"
-     done
-   done
-   ```
-
-3. **Framework / version claims — verify against actual files:**
-   ```bash
-   # .NET TargetFramework
-   grep -rh "TargetFramework" --include="*.csproj" | sort -u
-   # TypeScript — check package.json "engines" or tsconfig "target"
-   # Python — check pyproject.toml "requires-python" or .python-version
-   ```
-
-4. **Solution membership vs disk reality (.NET).** Solution files can reference projects that have been deleted. Do NOT trust `.sln`/`.slnx` project lists as proof of existence — always `test -d` the project directory:
-   ```bash
-   # Extract project paths from solution file and verify each
-   grep 'Project(' *.sln 2>/dev/null | grep -oE '"[^"]+\.csproj"' | tr -d '"' | while read proj; do
-     [ ! -f "$proj" ] && echo "STALE: solution references $proj but file does not exist"
-   done
-   ```
-
-5. **Rules files — check for specific project/directory/service references:**
-   For each `.claude/rules/*.md`, scan for proper nouns that look like project or directory names. Verify each with `test -d` or `test -f`.
+```bash
+bash scripts/verify-references.sh CLAUDE.md \
+  .claude/references/architecture-principles.md .claude/rules/*.md
+# (if monorepo) also pass each per-package CLAUDE.md
+```
 
 **Action on stale references:**
 
@@ -540,8 +501,7 @@ Create `.claude/rules/` if it doesn't exist:
 ```bash
 mkdir -p .claude/rules
 ```
-
-> ⚠️ Do NOT add `.claude/tech-stack` to this `mkdir -p` — it is a file, written in STEP 0. Only directories belong here.
+(Reminder from STEP 0: never add `.claude/tech-stack` to a `mkdir -p` — it is a file.)
 
 ### Settings Merge
 
@@ -603,78 +563,23 @@ Shared reference files ship as generic, multi-stack guidance with "match existin
 **When to customize:** Only when the scan found exactly ONE tool in a category (unambiguous evidence).
 **When NOT to customize:** If the scan found multiple tools (e.g., both xUnit and NUnit), or zero matches — leave the generic guidance intact.
 
-**Customization table — dotnet:**
-
-| Category | File to patch | Generic pattern to find | Example replacement |
-|---|---|---|---|
-| Test framework | `{stack}/testing-supplement.md` | `xUnit, NUnit, or MSTest — match the project's existing choice.` | `xUnit only. Do not introduce NUnit or MSTest.` |
-| Mocking library | `{stack}/testing-supplement.md` | `Mocking: Moq, NSubstitute, or FakeItEasy — match existing.` | `Mocking: NSubstitute only. Do not introduce Moq or FakeItEasy.` |
-| Integration test base | `{stack}/testing-supplement.md` | `WebApplicationFactory<T> for ASP.NET Core, IClassFixture for shared setup` | Keep as-is (both are standard); but if TestContainers detected, append: `TestContainers is the standard integration test infrastructure in this repo.` |
-| ORM | `{stack}/ef-core-checklist.md` | No generic pattern (EF-only file) | If Dapper also detected alongside EF Core, add a note: `This repo also uses Dapper for [raw SQL / read-side queries]. Do not migrate Dapper queries to EF Core unless explicitly asked.` |
-| Validation | `{stack}/mediatr-slice-patterns.md` | `Validate requests using the project-standard approach.` | `Validate requests using FluentValidation.` (or `DataAnnotations`, or whatever was detected) |
-
-**Customization table — typescript:**
-
-| Category | File to patch | Generic pattern to find | Example replacement |
-|---|---|---|---|
-| Test framework | `{stack}/testing-supplement.md` | (Multiple frameworks listed in `## Test Framework`) | If Vitest only: remove Jest/Playwright guidance paragraphs. If Jest only: remove Vitest paragraphs. Leave both if both detected. |
-| Component testing | `{stack}/testing-supplement.md` | `@testing-library/react for React component tests` | If no React detected, remove this section entirely. |
-| Data fetching | `{stack}/testing-supplement.md` | `## TanStack Query in Tests` | If no TanStack Query detected, remove this section. |
-| State management | `{stack}/framework-patterns.md` | Generic state patterns | Narrow to detected library (Zustand, Redux, etc.) |
-| Data layer | `{stack}/data-layer-checklist.md` | Multi-ORM guidance | Narrow to detected ORM (Prisma, Drizzle, etc.) |
-
-**Customization table — python:**
-
-| Category | File to patch | Generic pattern to find | Example replacement |
-|---|---|---|---|
-| Test framework | `{stack}/testing-supplement.md` | `pytest is the default` | If unittest found instead: `unittest.TestCase is the standard in this repo. Do not introduce pytest without team approval.` |
-| Mocking | `{stack}/testing-supplement.md` | `Use respx for mocking HTTPX clients, vcrpy for recorded HTTP interactions.` | Narrow to detected library only. |
-| Database testing | `{stack}/testing-supplement.md` | `testcontainers-python with a Postgres container` | If the repo uses a different approach (e.g., `pytest-django --reuse-db`), narrow to that. |
-
-**Procedure:**
-
-1. For each category in the active stack's table above, check whether the scan detected exactly one tool.
-2. If yes — read the target reference file, find the generic pattern, and replace it with the project-specific version using `Edit`.
-3. If the pattern isn't found (file was already customized or has different wording) — skip silently, do not force the replacement.
-4. After all substitutions, add a comment at the top of each modified reference file:
-   ```markdown
-   <!-- Customized by setup-bootstrap on [date]. Detected: [list of substituted values]. -->
-   ```
-    This makes it obvious which files were patched and allows future bootstrap/audit passes to re-customize if the reference template changes upstream.
-
-**Rule:** Only narrow when the evidence is unambiguous (single tool, zero alternatives detected). Never remove sections about tools the project doesn't use YET — only remove sections about tools from a different category (e.g., remove TanStack Query guidance from a project with no React). The goal is to prevent shared references from contradicting the repo-specific `.claude/rules/` files while keeping useful guidance for future adoption.
+The per-stack substitution tables (which generic placeholder maps to which concrete replacement, per category) and the full procedure live in **`.claude/references/bootstrap-customization.md`**. Read it now for the active stack and apply the substitutions. Only narrow on unambiguous single-tool evidence; never remove sections for tools the project doesn't use yet.
 
 ### Pre-Commit Review List
 
-Generate `.claude/references/pre-commit-review-list.md` based on audit findings. Use stack-specific items from the tech stack skill where applicable.
+Generate `.claude/references/pre-commit-review-list.md` based on audit findings.
 
 If the file already exists, leave it alone.
 
-**Selection rules (per stack):**
+**Selection:**
 
-For dotnet:
-- If EF Core found: `AsNoTracking` on reads, `Select()` over `Include()`, `CancellationToken` propagated
-- If MediatR found: one `SaveChanges` per handler, validate request
-- If Lambda found: DbContext disposal, cold start considerations
-
-For python:
-- If SQLAlchemy found: session management, eager/lazy loading, N+1 patterns
-- If FastAPI found: dependency injection, Pydantic validation
-- If Django found: select_related/prefetch_related, transaction.atomic
-
-For typescript:
-- If React found: Rules of Hooks, SSR-safe browser access, stable list keys
-- If Next.js found: `'use client'` at the boundary, server actions validated, `next/image` / `next/font` over raw tags
-- If Tauri found: allowlist discipline, every `#[tauri::command]` validates input, no `all: true`
-- If Prisma / Drizzle found: `select` projection over `include`, indexes on foreign keys, paginated list queries
-- If TanStack Query found: explicit `staleTime`, stable `queryKey`, no server-state duplication in `useState`
-
-Always include (any stack):
-- No PII in logs
-- Tests for new public methods
-- No hardcoded secrets
-
-**Max 10 items.** Pick the ones most likely to be violated.
+1. Read the active tech-stack skill's `## Pre-Commit Review Items` section — a list of conditional items tagged by trigger tool, e.g. `[EF Core] …`, `[React] …`.
+2. Keep each item whose trigger tool was detected in the STEP 2 scan. Drop the rest.
+3. Append the three stack-agnostic always-include items:
+   - No PII in logs
+   - Tests for new public methods
+   - No hardcoded secrets
+4. **Cap at 10 items.** If the kept set exceeds 10, keep the ones most likely to be violated.
 
 ### Tasks Directory
 Create the `tasks/` directory if it doesn't exist:
@@ -684,7 +589,7 @@ mkdir -p tasks
 
 Create `tasks/lessons.md` if it doesn't exist (header only).
 
-Add `tasks/todo.md` to `.gitignore` if not already there. Do NOT gitignore `tasks/lessons.md`.
+Add `tasks/todo.md` and `.claude.local.md` (personal, opt-in CLAUDE.md companion — `claude-md-capture` writes personal learnings here; never auto-created) to `.gitignore` if not already there. Do NOT gitignore `tasks/lessons.md`.
 
 ### .mtkignore (S1.14)
 
@@ -709,16 +614,9 @@ If the detected stack is `dotnet`, check whether the `codewithmukesh/dotnet-clau
 find ~/.claude/plugins -maxdepth 4 -name "plugin.json" -path "*dotnet-claude-kit*" 2>/dev/null | head -1
 ```
 
-If NOT found, recommend installation:
+If NOT found, recommend installation (recommend-only — never auto-install):
 
-> **Recommended companion:** `codewithmukesh/dotnet-claude-kit` provides 15 Roslyn-powered MCP tools for real semantic analysis — anti-pattern detection, circular dependency detection, dead code finder, project graph, type hierarchy, and more. MTK orchestrates the workflow; dotnet-claude-kit provides .NET code intelligence. Install it via the Claude Code plugin marketplace.
->
-> With dotnet-claude-kit installed, the review pipeline gains:
-> - `DetectAntiPatterns` findings feed into the review as `source: "analyzer"`, confidence 100
-> - `GetProjectGraph` and `GetDependencyGraph` enable scoped builds on large solutions
-> - `FindDeadCode` and `DetectCircularDependencies` catch issues no AI review can reliably find
->
-> MTK works without it — the regex linter, build output parser, and AI review still function. dotnet-claude-kit adds the Roslyn layer.
+> **Recommended companion:** `codewithmukesh/dotnet-claude-kit` adds 15 Roslyn-powered MCP tools (anti-pattern, circular-dependency, dead-code detection, project/dependency graph, type hierarchy). With it installed, `DetectAntiPatterns` findings feed the review as `source: "analyzer"` confidence 100, the graph tools enable scoped builds on large solutions, and `FindDeadCode`/`DetectCircularDependencies` catch issues no AI review reliably finds. Install via the Claude Code plugin marketplace. MTK works without it — the regex linter, build-output parser, and AI review still function.
 
 If found, note it in the bootstrap output: "dotnet-claude-kit detected — Roslyn MCP tools available for the review pipeline."
 
@@ -831,76 +729,9 @@ Build the list of package directories:
 
 Cap at **20 packages**. If there are more, pick the top 20 by file count and print a note: "Skipped N packages — generate per-package CLAUDE.md manually for any that need special context."
 
-### Generate per-package CLAUDE.md
+### Generate per-package CLAUDE.md + update root
 
-**For each package**, create `<package-path>/CLAUDE.md` **only if it doesn't already exist** (never overwrite — these may be hand-authored).
-
-Each file targets **15–30 lines**. It should contain the **local delta** — what Claude needs to know here that isn't already in root CLAUDE.md. No repeated rules, no general guidance.
-
-Template:
-
-```markdown
-# [Package Name] — Local Context
-
-> This package lives in a monorepo. See root `CLAUDE.md` for team-wide standards.
-> This file only documents what's specific to this package.
-
-## What this is
-[One or two sentences. Inferred from README, package.json description, .csproj description, or directory name.]
-
-## Framework / runtime
-[From package.json dependencies, .csproj TargetFramework, pyproject.toml requires-python, etc. Only note if it differs from the root default.]
-
-## Build / test (local)
-[Only if commands differ from root. Otherwise omit this section.]
-```bash
-[package-specific commands, if any]
-```
-
-## Local conventions
-[Only patterns unique to this package. Examples:
- - "No I/O — this is a pure domain package"
- - "Client-only — no server imports"
- - "Public API package — changes require version bump"
- - "This service owns the <X> database schema"
-]
-
-## Dependencies / boundaries
-[Only if there are notable dependency rules:
- - "Imports from ../core only — never from ../web"
- - "This package is consumed by the SDK — breaking changes require a major bump"
-]
-```
-
-**Rules for per-package generation:**
-- **Omit any section you can't fill with something specific.** An empty "Local conventions" section is worse than no section.
-- If a package has no notable local delta (e.g., a trivial shared `types/` package), generate a 5-line stub:
-  ```markdown
-  # [Name] — Local Context
-
-  > See root `CLAUDE.md`. No package-specific conventions beyond the root standards.
-  ```
-- Never duplicate rules from root. If a rule appears in root, do not re-state it locally.
-- Never overwrite an existing per-package `CLAUDE.md` — skip with a note.
-
-### Update root CLAUDE.md
-
-Add a short **Monorepo Layout** block to the root CLAUDE.md (inside the 120-line cap — this earns its place because it helps Claude navigate):
-
-```markdown
-## Monorepo Layout
-
-This is a monorepo with [N] packages. Each package has its own `CLAUDE.md` with local context.
-
-- `apps/api/` — [one-line purpose]
-- `apps/web/` — [one-line purpose]
-- `packages/core/` — [one-line purpose]
-- ...
-
-Claude loads package-level `CLAUDE.md` files automatically when working in that directory.
-```
-
-If the root is already near 120 lines, collapse each entry to a single line and skip the one-line purpose.
+The per-package file template, the generation rules (15–30 line local delta, 5-line stub for trivial packages, never overwrite, never duplicate root rules), and the root **Monorepo Layout** block live in **`.claude/references/monorepo-bootstrap.md`**. Read it now and follow it for each enumerated package, then add the Monorepo Layout block to the root CLAUDE.md (inside the 120-line cap).
 
 ## STEP 4.8: Seed Template Cache (for future re-runs)
 
@@ -983,7 +814,7 @@ Skills available:
   /mtk fix <description> — Quick fix (1-3 files)
   /mtk review before commit — Fast security-focused review of staged changes
   /mtk-setup --audit     — Re-run architecture audit
-
+Keep CLAUDE.md fresh: press # mid-session to append a learning instantly; run claude-md-capture at session end to propose session learnings as diffs (personal notes → .claude.local.md).
 Next: Try it with:
   /mtk Add [your feature description here]
 ```
