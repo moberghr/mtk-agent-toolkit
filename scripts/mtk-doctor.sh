@@ -31,6 +31,10 @@ USAGE
 done
 
 # Deprecated model IDs — update when Anthropic deprecates more.
+# Note: agents pin aliases (model: opus|sonnet|haiku), not version IDs. On the
+# Anthropic API an alias resolves to the latest in its family (opus -> Opus 4.8).
+# On Bedrock/Vertex/Foundry the same alias may resolve to an OLDER version; pin
+# ANTHROPIC_DEFAULT_OPUS_MODEL / _SONNET_MODEL / _HAIKU_MODEL to a full ID there.
 DEPRECATED_MODELS=(
   "claude-3-opus"
   "claude-3-sonnet"
@@ -144,7 +148,7 @@ while IFS= read -r agent_md; do
 done < <(find .claude/agents -name '*.md' -type f 2>/dev/null)
 
 if [ "${#DEPRECATED_HITS[@]}" -eq 0 ]; then
-  record PASS components "no deprecated model IDs" "checked ${#DEPRECATED_MODELS[@]} known-deprecated IDs"
+  record PASS components "no deprecated model IDs" "checked ${#DEPRECATED_MODELS[@]} known-deprecated IDs; aliases resolve to latest on Anthropic API — pin ANTHROPIC_DEFAULT_*_MODEL on Bedrock/Vertex"
 else
   for h in "${DEPRECATED_HITS[@]}"; do
     record FAIL components "deprecated model" "$h"

@@ -6,8 +6,8 @@
 
 ## Why this matters
 
-Modern Claude models (Opus 4.7, Sonnet 4.6) can issue multiple tool calls in a
-single message. Parallelism turns sequential waits into overlapped work:
+Modern Claude models (Opus 4.8, Sonnet 4.6 and later) can issue multiple tool calls
+in a single message. Parallelism turns sequential waits into overlapped work:
 
 - Three `Read` calls for three reference files go out in one turn, not three.
 - Two independent reviewer agents (`test-reviewer`, `architecture-reviewer`) run

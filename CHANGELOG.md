@@ -2,6 +2,16 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.10.2] - 2026-05-29
+
+### Changed — Opus 4.8 currency pass
+
+Verified MTK against Opus 4.8 and current Claude Code: no breakage. Agents pin model aliases (`opus`/`sonnet`), which resolve to Opus 4.8 automatically on the Anthropic API; `effort:` and `context: fork` frontmatter remain honored keys; the deprecated-model list is still accurate. Two stale items fixed plus the one real provider gap documented.
+
+- `docs/parallelism-patterns.md` — refreshed the example model list ("Opus 4.7, Sonnet 4.6" → "Opus 4.8, Sonnet 4.6 and later").
+- `scripts/mtk-doctor.sh` — the model-ID check now notes that `model:` aliases resolve to the latest model on the Anthropic API but to **older** versions on Bedrock/Vertex/Foundry, where `ANTHROPIC_DEFAULT_OPUS_MODEL` / `_SONNET_MODEL` / `_HAIKU_MODEL` should be pinned to a full model ID. No detection-logic change; advisory only.
+- `docs/specs/2026-05-29-opus-48-currency.md` — records the verification result and a forward-looking assessment of native Claude Code features MTK predates (Workflow tool, native `EnterWorktree`, `effort: xhigh`, background sessions / `/loop` / `/schedule`) for a later, deliberate adoption decision.
+
 ## [7.10.1] - 2026-05-29
 
 ### Fixed
