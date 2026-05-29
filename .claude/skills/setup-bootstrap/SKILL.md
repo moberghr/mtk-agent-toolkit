@@ -114,6 +114,15 @@ echo "$PM" > .claude/tech-stack-pm
 
 If multiple lockfiles exist (e.g. both `yarn.lock` and `package-lock.json`), that's almost always a mistake — warn the engineer and pick the highest-priority one. Do not prompt; the priority order is: bun > pnpm > yarn > npm.
 
+### React Native / Expo detection (typescript only)
+
+When the stack is `typescript`, also detect RN/Expo so `setup-audit`'s `detected-tools.json` emits it (audit STEP 2.6) and reference pruning (STEP 3.6) keeps RN-relevant refs. Markers: `react-native`/`expo` in `package.json` deps, `app.json` / `app.config.*`, `metro.config.*`. If any match, add `react-native` (and `expo` when the `expo` dep or `app.config.*` is present) to detected tools. Stack stays `typescript`.
+
+```bash
+grep -lE '"(react-native|expo)"[[:space:]]*:' package.json 2>/dev/null
+test -f app.json || ls app.config.* metro.config.* >/dev/null 2>&1
+```
+
 ## STEP 1: Pull External Standards
 
 ### Coding Guidelines
@@ -369,6 +378,7 @@ The rule file templates are largely the same as before — adapt the content per
 - `project-specific.md` — anything unique
 
 ### Rules for Generation
+- **Counter-example gate (MANDATORY — run before emitting ANY absolute rule).** A pattern seen *somewhere* is not a law. Before writing any rule containing `NEVER`, `ALWAYS`, `all`, `every`, or `must`, grep for counter-examples and count hits that contradict it. If ANY exist, do NOT state it as absolute — soften to `Prefer X`, note the exception count/location, and tag `[CONVENTION]` not `[ENFORCED]`. Reserve absolute language / `[ENFORCED]` for zero-counter-example, build-gated or tool-enforced rules.
 - Every rule in `.claude/rules/` must have a section number (§X.Y) for review agents to cite.
 - Include **code examples** from the actual codebase where possible.
 - Flag conflicts: "⚠️ Guideline says X, but codebase does Y. Standardize on: [recommendation]"
@@ -383,7 +393,7 @@ Before writing files (or presenting preview), validate every concrete directory,
 
 **Scope:** Verify claims in ALL generated files — `CLAUDE.md`, `.claude/references/architecture-principles.md`, every `.claude/rules/*.md`, and (if monorepo) every per-package `CLAUDE.md`.
 
-**Verification procedure:** run `scripts/verify-references.sh` over every generated doc. It performs all four mechanical checks — directory claims (`test -d`), `.csproj` project-file existence, an informational framework/version dump for cross-checking, and solution-membership vs disk reality — and prints `STALE …` lines (exit 3 if any found, 0 if clean). Rules files are passed in, which also covers their project/dir proper-noun references.
+**Verification procedure:** run `scripts/verify-references.sh` over every generated doc. It performs four mechanical checks — path/directory claims (only backtick-spanned path tokens, resolved against root, `src/`, and the git index to avoid prose false positives), `.csproj` project-file existence, an informational framework/version dump for cross-checking, and solution-membership vs disk reality — and prints `STALE …` lines (exit 3 if any found, 0 if clean). Rules files are passed in, which also covers their project/dir proper-noun references.
 
 ```bash
 bash scripts/verify-references.sh CLAUDE.md \
@@ -514,19 +524,21 @@ Read the active tech stack skill's `## Settings Additions` section. Merge those 
 
 Install the deterministic linter as a git pre-commit hook so critical findings (secrets, raw SQL, etc.) block the commit automatically.
 
-```bash
-HOOK_TARGET=".git/hooks/pre-commit"
-HOOK_SOURCE="hooks/git-hooks/pre-commit"
-```
+The hook source lives in the **plugin checkout**, not the target repo. A relative `ln -s ../../hooks/...` dangles once installed into a bootstrapped repo — resolve an ABSOLUTE source and verify it before linking, or copy the file.
 
-1. **If `.git/hooks/pre-commit` does not exist** — create a symlink:
+1. **If `.git/hooks/pre-commit` does not exist** — install, guarding against a dangling symlink:
    ```bash
-   ln -s ../../hooks/git-hooks/pre-commit .git/hooks/pre-commit
+   HOOK_TARGET=".git/hooks/pre-commit"
+   HOOK_SOURCE="${CLAUDE_PLUGIN_ROOT:-$(pwd)}/hooks/git-hooks/pre-commit"  # absolute
+   if [ ! -e "$HOOK_SOURCE" ]; then
+     echo "⚠️ Hook source not found at $HOOK_SOURCE — skipping git hook install."
+   else
+     mkdir -p .git/hooks && ln -s "$HOOK_SOURCE" "$HOOK_TARGET"
+     # Dangling link → source path was wrong; copy instead.
+     [ -e "$HOOK_TARGET" ] || { rm -f "$HOOK_TARGET"; cp "$HOOK_SOURCE" "$HOOK_TARGET" && chmod +x "$HOOK_TARGET"; }
+   fi
    ```
-2. **If `.git/hooks/pre-commit` exists and is already a symlink to our hook** — skip (idempotent).
-   ```bash
-   # Check with: readlink .git/hooks/pre-commit
-   ```
+2. **If it exists and is already a symlink to our hook** — skip (idempotent; check `readlink`).
 3. **If `.git/hooks/pre-commit` exists but is something else** — do NOT overwrite. Print a warning:
    ```
    ⚠️ Existing git pre-commit hook found at .git/hooks/pre-commit.
@@ -665,7 +677,9 @@ After generating CLAUDE.md and rules, generate portable configs for all AI codin
 3. The file contains coding guidelines, security requirements, testing expectations, and architecture principles — extracted from the references already distributed
 4. Custom sections (prefixed `## Custom:`) are preserved across regeneration
 5. If `AGENTS.md` already exists and has no `## Custom:` sections, the file is regenerated from current references
-6. Run `bash scripts/generate-tool-configs.sh --all` (if the script exists) to generate native configs for other tools:
+6. **Size budget — same instruction-budget discipline as CLAUDE.md** (compliance degrades past ~150 instructions). **Target 60–120 lines**; point to `.claude/rules/` and references rather than restating them.
+7. **Git-ignore check** — surface in the STEP 5 report if the deliverable won't be committed: `git check-ignore -q AGENTS.md && echo "⚠️ AGENTS.md is git-ignored — generated but will NOT be committed."`
+8. Run `bash scripts/generate-tool-configs.sh --all` (if the script exists) to generate native configs for other tools:
    - `.cursor/rules/mtk-*.mdc` — glob-scoped Cursor rules (applyTo globs from manifest)
    - `.github/copilot-instructions.md` — GitHub Copilot instructions
    - `.windsurfrules` — Windsurf rules
@@ -778,7 +792,10 @@ bash scripts/build-references-index.sh
 
 This produces `.claude/references.index` — a tab-separated file used by routing logic to auto-select references by file-pattern match. The index is gitignored (regenerated on every bootstrap and audit).
 
-## STEP 4.95: Seed CODE_INDEX.md — from `.claude/references/code-index-template.md` (handlers/controllers/services by domain); skip if exists; consumed by `code-simplification --audit-duplicates`.
+## STEP 4.95: Seed CODE_INDEX.md
+
+Seed a repo-root `CODE_INDEX.md` from `.claude/references/code-index-template.md` (handlers/controllers/services by domain); skip if it exists; consumed by `code-simplification --audit-duplicates`. **Never ship the template's placeholder rows as real entries** (a prior-work scan would chase ghosts). Populate from the audit's actual capabilities — each row's `path:Symbol` MUST resolve (`test -f`/`git ls-files`) — or, if you can't, write an explicitly-empty index ("No capabilities indexed yet — run `/mtk audit duplicates`") with no rows that look like real entries.
+
 ## STEP 5: Verify & Report
 
 ```

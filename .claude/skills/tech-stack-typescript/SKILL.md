@@ -1,6 +1,6 @@
 ---
 name: tech-stack-typescript
-description: Provides TypeScript/JavaScript-specific build commands, test commands, ORM guidance, framework patterns (React, Next.js, Tauri, Node), and reference file paths for workflow skills.
+description: Provides TypeScript/JavaScript-specific build commands, test commands, ORM guidance, framework patterns (React, React Native / Expo, Next.js, Tauri, Node), and reference file paths for workflow skills.
 license: MIT
 compatibility:
   - claude-code
@@ -17,7 +17,7 @@ user-invocable: false
 
 This tech stack skill provides TypeScript/JavaScript-specific context for the generic workflow skills (`spec-driven-development`, `incremental-implementation`, `test-driven-development`) and for review agents. It is loaded when `.claude/tech-stack` contains `typescript`.
 
-Covers React SPAs, Next.js apps, Tauri desktop apps (with Rust sidecar guidance), and Node.js backends. JavaScript-only projects use the same skill — the TypeScript-specific rules become optional recommendations rather than hard requirements.
+Covers React SPAs, React Native / Expo mobile apps, Next.js apps, Tauri desktop apps (with Rust sidecar guidance), and Node.js backends. JavaScript-only projects use the same skill — the TypeScript-specific rules become optional recommendations rather than hard requirements.
 
 ## When To Use
 
@@ -76,12 +76,17 @@ How `setup-bootstrap` detects this stack in a repository:
 | `src-tauri/Cargo.toml` | Tauri sidecar |
 | `next.config.{js,ts,mjs}` | Next.js project |
 | `vite.config.{js,ts}` | Vite-based (React, Vue, Svelte) |
+| `react-native` / `expo` in `package.json` deps | React Native / Expo project |
+| `app.json`, `app.config.{js,ts}` | Expo config |
+| `metro.config.{js,ts}` | React Native (Metro bundler) |
 
 Detection command:
 ```bash
 find . -maxdepth 2 -name "package.json" -not -path "*/node_modules/*" 2>/dev/null | head -1
 test -f tsconfig.json && echo "typescript"
 test -f src-tauri/Cargo.toml && echo "has-tauri-sidecar"
+grep -qE '"(react-native|expo)"' package.json 2>/dev/null && echo "has-react-native"
+ls app.json app.config.js app.config.ts metro.config.js metro.config.ts 2>/dev/null
 ```
 
 ## ORM & Data Layer Guidance
@@ -129,6 +134,15 @@ The TypeScript ecosystem has no single dominant ORM the way EF Core dominates .N
 - Co-locate: component, its CSS module/styles, its test, and its sub-components in one directory.
 - Client-only logic (browser APIs, localStorage) must be inside `useEffect` or guarded by `typeof window !== 'undefined'` — breaks SSR otherwise.
 
+**React Native / Expo (when `react-native`/`expo` in deps):**
+
+- No DOM or web APIs — use RN primitives (`View`, `Text`, `Image`, `Pressable`), not `<div>`/`window`/`document`/`localStorage`. Confirm libraries support RN before adding them.
+- Persistence is async: `@react-native-async-storage/async-storage` for general data, `expo-secure-store` for tokens/secrets (never store secrets in AsyncStorage — it's unencrypted).
+- Navigation via React Navigation (`@react-navigation/*`) or Expo Router (file-based under `app/`); pick one per app and type route params.
+- Platform divergence is explicit: `Platform.OS` / `Platform.select(...)` for small branches, `*.ios.tsx` / `*.android.tsx` / `*.native.tsx` files for larger splits (Metro resolves them).
+- Prefer Expo SDK modules (`expo-camera`, `expo-location`, `expo-notifications`, `expo-file-system`) over hand-rolled native modules. Know whether the project is managed or bare/dev-build before adding native deps (modules with native code need `expo prebuild` / EAS, not Expo Go).
+- Long lists use `FlatList`/`SectionList` with a stable `keyExtractor` — never `.map()` inside a `ScrollView`.
+
 **Next.js (when detected):**
 
 - App Router (Next 13+): default components are Server Components. Add `'use client'` only at the boundary where browser APIs / hooks are actually needed.
@@ -160,6 +174,7 @@ The TypeScript ecosystem has no single dominant ORM the way EF Core dominates .N
 - **End-to-end tests:** Playwright. Preferred over Cypress for new work — better parallelism, better trace viewer, built-in TypeScript.
 - Match existing project conventions on test file placement: `*.test.ts` co-located with source, or `tests/` directory — don't mix styles.
 - For TanStack Query: wrap components in a fresh `QueryClientProvider` per test to avoid cache pollution.
+- **React Native:** component tests use `@testing-library/react-native` (not the DOM `@testing-library/react`) — query by accessible role/label/text, render with its `render`/`screen`. Jest with `jest-expo` (Expo) or `react-native` preset is the norm; Playwright/Cypress don't apply. End-to-end on device/simulator uses Detox or Maestro, not browser E2E.
 
 ## Coding Style Reference
 
@@ -197,7 +212,7 @@ These files are loaded by commands and review agents when the active stack is `t
 
 - `.claude/references/typescript/coding-guidelines.md` — TypeScript style guide (placeholder until written)
 - `.claude/references/typescript/data-layer-checklist.md` — Prisma / Drizzle / TanStack Query review checklist
-- `.claude/references/typescript/framework-patterns.md` — React / Next.js / Tauri / Node backend patterns
+- `.claude/references/typescript/framework-patterns.md` — React / React Native (Expo) / Next.js / Tauri / Node backend patterns
 - `.claude/references/typescript/testing-supplement.md` — Vitest / Jest / Playwright / MSW patterns
 - `.claude/references/typescript/performance-supplement.md` — Bundle size, rendering, caching, Node I/O
 - `docs/recommended-tooling/typescript.md` — Recommended MCPs / plugins / editor integrations for TypeScript
@@ -246,6 +261,7 @@ Conditional, tool-keyed items for the generated `pre-commit-review-list.md`.
 adds the three stack-agnostic always-include items, and caps the list at 10.
 
 - [React] Rules of Hooks, SSR-safe browser access, stable list keys
+- [React Native / Expo] no DOM/web APIs, secrets in `expo-secure-store` not AsyncStorage, `FlatList` over `.map()` in `ScrollView`
 - [Next.js] `'use client'` at the boundary, server actions validated, `next/image` / `next/font` over raw tags
 - [Tauri] allowlist discipline, every `#[tauri::command]` validates input, no `all: true`
 - [Prisma / Drizzle] `select` projection over `include`, indexes on foreign keys, paginated list queries
@@ -278,6 +294,7 @@ find . -type d -maxdepth 3 -not -path "*/node_modules/*" -not -path "*/.next/*" 
 grep -l "next" package.json 2>/dev/null && echo "Next.js"
 grep -l "\"react\"" package.json 2>/dev/null && echo "React"
 grep -l "vite" package.json 2>/dev/null && echo "Vite"
+grep -lE "\"(react-native|expo)\"" package.json 2>/dev/null && echo "React Native / Expo"
 grep -l "@tauri-apps" package.json 2>/dev/null && echo "Tauri"
 grep -l "express\|fastify\|hono\|@nestjs" package.json 2>/dev/null && echo "Node backend detected"
 # State management
@@ -350,6 +367,8 @@ find . -maxdepth 2 -name "biome.json" -o -name ".prettierrc*" -o -name ".eslintr
 find . -maxdepth 2 -name ".env*" -not -name ".env.example" 2>/dev/null | head -10
 # Build tool config
 find . -maxdepth 2 -name "vite.config.*" -o -name "next.config.*" -o -name "tsup.config.*" -o -name "rollup.config.*" 2>/dev/null
+# React Native / Expo config
+find . -maxdepth 2 -name "app.json" -o -name "app.config.js" -o -name "app.config.ts" -o -name "metro.config.js" -o -name "metro.config.ts" -o -name "eas.json" 2>/dev/null
 ```
 
 ## Verification

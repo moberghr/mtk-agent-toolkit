@@ -2,7 +2,7 @@
 description: TypeScript performance guidance — bundle size, render perf, memo patterns
 globs: ["**/*.ts", "**/*.tsx"]
 alwaysApply: false
-tools: [react, nextjs-pages, nextjs-app, tauri, node, vercel, edge-runtime, tanstack-query]
+tools: [react, react-native, expo, nextjs-pages, nextjs-app, tauri, node, vercel, edge-runtime, tanstack-query]
 ---
 # TypeScript Performance Supplement
 
@@ -57,6 +57,14 @@ Stack-specific performance rules for TypeScript projects. Read alongside `.claud
 - **Bundle the frontend.** Dev mode loads from Vite; production bundles into the binary. Measure both — they have different perf profiles.
 - **Native-side work for heavy operations.** File I/O, crypto, compression belong in Rust commands, not JS.
 
+## React Native / Expo Performance
+
+- **Virtualize lists.** `FlatList`/`SectionList` (or FlashList) over `.map()` in a `ScrollView`. Set `keyExtractor`, and tune `initialNumToRender` / `windowSize` for long feeds. Memoize `renderItem` and row components so scrolling doesn't re-render the world.
+- **The bridge / JSI boundary has a cost.** On the legacy bridge, frequent JS↔native calls serialize over an async bridge — batch them and avoid per-frame chatter (e.g. driving animations from JS). Use the native driver (`useNativeDriver: true`) or Reanimated to run animations off the JS thread.
+- **Enable Hermes.** Hermes (default on modern RN/Expo) cuts startup time and memory versus JSC. Confirm it's on; ship bytecode, not parsed-at-launch JS.
+- **Cache images.** Use `expo-image` (or FastImage) for disk/memory caching and correct `resizeMode` — unbounded remote images blow up memory and cause jank. Size images to their display dimensions.
+- **Minimize re-renders.** The JS thread also drives the UI; wasted renders show up as dropped frames. Profile with the React DevTools / Flipper profiler before adding memoization, then memoize the hot paths.
+
 ## Memory
 
 - **Avoid loading large datasets into memory on the server.** Stream with Node Streams API or pagination.
@@ -71,3 +79,4 @@ Stack-specific performance rules for TypeScript projects. Read alongside `.claud
 - For serverless: does this introduce cold-start sensitive imports at module scope?
 - Is pagination in place for unbounded fetches, both client and server?
 - For Tauri: is heavy work on the Rust side, or are we round-tripping through IPC?
+- For React Native: are lists virtualized, images cached (`expo-image`/FastImage), Hermes enabled, and animations on the native driver rather than the JS thread?

@@ -1,5 +1,5 @@
 {
-  "version": "7.9.0",
+  "version": "7.10.0",
   "updated": "2026-05-29",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
@@ -1319,12 +1319,6 @@
       "target": "tests/hooks/test-correction-nudge.sh",
       "action": "sync",
       "description": "SC1 integration test — tier-1 correction-nudge fires on correction keywords and stays silent on agreement phrasing"
-    },
-    "tests/hooks/test-context-estimator.sh": {
-      "source": "tests/hooks/test-context-estimator.sh",
-      "target": "tests/hooks/test-context-estimator.sh",
-      "action": "sync",
-      "description": "SC5 + SC6 benchmark — context load estimator: bytes_read accumulates for unique files and surfaces as estimated_context_tokens in analytics"
     },
     "tests/hooks/test-killswitch.sh": {
       "source": "tests/hooks/test-killswitch.sh",

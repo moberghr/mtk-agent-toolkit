@@ -56,18 +56,27 @@ done
 
 STALE=0
 
-# --- Check 1: directory claims (+ rules-file proper-noun paths) --------------
-# Catch both PascalCase (src/Infrastructure/) and lowercase (apps/api/).
+# --- Check 1: path / directory claims (near-zero false positives) ------------
+# Only path-like tokens INSIDE backtick code spans count (never prose), and a
+# token is declared stale only after it fails to resolve at the root, under
+# src/, AND in the git index. This avoids the broad-regex noise (prose slashes
+# like `I/O`, npm scopes, subtree-relative paths) that buried real stale refs.
 for file in "${EXISTING[@]}"; do
-  while IFS= read -r dir; do
-    [ -z "$dir" ] && continue
-    # Skip obvious non-paths: URLs, code patterns, comment fragments.
-    case "$dir" in http*|ftp*|//|.*/) continue ;; esac
-    if [ ! -d "$dir" ]; then
-      echo "STALE in $file: directory '$dir' referenced but not found on disk"
-      STALE=$((STALE + 1))
+  while IFS= read -r tok; do
+    [ -z "$tok" ] && continue
+    case "$tok" in *" "*|http*|ftp*|@*) continue ;; esac   # prose / URL / npm scope
+    echo "$tok" | grep -qE '/' || continue                 # must have a separator
+    # path-like = known prefix OR dot-extension. A bare trailing-slash acronym
+    # (REST/, SQS/) is prose, NOT a directory claim — excluded to keep FPs near zero.
+    echo "$tok" | grep -qE '(^(src|apps|packages|libs|services|tests?|lib)/|\.[A-Za-z0-9]+$)' || continue
+    p="${tok%/}"
+    # resolve subtree-relative before declaring stale: root, src/, then git index
+    if [ -e "$p" ] || [ -e "src/$p" ] || git ls-files --error-unmatch "$p" >/dev/null 2>&1 || git ls-files "$p" 2>/dev/null | grep -qF "$p"; then
+      continue
     fi
-  done < <(grep -oE '[a-zA-Z0-9_./-]+/' "$file" 2>/dev/null | grep -v '^//' | grep -v '^\.' | sort -u || true)
+    echo "STALE in $file: '$tok' looks like a path but resolves nowhere (root, src/, or git index)"
+    STALE=$((STALE + 1))
+  done < <(grep -oE '`[^`]+`' "$file" 2>/dev/null | tr -d '`' | sort -u || true)
 done
 
 # --- Check 2: project-file claims (.csproj) ----------------------------------

@@ -258,6 +258,11 @@ grep -rn "\.Should()\|Assert\.\|\.ShouldBe\|expect(" --include="*.cs" --include=
 
 For each category, sample 2-3 representative files to understand the actual convention — not just the file names.
 
+**Majority-verify conventions, never cherry-pick (MANDATORY).** A convention is what the codebase does *predominantly*, not what one example happens to do. In the eval, a handler-naming convention was prescribed from a single example while the prescribed form was actually the 32% minority. For every convention claim ("handlers are named X", "money is `decimal`(18,4)"):
+- Count BOTH (all) competing forms with a concrete command run from the repo root, e.g. `grep -rEc` or `find … | sed … | sort | uniq -c`.
+- Report the DOMINANT form with its proportion (e.g. "`{Verb}{Entity}Handler` — 21/31 handlers, 68%"). If no form exceeds ~60%, call it `[AMBIGUOUS]`/split rather than prescribing one.
+- Run counts from the repo root and against the correct directory — verify the path holds the files you think it does before counting (an eval money-precision count came from the wrong directory).
+
 Generate `.claude/references/conventions.md`:
 
 ```markdown
@@ -414,6 +419,10 @@ Based on EVERYTHING you found, create `.claude/references/architecture-principle
 - If a pattern is only used in some places, note its adoption percentage
 - Be specific about file locations so engineers can find examples
 - Don't skip sections — if you found nothing for a section, say "Not found in this codebase"
+- **Counter-example gate before absolute language (MANDATORY).** Before writing any principle using `NEVER`, `ALWAYS`, `all`, `every`, or `must`, grep for counter-examples. A pattern seen *somewhere* is not a law. Real failures: "all API handlers validate with Yup" (only 1 of 9); "never use `DateTime.UtcNow`" (used in 2 files). If ANY counter-example exists, do not state it as absolute — soften to "most"/"prefer", report the dominant form with its proportion, and tag `[INFERRED:N]` or `[AMBIGUOUS]` (never `[EXTRACTED]`). Reserve absolute language + `[EXTRACTED]` for genuinely zero-counter-example facts.
+- **Reproducible numeric claims (MANDATORY).** Every numeric claim (project counts, file censuses, "N of M" proportions) must carry the exact shell command that produced it, runnable from the repo root, so `verify-claims` can re-run it. Real failures: "18 projects" (actual 17, propagated to 4 lines); grep counts that don't reproduce. If you cannot produce a reproducible command, drop the number and state the fact qualitatively ("several projects") instead of guessing one.
+- **Capability requires a usage site, not just an import (MANDATORY).** Do NOT assert a capability or integration exists from an import/using/package-reference alone. Real failures: "CDK provisions EC2/VPC" inferred from a dead `using Amazon.CDK.AWS.EC2;` (zero VPC/Subnet/SG in code); a dead `AWSSQSResource` (0 references) presented as active "SQS access". Require a USAGE SITE — instantiation, call, or DI registration — before claiming the capability. If only an import exists with no usage, omit it or explicitly mark it `dead/unused reference`.
+- **Security-claim grounding (MANDATORY).** NEVER assert that a sanitization / validation / audit / secret-handling path EXISTS unless a usage site is found (imported AND called). Real failures: "use the existing dompurify/sanitize-html path" while dompurify is imported nowhere; "never log raw event XML" framed as an existing invariant while code logs raw XML + MQ creds. If the protection is ABSENT, state it as a GAP ("no input sanitization found on X — add it"), not as an existing convention to follow.
 
 ### Confidence Tagging (S1.15)
 
@@ -424,6 +433,8 @@ Every principle (or sub-bullet) the audit emits must carry a **confidence tag** 
 - `[AMBIGUOUS]` — sources disagree, or the pattern is split. Drift detection notes without verdict.
 
 **Every tagged line must cite evidence** — file:line, a path glob with a hit count, or a commit SHA. No tag without evidence.
+
+**Grade tags by evidence, not vibes (eval fix):** a directly-observable fact with a file:line citation is `[EXTRACTED]` — do NOT under-tag it `[INFERRED:0.5]` (e.g. EF Core at `Program.cs:61 UseSqlServer` is EXTRACTED). An **absence** claim ("no raw SQL", "no test project") is `[EXTRACTED]` only when you cite the zero-result command that proves it; otherwise tag it `[INFERRED]`.
 
 Format the principles section so each line follows this shape:
 

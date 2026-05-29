@@ -14,6 +14,8 @@ alwaysApply: false
 
 Each entry is one row in a capability table. Group rows by domain (auth, billing, persistence, http, observability, etc.).
 
+The rows below are **ILLUSTRATIVE ONLY** — they show the format using fictional paths. When seeding a real CODE_INDEX.md, NEVER copy these rows: populate from the repo's actual capabilities (every `path:Symbol` must resolve on disk), or write an explicitly-empty index. See `setup-bootstrap` STEP 4.95.
+
 ```markdown
 # Code Index
 
@@ -21,20 +23,17 @@ Each entry is one row in a capability table. Group rows by domain (auth, billing
 > Refresh: `bash scripts/build-code-index.sh` (or `/mtk audit duplicates`).
 > Last built: <ISO date>
 
-## Authentication & Authorization
+## Authentication & Authorization  <!-- EXAMPLE — fictional paths, replace or delete -->
 
 | Capability | Entry point | Notes |
 |---|---|---|
-| Issue access token | `src/Auth/TokenService.cs:IssueAsync` | JWT, 15-min TTL, signs with KMS key `auth-prod` |
-| Validate access token | `src/Auth/TokenService.cs:ValidateAsync` | Use this — do not re-implement JWT parsing |
-| Hash password | `src/Auth/PasswordHasher.cs:Hash` | Argon2id, parameters fixed by policy |
+| <verb phrase> | `<path/to/file>:<Symbol>` | <non-obvious constraint or "use this — don't reimplement"> |
 
-## Persistence
+## Persistence  <!-- EXAMPLE — fictional paths, replace or delete -->
 
 | Capability | Entry point | Notes |
 |---|---|---|
-| Read order by id | `src/Orders/OrderRepository.cs:GetAsync` | Tracked query — use `GetReadOnlyAsync` for projections |
-| Soft-delete order | `src/Orders/OrderRepository.cs:SoftDeleteAsync` | Sets `DeletedAt`, never hard deletes |
+| <verb phrase> | `<path/to/file>:<Symbol>` | <constraint / footgun> |
 
 …
 ```
