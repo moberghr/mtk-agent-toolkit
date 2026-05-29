@@ -2,6 +2,18 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.10.3] - 2026-05-29
+
+### Fixed — setup-bootstrap non-destructive contract
+
+A bootstrap run under an aggressive "replace" wrapper deleted hand-authored files it did not generate (nested per-package `CLAUDE.md`, custom `.claude/commands/*`, a custom rule file) because the skill documented intent to *preserve* hand-authored files but had no explicit *deletion* protection, and the preservation note was scoped to the monorepo path only.
+
+- `setup-bootstrap` — added a prominent **File Preservation Policy (non-destructive contract)** at the top of the workflow: bootstrap is additive/merge-only, never `git rm`s a file it did not generate, and has no "replace mode" regardless of how it was invoked. Only MTK-owned files (provenance-stamped or known generated paths) may be overwritten in place; everything else — nested/`.claude/CLAUDE.md`, custom commands/rules/references, lockfiles, source, adopted AI configs — is preserved untouched.
+- Retiring a prior MTK-owned file is the one exception and must be reported loudly under "Retired prior MTK files" in the STEP 5 report — never silent.
+- Strengthened the STEP 4.5 "Not a monorepo" branch and the IMPORTANT bullet to forbid deletion (not just overwrite) of nested `CLAUDE.md` whether or not the repo is a monorepo.
+- Commit hygiene: stage only declared output (never `git add -A`); scratch/run-report/review artifacts must live outside the repo tree or be git-ignored, so eval artifacts can't leak into a commit.
+- STEP 5 report gains "Preserved hand-authored files" and "Retired prior MTK files" lines.
+
 ## [7.10.2] - 2026-05-29
 
 ### Changed — Opus 4.8 currency pass
