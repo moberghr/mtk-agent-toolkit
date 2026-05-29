@@ -3,7 +3,7 @@
 - **Date:** 2026-05-29
 - **Slug:** setup-bootstrap-slimming-phase2
 - **Scope:** refactor (extract logic to scripts/tech-stack skills; no capability change)
-- **Status:** draft (plan only — not yet implemented)
+- **Status:** shipped (item 5 in commit `beb45a7`; item 3 alongside). `setup-bootstrap/SKILL.md` 885 → 831 lines. Folded into the unreleased v7.9.0 changeset rather than separate patch bumps (nothing published yet).
 - **Predecessor:** Phase 1 (items 1, 2, 6, 7, 8) shipped in v7.9.0, commit `c9ef15d` — `setup-bootstrap/SKILL.md` 1000 → 885 lines.
 
 ## Why

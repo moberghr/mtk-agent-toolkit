@@ -1596,6 +1596,12 @@
       "action": "sync",
       "description": "Grep-verify cited evidence anchors in generated docs; downgrade zero-hit tags in place; emit weak-claims report"
     },
+    "scripts/verify-references.sh": {
+      "source": "scripts/verify-references.sh",
+      "target": "scripts/verify-references.sh",
+      "action": "sync",
+      "description": "Check directories, .csproj projects, and .sln members referenced in generated docs exist on disk; print STALE advisories (exit 3 if any)"
+    },
     "scripts/audit-drift-check.sh": {
       "source": "scripts/audit-drift-check.sh",
       "target": "scripts/audit-drift-check.sh",

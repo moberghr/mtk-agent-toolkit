@@ -383,51 +383,13 @@ Before writing files (or presenting preview), validate every concrete directory,
 
 **Scope:** Verify claims in ALL generated files — `CLAUDE.md`, `.claude/references/architecture-principles.md`, every `.claude/rules/*.md`, and (if monorepo) every per-package `CLAUDE.md`.
 
-**Verification procedure:**
+**Verification procedure:** run `scripts/verify-references.sh` over every generated doc. It performs all four mechanical checks — directory claims (`test -d`), `.csproj` project-file existence, an informational framework/version dump for cross-checking, and solution-membership vs disk reality — and prints `STALE …` lines (exit 3 if any found, 0 if clean). Rules files are passed in, which also covers their project/dir proper-noun references.
 
-1. **Directory claims — use `test -d`, not inference.** For every directory mentioned as existing or containing something, run `test -d`:
-   ```bash
-   # Collect all directory-like references from generated content.
-   # Catch both PascalCase (src/Infrastructure/) and lowercase (apps/api/, packages/core/).
-   for file in CLAUDE.md .claude/references/architecture-principles.md .claude/rules/*.md; do
-     [ -f "$file" ] || continue
-     grep -oE '[a-zA-Z0-9_./-]+/' "$file" | grep -v '^//' | grep -v '^\.' | sort -u | while read dir; do
-       # Skip obvious non-paths: URLs, code patterns, comment fragments
-       case "$dir" in http*|ftp*|//|.*/) continue ;; esac
-       [ ! -d "$dir" ] && echo "STALE in $file: directory '$dir' referenced but not found on disk"
-     done
-   done
-   ```
-
-2. **Project file claims — verify each named file exists.** For `.csproj`, `package.json`, `pyproject.toml`, or any project marker referenced by name:
-   ```bash
-   # .NET
-   for file in CLAUDE.md .claude/references/architecture-principles.md .claude/rules/*.md; do
-     [ -f "$file" ] || continue
-     grep -oE '[A-Za-z0-9._-]+\.csproj' "$file" 2>/dev/null | sort -u | while read proj; do
-       find . -name "$proj" -not -path "*/bin/*" -not -path "*/obj/*" 2>/dev/null | grep -q . || echo "STALE in $file: $proj not found"
-     done
-   done
-   ```
-
-3. **Framework / version claims — verify against actual files:**
-   ```bash
-   # .NET TargetFramework
-   grep -rh "TargetFramework" --include="*.csproj" | sort -u
-   # TypeScript — check package.json "engines" or tsconfig "target"
-   # Python — check pyproject.toml "requires-python" or .python-version
-   ```
-
-4. **Solution membership vs disk reality (.NET).** Solution files can reference projects that have been deleted. Do NOT trust `.sln`/`.slnx` project lists as proof of existence — always `test -d` the project directory:
-   ```bash
-   # Extract project paths from solution file and verify each
-   grep 'Project(' *.sln 2>/dev/null | grep -oE '"[^"]+\.csproj"' | tr -d '"' | while read proj; do
-     [ ! -f "$proj" ] && echo "STALE: solution references $proj but file does not exist"
-   done
-   ```
-
-5. **Rules files — check for specific project/directory/service references:**
-   For each `.claude/rules/*.md`, scan for proper nouns that look like project or directory names. Verify each with `test -d` or `test -f`.
+```bash
+bash scripts/verify-references.sh CLAUDE.md \
+  .claude/references/architecture-principles.md .claude/rules/*.md
+# (if monorepo) also pass each per-package CLAUDE.md
+```
 
 **Action on stale references:**
 
