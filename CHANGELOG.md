@@ -19,7 +19,7 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 ### Added — Bootstrap reference companions
 
 - `.claude/references/monorepo-bootstrap.md` and `.claude/references/bootstrap-customization.md` — on-demand companions for `setup-bootstrap`, registered in the manifest and distributed to target repos.
-- `scripts/verify-references.sh` — read-only checker that flags directories, `.csproj` projects, and `.sln` members referenced in generated docs that don't exist on disk (exit 3 if any stale). Distinct from `verify-claims.sh` (which downgrades zero-hit rule tags).
+- `scripts/verify-references.sh` — read-only checker that flags directories, `.csproj` projects, and `.sln` members referenced in generated docs that don't exist on disk (exit 3 if any stale). Distinct from `verify-claims.sh` (which downgrades zero-hit rule tags). The directory scan only considers path-like tokens inside backtick code spans (resolved against root, `src/`, and the git index), so prose tokens like `REST/`, `I/O`, or npm scopes don't false-positive.
 
 ## [7.7.0] - 2026-05-18
 
