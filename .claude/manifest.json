@@ -1,6 +1,6 @@
 {
-  "version": "7.8.0",
-  "updated": "2026-05-19",
+  "version": "7.9.0",
+  "updated": "2026-05-29",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
   "coding-guidelines": {
@@ -467,6 +467,18 @@
       "target": "tests/pressure-tests/claude-md-audit-pressure.md",
       "action": "sync",
       "description": "Adversarial pressure test for claude-md-audit (stale commands, anti-sandbagging, refuse-rewrite, partial-approval)"
+    },
+    "skills/claude-md-capture/SKILL.md": {
+      "source": ".claude/skills/claude-md-capture/SKILL.md",
+      "target": ".claude/skills/claude-md-capture/SKILL.md",
+      "action": "sync",
+      "description": "Capture session learnings into CLAUDE.md — reflect at session end, propose minimal append-only additions, apply only with approval"
+    },
+    "tests/pressure-tests/claude-md-capture-pressure.md": {
+      "source": "tests/pressure-tests/claude-md-capture-pressure.md",
+      "target": "tests/pressure-tests/claude-md-capture-pressure.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for claude-md-capture (anti-manufacture, approval gate, personal-vs-team routing, append-not-rewrite)"
     },
     "scripts/skill-eval/run-eval.sh": {
       "source": "scripts/skill-eval/run-eval.sh",
@@ -1595,6 +1607,18 @@
       "target": ".claude/references/audit-grounding.md",
       "action": "sync",
       "description": "Rules generators must follow when emitting CLAUDE.md and architecture-principles.md — rule tags, transient ban, partial-list policy, terminology denylist, SHA stamp"
+    },
+    "references/monorepo-bootstrap.md": {
+      "source": ".claude/references/monorepo-bootstrap.md",
+      "target": ".claude/references/monorepo-bootstrap.md",
+      "action": "sync",
+      "description": "Per-package CLAUDE.md template, generation rules, and root Monorepo Layout block — read on-demand by setup-bootstrap STEP 4.5"
+    },
+    "references/bootstrap-customization.md": {
+      "source": ".claude/references/bootstrap-customization.md",
+      "target": ".claude/references/bootstrap-customization.md",
+      "action": "sync",
+      "description": "Per-stack reference-file customization tables for setup-bootstrap — generic placeholder to concrete replacement, per category"
     },
     "tests/pressure-tests/audit-grounding.md": {
       "source": "tests/pressure-tests/audit-grounding.md",

@@ -42,6 +42,8 @@ digraph mtk_routing {
   cr       [label="context-report", style="rounded,filled", fillcolor="#e0f0e0"];
   cmd      [label="audit claude.md /\nclaude.md stale?", shape=diamond];
   cma      [label="claude-md-audit", style="rounded,filled", fillcolor="#e0f0e0"];
+  cmc      [label="capture session\nlearnings to claude.md?", shape=diamond];
+  cmcap    [label="claude-md-capture", style="rounded,filled", fillcolor="#e0f0e0"];
 
   start -> empty;
   empty -> help [label="yes"];
@@ -67,7 +69,9 @@ digraph mtk_routing {
   stat  -> cr   [label="yes"];
   stat  -> cmd  [label="no"];
   cmd   -> cma  [label="yes"];
-  cmd   -> help [label="no match → help"];
+  cmd   -> cmc  [label="no"];
+  cmc   -> cmcap [label="yes"];
+  cmc   -> help [label="no match → help"];
 }
 ```
 
@@ -94,6 +98,7 @@ Match the user's input against these patterns. Check from top to bottom; first m
 | `add`, `create`, `build`, `feature`, `implement`, `new`, `endpoint`, `refactor` (multi-file) | `.claude/skills/implement/SKILL.md` | "add user auth", "create a payment endpoint" |
 | `status`, `report`, `what's loaded`, `diagnostic`, `context` | `.claude/skills/context-report/SKILL.md` | "what's loaded?", "show toolkit status" |
 | `audit claude.md`, `claude.md audit`, `is claude.md still good`, `claude.md stale`, `memory rot`, `claude.md quality` | `.claude/skills/claude-md-audit/SKILL.md` | "audit CLAUDE.md", "is CLAUDE.md still good?" |
+| `capture claude.md`, `update claude.md`, `save what we learned`, `session learnings`, `remember this for next time`, `revise claude.md` | `.claude/skills/claude-md-capture/SKILL.md` | "save what we learned to CLAUDE.md", "update CLAUDE.md with this session" |
 | `setup`, `bootstrap`, `init`, `initialize`, `first time`, `prepare repo`, `audit`, `architecture`, `principles` | `/mtk-setup` (direct the user) | "set up this repo", "audit this repo" |
 | `help`, `commands`, `what can you do` | (print help below) | "help", "what commands are there?" |
 

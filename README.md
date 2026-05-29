@@ -51,6 +51,11 @@ MTK closes that gap with **workflow enforcement** (planning, TDD, batched implem
 
 ## What's New
 
+### v7.9.0 — Session-learnings capture for CLAUDE.md (2026-05-29)
+- **`claude-md-capture` skill** — reflects at session end on context `CLAUDE.md` was missing (discovered commands, gotchas, env quirks, patterns), proposes minimal append-only additions as diffs, and applies only with approval. Complements `claude-md-audit` (re-grades existing content) and `correction-capture` (records corrections as lessons). Routed via `/mtk` ("save what we learned to CLAUDE.md").
+- **`.claude.local.md` support** — `setup-bootstrap` now gitignores the personal, opt-in `CLAUDE.md` companion so per-engineer notes never get committed; `claude-md-capture` writes personal learnings there.
+- **Bootstrap completion tip** — the setup summary now surfaces the `#` mid-session shortcut and `claude-md-capture` so teams know how to keep `CLAUDE.md` fresh over time.
+
 ### v7.7.0 — Decision provenance and end-to-end wiring verification (2026-05-18)
 - **Decision-origin tagging** — every entry in the structured learnings store and every reviewer finding carries a `decision_origin` field (`user-directed` / `claude-recommended-approved` / `claude-recommended-modified` / `claude-recommended-rejected` / `system-inferred`). Surfaces how much of the design is the engineer's vs. the model's, so over-deference can be measured and corrected.
 - **Sycophancy index (π)** — `scripts/learnings.sh metrics` computes `π = approved / (approved + modified + rejected)`; ≥0.70 raises a warning that the model's recommendations are being accepted without enough pushback. Threshold tunable via review-config.
@@ -470,7 +475,7 @@ MTK is a Claude Code plugin. Use the plugin marketplace to upgrade — there is 
 
 ## Skills
 
-32 skills total: 2 entry-point skills, 24 language-agnostic workflow skills, 3 tech stack skills, 3 enabling skills. Entry-point skills (`/mtk-setup` and `/mtk`) orchestrate workflow skills. Recent additions: `workflow-artifacts` (v7.4.0), `claude-md-audit` (v7.2.0), `toolkit-health` (v6.3.0).
+33 skills total: 2 entry-point skills, 25 language-agnostic workflow skills, 3 tech stack skills, 3 enabling skills. Entry-point skills (`/mtk-setup` and `/mtk`) orchestrate workflow skills. Recent additions: `claude-md-capture` (v7.9.0), `workflow-artifacts` (v7.4.0), `claude-md-audit` (v7.2.0).
 
 ### Workflow Skills
 
