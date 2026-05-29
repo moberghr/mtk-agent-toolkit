@@ -65,6 +65,7 @@ for file in "${EXISTING[@]}"; do
   while IFS= read -r tok; do
     [ -z "$tok" ] && continue
     case "$tok" in *" "*|http*|ftp*|@*) continue ;; esac   # prose / URL / npm scope
+    tok="${tok%%:*}"                                        # strip path:line / path:Symbol citation suffix
     echo "$tok" | grep -qE '/' || continue                 # must have a separator
     # path-like = known prefix OR dot-extension. A bare trailing-slash acronym
     # (REST/, SQS/) is prose, NOT a directory claim — excluded to keep FPs near zero.
