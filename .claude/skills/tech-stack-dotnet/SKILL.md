@@ -169,6 +169,16 @@ dotnet format --verbosity quiet
 
 The wrapper runs `dotnet format --include <file> --verbosity quiet` per edit. Failures log to stderr but never block.
 
+## Pre-Commit Review Items
+
+Conditional, tool-keyed items for the generated `pre-commit-review-list.md`.
+`setup-bootstrap` selects items whose trigger tool was detected in the scan,
+adds the three stack-agnostic always-include items, and caps the list at 10.
+
+- [EF Core] `AsNoTracking` on reads, `Select()` over `Include()`, `CancellationToken` propagated
+- [MediatR] one `SaveChanges` per handler, validate request
+- [Lambda] DbContext disposal, cold-start considerations
+
 ## Scan Recipes
 
 These bash commands are used by `setup-audit.md` when auditing a .NET repository.

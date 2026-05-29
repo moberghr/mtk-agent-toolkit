@@ -605,35 +605,19 @@ The per-stack substitution tables (which generic placeholder maps to which concr
 
 ### Pre-Commit Review List
 
-Generate `.claude/references/pre-commit-review-list.md` based on audit findings. Use stack-specific items from the tech stack skill where applicable.
+Generate `.claude/references/pre-commit-review-list.md` based on audit findings.
 
 If the file already exists, leave it alone.
 
-**Selection rules (per stack):**
+**Selection:**
 
-For dotnet:
-- If EF Core found: `AsNoTracking` on reads, `Select()` over `Include()`, `CancellationToken` propagated
-- If MediatR found: one `SaveChanges` per handler, validate request
-- If Lambda found: DbContext disposal, cold start considerations
-
-For python:
-- If SQLAlchemy found: session management, eager/lazy loading, N+1 patterns
-- If FastAPI found: dependency injection, Pydantic validation
-- If Django found: select_related/prefetch_related, transaction.atomic
-
-For typescript:
-- If React found: Rules of Hooks, SSR-safe browser access, stable list keys
-- If Next.js found: `'use client'` at the boundary, server actions validated, `next/image` / `next/font` over raw tags
-- If Tauri found: allowlist discipline, every `#[tauri::command]` validates input, no `all: true`
-- If Prisma / Drizzle found: `select` projection over `include`, indexes on foreign keys, paginated list queries
-- If TanStack Query found: explicit `staleTime`, stable `queryKey`, no server-state duplication in `useState`
-
-Always include (any stack):
-- No PII in logs
-- Tests for new public methods
-- No hardcoded secrets
-
-**Max 10 items.** Pick the ones most likely to be violated.
+1. Read the active tech-stack skill's `## Pre-Commit Review Items` section — a list of conditional items tagged by trigger tool, e.g. `[EF Core] …`, `[React] …`.
+2. Keep each item whose trigger tool was detected in the STEP 2 scan. Drop the rest.
+3. Append the three stack-agnostic always-include items:
+   - No PII in logs
+   - Tests for new public methods
+   - No hardcoded secrets
+4. **Cap at 10 items.** If the kept set exceeds 10, keep the ones most likely to be violated.
 
 ### Tasks Directory
 Create the `tasks/` directory if it doesn't exist:

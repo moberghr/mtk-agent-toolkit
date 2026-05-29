@@ -177,6 +177,16 @@ ruff format <file> && ruff check --fix <file>   # or black <file>
 
 The wrapper picks `ruff` → `black` based on what's installed. Failures log to stderr but never block the edit.
 
+## Pre-Commit Review Items
+
+Conditional, tool-keyed items for the generated `pre-commit-review-list.md`.
+`setup-bootstrap` selects items whose trigger tool was detected in the scan,
+adds the three stack-agnostic always-include items, and caps the list at 10.
+
+- [SQLAlchemy] session management, eager/lazy loading, N+1 patterns
+- [FastAPI] dependency injection, Pydantic validation
+- [Django] `select_related`/`prefetch_related`, `transaction.atomic`
+
 ## Scan Recipes
 
 These bash commands are used by `setup-audit.md` when auditing a Python repository.

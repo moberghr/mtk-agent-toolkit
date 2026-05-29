@@ -20,7 +20,7 @@ paths:
 ## Tech Stack Skills
 
 - **S2.12** Tech stack skills (`tech-stack-{name}/SKILL.md`) provide declarative context, not workflow. They have `type: tech-stack` in frontmatter.
-- **S2.13** Required sections for tech stack skills: `## Overview`, `## When To Use`, `## Build & Test Commands`, `## File Extensions & Markers`, `## ORM & Data Layer Guidance`, `## Framework Patterns`, `## Test Level Guidance`, `## Coding Style Reference`, `## Reference Files`, `## Settings Additions`, `## Format Command`, `## Scan Recipes`, `## Verification`. The `## Workflow` section is omitted (they're declarative, not procedural).
+- **S2.13** Required sections for tech stack skills: `## Overview`, `## When To Use`, `## Build & Test Commands`, `## File Extensions & Markers`, `## ORM & Data Layer Guidance`, `## Framework Patterns`, `## Test Level Guidance`, `## Coding Style Reference`, `## Reference Files`, `## Settings Additions`, `## Format Command`, `## Scan Recipes`, `## Verification`. The `## Workflow` section is omitted (they're declarative, not procedural). **Optional sections** (present on some stacks, read on-demand by `setup-bootstrap`): `## Analyzer Configuration`, `## Companion Plugin`, `## Recommended Tooling`, `## Pre-Commit Review Items` (tool-keyed items for the generated `pre-commit-review-list.md`).
 - **S2.14** Reference files for a tech stack live under `.claude/references/{stack}/`. The tech stack skill's `## Reference Files` section is the canonical list.
 - **S2.15** When adding a new tech stack, the `## Coding Style Reference` may point to a placeholder file initially — write real guidelines when the team starts using that stack.
 
