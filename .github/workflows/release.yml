@@ -1,0 +1,86 @@
+name: Release on Version Bump
+
+# Fires on every push to main. Reads the version from .claude/manifest.json,
+# verifies it matches .claude-plugin/plugin.json (C0.1 / S1.4), and — if no tag
+# for that version exists yet — creates the tag and a GitHub release with notes
+# pulled from the matching CHANGELOG.md section. Pushes that don't bump the
+# version are a no-op (the tag already exists).
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Tag and release on version bump
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history + tags so we can detect existing releases
+
+      - name: Read and verify version
+        id: ver
+        run: |
+          MV=$(grep -m1 '"version"' .claude/manifest.json | tr -d ' ",' | sed 's/version://')
+          PV=$(grep -m1 '"version"' .claude-plugin/plugin.json | tr -d ' ",' | sed 's/version://')
+          if [ -z "$MV" ]; then echo "::error::Could not read version from .claude/manifest.json"; exit 1; fi
+          if [ "$MV" != "$PV" ]; then
+            echo "::error::Version mismatch (C0.1/S1.4): manifest.json=$MV plugin.json=$PV"; exit 1
+          fi
+          echo "version=$MV" >> "$GITHUB_OUTPUT"
+          echo "Manifest/plugin version: $MV"
+
+      - name: Check whether tag already exists
+        id: check
+        run: |
+          V="${{ steps.ver.outputs.version }}"
+          if git rev-parse "v$V" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Tag v$V already exists — nothing to release."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "No tag for v$V yet — will tag and release."
+          fi
+
+      - name: Build release notes and title
+        if: steps.check.outputs.exists == 'false'
+        id: notes
+        run: |
+          V="${{ steps.ver.outputs.version }}"
+          # Extract the CHANGELOG section for this version (between its header and the next "## [").
+          # index() match is literal so dots in the version aren't treated as regex.
+          awk -v ver="$V" 'BEGIN{f=0}
+            /^## \[/ { if (f) exit; if (index($0, "[" ver "]")) { f=1; next } }
+            f { print }' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "No CHANGELOG section for $V — falling back to the release commit message."
+            git log -1 --format=%B > notes.md
+          fi
+          # Title: strip a conventional-commit prefix off the release commit subject;
+          # ensure the version appears.
+          RAW=$(git log -1 --format=%s)
+          TITLE=$(printf '%s' "$RAW" | sed -E 's/^[a-z]+(\([^)]*\))?: *//')
+          case "$TITLE" in
+            *"v$V"*) ;;
+            *) TITLE="v$V — $TITLE" ;;
+          esac
+          # Guard against an empty title.
+          [ -n "$TITLE" ] || TITLE="v$V"
+          echo "title=$TITLE" >> "$GITHUB_OUTPUT"
+          echo "Release title: $TITLE"
+
+      - name: Create tag and GitHub release
+        if: steps.check.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="${{ steps.ver.outputs.version }}"
+          git tag -a "v$V" -m "v$V"
+          git push origin "v$V"
+          gh release create "v$V" --title "${{ steps.notes.outputs.title }}" --notes-file notes.md
+          echo "Released v$V"
