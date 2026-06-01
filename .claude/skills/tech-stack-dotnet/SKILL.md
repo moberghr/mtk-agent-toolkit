@@ -177,7 +177,7 @@ adds the three stack-agnostic always-include items, and caps the list at 10.
 
 - [EF Core] `AsNoTracking` on reads, `Select()` over `Include()`, `CancellationToken` propagated
 - [MediatR] one `SaveChanges` per handler, validate request
-- [Lambda] DbContext disposal, cold-start considerations
+- [Lambda] cold-start considerations — minimize blocking startup work (only mention DbContext disposal if EF Core is actually present in the repo)
 
 ## Scan Recipes
 
