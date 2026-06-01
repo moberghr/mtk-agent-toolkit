@@ -45,6 +45,16 @@ The content you generate is subject to an **instruction budget** — Claude's co
 4. **No aspirational rules.** Every rule must come from an actual pattern or actual failure mode in this codebase. If you're inventing it, drop it.
 5. **No list-of-everything.** Omit rules Claude can figure out from reading the code (e.g., "use async/await" in a JS project).
 
+## File Preservation Policy (non-destructive contract — read before writing anything)
+
+Bootstrap is **additive and merge-only. It NEVER deletes a file it did not generate**, and it never runs `git rm`, `rm`, or a "replace/fresh-generate" sweep over pre-existing files — even if a wrapper, runner, or `--non-interactive` caller asks for "replace mode." There is no replace mode. This contract holds regardless of how the skill was invoked.
+
+- **Only MTK-owned files may be overwritten in place.** An MTK-owned file is one carrying the `<!-- mtk-setup` provenance stamp, OR one of MTK's known generated paths (`CLAUDE.md` root, `.claude/rules/*` in the standard set, `.claude/references/*`, `.claude/tech-stack`, `.claude/settings.json`, `.claude/detected-tools.json`, `.claude/mtk-version.json`, `CODE_INDEX.md`, `pre-commit-review-list.md`). Overwrite means rewrite the body — never `git rm`.
+- **Everything else is preserved untouched.** Explicitly, never delete: nested/per-package `CLAUDE.md` (at any path other than root — **even when the repo is NOT classified as a monorepo**), `.claude/CLAUDE.md`, custom `.claude/commands/*`, custom `.claude/rules/*` whose name is outside MTK's standard set, custom `.claude/references/*` the team added, lockfiles (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `bun.lock`, etc.), source files, and any AI-assistant config the team adopted.
+- **Superseding a prior MTK file is the one exception, and it must be loud.** If a re-run legitimately retires an MTK-owned file (e.g., consolidating `coding-style.md` into other rules), remove it explicitly AND list every such removal under "Retired prior MTK files" in the STEP 5 report. Never silently delete. If you are unsure a file is MTK-owned, treat it as hand-authored and preserve it.
+- **Stage only your declared output.** When committing, `git add` the specific generated paths — never `git add -A` / `git add .`. That prevents scratch or run-report artifacts from leaking into the commit.
+- **Scratch stays out of the tree.** Any run report, review, or eval scratch the operator produces must be written OUTSIDE the repo working tree (or be git-ignored). Bootstrap itself writes no `run-report.md` / `review.md` into the repo.
+
 ## STEP 0: Detect Tech Stack
 
 Scan the repo root for tech stack markers:
@@ -718,7 +728,7 @@ HAS_LIBS=$(test -d libs && echo "yes")
 ```
 
 **Classification:**
-- **Not a monorepo** if: single `*.sln` with ≤3 `*.csproj` in a linear hierarchy, or single `pyproject.toml` at root, or single `package.json` with no `workspaces`. Skip the rest of this step.
+- **Not a monorepo** if: single `*.sln` with ≤3 `*.csproj` in a linear hierarchy, or single `pyproject.toml` at root, or single `package.json` with no `workspaces`. Skip the rest of this step. **Preservation:** any pre-existing nested `CLAUDE.md` (in a subdirectory) is hand-authored — leave it untouched and list it under "Preserved hand-authored files" in the STEP 5 report. Deciding not to generate per-package files is NEVER a reason to delete existing ones (see File Preservation Policy).
 - **Monorepo** if: any of LERNA/PNPM_WS/TURBO/NX/RUSH/PKG_WORKSPACES is set, OR `CSPROJ_COUNT >= 4`, OR `SLN_COUNT >= 2`, OR `PYPROJECT_COUNT >= 2`, OR any of the conventional layout dirs exist and contain >1 subdirectory with a project marker.
 
 If classification is ambiguous, ask via `AskUserQuestion`:
@@ -823,6 +833,11 @@ Generated/Updated:
       ✓ Generated per-package CLAUDE.md for: [list of packages]
       [⚠️ Skipped (already exists): list of packages]
 
+Preserved hand-authored files (untouched):
+  [list any pre-existing nested CLAUDE.md, custom commands/rules, or other non-MTK files left in place — or "none found"]
+Retired prior MTK files (explicitly removed this run):
+  [list any MTK-owned files this re-run superseded — or "none". If this section is non-empty, each entry must be an MTK-owned file, never hand-authored content.]
+
 Codebase findings:
   [stack-specific summary based on scan]
 
@@ -843,6 +858,6 @@ Next: Try it with:
 - If CLAUDE.md doesn't exist, generate from scratch without asking
 - The generated files should be committed to the repo
 - **Count CLAUDE.md lines before finishing.** Target 60–80. If over 120, move content to rules files or delete speculative rules.
-- **Per-package CLAUDE.md files are never overwritten.** If one already exists, skip it and report it as skipped. These may be hand-authored.
+- **Per-package / nested CLAUDE.md files are never overwritten OR deleted** — at any path other than root, monorepo or not. If one already exists, skip it and report it as preserved. These may be hand-authored. See the File Preservation Policy: bootstrap never `git rm`s a file it did not generate.
 - **Per-package files must be small (15–30 lines) and contain only the local delta.** If a package has no notable delta, generate the 5-line stub pointing to root.
 - The `.claude/tech-stack` file is critical — every skill reads it. Make sure it's written before reporting completion.
