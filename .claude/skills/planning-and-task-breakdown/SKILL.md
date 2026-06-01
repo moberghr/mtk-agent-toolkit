@@ -46,6 +46,13 @@ Convert the approved plan into small, executable tasks that can be verified one 
    - files in scope
    - **Boundary:** what this task owns and must not leak into (e.g., "handler only — no controller changes")
    - **Depends:** which prior tasks or existing code this task assumes is complete (e.g., "requires Batch 1 entity to exist")
+   - **Governing constraints:** the Critical Rule / principle ids that constrain
+     this batch, cited from the spec's Constitution Check (run
+     `bash scripts/constitution-digest.sh` if absent).
+     Each batch states which rules it must satisfy, not just what it builds —
+     so the implementer and `spec-drift-detection` (S1.15) check the same set.
+     An empty list is allowed only with an explicit "no rule constrains this
+     batch" note.
 4. Prefer vertical slices where possible so each batch leaves the system in a working state.
 5. Mark tasks that can run in parallel and tasks that must stay sequential.
 6. Write `tasks/todo.md` with:
@@ -67,6 +74,7 @@ Convert the approved plan into small, executable tasks that can be verified one 
      "batches": [
        { "id": "B1", "files": ["src/X.cs"], "acceptance": "...",
          "verification": "...", "boundary": "...", "depends": [],
+         "governing_constraints": ["C0.2", "S1.15"],
          "parallel_safe": false }
      ]
    }

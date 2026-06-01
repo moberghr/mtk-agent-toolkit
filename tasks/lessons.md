@@ -55,3 +55,9 @@
 **Why:** Triggers a confusing failure that looks like a heredoc-termination bug but is actually `$(...)` tokenization. Cost ~15 minutes of debugging.
 
 **Applies to:** Any bash script that embeds Python or shell snippets containing backticks via heredoc within command substitution.
+
+## Idempotency guards on JSON trails must match structurally, not by grep
+- **What happened:** `spec-archive.sh` used `grep -q "\"slug\":\"$SLUG\""` to detect already-archived slugs. `$SLUG` is a regex to grep, so a slug with a metachar (e.g. `a.b`) could falsely match a different slug (`aXb`) and silently drop the archive — caught in compliance review.
+- **Rule:** When checking "did I already process X?" against a JSON/JSONL trail, match with `jq -e --arg s "$X" 'select(.field == $s)'`, not `grep`. If grep is unavoidable, use `grep -F`.
+- **Why it matters:** Silent NO-OP on a divergent match breaks the audit trail the feature exists to guarantee — a data-integrity failure, not a cosmetic one.
+- **When it applies:** Any idempotency/dedup guard that scans a structured log keyed by a user-supplied identifier.

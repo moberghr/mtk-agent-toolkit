@@ -4,6 +4,10 @@ paths:
   - "tests/pressure-tests/**"
   - "evals/**"
   - "docs/skill-anatomy.md"
+axes:
+  decision: authoring
+  topic: skills
+  scope: global
 ---
 
 # Skill Authoring (S2)

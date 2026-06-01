@@ -1,0 +1,169 @@
+{
+  "area": "toolkit-workflow",
+  "contracts": {
+    "scripts/spec-archive.sh <spec.json>": {
+      "kind": "script",
+      "change": "added",
+      "source_slug": "borrowed-mechanisms",
+      "date": "2026-06-01"
+    },
+    "scripts/constitution-digest.sh": {
+      "kind": "script",
+      "change": "added",
+      "source_slug": "borrowed-mechanisms",
+      "date": "2026-06-01"
+    },
+    "scripts/skill-eval/coverage.sh [--json]": {
+      "kind": "script",
+      "change": "added",
+      "source_slug": "borrowed-mechanisms",
+      "date": "2026-06-01"
+    },
+    "scripts/build-rule-index.sh [--check]": {
+      "kind": "script",
+      "change": "added",
+      "source_slug": "borrowed-mechanisms",
+      "date": "2026-06-01"
+    }
+  },
+  "files": {
+    ".claude/references/delta-spec-model.md": {
+      "action": "create",
+      "purpose": "F1 reference",
+      "source_slug": "borrowed-mechanisms"
+    },
+    "scripts/spec-archive.sh": {
+      "action": "create",
+      "purpose": "F1 archive/sync-back",
+      "source_slug": "borrowed-mechanisms"
+    },
+    ".claude/skills/spec-driven-development/SKILL.md": {
+      "action": "modify",
+      "purpose": "F1 delta section + F2 constitution check",
+      "source_slug": "borrowed-mechanisms"
+    },
+    ".claude/skills/spec-drift-detection/SKILL.md": {
+      "action": "modify",
+      "purpose": "F1 archive-on-pass note",
+      "source_slug": "borrowed-mechanisms"
+    },
+    ".claude/skills/implement/SKILL.md": {
+      "action": "modify",
+      "purpose": "F1 Phase 7.5 archive",
+      "source_slug": "borrowed-mechanisms"
+    },
+    "scripts/constitution-digest.sh": {
+      "action": "create",
+      "purpose": "F2 digest",
+      "source_slug": "borrowed-mechanisms"
+    },
+    ".claude/skills/planning-and-task-breakdown/SKILL.md": {
+      "action": "modify",
+      "purpose": "F2 governing-constraints per batch",
+      "source_slug": "borrowed-mechanisms"
+    },
+    "scripts/skill-eval/coverage.sh": {
+      "action": "create",
+      "purpose": "F3 coverage/sprawl report",
+      "source_slug": "borrowed-mechanisms"
+    },
+    "evals/fix/grader.md": {
+      "action": "create",
+      "purpose": "F3 seed eval",
+      "source_slug": "borrowed-mechanisms"
+    },
+    "evals/fix/eval-01-real-fix.md": {
+      "action": "create",
+      "purpose": "F3 seed eval (positive)",
+      "source_slug": "borrowed-mechanisms"
+    },
+    "evals/fix/eval-02-scope-creep.md": {
+      "action": "create",
+      "purpose": "F3 seed eval (adversarial)",
+      "source_slug": "borrowed-mechanisms"
+    },
+    "evals/spec-drift-detection/grader.md": {
+      "action": "create",
+      "purpose": "F3 seed eval",
+      "source_slug": "borrowed-mechanisms"
+    },
+    "evals/spec-drift-detection/eval-01-silent-drift.md": {
+      "action": "create",
+      "purpose": "F3 seed eval",
+      "source_slug": "borrowed-mechanisms"
+    },
+    "evals/spec-drift-detection/eval-02-clean-pass.md": {
+      "action": "create",
+      "purpose": "F3 seed eval",
+      "source_slug": "borrowed-mechanisms"
+    },
+    "scripts/validate-toolkit.sh": {
+      "action": "modify",
+      "purpose": "F3 non-blocking coverage line",
+      "source_slug": "borrowed-mechanisms"
+    },
+    ".claude/skills/toolkit-health/SKILL.md": {
+      "action": "modify",
+      "purpose": "F3 reference report",
+      "source_slug": "borrowed-mechanisms"
+    },
+    ".claude/rules/toolkit-structure.md": {
+      "action": "modify",
+      "purpose": "F4 taxonomy frontmatter",
+      "source_slug": "borrowed-mechanisms"
+    },
+    ".claude/rules/skill-authoring.md": {
+      "action": "modify",
+      "purpose": "F4 taxonomy frontmatter",
+      "source_slug": "borrowed-mechanisms"
+    },
+    ".claude/rules/hooks-and-scripts.md": {
+      "action": "modify",
+      "purpose": "F4 taxonomy frontmatter",
+      "source_slug": "borrowed-mechanisms"
+    },
+    ".claude/rules/git-workflow.md": {
+      "action": "modify",
+      "purpose": "F4 taxonomy frontmatter",
+      "source_slug": "borrowed-mechanisms"
+    },
+    "scripts/build-rule-index.sh": {
+      "action": "create",
+      "purpose": "F4 wake-up index generator",
+      "source_slug": "borrowed-mechanisms"
+    },
+    ".claude/rules/INDEX.md": {
+      "action": "create",
+      "purpose": "F4 generated wake-up layer",
+      "source_slug": "borrowed-mechanisms"
+    },
+    ".claude/skills/context-engineering/SKILL.md": {
+      "action": "modify",
+      "purpose": "F4 wake-up usage",
+      "source_slug": "borrowed-mechanisms"
+    },
+    ".claude/manifest.json": {
+      "action": "modify",
+      "purpose": "register files + version bump",
+      "source_slug": "borrowed-mechanisms"
+    },
+    ".claude-plugin/plugin.json": {
+      "action": "modify",
+      "purpose": "version bump match",
+      "source_slug": "borrowed-mechanisms"
+    },
+    ".claude-plugin/marketplace.json": {
+      "action": "modify",
+      "purpose": "version bump match (C0.1 — validate enforces parity)",
+      "source_slug": "borrowed-mechanisms"
+    }
+  },
+  "history": [
+    {
+      "slug": "borrowed-mechanisms",
+      "date": "2026-06-01",
+      "verdict": "PASS",
+      "archived_at": "2026-06-01T16:00:00Z"
+    }
+  ]
+}

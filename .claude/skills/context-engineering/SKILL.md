@@ -67,6 +67,26 @@ Good output depends on good context. Load the minimum relevant context needed to
    enter scope, re-run the path-scoped match and load any newly-applicable
    references.
 
+## Rule Taxonomy & Wake-Up Layer
+
+`.claude/rules/` is loaded through a token-budgeted **wake-up layer**, not eagerly.
+
+1. **Read `.claude/rules/INDEX.md` first.** It is the always-on layer: one line
+   per rule with its three axes — **decision** (structure | process | authoring |
+   security), **topic** (manifest | skills | hooks | git | …), **scope** (global |
+   project) — plus rule count and line count. This is cheap (target < 60 lines).
+2. **Pull a full rule file only when its axes match the active task.** Editing
+   under `hooks/` or `scripts/` → load `topic: hooks`. Branching/committing →
+   `topic: git`. Authoring a skill → `topic: skills`. Touching the manifest or
+   release → `topic: manifest`. Do not load every rule file "just in case" — the
+   index exists so you can decide what's relevant before spending the tokens.
+3. **Axes complement `paths:`.** A rule whose `paths:` glob matches a touched file
+   is always relevant; the axes let you *also* pull rules by intent (e.g. all
+   `decision: security` rules during a security pass) even when no path matched.
+4. **Keep the index fresh.** After editing any rule file's content or frontmatter,
+   run `bash scripts/build-rule-index.sh`. CI runs `--check` and fails on a stale
+   index. INDEX.md is generated — never hand-edit it.
+
 ## Parallel Loading
 
 Reference reads in load-context steps are independent — issue multiple `Read` calls in a single message, not sequentially. Same applies to independent `Glob`/`Grep` discovery and to reviewer agents fanning out on orthogonal axes. If Call B's input would mention Call A's output, force them sequential; otherwise batch them.
