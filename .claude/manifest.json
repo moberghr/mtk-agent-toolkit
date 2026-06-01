@@ -1038,6 +1038,12 @@
       "action": "sync",
       "description": "GitHub Actions workflow — runs validate-toolkit.sh and secret scanning on every PR"
     },
+    ".github/workflows/release.yml": {
+      "source": ".github/workflows/release.yml",
+      "target": ".github/workflows/release.yml",
+      "action": "sync",
+      "description": "GitHub Actions workflow — on each push to main, tags and creates a GitHub release when manifest.json version is bumped, with notes from CHANGELOG.md"
+    },
     ".github/pull_request_template.md": {
       "source": ".github/pull_request_template.md",
       "target": ".github/pull_request_template.md",
