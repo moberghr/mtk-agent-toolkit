@@ -297,7 +297,7 @@ Resolve `{MANIFEST_VERSION}` and `{MANIFEST_SHA}` from `.claude/manifest.json`. 
 - **Test command:** [from tech stack skill `## Build & Test Commands`]
 - **Format:** [human-readable form of the format command from tech stack skill `## Format Command` — show the manual project-wide form, e.g., `dotnet format --verbosity quiet`, `npx biome format --write <file>`, `ruff format <file>`. The PostToolUse hook (`hooks/format-on-edit.sh`) handles per-file targeting via stdin JSON; CLAUDE.md is for human readers.]
 
-For framework-specific guidance, see `.claude/skills/tech-stack-{stack}/SKILL.md`.
+For framework-specific build/test commands and patterns, see the `tech-stack-{stack}` skill (provided by the MTK plugin, not a file in this repo).
 
 ---
 
@@ -367,7 +367,7 @@ Full reference docs (read on-demand by skills and review agents):
 - `.claude/references/{stack}/coding-guidelines.md` — Stack-specific coding style
 - `.claude/references/architecture-principles.md` — Architecture principles
 - `.claude/references/security-checklist.md` — Security checklist (shared)
-- Stack-specific references listed in `.claude/skills/tech-stack-{stack}/SKILL.md` `## Reference Files`
+- Stack-specific references listed in the `tech-stack-{stack}` skill's `## Reference Files` (MTK plugin)
 ````
 
 ### .claude/rules/ File Templates

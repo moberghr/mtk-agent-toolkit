@@ -175,9 +175,9 @@ Conditional, tool-keyed items for the generated `pre-commit-review-list.md`.
 `setup-bootstrap` selects items whose trigger tool was detected in the scan,
 adds the three stack-agnostic always-include items, and caps the list at 10.
 
-- [EF Core] `AsNoTracking` on reads, `Select()` over `Include()`, `CancellationToken` propagated
+- [EF Core] `AsNoTracking` on reads, `Select()` over `Include()`, `CancellationToken` propagated, `DbContext` scoped/disposed correctly
 - [MediatR] one `SaveChanges` per handler, validate request
-- [Lambda] DbContext disposal, cold-start considerations
+- [Lambda] cold-start considerations — lazy-init heavy clients/secrets, avoid blocking work at startup
 
 ## Scan Recipes
 
