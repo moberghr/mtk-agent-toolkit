@@ -89,6 +89,17 @@ if [ -f tasks/lessons.md ]; then grep -c '^## ' tasks/lessons.md 2>/dev/null || 
 
    When the denominator (`approved + modified + rejected`) is below 10, label the reading "insufficient sample — π not yet meaningful" rather than warning on a noisy estimate.
 
+8. **Skill-eval coverage & sprawl.** Run `bash scripts/skill-eval/coverage.sh --json`
+   and surface:
+   - `coverage_pct` — share of skills with behavioral evals (eval-*.md or
+     prompts.jsonl). Structural validation (`validate-toolkit.sh`) proves a
+     skill is well-formed, not that it behaves.
+   - `overlap_candidates` — pairs of skills whose descriptions overlap above the
+     threshold (advisory sprawl signal). For each pair, suggest "confirm these are
+     distinct or consolidate."
+   - Flag `coverage_pct < 20` as "behavioral coverage low — gating skills should
+     have evals; see `evals/README.md`."
+
 ## Rules
 
 - **Read-only.** Never modify `.claude/analytics.json`, `tasks/lessons.md`, or `docs/specs/`. Reports the engineer's state; doesn't change it.

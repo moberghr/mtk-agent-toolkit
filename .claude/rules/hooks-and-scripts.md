@@ -2,6 +2,10 @@
 paths:
   - "hooks/**"
   - "scripts/**"
+axes:
+  decision: process
+  topic: hooks
+  scope: global
 ---
 
 # Hooks & Scripts (S3)

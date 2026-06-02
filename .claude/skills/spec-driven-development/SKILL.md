@@ -216,6 +216,26 @@ The lint scopes only to the `## Requirements` section (and its EARS subsections)
 - If W, then the system shall ...
 ```
 
+## Constitution Check (Cited, Not Ambient)
+
+The project's governing rules are an **explicit cited input** to the spec, not
+background context the reader is assumed to know.
+
+1. Run `bash scripts/constitution-digest.sh` to get the authoritative set —
+   Critical Rules (`C0.x` from CLAUDE.md) plus tagged architecture principles
+   (`[EXTRACTED]` / `[INFERRED:x]` / `[AMBIGUOUS]`), if present.
+2. Add a **Constitution Check** section to the markdown spec listing every rule
+   or principle that *constrains this design*, each with one line on how the
+   design satisfies it. Cite by id (e.g. `C0.2`, `S1.15`, a principle id).
+3. If the design appears to violate or bend a rule, surface it here as an
+   explicit exception with rationale — do not bury it. `[EXTRACTED]` principle
+   violations should normally send you back to redesign, not into an exception.
+
+This closes the loop with `spec-drift-detection` (S1.15): what you cite at spec
+time is what the drift check verifies at ship time. An empty Constitution Check
+is allowed only with a one-line "no Critical Rules or principles constrain this
+change" note — rare for multi-file work.
+
 ## Machine-Parseable Manifest (JSON Sidecar)
 
 Every spec is accompanied by a structured manifest at
@@ -245,6 +265,8 @@ later by downstream skills (MetaGPT typed-handoff pattern).
   ],
   "out_of_scope": ["explicit non-goals"],
   "security_impact": "none | requires-audit-trail | new-auth-path | secrets-change | pii-exposure | iam-change",
+  "baseline_area": "slice/subsystem this delta belongs to (e.g. payments) — see Delta & Baseline",
+  "delta": { "adds": [], "modifies": [], "removes": ["explicit baseline removals only"] },
   "assumptions": ["..."],
   "risks": ["..."]
 }
@@ -262,6 +284,23 @@ Rules:
 - Keep the JSON in sync with the markdown spec. They are one artifact in
   two shapes, not independent documents.
 
+## Delta & Baseline
+
+Specs are **deltas against a living per-area baseline**.
+See `.claude/references/delta-spec-model.md` for the full model.
+
+- Set `baseline_area` in the sidecar to the slice/subsystem this change belongs
+  to (e.g. `payments`, `auth`, `toolkit-workflow`). This is what makes the spec
+  archivable into a baseline.
+- Optionally declare `delta.adds` / `delta.modifies` / `delta.removes` relative
+  to the current baseline. If omitted, the whole `change_manifest` and
+  `public_contracts` are folded into the baseline on archive; **removals must be
+  explicit** in `delta.removes` (archiving never infers deletion).
+- The baseline is synced back only at archive time (implement Phase 7.5), and
+  only after a clean drift PASS — never hand-edited. The accumulated baseline
+  lives at `docs/specs/baseline/<area>.{json,md}` with an audit trail at
+  `docs/specs/baseline/<area>.audit.jsonl`.
+
 ## Required Outputs
 
 - A clear scope classification
@@ -270,6 +309,8 @@ Rules:
 - A batch breakdown with build/test checkpoints
 - A list of assumptions and unresolved risks
 - Concrete, testable success criteria
+- A **Constitution Check** section citing the Critical Rules / principles that
+  constrain the design (from `scripts/constitution-digest.sh`)
 - A JSON sidecar manifest at `docs/specs/<date>-<slug>.json` matching the
   Machine-Parseable Manifest schema (drives drift detection)
 

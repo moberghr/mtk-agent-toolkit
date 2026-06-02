@@ -1,5 +1,5 @@
 {
-  "version": "7.10.4",
+  "version": "7.11.0",
   "updated": "2026-06-01",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
@@ -1631,6 +1631,72 @@
       "target": "tests/pressure-tests/audit-grounding.md",
       "action": "sync",
       "description": "Adversarial scenarios for grounded-audit — fabricated paths, partial lists, transient branch names, terminology traps, drift on unstamped docs"
+    },
+    "scripts/spec-archive.sh": {
+      "source": "scripts/spec-archive.sh",
+      "target": "scripts/spec-archive.sh",
+      "action": "sync",
+      "description": "Sync a feature spec delta back into its area baseline and append an audit record (delta-spec model); idempotent, refuses non-PASS drift"
+    },
+    "scripts/constitution-digest.sh": {
+      "source": "scripts/constitution-digest.sh",
+      "target": "scripts/constitution-digest.sh",
+      "action": "sync",
+      "description": "Emit the project constitution (Critical Rules + tagged principles) as a compact citable list for spec/plan Constitution Checks"
+    },
+    "scripts/build-rule-index.sh": {
+      "source": "scripts/build-rule-index.sh",
+      "target": "scripts/build-rule-index.sh",
+      "action": "sync",
+      "description": "Generate the token-budgeted rule wake-up index (.claude/rules/INDEX.md) from rule axes; --check fails on staleness"
+    },
+    "scripts/skill-eval/coverage.sh": {
+      "source": "scripts/skill-eval/coverage.sh",
+      "target": "scripts/skill-eval/coverage.sh",
+      "action": "sync",
+      "description": "Behavioral-eval coverage and description-overlap sprawl report across all skills; advisory, --json for CI"
+    },
+    "references/delta-spec-model.md": {
+      "source": ".claude/references/delta-spec-model.md",
+      "target": ".claude/references/delta-spec-model.md",
+      "action": "sync",
+      "description": "Delta-spec model: feature specs as deltas against a living per-area baseline, synced back on archive into an auditable trail"
+    },
+    "evals/fix/grader.md": {
+      "source": "evals/fix/grader.md",
+      "target": "evals/fix/grader.md",
+      "action": "sync",
+      "description": "Grader prompt for fix-skill evals (scope discipline and escalation)"
+    },
+    "evals/fix/eval-01-real-fix.md": {
+      "source": "evals/fix/eval-01-real-fix.md",
+      "target": "evals/fix/eval-01-real-fix.md",
+      "action": "sync",
+      "description": "Positive eval: single-file fix stays in scope with reproduction"
+    },
+    "evals/fix/eval-02-scope-creep.md": {
+      "source": "evals/fix/eval-02-scope-creep.md",
+      "target": "evals/fix/eval-02-scope-creep.md",
+      "action": "sync",
+      "description": "Adversarial eval: oversized quick fix must escalate to implement"
+    },
+    "evals/spec-drift-detection/grader.md": {
+      "source": "evals/spec-drift-detection/grader.md",
+      "target": "evals/spec-drift-detection/grader.md",
+      "action": "sync",
+      "description": "Grader prompt for spec-drift-detection evals"
+    },
+    "evals/spec-drift-detection/eval-01-silent-drift.md": {
+      "source": "evals/spec-drift-detection/eval-01-silent-drift.md",
+      "target": "evals/spec-drift-detection/eval-01-silent-drift.md",
+      "action": "sync",
+      "description": "Adversarial eval: out-of-manifest auth file with understated security_impact must be flagged critical"
+    },
+    "evals/spec-drift-detection/eval-02-clean-pass.md": {
+      "source": "evals/spec-drift-detection/eval-02-clean-pass.md",
+      "target": "evals/spec-drift-detection/eval-02-clean-pass.md",
+      "action": "sync",
+      "description": "Negative eval: manifest-matching change passes with no fabricated drift"
     }
   },
   "protected": [

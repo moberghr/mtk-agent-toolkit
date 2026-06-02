@@ -1,0 +1,221 @@
+{
+  "scope": "feature",
+  "slug": "borrowed-mechanisms",
+  "date": "2026-06-01",
+  "goal": "Borrow 4 mechanisms (delta-spec, constitution-cited-input, skill-eval sprawl report, rule taxonomy wake-up) as deltas on existing MTK infrastructure.",
+  "security_impact": "none",
+  "open_decisions": [],
+  "baseline_area": "toolkit-workflow",
+  "change_manifest": [
+    {
+      "path": ".claude/references/delta-spec-model.md",
+      "action": "create",
+      "purpose": "F1 reference"
+    },
+    {
+      "path": "scripts/spec-archive.sh",
+      "action": "create",
+      "purpose": "F1 archive/sync-back"
+    },
+    {
+      "path": ".claude/skills/spec-driven-development/SKILL.md",
+      "action": "modify",
+      "purpose": "F1 delta section + F2 constitution check"
+    },
+    {
+      "path": ".claude/skills/spec-drift-detection/SKILL.md",
+      "action": "modify",
+      "purpose": "F1 archive-on-pass note"
+    },
+    {
+      "path": ".claude/skills/implement/SKILL.md",
+      "action": "modify",
+      "purpose": "F1 Phase 7.5 archive"
+    },
+    {
+      "path": "scripts/constitution-digest.sh",
+      "action": "create",
+      "purpose": "F2 digest"
+    },
+    {
+      "path": ".claude/skills/planning-and-task-breakdown/SKILL.md",
+      "action": "modify",
+      "purpose": "F2 governing-constraints per batch"
+    },
+    {
+      "path": "scripts/skill-eval/coverage.sh",
+      "action": "create",
+      "purpose": "F3 coverage/sprawl report"
+    },
+    {
+      "path": "evals/fix/grader.md",
+      "action": "create",
+      "purpose": "F3 seed eval"
+    },
+    {
+      "path": "evals/fix/eval-01-real-fix.md",
+      "action": "create",
+      "purpose": "F3 seed eval (positive)"
+    },
+    {
+      "path": "evals/fix/eval-02-scope-creep.md",
+      "action": "create",
+      "purpose": "F3 seed eval (adversarial)"
+    },
+    {
+      "path": "evals/spec-drift-detection/grader.md",
+      "action": "create",
+      "purpose": "F3 seed eval"
+    },
+    {
+      "path": "evals/spec-drift-detection/eval-01-silent-drift.md",
+      "action": "create",
+      "purpose": "F3 seed eval"
+    },
+    {
+      "path": "evals/spec-drift-detection/eval-02-clean-pass.md",
+      "action": "create",
+      "purpose": "F3 seed eval"
+    },
+    {
+      "path": "scripts/validate-toolkit.sh",
+      "action": "modify",
+      "purpose": "F3 non-blocking coverage line"
+    },
+    {
+      "path": ".claude/skills/toolkit-health/SKILL.md",
+      "action": "modify",
+      "purpose": "F3 reference report"
+    },
+    {
+      "path": ".claude/rules/toolkit-structure.md",
+      "action": "modify",
+      "purpose": "F4 taxonomy frontmatter"
+    },
+    {
+      "path": ".claude/rules/skill-authoring.md",
+      "action": "modify",
+      "purpose": "F4 taxonomy frontmatter"
+    },
+    {
+      "path": ".claude/rules/hooks-and-scripts.md",
+      "action": "modify",
+      "purpose": "F4 taxonomy frontmatter"
+    },
+    {
+      "path": ".claude/rules/git-workflow.md",
+      "action": "modify",
+      "purpose": "F4 taxonomy frontmatter"
+    },
+    {
+      "path": "scripts/build-rule-index.sh",
+      "action": "create",
+      "purpose": "F4 wake-up index generator"
+    },
+    {
+      "path": ".claude/rules/INDEX.md",
+      "action": "create",
+      "purpose": "F4 generated wake-up layer"
+    },
+    {
+      "path": ".claude/skills/context-engineering/SKILL.md",
+      "action": "modify",
+      "purpose": "F4 wake-up usage"
+    },
+    {
+      "path": ".claude/manifest.json",
+      "action": "modify",
+      "purpose": "register files + version bump"
+    },
+    {
+      "path": ".claude-plugin/plugin.json",
+      "action": "modify",
+      "purpose": "version bump match"
+    },
+    {
+      "path": ".claude-plugin/marketplace.json",
+      "action": "modify",
+      "purpose": "version bump match (C0.1 — validate enforces parity)"
+    }
+  ],
+  "public_contracts": [
+    {
+      "kind": "script",
+      "signature": "scripts/spec-archive.sh <spec.json>",
+      "change": "added"
+    },
+    {
+      "kind": "script",
+      "signature": "scripts/constitution-digest.sh",
+      "change": "added"
+    },
+    {
+      "kind": "script",
+      "signature": "scripts/skill-eval/coverage.sh [--json]",
+      "change": "added"
+    },
+    {
+      "kind": "script",
+      "signature": "scripts/build-rule-index.sh [--check]",
+      "change": "added"
+    }
+  ],
+  "success_criteria": [
+    {
+      "id": "SC1",
+      "description": "validate-toolkit.sh passes",
+      "verification": "bash scripts/validate-toolkit.sh"
+    },
+    {
+      "id": "SC2",
+      "description": "spec-archive idempotent merge + audit trail",
+      "verification": "two runs on a throwaway sidecar"
+    },
+    {
+      "id": "SC3",
+      "description": "build-rule-index --check detects staleness",
+      "verification": "edit rule, run --check, expect fail"
+    },
+    {
+      "id": "SC4",
+      "description": "coverage.sh reports 6/38 covered as valid JSON",
+      "verification": "scripts/skill-eval/coverage.sh --json | jq ."
+    },
+    {
+      "id": "SC5",
+      "description": "constitution-digest emits rules (+principles if present)",
+      "verification": "scripts/constitution-digest.sh"
+    },
+    {
+      "id": "SC6",
+      "description": "run-benchmarks still green",
+      "verification": "bash scripts/run-benchmarks.sh"
+    }
+  ],
+  "out_of_scope": [
+    "evals for all 34 uncovered skills (only 2 seeds)",
+    "auto-learning rules from sessions",
+    "cost/model-tiering expansion",
+    "retroactive migration of existing specs to baseline format",
+    "changes to reference applyTo loading"
+  ],
+  "delta": {
+    "adds": [
+      "scripts/spec-archive.sh",
+      "scripts/constitution-digest.sh",
+      "scripts/build-rule-index.sh",
+      "scripts/skill-eval/coverage.sh",
+      ".claude/references/delta-spec-model.md",
+      ".claude/rules/INDEX.md"
+    ],
+    "modifies": [
+      ".claude/skills/spec-driven-development/SKILL.md",
+      ".claude/skills/planning-and-task-breakdown/SKILL.md",
+      ".claude/skills/spec-drift-detection/SKILL.md",
+      ".claude/skills/implement/SKILL.md",
+      ".claude/skills/context-engineering/SKILL.md",
+      ".claude/skills/toolkit-health/SKILL.md"
+    ],
+    "removes": []
+  }
+}

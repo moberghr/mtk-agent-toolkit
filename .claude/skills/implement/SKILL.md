@@ -262,6 +262,24 @@ This phase is not optional cleanup — it is how the toolkit gets smarter over t
 
 6. **State the compound.** In the final report, include a "What compounded" section listing what future sessions will benefit from.
 
+## Phase 7.5: Archive (Delta Sync-Back)
+
+If the spec sidecar declares a `baseline_area`, sync the delta back into its
+baseline now — but **only** if Phase 3.5 drift returned a clean PASS and Phase 4
+review found no open Critical issues. This produces the auditable
+specified-vs-built trail (see `.claude/references/delta-spec-model.md`).
+
+```bash
+bash scripts/spec-archive.sh docs/specs/<date>-<slug>.json --verdict PASS
+```
+
+- Merges the change manifest / public contracts (or explicit `delta`) into
+  `docs/specs/baseline/<area>.json`, regenerates `<area>.md`, and appends one
+  record to `<area>.audit.jsonl`.
+- Idempotent — safe to re-run on resume.
+- Skip (with a one-line note) when the spec has no `baseline_area`, or when drift
+  did not pass. Never archive drifted work.
+
 ## Final Report
 
 Close the workflow artifact:

@@ -125,7 +125,11 @@ Phase 2.5 did not cover the final code. Detect divergence before review.
    - Any `critical` drift → `NEEDS_CHANGES`. The engineer either fixes the
      implementation to match the spec, or re-opens the spec, amends it, and
      re-runs through the Phase 2.5 approval gate.
-   - No critical drift → `PASS`. Continue to Phase 4 review.
+   - No critical drift → `PASS`. Continue to Phase 4 review. A clean PASS is
+     the precondition for archiving the spec delta into its baseline
+     (implement Phase 7.5, `scripts/spec-archive.sh`) — do **not** archive
+     while any critical drift is open, or the baseline would record a state
+     the code does not match. See `.claude/references/delta-spec-model.md`.
 
 ## Monorepo Ripple Check
 
