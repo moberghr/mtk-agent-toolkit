@@ -18,7 +18,7 @@ The gate name is the contract. When skills, agents, and hooks reference a gate t
 
 **Fail:** Engineer chose `Revise` (record `fail`, return to Phase 1) or the spec/plan/todo trio is incomplete.
 
-**Pending:** Engineer chose `Edit first` or `Show plan in terminal` — wait, do not advance.
+**Pending:** Engineer chose `Edit first` or `Show full plan & spec in terminal` — wait, do not advance.
 
 **Skill responsible:** `implement` (calls `spec-driven-development`, `planning-and-task-breakdown`, then evaluates the gate).
 
