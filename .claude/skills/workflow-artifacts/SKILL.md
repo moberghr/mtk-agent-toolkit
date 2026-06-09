@@ -66,6 +66,18 @@ Orchestration state that lives only in chat is lost on compaction or restart. Th
    scripts/workflow-artifact.sh event "$MTK_WF_UUID" workflow_completed --data '{"summary":"<short>"}'
    ```
 
+## Viewing Progress (Dashboard)
+
+For a visual, read-only view of all workflows — status, phase, gate decisions, results, and event timeline — render the HTML dashboard:
+
+```bash
+scripts/workflow-dashboard.sh            # render once -> .mtk/workflows/dashboard/index.html, open it
+scripts/workflow-dashboard.sh --watch    # regenerate + serve over http://127.0.0.1:8787/ (auto-refresh)
+scripts/workflow-dashboard.sh --watch 10 --port 9000   # custom interval/port
+```
+
+The dashboard reads the same `{uuid}.json` + `{uuid}.events.jsonl` files this skill writes — it never mutates them, so it is safe to run during an active workflow. `--watch` regenerates on an interval and serves a static page (meta-refresh, no WebSocket) so a tech lead can watch a multi-batch run live. To share with non-CLI stakeholders, expose the served port with the `ngrok-expose` or `cfd` (Cloudflare Tunnel) skill — the script intentionally stays a self-contained static renderer and does not embed a tunnel. Requires `python3` (the same dependency the helper already uses).
+
 ## Rules
 
 - All writes go through `workflow-artifact.sh`. Never `Edit` or `Write` `{uuid}.json` directly — the event log would desync.

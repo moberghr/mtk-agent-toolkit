@@ -1,4 +1,5 @@
 ### Claude Code
+.claude/competitive-analysis/
 .mtk/
 .claude/settings.local.json
 .claude/review-config.local.json

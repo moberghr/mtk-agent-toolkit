@@ -8,6 +8,12 @@ segfault	debugging-and-error-recovery
 nullreference	debugging-and-error-recovery
 crashes	debugging-and-error-recovery
 panicked	debugging-and-error-recovery
+research	research-context
+best-practice	research-context
+best-practices	research-context
+latest-version	research-context
+upgrade-guide	research-context
+migration-guide	research-context
 auth	security-and-hardening
 password	security-and-hardening
 token	security-and-hardening

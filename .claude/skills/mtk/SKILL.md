@@ -32,6 +32,8 @@ digraph mtk_routing {
   rh       [label="repo-health", style="rounded,filled", fillcolor="#e0f0e0"];
   hlth     [label="health / usage /\nstats / analytics?", shape=diamond];
   th       [label="toolkit-health", style="rounded,filled", fillcolor="#e0f0e0"];
+  rsch     [label="research / best practice /\ncurrent way / latest version?", shape=diamond];
+  rc       [label="research-context", style="rounded,filled", fillcolor="#e0f0e0"];
   fixv     [label="fix / bug / broken /\nerror / typo / failing?", shape=diamond];
   feat     [label="add / create / build /\nfeature / implement / new?", shape=diamond];
   ambig    [label="ALSO matches feature\n(e.g. 'fix the auth feature')?", shape=diamond];
@@ -57,7 +59,9 @@ digraph mtk_routing {
   rhlth -> rh   [label="yes"];
   rhlth -> hlth [label="no"];
   hlth  -> th   [label="yes"];
-  hlth  -> fixv [label="no"];
+  hlth  -> rsch [label="no"];
+  rsch  -> rc   [label="yes"];
+  rsch  -> fixv [label="no"];
   fixv  -> ambig [label="yes"];
   ambig -> ask  [label="yes"];
   ambig -> fix  [label="no"];
@@ -94,6 +98,7 @@ Match the user's input against these patterns. Check from top to bottom; first m
 | `review`, `check`, `commit`, `staged`, `pre-commit`, `before I commit` | `.claude/skills/pre-commit-review/SKILL.md` | "review before commit", "check staged changes" |
 | `repo-health`, `repo health`, `readiness`, `scorecard`, `ai-ready`, `ai ready`, `mine prs`, `pr mining`, `repo report` | `.claude/skills/repo-health/SKILL.md` | "is this repo AI-ready?", "run repo-health", "mine the last 10 PRs" |
 | `health`, `usage`, `stats`, `analytics`, `adoption` | `.claude/skills/toolkit-health/SKILL.md` | "toolkit health", "show usage stats" |
+| `research`, `best practice`, `best-practice`, `current way`, `latest version`, `up to date`, `migration guide`, `upgrade guide` | `.claude/skills/research-context/SKILL.md` | "research the current EF Core batching approach", "what's the best-practice for X in v9" |
 | `fix`, `bug`, `broken`, `error`, `typo`, `patch`, `wrong`, `failing` | `.claude/skills/fix/SKILL.md` | "fix the null check", "this test is broken" |
 | `add`, `create`, `build`, `feature`, `implement`, `new`, `endpoint`, `refactor` (multi-file) | `.claude/skills/implement/SKILL.md` | "add user auth", "create a payment endpoint" |
 | `status`, `report`, `what's loaded`, `diagnostic`, `context` | `.claude/skills/context-report/SKILL.md` | "what's loaded?", "show toolkit status" |
@@ -128,6 +133,7 @@ MTK — two entry points:
     /mtk repo-health               → AI-readiness scorecard + PR mining
     /mtk fix <description>         → small fix (1-3 files)
     /mtk <feature description>     → full implementation workflow
+    /mtk research <question>       → cited brief, grounded in this repo's versions
     /mtk status                    → show what's loaded
 
 Update: MTK is distributed as a Claude Code plugin — use the plugin
