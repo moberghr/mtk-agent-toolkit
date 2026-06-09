@@ -13,7 +13,7 @@ Axes: **decision** (structure|process|authoring|security) ·
 
 | Rule file | Title | decision | topic | scope | Rules | Lines |
 |---|---|---|---|---|---|---|
-| `git-workflow.md` | Git & Workflow (S4) | process | git | global | S4: 10 | 32 |
+| `git-workflow.md` | Git & Workflow (S4) | process | git | global | S4: 11 | 33 |
 | `hooks-and-scripts.md` | Hooks & Scripts (S3) | process | hooks | global | S3: 16 | 44 |
 | `skill-authoring.md` | Skill Authoring (S2) | authoring | skills | global | S2: 24 | 63 |
 | `toolkit-structure.md` | Toolkit Structure (S1) | structure | manifest | global | S1: 15 | 43 |

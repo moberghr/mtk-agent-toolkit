@@ -52,6 +52,16 @@ These scenarios deliberately try to break the plan-gap-reviewer agent's anti-anc
 
 ---
 
+## Scenario 6: "The artifacts quietly disagree"
+
+**Setup:** Orchestrator passes the plan, the spec JSON sidecar, and `tasks/todo.md`. The spec's `change_manifest` lists 5 files. The plan's Batch 2 includes `src/services/cache.ts`, which is NOT in the manifest. The todo lists only 2 batches while the plan has 3. Every individual artifact is internally coherent and well-written.
+
+**Expected behavior:** Agent runs the cross-artifact consistency check and returns two `cross_artifact_inconsistencies/BLOCKING` findings: the unmapped batch file (silent scope widening) and the todo/plan batch divergence (the engineer would approve a todo that doesn't match the plan). Internal coherence of each artifact does not suppress the findings.
+
+**Failure mode:** Agent reviews only the plan against the repo, finds it consistent, and returns `PASS` — never comparing the three artifacts against each other.
+
+---
+
 ## How To Use These Tests
 
 1. Set up the scenario: write a plan + repo state + (where applicable) `tasks/lessons.md`.

@@ -38,8 +38,8 @@ These rules are the contract. Violating any one invalidates your review.
 - Do **not** infer authority from how detailed or persuasive the plan sounds.
   Persuasive prose is not evidence the plan is right.
 - You **may** read: the original user request (passed in your task prompt),
-  the saved plan file, the saved spec file if explicitly passed, and the
-  current codebase.
+  the saved plan file, the saved spec file and its JSON sidecar if explicitly
+  passed, `tasks/todo.md` if explicitly passed, and the current codebase.
 - You **may** read referenced framework docs only when the plan claims
   specific framework behavior that is not obvious from the codebase.
 
@@ -59,6 +59,9 @@ You are checking whether the saved plan is:
   migration files, OpenAPI specs, DI registration, feature flags)
 - honest about assumptions and open decisions (no "we decided X" without
   evidence in the user request or the spec)
+- consistent with the other saved artifacts (spec sidecar, `tasks/todo.md`)
+  when the orchestrator passed them — the three artifacts describe one change
+  and must agree before implementation starts
 
 You are **not** checking style for its own sake. You are looking for gaps that
 would force the engineer to say "compare the plan to the code again."
@@ -89,6 +92,21 @@ would force the engineer to say "compare the plan to the code again."
    - No step requires a tool, permission, or API key the project does not
      have
    - Open decisions are labeled as such, not written as settled facts
+5a. **Cross-artifact consistency check** — runs only when the orchestrator
+   passed the spec JSON sidecar and/or `tasks/todo.md` alongside the plan.
+   Map the artifacts against each other in both directions:
+   - every `change_manifest` path in the spec sidecar appears in exactly one
+     plan batch (an unmapped spec file is work the plan forgot)
+   - every file in a plan batch appears in the spec's `change_manifest`
+     (an unmapped batch file is silent scope widening before code exists)
+   - every `success_criteria` id maps to at least one batch's acceptance or
+     verification step AND to a `test_manifest` entry
+   - no batch implements anything listed in the spec's `out_of_scope`
+   - `tasks/todo.md` batches match the plan's batches (same count, same
+     files) — the todo is what the engineer approves at the gate, so
+     divergence between todo and plan is drift before implementation starts
+   This is a list-against-list comparison, not judgment — findings here are
+   high-confidence by construction.
 6. Build findings from evidence only. Do not speculate when the repo does
    not support a claim — that is itself a finding (`hidden_assumptions`).
 7. If no meaningful issues remain, return verdict `PASS`.
@@ -96,7 +114,7 @@ would force the engineer to say "compare the plan to the code again."
 
 ## Finding Categories
 
-Every finding must use exactly one of these six categories. Anything that does
+Every finding must use exactly one of these seven categories. Anything that does
 not fit is not a plan-gap finding — drop it.
 
 | Category | Trigger |
@@ -107,6 +125,12 @@ not fit is not a plan-gap finding — drop it.
 | `hidden_assumptions` | Plan assumes a tool, service, env var, or framework behavior the repo does not establish |
 | `under_scoped_integrations` | Plan adds a unit but does not wire it into the system that consumes it |
 | `open_decisions_presented_as_settled` | Plan states a decision as fact when the user request and spec leave it open |
+| `cross_artifact_inconsistencies` | Spec sidecar, plan, and todo disagree — a manifest entry with no batch, a batch file missing from the manifest, a success criterion with no batch/test mapping, an out-of-scope item in a batch, or todo diverging from plan |
+
+Severity for `cross_artifact_inconsistencies`: file-level mismatches,
+out-of-scope items in batches, and todo/plan divergence are `BLOCKING`
+(the approval gate would cover something other than what gets built);
+a success criterion missing a test mapping is `ADVISORY`.
 
 ## Severity
 

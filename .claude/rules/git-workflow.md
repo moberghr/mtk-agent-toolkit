@@ -30,3 +30,4 @@ axes:
 - **S4.8** Before release: `bash scripts/validate-toolkit.sh` must pass.
 - **S4.9** Before release: README must reflect any new skills.
 - **S4.10** Before release: AGENTS.md must route to any new skills.
+- **S4.11** Before release: regenerate `checksums.sha256` via `bash scripts/generate-checksums.sh` after the version bump, as the last change in the release commit. This is the integrity manifest `mtk-doctor.sh` verifies on installs.

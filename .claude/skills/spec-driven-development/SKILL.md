@@ -55,7 +55,7 @@ digraph spec_flow {
   classify [label="classify scope:\ninternal-refactoring /\nnew-feature / breaking-change"];
   pattern  [label="read 2-3 nearby files\nfor local pattern"];
   ambig    [label="ambiguity present?\n(≥2 plausible designs OR\nundefined scope edge OR\nunresolved arch choice)", shape=diamond];
-  ask      [label="ask via AskUserQuestion\nBEFORE drafting\n(resolve open Qs upfront)"];
+  ask      [label="ask via AskUserQuestion\nBEFORE drafting\n(batched ≤2 / interview ≥3)"];
   draft    [label="draft spec sections:\nsummary · success criteria ·\narch · security impact ·\nchange manifest · test manifest ·\nbatches · risks · open Qs"];
   elegance [label="elegance check:\nfewer files? fewer\nabstractions? fewer\nmoving parts?"];
   sec      [label="security_impact\nhonest?", shape=diamond];
@@ -119,9 +119,20 @@ digraph spec_flow {
 
    If triggered: stop and call `AskUserQuestion` with one question per ambiguity (max 4). Each question presents 2–4 concrete options with the tradeoff in the description. Wait for answers, then proceed to drafting with answers folded into the spec — do NOT defer them to "Open questions" in the spec body.
 
+   **Interview mode (Socratic, one question per round).** Switch from the batched form above to a structured interview when **either**: three or more ambiguities triggered, or the request is one or two sentences for clearly multi-file scope (the ask is underspecified relative to its blast radius). In interview mode:
+
+   - Ask **one** question per `AskUserQuestion` round, starting with the highest-leverage ambiguity — the one whose answer most reshapes the spec (usually the success definition or the architectural boundary, not the naming choice).
+   - Probe **intent**, not just option preference: lead with what the engineer is trying to achieve or avoid ("what should happen to in-flight payments when this flag flips?"), then offer the 2–4 concrete options informed by that framing.
+   - After each answer, **re-derive the remaining ambiguities** before asking the next question — answers routinely resolve later questions or surface new ones; a pre-computed question list goes stale after round one.
+   - Cap at **5 rounds**. Anything still open after the cap is written into the spec as an explicit assumption with the chosen default and its rationale — never as a silent guess.
+
+   Batched mode remains the default for one or two independent ambiguities — don't stretch a two-question gate into an interview.
+
    If `AskUserQuestion` is deferred, load it via `ToolSearch` with `select:AskUserQuestion`. If the harness doesn't expose it, print the questions as a numbered list and stop until the engineer answers.
 
    Skip the gate when: the engineer's request already specifies the approach, the task follows an obvious existing pattern, or only one viable design fits the constraints. Document the skip in one line ("ambiguity gate skipped: <reason>") so it's visible in the session log.
+
+   **When an ambiguity is version-sensitive** — the right answer depends on current external best-practice, the installed package version's behavior, or a recent migration path rather than a preference — first follow `.claude/skills/research-context/SKILL.md` to produce a grounded, cited brief, then fold its recommendation into the options you present at the `AskUserQuestion` gate. Resolve "which design" from current information, not training-cutoff memory.
 7. Produce a spec with these sections:
    - Summary
    - Success criteria

@@ -125,7 +125,40 @@ printf '{"slug":"%s","date":"%s","verdict":"%s","archived_at":"%s","adds":%s,"re
   jq -r '.history[] | "- \(.date) · \(.slug) · drift \(.verdict) · archived \(.archived_at)"' "$BASE_JSON"
 } > "$BASE_MD"
 
+# Fold newly shipped public contracts into the repo's capability index, if one
+# exists — completed deltas become living documentation, not just an audit
+# trail. Append-only (shrink-guard exempt per S3.16); idempotent via slug marker.
+CODE_INDEX="CODE_INDEX.md"
+if [ -f "$CODE_INDEX" ] && ! grep -qF "spec $SLUG" "$CODE_INDEX" 2>/dev/null; then
+  NEW_CONTRACTS="$(jq -r '(.public_contracts // [])[] | select(.change == "new") | .signature + "\t" + (.kind // "?")' "$SPEC_JSON")"
+  if [ -n "$NEW_CONTRACTS" ]; then
+    FIRST_PATH="$(jq -r '(.change_manifest // [])[0].path // "?"' "$SPEC_JSON")"
+    SECTION="## Recently Shipped (auto-generated)"
+    {
+      if ! grep -qF "$SECTION" "$CODE_INDEX"; then
+        echo ""
+        echo "$SECTION"
+        echo ""
+        echo "> Appended by \`scripts/spec-archive.sh\` at archive time — newly shipped public contracts."
+        echo "> Fold rows into the matching domain section on the next index refresh."
+        echo ""
+        echo "| Capability | Entry point | Notes |"
+        echo "|---|---|---|"
+      fi
+      while IFS="$(printf '\t')" read -r sig kind; do
+        [ -n "$sig" ] || continue
+        printf '| %s (%s) | `%s` | shipped %s · spec %s (auto) |\n' "$sig" "$kind" "$FIRST_PATH" "$DATE" "$SLUG"
+      done <<EOF_CONTRACTS
+$NEW_CONTRACTS
+EOF_CONTRACTS
+    } >> "$CODE_INDEX"
+  fi
+fi
+
 echo "Archived '$SLUG' into baseline '$AREA':"
 echo "  $BASE_JSON"
 echo "  $BASE_MD"
 echo "  $AUDIT (+1 record)"
+if [ -f "$CODE_INDEX" ]; then
+  echo "  $CODE_INDEX (capability index updated for new public contracts)"
+fi
