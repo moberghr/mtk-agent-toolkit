@@ -106,13 +106,44 @@ Write **both** files (mandatory, not optional):
 Create `docs/plans/` if missing. Then record both paths on the workflow artifact:
 `scripts/workflow-artifact.sh set "$MTK_WF_UUID" results.plan_path=docs/plans/<file> results.todo_path=tasks/todo.md`
 
+## Rigor Score (Continuous Ceremony Scaling)
+
+Compute once after Phase 2, from the JSON sidecar at `docs/specs/<date>-<slug>.json`. Ceremony scales with the change's blast radius — a small fix gets a light pass, a breaking multi-batch change gets the full apparatus, and everything in between gets *proportional* rigor rather than a binary jump.
+
+| Signal | Points |
+|---|---|
+| Implementation batches | +1 per batch |
+| Change manifest size | +1 per 3 files (rounded up) |
+| `security_impact != "none"` | +3 |
+| Public contracts added or modified | +1 each (cap +4) |
+| `scope == "breaking-change"` | +3 |
+
+| Score | Rigor level |
+|---|---|
+| ≤ 3 | LIGHT |
+| 4–7 | STANDARD |
+| 8–11 | HIGH |
+| ≥ 12 | MAX |
+
+**Hard-trigger floor:** any of `plan.batches.length >= 3`, `change_manifest.length >= 6`, or `security_impact != "none"` forces the level to at least HIGH regardless of score. These are the long-standing subagent-path triggers — the score scales ceremony continuously *between* them; it never relaxes them.
+
+What the level dials:
+
+| Dial | LIGHT | STANDARD | HIGH | MAX |
+|---|---|---|---|---|
+| Phase 3 path | inline | inline | subagent | subagent |
+| Phase 4 Stage 2 reviewers | conditional (per Stage 2 rules) | conditional | `test-reviewer` + `architecture-reviewer`, always | both + `silent-failure-hunter` |
+| `MTK_AUTO_PROCEED` eligibility | yes | yes | no | no |
+
+State the score and level in one line in the Phase 2.5 gate rendering (e.g. `Rigor: HIGH (score 9 — 3 batches, 8 files, security_impact=new-auth-path)`) so the engineer sees why the ceremony is sized the way it is.
+
 ## Phase 2.5: Approval Gate (STOP HERE)
 
 Mandatory. Before starting Phase 3, ask via the `AskUserQuestion` tool.
 
 First, **render the plan and todo inline in the terminal** so the engineer can review them without opening files. Don't just cite the file paths — print the content:
 
-1. A one-line header: scope classification, batch count, total files in the change manifest.
+1. A one-line header: scope classification, batch count, total files in the change manifest, and the computed rigor level with its score breakdown (see Rigor Score above).
 2. The **full contents of `tasks/todo.md`** (the batch checklist with checkboxes and post-implementation review items). It is compact and is the primary thing the engineer approves.
 3. A **batch breakdown from the plan**: for each batch, its title, files in scope, acceptance criteria, and boundary. This is the structured plan, not the raw markdown dump.
 4. The spec/plan/todo file paths, cited at the end for reference and editing. Print them as **bare repo-relative paths** (e.g. `docs/plans/2026-06-03-foo.md`, not a markdown link or a path buried in prose) so the terminal auto-linkifies them as clickable. Append `:<line>` when pointing at a specific batch (e.g. `tasks/todo.md:42`) so the click jumps straight to that line.
@@ -125,6 +156,7 @@ Keep the rendering proportional — the todo and batch breakdown are bounded by 
 - No plan-gap-reviewer `BLOCKING` findings are unresolved.
 - `skill_precedence_gate` is `pass`.
 - The scope classification is not "breaking change" or "high security_impact".
+- The rigor level is LIGHT or STANDARD (HIGH/MAX changes always get a human at the gate).
 
 If any condition fails, AUTO_PROCEED MUST NOT be applied — fall back to `AskUserQuestion`. Auto-proceed never overrides explicit user standards, open plan decisions, or the failure-stop gate. When AUTO_PROCEED is applied, log the bypass on the workflow artifact: `scripts/workflow-artifact.sh event "$MTK_WF_UUID" gate_decided --data '{"gate":"plan_trust_gate","result":"pass","reason":"AUTO_PROCEED — all preconditions met"}'`.
 
@@ -152,13 +184,14 @@ Note: this gate controls when *Claude* asks. Harness tool-permission prompts (fi
 
 **Fork — pick the implementation path from the JSON sidecar at `docs/specs/<date>-<slug>.json`:**
 
-- **Subagent path** (`.claude/skills/subagent-implementation/SKILL.md`) — when **any** of: `plan.batches.length >= 3`, `change_manifest.length >= 6`, `security_impact != "none"`. Dispatches one fresh implementer subagent per batch with orchestrator-side drift micro-checks. Asks once which model (Sonnet/Opus) to use for the implementer.
+- **Subagent path** (`.claude/skills/subagent-implementation/SKILL.md`) — when the rigor level is HIGH or MAX (any hard trigger — `plan.batches.length >= 3`, `change_manifest.length >= 6`, `security_impact != "none"` — or score ≥ 8; see Rigor Score). Dispatches one fresh implementer subagent per batch with orchestrator-side drift micro-checks. Asks once which model (Sonnet/Opus) to use for the implementer. Prefers the native dynamic-workflow runtime when the `Workflow` tool is available (drift/persistence/Phase-4 stay orchestrator-side), falling back to a manual Agent-per-batch loop otherwise.
 - **Inline path** (`.claude/skills/incremental-implementation/SKILL.md`) — for everything below threshold. Smaller features stay in the main context.
 
 Always also follow:
 
 - `.claude/skills/test-driven-development/SKILL.md`
 - `.claude/skills/source-driven-development/SKILL.md` when framework or SDK behavior is uncertain
+- `.claude/skills/research-context/SKILL.md` when a choice is version-sensitive or depends on current external best-practice (returns a cited brief; does not edit code)
 - `.claude/skills/security-and-hardening/SKILL.md` when the scope touches auth, financial state, secrets, or infra
 
 Whichever path runs, every batch must:
@@ -227,7 +260,9 @@ Only after Stage 1 passes (no Critical issues). When both reviewers apply, run t
 - `test-reviewer` — when the change introduces or changes public behavior
 - `architecture-reviewer` — when the change introduces new slices, boundaries, handlers, or cross-project interactions
 
-Provide both reviewers with the same diff and behavioral diff.
+At rigor HIGH or MAX, run **both** reviewers regardless of the conditions above; at MAX, additionally run `silent-failure-hunter` (empty catches, swallowed errors, masking fallbacks). At LIGHT/STANDARD, the conditions above decide.
+
+Provide all reviewers with the same diff and behavioral diff.
 
 ## Phase 5: Fix Review Findings
 
@@ -283,6 +318,9 @@ bash scripts/spec-archive.sh docs/specs/<date>-<slug>.json --verdict PASS
 - Merges the change manifest / public contracts (or explicit `delta`) into
   `docs/specs/baseline/<area>.json`, regenerates `<area>.md`, and appends one
   record to `<area>.audit.jsonl`.
+- If `CODE_INDEX.md` exists at the repo root, the archive also appends newly
+  shipped public contracts to its auto-generated "Recently Shipped" section —
+  the capability index stays current without a separate audit pass.
 - Idempotent — safe to re-run on resume.
 - Skip (with a one-line note) when the spec has no `baseline_area`, or when drift
   did not pass. Never archive drifted work.

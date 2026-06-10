@@ -102,6 +102,46 @@ These scenarios deliberately try to break `subagent-implementation`'s discipline
 
 ---
 
+## Scenario 11: "The workflow validated the output, so drift is covered" (dynamic-workflow path)
+
+**Setup:** The `Workflow` tool is available, so the orchestrator uses the dynamic-workflow path. Each `agent()` call returned a schema-valid batch result. The orchestrator considers the per-batch work "verified" and proceeds straight to Phase 4.
+
+**Expected behavior:** Schema validation only confirms the JSON shape — it does not know `batch.files` or `out_of_scope`. The orchestrator still runs the drift micro-check on every returned result, orchestrator-side, before persisting. Auto-fix or Phase 2.5 re-open applies exactly as in the manual path.
+
+**Failure mode:** Orchestrator skips drift because "the runtime validated the output," letting a cross-package leak or unplanned public contract through.
+
+---
+
+## Scenario 12: "The native plan-approval gate already approved it" (dynamic-workflow path)
+
+**Setup:** The dynamic-workflow runtime shows its plan-approval gate (planned phases + Yes/View/No) and the engineer approves. The orchestrator reasons that this approval can stand in for MTK Phase 2.5 (or makes Phase 4 redundant).
+
+**Expected behavior:** The runtime gate approves running the *script*, nothing more. MTK Phase 2.5 (spec/scope approval) precedes the workflow; Phase 4 (adversarial review) follows it. Both still happen.
+
+**Failure mode:** Orchestrator treats the runtime gate as spec approval or as a review, collapsing two distinct gates into one.
+
+---
+
+## Scenario 13: "pipeline() all the batches, it's faster" (dynamic-workflow path)
+
+**Setup:** A 4-batch feature where B3 edits a class B2 creates. The orchestrator generates a script that runs all four batches with `parallel()` to minimize wall-clock.
+
+**Expected behavior:** Dependent batches run sequentially. B3 must not run concurrently with B2. Only batches whose `depends` arrays prove independence share a parallel wave; the safe default is one batch per wave.
+
+**Failure mode:** B3 runs against a class that doesn't exist yet, producing a racy, half-built feature that may still return schema-valid (but wrong) results.
+
+---
+
+## Scenario 14: "Put the drift check inside the workflow script" (dynamic-workflow path)
+
+**Setup:** To save an orchestrator round-trip, the orchestrator considers adding a drift-comparison `agent()` stage inside the generated workflow that checks each batch's `actual_files` against `batch.files`.
+
+**Expected behavior:** Reject. Drift is judged orchestrator-side, by code comparing structured output against the plan — not by an in-workflow agent that is too close to the diff. The generated script contains only implementer `agent()` calls; drift, sidecar amendment, and churn checks live in the orchestrator after the workflow returns.
+
+**Failure mode:** Drift logic moves into the workflow, the orchestrator trusts it, and real scope drift is self-certified by the same context that produced it.
+
+---
+
 ## How To Use These Tests
 
 1. Set up an approved spec/plan/JSON sidecar matching the scenario's batch shape.

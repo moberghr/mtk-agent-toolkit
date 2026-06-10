@@ -2,6 +2,16 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.13.0] - 2026-06-09
+
+### Added — Pre-implementation consistency, scaled ceremony, release integrity
+
+- **Cross-artifact consistency check in `plan-gap-reviewer`.** When the orchestrator passes the spec JSON sidecar and `tasks/todo.md` alongside the plan, the agent maps spec ↔ plan ↔ todo against each other in both directions: every manifest entry has a batch, every batch file is in the manifest, every success criterion maps to a batch and a test, no batch implements an out-of-scope item, and the todo matches the plan's batches. New `cross_artifact_inconsistencies` finding category — file-level mismatches, out-of-scope hits, and todo/plan divergence are BLOCKING. `planning-and-task-breakdown` step 11 now passes all three artifacts at dispatch. Pressure-test scenario 6 ("the artifacts quietly disagree") covers it.
+- **Interview mode at the spec ambiguity gate.** With three or more ambiguities — or a one-to-two-sentence request for clearly multi-file scope — `spec-driven-development` switches from batched questions to a Socratic interview: one question per round, highest-leverage ambiguity first, probing intent before offering options, re-deriving the remaining ambiguities after each answer, capped at 5 rounds with explicit defaulted assumptions for anything left open. Batched mode remains the default for one or two independent ambiguities.
+- **Rigor score — continuous ceremony scaling in `implement`.** A score computed from the JSON sidecar (batches, manifest size, security impact, public contracts, breaking-change scope) maps to LIGHT / STANDARD / HIGH / MAX and dials the Phase 3 path, the Stage 2 reviewer set (HIGH always runs `test-reviewer` + `architecture-reviewer`; MAX adds `silent-failure-hunter`), and `MTK_AUTO_PROCEED` eligibility (LIGHT/STANDARD only). The long-standing subagent hard triggers remain as a floor forcing at least HIGH — nothing got more lenient. The score and level are stated in the Phase 2.5 gate header so the engineer sees why the ceremony is sized the way it is.
+- **Archive folds shipped contracts into `CODE_INDEX.md`.** `scripts/spec-archive.sh` now appends newly shipped public contracts to an auto-generated "Recently Shipped" section of the capability index (append-only, idempotent per slug, only when `CODE_INDEX.md` exists) — completed delta specs become living documentation instead of just an audit trail, and the next prior-work check sees them.
+- **Release checksum manifest.** New `scripts/generate-checksums.sh` writes `checksums.sha256` — SHA-256 of every manifest-listed file — at release time; `--verify` recomputes and reports mismatches. `mtk-doctor.sh` verifies it when present (WARN-level: local dev changes legitimately drift; on a clean install a mismatch means the bytes are not the released bytes). New rule **S4.11** adds regeneration to the release checklist.
+
 ## [7.10.3] - 2026-05-29
 
 ### Fixed — setup-bootstrap non-destructive contract

@@ -92,7 +92,16 @@ digraph subagent_impl {
 }
 ```
 
-### Steps
+### Execution paths
+
+There are two ways to run the per-batch loop. Both share the **same implementer prompt template, the same structured JSON result, and the same orchestrator-side drift / sidecar / churn / Phase-4 discipline.** Only the dispatch mechanism differs.
+
+- **Dynamic-workflow path (preferred when the `Workflow` tool is available).** The orchestrator generates a JavaScript orchestration script that runs the batches through Claude Code's native dynamic-workflow runtime in the background, with its built-in plan-approval gate. The runtime handles concurrency, retries, and structured-output validation. The orchestrator then does the drift micro-check and sidecar persistence **after** the run returns. See "Dynamic-workflow path" below.
+- **Manual Agent-loop path (fallback).** When the `Workflow` tool is not exposed in this harness, dispatch one implementer subagent per batch by hand. See "Steps (manual Agent-loop path)" below.
+
+Pick the path once, at the top of Phase 3, based on tool availability. Do not mix them within one feature.
+
+### Steps (manual Agent-loop path)
 
 1. **Threshold gate.** Read `docs/specs/<date>-<slug>.json`. If thresholds not met → return control to `implement/SKILL.md` Phase 3 with the recommendation to use `incremental-implementation` instead. Do not silently fall through.
 2. **Pick implementer model.** Invoke `AskUserQuestion` once (load via `ToolSearch select:AskUserQuestion` if deferred):
@@ -148,9 +157,30 @@ digraph subagent_impl {
    - Write a final aggregated `behavioral_diff` to `sidecar.implement.behavioral_diff`.
    - Hand control back to `implement/SKILL.md` Phase 3.5 (whole-feature spec-drift) → Phase 4 (two-stage review). Both run unchanged. Per-batch micro-checks are supplemental, not a replacement.
 
+### Dynamic-workflow path
+
+Use this when the `Workflow` tool is available. It moves the per-batch dispatch loop into a generated JS script that the native runtime executes in the background, so the orchestrator's main context stays light. **What does NOT move into the workflow:** the drift micro-check, sidecar amendment, cumulative churn check, and Phase 4 review. Those stay orchestrator-side, exactly as in the manual path. The workflow is a faster, runtime-managed replacement for steps 3.1–3.4 only.
+
+1. **Threshold gate + model pick.** Identical to manual steps 1–2. The model chosen (Sonnet/Opus) is passed as the `model` option on each `agent()` call in the script.
+2. **Build the batch schedule (dependency order).** Compute a serial order from each batch's `depends` array. **Default to sequential execution** — a later batch may rely on files an earlier batch created, and `pipeline()`/`parallel()` run items concurrently. Only group batches into a parallel wave when their `depends` arrays prove they are mutually independent (no shared files, no ordering edge). When unsure, keep them sequential; correctness beats wall-clock here.
+3. **Generate the workflow script.** Adapt `templates/workflows/subagent-implementation.workflow.js`. Each batch becomes one `agent()` call that:
+   - receives the **same self-sufficient prompt** as the manual path (see "Implementer prompt template" — repo root, CLAUDE.md, tech stack skill path, the single batch object, spec excerpt, full `change_manifest`, `out_of_scope`, and prior-batch summaries),
+   - passes the batch-result JSON schema as the `schema` option so the runtime validates structured output and retries on mismatch (this replaces the manual JSON-parse-failure retry),
+   - sets `model` to the chosen tier and a `label` of `batch:<id>`.
+   Dependent batches run in a sequential `for…await` loop; independent waves may use `parallel()`. The script returns the array of structured batch results, in batch order.
+4. **Run it via the `Workflow` tool.** The native runtime shows its own plan-approval gate (the planned phases + Yes / View raw script / No). Because MTK Phase 2.5 has **already** approved the spec and scope, this gate is a transparency checkpoint, not a re-litigation: in interactive mode let the engineer see/approve the script; in autonomous mode (Phase 2.5 returned `Approve & run until done`) proceed without re-prompting, governed by the session permission mode. Do not author a second scope question here.
+5. **On return, run the orchestrator-side gates per batch, in order** — these did NOT run inside the workflow:
+   - **Build/test gate.** Inspect each result's `build.ok` / `tests.ok`. Any `false` (after the runtime's own retries) → halt and report, exactly as the manual path. A failing batch poisons later ones.
+   - **Drift micro-check.** `actual_files ⊆ batch.files`? public contracts touched ⊆ planned? Clean → persist. Auto-fixable (in-package, no new contract, security unchanged) → amend sidecar. Otherwise → re-open Phase 2.5. The subagent is too close to its own diff; drift is judged here, never inside the workflow.
+   - **Persist.** Append `{batch_id, actual_files, build, tests, behavioral_diff, deviations}` to `sidecar.implement.completed_batches[]`; tick `tasks/todo.md`; record progress on the workflow artifact (`scripts/workflow-artifact.sh set "$MTK_WF_UUID" results.batches_completed=<n>`).
+   - **Cumulative churn check.** Same 300/500-line thresholds as the manual path.
+6. **After all batches:** write the aggregated `behavioral_diff`, emit `phase_exit_gate pass` (or `fail` and stop), and hand back to `implement/SKILL.md` Phase 3.5 → Phase 4. **Unchanged.**
+
+If the `Workflow` tool errors, is denied, or is unavailable mid-run, fall back to the manual Agent-loop path for the remaining batches — do not abandon the per-batch discipline.
+
 ### Implementer prompt template
 
-The implementer subagent has no MTK context other than what you give it. The prompt must be self-sufficient.
+The implementer subagent has no MTK context other than what you give it. The prompt must be self-sufficient. **This template is shared by both execution paths** — in the manual path you pass it as the `Agent` prompt; in the dynamic-workflow path it is the `agent()` prompt string in the generated script.
 
 ```
 You are implementing one batch of a planned feature.
@@ -210,6 +240,8 @@ Return EXACTLY one fenced JSON block matching this schema, then stop:
 - In autonomous mode (Phase 2.5 returned `Approve & run until done`), the loop runs without further `AskUserQuestion` calls **except** the Phase 2.5 re-open required by non-auto-fixable drift. That re-open is a structural halt, not a chatty confirmation.
 - Drift micro-check is orchestrator-side and synchronous. No agent call per batch.
 - Phase 4 review (compliance, test, architecture, silent-failure-hunter) runs unchanged after the loop.
+- **Dynamic-workflow path:** the workflow replaces only the inner dispatch loop. Drift micro-check, sidecar persistence, churn check, and Phase 4 are orchestrator-side and run **after** the workflow returns — never inside it. The native runtime's plan-approval gate does not replace MTK's Phase 2.5; it is a transparency checkpoint on an already-approved scope.
+- **Dependency order is sequential by default.** Only parallelize a wave when batch `depends` arrays prove independence. A later batch reading an earlier batch's files must not run concurrently with it.
 
 ## Common Rationalizations
 
@@ -223,6 +255,9 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared table. Subagent
 | "I'll let the implementer subagent do the spec-drift review too" | No. Drift is orchestrator-side. The subagent is too close to its own diff to judge it. |
 | "Let me reuse the same subagent across batches to save tokens" | Then it's not subagent-driven. Use `incremental-implementation` instead. |
 | "Build failed, I'll skip this batch and continue" | No. A failing batch poisons every later batch's assumptions. Retry, then halt. |
+| "The workflow runtime validated the structured output, so I can skip the drift check" | No. Schema validation ≠ scope/drift judgment. The runtime confirms the JSON shape; it does not know `batch.files` or `out_of_scope`. Run the orchestrator-side drift micro-check on every returned result. |
+| "The native plan-approval gate already approved it, so I can skip MTK Phase 2.5 / Phase 4" | No. The runtime gate approves running the *script*; it is not a spec approval or a code review. Phase 2.5 precedes the workflow; Phase 4 follows it. |
+| "pipeline()/parallel() is faster, I'll run all batches at once" | Only if their `depends` arrays prove independence. Dependent batches run sequentially — concurrency on a dependency edge produces a half-built, racy feature. |
 
 ## Red Flags
 
@@ -233,14 +268,20 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared table. Subagent
 - `AskUserQuestion` called more than once per loop (model pick excluded)
 - Per-batch review agent dispatched (was deferred to v2; if you need this, talk to maintainers first)
 - Phase 4 skipped because "every batch was already reviewed"
+- Dynamic-workflow path: orchestrator-side drift check skipped because "the workflow validated the output"
+- Dynamic-workflow path: Phase 2.5 or Phase 4 skipped because the native plan-approval gate fired
+- Dependent batches run with `parallel()`/`pipeline()` despite an ordering edge in `depends`
+- Drift detection or sidecar amendment logic placed *inside* the generated workflow script
 
 ## Verification
 
 - [ ] Threshold check ran and produced a documented yes/no
+- [ ] Execution path chosen once (dynamic-workflow when `Workflow` tool available, else manual Agent-loop) and not mixed mid-feature
 - [ ] Implementer model was asked once via `AskUserQuestion` (or defaulted with explicit notice)
-- [ ] One fresh subagent dispatched per batch (no reuse)
-- [ ] Each subagent returned a parseable JSON result matching the schema
-- [ ] Drift micro-check ran for every batch, with auto-fix or 2.5 re-open as appropriate
+- [ ] One fresh subagent dispatched per batch (no reuse) — or one `agent()` call per batch in the generated script
+- [ ] Each batch returned a structured JSON result matching the schema (validated by the runtime on the workflow path)
+- [ ] Dependent batches ran sequentially; only proven-independent batches were parallelized
+- [ ] Drift micro-check ran orchestrator-side for every batch (also on the workflow path, after it returned), with auto-fix or 2.5 re-open as appropriate
 - [ ] `sidecar.implement.completed_batches[]` reflects every batch with actual_files and behavioral_diff
 - [ ] `tasks/todo.md` ticks match completed batches
 - [ ] Phase 4 review still runs unchanged after the loop

@@ -257,6 +257,18 @@ else
   record PASS integrity "analytics.json absent" "first session will create"
 fi
 
+# Release checksum manifest (optional) — installed bytes match the release.
+if [ -f checksums.sha256 ] && [ -f scripts/generate-checksums.sh ]; then
+  CHECKSUM_LINE="$(bash scripts/generate-checksums.sh --verify --quiet 2>/dev/null | grep '^checksums:' | tail -1 || true)"
+  if printf '%s' "$CHECKSUM_LINE" | grep -q ' 0 mismatched, 0 missing'; then
+    record PASS integrity "release checksums verified" "$CHECKSUM_LINE"
+  else
+    record WARN integrity "release checksum drift" "${CHECKSUM_LINE:-verification failed} — expected with local changes; on a clean install this means the bytes are not the released bytes"
+  fi
+else
+  record PASS integrity "release checksum manifest absent" "generate at release: bash scripts/generate-checksums.sh"
+fi
+
 # Run validate-toolkit as one composite check
 if bash scripts/validate-toolkit.sh >/dev/null 2>&1; then
   record PASS integrity "validate-toolkit passes"
