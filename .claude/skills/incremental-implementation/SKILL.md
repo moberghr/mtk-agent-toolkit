@@ -43,7 +43,7 @@ Implement in thin slices. Each slice must compile, test, and remain explainable 
    ```
    Surface any critical analyzer findings immediately — they block the batch just like
    build failures. Warning-level findings carry forward to the pre-commit review.
-   If the parser script is not available (pre-Wave-4 install), skip this step.
+   If `hooks/parse-build-diagnostics.sh` does not exist in the installed toolkit, skip this step.
 7. Read `.claude/references/pre-commit-review-list.md` if present and fix any violations immediately.
 8. Mark the batch complete in `tasks/todo.md`. Record the per-batch gate decision on the workflow artifact: `scripts/workflow-artifact.sh gate "$MTK_WF_UUID" phase_exit_gate pass --reason "batch <id> green"` (or `fail` to trigger remediation). See `.claude/references/orchestration-gates.md`.
 9. **Churn check:** After completing each batch, run `git diff --stat` and count net lines changed. If cumulative changes across batches exceed 300 lines, pause and trigger an early review checkpoint:

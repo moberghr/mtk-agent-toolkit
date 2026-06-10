@@ -2,8 +2,9 @@
 name: mtk
 description: Unified entry point that routes natural language requests to the right MTK skill
 type: skill
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, Task, AskUserQuestion
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion
 argument-hint: <what you want to do>
+user-invocable: true
 ---
 
 # MTK — Unified Entry Point
@@ -28,9 +29,13 @@ digraph mtk_routing {
   redirect [label="redirect: /mtk-setup", style="rounded,filled", fillcolor="#e8f0ff"];
   rev      [label="review / commit /\nstaged / pre-commit?", shape=diamond];
   pcr      [label="pre-commit-review", style="rounded,filled", fillcolor="#e0f0e0"];
-  rhlth    [label="repo-health / readiness /\nscorecard / mine prs?", shape=diamond];
+  rhlth    [label="repo-health / readiness /\nscorecard / ai-ready?", shape=diamond];
   rh       [label="repo-health", style="rounded,filled", fillcolor="#e0f0e0"];
-  hlth     [label="health / usage /\nstats / analytics?", shape=diamond];
+  prm      [label="mine prs /\npr mining?", shape=diamond];
+  prmine   [label="pr-review-mining", style="rounded,filled", fillcolor="#e0f0e0"];
+  doc      [label="doctor / broken /\nintegrity / install health?", shape=diamond];
+  mdoc     [label="mtk-doctor", style="rounded,filled", fillcolor="#e0f0e0"];
+  hlth     [label="usage / stats /\nanalytics / adoption?", shape=diamond];
   th       [label="toolkit-health", style="rounded,filled", fillcolor="#e0f0e0"];
   rsch     [label="research / best practice /\ncurrent way / latest version?", shape=diamond];
   rc       [label="research-context", style="rounded,filled", fillcolor="#e0f0e0"];
@@ -46,18 +51,24 @@ digraph mtk_routing {
   cma      [label="claude-md-audit", style="rounded,filled", fillcolor="#e0f0e0"];
   cmc      [label="capture session\nlearnings to claude.md?", shape=diamond];
   cmcap    [label="claude-md-capture", style="rounded,filled", fillcolor="#e0f0e0"];
+  prom     [label="promote / share\na lesson?", shape=diamond];
+  plsn     [label="promote-lesson", style="rounded,filled", fillcolor="#e0f0e0"];
+  ho       [label="hand off / save state /\nsnapshot session?", shape=diamond];
+  hoff     [label="handoff", style="rounded,filled", fillcolor="#e0f0e0"];
 
   start -> empty;
   empty -> help [label="yes"];
   empty -> esc  [label="no"];
   esc   -> impl [label="yes (internal marker)"];
-  esc   -> setup [label="no"];
-  setup -> redirect [label="yes"];
-  setup -> rev  [label="no"];
+  esc   -> rev  [label="no"];
   rev   -> pcr  [label="yes"];
   rev   -> rhlth [label="no"];
   rhlth -> rh   [label="yes"];
-  rhlth -> hlth [label="no"];
+  rhlth -> prm  [label="no"];
+  prm   -> prmine [label="yes"];
+  prm   -> doc  [label="no"];
+  doc   -> mdoc [label="yes"];
+  doc   -> hlth [label="no"];
   hlth  -> th   [label="yes"];
   hlth  -> rsch [label="no"];
   rsch  -> rc   [label="yes"];
@@ -75,7 +86,13 @@ digraph mtk_routing {
   cmd   -> cma  [label="yes"];
   cmd   -> cmc  [label="no"];
   cmc   -> cmcap [label="yes"];
-  cmc   -> help [label="no match → help"];
+  cmc   -> prom [label="no"];
+  prom  -> plsn [label="yes"];
+  prom  -> ho   [label="no"];
+  ho    -> hoff [label="yes"];
+  ho    -> setup [label="no"];
+  setup -> redirect [label="yes"];
+  setup -> help [label="no match → help"];
 }
 ```
 
@@ -96,14 +113,18 @@ Match the user's input against these patterns. Check from top to bottom; first m
 |---|---|---|
 | `escalated from fix` (internal marker from fix Scope Guard) | `.claude/skills/implement/SKILL.md` | — internal self-escalation only |
 | `review`, `check`, `commit`, `staged`, `pre-commit`, `before I commit` | `.claude/skills/pre-commit-review/SKILL.md` | "review before commit", "check staged changes" |
-| `repo-health`, `repo health`, `readiness`, `scorecard`, `ai-ready`, `ai ready`, `mine prs`, `pr mining`, `repo report` | `.claude/skills/repo-health/SKILL.md` | "is this repo AI-ready?", "run repo-health", "mine the last 10 PRs" |
-| `health`, `usage`, `stats`, `analytics`, `adoption` | `.claude/skills/toolkit-health/SKILL.md` | "toolkit health", "show usage stats" |
+| `repo-health`, `repo health`, `readiness`, `scorecard`, `ai-ready`, `ai ready`, `repo report` | `.claude/skills/repo-health/SKILL.md` | "is this repo AI-ready?", "run repo-health" |
+| `mine prs`, `pr mining` | `.claude/skills/pr-review-mining/SKILL.md` | "mine the last 10 PRs", "what do reviewers keep repeating?" |
+| `doctor`, `broken`, `integrity`, `install health` | `.claude/skills/mtk-doctor/SKILL.md` | "run mtk doctor", "is the install broken?" |
+| `usage`, `stats`, `analytics`, `adoption` | `.claude/skills/toolkit-health/SKILL.md` | "toolkit usage", "show usage stats" |
 | `research`, `best practice`, `best-practice`, `current way`, `latest version`, `up to date`, `migration guide`, `upgrade guide` | `.claude/skills/research-context/SKILL.md` | "research the current EF Core batching approach", "what's the best-practice for X in v9" |
 | `fix`, `bug`, `broken`, `error`, `typo`, `patch`, `wrong`, `failing` | `.claude/skills/fix/SKILL.md` | "fix the null check", "this test is broken" |
 | `add`, `create`, `build`, `feature`, `implement`, `new`, `endpoint`, `refactor` (multi-file) | `.claude/skills/implement/SKILL.md` | "add user auth", "create a payment endpoint" |
 | `status`, `report`, `what's loaded`, `diagnostic`, `context` | `.claude/skills/context-report/SKILL.md` | "what's loaded?", "show toolkit status" |
 | `audit claude.md`, `claude.md audit`, `is claude.md still good`, `claude.md stale`, `memory rot`, `claude.md quality` | `.claude/skills/claude-md-audit/SKILL.md` | "audit CLAUDE.md", "is CLAUDE.md still good?" |
 | `capture claude.md`, `update claude.md`, `save what we learned`, `session learnings`, `remember this for next time`, `revise claude.md` | `.claude/skills/claude-md-capture/SKILL.md` | "save what we learned to CLAUDE.md", "update CLAUDE.md with this session" |
+| `promote lesson`, `share lesson` | `.claude/skills/promote-lesson/SKILL.md` | "promote this lesson to the team", "share that lesson" |
+| `hand off`, `handoff`, `save state`, `snapshot session` | `.claude/skills/handoff/SKILL.md` | "hand off to a teammate", "save state before I stop" |
 | `setup`, `bootstrap`, `init`, `initialize`, `first time`, `prepare repo`, `audit`, `architecture`, `principles` | `/mtk-setup` (direct the user) | "set up this repo", "audit this repo" |
 | `help`, `commands`, `what can you do` | (print help below) | "help", "what commands are there?" |
 
@@ -127,6 +148,7 @@ MTK — two entry points:
   /mtk-setup                     → first-time setup (bootstrap + audit)
   /mtk-setup --audit             → re-run architecture audit
   /mtk-setup --merge             → merge multi-repo audits
+  /mtk-setup --update-guidelines → bump the pinned coding-guidelines SHA
 
   /mtk <description>             → everything else:
     /mtk review before commit      → pre-commit security review

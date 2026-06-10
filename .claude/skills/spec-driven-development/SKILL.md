@@ -145,7 +145,6 @@ digraph spec_flow {
    - Open questions
    - **Requirements** — every requirement-bearing bullet uses EARS notation (see `## Requirements Format (EARS)` below). Run the ANT self-check before continuing.
 8. Run an elegance check: reduce file count, new abstractions, and moving parts if a simpler design exists.
-8a. **EARS + ANT lint.** Run `bash scripts/lint-ears.sh docs/specs/<file>.md` after persisting the spec (step 9). Zero violations required before handing to the approval gate. If the script is absent (older repos), at minimum eyeball the Requirements section against the rules in `## Requirements Format (EARS)`.
 8b. **Claude-Ready (INVEST+C) check.** Score the draft against
    `.claude/references/claude-ready-checklist.md`. The +C section is hard —
    any failing item among +C #1..#16 must be fixed before the spec leaves
@@ -175,7 +174,12 @@ digraph spec_flow {
      - Emit one line before writing: `Writing spec → docs/specs/<final-filename>.md` so the engineer can confirm the version chosen.
    - **Also emit a machine-parseable sidecar** at `docs/specs/<final-filename>.json` with the schema in the next section. This sidecar drives `spec-drift-detection` after implementation.
    - This enables session recovery, human review outside chat, and reuse across sessions.
-   - Add `docs/specs/` to `.gitignore` if not already present — specs are working artifacts, not committed deliverables.
+   - Ignore working deltas only: add `docs/specs/*` to `.gitignore` with the
+     negations `!docs/specs/baseline/` and `!docs/specs/baseline/**` so the
+     baseline stays tracked. Per-feature delta specs are working artifacts;
+     the baseline (`docs/specs/baseline/`) and its audit trail are committed
+     (see `.claude/references/delta-spec-model.md`).
+9.5. **EARS + ANT lint.** Run `bash scripts/lint-ears.sh docs/specs/<file>.md` on the just-persisted spec. Zero violations required before handing to the approval gate. If the script is absent (older repos), at minimum eyeball the Requirements section against the rules in `## Requirements Format (EARS)`.
 10. Always stop for approval before implementation. When invoked from the implement workflow, this means handing control back to Phase 2.5 approval gate (which uses `AskUserQuestion`). Do not silently continue to implementation.
 
 ## Requirements Format (EARS)
@@ -350,3 +354,6 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared table. Spec-spe
 - [ ] `security_impact` honestly reflects touched trust boundaries (not `none`
       if auth / payments / audit / secrets / PII / IAM are involved)
 - [ ] `bash scripts/lint-ears.sh <spec.md>` returns 0 (EARS + ANT clean)
+- [ ] A Constitution Check section is present in the spec
+- [ ] Claude-Ready +C score > 13/16 recorded (step 8b)
+- [ ] `prior-work-check` ran with no BLOCK verdict (step 8c)

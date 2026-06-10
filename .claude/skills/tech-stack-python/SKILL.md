@@ -47,7 +47,7 @@ How `setup-bootstrap` detects this stack in a repository:
 
 Detection command:
 ```bash
-find . -maxdepth 2 -name "pyproject.toml" -o -name "setup.py" -o -name "requirements.txt" -o -name "Pipfile" 2>/dev/null | head -3
+find . -maxdepth 2 \( -name "pyproject.toml" -o -name "setup.py" -o -name "requirements.txt" -o -name "Pipfile" \) 2>/dev/null | head -3
 ```
 
 ## ORM & Data Layer Guidance
@@ -139,6 +139,7 @@ These files are loaded by commands and review agents when the active stack is `p
 - `.claude/references/python/fastapi-patterns.md` — FastAPI/Django patterns
 - `.claude/references/python/testing-supplement.md` — pytest patterns, fixtures, mocking
 - `.claude/references/python/performance-supplement.md` — async, connection pooling, profiling
+- `.claude/references/python/analyzer-config.md` — recommended ruff rules and mypy strict settings
 - `docs/recommended-tooling/python.md` — Recommended MCPs / plugins / editor integrations for Python
 
 ## Settings Additions
@@ -194,8 +195,8 @@ These bash commands are used by `setup-audit.md` when auditing a Python reposito
 ### Project Structure
 ```bash
 # Project metadata
-find . -maxdepth 2 -name "pyproject.toml" -o -name "setup.py" -o -name "setup.cfg" 2>/dev/null
-find . -maxdepth 2 -name "requirements*.txt" -o -name "Pipfile" -o -name "poetry.lock" 2>/dev/null
+find . -maxdepth 2 \( -name "pyproject.toml" -o -name "setup.py" -o -name "setup.cfg" \) 2>/dev/null
+find . -maxdepth 2 \( -name "requirements*.txt" -o -name "Pipfile" -o -name "poetry.lock" \) 2>/dev/null
 # Python version
 cat .python-version 2>/dev/null
 grep -E "python_requires|python =" pyproject.toml setup.py setup.cfg 2>/dev/null | head -5
@@ -220,7 +221,7 @@ grep -rl "marshmallow\|Schema" --include="*.py" | head -10
 # Async
 grep -rl "async def\|await\|asyncio" --include="*.py" | head -10
 # Type checking
-find . -name "mypy.ini" -o -name "pyrightconfig.json" 2>/dev/null
+find . \( -name "mypy.ini" -o -name "pyrightconfig.json" \) 2>/dev/null
 grep -E "mypy|pyright" pyproject.toml setup.cfg 2>/dev/null | head -5
 ```
 
@@ -248,9 +249,9 @@ grep -rl "import boto3\|from boto3" --include="*.py" | head -10
 # Lambda handlers
 grep -rl "def lambda_handler\|def handler" --include="*.py" | head -5
 # Docker
-find . -name "Dockerfile" -o -name "docker-compose*" -o -name ".dockerignore"
+find . \( -name "Dockerfile" -o -name "docker-compose*" -o -name ".dockerignore" \)
 # IaC
-find . -name "*.tf" -o -name "serverless.yml" -o -name "cdk.json" 2>/dev/null | head -10
+find . \( -name "*.tf" -o -name "serverless.yml" -o -name "cdk.json" \) 2>/dev/null | head -10
 # Messaging
 grep -rl "celery\|kafka\|rabbitmq\|redis" --include="*.py" | head -10
 # Secrets
@@ -260,10 +261,10 @@ grep -rl "boto3.client('secretsmanager')\|hvac\|os.environ" --include="*.py" | h
 ### Naming Conventions
 ```bash
 # Sample router/view files
-find . -name "*router*.py" -o -name "*views*.py" -not -path "*/.venv/*" | head -10
+find . \( -name "*router*.py" -o -name "*views*.py" \) -not -path "*/.venv/*" | head -10
 find . -name "*handler*.py" -not -path "*/.venv/*" -not -path "*test*" | head -10
 # Sample model files
-find . -name "models.py" -o -name "*model*.py" -not -path "*/.venv/*" -not -path "*test*" | head -10
+find . \( -name "models.py" -o -name "*model*.py" \) -not -path "*/.venv/*" -not -path "*test*" | head -10
 ```
 
 ### Testing Patterns
@@ -287,7 +288,7 @@ grep -rl "testcontainers\|pytest-django\|pytest-postgresql" --include="*.py" | h
 ```bash
 # Settings / config
 grep -rl "from pydantic_settings\|BaseSettings\|os.environ.get" --include="*.py" | head -10
-find . -name "settings.py" -o -name "config.py" -o -name ".env.example" -not -path "*/.venv/*" | head -10
+find . \( -name "settings.py" -o -name "config.py" -o -name ".env.example" \) -not -path "*/.venv/*" | head -10
 # Logging
 grep -rl "import logging\|getLogger\|loguru\|structlog" --include="*.py" | head -10
 ```

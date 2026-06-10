@@ -116,7 +116,7 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared table. Correcti
 
 ## Red Flags
 
-- Correction received but not captured in lessons.md
+- Correction received but not captured in the chosen destination (`.claude/lessons/personal.md` or `tasks/lessons.md`)
 - Lesson captured without the "why" or "applies to" fields
 - Same correction given more than twice without proposing a CLAUDE.md rule
 - Correction acknowledged performatively but not applied to current work
@@ -124,7 +124,7 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared table. Correcti
 ## Verification
 
 - [ ] The correction was acknowledged without performative agreement
-- [ ] A lesson entry was added to tasks/lessons.md
+- [ ] A lesson entry was added to the chosen destination (`.claude/lessons/personal.md` or `tasks/lessons.md`)
 - [ ] The lesson includes: correction, rule, why, and applies-to
 - [ ] Current work was adjusted to follow the correction
 - [ ] Repeated patterns were flagged for CLAUDE.md promotion

@@ -30,6 +30,8 @@ git diff --stat HEAD 2>/dev/null || git diff --stat --cached 2>/dev/null || echo
 
 Review changed code as an adversary, not a collaborator. The review must prioritize real risks over style and decide whether the change improves overall code health.
 
+This skill is read-only except for workflow-artifact recording via `scripts/workflow-artifact.sh` — a deliberate exception to the S2.20 read-only guidance for review skills.
+
 ## When To Use
 
 - After implementation and verification
@@ -43,6 +45,16 @@ Review changed code as an adversary, not a collaborator. The review must priorit
 
 ## Workflow
 
+### CI Context (if available)
+
+If reviewing a PR or branch with CI runs, check CI status before starting the numbered steps:
+1. Run `bash hooks/ci-status.sh` to get check run results
+2. If CI failed, note which checks failed — the review should focus on those areas
+3. If CI passed, note any warnings from the build output (`.mtk/analyzer-output.json`)
+4. If `hooks/ci-status.sh` is not available or `gh` is not installed, proceed without CI context
+
+### Review Steps
+
 1. Load standards:
    - `CLAUDE.md`
    - `.claude/tech-stack` to identify the active stack, then `.claude/skills/tech-stack-{stack}/SKILL.md` for stack-specific reference paths
@@ -52,15 +64,6 @@ Review changed code as an adversary, not a collaborator. The review must priorit
    - `.claude/references/performance-checklist.md`
    - If a domain supplement exists (e.g. `.claude/references/domain-finance.md`), load it for domain-specific rationalizations
 2. Read the behavioral diff if provided.
-
-### CI Context (if available)
-
-If reviewing a PR or branch with CI runs, check CI status:
-1. Run `bash hooks/ci-status.sh` to get check run results
-2. If CI failed, note which checks failed — the review should focus on those areas
-3. If CI passed, note any warnings from the build output (`.mtk/analyzer-output.json`)
-4. If `hooks/ci-status.sh` is not available or `gh` is not installed, proceed without CI context
-
 3. Review across these axes:
    - correctness — including **stub detection** per `.claude/references/stub-detection.md` (empty bodies, `NotImplementedException`, suspect `return null`/`[]`/`{}`, mock data in production paths, unwired handlers)
    - readability and simplicity
@@ -100,7 +103,7 @@ If reviewing a PR or branch with CI runs, check CI status:
 
    **Auto-fail rules:**
    - Any dimension < 7 → verdict `NEEDS_CHANGES` regardless of finding count.
-   - Uniform scores across all five dimensions → review rejected as **non-discriminating**. Vary the scores or revisit; at least one must differ.
+   - Uniform scores across all five dimensions → require a one-line written justification per dimension explaining why that score genuinely applies.
    - A score without a `file:line` evidence quote → treated as 0 (auto-fail).
 
    **Iteration cap.** If a dimension has scored < 7 in two prior iterations and a third iteration would also score it < 7, **stop and escalate to a human**. Automated remediation has stopped converging. Report the dimension, iteration count, and remaining findings.

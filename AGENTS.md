@@ -60,6 +60,14 @@ There are just two user-invocable skills:
 | implement | brainstorm *(optional)* → context → spec *(+ JSON sidecar)* → task breakdown → TDD → source-driven impl → **spec-drift-detection** → two-stage review → simplification |
 | pre-commit-review | static linter pass *(confidence 100)* → AI review *(confidence-scored)*, merged via `.claude/references/review-finding-schema.md` |
 | context-report | diagnostic snapshot of active MTK configuration |
+| repo-health | 12-asset AI-readiness scorecard → PR review mining (last N merged PRs) |
+| mtk-doctor | install health check across core files, components, hooks, integrity — PASS/WARN/FAIL, `--json`, `--fix` |
+| toolkit-health | usage stats and adoption signals from analytics.json, with anomaly diagnostics |
+| research-context | cited external research brief (library best-practices, version-specific behavior) grounded in named project files |
+| claude-md-audit | CLAUDE.md quality-rubric audit → minimal append-only diffs |
+| claude-md-capture | end-of-session capture of discovered commands/gotchas into CLAUDE.md, apply only with approval |
+| pr-review-mining | mine recurring reviewer-feedback phrases from merged PRs as suggest-only [MINED:feedback] candidates |
+| promote-lesson | promote a personal lesson from `.claude/lessons/personal.md` to team-wide `tasks/lessons.md` |
 
 **Updates:** MTK ships as a Claude Code plugin — use the plugin manager to upgrade. No in-repo update command.
 
@@ -88,6 +96,10 @@ context bloat.
 **Model-invoked skills** (not user-invocable — loaded automatically when triggered):
 - `handoff` — capture session state when context is tight or work is paused mid-stream
 - `correction-capture` — capture engineer corrections as reusable lessons
+- `prior-work-check` — before approving a spec or multi-file work, confirm no existing skill/helper/handler/lesson already covers it
+- `subagent-implementation` — replaces incremental-implementation for 3+ batches, 6+ files, or non-none security_impact; one fresh implementer subagent per batch
+- `code-simplification` — after a verified fix/feature, reduce complexity and remove dead code without changing behavior
+- `workflow-artifacts` — durable workflow state under `.mtk/workflows/` so orchestration survives compaction, crash, and handoff
 
 ---
 

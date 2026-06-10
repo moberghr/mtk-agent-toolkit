@@ -12,7 +12,7 @@ user-invocable: false
 
 ## Overview
 
-Wraps `scripts/pr-review-mine.sh` (fetches merged PR review threads via `gh`, clusters repeated reviewer-feedback phrases). Output is always advisory — phrases tagged `[MINED:feedback]` and never auto-edited into `architecture-principles.md`. Pattern borrowed from `github.com/johnpapa/ai-ready`.
+Wraps `scripts/pr-review-mine.sh` (fetches merged PR review threads via `gh`, clusters repeated reviewer-feedback phrases). Output is always advisory — phrases tagged `[MINED:feedback]` and never auto-edited into `architecture-principles.md`.
 
 ## When To Use
 

@@ -4,6 +4,7 @@ description: One-stop setup entry point that bootstraps a repo or re-runs archit
 type: skill
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
 argument-hint: [--audit|--audit-only] [--merge] [--preview] [--non-interactive] [--update-guidelines]
+user-invocable: true
 ---
 
 # MTK Setup — Unified Entry Point for Bootstrap and Audit
@@ -62,7 +63,7 @@ Flag combination rules:
 2. Read pinned SHA from `.claude/manifest.json` (`coding-guidelines.sha`). If identical, report "Already at HEAD ($SHA). Nothing to do." and exit.
 3. For each file listed in `coding-guidelines.files`, fetch at the new SHA and compute sha256:
    ```bash
-   curl -sL "https://raw.githubusercontent.com/moberghr/coding-guidelines/$CURRENT_SHA/$PATH" | sha256sum | awk '{print $1}'
+   curl -sL "https://raw.githubusercontent.com/moberghr/coding-guidelines/$CURRENT_SHA/$FILE_PATH" | sha256sum | awk '{print $1}'
    ```
 4. Print a diff summary: old SHA → new SHA, plus any sha256 changes per file.
 5. Update `.claude/manifest.json` in place (update `coding-guidelines.sha` and each `coding-guidelines.files.<path>` value).

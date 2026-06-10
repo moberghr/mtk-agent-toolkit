@@ -1,6 +1,6 @@
 {
-  "version": "7.13.0",
-  "updated": "2026-06-09",
+  "version": "7.13.1",
+  "updated": "2026-06-10",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
   "coding-guidelines": {
@@ -614,6 +614,12 @@
       "target": "tests/pressure-tests/code-review-pressure.md",
       "action": "sync",
       "description": "Adversarial pressure test for code-review skill"
+    },
+    "tests/pressure-tests/pre-commit-review-pressure.md": {
+      "source": "tests/pressure-tests/pre-commit-review-pressure.md",
+      "target": "tests/pressure-tests/pre-commit-review-pressure.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for pre-commit-review skill"
     },
     "tests/pressure-tests/subagent-implementation-pressure.md": {
       "source": "tests/pressure-tests/subagent-implementation-pressure.md",
@@ -1493,6 +1499,12 @@
       "target": "tests/pressure-tests/plan-gap-reviewer-pressure.md",
       "action": "sync",
       "description": "Pressure tests for plan-gap-reviewer's anti-anchoring contract"
+    },
+    "scripts/lint-skill-bash.sh": {
+      "source": "scripts/lint-skill-bash.sh",
+      "target": "scripts/lint-skill-bash.sh",
+      "action": "sync",
+      "description": "Deterministic lint for fenced bash blocks inside skills — flags grep brace-glob includes, PATH clobbering, and ungrouped find -o expressions"
     },
     "scripts/run-fixtures.sh": {
       "source": "scripts/run-fixtures.sh",

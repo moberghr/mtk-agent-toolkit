@@ -62,6 +62,19 @@
     },
     "assumptions": { "type": "array", "items": { "type": "string" } },
     "risks": { "type": "array", "items": { "type": "string" } },
+    "baseline_area": {
+      "type": "string",
+      "description": "Slice/subsystem this delta belongs to (e.g. payments). Required to participate in the per-area baseline at docs/specs/baseline/ — see .claude/references/delta-spec-model.md."
+    },
+    "delta": {
+      "type": "object",
+      "description": "Optional explicit delta vs the area baseline. If absent, scripts/spec-archive.sh folds the whole change_manifest and public_contracts into the baseline; removals are never inferred and must be listed in delta.removes.",
+      "properties": {
+        "adds": { "type": "array", "items": { "type": "string" } },
+        "modifies": { "type": "array", "items": { "type": "string" } },
+        "removes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
 
     "plan": {
       "type": "object",

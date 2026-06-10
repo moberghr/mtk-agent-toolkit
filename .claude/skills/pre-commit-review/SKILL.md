@@ -69,21 +69,21 @@ check engineers should run before every commit.
    `category: "ripple"`, `severity: "warning"`, `source: "linter"`,
    `confidence: 90` finding. Ripples never block the commit on their own —
    they exist to make the author aware that staged changes will affect
-   downstream packages. Pattern borrowed from `github.com/johnpapa/ai-ready`.
+   downstream packages.
 5. Run the AI review pass on the same diff to catch issues the linter can't
    reach (design, intent, context-sensitive rules). AI findings use
    `source: "ai"` and their own confidence scores per the rubric.
 6. Combine linter + AI findings into a single schema-conformant output.
 
-## Check ONLY These (from CLAUDE.md §1):
+## Check ONLY These (from `.claude/rules/security.md` §1.x and the generated `pre-commit-review-list.md` (tech-stack items); if neither exists, use the fallback list below):
 
 - **Secrets**: Any hardcoded credentials, connection strings with passwords, API keys, tokens?
-- **SQL Injection**: Any string-concatenated SQL? Must be parameterized only (EF Core is fine).
+- **SQL Injection**: Any string-concatenated SQL? Must be parameterized only (EF Core is fine — [.NET example]).
 - **PII in Logs**: Any PII (names, emails, account numbers) in log statements or exception messages?
-- **Auth Missing**: Any new endpoints without `[Authorize]` or `RequireAuthorization()`?
-- **Audit Missing**: Any state-changing operations on financial data without audit log writes?
-- **Secrets in Env**: Any connection strings or passwords hardcoded in `appsettings.json` or CDK environment vars?
-- **IAM Blast Radius**: Any new IAM grants with `*` resource that should be scoped?
+- **Auth Missing**: Any new endpoints without `[Authorize]` or `RequireAuthorization()`? [.NET example]
+- **Audit Missing**: Any state-changing operations on financial data without audit log writes? [finance-domain example]
+- **Secrets in Env**: Any connection strings or passwords hardcoded in `appsettings.json` or CDK environment vars? [.NET/AWS example]
+- **IAM Blast Radius**: Any new IAM grants with `*` resource that should be scoped? [AWS example]
 - **Dependency Intake**: New third-party dep added — does it pass the 5-criteria gate in `.claude/references/dependency-intake-checklist.md`? (Two `Poor` ratings block.)
 
 ## COMMON RATIONALIZATIONS — Do Not Fall For These
@@ -121,9 +121,9 @@ Keep the table tight. This is a pre-commit gate, not a full review.
 When verdict is `PASS` **and** `findings[]` is empty, skip the table and JSON block entirely. Instead emit a single compact summary:
 
 ```
-✅ Pre-commit review passed — 0 findings across 7 rules ({N} files, {A}+/{D}−)
+✅ Pre-commit review passed — 0 findings across 8 rules ({N} files, {A}+/{D}−)
 
-Checked: secrets · SQL injection · PII in logs · auth · audit trail · env secrets · IAM scope
+Checked: secrets · SQL injection · PII in logs · auth · audit trail · env secrets · IAM scope · dependency intake
 ```
 
 Replace `{N}`, `{A}`, `{D}` with actual file count, additions, and deletions from the diff.

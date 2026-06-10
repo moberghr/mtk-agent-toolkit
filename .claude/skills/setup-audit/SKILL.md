@@ -36,9 +36,11 @@ You are a senior architect performing an architectural audit of this repository.
 
 Before regenerating anything, resolve whether this is a re-run and whether a previous template cache exists.
 
-1. **Read current manifest version:**
+1. **Read current manifest version.** The full manifest lives at the plugin root (marketplace installs have no project-local `.claude/manifest.json`); target repos carry the slim `.claude/mtk-version.json` written by `setup-bootstrap`:
    ```bash
-   CURRENT_VERSION=$(python3 -c 'import json; print(json.load(open(".claude/manifest.json"))["version"])')
+   PM="${CLAUDE_PLUGIN_ROOT:-.}/.claude/manifest.json"
+   [ -f "$PM" ] || PM=".claude/mtk-version.json"
+   CURRENT_VERSION=$(python3 -c "import json; print(json.load(open('$PM'))['version'])")
    ```
 
 2. **Read previous version from existing CLAUDE.md footer:**
@@ -120,7 +122,7 @@ At end of STEP -1, print a re-run summary:
 
 FILE                                           CLASSIFICATION    RESULT
 .claude/references/architecture-principles.md  engineer-edited   MERGED (no conflicts)
-CLAUDE.md                                      stock             OVERWRITE
+CLAUDE.md                                      protected         SKIP
 .claude/rules/security.md                      protected         SKIP
 ```
 
@@ -201,10 +203,10 @@ git branch -a | head -20
 find . -name "pull_request_template*"
 
 # CI/CD
-find . -name "*.yml" -o -name "*.yaml" | grep -i "github\|pipeline\|ci\|cd\|workflow\|azure\|jenkins"
+find . \( -name "*.yml" -o -name "*.yaml" \) | grep -i "github\|pipeline\|ci\|cd\|workflow\|azure\|jenkins"
 
 # Docker
-find . -name "Dockerfile" -o -name "docker-compose*" -o -name ".dockerignore"
+find . \( -name "Dockerfile" -o -name "docker-compose*" -o -name ".dockerignore" \)
 ```
 
 ## STEP 2.5: Extract Codebase Conventions
@@ -216,11 +218,11 @@ Run these convention extraction scans:
 ### Naming Conventions
 ```bash
 # Handler/controller naming pattern (e.g., {Verb}{Entity}Handler, {Entity}Controller)
-find . -name "*Handler.cs" -o -name "*Controller.cs" -o -name "*handler.py" -o -name "*controller.py" -o -name "*Handler.ts" -o -name "*Controller.ts" 2>/dev/null | head -20
+find . \( -name "*Handler.cs" -o -name "*Controller.cs" -o -name "*handler.py" -o -name "*controller.py" -o -name "*Handler.ts" -o -name "*Controller.ts" \) 2>/dev/null | head -20
 # Service naming pattern
-find . -name "*Service.cs" -o -name "*service.py" -o -name "*Service.ts" 2>/dev/null | head -20
+find . \( -name "*Service.cs" -o -name "*service.py" -o -name "*Service.ts" \) 2>/dev/null | head -20
 # Test naming pattern
-find . -name "*Tests.cs" -o -name "*Test.cs" -o -name "*_test.py" -o -name "*.test.ts" -o -name "*.spec.ts" 2>/dev/null | head -20
+find . \( -name "*Tests.cs" -o -name "*Test.cs" -o -name "*_test.py" -o -name "*.test.ts" -o -name "*.spec.ts" \) 2>/dev/null | head -20
 ```
 
 ### Folder Structure Conventions
@@ -228,7 +230,7 @@ find . -name "*Tests.cs" -o -name "*Test.cs" -o -name "*_test.py" -o -name "*.te
 # Feature/slice folder structure
 find . -type d -maxdepth 4 -not -path "*/node_modules/*" -not -path "*/bin/*" -not -path "*/obj/*" -not -path "*/.git/*" 2>/dev/null | head -40
 # Common subfolder patterns within features
-find . -type d -name "Validators" -o -name "Handlers" -o -name "Models" -o -name "DTOs" -o -name "Events" -o -name "Services" 2>/dev/null | head -20
+find . -type d \( -name "Validators" -o -name "Handlers" -o -name "Models" -o -name "DTOs" -o -name "Events" -o -name "Services" \) 2>/dev/null | head -20
 ```
 
 ### DI Registration Patterns
@@ -484,7 +486,17 @@ When `fit == "fallback"`, replace the symbol evidence table with:
 
 The provenance section is not optional. If you produced principles without evidence from the repomap, you either hallucinated or the repomap fell back — either way, disclosure is required.
 
-## STEP 3.6.5: Stamp + verify generated docs (MANDATORY)
+## STEP 3.6: PR review mining (optional, with --mine-prs)
+
+When `--mine-prs` is passed (or the engineer asks to seed principles from PR feedback), run:
+
+```bash
+bash scripts/pr-review-mine.sh --prs 10
+```
+
+Each candidate phrase is presented to the engineer for per-line approval. Approved phrases are appended to `.claude/references/architecture-principles.md` with the tag `[MINED:feedback]` and the PR numbers cited as evidence. Untagged or auto-promoted mining is forbidden — see `.claude/references/pr-mining-patterns.md`. Fails soft when `gh` is missing or unauthenticated.
+
+## STEP 3.7: Stamp + verify generated docs (MANDATORY)
 
 Before reporting completion, every generated doc (`architecture-principles.md`, `conventions.md`) must be (a) stamped with the audit SHA and (b) verified against the codebase. See `.claude/references/audit-grounding.md` for the full ruleset.
 
@@ -534,16 +546,6 @@ The verify pass also flags lines with branch names (`^(feat|fix|chore|docs|refac
 ### Terminology denylist
 
 The verify pass cross-references generated text against the denylist in `.claude/references/audit-grounding.md` §4 ("path alias" vs `baseUrl`, "HTML" vs JSX, "enum" vs typed object, etc.). Flagged lines appear in `weak-claims.json` with `reason: terminology-needs-review` — never auto-rewritten.
-
-## STEP 3.6: PR review mining (optional, with --mine-prs)
-
-When `--mine-prs` is passed (or the engineer asks to seed principles from PR feedback), run:
-
-```bash
-bash scripts/pr-review-mine.sh --prs 10
-```
-
-Each candidate phrase is presented to the engineer for per-line approval. Approved phrases are appended to `.claude/references/architecture-principles.md` with the tag `[MINED:feedback]` and the PR numbers cited as evidence. Untagged or auto-promoted mining is forbidden — see `.claude/references/pr-mining-patterns.md`. Fails soft when `gh` is missing or unauthenticated.
 
 ## STEP 4: Present Results
 

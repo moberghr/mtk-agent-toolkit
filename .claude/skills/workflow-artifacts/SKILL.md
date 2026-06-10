@@ -60,10 +60,15 @@ Orchestration state that lives only in chat is lost on compaction or restart. Th
    - If a single active workflow matches the requested type, offer resume.
    - If multiple, ask via `AskUserQuestion` which uuid to resume.
    - If none, init a new one.
-7. **Close the workflow.** At end of phase 7 (or earlier failure):
+7. **Close the workflow.** At end of phase 7:
    ```bash
    scripts/workflow-artifact.sh set "$MTK_WF_UUID" status=completed
    scripts/workflow-artifact.sh event "$MTK_WF_UUID" workflow_completed --data '{"summary":"<short>"}'
+   ```
+   On unrecoverable failure, close with the failure pair instead:
+   ```bash
+   scripts/workflow-artifact.sh set "$MTK_WF_UUID" status=failed
+   scripts/workflow-artifact.sh event "$MTK_WF_UUID" workflow_failed --data '{"reason":"<short>"}'
    ```
 
 ## Viewing Progress (Dashboard)
@@ -76,7 +81,7 @@ scripts/workflow-dashboard.sh --watch    # regenerate + serve over http://127.0.
 scripts/workflow-dashboard.sh --watch 10 --port 9000   # custom interval/port
 ```
 
-The dashboard reads the same `{uuid}.json` + `{uuid}.events.jsonl` files this skill writes — it never mutates them, so it is safe to run during an active workflow. `--watch` regenerates on an interval and serves a static page (meta-refresh, no WebSocket) so a tech lead can watch a multi-batch run live. To share with non-CLI stakeholders, expose the served port with the `ngrok-expose` or `cfd` (Cloudflare Tunnel) skill — the script intentionally stays a self-contained static renderer and does not embed a tunnel. Requires `python3` (the same dependency the helper already uses).
+The dashboard reads the same `{uuid}.json` + `{uuid}.events.jsonl` files this skill writes — it never mutates them, so it is safe to run during an active workflow. `--watch` regenerates on an interval and serves a static page (meta-refresh, no WebSocket) so a tech lead can watch a multi-batch run live. To share with non-CLI stakeholders, expose the served port with any tunnel tool (ngrok, cloudflared, ...) — the script intentionally stays a self-contained static renderer and does not embed a tunnel. Requires `python3` (the same dependency the helper already uses).
 
 ## Rules
 

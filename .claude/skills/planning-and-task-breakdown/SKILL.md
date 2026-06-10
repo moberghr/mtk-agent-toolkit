@@ -50,7 +50,8 @@ Convert the approved plan into small, executable tasks that can be verified one 
      this batch, cited from the spec's Constitution Check (run
      `bash scripts/constitution-digest.sh` if absent).
      Each batch states which rules it must satisfy, not just what it builds —
-     so the implementer and `spec-drift-detection` (S1.15) check the same set.
+     recorded in the plan so the implementer and human reviewers see, per
+     batch, exactly which rules constrain it.
      An empty list is allowed only with an explicit "no rule constrains this
      batch" note.
 4. Prefer vertical slices where possible so each batch leaves the system in a working state.

@@ -33,7 +33,7 @@ Git worktrees provide isolated workspaces without the overhead of multiple clone
 ## Workflow
 
 1. **Determine worktree location:**
-   - Check for `.worktrees/` or `worktrees/` directories in the repo
+   - Check for `.worktrees/`, `worktrees/`, or `.claude/worktrees/` (Claude Code's native worktree location) directories in the repo
    - Check `CLAUDE.md` for worktree preferences
    - If neither exists, ask the engineer where to place worktrees
    - Default: `.worktrees/` in the repo root
@@ -47,7 +47,7 @@ Git worktrees provide isolated workspaces without the overhead of multiple clone
    ```bash
    git worktree add <path> -b <branch-name>
    ```
-   - Branch naming: `feature/<slug>` or `fix/<slug>` matching the task
+   - Branch naming: `feat/<slug>` or `fix/<slug>` matching the task (S4.1)
    - Announce: "Creating isolated worktree at `<path>` on branch `<branch-name>`"
 
 4. **Install dependencies:**
@@ -90,7 +90,7 @@ git branch -d <branch-name>  # only if merged
 - Always install dependencies before running tests.
 - Always run baseline tests before starting work.
 - Never force-delete a worktree without explicit engineer confirmation.
-- Resolve the lessons path (`tasks/lessons.md`) using the main worktree when working in a worktree.
+- Resolve the lessons path (`tasks/lessons.md`) using the main worktree when working in a worktree (use `git rev-parse --git-common-dir` to find the main worktree root).
 
 ## Common Rationalizations
 

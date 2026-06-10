@@ -2,6 +2,26 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.13.1] - 2026-06-10
+
+### Fixed — Skill-audit remediation (full-toolkit consistency pass)
+
+A five-reviewer audit of all 39 skills surfaced ~50 verified findings; this release fixes all of them.
+
+- **Routing contract:** `subagent-implementation` now also dispatches on rigor score ≥ 8 (HIGH/MAX), eliminating the dispatch ping-pong with `implement` Phase 3. AUTO_PROCEED plan-trust decisions are recorded via the `gate` subcommand so `gates.plan_trust_gate` no longer sticks at `pending`.
+- **`/mtk` router:** graph and route table now agree on precedence ("audit CLAUDE.md" → `claude-md-audit`); new routes for `mtk-doctor`, `promote-lesson`, `handoff`, and `pr-review-mining` (previously orphaned); `toolkit-health` keywords narrowed to usage/stats/analytics/adoption.
+- **Embedded bash:** fixed the brace-glob grep in `prior-work-check` (its core duplicate-detection query silently matched nothing), a `$PATH`-clobbering loop variable in `mtk-setup`, dead code and an incomplete hook-event grep in `context-report`, and 30 `find -o` precedence bugs across setup-audit and the three tech-stack skills.
+- **Spec model:** `docs/specs/baseline/` is now committed (gitignore covers working deltas only), matching the delta-spec model and repo-health asset #5; `handoff.schema.json` gains `baseline_area`/`delta`; EARS lint moved after spec persistence; spec verification checklist gains the Constitution/Claude-Ready/prior-work gates.
+- **Marketplace installs:** `setup-audit` and `setup-bootstrap` resolve the manifest via `${CLAUDE_PLUGIN_ROOT}` (with `mtk-version.json` fallback) instead of project-relative reads that broke re-run detection on client installs; setup-audit's re-run example no longer shows CLAUDE.md being overwritten; mining now precedes the verify-claims pass.
+- **`pre-commit-review`:** clean-pass template counts all 8 rules; check source points at generated `security.md`/`pre-commit-review-list.md` with the hardcoded items as labeled fallback; new pressure test (S2.7 gap closed).
+- **Stale meta-layer:** `writing-skills` and `docs/skill-anatomy.md` caught up with S2 (type field, triggers index rebuild, toolsets, S2.13 pointer, reciprocal-reference check); S2.2 now codifies the phase-structured anatomy the validator already accepted; new S2.25 documents advisory `trigger:`/`skip_when:` keys; CLAUDE.md and AGENTS.md routing brought current.
+- **Misc:** CLAUDE.md line-budget unified at 120 (context-engineering said 200), `feat/` branch prefix in using-git-worktrees, CSO single-sentence descriptions across six skills, false cross-skill integration claims corrected (research-context consumers, planning↔drift governing-constraints, prior-work-check "Phase 1.5"), residual third-party attributions removed, `analyzer-config.md` added to all three tech-stack Reference Files lists.
+
+### Added
+
+- **`scripts/lint-skill-bash.sh`** — lints fenced bash inside skills for three deterministic bug classes (grep brace-globs, `PATH` clobbering, ungrouped `find -o`); wired into `validate-toolkit.sh` as a fatal gate, plus a non-fatal multi-sentence-description WARN.
+- **`tests/pressure-tests/pre-commit-review-pressure.md`** — adversarial scenarios for the pre-commit security gate.
+
 ## [7.13.0] - 2026-06-09
 
 ### Added — Pre-implementation consistency, scaled ceremony, release integrity

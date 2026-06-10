@@ -1,6 +1,6 @@
 ---
 name: context-report
-description: Diagnostic snapshot of active MTK configuration — tech stack, references, linter packs, domains, hooks, and rules
+description: Use when the engineer asks what MTK configuration is active — reports tech stack, references, linter packs, domains, hooks, and rules.
 type: skill
 license: MIT
 compatibility:
@@ -127,7 +127,7 @@ echo "--- Hooks ---"
 for hook_file in .claude/settings.json hooks/hooks.json; do
   if [ -f "$hook_file" ]; then
     echo "  $hook_file:"
-    grep -oE '"(PreToolUse|PostToolUse|PostCompact|Stop|SessionStart)"' "$hook_file" 2>/dev/null | sort -u | sed 's/^/    event: /' || echo "    (no hooks)"
+    grep -oE '"(PreToolUse|PostToolUse|PreCompact|PostCompact|Stop|SessionStart|UserPromptSubmit)"' "$hook_file" 2>/dev/null | sort -u | sed 's/^/    event: /' || echo "    (no hooks)"
   fi
 done
 
@@ -206,7 +206,6 @@ echo "  (actual load depends on path-scoped matching in context-engineering)"
 echo "--- Active Specs ---"
 if [ -d docs/specs ]; then
   # Group by slug (strip date prefix, -vN suffix, and extension)
-  declare -A slugs 2>/dev/null || true
   for f in docs/specs/*.md; do
     [ -f "$f" ] || continue
     base="$(basename "$f" .md)"
@@ -230,7 +229,7 @@ if [ -d docs/specs ]; then
     else
       version_marker=" v1"
     fi
-    printf "    slug=%-35s  file=%s\n" "$slug" "$(basename "$f")"
+    printf "    slug=%-35s  version=%-4s  file=%s\n" "$slug" "${version_marker# }" "$(basename "$f")"
   done
 else
   echo "  (no docs/specs/ directory)"

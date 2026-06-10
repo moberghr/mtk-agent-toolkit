@@ -49,7 +49,7 @@ Tech stack skills have `type: tech-stack` in their frontmatter and `tech-stack-{
 ```mermaid
 graph TD
     subgraph Required
-        FM["--- frontmatter ---<br/>name · description"]
+        FM["--- frontmatter ---<br/>name · description · type"]
         OV["## Overview"]
         WTU["## When To Use"]
         WF["## Workflow"]

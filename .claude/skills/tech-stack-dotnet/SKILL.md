@@ -41,7 +41,7 @@ How `setup-bootstrap` detects this stack in a repository:
 
 Detection command:
 ```bash
-find . -name "*.sln" -o -name "*.slnx" -o -name "*.csproj" -not -path "*/bin/*" -not -path "*/obj/*" 2>/dev/null | head -5
+find . \( -name "*.sln" -o -name "*.slnx" -o -name "*.csproj" \) -not -path "*/bin/*" -not -path "*/obj/*" 2>/dev/null | head -5
 ```
 
 ## ORM & Data Layer Guidance
@@ -136,6 +136,7 @@ These files are loaded by commands and review agents when the active stack is `d
 - `.claude/references/dotnet/mediatr-slice-patterns.md` — MediatR/CQRS slice conventions
 - `.claude/references/dotnet/testing-supplement.md` — .NET-specific testing guidance (EF Core providers)
 - `.claude/references/dotnet/performance-supplement.md` — .NET-specific performance rules
+- `.claude/references/dotnet/analyzer-config.md` — Recommended Roslyn analyzer packages and `.editorconfig` rules
 - `docs/recommended-tooling/dotnet.md` — Recommended MCPs / plugins / editor integrations for .NET
 
 ## Settings Additions
@@ -195,7 +196,7 @@ grep -rh "PackageReference" --include="*.csproj" | sed 's/.*Include="//' | sed '
 ```bash
 # MediatR / CQRS
 grep -rl "IRequest\|IRequestHandler\|IMediator" --include="*.cs" | head -20
-find . -path "*/Commands/*" -o -path "*/Queries/*" | head -20
+find . \( -path "*/Commands/*" -o -path "*/Queries/*" \) | head -20
 # Result pattern
 grep -rl "Result<\|Result\.Success\|Result\.Failure" --include="*.cs" | head -10
 # Domain events
@@ -231,13 +232,13 @@ grep -rl "DataApiHelper\|IAmazonRDSDataService\|Dapper\|SqlCommand" --include="*
 # AWS services
 grep -rh "Amazon\.\|AWS\.\|AWSSDK" --include="*.cs" --include="*.csproj" | sort -u | head -20
 # CDK/IaC
-find . -name "*.csproj" -path "*cdk*" -o -name "*.csproj" -path "*Cdk*" | head -5
+find . -name "*.csproj" \( -path "*cdk*" -o -path "*Cdk*" \) | head -5
 # Lambda
 grep -rl "ILambdaContext\|FunctionHandler\|LambdaSerializer" --include="*.cs" | head -5
 # VPC/networking
 grep -rn "Vpc\|SubnetType\|SecurityGroup\|NatGateway" --include="*.cs" | head -10
 # Docker
-find . -name "Dockerfile" -o -name "docker-compose*"
+find . \( -name "Dockerfile" -o -name "docker-compose*" \)
 # SQS/SNS/messaging
 grep -rl "IAmazonSQS\|IAmazonSNS\|SendMessageAsync\|SQSEvent" --include="*.cs" | head -5
 # Secrets Manager

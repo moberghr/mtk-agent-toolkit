@@ -160,7 +160,7 @@ If the fetch fails (network restrictions), check if the file already exists. If 
 Check if `.claude/references/architecture-principles.md` exists.
 
 - **If it exists:** leave it alone — init respects prior architecture decisions.
-- **If it does NOT exist:** auto-generate it from the Step 2 audit findings using the same template as `/mtk-setup --audit` (descriptive audit of actual patterns, with "⚠️ Inconsistency" flags where the codebase disagrees with itself). No prompt — this is the one-time bootstrap.
+- **If it does NOT exist:** auto-generate it from the Step 2 audit findings using the same template as `/mtk-setup --audit` (descriptive audit of actual patterns, with "⚠️ Inconsistency" flags where the codebase disagrees with itself). No prompt — this is the one-time bootstrap. The inline generation must include the repomap evidence pass (setup-audit STEP 0.5) and the mandatory `## Provenance` section (setup-audit STEP 3.5) — if you cannot run those inline, delegate the generation to `setup-audit` instead of producing an unevidenced document.
 
 To refresh the file later as the architecture evolves, the engineer runs `/mtk-setup --audit` explicitly.
 
@@ -782,7 +782,8 @@ Layout:
 
 Implementation:
 ```bash
-VERSION=$(python3 -c 'import json; print(json.load(open(".claude/manifest.json"))["version"])')
+PM="${CLAUDE_PLUGIN_ROOT:-.}/.claude/manifest.json"
+VERSION=$(python3 -c "import json; print(json.load(open('$PM'))['version'])")
 CACHE_DIR=".claude/.mtk-cache/v${VERSION}"
 mkdir -p "$CACHE_DIR/rules" "$CACHE_DIR/references"
 # For each generated file, copy the pre-write version (not the on-disk edited one):
