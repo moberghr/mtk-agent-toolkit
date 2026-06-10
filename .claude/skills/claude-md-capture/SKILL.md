@@ -1,6 +1,6 @@
 ---
 name: claude-md-capture
-description: Capture learnings from the current session into CLAUDE.md — discovered commands, gotchas, env quirks, and patterns that would help future sessions. Reflect at the end of a session, propose minimal append-only additions, and apply only with approval. Use at the end of a session that surfaced context CLAUDE.md was missing.
+description: Use at the end of a session that surfaced context CLAUDE.md was missing — captures discovered commands, gotchas, and patterns as minimal append-only additions, applied only with approval.
 type: skill
 license: MIT
 compatibility:
@@ -138,7 +138,8 @@ Then ask: **"Apply these? (yes / partial / no)"**
 After explicit approval, apply with `Edit` (never `Write`). Append into the
 relevant section; never restructure. If the engineer approved "partial", apply
 only the named subset. If a personal item was chosen and `.claude.local.md` does
-not exist, create it (it is gitignored by `setup-bootstrap`).
+not exist, create it (it is gitignored by `setup-bootstrap` — verify it is
+listed in `.gitignore` before creating; add it if missing).
 
 ## Rules
 

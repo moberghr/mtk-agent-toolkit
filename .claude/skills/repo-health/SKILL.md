@@ -20,8 +20,6 @@ Single periodic command that combines:
 
 Writes the combined report to `.claude/repo-health-latest.md` (always) and `.claude/repo-health-latest.json` (with `--json`). Both files are gitignored.
 
-Patterns borrowed from `github.com/johnpapa/ai-ready` (scorecard + PR mining).
-
 ## When To Use
 
 - The engineer asks: "is this repo AI-ready?", "repo health", "readiness scorecard", "what should we improve?", "mine our PRs".

@@ -8,7 +8,7 @@ compatibility:
   - codex
 trigger: auth-change|secrets-change|audited-state|audit-trail|infrastructure|external-input
 skip_when: internal-refactoring|no-data-flow|no-boundary-change
-triggers: [auth, password, token, jwt, secret, oauth, credentials, encryption, pii, hardcoded]
+triggers: [auth, password, access-token, auth-token, jwt, secret, oauth, credentials, encryption, pii, hardcoded]
 effort: max
 context: fork
 user-invocable: false

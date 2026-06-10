@@ -25,6 +25,7 @@ Phase 3 of `implement/SKILL.md` invokes this skill when **any** of these are tru
 - `plan.batches.length >= 3`
 - `change_manifest.length >= 6`
 - `security_impact != "none"`
+- rigor score ≥ 8 from the spec sidecar (rigor level HIGH or MAX — see `implement/SKILL.md` Rigor Score)
 
 ### When NOT To Use
 
@@ -103,7 +104,7 @@ Pick the path once, at the top of Phase 3, based on tool availability. Do not mi
 
 ### Steps (manual Agent-loop path)
 
-1. **Threshold gate.** Read `docs/specs/<date>-<slug>.json`. If thresholds not met → return control to `implement/SKILL.md` Phase 3 with the recommendation to use `incremental-implementation` instead. Do not silently fall through.
+1. **Threshold gate.** Read `docs/specs/<date>-<slug>.json`. Dispatch when any hard trigger is met **or** the rigor score is ≥ 8 (rigor HIGH/MAX). If neither holds → return control to `implement/SKILL.md` Phase 3 with the recommendation to use `incremental-implementation` instead. Do not silently fall through.
 2. **Pick implementer model.** Invoke `AskUserQuestion` once (load via `ToolSearch select:AskUserQuestion` if deferred):
    - Question: `Implementer subagent model? Affects per-batch cost and capability.`
    - Options:

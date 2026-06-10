@@ -44,7 +44,7 @@ Before writing any skill content:
 ### Phase 2: Write The Minimum Skill
 
 1. Follow the anatomy defined in `docs/skill-anatomy.md`:
-   - Required: frontmatter (`name`, `description`), `# Title`, `## Overview`, `## When To Use`, `## Workflow`, `## Verification`
+   - Required: frontmatter (`name`, `description`, `type: skill` — or `type: tech-stack` for tech stack skills), `# Title`, `## Overview`, `## When To Use`, `## Workflow`, `## Verification`
    - Recommended: `### When NOT To Use`, `## Red Flags`, `## Rules`
    - The shared MTK rationalization table lives in `.claude/skills/context-engineering/SKILL.md`. Do **not** duplicate universal rationalizations here. Only add a short `## Common Rationalizations` section if the skill has one or two traps that are genuinely specific (and reference the shared table at the top).
 
@@ -104,7 +104,11 @@ tests alone are sufficient for advisory skills.
 1. Add the skill to `.claude/manifest.json` with action `sync`.
 2. Add routing rules to `AGENTS.md` if the skill changes how tasks are dispatched.
 3. Update `docs/skill-anatomy.md` if the skill establishes a new pattern.
-4. Run `bash scripts/validate-toolkit.sh` to verify the skill passes validation.
+4. If the skill declares `triggers:` in frontmatter, rebuild the index: `bash scripts/build-triggers-index.sh` (S2.24).
+5. If the skill declares `required-toolsets` or `forbidden-toolsets`, confirm each named toolset exists as `.claude/toolsets/<name>.yaml` (S2.20).
+6. Run `bash scripts/validate-toolkit.sh` to verify the skill passes validation.
+
+Note: tech stack skills (`type: tech-stack`) follow the S2.13 declarative anatomy instead of the workflow anatomy above.
 
 ## Cache-Stable Prefixes
 
@@ -122,7 +126,7 @@ Entry-point skills follow the same pattern — Phase 0 load instructions stay id
 ## Rules
 
 - No skill without baseline failure observations.
-- No skill without a rationalization table.
+- No skill without rationalization coverage (shared-table reference or skill-specific entries).
 - No skill without a verification checklist.
 - Descriptions trigger on conditions, never summarize workflows (CSO principle).
 - Keep frequently-loaded skills under 500 lines.
@@ -149,5 +153,6 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared table. Writing-
 - [ ] Verification checklist covers every outcome claim
 - [ ] SKILL.md is under 500 lines
 - [ ] Pressure tests exist and the skill passes them
+- [ ] If this skill claims another skill consumes/invokes/checks its output, grep that skill and confirm the reciprocal reference exists
 - [ ] Skill is registered in manifest.json
 - [ ] `validate-toolkit.sh` passes

@@ -1,6 +1,6 @@
 # claude-helpers — MTK Standards
 
-> Updated 2026-05-07 for v7.4.0 (adds durable workflow artifacts, five named orchestration gates, anti-anchored plan-gap-reviewer, claim extraction in verification, JSON router-decision fixtures, and MTK_AUTO_PROCEED env knob — borrows from cc10x).
+> Updated 2026-06-10 for v7.13.1 (skill-audit remediation: routing/contract fixes, embedded-bash lint, codified phase-structured anatomy).
 >
 > This file + `.claude/rules/` are the source of truth for AI agents.
 > Detailed standards live in `.claude/rules/`. Reference docs live in `.claude/references/` (shared) and `.claude/references/{stack}/` (stack-specific).
@@ -17,10 +17,12 @@
 | Everything else | `/mtk <description>` | Natural language — routes to fix / implement / pre-commit-review / repo-health / context-report |
 | Periodic readiness check | `/mtk repo-health` or `bash scripts/repo-health-score.sh` | 12-asset scorecard + PR review mining (last 10 merged PRs) |
 | Validate toolkit | `bash scripts/validate-toolkit.sh` | Before every commit — structural check of manifest, plugin.json, and skill anatomy |
+| Install health check | `/mtk-doctor` | PASS/WARN/FAIL diagnostics across core files, components, hooks; `--json` for CI, `--fix` for safe auto-repairs |
+| Promote a lesson | `/promote-lesson` | Promote a personal lesson from `.claude/lessons/personal.md` to team-wide `tasks/lessons.md` |
 | Disable tier-2 hooks | `MTK_HOOKS_TIER2=0` in `.claude/settings.local.json` env | Silences skill-invoking hooks (queue + drain) without touching shared settings |
 | Auto-approve safe plans | `MTK_AUTO_PROCEED=1` in `.claude/settings.local.json` env | Skips Phase 2.5 prompt only when spec has no open decisions and no plan-gap BLOCKING findings |
 
-**Decision rule for `/mtk`:** Say what you want in plain English. The router picks the right workflow skill — fix (1-3 file changes), implement (new features / multi-file), pre-commit-review (security check before commit), or context-report (diagnostic).
+**Decision rule for `/mtk`:** Say what you want in plain English. The router picks the right workflow skill — fix / implement / pre-commit-review / repo-health / context-report / research-context / claude-md-audit / claude-md-capture / toolkit-health / mtk-doctor.
 
 **Updates:** MTK is a Claude Code plugin — use the plugin manager to upgrade. There is no in-repo update command.
 
@@ -34,7 +36,12 @@ bash scripts/validate-toolkit.sh
 
 # No dotnet build — this is a markdown/bash/JSON toolkit, not a .NET app
 # Pressure tests are manual: read tests/pressure-tests/*.md and verify skill behavior
+
+# Router fixtures + evals: bash scripts/run-fixtures.sh && bash scripts/run-evals.sh
+# Install health check: bash scripts/mtk-doctor.sh (--json, --fix)
 ```
+
+Releases regenerate `checksums.sha256` via `bash scripts/generate-checksums.sh` as the last change in the release commit (S4.11).
 
 ---
 

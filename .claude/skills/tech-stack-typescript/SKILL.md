@@ -204,7 +204,7 @@ npx tsc --noEmit 2>&1 | hooks/parse-build-diagnostics.sh --format tsc > .mtk/ana
 
 ## Recommended Tooling
 
-See `docs/recommended-tooling/typescript.md` for MCP servers, plugins, and editor integrations that noticeably improve Claude Code productivity on TypeScript projects — notably `context7` (current framework docs), `playwright` MCP (browser automation for UI verification), and editor-integrated TypeScript / Biome language servers. Paired with the stack-agnostic `.claude/references/recommended-tooling.md`. `setup-bootstrap` prints both during onboarding; install is manual.
+See `docs/recommended-tooling/typescript.md` for MCP servers, plugins, and editor integrations that noticeably improve Claude Code productivity on TypeScript projects — notably `context7` (current framework docs), `playwright` MCP (browser automation for UI verification), and editor-integrated TypeScript / Biome language servers. Paired with the stack-agnostic `docs/recommended-tooling/shared.md`. `setup-bootstrap` prints both during onboarding; install is manual.
 
 ## Reference Files
 
@@ -215,6 +215,7 @@ These files are loaded by commands and review agents when the active stack is `t
 - `.claude/references/typescript/framework-patterns.md` — React / React Native (Expo) / Next.js / Tauri / Node backend patterns
 - `.claude/references/typescript/testing-supplement.md` — Vitest / Jest / Playwright / MSW patterns
 - `.claude/references/typescript/performance-supplement.md` — Bundle size, rendering, caching, Node I/O
+- `.claude/references/typescript/analyzer-config.md` — Recommended tsconfig strict settings and biome rules
 - `docs/recommended-tooling/typescript.md` — Recommended MCPs / plugins / editor integrations for TypeScript
 
 ## Settings Additions
@@ -281,7 +282,7 @@ ls bun.lock bun.lockb pnpm-lock.yaml yarn.lock package-lock.json 2>/dev/null
 # Tauri sidecar
 test -f src-tauri/Cargo.toml && echo "Tauri sidecar detected"
 # Monorepo signals
-find . -maxdepth 2 -name "pnpm-workspace.yaml" -o -name "turbo.json" -o -name "nx.json" -o -name "lerna.json" 2>/dev/null
+find . -maxdepth 2 \( -name "pnpm-workspace.yaml" -o -name "turbo.json" -o -name "nx.json" -o -name "lerna.json" \) 2>/dev/null
 # Top-level dependencies summary
 grep -hE '"(dependencies|devDependencies|peerDependencies)"' package.json 2>/dev/null | head -5
 # Folder structure (excluding heavy dirs)
@@ -311,8 +312,8 @@ grep -rlE "from ['\"](zod|valibot|yup|io-ts|@sinclair/typebox)" --include="*.ts"
 find . -name "schema.prisma" -not -path "*/node_modules/*" 2>/dev/null | head -5
 grep -rlE "from ['\"](drizzle-orm|@prisma/client|typeorm|mikro-orm|kysely)" --include="*.ts" 2>/dev/null | head -5
 # Migrations
-find . -path "*/migrations/*" -not -path "*/node_modules/*" -name "*.sql" -o -name "*.ts" 2>/dev/null | head -10
-find . -name "drizzle.config.ts" -o -name "drizzle.config.js" 2>/dev/null
+find . -path "*/migrations/*" -not -path "*/node_modules/*" \( -name "*.sql" -o -name "*.ts" \) 2>/dev/null | head -10
+find . \( -name "drizzle.config.ts" -o -name "drizzle.config.js" \) 2>/dev/null
 # Connection strings / env config
 grep -rnE "DATABASE_URL|PGUSER|POSTGRES_|DB_HOST" --include="*.ts" --include="*.env*" 2>/dev/null | head -5
 # N+1 risks (eager/lazy loading patterns)
@@ -324,11 +325,11 @@ grep -rnE "\.findMany\\(|\.findFirst\\(|\\binclude:|\\bselect:" --include="*.ts"
 # Cloud SDKs
 grep -rlE "from ['\"]@aws-sdk/|from ['\"]firebase|from ['\"]@google-cloud/" --include="*.ts" 2>/dev/null | head -10
 # Docker
-find . -maxdepth 3 -name "Dockerfile" -o -name "docker-compose*" -o -name ".dockerignore" 2>/dev/null
+find . -maxdepth 3 \( -name "Dockerfile" -o -name "docker-compose*" -o -name ".dockerignore" \) 2>/dev/null
 # Serverless
-find . -maxdepth 2 -name "serverless.yml" -o -name "serverless.ts" -o -name "cdk.json" 2>/dev/null
+find . -maxdepth 2 \( -name "serverless.yml" -o -name "serverless.ts" -o -name "cdk.json" \) 2>/dev/null
 # Vercel / Netlify / Cloudflare
-find . -maxdepth 2 -name "vercel.json" -o -name "netlify.toml" -o -name "wrangler.toml" 2>/dev/null
+find . -maxdepth 2 \( -name "vercel.json" -o -name "netlify.toml" -o -name "wrangler.toml" \) 2>/dev/null
 # Tauri config
 find . -name "tauri.conf.json" -not -path "*/node_modules/*" 2>/dev/null
 ```
@@ -349,7 +350,7 @@ find . -name "*.tsx" -not -path "*/node_modules/*" -not -path "*/.next/*" | sed 
 # Test framework
 grep -lE "\"vitest\"|\"jest\"|\"@playwright/test\"|\"cypress\"" package.json 2>/dev/null
 # Config files
-find . -maxdepth 2 -name "vitest.config.*" -o -name "jest.config.*" -o -name "playwright.config.*" 2>/dev/null
+find . -maxdepth 2 \( -name "vitest.config.*" -o -name "jest.config.*" -o -name "playwright.config.*" \) 2>/dev/null
 # Test file locations
 find . -type f \( -name "*.test.ts" -o -name "*.test.tsx" -o -name "*.spec.ts" -o -name "*.spec.tsx" \) -not -path "*/node_modules/*" | head -10
 # MSW / mocking
@@ -362,13 +363,13 @@ grep -rlE "from ['\"](msw|nock|@testing-library)" --include="*.ts" --include="*.
 find . -maxdepth 3 -name "tsconfig*.json" -not -path "*/node_modules/*" 2>/dev/null
 grep -h '"strict"\|"target"\|"module"' tsconfig*.json 2>/dev/null | head -10
 # Formatter / linter config
-find . -maxdepth 2 -name "biome.json" -o -name ".prettierrc*" -o -name ".eslintrc*" -o -name "eslint.config.*" 2>/dev/null
+find . -maxdepth 2 \( -name "biome.json" -o -name ".prettierrc*" -o -name ".eslintrc*" -o -name "eslint.config.*" \) 2>/dev/null
 # Environment files
 find . -maxdepth 2 -name ".env*" -not -name ".env.example" 2>/dev/null | head -10
 # Build tool config
-find . -maxdepth 2 -name "vite.config.*" -o -name "next.config.*" -o -name "tsup.config.*" -o -name "rollup.config.*" 2>/dev/null
+find . -maxdepth 2 \( -name "vite.config.*" -o -name "next.config.*" -o -name "tsup.config.*" -o -name "rollup.config.*" \) 2>/dev/null
 # React Native / Expo config
-find . -maxdepth 2 -name "app.json" -o -name "app.config.js" -o -name "app.config.ts" -o -name "metro.config.js" -o -name "metro.config.ts" -o -name "eas.json" 2>/dev/null
+find . -maxdepth 2 \( -name "app.json" -o -name "app.config.js" -o -name "app.config.ts" -o -name "metro.config.js" -o -name "metro.config.ts" -o -name "eas.json" \) 2>/dev/null
 ```
 
 ## Verification

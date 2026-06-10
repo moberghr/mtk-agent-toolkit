@@ -1,6 +1,6 @@
 ---
 name: research-context
-description: Use when a spec, plan, or fix needs current external information (library best-practices, version-specific behavior, migration guidance) grounded in named project files — runs web research and returns a cited brief, deferring to /deep-research for heavy questions.
+description: Use when a decision needs current external/web information (library best-practices, version-specific behavior, migration guidance) rather than local source verification — runs web research grounded in named project files and returns a cited brief, deferring to /deep-research for heavy questions.
 type: skill
 license: MIT
 compatibility:
@@ -8,7 +8,6 @@ compatibility:
 trigger: research-needed|current-best-practice|version-sensitive-decision|external-info-grounding
 skip_when: behavior-verifiable-from-local-repo|well-understood-stable-api|no-external-uncertainty
 triggers:
-  - research
   - best-practice
   - best-practices
   - latest-version
@@ -23,7 +22,7 @@ user-invocable: false
 
 `source-driven-development` answers "does this *known* API behave the way I think?" by checking authoritative docs for one call. `research-context` answers the broader, forward-looking question: "given what this repo already does, what is the *current* best way to do X?" — pulling fresh external information (release notes, current best-practices, migration paths, security advisories) and **grounding it against named files in this repo** so the answer fits the codebase, not a generic tutorial.
 
-It is the MTK analog of Taskmaster's research mode: research is a first-class workflow primitive, not an ad-hoc web search. Its output is a small, cited brief that downstream skills (`spec-driven-development`, `planning-and-task-breakdown`, `fix`) consume — so spec and plan decisions ride on current information rather than training-cutoff memory.
+It is the MTK analog of Taskmaster's research mode: research is a first-class workflow primitive, not an ad-hoc web search. Its output is a small, cited brief that downstream skills consume — `spec-driven-development` (version-sensitive ambiguity gate, step 6) and `implement` (Phase 3, version-sensitive choices) — so spec and implementation decisions ride on current information rather than training-cutoff memory.
 
 This skill **does not edit code**. It produces a brief; another skill acts on it.
 
@@ -100,7 +99,7 @@ Write a compact, cited brief (Markdown). Keep it short — it is consumed by ano
 - <url> — <one-line what it established>
 ```
 
-If invoked standalone (engineer said "research X"), present the brief and stop — do not start implementing. If invoked by `spec-driven-development` or `planning-and-task-breakdown`, return the brief to that skill so its decisions and ambiguity gate consume it.
+If invoked standalone (engineer said "research X"), present the brief and stop — do not start implementing. If invoked by `spec-driven-development` or `implement`, return the brief to that skill so its decisions and ambiguity gate consume it.
 
 ### Step 5 — Persist when part of a workflow
 

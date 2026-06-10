@@ -46,9 +46,9 @@ you write" reflex during spec writing; this mode is the periodic sweep
 that catches duplicates that slipped past it.
 
 1. Read `CODE_INDEX.md` at the repo root (template:
-   `.claude/references/code-index-template.md`). If absent, generate it
-   from `setup-bootstrap` output first, or skip the audit with a one-line
-   note.
+   `.claude/references/code-index-template.md`). If absent, skip
+   index-guided scanning and note CODE_INDEX.md missing in the report
+   (it is generated during `setup-bootstrap`).
 2. Extract capability rows. Group near-duplicates by stem (verb + noun)
    using simple normalization: lowercase, drop suffixes like `Async` /
    `_v2` / `Impl`.

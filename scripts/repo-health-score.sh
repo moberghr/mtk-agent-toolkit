@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# repo-health-score.sh — Score a repo against 12 named AI-readiness assets.
-# Borrowed pattern: github.com/johnpapa/ai-ready (bounded checklist + medal).
+# repo-health-score.sh — Score a repo against 12 named AI-readiness assets
+# (bounded checklist + medal).
 #
 # Output: markdown by default, JSON with --json.
 # Assets, rubric, and medal thresholds live in

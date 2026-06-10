@@ -1,6 +1,6 @@
 ---
 name: claude-md-audit
-description: Audit existing CLAUDE.md files against a quality rubric (commands, architecture, gotchas, conciseness, currency, actionability) and propose minimal append-only diffs. Use periodically or when CLAUDE.md feels stale, drifts from the codebase, or commands break.
+description: Use periodically or when CLAUDE.md feels stale, drifts from the codebase, or commands break — audits CLAUDE.md against a quality rubric and proposes minimal append-only diffs.
 type: skill
 license: MIT
 compatibility:

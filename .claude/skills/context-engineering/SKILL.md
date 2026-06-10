@@ -120,7 +120,7 @@ these require tooling; estimate from session state.
 Track the cumulative context loaded in the session. Fewer, focused instructions beat many, diluted ones — every extra rule competes with the ones that actually matter most for the current task.
 
 **Budget guidelines:**
-- CLAUDE.md: target under 200 lines (~50 instructions)
+- CLAUDE.md: target 60-80 lines, hard cap 120
 - Rules files: each under 120 lines
 - Each skill loaded: 60-120 lines
 - Reference files: vary, load only relevant sections
@@ -188,7 +188,7 @@ Not all tasks need the same model tier. Route work by complexity to optimize cos
 | Test review | sonnet | Assertion quality, coverage gaps |
 | Brainstorming | opus | Creative exploration benefits from deeper reasoning |
 
-Agent frontmatter `model:` sets the model for subagents. Entry-point skills run on the user's selected model. When a skill spawns a reviewer agent, the agent's frontmatter controls its model.
+Agent frontmatter `model:` sets the model for subagents. Entry-point skills run on the user's selected model. When a skill spawns a reviewer agent, the agent's frontmatter controls its model. Skill rows in the table above are advisory defaults only (skills run on the session model); the agent rows are the enforced ones.
 
 ## Common Rationalizations
 

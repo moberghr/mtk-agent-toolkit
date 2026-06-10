@@ -35,7 +35,7 @@ Explore the design space before committing to a single approach. Brainstorming p
 ## Workflow
 
 1. **Explore context** before proposing anything:
-   - Read `CLAUDE.md` and relevant architecture-principles
+   - Read `CLAUDE.md` and `.claude/references/architecture-principles.md` (if present)
    - Read existing code in the affected area
    - Check recent git history for relevant decisions or attempts
    - Understand current constraints (tech stack, patterns, conventions)

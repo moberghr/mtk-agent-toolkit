@@ -65,10 +65,10 @@ if [ -f tasks/lessons.md ]; then grep -c '^## ' tasks/lessons.md 2>/dev/null || 
    |---|---|---|
    | `specs_created / sessions` | ≥ 0.05 over 20+ sessions | "Very few specs — team may skip `/mtk implement` for features" |
    | `lessons_captured` | growing over time | "Lessons stagnant — Phase 7 compound step may be skipped" |
-    | `scope_guard_warnings / sessions` | < 0.3 | "Frequent scope-guard warnings — specs may be too narrow or team is expanding scope inline" |
-    | `total_modifications / total_operations` | 0.1–0.6 | "Very low mod ratio" → mostly reads (discovery-heavy); "very high" → little verification |
-    | `benchmarks_run` | > 0 after toolkit changes | "No benchmark runs recorded — behavioral checks may be stale" |
-    | `benchmark_last_score` | matches latest baseline | stale score → benchmarks have run, but the last result may no longer reflect current hooks |
+   | `scope_guard_warnings / sessions` | < 0.3 | "Frequent scope-guard warnings — specs may be too narrow or team is expanding scope inline" |
+   | `total_modifications / total_operations` | 0.1–0.6 | "Very low mod ratio" → mostly reads (discovery-heavy); "very high" → little verification |
+   | `benchmarks_run` | > 0 after toolkit changes | "No benchmark runs recorded — behavioral checks may be stale" |
+   | `benchmark_last_score` | matches latest baseline | stale score → benchmarks have run, but the last result may no longer reflect current hooks |
 
 5. **Output format:**
    - Human-readable markdown section (sessions, date range, key ratios, anomaly flags).

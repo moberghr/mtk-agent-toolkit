@@ -143,8 +143,6 @@ bash scripts/monorepo-ripple.sh $(git diff --name-only HEAD)
 - On a monorepo, emits lines `RIPPLE <pkg>: affects <downstream>`.
 - Treat ≥1 ripple line as a **warning-level** drift finding (not blocking), unless the spec's `change_manifest` already lists the downstream packages — then it's expected and silent.
 
-Pattern borrowed from `github.com/johnpapa/ai-ready` (cross-package dependency mapping).
-
 ## Rules
 
 - No drift check without a spec manifest. If the manifest is missing,

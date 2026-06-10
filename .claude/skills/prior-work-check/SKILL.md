@@ -28,7 +28,7 @@ the spec is handed to the approval gate or the planner begins task breakdown.
 
 ## When To Use
 
-- Before `spec-driven-development` Phase 1.5 approval check
+- During `spec-driven-development` step 8c, before the implement Phase 2.5 approval gate
 - Before `planning-and-task-breakdown` opens a batch
 - When the engineer says "let's add an X" and X sounds generic (cache, retry,
   validator, formatter, normalizer)
@@ -50,8 +50,8 @@ Look for an existing implementation of the capability under any name.
    `success_criteria`. Verbs + nouns ("issue token", "retry policy",
    "currency formatter").
 2. Run, in parallel:
-   - `grep -rn -i "<keyword>" --include="*.{cs,py,ts,tsx,js}" src/` (or the
-     active stack's source roots — read `.claude/tech-stack`).
+   - `grep -rn -i "<keyword>" --include="*.cs" --include="*.py" --include="*.ts" --include="*.tsx" --include="*.js" src/`
+     (or the active stack's source roots — read `.claude/tech-stack`).
    - If `CODE_INDEX.md` exists at the repo root, `grep -i "<keyword>" CODE_INDEX.md`.
    - If an MCP code-index tool is available (e.g. `mcp__gitnexus__query`,
      `mcp__ast-index__*`), prefer it over raw grep.
@@ -66,9 +66,11 @@ Surface the rules and lessons that govern this area.
 
 1. Read `tasks/lessons.md` and `.claude/lessons/personal.md` (if present).
    Grep for the capability keywords and the touched module names.
-2. Read `.claude/references/architecture-principles.md` and grep for tags
-   matching the touched slice. Note any `[EXTRACTED]` principles that
-   constrain the design — these block contradicting changes.
+2. Read `.claude/references/architecture-principles.md` if present and grep
+   for tags matching the touched slice. Note any `[EXTRACTED]` principles that
+   constrain the design — these block contradicting changes. If the file is
+   absent (it is an optional generated artifact), note
+   constraints-unavailable in the report instead.
 3. Read CLAUDE.md and any `.claude/rules/*.md` file whose name matches the
    slice (e.g. `git-workflow.md` for git-touching work).
 4. Report every constraint discovered, with severity:
@@ -125,8 +127,9 @@ Emit one fenced block summarizing all three queries:
 
 ## Integration
 
-- `spec-driven-development` runs this skill at Phase 1.5 before the approval
-  prompt. A BLOCKED verdict means the spec is not eligible for approval.
+- `spec-driven-development` runs this skill at step 8c, before the implement
+  Phase 2.5 approval gate. A BLOCKED verdict means the spec is not eligible
+  for approval.
 - `planning-and-task-breakdown` runs this skill again if the spec was
   approved more than a session ago — risk profile and prior work may have
   shifted.

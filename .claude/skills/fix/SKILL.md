@@ -1,6 +1,6 @@
 ---
 name: fix
-description: Use when a change stays within 1-3 files and does not need a formal spec — bug fixes, validation tweaks, small config changes. Self-escalates to implement if scope grows.
+description: Use when a change stays within 1-3 files and does not need a formal spec (bug fixes, validation tweaks, small config changes) — self-escalates to implement if scope grows.
 type: skill
 user-invocable: false
 ---
@@ -123,7 +123,7 @@ digraph fix_flow {
 
 **Parallel loading:** Independent reference reads go out in one message, not sequentially. See `docs/parallelism-patterns.md`.
 
-## Execute The Fix Workflow
+### Execute The Fix Workflow
 
 Follow `.claude/skills/debugging-and-error-recovery/SKILL.md`.
 Use `.claude/skills/test-driven-development/SKILL.md` for regression coverage when behavior changed.
@@ -135,7 +135,7 @@ Minimum verification (using build/test commands from the active tech stack skill
 
 If behavior changed, add or update tests.
 
-## Scope Guard
+### Scope Guard
 
 If any of these become true, **self-escalate to `/mtk implement`** instead of expanding scope in place:
 
@@ -155,7 +155,7 @@ If any of these become true, **self-escalate to `/mtk implement`** instead of ex
 
 Silent scope creep past 3 files is a red flag — always escalate rather than quietly expanding.
 
-## Final Report
+### Final Report
 
 Report briefly:
 

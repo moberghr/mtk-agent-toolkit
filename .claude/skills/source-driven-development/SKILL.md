@@ -1,6 +1,6 @@
 ---
 name: source-driven-development
-description: Use when framework, SDK, or library behavior is unfamiliar or version-sensitive — verify from authoritative sources before implementing.
+description: Use when framework, SDK, or library behavior is unfamiliar or version-sensitive — verify from local authoritative sources (decompiled sources, SDK code, official docs already in repo context) before implementing.
 type: skill
 license: MIT
 compatibility:
@@ -28,6 +28,7 @@ When framework behavior matters, memory is not enough. Verify unfamiliar APIs ag
 ### When NOT To Use
 
 - Well-understood local code patterns already validated in the repo and unchanged by version differences
+- Forward-looking "current best way" questions that need web research → use `research-context`
 
 ## Workflow
 

@@ -158,7 +158,7 @@ Keep the rendering proportional — the todo and batch breakdown are bounded by 
 - The scope classification is not "breaking change" or "high security_impact".
 - The rigor level is LIGHT or STANDARD (HIGH/MAX changes always get a human at the gate).
 
-If any condition fails, AUTO_PROCEED MUST NOT be applied — fall back to `AskUserQuestion`. Auto-proceed never overrides explicit user standards, open plan decisions, or the failure-stop gate. When AUTO_PROCEED is applied, log the bypass on the workflow artifact: `scripts/workflow-artifact.sh event "$MTK_WF_UUID" gate_decided --data '{"gate":"plan_trust_gate","result":"pass","reason":"AUTO_PROCEED — all preconditions met"}'`.
+If any condition fails, AUTO_PROCEED MUST NOT be applied — fall back to `AskUserQuestion`. Auto-proceed never overrides explicit user standards, open plan decisions, or the failure-stop gate. When AUTO_PROCEED is applied, record the gate decision on the workflow artifact: `scripts/workflow-artifact.sh gate "$MTK_WF_UUID" plan_trust_gate pass --reason "AUTO_PROCEED — all preconditions met"`.
 
 Then invoke `AskUserQuestion` with:
 
@@ -206,7 +206,7 @@ After all batches:
 
 - run the full test command from the active tech stack skill
 - write an explicit behavioral diff
-- emit `phase_exit_gate pass` (or `fail` and stop) on the workflow artifact
+- emit the final `phase_exit_gate pass` (or `fail` and stop) on the workflow artifact (per-batch gate decisions are already recorded by the implementation skill)
 
 Record per-batch progress:
 `scripts/workflow-artifact.sh set "$MTK_WF_UUID" results.batches_completed=<n>`
@@ -266,7 +266,7 @@ Provide all reviewers with the same diff and behavioral diff.
 
 ## Phase 5: Fix Review Findings
 
-Fix every critical issue and every reasonable warning, then:
+Fix every critical issue and every warning unless you record a one-line waiver with a reason, then:
 
 - run the build and test commands from the active tech stack skill
 - run the pre-commit review list if present

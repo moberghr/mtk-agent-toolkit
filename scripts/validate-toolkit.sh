@@ -306,4 +306,17 @@ if [ -x scripts/skill-eval/coverage.sh ]; then
   bash scripts/skill-eval/coverage.sh 2>/dev/null | head -1 || true
 fi
 
+# Embedded-bash lint for skills — deterministic bug classes in fenced ```bash blocks.
+require_file "scripts/lint-skill-bash.sh"
+bash scripts/lint-skill-bash.sh || fail "skill bash lint failed (run: bash scripts/lint-skill-bash.sh)"
+
+# Advisory: multi-sentence skill descriptions hurt routing (S2.5) — warn only, never fail.
+for skill in .claude/skills/*/SKILL.md; do
+  [ -f "$skill" ] || continue
+  desc="$(awk '/^description:/ { sub(/^description:[[:space:]]*/, ""); print; exit }' "$skill")"
+  if printf '%s' "$desc" | grep -qE '\. [A-Z]'; then
+    printf 'WARN: multi-sentence description: %s\n' "$(basename "$(dirname "$skill")")"
+  fi
+done
+
 printf 'Toolkit validation passed.\n'
