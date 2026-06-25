@@ -1,0 +1,119 @@
+name: validate-lesson-pr
+
+# Validates contribute-back lesson PRs (from promote-lesson). It checks the PR
+# touches ONLY lessons/contributed/, stays within size caps, and contains no
+# secrets or prompt-injection markers, then labels it `lesson-validated`.
+#
+# It NEVER merges. A human reviews and merges. The label is a green light, not
+# an action. Permissions are deliberately minimal: no `contents: write`.
+
+on:
+  pull_request:
+    paths:
+      - 'lessons/contributed/**'
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out PR head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate contributed lesson
+        id: validate
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          # --- Changed-file whitelist -------------------------------------
+          changed="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          echo "Changed files:"; echo "$changed"
+
+          offenders="$(echo "$changed" | grep -v '^lessons/contributed/' || true)"
+          if [ -n "$offenders" ]; then
+            echo "::error::PR touches files outside lessons/contributed/:"
+            echo "$offenders"
+            exit 1
+          fi
+
+          # --- File-count cap (<= 2) --------------------------------------
+          count="$(echo "$changed" | grep -c '^lessons/contributed/' || true)"
+          if [ "$count" -gt 2 ]; then
+            echo "::error::contribute-back PR touches $count files; cap is 2 (one lesson + optional README)."
+            exit 1
+          fi
+
+          # --- Size cap (<= 20 KB total added content) --------------------
+          total_bytes=0
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            [ -f "$f" ] || continue
+            sz="$(wc -c < "$f" | tr -d ' ')"
+            total_bytes=$((total_bytes + sz))
+          done <<< "$changed"
+          echo "Total bytes: $total_bytes"
+          if [ "$total_bytes" -gt 20480 ]; then
+            echo "::error::contributed files total ${total_bytes}B; cap is 20480B (20 KB)."
+            exit 1
+          fi
+
+          # --- Secret-shape scan ------------------------------------------
+          secret_hits=0
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            [ -f "$f" ] || continue
+            if grep -nEi \
+              -e '(api[_-]?key|secret|password|passwd|token|bearer)[[:space:]]*[:=][[:space:]]*[A-Za-z0-9/_+-]{12,}' \
+              -e '-----BEGIN [A-Z ]*PRIVATE KEY-----' \
+              -e '(AKIA|ASIA)[A-Z0-9]{16}' \
+              -e 'gh[pousr]_[A-Za-z0-9]{20,}' \
+              -e '(Server|Data Source)=[^;]+;[^;]*Password=' \
+              "$f"; then
+              secret_hits=1
+            fi
+          done <<< "$changed"
+          if [ "$secret_hits" -ne 0 ]; then
+            echo "::error::Possible secret material detected in contributed lesson. Re-run the anonymization checklist."
+            exit 1
+          fi
+
+          # --- Prompt-injection marker scan -------------------------------
+          inj_hits=0
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            [ -f "$f" ] || continue
+            if grep -nEi \
+              -e 'ignore (all|previous|prior) (instructions|prompts)' \
+              -e 'disregard (the|all|previous)' \
+              -e 'you are now' \
+              -e '<\/?(system|assistant)>' \
+              -e 'system prompt' \
+              "$f"; then
+              inj_hits=1
+            fi
+          done <<< "$changed"
+          if [ "$inj_hits" -ne 0 ]; then
+            echo "::error::Possible prompt-injection content detected in contributed lesson."
+            exit 1
+          fi
+
+          echo "All contribute-back checks passed."
+
+      - name: Label validated
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          gh pr edit "$PR" --add-label "lesson-validated"
+          gh pr comment "$PR" --body "✅ Contribute-back checks passed (path whitelist, size cap, secret scan, injection scan). Labeled \`lesson-validated\`. A maintainer will review and merge — this workflow does not auto-merge."

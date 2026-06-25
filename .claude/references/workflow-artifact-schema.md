@@ -50,6 +50,11 @@ Durable orchestration state lives under `.mtk/workflows/`, outside `.claude/` so
     "batches_total": 4,
     "batches_completed": 2
   },
+  "criteria_status": {
+    "SC1": "pending",
+    "SC2": "verified",
+    "SC3": "re-armed"
+  },
   "remediation_history": [
     { "ts": "...", "phase": "phase-3", "trigger": "build_failure", "outcome": "fixed" }
   ]
@@ -57,6 +62,33 @@ Durable orchestration state lives under `.mtk/workflows/`, outside `.claude/` so
 ```
 
 Implementations may add fields under `results` and `intent` without breaking schema_version 1. Removing or changing an existing field requires a schema bump.
+
+## criteria_status
+
+`criteria_status` is a top-level map from criterion id (`SC1`, `SC2`, …) to its current verification state:
+
+| Value | Meaning |
+|---|---|
+| `pending` | Not yet verified in this workflow run. |
+| `verified` | Verified through its declared `evidence_channel`; observable observed. |
+| `re-armed` | Was verified, but a subsequent Edit or Write landed — must be re-verified before a completion claim is accepted. |
+
+**Re-arm rule.** When any Edit or Write tool completes after the most recent verification, the orchestrator must set every `verified` criterion to `re-armed`. A workflow with any criterion in `re-armed` state rejects completion claims.
+
+**Completion gate.** Before accepting a completion claim, `verification-before-completion` checks each criterion in `criteria_status`. All must be `verified`; none may be `pending` or `re-armed`.
+
+Helper commands:
+
+```bash
+# Mark a criterion verified (after observing its evidence_channel)
+scripts/workflow-artifact.sh criteria "$UUID" SC1=verified
+
+# Re-arm all verified criteria (called by verify-completion hook on edit-after-verify)
+scripts/workflow-artifact.sh criteria "$UUID" --rearm-all
+
+# Abandon an active workflow (for the workflow-continuation nudge "abandon" option)
+scripts/workflow-artifact.sh abandon "$UUID" [--reason "<text>"]
+```
 
 ## Event types
 

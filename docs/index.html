@@ -813,7 +813,7 @@
     </div>
     <div class="hero-stats">
       <span>MIT licensed</span>
-      <span>33 skills · 4 review agents</span>
+      <span>40 skills · 6 review agents</span>
       <span>6 AI assistants supported</span>
     </div>
 
@@ -1213,7 +1213,23 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
         </div>
         <h3>Compound learning</h3>
-        <p>Correction-capture turns every "no, not like that" into a persistent lesson. Handoff preserves state across sessions. Your AI gets better over time.</p>
+        <p>Correction-capture turns every "no, not like that" into a persistent lesson. Lesson-mining sweeps past sessions for durable lessons with a reject-by-default rubric, and a validated contribute-back pipeline shares them team-wide. Handoff preserves state across sessions. Your AI gets better over time.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+        <h3>Evidence that can't go stale</h3>
+        <p>Each success criterion names its evidence channel and a binary observable, verified one-by-one. Any edit after verification re-arms the criteria — a follow-up tweak can't ride on yesterday's green. For behavior changes, tests alone never count.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h3>Guarded inputs, cited claims</h3>
+        <p>A read-guard hook blocks secrets from entering context; new dependencies are verified against their registry before install; every research claim is tagged verified / assumed / cited — and an assumption can't auto-approve a plan. Findings cite a researched catalogue of AI failure modes.</p>
       </div>
 
       <div class="card">
@@ -1289,7 +1305,7 @@
 <section class="section section--alt" id="components">
   <div class="container">
     <div class="sec-head"><span class="sec-num">05</span> Components</div>
-    <h2>33 skills. 4 agents. 11 hooks. One discipline.</h2>
+    <h2>40 skills. 6 agents. 14 hooks. One discipline.</h2>
     <p class="lede">MTK is composed of small, pressure-tested pieces that snap together. Invoke one entry point — the rest orchestrate themselves.</p>
 
     <div class="grid grid--2">
@@ -1300,7 +1316,8 @@
         <div class="compo-row"><code class="compo-code">/mtk-setup --merge</code><span class="compo-text">Unify per-repo audits into one team-wide standard</span></div>
         <div class="compo-row"><code class="compo-code">/mtk &lt;description&gt;</code><span class="compo-text">Plain English. Routes to fix, implement, pre-commit-review, or context-report.</span></div>
         <div class="compo-row"><code class="compo-code">/mtk-doctor</code><span class="compo-text">Health check across the install — PASS/WARN/FAIL on hooks, models, version sync, gitignore.</span></div>
-        <div class="compo-row"><code class="compo-code">/promote-lesson</code><span class="compo-text">Promote a personal lesson from <code>.claude/lessons/personal.md</code> into the team-wide <code>tasks/lessons.md</code>.</span></div>
+        <div class="compo-row"><code class="compo-code">/promote-lesson</code><span class="compo-text">Promote a personal lesson into the team-wide <code>tasks/lessons.md</code> — and optionally open a validated contribute-back PR.</span></div>
+        <div class="compo-row"><code class="compo-code">/mtk mine lessons</code><span class="compo-text">Sweep recent session transcripts for durable lesson candidates with a reject-by-default rubric (suggest-only).</span></div>
       </div>
 
       <div>
@@ -1322,6 +1339,10 @@
         <div class="compo-row">
           <code class="compo-code">silent-failure-hunter</code>
           <div><div class="compo-text"><strong style="color:var(--text)">Stage 1 (conditional)</strong> — swallowed catches, silenced promises, optimistic fallbacks, test erosion. Dispatched when the diff touches error-handling tokens.</div></div>
+        </div>
+        <div class="compo-row">
+          <code class="compo-code">context-miner</code>
+          <div><div class="compo-text"><strong style="color:var(--text)">Stage 2 (HIGH/MAX rigor)</strong> — mines git history, PR/issue threads, and prior lessons for organizational context the diff missed: prior reverts, related open issues, recorded decisions.</div></div>
         </div>
 
         <div class="sec-head" style="border:0;padding:0;margin: 24px 0 12px"><span style="color:var(--text-dim)">Tech stacks</span></div>

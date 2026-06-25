@@ -12,6 +12,10 @@ set -euo pipefail
 #   list                             List active workflows (id, type, status, updated)
 #   gate <uuid> <gate_name> <pass|fail> [--reason "<text>"]
 #                                    Record gate decision as event + status update
+#   criteria <uuid> <SCn=status>...  Set per-criterion verification status
+#                                    Status values: pending | verified | re-armed
+#                                    --rearm-all  Reset all verified → re-armed
+#   abandon <uuid> [--reason "<text>"]  Mark workflow abandoned
 #
 # Storage: .mtk/workflows/{uuid}.json + .mtk/workflows/{uuid}.events.jsonl
 # Artifacts live OUTSIDE .claude/ to avoid Claude Code's sensitive-file gate.
@@ -194,6 +198,86 @@ PY
   done
 }
 
+cmd_criteria() {
+  local uuid="${1:-}"
+  shift || true
+  [ -n "$uuid" ] || fail "criteria requires <uuid>"
+  [ -f "${WF_DIR}/${uuid}.json" ] || fail "no artifact for $uuid"
+  [ $# -gt 0 ] || fail "criteria requires at least one SCn=status or --rearm-all"
+
+  local rearm_all=0
+  local pairs=()
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --rearm-all) rearm_all=1; shift ;;
+      *) pairs+=("$1"); shift ;;
+    esac
+  done
+
+  local valid_statuses="pending verified re-armed"
+  for pair in "${pairs[@]:-}"; do
+    [ -z "$pair" ] && continue
+    [[ "$pair" == *=* ]] || fail "criteria: expected SCn=status, got: $pair"
+    local key val
+    key="${pair%%=*}"
+    val="${pair#*=}"
+    case " $valid_statuses " in
+      *" $val "*) ;;
+      *) fail "criteria: invalid status '$val' — must be one of: $valid_statuses" ;;
+    esac
+  done
+
+  python3 - "${WF_DIR}/${uuid}.json" "$(iso_now)" "$rearm_all" "${pairs[@]:-}" <<'PY'
+import json, sys
+path = sys.argv[1]
+now = sys.argv[2]
+rearm_all = sys.argv[3] == "1"
+pairs = [a for a in sys.argv[4:] if a]
+with open(path) as f: doc = json.load(f)
+if "criteria_status" not in doc:
+    doc["criteria_status"] = {}
+cs = doc["criteria_status"]
+if rearm_all:
+    for k in list(cs.keys()):
+        if cs[k] == "verified":
+            cs[k] = "re-armed"
+for pair in pairs:
+    k, v = pair.split("=", 1)
+    cs[k] = v
+doc["updated_at"] = now
+with open(path, "w") as f: json.dump(doc, f, indent=2)
+PY
+
+  if [ "$rearm_all" -eq 1 ]; then
+    cmd_event "$uuid" "field_updated" --data '{"keys":["criteria_status"],"reason":"re-arm-all"}' >/dev/null
+  elif [ ${#pairs[@]} -gt 0 ]; then
+    local keys_json
+    keys_json="$(printf '%s\n' "${pairs[@]}" | python3 -c 'import sys, json; print(json.dumps([l.split("=",1)[0] for l in sys.stdin.read().splitlines() if l]))')"
+    cmd_event "$uuid" "field_updated" --data "{\"keys\":${keys_json},\"context\":\"criteria_status\"}" >/dev/null
+  fi
+}
+
+cmd_abandon() {
+  local uuid="${1:-}"
+  shift || true
+  [ -n "$uuid" ] || fail "abandon requires <uuid>"
+  [ -f "${WF_DIR}/${uuid}.json" ] || fail "no artifact for $uuid"
+
+  local reason=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --reason) reason="${2:-}"; shift 2 ;;
+      *) fail "unknown flag: $1" ;;
+    esac
+  done
+
+  cmd_set "$uuid" "status=abandoned" >/dev/null
+  local reason_json
+  reason_json="$(printf '%s' "$reason" | json_escape)"
+  cmd_event "$uuid" "workflow_failed" --data "{\"reason\":${reason_json}}" >/dev/null
+  printf 'workflow %s -> abandoned\n' "$uuid"
+}
+
 cmd_gate() {
   local uuid="${1:-}"
   local gate="${2:-}"
@@ -229,12 +313,14 @@ main() {
   local sub="${1:-}"
   shift || true
   case "$sub" in
-    init)  cmd_init "$@" ;;
-    event) cmd_event "$@" ;;
-    set)   cmd_set "$@" ;;
-    read)  cmd_read "$@" ;;
-    list)  cmd_list ;;
-    gate)  cmd_gate "$@" ;;
+    init)     cmd_init "$@" ;;
+    event)    cmd_event "$@" ;;
+    set)      cmd_set "$@" ;;
+    read)     cmd_read "$@" ;;
+    list)     cmd_list ;;
+    gate)     cmd_gate "$@" ;;
+    criteria) cmd_criteria "$@" ;;
+    abandon)  cmd_abandon "$@" ;;
     ""|-h|--help) usage ;;
     *) fail "unknown subcommand: $sub" ;;
   esac

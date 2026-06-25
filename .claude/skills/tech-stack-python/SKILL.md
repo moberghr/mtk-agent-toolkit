@@ -192,6 +192,16 @@ adds the three stack-agnostic always-include items, and caps the list at 10.
 
 These bash commands are used by `setup-audit.md` when auditing a Python repository.
 
+### Dependency Registry Verification
+
+Before planning the install of any PyPI package not already in `requirements.txt` / `pyproject.toml` — especially one recommended by an AI assistant, blog post, or research brief — verify it exists and is the real package (criterion 0 of `.claude/references/dependency-intake-checklist.md`):
+
+```bash
+pip index versions <pkg>
+```
+
+A package not found, or one whose name closely resembles a popular package with different scope (typosquat signal), is an immediate block. `planning-and-task-breakdown` tags an unverified AI-recommended package `[ASSUMED]` and inserts a `checkpoint:human-verify` step before any install.
+
 ### Project Structure
 ```bash
 # Project metadata

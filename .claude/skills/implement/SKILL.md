@@ -153,7 +153,9 @@ Keep the rendering proportional — the todo and batch breakdown are bounded by 
 **`MTK_AUTO_PROCEED` opt-in.** If `MTK_AUTO_PROCEED=1` is set in the environment (typically via `.claude/settings.local.json` `env`), the orchestrator MAY default the recommended option on this gate (`Approve & run until done`) without an `AskUserQuestion` round-trip — but only when ALL of the following hold:
 
 - The spec has zero open decisions (`open_decisions` array empty in the JSON sidecar).
+- The spec has zero unresolved `[ASSUMED]` claims (no `[ASSUMED]`-tagged entry in the sidecar `assumptions` array, and none in the spec body). An assumption the model made on the engineer's behalf is an open decision in disguise — it gets a human at the gate. (`[VERIFIED:path]` and `[CITED:url]` claims do not block; only `[ASSUMED]` does.)
 - No plan-gap-reviewer `BLOCKING` findings are unresolved.
+- No unresolved package-legitimacy checkpoint (`checkpoint:human-verify` from planning for an externally-recommended package) remains open.
 - `skill_precedence_gate` is `pass`.
 - The scope classification is not "breaking change" or "high security_impact".
 - The rigor level is LIGHT or STANDARD (HIGH/MAX changes always get a human at the gate).

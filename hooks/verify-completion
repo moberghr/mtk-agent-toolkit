@@ -31,7 +31,7 @@ if echo "$MSG" | grep -qiE "$STRONG_CLAIM"; then
   fi
 
   if [ "${last_edit_seq:-0}" -gt "${last_verification_seq:-0}" ]; then
-    echo "VERIFICATION GAP: cited evidence is stale. The latest verification command (${last_verification_command:-unknown}) ran before the most recent edit. Re-run verification after your latest change before claiming completion."
+    echo "VERIFICATION GAP: criteria re-armed — all success criteria have reverted to 're-armed' status because an edit landed after the last verification (last cmd: ${last_verification_command:-unknown}). Re-run verification after your latest change, confirm each criterion's observable result, then cite exit code + pass/fail counts before claiming completion."
     exit 0
   fi
 

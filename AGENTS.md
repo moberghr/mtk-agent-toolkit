@@ -67,7 +67,8 @@ There are just two user-invocable skills:
 | claude-md-audit | CLAUDE.md quality-rubric audit → minimal append-only diffs |
 | claude-md-capture | end-of-session capture of discovered commands/gotchas into CLAUDE.md, apply only with approval |
 | pr-review-mining | mine recurring reviewer-feedback phrases from merged PRs as suggest-only [MINED:feedback] candidates |
-| promote-lesson | promote a personal lesson from `.claude/lessons/personal.md` to team-wide `tasks/lessons.md` |
+| promote-lesson | promote a personal lesson from `.claude/lessons/personal.md` to team-wide `tasks/lessons.md`; optionally open a validated contribute-back PR |
+| lesson-mining | sweep recent session transcripts for durable lesson/memory candidates (reject-by-default rubric, suggest-only) |
 
 **Updates:** MTK ships as a Claude Code plugin — use the plugin manager to upgrade. No in-repo update command.
 

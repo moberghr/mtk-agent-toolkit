@@ -58,6 +58,16 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "Read|Grep|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "hooks/read-guard.sh",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -146,6 +156,14 @@
           {
             "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/hooks/session-analytics.sh"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/hooks/workflow-continuation.sh"
           }
         ]
       }

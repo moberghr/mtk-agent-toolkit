@@ -55,6 +55,10 @@ Convert the approved plan into small, executable tasks that can be verified one 
      An empty list is allowed only with an explicit "no rule constrains this
      batch" note.
 4. Prefer vertical slices where possible so each batch leaves the system in a working state.
+4b. **Package-legitimacy gate for new dependencies.** If any batch introduces a third-party package **not already present** in the repo's dependency manifests — especially one an AI assistant, blog post, or the spec's research brief recommended — do NOT plan a bare install step. Instead:
+   - Run the stack's registry-verification command (from `.claude/references/dependency-intake-checklist.md` criterion 0, also listed in the active tech-stack skill) to confirm the package exists and is the real one (not a typosquat / hallucination).
+   - Tag the package `[ASSUMED]` in the plan until verified, and insert an explicit `checkpoint:human-verify` step **before** the install task. This checkpoint is one of the conditions that blocks `MTK_AUTO_PROCEED` at the `implement` Phase 2.5 gate, so an unverified package can never be installed autonomously.
+   - A criterion-0 Poor (not found / dead repo / typosquat signal) blocks the dependency outright — re-plan without it.
 5. Mark tasks that can run in parallel and tasks that must stay sequential.
 6. Write `tasks/todo.md` with:
    - task title

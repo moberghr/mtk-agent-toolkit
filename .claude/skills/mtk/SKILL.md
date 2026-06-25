@@ -124,6 +124,7 @@ Match the user's input against these patterns. Check from top to bottom; first m
 | `audit claude.md`, `claude.md audit`, `is claude.md still good`, `claude.md stale`, `memory rot`, `claude.md quality` | `.claude/skills/claude-md-audit/SKILL.md` | "audit CLAUDE.md", "is CLAUDE.md still good?" |
 | `capture claude.md`, `update claude.md`, `save what we learned`, `session learnings`, `remember this for next time`, `revise claude.md` | `.claude/skills/claude-md-capture/SKILL.md` | "save what we learned to CLAUDE.md", "update CLAUDE.md with this session" |
 | `promote lesson`, `share lesson` | `.claude/skills/promote-lesson/SKILL.md` | "promote this lesson to the team", "share that lesson" |
+| `mine lessons`, `what did we learn`, `harvest lessons`, `lesson sweep`, `mine transcripts` | `.claude/skills/lesson-mining/SKILL.md` | "mine lessons from last week", "what did we learn this sprint?" |
 | `hand off`, `handoff`, `save state`, `snapshot session` | `.claude/skills/handoff/SKILL.md` | "hand off to a teammate", "save state before I stop" |
 | `setup`, `bootstrap`, `init`, `initialize`, `first time`, `prepare repo`, `audit`, `architecture`, `principles` | `/mtk-setup` (direct the user) | "set up this repo", "audit this repo" |
 | `help`, `commands`, `what can you do` | (print help below) | "help", "what commands are there?" |

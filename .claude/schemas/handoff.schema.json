@@ -41,7 +41,15 @@
         "properties": {
           "id": { "type": "string", "pattern": "^SC[0-9]+$" },
           "description": { "type": "string" },
-          "verification": { "type": "string" }
+          "verification": { "type": "string" },
+          "evidence_channel": {
+            "enum": ["test-run", "build-output", "http-probe", "cli-stdout", "db-state-diff", "browser", "log-capture", "script-output"],
+            "description": "Named evidence channel through which the criterion is verified. Required for new specs; optional for back-compat with existing artifacts."
+          },
+          "observable": {
+            "type": "string",
+            "description": "One-line binary-observable result declared before execution (e.g. 'exit 0 with field accepted'). Present when evidence_channel is set."
+          }
         }
       }
     },

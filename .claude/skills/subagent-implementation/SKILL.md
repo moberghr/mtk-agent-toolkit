@@ -128,6 +128,7 @@ Pick the path once, at the top of Phase 3, based on tool availability. Do not mi
       ```json
       {
         "batch_id": "B2",
+        "status": "completed",
         "actual_files": ["src/Foo.cs", "tests/FooTests.cs"],
         "build": { "ok": true, "evidence": "command + tail" },
         "tests": { "ok": true, "evidence": "test summary" },
@@ -138,10 +139,21 @@ Pick the path once, at the top of Phase 3, based on tool availability. Do not mi
         ]
       }
       ```
-      If JSON parse fails → treat as build/test failure (retry once with explicit "return JSON exactly per schema" reminder; then halt).
-   4. **Build/test gate.** If `build.ok == false` or `tests.ok == false`:
-      - Up to 2 retries with the failure output appended to the prompt.
-      - On exhaustion, halt and report to engineer (also in autonomous mode — the gate is structural, not interactive).
+      `status` is one of `completed` (delivered + verified), `blocked` (could not
+      proceed; build/tests red and the reason stated), or `inconclusive`
+      (returned without runnable evidence — see the inconclusive rule below).
+      **A missing fenced block, a JSON parse failure, or an acknowledgment-only
+      reply ("done!", no JSON) is recorded as `inconclusive` — never as a pass.**
+   4. **Build/test/inconclusive gate.**
+      - `status == inconclusive` (or unparseable / ack-only): respawn **once**
+        with the scope narrowed to the missing deliverable and an explicit
+        "return the JSON result exactly per schema; partial work is not done"
+        reminder. If it comes back `inconclusive` again → halt and report to the
+        engineer. Inconclusive is never silently upgraded to pass.
+      - `build.ok == false` or `tests.ok == false` (`status: blocked`): up to 2
+        retries with the failure output appended to the prompt.
+      - On exhaustion, halt and report to engineer (also in autonomous mode — the
+        gate is structural, not interactive).
    5. **Drift micro-check (orchestrator-side, no agent call).**
       - `extra_files = actual_files - batch.files`
       - `missing_files = batch.files - actual_files` (excluding files explicitly deferred by the spec)
@@ -171,7 +183,7 @@ Use this when the `Workflow` tool is available. It moves the per-batch dispatch 
    Dependent batches run in a sequential `for…await` loop; independent waves may use `parallel()`. The script returns the array of structured batch results, in batch order.
 4. **Run it via the `Workflow` tool.** The native runtime shows its own plan-approval gate (the planned phases + Yes / View raw script / No). Because MTK Phase 2.5 has **already** approved the spec and scope, this gate is a transparency checkpoint, not a re-litigation: in interactive mode let the engineer see/approve the script; in autonomous mode (Phase 2.5 returned `Approve & run until done`) proceed without re-prompting, governed by the session permission mode. Do not author a second scope question here.
 5. **On return, run the orchestrator-side gates per batch, in order** — these did NOT run inside the workflow:
-   - **Build/test gate.** Inspect each result's `build.ok` / `tests.ok`. Any `false` (after the runtime's own retries) → halt and report, exactly as the manual path. A failing batch poisons later ones.
+   - **Build/test/inconclusive gate.** Inspect each result's `status` and `build.ok` / `tests.ok`. `status: inconclusive` (or a result the runtime could not validate against the schema) → respawn once with narrowed scope; a second inconclusive halts and reports. Any `build.ok`/`tests.ok == false` (`status: blocked`, after the runtime's own retries) → halt and report, exactly as the manual path. An inconclusive or failing batch poisons later ones — never count it as pass.
    - **Drift micro-check.** `actual_files ⊆ batch.files`? public contracts touched ⊆ planned? Clean → persist. Auto-fixable (in-package, no new contract, security unchanged) → amend sidecar. Otherwise → re-open Phase 2.5. The subagent is too close to its own diff; drift is judged here, never inside the workflow.
    - **Persist.** Append `{batch_id, actual_files, build, tests, behavioral_diff, deviations}` to `sidecar.implement.completed_batches[]`; tick `tasks/todo.md`; record progress on the workflow artifact (`scripts/workflow-artifact.sh set "$MTK_WF_UUID" results.batches_completed=<n>`).
    - **Cumulative churn check.** Same 300/500-line thresholds as the manual path.
@@ -183,6 +195,12 @@ If the `Workflow` tool errors, is denied, or is unavailable mid-run, fall back t
 
 The implementer subagent has no MTK context other than what you give it. The prompt must be self-sufficient. **This template is shared by both execution paths** — in the manual path you pass it as the `Agent` prompt; in the dynamic-workflow path it is the `agent()` prompt string in the generated script.
 
+The template is organized under four explicit contract headers — **TASK** (what
+to do), **DELIVERABLE** (what to return), **SCOPE** (the hard boundary), and
+**VERIFY** (the gate that must pass before returning). The headers are part of
+the contract, not decoration: an implementer that returns without satisfying
+VERIFY is `inconclusive`, not done.
+
 ```
 You are implementing one batch of a planned feature.
 
@@ -192,38 +210,43 @@ Read first (in this order):
   - .claude/skills/tech-stack-<stack>/SKILL.md (build/test commands, ORM/framework patterns, reference files)
   - The coding guidelines listed in that tech stack's "## Reference Files" section
 
-This batch:
+TASK — implement this batch:
 <paste batch object: id, files, acceptance, verification, boundary, depends>
 
 Spec context for this batch:
 <paste relevant spec sections>
 
-Whole-feature change_manifest (your hard boundary — do NOT touch files outside this list without
-returning a "deviation" entry; do NOT add new public contracts not listed):
-<paste change_manifest>
-
-Out of scope (must not be touched):
-<paste out_of_scope>
-
 Prior batches already completed (you can rely on these existing; do NOT re-edit them):
 <paste prior actual_files + behavioral_diff summaries>
+
+SCOPE — your hard boundary:
+- Whole-feature change_manifest (do NOT touch files outside this list without returning a "deviation"
+  entry; do NOT add new public contracts not listed):
+  <paste change_manifest>
+- Out of scope (must not be touched):
+  <paste out_of_scope>
 
 Rules:
 1. Read before editing. Match local patterns.
 2. Stay within batch.files. If you discover an unavoidable extra file, edit it but record it
    as a `deviation` in your final JSON.
 3. Add or update tests in this same batch — never defer to a later batch.
-4. Run the build command and the relevant test command from the tech stack skill before returning.
-5. If build or tests fail, return the error in `build.evidence` / `tests.evidence` with `ok: false`
-   and a one-line analysis. Do not loop endlessly.
-6. Do NOT spawn further subagents.
-7. Do NOT ask the engineer questions — you are an inner subagent, not the orchestrator.
+4. Do NOT spawn further subagents.
+5. Do NOT ask the engineer questions — you are an inner subagent, not the orchestrator.
 
-Return EXACTLY one fenced JSON block matching this schema, then stop:
+VERIFY — before returning:
+- Run the build command and the relevant test command from the tech stack skill.
+- If build or tests fail, set `status: "blocked"`, return the error in `build.evidence` /
+  `tests.evidence` with `ok: false` and a one-line analysis. Do not loop endlessly.
+- Returning without running the verify commands, or with a partial/ack-only reply, is
+  `status: "inconclusive"` — it is NOT a pass and will be respawned.
+
+DELIVERABLE — return EXACTLY one fenced JSON block matching this schema, then stop:
 
 ```json
 {
   "batch_id": "<id>",
+  "status": "completed|blocked|inconclusive",
   "actual_files": ["..."],
   "build":  { "ok": true|false, "evidence": "..." },
   "tests":  { "ok": true|false, "evidence": "..." },
@@ -236,6 +259,7 @@ Return EXACTLY one fenced JSON block matching this schema, then stop:
 ## Rules
 
 - One implementer subagent per batch. Never reuse a subagent across batches (the point is context isolation).
+- **Inconclusive is never a pass.** A batch whose result is missing, unparseable, acknowledgment-only, or marked `inconclusive` is recorded as `inconclusive` in the sidecar and respawned **once** with the scope narrowed to the missing deliverable. A second inconclusive halts the loop and reports to the engineer. Never count an inconclusive batch toward completion, and never let a later batch build on one.
 - Orchestrator never edits source. If editing is needed (e.g. to amend the sidecar after auto-fix), only `docs/specs/*.json`, `tasks/todo.md`, and the sidecar are fair game.
 - The model selection is asked **once**, before the loop. Never per batch.
 - In autonomous mode (Phase 2.5 returned `Approve & run until done`), the loop runs without further `AskUserQuestion` calls **except** the Phase 2.5 re-open required by non-auto-fixable drift. That re-open is a structural halt, not a chatty confirmation.
@@ -256,6 +280,7 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared table. Subagent
 | "I'll let the implementer subagent do the spec-drift review too" | No. Drift is orchestrator-side. The subagent is too close to its own diff to judge it. |
 | "Let me reuse the same subagent across batches to save tokens" | Then it's not subagent-driven. Use `incremental-implementation` instead. |
 | "Build failed, I'll skip this batch and continue" | No. A failing batch poisons every later batch's assumptions. Retry, then halt. |
+| "The subagent said 'done' but returned no JSON — close enough, mark it passed" | No. Ack-only / unparseable / missing-evidence results are `inconclusive`, not `completed`. Respawn once with narrowed scope; a second inconclusive halts. |
 | "The workflow runtime validated the structured output, so I can skip the drift check" | No. Schema validation ≠ scope/drift judgment. The runtime confirms the JSON shape; it does not know `batch.files` or `out_of_scope`. Run the orchestrator-side drift micro-check on every returned result. |
 | "The native plan-approval gate already approved it, so I can skip MTK Phase 2.5 / Phase 4" | No. The runtime gate approves running the *script*; it is not a spec approval or a code review. Phase 2.5 precedes the workflow; Phase 4 follows it. |
 | "pipeline()/parallel() is faster, I'll run all batches at once" | Only if their `depends` arrays prove independence. Dependent batches run sequentially — concurrency on a dependency edge produces a half-built, racy feature. |
@@ -273,6 +298,7 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared table. Subagent
 - Dynamic-workflow path: Phase 2.5 or Phase 4 skipped because the native plan-approval gate fired
 - Dependent batches run with `parallel()`/`pipeline()` despite an ordering edge in `depends`
 - Drift detection or sidecar amendment logic placed *inside* the generated workflow script
+- An `inconclusive` / ack-only / unparseable batch result counted as a pass or built upon by a later batch
 
 ## Verification
 

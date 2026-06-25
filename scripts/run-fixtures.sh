@@ -29,9 +29,7 @@ if ! ls "${FIX_DIR}"/*.json >/dev/null 2>&1; then
   exit 0
 fi
 
-count=0
 for f in "${FIX_DIR}"/*.json; do
-  count=$((count + 1))
   python3 - "$f" <<'PY' || exit 1
 import json, sys, pathlib
 
@@ -54,6 +52,17 @@ try:
         doc = json.load(fh)
 except json.JSONDecodeError as e:
     print(f"FAIL: {path}: invalid JSON: {e}", file=sys.stderr); sys.exit(1)
+
+# Fixtures with fixture_type != "router-decision" (or fixture_type absent but
+# no workflow_type) are validated only for JSON well-formedness + id match.
+# This lets handoff, schema, and other fixture types coexist in the same dir.
+fixture_type = doc.get("fixture_type", "router-decision" if "workflow_type" in doc else None)
+if fixture_type != "router-decision":
+    # Still check id == stem for all fixture types.
+    if doc.get("id") != stem:
+        print(f"FAIL: {path}: id={doc.get('id')!r} must match filename stem {stem!r}", file=sys.stderr); sys.exit(1)
+    print(f"SKIP {path.name} (fixture_type={fixture_type!r})")
+    sys.exit(0)
 
 # id must match filename stem
 if doc.get("id") != stem:
@@ -107,4 +116,4 @@ print(f"OK   {path.name}")
 PY
 done
 
-printf 'run-fixtures: %d fixtures OK.\n' "$count"
+printf 'run-fixtures: all fixtures OK.\n'

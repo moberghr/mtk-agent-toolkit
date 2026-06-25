@@ -87,10 +87,9 @@ Write a compact, cited brief (Markdown). Keep it short — it is consumed by ano
 <1–3 sentences: the current recommended approach for THIS version/repo>
 
 ### Findings
-- [verified-from-source] <claim> — <source url>
-- [applies-to-this-repo] <claim> — fits <file> pattern
-- [conflicts-with-repo] <claim> — repo currently does <X>; decision needed
-- [still-uncertain] <claim> — could not confirm for v<version>
+- [CITED:<url>] <claim> — confirmed against an external source
+- [VERIFIED:<file:line>] <claim> — confirmed against this repo's code/config
+- [ASSUMED] <claim> — could not confirm; stated as an assumption, NOT a fact
 
 ### Open decisions for the spec/plan
 - <anything that needs an engineer or AskUserQuestion call downstream>
@@ -98,6 +97,18 @@ Write a compact, cited brief (Markdown). Keep it short — it is consumed by ano
 ### Sources
 - <url> — <one-line what it established>
 ```
+
+**Provenance tags are mandatory on every claim.** Each finding carries exactly
+one provenance tag so downstream skills can tell fact from guess:
+
+- `[CITED:<url>]` — backed by a named external source.
+- `[VERIFIED:<file:line>]` — confirmed against this repo (installed version,
+  existing pattern, config value).
+- `[ASSUMED]` — not confirmed. This is the load-bearing one: an `[ASSUMED]`
+  claim that reaches a spec becomes an open decision that **blocks
+  `MTK_AUTO_PROCEED`** at the `implement` Phase 2.5 gate (a human must confirm
+  it). Never launder an `[ASSUMED]` claim into a bare assertion — if you could
+  not confirm it, tag it, so the gate can catch it.
 
 If invoked standalone (engineer said "research X"), present the brief and stop — do not start implementing. If invoked by `spec-driven-development` or `implement`, return the brief to that skill so its decisions and ambiguity gate consume it.
 

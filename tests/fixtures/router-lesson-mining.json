@@ -1,0 +1,15 @@
+{
+  "id": "router-lesson-mining",
+  "fixture_type": "router-mapping",
+  "description": "Natural-language requests to harvest lessons from past sessions route to the lesson-mining skill (not correction-capture, which is for in-the-moment corrections).",
+  "cases": [
+    { "prompt": "mine lessons from the last week", "expected_skill": "lesson-mining" },
+    { "prompt": "what did we learn this sprint?", "expected_skill": "lesson-mining" },
+    { "prompt": "harvest lessons from our recent sessions", "expected_skill": "lesson-mining" },
+    { "prompt": "no, not like that — use the other approach", "expected_skill": "correction-capture", "note": "in-the-moment correction stays with correction-capture, not lesson-mining" }
+  ],
+  "expected": {
+    "next_action": "route",
+    "rationale": "Requests to sweep/harvest past sessions for durable lessons map to lesson-mining; an in-the-moment redirect maps to correction-capture. Disambiguates the two lesson-related skills for the /mtk router."
+  }
+}

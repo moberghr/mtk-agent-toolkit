@@ -27,6 +27,12 @@ benign. The decision rule is concrete:
 > **If removing the silent handler would surface a real bug at runtime, flag it.
 > Otherwise skip it.**
 
+Your lens maps directly onto the catalogued error-handling failure modes in
+`.claude/references/ai-failure-modes.md` — primarily **F1** (catch-all error
+swallowing), **F2** (hardcoded-success returns), and **F9** (fake fallback
+values). When a finding matches one of these, cite its F-code in the finding's
+`failure_mode` field so error-handling patterns aggregate across reviews.
+
 ## Output Contract
 
 Your output MUST follow `.claude/references/review-finding-schema.md`:

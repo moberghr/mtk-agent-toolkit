@@ -51,6 +51,21 @@ Personal lessons in `.claude/lessons/personal.md` are gitignored — they belong
 
 7. **Suggest CLAUDE.md promotion.** If the lesson is foundational (architectural rule, security constraint, repeated correction), tell the engineer this might belong in `CLAUDE.md` or `.claude/rules/` rather than `tasks/lessons.md`. CLAUDE.md is for permanent standards; lessons.md is for accumulated patterns.
 
+8. **Offer team-wide contribute-back (optional).** A team-promoted lesson can also be shared across *all* repos via the central toolkit. After step 5, ask via `AskUserQuestion` whether to open a contribute-back PR to the MTK repo (`moberghr/mtk-agent-toolkit`). Default is **no** — only offer, never auto-push.
+
+   If the engineer accepts:
+   a. **Anonymize first (mandatory).** Run the anonymization checklist below against the lesson text. The lesson is going to a shared repo — it must contain zero client/repo-identifying or secret material.
+   b. Write the anonymized lesson to a single file `lessons/contributed/<YYYY-MM-DD>-<slug>.md` following the format documented in `lessons/contributed/README.md`.
+   c. Open a PR with `gh pr create` targeting `main`, touching only that one file. The CI workflow `.github/workflows/validate-lesson-pr.yml` validates path/size/secret/injection constraints and labels the PR `lesson-validated`; **a human merges it** — the workflow never auto-merges.
+   d. Do not push anything else in that PR. One lesson per PR keeps the audit trail clean.
+
+   **Anonymization checklist (every item must pass before the PR is opened):**
+   - [ ] No client, customer, or internal repo names (replace with a generic role, e.g. "a payments service")
+   - [ ] No internal URLs, hostnames, ticket IDs, or employee names
+   - [ ] No credentials, tokens, connection strings, or key material of any shape
+   - [ ] No file paths that reveal a private project's structure (generalize to the pattern)
+   - [ ] The rule still makes sense stripped of specifics — if it doesn't, it's too project-specific to contribute; keep it in `tasks/lessons.md` only
+
 ## Rules
 
 - Never auto-promote based on heuristics. Promotion is always explicit.
@@ -66,6 +81,7 @@ Personal lessons in `.claude/lessons/personal.md` are gitignored — they belong
 - [ ] Selected lessons removed from `.claude/lessons/personal.md`
 - [ ] Provenance note (`Promoted from personal: <date>`) preserved
 - [ ] Engineer notified if any lesson belongs in CLAUDE.md instead
+- [ ] Contribute-back offered (not forced); if accepted, anonymization checklist passed and a single-file PR opened under `lessons/contributed/` with no auto-merge
 
 ## Red Flags
 
