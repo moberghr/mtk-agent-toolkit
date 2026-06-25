@@ -18,6 +18,9 @@ user-invocable: false
 
 Convert the approved plan into small, executable tasks that can be verified one at a time. Good task breakdown reduces hidden coupling, scope drift, and fake progress.
 
+> **Model tier:** runs on `sonnet` (bounded decomposition against a written spec) per `.claude/references/model-routing.md`.
+> **Tool discipline (phase-locked):** planning is a read + plan-artifact phase. Write **only** the plan/todo artifacts (`docs/plans/`, `tasks/todo.md`) — never source or test code. Implementation belongs to Phase 3; a source edit here is a scope violation the `scope-guard` hook will flag.
+
 ## When To Use
 
 - After spec approval

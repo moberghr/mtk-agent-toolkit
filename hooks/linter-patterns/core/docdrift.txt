@@ -1,0 +1,12 @@
+# Docdrift — comment/doc-as-falsifiable-claim smells (heuristic).
+# Treats documentation and doc-comments as falsifiable statements: absolute
+# reliability claims, empty/placeholder references, and shipped placeholders.
+# Heuristic by design — bash cannot verify a symbol exists or that prose matches
+# behavior, so every rule is `warning` (advisory, never blocks a commit).
+# Matched case-insensitively via grep -Ei. Tab-separated:
+# RULE_ID<TAB>SEVERITY<TAB>ERE_REGEX<TAB>RATIONALE<TAB>SUGGESTED_FIX
+DOC-ABSOLUTE-CLAIM	warning	(always returns|never (throws|fails|returns null)|guaranteed (to|not to)|cannot fail|impossible to (fail|throw))	Absolute reliability claim in docs is rarely true and drifts from behavior	State the actual contract and its failure modes, or drop the absolute
+DOC-EMPTY-CREF	warning	<see(also)? cref="" */>	Empty doc cross-reference points at nothing	Fill in the cref target or remove the tag
+DOC-PLACEHOLDER	warning	(lorem ipsum|your (description|name|summary) here|describe (this|the)? ?(method|here)|todo:? document)	Placeholder text left in shipped documentation	Replace with the real description before shipping
+DOC-EMPTY-LINK	warning	\]\(([#]?|todo|url|link|tbd)\)	Markdown link with an empty or placeholder target	Point the link at the real destination
+DOC-OBSOLETE-NOMSG	warning	\[Obsolete\]([^(]|$)	[Obsolete] without a migration message leaves callers no path	Add a message: [Obsolete("Use X instead")]

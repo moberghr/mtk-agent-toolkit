@@ -1,0 +1,89 @@
+{
+  "slug": "v715-borrowed-capabilities",
+  "date": "2026-06-25",
+  "scope": "feature",
+  "security_impact": "none",
+  "open_decisions": [],
+  "assumptions": [
+    "[VERIFIED] .claude/toolsets/read-only.yaml exists",
+    "[VERIFIED] pre-commit-linters.sh auto-discovers hooks/linter-patterns/core/*.txt",
+    "[ASSUMED] new doc-drift regexes risk false positives; mitigated by warning severity"
+  ],
+  "baseline_area": null,
+  "change_manifest": [
+    ".claude/references/model-routing.md",
+    ".claude/references/guard-packs.md",
+    ".claude/skills/context-engineering/SKILL.md",
+    ".claude/skills/subagent-implementation/SKILL.md",
+    ".claude/skills/planning-and-task-breakdown/SKILL.md",
+    ".claude/skills/code-review-and-quality/SKILL.md",
+    ".claude/skills/research-context/SKILL.md",
+    ".claude/skills/verification-before-completion/SKILL.md",
+    ".claude/skills/spec-driven-development/SKILL.md",
+    ".claude/skills/handoff/SKILL.md",
+    ".claude/skills/brainstorming/SKILL.md",
+    ".claude/references/orchestration-gates.md",
+    ".claude/references/workflow-artifact-schema.md",
+    ".claude/references/ai-failure-modes.md",
+    ".claude/rules/skill-authoring.md",
+    "hooks/context-budget.sh",
+    "hooks/lib/hook-io.sh",
+    "hooks/linter-patterns/core/docdrift.txt",
+    "hooks/linter-patterns/domain-finance/patterns.txt",
+    "hooks/linter-patterns/stack-dotnet/patterns.txt",
+    "scripts/workflow-artifact.sh",
+    "tests/hooks/test-context-estimator.sh",
+    "tests/hooks/test-remediation-tracker.sh",
+    "tests/hooks/test-docdrift-pack.sh",
+    "tests/hooks/test-guard-packs.sh",
+    ".claude/manifest.json",
+    ".claude-plugin/plugin.json",
+    ".claude-plugin/marketplace.json",
+    "CHANGELOG.md",
+    ".claude/references.index",
+    ".claude/rules/INDEX.md",
+    ".claude/triggers.index",
+    "checksums.sha256"
+  ],
+  "test_manifest": [
+    "tests/hooks/test-context-estimator.sh",
+    "tests/hooks/test-remediation-tracker.sh",
+    "tests/hooks/test-docdrift-pack.sh"
+  ],
+  "public_contracts": [
+    "reference:model-routing.md",
+    "reference:guard-packs.md",
+    "env:MTK_CONTEXT_WINDOW_TOKENS",
+    "env:MTK_CONTEXT_BUDGET_PCT",
+    "env:MTK_MAX_REMEDIATION_ITERS",
+    "evidence-channel:smoke-boot",
+    "cmd:workflow-artifact.sh remediation"
+  ],
+  "out_of_scope": [
+    "Editing CLAUDE.md (protected, line-budget)",
+    "Semantic comment-vs-code verifier / edit-time doc hook",
+    "read-only lock on spec-driven-development / planning-and-task-breakdown",
+    "New stacks or domains"
+  ],
+  "plan": {
+    "batches": [
+      { "id": "B1", "title": "F1 model-routing reference + skill wiring" },
+      { "id": "B2", "title": "F2 context-budget 60% checkpoint + tests + docs" },
+      { "id": "B3", "title": "F3 circuit-breaker/plateau: helper + schema + skill docs + test" },
+      { "id": "B4", "title": "F4 smoke-boot evidence channel" },
+      { "id": "B5", "title": "F5 docdrift linter pack + cross-ref + test" },
+      { "id": "B6", "title": "F6 phase-locked toolsets + tool-discipline notes" },
+      { "id": "B7", "title": "F7 stack/domain guard packs + guard-packs reference" },
+      { "id": "B8", "title": "Release: version bump, manifest, CHANGELOG, indices, checksums, validate" }
+    ]
+  },
+  "success_criteria": [
+    { "id": "SC1", "description": "validate-toolkit passes", "verification": "bash scripts/validate-toolkit.sh", "evidence_channel": "script-output", "observable": "prints 'Toolkit validation passed', exit 0" },
+    { "id": "SC2", "description": "checksums verify clean", "verification": "bash scripts/generate-checksums.sh --verify", "evidence_channel": "script-output", "observable": "0 mismatched" },
+    { "id": "SC3", "description": "versions synced to 7.15.0", "verification": "grep version manifest.json plugin.json", "evidence_channel": "cli-stdout", "observable": "both show 7.15.0" },
+    { "id": "SC4", "description": "context-estimator tests pass", "verification": "bash tests/hooks/test-context-estimator.sh", "evidence_channel": "test-run", "observable": "all assertions pass, exit 0" },
+    { "id": "SC5", "description": "remediation-tracker tests pass", "verification": "bash tests/hooks/test-remediation-tracker.sh", "evidence_channel": "test-run", "observable": "escalate at N and on plateau, exit 0" },
+    { "id": "SC6", "description": "docdrift pack matches a seeded smell, not clean docs", "verification": "bash tests/hooks/test-docdrift-pack.sh", "evidence_channel": "cli-stdout", "observable": "smell line matched, clean line not matched" },
+    { "id": "SC7", "description": "derived indices in sync", "verification": "bash scripts/build-references-index.sh --check && bash scripts/build-rule-index.sh --check", "evidence_channel": "script-output", "observable": "both exit 0" }
+  ]
+}

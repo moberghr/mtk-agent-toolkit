@@ -61,3 +61,15 @@
 - **Rule:** When checking "did I already process X?" against a JSON/JSONL trail, match with `jq -e --arg s "$X" 'select(.field == $s)'`, not `grep`. If grep is unavoidable, use `grep -F`.
 - **Why it matters:** Silent NO-OP on a divergent match breaks the audit trail the feature exists to guarantee — a data-integrity failure, not a cosmetic one.
 - **When it applies:** Any idempotency/dedup guard that scans a structured log keyed by a user-supplied identifier.
+
+## Linter guard packs are ERE (grep -Ei), not PCRE — and reject empty alternation
+- **What happened:** Writing `core/docdrift.txt`, I used PCRE-isms (`(?i)`, negative lookahead `(?!…)`) copied from `slopwatch.txt`, and an empty alternation branch `\]\((|#|todo)\)`. `pre-commit-linters.sh` matches with `grep -qEi`, so `(?i)`/lookahead are silently inert (case is already handled by `-i`) and the empty branch makes grep abort with "empty (sub)expression". Caught by the pack's own test.
+- **Rule:** Author pack regexes as POSIX ERE. No `(?i)`/`(?!…)`. Never write an empty alternation branch — use `([x]?|a|b)` to express "optional/empty or alternatives". Always ship a `tests/hooks/test-*-pack.sh` with a positive match per rule **and** a clean negative control (e.g. `\bpan\b` must not match "Japan").
+- **Why it matters:** A pattern that silently never matches is worse than no rule — it gives false confidence the smell is guarded.
+- **When it applies:** Any new or edited `hooks/linter-patterns/**/*.txt` rule.
+
+## Hard-coded sed line ranges in usage()/help silently truncate when you add lines
+- **What happened:** `workflow-artifact.sh`'s `usage()` did `sed -n '4,18p'`. Adding the `remediation` subcommand's comment lines pushed `abandon` to line 21, so `--help` silently dropped it. I bumped to `4,20p` and *still* clipped `abandon` (line 21) — caught in architecture review.
+- **Rule:** When a header/help block is rendered by a hard-coded line range, re-count after adding lines — or better, render to a sentinel (`sed -n '/^# Subcommands:/,/^$/p'`) so it never regresses.
+- **Why it matters:** Truncated help hides real capabilities from users with no error.
+- **When it applies:** Any script whose `usage()` slices its own header by absolute line numbers.

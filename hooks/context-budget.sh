@@ -12,6 +12,13 @@ trap _mtk_hook_diag EXIT
 #   30+ unique files read  → narrow your focus
 #   40+ modifications      → commit a checkpoint
 #   120+ total operations  → consider handoff
+#   read bytes estimate ≥ MTK_CONTEXT_BUDGET_PCT% of window → reset/handoff before degradation
+#
+# Context-budget checkpoint (borrowed from tworkflow's "reset before degradation"):
+#   MTK_CONTEXT_WINDOW_TOKENS  usable context window in tokens (default 200000)
+#   MTK_CONTEXT_BUDGET_PCT     consumed-% at which to nudge a handoff (default 60)
+# The estimate is bytes_read/4 — a read-bytes FLOOR (it cannot see assistant output
+# or non-read tool results), so it under-counts. Advisory only; never blocks.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
@@ -100,6 +107,19 @@ fi
 if [ "$ops" -ge 120 ] && [ "$warned_ops" -eq 0 ]; then
   sed -i.bak 's/warned_ops=0/warned_ops=1/' "$SESSION_FILE" && rm -f "${SESSION_FILE}.bak"
   echo "CONTEXT BUDGET: ${ops} total operations this session. Context window may be approaching limits. If switching tasks, capture state with the handoff skill first."
+fi
+
+# Context-budget checkpoint: nudge a deliberate reset/handoff before quality degrades.
+# Estimate is a read-bytes floor (bytes_read/4); fires once per session.
+ctx_window="${MTK_CONTEXT_WINDOW_TOKENS:-200000}"
+ctx_pct="${MTK_CONTEXT_BUDGET_PCT:-60}"
+if [ "$warned_ctxpct" -eq 0 ] && [ "${bytes_read:-0}" -gt 0 ]; then
+  est_tokens=$((bytes_read / 4))
+  budget_tokens=$((ctx_window * ctx_pct / 100))
+  if [ "$budget_tokens" -gt 0 ] && [ "$est_tokens" -ge "$budget_tokens" ]; then
+    sed -i.bak 's/warned_ctxpct=0/warned_ctxpct=1/' "$SESSION_FILE" && rm -f "${SESSION_FILE}.bak"
+    echo "CONTEXT BUDGET: estimated ~${est_tokens} context tokens consumed (read-bytes floor) — past ${ctx_pct}% of the ${ctx_window}-token window. Reset deliberately before quality degrades: capture state with the handoff skill and start a fresh session. (Estimate under-counts; tune via MTK_CONTEXT_WINDOW_TOKENS / MTK_CONTEXT_BUDGET_PCT.)"
+  fi
 fi
 
 exit 0

@@ -3,3 +3,5 @@ RAW-SQL-INTERPOLATED	critical	(FromSqlRaw|ExecuteSqlRaw|SqlQuery)[[:space:]]*\([
 CONSOLE-WRITELINE	suggestion	Console\.(WriteLine|Write)\(	Console output left in production code	Remove or replace with ILogger
 DEBUG-WRITELINE	suggestion	Debug\.WriteLine\(	Debug output left in production code	Remove or replace with structured logging
 BROAD-CATCH-EMPTY	warning	catch[[:space:]]*\([[:space:]]*Exception[^)]*\)[[:space:]]*\{[[:space:]]*\}	Empty catch(Exception) swallows errors silently	Log and rethrow, or narrow the exception type
+NEW-HTTPCLIENT	warning	new[[:space:]]+HttpClient\(	new HttpClient per use exhausts sockets under load	Inject IHttpClientFactory / a typed client instead of constructing HttpClient
+WEAK-HASH	warning	(MD5|SHA1)\.(Create|HashData)\(	MD5/SHA1 is cryptographically weak for security use	Use SHA-256+ (or a password hasher like PBKDF2/Argon2 for secrets)

@@ -1,6 +1,6 @@
 {
-  "version": "7.14.0",
-  "updated": "2026-06-12",
+  "version": "7.15.0",
+  "updated": "2026-06-25",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
   "coding-guidelines": {
@@ -76,6 +76,18 @@
       "target": ".claude/references/review-finding-schema.md",
       "action": "sync",
       "description": "Canonical output schema for all review entry points (markdown table + fenced JSON with confidence scores)"
+    },
+    "references/model-routing.md": {
+      "source": ".claude/references/model-routing.md",
+      "target": ".claude/references/model-routing.md",
+      "action": "sync",
+      "description": "Per-phase model-tier policy (haiku/sonnet/opus) reserving the expensive tier for code writing and adversarial review"
+    },
+    "references/guard-packs.md": {
+      "source": ".claude/references/guard-packs.md",
+      "target": ".claude/references/guard-packs.md",
+      "action": "sync",
+      "description": "How linter guard packs are structured, discovered, and authored as shippable deterministic review units"
     },
     "review-config.json": {
       "source": ".claude/review-config.json",
@@ -741,12 +753,18 @@
       "action": "sync",
       "description": "Core lint pack — LLM reward hacking patterns (disabled tests, empty catches, always-pass assertions)"
     },
+    "hooks/linter-patterns/core/docdrift.txt": {
+      "source": "hooks/linter-patterns/core/docdrift.txt",
+      "target": "hooks/linter-patterns/core/docdrift.txt",
+      "action": "sync",
+      "description": "Core lint pack — comment/doc-drift smells (absolute claims, empty cref, placeholders, empty links, Obsolete without message)"
+    },
     "hooks/linter-patterns/stack-dotnet/patterns.txt": {
       "source": "hooks/linter-patterns/stack-dotnet/patterns.txt",
       "target": "hooks/linter-patterns/stack-dotnet/patterns.txt",
       "action": "sync",
       "stack": "dotnet",
-      "description": "Stack lint pack — .NET patterns (raw SQL interpolation, console output, empty catches)"
+      "description": "Stack lint pack — .NET patterns (raw SQL interpolation, console output, empty catches, new HttpClient, weak hashes)"
     },
     "hooks/linter-patterns/stack-python/patterns.txt": {
       "source": "hooks/linter-patterns/stack-python/patterns.txt",
@@ -766,7 +784,7 @@
       "source": "hooks/linter-patterns/domain-finance/patterns.txt",
       "target": "hooks/linter-patterns/domain-finance/patterns.txt",
       "action": "sync",
-      "description": "Domain lint pack — finance patterns (float money, hardcoded currencies/rates, unrounded division)"
+      "description": "Domain lint pack — finance patterns (float money, hardcoded currencies/rates, unrounded division, anonymous endpoints, audited-record deletes, sensitive-data logging)"
     },
     "AGENTS.md": {
       "source": "AGENTS.md",
@@ -1378,7 +1396,25 @@
       "source": "tests/hooks/test-context-estimator.sh",
       "target": "tests/hooks/test-context-estimator.sh",
       "action": "sync",
-      "description": "SC5+SC6 benchmark — bytes_read accumulates for unique files; estimated_context_tokens computed correctly"
+      "description": "SC5+SC6+SC8 benchmark — bytes_read accumulates for unique files; estimated_context_tokens computed; context-budget %-checkpoint fires once at threshold"
+    },
+    "tests/hooks/test-remediation-tracker.sh": {
+      "source": "tests/hooks/test-remediation-tracker.sh",
+      "target": "tests/hooks/test-remediation-tracker.sh",
+      "action": "sync",
+      "description": "F3 test — remediation circuit-breaker escalates on iteration cap and on score plateau"
+    },
+    "tests/hooks/test-docdrift-pack.sh": {
+      "source": "tests/hooks/test-docdrift-pack.sh",
+      "target": "tests/hooks/test-docdrift-pack.sh",
+      "action": "sync",
+      "description": "F5 test — docdrift linter pack matches seeded smells and leaves clean docs untouched"
+    },
+    "tests/hooks/test-guard-packs.sh": {
+      "source": "tests/hooks/test-guard-packs.sh",
+      "target": "tests/hooks/test-guard-packs.sh",
+      "action": "sync",
+      "description": "F7 test — enriched finance/dotnet guard-pack rules match seeded smells with clean-control negatives"
     },
     "tests/pressure-tests/hooks-skill-invocation-pressure.md": {
       "source": "tests/pressure-tests/hooks-skill-invocation-pressure.md",

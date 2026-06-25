@@ -17,6 +17,8 @@ user-invocable: false
 
 Write the implementation spec before writing code. The spec is the shared source of truth between the engineer, the command flow, and the reviewers. Code without a spec is guessing.
 
+> **Tool discipline (phase-locked):** spec authoring is a read + spec-artifact phase. Write **only** the spec artifacts (`docs/specs/<date>-<slug>.md` and its `.json` sidecar) — never source or test code. Code starts at Phase 3, after the approval gate; a source edit here is a scope violation. (Not toolset-locked to `read-only` because it must write its spec files.)
+
 ## When To Use
 
 - New endpoints, handlers, routes, or views
@@ -278,7 +280,7 @@ later by downstream skills (MetaGPT typed-handoff pattern).
       "id": "SC1",
       "description": "testable outcome",
       "verification": "name of test or command",
-      "evidence_channel": "test-run | build-output | http-probe | cli-stdout | db-state-diff | browser | log-capture | script-output",
+      "evidence_channel": "test-run | build-output | http-probe | cli-stdout | db-state-diff | browser | smoke-boot | log-capture | script-output",
       "observable": "one-line binary pass/fail statement (e.g. 'exit 0 with N/N tests passed')"
     }
   ],
@@ -307,7 +309,7 @@ Rules:
   two shapes, not independent documents.
 - Every `success_criteria[]` entry must carry `evidence_channel` (from the
   fixed taxonomy: `test-run`, `build-output`, `http-probe`, `cli-stdout`,
-  `db-state-diff`, `browser`, `log-capture`, `script-output`) and `observable`
+  `db-state-diff`, `browser`, `smoke-boot`, `log-capture`, `script-output`) and `observable`
   (a binary pass/fail observation declared before execution). Both fields are
   the verification contract that `verification-before-completion` checks
   criterion-by-criterion.

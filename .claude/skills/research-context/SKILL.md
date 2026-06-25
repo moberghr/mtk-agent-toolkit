@@ -26,6 +26,9 @@ It is the MTK analog of Taskmaster's research mode: research is a first-class wo
 
 This skill **does not edit code**. It produces a brief; another skill acts on it.
 
+> **Tool discipline (phase-locked):** research is a read + web-fetch phase — use `Read`/`Grep`/`Glob` and the web tools only. Do **not** `Edit`/`Write` source or test code; the only artifact it may write is its own brief. (It is not locked to the `read-only` toolset because it legitimately needs `WebSearch`/`WebFetch`, which that toolset excludes.)
+> **Model tier:** runs on `sonnet` (synthesis of external sources into a cited brief) per `.claude/references/model-routing.md`.
+
 ## When To Use
 
 - A spec or plan hinges on a **version-sensitive** choice (which API/pattern is current in the installed package version, not the one from memory).

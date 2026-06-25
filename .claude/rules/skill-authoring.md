@@ -53,7 +53,7 @@ axes:
 ## Toolset Scoping
 
 - **S2.19** Skills may declare `required-toolsets: [<name>, ...]` and `forbidden-toolsets: [<name>, ...]` in frontmatter. Toolset names resolve against `.claude/toolsets/<name>.yaml`. The `/mtk` router (and any other orchestrator) expands them into `allowed-tools` when dispatching. Explicit `allowed-tools` in the skill, if present, takes precedence over toolset expansion.
-- **S2.20** Every toolset name referenced in frontmatter must exist as `.claude/toolsets/<name>.yaml`. The validator enforces this. Review, audit, and drift-detection skills should declare `required-toolsets: [read-only]` unless they genuinely need to write.
+- **S2.20** Every toolset name referenced in frontmatter must exist as `.claude/toolsets/<name>.yaml`. The validator enforces this. Review, audit, drift-detection, and pure-read planning skills (e.g. `brainstorming`) should declare `required-toolsets: [read-only]` unless they genuinely need to write. Planning/spec/research skills that legitimately write *artifacts* (specs, plans, todos) or need web tools (`research-context`) are not toolset-locked; they carry a written **Tool discipline** note pinning them to their phase (artifacts/web only, never source or test code), which `scope-guard` backs at edit time.
 - **S2.21** `forbidden-toolsets` wins on overlap. If a skill requires `git-safe` and forbids `code-edit`, the merged list stays inside `git-safe` even though `code-edit` extends `git-safe`.
 
 ## Keyword Triggers (OpenHands pattern)
