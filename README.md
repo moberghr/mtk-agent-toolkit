@@ -179,8 +179,8 @@ See [CHANGELOG.md](CHANGELOG.md) for the full history.
 **Claude Code (plugin marketplace):**
 ```bash
 # 1. Install the plugin
-/plugin marketplace add moberghr/mtk-agent-toolkit
-/plugin install mtk@moberghr
+/plugin marketplace add moberghr/moberg-plugins
+/plugin install mtk@moberg-plugins
 
 # 2. Bootstrap your repo (one-time)
 /mtk-setup
@@ -497,7 +497,7 @@ Two-pass review: deterministic linter scan (secrets, SQL injection, PII in logs,
 MTK is a Claude Code plugin. Use the plugin marketplace to upgrade — there is no in-repo update command.
 
 ```bash
-/plugin update mtk@moberghr
+/plugin update mtk@moberg-plugins
 ```
 
 ---
@@ -951,8 +951,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Create the skill directory, add a SKILL.
 | `implement` says "run setup-bootstrap first" | Run `/mtk-setup` |
 | Review agent reports `BLOCKED` | Check `.claude/references/` exists; re-run setup-bootstrap |
 | "Verification gap" fires constantly | Run verification after your latest edit, then cite that command output in your completion |
-| Toolkit version mismatch | Run `/plugin update mtk@moberghr` |
-| Skills not loading after update | Run `/plugin update mtk@moberghr` then restart session |
+| Toolkit version mismatch | Run `/plugin update mtk@moberg-plugins` |
+| Skills not loading after update | Run `/plugin update mtk@moberg-plugins` then restart session |
 | Scope guard fires on every edit | Check `docs/specs/*.json` — you have an active spec; update its `change_manifest` or remove it |
 | Context budget warning fires early | Expected on large sessions — consider committing a checkpoint or using the handoff skill |
 
@@ -985,8 +985,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). The short version:
 
 ```bash
 # 1. Remove the plugin from Claude Code
-/plugin uninstall mtk@moberghr
-/plugin marketplace remove moberghr/mtk-agent-toolkit
+/plugin uninstall mtk@moberg-plugins
+/plugin marketplace remove moberghr/moberg-plugins
 
 # 2. (Optional) Remove generated artifacts from your repo
 rm -rf .claude/references .claude/skills .claude/agents .claude/rules
