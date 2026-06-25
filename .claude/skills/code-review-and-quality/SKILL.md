@@ -62,6 +62,7 @@ If reviewing a PR or branch with CI runs, check CI status before starting the nu
    - `.claude/references/security-checklist.md`
    - `.claude/references/testing-patterns.md`
    - `.claude/references/performance-checklist.md`
+   - `.claude/references/ai-failure-modes.md` — the catalogue of researched LLM-specific failure modes (F1–F14). When a finding matches one, cite its F-code in the finding's `failure_mode` field (see step 5) so failure-mode patterns aggregate across reviews.
    - If a domain supplement exists (e.g. `.claude/references/domain-finance.md`), load it for domain-specific rationalizations
 2. Read the behavioral diff if provided.
 3. Review across these axes:
@@ -82,6 +83,18 @@ If reviewing a PR or branch with CI runs, check CI status before starting the nu
      Run in parallel with `compliance-reviewer`; merge findings, dedupe by
      `(file, line, rule)`. The hunter emits `category: "error-handling"`
      so dedupe is straightforward.
+   - `context-miner` when the rigor level is **HIGH or MAX** (per `implement`
+     Rigor Score). This is the organizational-memory lane: it mines `git log` /
+     `git blame` of the touched paths, linked GitHub issues and PR-thread
+     discussions (`gh pr list`/`gh issue list`/`gh pr view`), and prior lessons
+     (`scripts/learnings.sh query`) for context the implementation may have
+     missed — a prior revert of the same code, a related open issue, a decision
+     recorded in a PR thread, a lesson that applies. Read-only. Dispatch it in
+     **parallel** with the other Stage 2 reviewers (single message, multiple
+     `Agent` calls). It emits `source: "context"` findings per the review-finding
+     schema; merge and dedupe like the others. At LIGHT/STANDARD rigor it is
+     skipped (the diff is small enough that organizational context rarely
+     changes the verdict).
 5. Categorize findings per the schema in `.claude/references/review-finding-schema.md`:
     - Apply the **False-Positive Exclusion List** in that schema before
       scoring confidence — drop candidates that match an FP category rather

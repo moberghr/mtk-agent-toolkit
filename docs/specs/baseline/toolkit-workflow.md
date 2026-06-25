@@ -7,42 +7,90 @@
 
 | Signature | Kind | Last change | Source slug |
 |---|---|---|---|
+| .mtk/workflows/{uuid}.json criteria_status map | handler | new | v7.14-evidence-closed-loop |
+| /mtk routes 'mine lessons' -> lesson-mining skill | handler | new | v7.14-evidence-closed-loop |
+| GitHub Actions workflow validate-lesson-pr.yml on lessons/contributed/** PRs | endpoint | new | v7.14-evidence-closed-loop |
+| MTK_READ_GUARD=advisory (read-guard rollout mode) | cli-flag | new | v7.14-evidence-closed-loop |
+| handoff.schema.json success_criteria[].{evidence_channel,observable} | handler | modified | v7.14-evidence-closed-loop |
+| learnings JSONL optional fields wrong_turns/time_cost/evolution_actions | handler | modified | v7.14-evidence-closed-loop |
 | scripts/build-rule-index.sh [--check] | script | added | borrowed-mechanisms |
 | scripts/constitution-digest.sh | script | added | borrowed-mechanisms |
 | scripts/skill-eval/coverage.sh [--json] | script | added | borrowed-mechanisms |
 | scripts/spec-archive.sh <spec.json> | script | added | borrowed-mechanisms |
+| subagent batch-result status enum gains 'inconclusive' | handler | modified | v7.14-evidence-closed-loop |
 
 ## Files
 
 | Path | Action | Source slug | Purpose |
 |---|---|---|---|
-| .claude-plugin/marketplace.json | modify | borrowed-mechanisms | version bump match (C0.1 — validate enforces parity) |
-| .claude-plugin/plugin.json | modify | borrowed-mechanisms | version bump match |
-| .claude/manifest.json | modify | borrowed-mechanisms | register files + version bump |
+| .claude-plugin/marketplace.json | modify | v7.14-evidence-closed-loop | 7.14.0 (version parity — validate-toolkit asserts manifest==plugin==marketplace) |
+| .claude-plugin/plugin.json | modify | v7.14-evidence-closed-loop | 7.14.0 |
+| .claude/agents/context-miner.md | create | v7.14-evidence-closed-loop | organizational-memory review lane (read-only) |
+| .claude/agents/plan-gap-reviewer.md | modify | v7.14-evidence-closed-loop | dirty-worktree overlap rejection rule |
+| .claude/agents/silent-failure-hunter.md | modify | v7.14-evidence-closed-loop | reference error-handling F-codes |
+| .claude/manifest.json | modify | v7.14-evidence-closed-loop | 7.14.0 + files list + updated date |
+| .claude/references/ai-failure-modes.md | create | v7.14-evidence-closed-loop | F-code failure-mode catalog with citations |
 | .claude/references/delta-spec-model.md | create | borrowed-mechanisms | F1 reference |
+| .claude/references/dependency-intake-checklist.md | modify | v7.14-evidence-closed-loop | criterion 0: Existence & Legitimacy |
+| .claude/references/divergence-frames.md | create | v7.14-evidence-closed-loop | frames table incl. fintech frames |
+| .claude/references/learnings-schema.md | modify | v7.14-evidence-closed-loop | wrong_turns, time_cost, evolution_actions fields |
+| .claude/references/lesson-mining-rubric.md | create | v7.14-evidence-closed-loop | reject-by-default mining rubric |
+| .claude/references/review-finding-schema.md | modify | v7.14-evidence-closed-loop | optional failure_mode F-code field |
+| .claude/references/security-checklist.md | modify | v7.14-evidence-closed-loop | prohibit global-config self-mutation |
+| .claude/references/workflow-artifact-schema.md | modify | v7.14-evidence-closed-loop | criteria_status map + re-arm semantics |
 | .claude/rules/INDEX.md | create | borrowed-mechanisms | F4 generated wake-up layer |
 | .claude/rules/git-workflow.md | modify | borrowed-mechanisms | F4 taxonomy frontmatter |
 | .claude/rules/hooks-and-scripts.md | modify | borrowed-mechanisms | F4 taxonomy frontmatter |
 | .claude/rules/skill-authoring.md | modify | borrowed-mechanisms | F4 taxonomy frontmatter |
 | .claude/rules/toolkit-structure.md | modify | borrowed-mechanisms | F4 taxonomy frontmatter |
+| .claude/schemas/handoff.schema.json | modify | v7.14-evidence-closed-loop | evidence_channel enum + observable on success_criteria |
+| .claude/settings.json | modify | v7.14-evidence-closed-loop | register read-guard and workflow-continuation hooks |
+| .claude/skills/brainstorming/SKILL.md | modify | v7.14-evidence-closed-loop | isolated-divergence mode + critic pass + trap register + cost gate |
+| .claude/skills/code-review-and-quality/SKILL.md | modify | v7.14-evidence-closed-loop | load failure-modes catalog; context-miner lane at HIGH/MAX rigor |
 | .claude/skills/context-engineering/SKILL.md | modify | borrowed-mechanisms | F4 wake-up usage |
-| .claude/skills/implement/SKILL.md | modify | borrowed-mechanisms | F1 Phase 7.5 archive |
-| .claude/skills/planning-and-task-breakdown/SKILL.md | modify | borrowed-mechanisms | F2 governing-constraints per batch |
+| .claude/skills/correction-capture/SKILL.md | modify | v7.14-evidence-closed-loop | enriched capture template |
+| .claude/skills/implement/SKILL.md | modify | v7.14-evidence-closed-loop | [ASSUMED] claims block MTK_AUTO_PROCEED at Phase 2.5 |
+| .claude/skills/lesson-mining/SKILL.md | create | v7.14-evidence-closed-loop | suggest-only transcript mining skill |
+| .claude/skills/mtk/SKILL.md | modify | v7.14-evidence-closed-loop | route lesson-mining |
+| .claude/skills/planning-and-task-breakdown/SKILL.md | modify | v7.14-evidence-closed-loop | package-legitimacy ASSUMED + human checkpoint |
+| .claude/skills/promote-lesson/SKILL.md | modify | v7.14-evidence-closed-loop | enriched template + contribute-back offer + anonymization checklist |
+| .claude/skills/research-context/SKILL.md | modify | v7.14-evidence-closed-loop | provenance tags on brief claims |
 | .claude/skills/spec-drift-detection/SKILL.md | modify | borrowed-mechanisms | F1 archive-on-pass note |
-| .claude/skills/spec-driven-development/SKILL.md | modify | borrowed-mechanisms | F1 delta section + F2 constitution check |
+| .claude/skills/spec-driven-development/SKILL.md | modify | v7.14-evidence-closed-loop | evidence channels, dirty-worktree step, provenance tags, rejected-alternatives |
+| .claude/skills/subagent-implementation/SKILL.md | modify | v7.14-evidence-closed-loop | TASK/DELIVERABLE/SCOPE/VERIFY headers; inconclusive status |
+| .claude/skills/tech-stack-dotnet/SKILL.md | modify | v7.14-evidence-closed-loop | NuGet registry verification command |
+| .claude/skills/tech-stack-python/SKILL.md | modify | v7.14-evidence-closed-loop | PyPI registry verification command |
+| .claude/skills/tech-stack-typescript/SKILL.md | modify | v7.14-evidence-closed-loop | npm registry verification command |
 | .claude/skills/toolkit-health/SKILL.md | modify | borrowed-mechanisms | F3 reference report |
+| .claude/skills/verification-before-completion/SKILL.md | modify | v7.14-evidence-closed-loop | criterion loop, channel taxonomy, re-arm rule |
+| .github/workflows/validate-lesson-pr.yml | create | v7.14-evidence-closed-loop | contribute-back validation, label-only, no auto-merge |
+| AGENTS.md | modify | v7.14-evidence-closed-loop | route new skill (S4.10) |
+| CLAUDE.md | modify | v7.14-evidence-closed-loop | routing table row + version note |
+| README.md | modify | v7.14-evidence-closed-loop | document new features (S4.9); backfill stale What's New (7.10.x-7.13.1) and version badge (engineer-approved scope add 2026-06-12) |
+| checksums.sha256 | modify | v7.14-evidence-closed-loop | regenerated last (S4.11) |
+| docs/index.html | modify | v7.14-evidence-closed-loop | pages site: refresh version and feature highlights (engineer-approved scope add 2026-06-12) |
 | evals/fix/eval-01-real-fix.md | create | borrowed-mechanisms | F3 seed eval (positive) |
 | evals/fix/eval-02-scope-creep.md | create | borrowed-mechanisms | F3 seed eval (adversarial) |
 | evals/fix/grader.md | create | borrowed-mechanisms | F3 seed eval |
 | evals/spec-drift-detection/eval-01-silent-drift.md | create | borrowed-mechanisms | F3 seed eval |
 | evals/spec-drift-detection/eval-02-clean-pass.md | create | borrowed-mechanisms | F3 seed eval |
 | evals/spec-drift-detection/grader.md | create | borrowed-mechanisms | F3 seed eval |
+| hooks/read-guard.sh | create | v7.14-evidence-closed-loop | blocking secret-read gate + noise-dir advisory |
+| hooks/verify-completion | modify | v7.14-evidence-closed-loop | stale-evidence message declares criteria re-armed |
+| hooks/workflow-continuation.sh | create | v7.14-evidence-closed-loop | Stop-hook advisory nudge for unfinished workflows |
+| lessons/contributed/README.md | create | v7.14-evidence-closed-loop | intake/curation contract for contributed lessons |
 | scripts/build-rule-index.sh | create | borrowed-mechanisms | F4 wake-up index generator |
 | scripts/constitution-digest.sh | create | borrowed-mechanisms | F2 digest |
+| scripts/learnings.sh | modify | v7.14-evidence-closed-loop | B6 deviation (auto-fixed): add optional --wrong-turns/--time-cost/--evolution-actions write flags so item-4 fields are actually persistable (query parser untouched). B1's 'no parser change needed' claim was inaccurate — add subcommand rejected unknown flags. |
+| scripts/run-fixtures.sh | modify | v7.14-evidence-closed-loop | B1 deviation (auto-fixed): typed-fixture skip so non-router fixtures coexist in tests/fixtures/ |
 | scripts/skill-eval/coverage.sh | create | borrowed-mechanisms | F3 coverage/sprawl report |
 | scripts/spec-archive.sh | create | borrowed-mechanisms | F1 archive/sync-back |
+| scripts/validate-handoff.sh | modify | v7.14-evidence-closed-loop | validate new criterion fields |
 | scripts/validate-toolkit.sh | modify | borrowed-mechanisms | F3 non-blocking coverage line |
+| scripts/workflow-artifact.sh | modify | v7.14-evidence-closed-loop | criteria_status read/write + abandon affordance |
+| templates/workflows/subagent-implementation.workflow.js | modify | v7.14-evidence-closed-loop | same dispatch contract in workflow path |
 
 ## Archive history
 
 - 2026-06-01 · borrowed-mechanisms · drift PASS · archived 2026-06-01T16:00:00Z
+- 2026-06-12 · v7.14-evidence-closed-loop · drift PASS · archived 2026-06-19T10:46:20Z

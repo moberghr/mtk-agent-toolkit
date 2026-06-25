@@ -1,6 +1,6 @@
 # claude-helpers — MTK Standards
 
-> Updated 2026-06-10 for v7.13.1 (skill-audit remediation: routing/contract fixes, embedded-bash lint, codified phase-structured anatomy).
+> Updated 2026-06-12 for v7.14.0 ("evidence and the closed loop": locked verifiable-criteria + named evidence channels with gate re-arm, AI failure-modes catalogue, read-guard + workflow-continuation hooks, claim provenance + package-legitimacy gates, hardened subagent dispatch contract, closed-loop lessons (richer template, contribute-back CI, lesson-mining), isolated-divergence brainstorming, context-miner review lane).
 >
 > This file + `.claude/rules/` are the source of truth for AI agents.
 > Detailed standards live in `.claude/rules/`. Reference docs live in `.claude/references/` (shared) and `.claude/references/{stack}/` (stack-specific).
@@ -18,7 +18,8 @@
 | Periodic readiness check | `/mtk repo-health` or `bash scripts/repo-health-score.sh` | 12-asset scorecard + PR review mining (last 10 merged PRs) |
 | Validate toolkit | `bash scripts/validate-toolkit.sh` | Before every commit — structural check of manifest, plugin.json, and skill anatomy |
 | Install health check | `/mtk-doctor` | PASS/WARN/FAIL diagnostics across core files, components, hooks; `--json` for CI, `--fix` for safe auto-repairs |
-| Promote a lesson | `/promote-lesson` | Promote a personal lesson from `.claude/lessons/personal.md` to team-wide `tasks/lessons.md` |
+| Promote a lesson | `/promote-lesson` | Promote a personal lesson from `.claude/lessons/personal.md` to team-wide `tasks/lessons.md`; optionally open a validated contribute-back PR to the toolkit |
+| Mine lessons from past sessions | `/mtk mine lessons` | Sweep recent session transcripts for durable lesson/memory candidates (reject-by-default rubric, suggest-only) |
 | Disable tier-2 hooks | `MTK_HOOKS_TIER2=0` in `.claude/settings.local.json` env | Silences skill-invoking hooks (queue + drain) without touching shared settings |
 | Auto-approve safe plans | `MTK_AUTO_PROCEED=1` in `.claude/settings.local.json` env | Skips Phase 2.5 prompt only when spec has no open decisions and no plan-gap BLOCKING findings |
 

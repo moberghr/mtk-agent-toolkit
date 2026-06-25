@@ -36,12 +36,13 @@ full review envelope expected from review skills and reviewer agents.
       "rule_ref": "<optional external rule ref such as OWASP A03:2021>",
       "category": "<optional category such as security | architecture | tests>",
       "gate": "<optional gate flag such as mandatory>",
-      "source": "ai | linter | drift | analyzer",
+      "source": "ai | linter | drift | analyzer | context",
       "file": "relative/path/to/file.ext",
       "line": 42,
       "rationale": "One-line statement of why this is a problem.",
       "suggested_fix": "One-line description of the remediation.",
-      "decision_origin": "user-directed | claude-recommended-approved | claude-recommended-modified | claude-recommended-rejected | system-inferred"
+      "decision_origin": "user-directed | claude-recommended-approved | claude-recommended-modified | claude-recommended-rejected | system-inferred",
+      "failure_mode": "F1 | F2 | F3 | ... | F14 (optional — cite an F-code from ai-failure-modes.md when the finding matches a catalogued mode)"
     }
   ],
   "scores": {
@@ -66,6 +67,9 @@ The `source` field distinguishes deterministic linter findings from AI
 reasoning and spec-drift checks. Static linters emit `source: "linter"`
 with confidence always `100`. AI findings emit `source: "ai"`.
 Analyzer findings (from Roslyn, ruff, tsc, biome) emit `source: "analyzer"` with confidence always `100`.
+Context-miner findings (from `git log`/`git blame` history, PR/issue threads, learnings query) emit `source: "context"`.
+
+`failure_mode` is optional. When a finding matches one of the catalogued AI failure modes in `.claude/references/ai-failure-modes.md`, cite its F-code (e.g., `"failure_mode": "F1"`). This enables aggregation by failure mode across reviews and surfaces patterns in AI-generated code. Omit the field when no F-code matches.
 
 - `rule` remains the canonical citation field used across all findings.
 - `rule_ref` is optional and reserved for external standards naming, such as

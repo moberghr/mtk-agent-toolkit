@@ -110,6 +110,7 @@ digraph spec_flow {
    - `internal-refactoring`
    - `new-feature`
    - `breaking-change`
+4b. **Dirty-worktree step.** Run `git status --porcelain` and collect any modified or untracked paths. For each path that is NOT listed in the current scope's change manifest, record it under **Risks** as a `dirty-worktree` entry and add it to `out_of_scope` in the JSON sidecar. This surfaces unrelated in-flight work before the plan is locked so the `plan-gap-reviewer` can reject any batch that touches those paths.
 5. Read 2-3 nearby files that represent the local pattern to follow.
 6. **Ambiguity gate (BEFORE drafting).** Detect whether the task has genuine ambiguity that would change the spec. Trigger if **any** of:
    - Two or more plausible designs exist and the request doesn't pick one (e.g., reflection vs source-gen, sync vs async, single vs split package).
@@ -273,7 +274,13 @@ later by downstream skills (MetaGPT typed-handoff pattern).
       "change": "new | modified | removed" }
   ],
   "success_criteria": [
-    { "id": "SC1", "description": "testable outcome", "verification": "name of test or command" }
+    {
+      "id": "SC1",
+      "description": "testable outcome",
+      "verification": "name of test or command",
+      "evidence_channel": "test-run | build-output | http-probe | cli-stdout | db-state-diff | browser | log-capture | script-output",
+      "observable": "one-line binary pass/fail statement (e.g. 'exit 0 with N/N tests passed')"
+    }
   ],
   "test_manifest": [
     { "path": "tests/X_Tests.cs", "covers": ["SC1", "SC2"] }
@@ -298,6 +305,28 @@ Rules:
   `spec-drift-detection` will catch understated impact and block.
 - Keep the JSON in sync with the markdown spec. They are one artifact in
   two shapes, not independent documents.
+- Every `success_criteria[]` entry must carry `evidence_channel` (from the
+  fixed taxonomy: `test-run`, `build-output`, `http-probe`, `cli-stdout`,
+  `db-state-diff`, `browser`, `log-capture`, `script-output`) and `observable`
+  (a binary pass/fail observation declared before execution). Both fields are
+  the verification contract that `verification-before-completion` checks
+  criterion-by-criterion.
+
+**Provenance tags.** Claims in the `assumptions` and `risks` arrays use tags
+from the `verify-claims.sh` family:
+
+| Tag | Meaning |
+|---|---|
+| `[VERIFIED:path]` | Claim checked against a local file at `path` |
+| `[ASSUMED]` | Claim not verified against a local file or cited source — counts as an open decision; `MTK_AUTO_PROCEED` does not skip the gate while any `[ASSUMED]` claim is present |
+| `[CITED:url]` | Claim supported by an external URL |
+
+**Rejected alternatives (trap-register carry-over).** After the elegance check
+(step 8), record any option that was considered and ruled out under a
+`## Rejected alternatives` section (or in the `risks` array with a `trap:` prefix).
+Brainstorming's divergence mode populates this register; it must travel with the spec
+so `plan-gap-reviewer` and downstream reviewers see why the obvious answer was
+discarded.
 
 ## Delta & Baseline
 

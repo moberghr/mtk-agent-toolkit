@@ -112,6 +112,17 @@ would force the engineer to say "compare the plan to the code again."
 7. If no meaningful issues remain, return verdict `PASS`.
 8. Otherwise return verdict `FINDINGS` with categorized issues.
 
+## Dirty-Worktree Rejection Rule
+
+When the spec JSON sidecar lists paths under `out_of_scope` with a `dirty-worktree` tag
+(populated by spec-driven-development's step 4b from `git status --porcelain`), **any
+plan batch that touches one of those paths is a `BLOCKING` finding**.
+
+Check: for each file path appearing in any plan batch, verify it is absent from the
+sidecar's `out_of_scope` dirty-worktree list. A batch that would modify an unrelated
+in-flight path contaminates the scope boundary before a single line of code is written.
+The engineer must either complete or stash the unrelated work before the plan proceeds.
+
 ## Finding Categories
 
 Every finding must use exactly one of these seven categories. Anything that does
@@ -126,11 +137,15 @@ not fit is not a plan-gap finding — drop it.
 | `under_scoped_integrations` | Plan adds a unit but does not wire it into the system that consumes it |
 | `open_decisions_presented_as_settled` | Plan states a decision as fact when the user request and spec leave it open |
 | `cross_artifact_inconsistencies` | Spec sidecar, plan, and todo disagree — a manifest entry with no batch, a batch file missing from the manifest, a success criterion with no batch/test mapping, an out-of-scope item in a batch, or todo diverging from plan |
+| `dirty_worktree_overlap` | A plan batch touches a path listed in the spec's `out_of_scope` dirty-worktree list |
 
 Severity for `cross_artifact_inconsistencies`: file-level mismatches,
 out-of-scope items in batches, and todo/plan divergence are `BLOCKING`
 (the approval gate would cover something other than what gets built);
 a success criterion missing a test mapping is `ADVISORY`.
+
+Severity for `dirty_worktree_overlap`: always `BLOCKING` — a batch that touches an
+unrelated in-flight path contaminates scope before implementation starts.
 
 ## Severity
 

@@ -24,6 +24,48 @@
       "change": "added",
       "source_slug": "borrowed-mechanisms",
       "date": "2026-06-01"
+    },
+    "handoff.schema.json success_criteria[].{evidence_channel,observable}": {
+      "kind": "handler",
+      "change": "modified",
+      "source_slug": "v7.14-evidence-closed-loop",
+      "date": "2026-06-12"
+    },
+    ".mtk/workflows/{uuid}.json criteria_status map": {
+      "kind": "handler",
+      "change": "new",
+      "source_slug": "v7.14-evidence-closed-loop",
+      "date": "2026-06-12"
+    },
+    "MTK_READ_GUARD=advisory (read-guard rollout mode)": {
+      "kind": "cli-flag",
+      "change": "new",
+      "source_slug": "v7.14-evidence-closed-loop",
+      "date": "2026-06-12"
+    },
+    "subagent batch-result status enum gains 'inconclusive'": {
+      "kind": "handler",
+      "change": "modified",
+      "source_slug": "v7.14-evidence-closed-loop",
+      "date": "2026-06-12"
+    },
+    "GitHub Actions workflow validate-lesson-pr.yml on lessons/contributed/** PRs": {
+      "kind": "endpoint",
+      "change": "new",
+      "source_slug": "v7.14-evidence-closed-loop",
+      "date": "2026-06-12"
+    },
+    "/mtk routes 'mine lessons' -> lesson-mining skill": {
+      "kind": "handler",
+      "change": "new",
+      "source_slug": "v7.14-evidence-closed-loop",
+      "date": "2026-06-12"
+    },
+    "learnings JSONL optional fields wrong_turns/time_cost/evolution_actions": {
+      "kind": "handler",
+      "change": "modified",
+      "source_slug": "v7.14-evidence-closed-loop",
+      "date": "2026-06-12"
     }
   },
   "files": {
@@ -39,8 +81,8 @@
     },
     ".claude/skills/spec-driven-development/SKILL.md": {
       "action": "modify",
-      "purpose": "F1 delta section + F2 constitution check",
-      "source_slug": "borrowed-mechanisms"
+      "purpose": "evidence channels, dirty-worktree step, provenance tags, rejected-alternatives",
+      "source_slug": "v7.14-evidence-closed-loop"
     },
     ".claude/skills/spec-drift-detection/SKILL.md": {
       "action": "modify",
@@ -49,8 +91,8 @@
     },
     ".claude/skills/implement/SKILL.md": {
       "action": "modify",
-      "purpose": "F1 Phase 7.5 archive",
-      "source_slug": "borrowed-mechanisms"
+      "purpose": "[ASSUMED] claims block MTK_AUTO_PROCEED at Phase 2.5",
+      "source_slug": "v7.14-evidence-closed-loop"
     },
     "scripts/constitution-digest.sh": {
       "action": "create",
@@ -59,8 +101,8 @@
     },
     ".claude/skills/planning-and-task-breakdown/SKILL.md": {
       "action": "modify",
-      "purpose": "F2 governing-constraints per batch",
-      "source_slug": "borrowed-mechanisms"
+      "purpose": "package-legitimacy ASSUMED + human checkpoint",
+      "source_slug": "v7.14-evidence-closed-loop"
     },
     "scripts/skill-eval/coverage.sh": {
       "action": "create",
@@ -144,18 +186,218 @@
     },
     ".claude/manifest.json": {
       "action": "modify",
-      "purpose": "register files + version bump",
-      "source_slug": "borrowed-mechanisms"
+      "purpose": "7.14.0 + files list + updated date",
+      "source_slug": "v7.14-evidence-closed-loop"
     },
     ".claude-plugin/plugin.json": {
       "action": "modify",
-      "purpose": "version bump match",
-      "source_slug": "borrowed-mechanisms"
+      "purpose": "7.14.0",
+      "source_slug": "v7.14-evidence-closed-loop"
     },
     ".claude-plugin/marketplace.json": {
       "action": "modify",
-      "purpose": "version bump match (C0.1 — validate enforces parity)",
-      "source_slug": "borrowed-mechanisms"
+      "purpose": "7.14.0 (version parity — validate-toolkit asserts manifest==plugin==marketplace)",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/schemas/handoff.schema.json": {
+      "action": "modify",
+      "purpose": "evidence_channel enum + observable on success_criteria",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/references/workflow-artifact-schema.md": {
+      "action": "modify",
+      "purpose": "criteria_status map + re-arm semantics",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    "scripts/workflow-artifact.sh": {
+      "action": "modify",
+      "purpose": "criteria_status read/write + abandon affordance",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    "scripts/validate-handoff.sh": {
+      "action": "modify",
+      "purpose": "validate new criterion fields",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/skills/verification-before-completion/SKILL.md": {
+      "action": "modify",
+      "purpose": "criterion loop, channel taxonomy, re-arm rule",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    "hooks/verify-completion": {
+      "action": "modify",
+      "purpose": "stale-evidence message declares criteria re-armed",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/agents/plan-gap-reviewer.md": {
+      "action": "modify",
+      "purpose": "dirty-worktree overlap rejection rule",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    "hooks/read-guard.sh": {
+      "action": "create",
+      "purpose": "blocking secret-read gate + noise-dir advisory",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    "hooks/workflow-continuation.sh": {
+      "action": "create",
+      "purpose": "Stop-hook advisory nudge for unfinished workflows",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/settings.json": {
+      "action": "modify",
+      "purpose": "register read-guard and workflow-continuation hooks",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/references/ai-failure-modes.md": {
+      "action": "create",
+      "purpose": "F-code failure-mode catalog with citations",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/references/review-finding-schema.md": {
+      "action": "modify",
+      "purpose": "optional failure_mode F-code field",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/skills/code-review-and-quality/SKILL.md": {
+      "action": "modify",
+      "purpose": "load failure-modes catalog; context-miner lane at HIGH/MAX rigor",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/agents/silent-failure-hunter.md": {
+      "action": "modify",
+      "purpose": "reference error-handling F-codes",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/agents/context-miner.md": {
+      "action": "create",
+      "purpose": "organizational-memory review lane (read-only)",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/skills/subagent-implementation/SKILL.md": {
+      "action": "modify",
+      "purpose": "TASK/DELIVERABLE/SCOPE/VERIFY headers; inconclusive status",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    "templates/workflows/subagent-implementation.workflow.js": {
+      "action": "modify",
+      "purpose": "same dispatch contract in workflow path",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/references/learnings-schema.md": {
+      "action": "modify",
+      "purpose": "wrong_turns, time_cost, evolution_actions fields",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/skills/correction-capture/SKILL.md": {
+      "action": "modify",
+      "purpose": "enriched capture template",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/skills/promote-lesson/SKILL.md": {
+      "action": "modify",
+      "purpose": "enriched template + contribute-back offer + anonymization checklist",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".github/workflows/validate-lesson-pr.yml": {
+      "action": "create",
+      "purpose": "contribute-back validation, label-only, no auto-merge",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    "lessons/contributed/README.md": {
+      "action": "create",
+      "purpose": "intake/curation contract for contributed lessons",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/references/lesson-mining-rubric.md": {
+      "action": "create",
+      "purpose": "reject-by-default mining rubric",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/skills/lesson-mining/SKILL.md": {
+      "action": "create",
+      "purpose": "suggest-only transcript mining skill",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/skills/research-context/SKILL.md": {
+      "action": "modify",
+      "purpose": "provenance tags on brief claims",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/references/dependency-intake-checklist.md": {
+      "action": "modify",
+      "purpose": "criterion 0: Existence & Legitimacy",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/skills/tech-stack-dotnet/SKILL.md": {
+      "action": "modify",
+      "purpose": "NuGet registry verification command",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/skills/tech-stack-python/SKILL.md": {
+      "action": "modify",
+      "purpose": "PyPI registry verification command",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/skills/tech-stack-typescript/SKILL.md": {
+      "action": "modify",
+      "purpose": "npm registry verification command",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/skills/brainstorming/SKILL.md": {
+      "action": "modify",
+      "purpose": "isolated-divergence mode + critic pass + trap register + cost gate",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/references/divergence-frames.md": {
+      "action": "create",
+      "purpose": "frames table incl. fintech frames",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/references/security-checklist.md": {
+      "action": "modify",
+      "purpose": "prohibit global-config self-mutation",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    ".claude/skills/mtk/SKILL.md": {
+      "action": "modify",
+      "purpose": "route lesson-mining",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    "CLAUDE.md": {
+      "action": "modify",
+      "purpose": "routing table row + version note",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    "AGENTS.md": {
+      "action": "modify",
+      "purpose": "route new skill (S4.10)",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    "README.md": {
+      "action": "modify",
+      "purpose": "document new features (S4.9); backfill stale What's New (7.10.x-7.13.1) and version badge (engineer-approved scope add 2026-06-12)",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    "docs/index.html": {
+      "action": "modify",
+      "purpose": "pages site: refresh version and feature highlights (engineer-approved scope add 2026-06-12)",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    "checksums.sha256": {
+      "action": "modify",
+      "purpose": "regenerated last (S4.11)",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    "scripts/run-fixtures.sh": {
+      "action": "modify",
+      "purpose": "B1 deviation (auto-fixed): typed-fixture skip so non-router fixtures coexist in tests/fixtures/",
+      "source_slug": "v7.14-evidence-closed-loop"
+    },
+    "scripts/learnings.sh": {
+      "action": "modify",
+      "purpose": "B6 deviation (auto-fixed): add optional --wrong-turns/--time-cost/--evolution-actions write flags so item-4 fields are actually persistable (query parser untouched). B1's 'no parser change needed' claim was inaccurate — add subcommand rejected unknown flags.",
+      "source_slug": "v7.14-evidence-closed-loop"
     }
   },
   "history": [
@@ -164,6 +406,12 @@
       "date": "2026-06-01",
       "verdict": "PASS",
       "archived_at": "2026-06-01T16:00:00Z"
+    },
+    {
+      "slug": "v7.14-evidence-closed-loop",
+      "date": "2026-06-12",
+      "verdict": "PASS",
+      "archived_at": "2026-06-19T10:46:20Z"
     }
   ]
 }

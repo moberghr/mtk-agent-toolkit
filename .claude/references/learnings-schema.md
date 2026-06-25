@@ -44,7 +44,14 @@ Manual edits to `tasks/lessons.md` are preserved on next migrate (re-emitted as 
   "title": "Always read tasks/lessons.md size before regenerating",
   "body": "Re-emitting tasks/lessons.md without checking line count tripped the shrink-guard. Compute current size and either pass MTK_SHRINK_GUARD_OVERRIDE=1 with reason or append-only.",
   "rule": "Before regen-markdown, check current line count and use mtk_guarded_write.",
-  "applies_when": "phase=implement AND files contain tasks/lessons.md"
+  "applies_when": "phase=implement AND files contain tasks/lessons.md",
+
+  "wrong_turns": [
+    "Attempted direct overwrite without checking size — failed shrink-guard on first try.",
+    "Tried append-only path but missed the Auto-generated section boundary."
+  ],
+  "time_cost": 12,
+  "evolution_actions": "hook"
 }
 ```
 
@@ -76,6 +83,9 @@ Manual edits to `tasks/lessons.md` are preserved on next migrate (re-emitted as 
 - **`validity.expires_at`** — default = `captured_at + 12 months`. Lessons go stale; re-confirm or let them expire.
 - **`validity.expired`** — set true after `expires_at` unless `reconfirmed_at` is fresher.
 - **`recurrence.count`** — incremented when the same root rule is captured again. ≥3 hits is the trigger to propose `CLAUDE.md` promotion.
+- **`wrong_turns`** *(optional array of strings)* — dead ends tried during the session, each with a one-line explanation of why it was wrong. Back-compat: absent in pre-v7.14 entries. `learnings.sh add` accepts the field as pass-through; no parser change needed.
+- **`time_cost`** *(optional integer, minutes)* — rough minutes lost due to the absence of this rule. Used by lesson-mining to satisfy admit rule A4. Null when not measurable.
+- **`evolution_actions`** *(optional string, one of: `routing` | `claude_md` | `reference` | `hook` | `none`)* — which toolkit asset was updated as a result of this lesson. Forced decision at promote time: `none` is allowed but must be accompanied by a stated reason. Absent in pre-v7.14 entries (treated as `none`).
 
 ## 5-Layer Retrieval Filter
 

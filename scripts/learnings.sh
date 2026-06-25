@@ -90,6 +90,7 @@ cmd_add() {
   local files_csv="" dirs_csv="" phase="any" severity="warn"
   local title="" body="" rule="" applies_when=""
   local decision_origin=""
+  local wrong_turns_csv="" time_cost="" evolution_actions=""
   local dry_run=0
 
   while [ $# -gt 0 ]; do
@@ -107,10 +108,22 @@ cmd_add() {
       --rule) rule="$2"; shift 2 ;;
       --applies-when) applies_when="$2"; shift 2 ;;
       --decision-origin) decision_origin="$2"; shift 2 ;;
+      # v7.14 optional enrichment fields (pass-through; query parser ignores them)
+      --wrong-turns) wrong_turns_csv="$2"; shift 2 ;;
+      --time-cost) time_cost="$2"; shift 2 ;;
+      --evolution-actions) evolution_actions="$2"; shift 2 ;;
       --dry-run) dry_run=1; shift ;;
       *) printf 'unknown flag: %s\n' "$1" >&2; exit 2 ;;
     esac
   done
+
+  # Validate evolution_actions enum when supplied.
+  if [ -n "$evolution_actions" ]; then
+    case "$evolution_actions" in
+      routing|claude_md|reference|hook|none) ;;
+      *) printf 'add: invalid --evolution-actions "%s" (one of: routing | claude_md | reference | hook | none)\n' "$evolution_actions" >&2; exit 2 ;;
+    esac
+  fi
 
   [ -n "$title" ] || { printf 'add requires --title\n' >&2; exit 2; }
   [ -n "$body" ] || body="$title"
@@ -136,8 +149,24 @@ cmd_add() {
   local now; now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   local exp; exp="$(expires_at_default)"
 
+  # Optional v7.14 enrichment fragment, appended only when at least one field
+  # is set. Trailing keys are invisible to the key-specific query parser.
+  local extra=""
+  if [ -n "$wrong_turns_csv" ]; then
+    extra="${extra},\"wrong_turns\":$(csv_to_json_array "$wrong_turns_csv")"
+  fi
+  if [ -n "$time_cost" ]; then
+    case "$time_cost" in
+      ''|*[!0-9]*) printf 'add: --time-cost must be an integer (minutes)\n' >&2; exit 2 ;;
+      *) extra="${extra},\"time_cost\":${time_cost}" ;;
+    esac
+  fi
+  if [ -n "$evolution_actions" ]; then
+    extra="${extra},\"evolution_actions\":\"${evolution_actions}\""
+  fi
+
   local entry
-  entry="$(printf '{"id":"%s","spec_id":"%s","workflow_uuid":"%s","scope":"%s","source":"%s","decision_origin":"%s","captured_at":"%s","files":%s,"directories":%s,"phase":"%s","severity":"%s","validity":{"expires_at":"%s","reconfirmed_at":null,"expired":false},"recurrence":{"count":1,"last_seen_at":"%s","related_ids":[]},"title":"%s","body":"%s","rule":"%s","applies_when":"%s"}' \
+  entry="$(printf '{"id":"%s","spec_id":"%s","workflow_uuid":"%s","scope":"%s","source":"%s","decision_origin":"%s","captured_at":"%s","files":%s,"directories":%s,"phase":"%s","severity":"%s","validity":{"expires_at":"%s","reconfirmed_at":null,"expired":false},"recurrence":{"count":1,"last_seen_at":"%s","related_ids":[]},"title":"%s","body":"%s","rule":"%s","applies_when":"%s"%s}' \
     "$id" \
     "$(json_escape "$spec_id")" \
     "$(json_escape "$workflow_uuid")" \
@@ -155,6 +184,7 @@ cmd_add() {
     "$(json_escape "$body")" \
     "$(json_escape "$rule")" \
     "$(json_escape "$applies_when")" \
+    "$extra" \
   )"
 
   if [ "$dry_run" -eq 1 ]; then

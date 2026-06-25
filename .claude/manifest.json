@@ -1,7 +1,7 @@
 {
-  "version": "7.13.1",
-  "updated": "2026-06-10",
-  "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
+  "version": "7.14.0",
+  "updated": "2026-06-12",
+  "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
   "coding-guidelines": {
     "repo": "moberghr/coding-guidelines",
@@ -15,7 +15,7 @@
       "source": ".claude/skills/implement/SKILL.md",
       "target": ".claude/skills/implement/SKILL.md",
       "action": "sync",
-      "description": "Full feature implementation workflow \u2014 orchestrates planning, batching, review, and verification skills"
+      "description": "Full feature implementation workflow — orchestrates planning, batching, review, and verification skills"
     },
     "skills/setup-bootstrap/SKILL.md": {
       "source": ".claude/skills/setup-bootstrap/SKILL.md",
@@ -33,7 +33,7 @@
       "source": ".claude/skills/fix/SKILL.md",
       "target": ".claude/skills/fix/SKILL.md",
       "action": "sync",
-      "description": "Lightweight bug-fix workflow \u2014 debugging, targeted tests, scope-guarded verification"
+      "description": "Lightweight bug-fix workflow — debugging, targeted tests, scope-guarded verification"
     },
     "skills/pre-commit-review/SKILL.md": {
       "source": ".claude/skills/pre-commit-review/SKILL.md",
@@ -69,7 +69,7 @@
       "source": ".claude/settings.json",
       "target": ".claude/settings.json",
       "action": "sync",
-      "description": "Generic permissions, hooks, and tool configuration. Protected \u2014 never overwritten during update."
+      "description": "Generic permissions, hooks, and tool configuration. Protected — never overwritten during update."
     },
     "references/review-finding-schema.md": {
       "source": ".claude/references/review-finding-schema.md",
@@ -99,7 +99,7 @@
         "**/*.spec.ts",
         "**/*.spec.tsx"
       ],
-      "description": "Generic testing guidance \u2014 load alongside the active stack's testing supplement"
+      "description": "Generic testing guidance — load alongside the active stack's testing supplement"
     },
     "references/security-checklist.md": {
       "source": ".claude/references/security-checklist.md",
@@ -129,13 +129,13 @@
       "source": ".claude/references/domain-finance.md",
       "target": ".claude/references/domain-finance.md",
       "action": "sync",
-      "description": "Finance domain supplement \u2014 concrete examples of regulated state, sensitive data, and audit requirements for fintech codebases"
+      "description": "Finance domain supplement — concrete examples of regulated state, sensitive data, and audit requirements for fintech codebases"
     },
     "references/performance-checklist.md": {
       "source": ".claude/references/performance-checklist.md",
       "target": ".claude/references/performance-checklist.md",
       "action": "sync",
-      "description": "Generic performance checklist \u2014 load alongside the active stack's performance supplement"
+      "description": "Generic performance checklist — load alongside the active stack's performance supplement"
     },
     "references/dependency-intake-checklist.md": {
       "source": ".claude/references/dependency-intake-checklist.md",
@@ -160,19 +160,19 @@
       "source": ".claude/references/learnings-schema.md",
       "target": ".claude/references/learnings-schema.md",
       "action": "sync",
-      "description": "Schema for structured learnings stored at .mtk/learnings.jsonl \u2014 machine-readable mirror of tasks/lessons.md with 5-layer retrieval"
+      "description": "Schema for structured learnings stored at .mtk/learnings.jsonl — machine-readable mirror of tasks/lessons.md with 5-layer retrieval"
     },
     "references/claude-ready-checklist.md": {
       "source": ".claude/references/claude-ready-checklist.md",
       "target": ".claude/references/claude-ready-checklist.md",
       "action": "sync",
-      "description": "INVEST+C spec-quality checklist \u2014 16-item Claude-Ready gate used by spec-driven-development before approval"
+      "description": "INVEST+C spec-quality checklist — 16-item Claude-Ready gate used by spec-driven-development before approval"
     },
     "references/code-index-template.md": {
       "source": ".claude/references/code-index-template.md",
       "target": ".claude/references/code-index-template.md",
       "action": "sync",
-      "description": "Capability-index template for CODE_INDEX.md \u2014 seeded by setup-bootstrap, consumed by code-simplification --audit-duplicates"
+      "description": "Capability-index template for CODE_INDEX.md — seeded by setup-bootstrap, consumed by code-simplification --audit-duplicates"
     },
     "skills/prior-work-check/SKILL.md": {
       "source": ".claude/skills/prior-work-check/SKILL.md",
@@ -185,7 +185,7 @@
       "target": "docs/recommended-tooling/shared.md",
       "action": "sync",
       "distribute": false,
-      "description": "Stack-agnostic recommended MCPs/plugins/editor integrations. Per-user preference, not per-repo \u2014 setup-bootstrap PRINTS the contents during onboarding but does NOT copy this file into target repos."
+      "description": "Stack-agnostic recommended MCPs/plugins/editor integrations. Per-user preference, not per-repo — setup-bootstrap PRINTS the contents during onboarding but does NOT copy this file into target repos."
     },
     "references/dotnet/coding-guidelines.md": {
       "source": ".claude/references/dotnet/coding-guidelines.md",
@@ -252,14 +252,14 @@
       "action": "sync",
       "distribute": false,
       "stack": "dotnet",
-      "description": ".NET recommended MCPs/plugins/editor integrations (csharp-lsp, dotnet-claude-kit, microsoft-learn, JetBrains MCP). Per-user preference \u2014 setup-bootstrap prints but does not copy into target repos."
+      "description": ".NET recommended MCPs/plugins/editor integrations (csharp-lsp, dotnet-claude-kit, microsoft-learn, JetBrains MCP). Per-user preference — setup-bootstrap prints but does not copy into target repos."
     },
     "references/python/coding-guidelines.md": {
       "source": ".claude/references/python/coding-guidelines.md",
       "target": ".claude/references/python/coding-guidelines.md",
       "action": "sync",
       "stack": "python",
-      "description": "Python coding style guide (placeholder \u2014 to be authored when first Python project starts)"
+      "description": "Python coding style guide (placeholder — to be authored when first Python project starts)"
     },
     "references/python/sqlalchemy-checklist.md": {
       "source": ".claude/references/python/sqlalchemy-checklist.md",
@@ -318,14 +318,14 @@
       "action": "sync",
       "distribute": false,
       "stack": "python",
-      "description": "Python recommended MCPs/plugins/editor integrations (context7, Pyright/basedpyright, Ruff LSP). Per-user preference \u2014 setup-bootstrap prints but does not copy into target repos."
+      "description": "Python recommended MCPs/plugins/editor integrations (context7, Pyright/basedpyright, Ruff LSP). Per-user preference — setup-bootstrap prints but does not copy into target repos."
     },
     "references/typescript/coding-guidelines.md": {
       "source": ".claude/references/typescript/coding-guidelines.md",
       "target": ".claude/references/typescript/coding-guidelines.md",
       "action": "sync",
       "stack": "typescript",
-      "description": "TypeScript coding style guide (placeholder \u2014 defaults to strict tsconfig + Biome until team authors its own)"
+      "description": "TypeScript coding style guide (placeholder — defaults to strict tsconfig + Biome until team authors its own)"
     },
     "references/typescript/data-layer-checklist.md": {
       "source": ".claude/references/typescript/data-layer-checklist.md",
@@ -388,7 +388,7 @@
       "action": "sync",
       "distribute": false,
       "stack": "typescript",
-      "description": "TypeScript recommended MCPs/plugins/editor integrations (context7, playwright, editor LSPs, frontend-design plugin). Per-user preference \u2014 setup-bootstrap prints but does not copy into target repos."
+      "description": "TypeScript recommended MCPs/plugins/editor integrations (context7, playwright, editor LSPs, frontend-design plugin). Per-user preference — setup-bootstrap prints but does not copy into target repos."
     },
     "skills/spec-driven-development/SKILL.md": {
       "source": ".claude/skills/spec-driven-development/SKILL.md",
@@ -466,7 +466,7 @@
       "source": ".claude/skills/claude-md-audit/SKILL.md",
       "target": ".claude/skills/claude-md-audit/SKILL.md",
       "action": "sync",
-      "description": "Re-grade loop for existing CLAUDE.md files \u2014 six-criterion rubric, currency cross-checks, append-only diffs"
+      "description": "Re-grade loop for existing CLAUDE.md files — six-criterion rubric, currency cross-checks, append-only diffs"
     },
     "tests/pressure-tests/claude-md-audit-pressure.md": {
       "source": "tests/pressure-tests/claude-md-audit-pressure.md",
@@ -478,7 +478,7 @@
       "source": ".claude/skills/claude-md-capture/SKILL.md",
       "target": ".claude/skills/claude-md-capture/SKILL.md",
       "action": "sync",
-      "description": "Capture session learnings into CLAUDE.md \u2014 reflect at session end, propose minimal append-only additions, apply only with approval"
+      "description": "Capture session learnings into CLAUDE.md — reflect at session end, propose minimal append-only additions, apply only with approval"
     },
     "tests/pressure-tests/claude-md-capture-pressure.md": {
       "source": "tests/pressure-tests/claude-md-capture-pressure.md",
@@ -502,19 +502,19 @@
       "source": "scripts/skill-eval/grader-prompt.md",
       "target": "scripts/skill-eval/grader-prompt.md",
       "action": "sync",
-      "description": "Sub-agent system prompt used by the eval grader \u2014 strict three-grade scale with single-line JSON output"
+      "description": "Sub-agent system prompt used by the eval grader — strict three-grade scale with single-line JSON output"
     },
     "evals/code-review-and-quality/prompts.jsonl": {
       "source": "evals/code-review-and-quality/prompts.jsonl",
       "target": "evals/code-review-and-quality/prompts.jsonl",
       "action": "sync",
-      "description": "Starter eval prompt set for code-review-and-quality \u2014 covers FP discipline, confidence threshold, output schema, dispatch triggers"
+      "description": "Starter eval prompt set for code-review-and-quality — covers FP discipline, confidence threshold, output schema, dispatch triggers"
     },
     "skills/verification-before-completion/SKILL.md": {
       "source": ".claude/skills/verification-before-completion/SKILL.md",
       "target": ".claude/skills/verification-before-completion/SKILL.md",
       "action": "sync",
-      "description": "Reusable verification discipline \u2014 no completion claims without fresh evidence"
+      "description": "Reusable verification discipline — no completion claims without fresh evidence"
     },
     "skills/spec-drift-detection/SKILL.md": {
       "source": ".claude/skills/spec-drift-detection/SKILL.md",
@@ -526,7 +526,7 @@
       "source": ".claude/skills/brainstorming/SKILL.md",
       "target": ".claude/skills/brainstorming/SKILL.md",
       "action": "sync",
-      "description": "Reusable design exploration skill \u2014 divergent thinking before spec commitment"
+      "description": "Reusable design exploration skill — divergent thinking before spec commitment"
     },
     "skills/using-git-worktrees/SKILL.md": {
       "source": ".claude/skills/using-git-worktrees/SKILL.md",
@@ -550,7 +550,7 @@
       "source": ".claude/skills/handoff/SKILL.md",
       "target": ".claude/skills/handoff/SKILL.md",
       "action": "sync",
-      "description": "Model-invoked session handoff \u2014 capture state into a recovery artifact when context is tight or work is paused"
+      "description": "Model-invoked session handoff — capture state into a recovery artifact when context is tight or work is paused"
     },
     "skills/tech-stack-dotnet/SKILL.md": {
       "source": ".claude/skills/tech-stack-dotnet/SKILL.md",
@@ -577,19 +577,19 @@
       "source": "tests/pressure-tests/precompact-snapshot.md",
       "target": "tests/pressure-tests/precompact-snapshot.md",
       "action": "sync",
-      "description": "Pressure test for PreCompact snapshot hook \u2014 verifies stash on dirty tree, skip on clean/rebase/manual, recovery flow"
+      "description": "Pressure test for PreCompact snapshot hook — verifies stash on dirty tree, skip on clean/rebase/manual, recovery flow"
     },
     "tests/pressure-tests/lessons-split.md": {
       "source": "tests/pressure-tests/lessons-split.md",
       "target": "tests/pressure-tests/lessons-split.md",
       "action": "sync",
-      "description": "Pressure test for personal vs team lessons split \u2014 defaulting heuristic, SessionStart announcement, /promote-lesson flow"
+      "description": "Pressure test for personal vs team lessons split — defaulting heuristic, SessionStart announcement, /promote-lesson flow"
     },
     "tests/pressure-tests/mtk-doctor.md": {
       "source": "tests/pressure-tests/mtk-doctor.md",
       "target": "tests/pressure-tests/mtk-doctor.md",
       "action": "sync",
-      "description": "Pressure test for mtk-doctor \u2014 clean repo passes, deprecated models / version drift / skill mismatch are FAIL, --strict elevates WARN"
+      "description": "Pressure test for mtk-doctor — clean repo passes, deprecated models / version drift / skill mismatch are FAIL, --strict elevates WARN"
     },
     "tests/pressure-tests/mtk-setup-rerun.md": {
       "source": "tests/pressure-tests/mtk-setup-rerun.md",
@@ -703,7 +703,7 @@
       "source": "scripts/mtk-recover.sh",
       "target": "scripts/mtk-recover.sh",
       "action": "sync",
-      "description": "Interactive recovery for PreCompact snapshots \u2014 lists saved stashes and applies the chosen one"
+      "description": "Interactive recovery for PreCompact snapshots — lists saved stashes and applies the chosen one"
     },
     "scripts/mtk-doctor.sh": {
       "source": "scripts/mtk-doctor.sh",
@@ -721,7 +721,7 @@
       "source": ".claude/skills/mtk-doctor/SKILL.md",
       "target": ".claude/skills/mtk-doctor/SKILL.md",
       "action": "sync",
-      "description": "Entry-point skill wrapping mtk-doctor.sh \u2014 categorized health check for MTK installation"
+      "description": "Entry-point skill wrapping mtk-doctor.sh — categorized health check for MTK installation"
     },
     "hooks/git-hooks/pre-commit": {
       "source": "hooks/git-hooks/pre-commit",
@@ -733,46 +733,46 @@
       "source": "hooks/linter-patterns/core/secrets.txt",
       "target": "hooks/linter-patterns/core/secrets.txt",
       "action": "sync",
-      "description": "Core lint pack \u2014 language-agnostic secret detection (API keys, JWTs, connection strings)"
+      "description": "Core lint pack — language-agnostic secret detection (API keys, JWTs, connection strings)"
     },
     "hooks/linter-patterns/core/slopwatch.txt": {
       "source": "hooks/linter-patterns/core/slopwatch.txt",
       "target": "hooks/linter-patterns/core/slopwatch.txt",
       "action": "sync",
-      "description": "Core lint pack \u2014 LLM reward hacking patterns (disabled tests, empty catches, always-pass assertions)"
+      "description": "Core lint pack — LLM reward hacking patterns (disabled tests, empty catches, always-pass assertions)"
     },
     "hooks/linter-patterns/stack-dotnet/patterns.txt": {
       "source": "hooks/linter-patterns/stack-dotnet/patterns.txt",
       "target": "hooks/linter-patterns/stack-dotnet/patterns.txt",
       "action": "sync",
       "stack": "dotnet",
-      "description": "Stack lint pack \u2014 .NET patterns (raw SQL interpolation, console output, empty catches)"
+      "description": "Stack lint pack — .NET patterns (raw SQL interpolation, console output, empty catches)"
     },
     "hooks/linter-patterns/stack-python/patterns.txt": {
       "source": "hooks/linter-patterns/stack-python/patterns.txt",
       "target": "hooks/linter-patterns/stack-python/patterns.txt",
       "action": "sync",
       "stack": "python",
-      "description": "Stack lint pack \u2014 Python patterns (raw SQL in execute, bare except, print debugging)"
+      "description": "Stack lint pack — Python patterns (raw SQL in execute, bare except, print debugging)"
     },
     "hooks/linter-patterns/stack-typescript/patterns.txt": {
       "source": "hooks/linter-patterns/stack-typescript/patterns.txt",
       "target": "hooks/linter-patterns/stack-typescript/patterns.txt",
       "action": "sync",
       "stack": "typescript",
-      "description": "Stack lint pack \u2014 TypeScript/JS patterns (SQL template literals, console output, any type)"
+      "description": "Stack lint pack — TypeScript/JS patterns (SQL template literals, console output, any type)"
     },
     "hooks/linter-patterns/domain-finance/patterns.txt": {
       "source": "hooks/linter-patterns/domain-finance/patterns.txt",
       "target": "hooks/linter-patterns/domain-finance/patterns.txt",
       "action": "sync",
-      "description": "Domain lint pack \u2014 finance patterns (float money, hardcoded currencies/rates, unrounded division)"
+      "description": "Domain lint pack — finance patterns (float money, hardcoded currencies/rates, unrounded division)"
     },
     "AGENTS.md": {
       "source": "AGENTS.md",
       "target": "AGENTS.md",
       "action": "sync",
-      "description": "Cross-agent conventions file \u2014 generated by scripts/generate-agents-md.sh, protected during update"
+      "description": "Cross-agent conventions file — generated by scripts/generate-agents-md.sh, protected during update"
     },
     "docs/skill-anatomy.md": {
       "source": "docs/skill-anatomy.md",
@@ -820,7 +820,7 @@
       "source": "scripts/migrate-reference-frontmatter.py",
       "target": "scripts/migrate-reference-frontmatter.py",
       "action": "sync",
-      "description": "One-shot migration script \u2014 ensures every reference file has description/globs/alwaysApply frontmatter"
+      "description": "One-shot migration script — ensures every reference file has description/globs/alwaysApply frontmatter"
     },
     "tests/fixtures/known-secrets.txt": {
       "source": "tests/fixtures/known-secrets.txt",
@@ -856,7 +856,7 @@
       "source": "evals/security-and-hardening/eval-03-internal-endpoint-pressure.md",
       "target": "evals/security-and-hardening/eval-03-internal-endpoint-pressure.md",
       "action": "sync",
-      "description": "Adversarial eval: 'internal endpoint, skip auth' pressure \u2014 missing auth must stay critical"
+      "description": "Adversarial eval: 'internal endpoint, skip auth' pressure — missing auth must stay critical"
     },
     "evals/security-and-hardening/grader.md": {
       "source": "evals/security-and-hardening/grader.md",
@@ -880,7 +880,7 @@
       "source": "evals/pre-commit-review/eval-03-inflate-to-pass.md",
       "target": "evals/pre-commit-review/eval-03-inflate-to-pass.md",
       "action": "sync",
-      "description": "Adversarial eval: cosmetic rename with pressure to surface findings \u2014 must resist inflation"
+      "description": "Adversarial eval: cosmetic rename with pressure to surface findings — must resist inflation"
     },
     "evals/pre-commit-review/grader.md": {
       "source": "evals/pre-commit-review/grader.md",
@@ -934,7 +934,7 @@
       "source": "hooks/scope-guard.sh",
       "target": "hooks/scope-guard.sh",
       "action": "sync",
-      "description": "PreToolUse hook that warns when editing files not in the active spec's change_manifest \u2014 anti-rationalization scope guard"
+      "description": "PreToolUse hook that warns when editing files not in the active spec's change_manifest — anti-rationalization scope guard"
     },
     "hooks/context-budget.sh": {
       "source": "hooks/context-budget.sh",
@@ -952,7 +952,7 @@
       "source": "hooks/lib/shrink-guard.sh",
       "target": "hooks/lib/shrink-guard.sh",
       "action": "sync",
-      "description": "Shrink-guarded write helper \u2014 refuses to truncate protected artifacts by >50% bytes or >20% lines (S3.16)"
+      "description": "Shrink-guarded write helper — refuses to truncate protected artifacts by >50% bytes or >20% lines (S3.16)"
     },
     "hooks/lib/mtkignore.sh": {
       "source": "hooks/lib/mtkignore.sh",
@@ -982,13 +982,13 @@
       "source": "tests/pressure-tests/spec-drift-tags.md",
       "target": "tests/pressure-tests/spec-drift-tags.md",
       "action": "sync",
-      "description": "Pressure test scenarios for spec-drift-detection \u2014 confidence-tagged principle severity gradation"
+      "description": "Pressure test scenarios for spec-drift-detection — confidence-tagged principle severity gradation"
     },
     "docs/integrations/mtk-mcp.md": {
       "source": "docs/integrations/mtk-mcp.md",
       "target": "docs/integrations/mtk-mcp.md",
       "action": "sync",
-      "description": "Integration guide for the mtk-context MCP server \u2014 tool inventory, bash fallbacks, .mcp.json registration"
+      "description": "Integration guide for the mtk-context MCP server — tool inventory, bash fallbacks, .mcp.json registration"
     },
     ".mtkignore": {
       "source": ".mtkignore",
@@ -1000,7 +1000,7 @@
       "source": "mcp/src/tools/state.ts",
       "target": "mcp/src/tools/state.ts",
       "action": "sync",
-      "description": "MCP read-only tools \u2014 manifest, analytics, audit, references_index, active_stack"
+      "description": "MCP read-only tools — manifest, analytics, audit, references_index, active_stack"
     },
     "hooks/capture-learnings.sh": {
       "source": "hooks/capture-learnings.sh",
@@ -1036,13 +1036,13 @@
       "source": "benchmarks/fixtures/known-bad.diff",
       "target": "benchmarks/fixtures/known-bad.diff",
       "action": "sync",
-      "description": "Known-bad code fixture for benchmark testing \u2014 contains secrets, SQL injection, disabled tests, float money"
+      "description": "Known-bad code fixture for benchmark testing — contains secrets, SQL injection, disabled tests, float money"
     },
     "benchmarks/fixtures/known-good.diff": {
       "source": "benchmarks/fixtures/known-good.diff",
       "target": "benchmarks/fixtures/known-good.diff",
       "action": "sync",
-      "description": "Known-good code fixture for benchmark testing \u2014 clean code that should produce zero false positives"
+      "description": "Known-good code fixture for benchmark testing — clean code that should produce zero false positives"
     },
     "scripts/generate-agents-md.sh": {
       "source": "scripts/generate-agents-md.sh",
@@ -1060,13 +1060,13 @@
       "source": ".github/workflows/validate.yml",
       "target": ".github/workflows/validate.yml",
       "action": "sync",
-      "description": "GitHub Actions workflow \u2014 runs validate-toolkit.sh and secret scanning on every PR"
+      "description": "GitHub Actions workflow — runs validate-toolkit.sh and secret scanning on every PR"
     },
     ".github/workflows/release.yml": {
       "source": ".github/workflows/release.yml",
       "target": ".github/workflows/release.yml",
       "action": "sync",
-      "description": "GitHub Actions workflow \u2014 on each push to main, tags and creates a GitHub release when manifest.json version is bumped, with notes from CHANGELOG.md"
+      "description": "GitHub Actions workflow — on each push to main, tags and creates a GitHub release when manifest.json version is bumped, with notes from CHANGELOG.md"
     },
     ".github/pull_request_template.md": {
       "source": ".github/pull_request_template.md",
@@ -1106,14 +1106,14 @@
       "target": "hooks/analyzer-severity/dotnet.txt",
       "action": "sync",
       "stack": "dotnet",
-      "description": ".NET Roslyn analyzer rule-to-severity mappings (EF1001\u2192critical, CA2007\u2192warning, etc.)"
+      "description": ".NET Roslyn analyzer rule-to-severity mappings (EF1001→critical, CA2007→warning, etc.)"
     },
     "hooks/analyzer-severity/python.txt": {
       "source": "hooks/analyzer-severity/python.txt",
       "target": "hooks/analyzer-severity/python.txt",
       "action": "sync",
       "stack": "python",
-      "description": "Python ruff/bandit rule-to-severity mappings (S101\u2192critical, B006\u2192warning, etc.)"
+      "description": "Python ruff/bandit rule-to-severity mappings (S101→critical, B006→warning, etc.)"
     },
     "hooks/analyzer-severity/typescript.txt": {
       "source": "hooks/analyzer-severity/typescript.txt",
@@ -1156,7 +1156,7 @@
       "source": "mcp/package.json",
       "target": "mcp/package.json",
       "action": "sync",
-      "description": "MCP server package manifest \u2014 dependencies and build script for mtk-context"
+      "description": "MCP server package manifest — dependencies and build script for mtk-context"
     },
     "mcp/tsconfig.json": {
       "source": "mcp/tsconfig.json",
@@ -1168,37 +1168,37 @@
       "source": "mcp/build.mjs",
       "target": "mcp/build.mjs",
       "action": "sync",
-      "description": "Cross-platform esbuild runner \u2014 invokes esbuild's JS API so the shebang banner passes through cmd.exe, bash, and zsh without shell-quoting pitfalls"
+      "description": "Cross-platform esbuild runner — invokes esbuild's JS API so the shebang banner passes through cmd.exe, bash, and zsh without shell-quoting pitfalls"
     },
     "mcp/src/index.ts": {
       "source": "mcp/src/index.ts",
       "target": "mcp/src/index.ts",
       "action": "sync",
-      "description": "MCP server entry point \u2014 registers tools and starts stdio transport"
+      "description": "MCP server entry point — registers tools and starts stdio transport"
     },
     "mcp/src/tools/resolve-references.ts": {
       "source": "mcp/src/tools/resolve-references.ts",
       "target": "mcp/src/tools/resolve-references.ts",
       "action": "sync",
-      "description": "MCP tool \u2014 matches changed files against manifest globs to resolve relevant reference docs"
+      "description": "MCP tool — matches changed files against manifest globs to resolve relevant reference docs"
     },
     "mcp/src/tools/solution-structure.ts": {
       "source": "mcp/src/tools/solution-structure.ts",
       "target": "mcp/src/tools/solution-structure.ts",
       "action": "sync",
-      "description": "MCP tool \u2014 parses .sln/csproj/pyproject.toml/package.json into unified project structure"
+      "description": "MCP tool — parses .sln/csproj/pyproject.toml/package.json into unified project structure"
     },
     "scripts/build-mcp.sh": {
       "source": "scripts/build-mcp.sh",
       "target": "scripts/build-mcp.sh",
       "action": "sync",
-      "description": "Build script for the MCP server \u2014 runs esbuild to produce dist/mtk-mcp-server.cjs"
+      "description": "Build script for the MCP server — runs esbuild to produce dist/mtk-mcp-server.cjs"
     },
     "hooks/ci-status.sh": {
       "source": "hooks/ci-status.sh",
       "target": "hooks/ci-status.sh",
       "action": "sync",
-      "description": "Bash helper wrapping gh CLI for CI status \u2014 outputs structured JSON for review skills"
+      "description": "Bash helper wrapping gh CLI for CI status — outputs structured JSON for review skills"
     },
     "tests/pressure-tests/mcp-fallback-pressure.md": {
       "source": "tests/pressure-tests/mcp-fallback-pressure.md",
@@ -1210,25 +1210,25 @@
       "source": "hooks/api-compat-check.sh",
       "target": "hooks/api-compat-check.sh",
       "action": "sync",
-      "description": "API backward compatibility checker \u2014 detects removed routes, changed DTOs, removed public properties"
+      "description": "API backward compatibility checker — detects removed routes, changed DTOs, removed public properties"
     },
     "skills/mtk/SKILL.md": {
       "source": ".claude/skills/mtk/SKILL.md",
       "target": ".claude/skills/mtk/SKILL.md",
       "action": "sync",
-      "description": "Unified entry point \u2014 routes natural language to the right MTK workflow skill (fix, implement, review, status)"
+      "description": "Unified entry point — routes natural language to the right MTK workflow skill (fix, implement, review, status)"
     },
     "skills/mtk-setup/SKILL.md": {
       "source": ".claude/skills/mtk-setup/SKILL.md",
       "target": ".claude/skills/mtk-setup/SKILL.md",
       "action": "sync",
-      "description": "Unified setup entry point \u2014 dispatches to bootstrap (first-time) or audit (re-scan) workflow skills"
+      "description": "Unified setup entry point — dispatches to bootstrap (first-time) or audit (re-scan) workflow skills"
     },
     "skills/context-report/SKILL.md": {
       "source": ".claude/skills/context-report/SKILL.md",
       "target": ".claude/skills/context-report/SKILL.md",
       "action": "sync",
-      "description": "Diagnostic snapshot of active MTK configuration \u2014 tech stack, linter packs, domains, hooks, references"
+      "description": "Diagnostic snapshot of active MTK configuration — tech stack, linter packs, domains, hooks, references"
     },
     "skills/toolkit-health/SKILL.md": {
       "source": ".claude/skills/toolkit-health/SKILL.md",
@@ -1258,19 +1258,19 @@
       "source": "scripts/ci-lint.sh",
       "target": "scripts/ci-lint.sh",
       "action": "sync",
-      "description": "CI wrapper for deterministic linter \u2014 emits GitHub Actions annotations and step summary"
+      "description": "CI wrapper for deterministic linter — emits GitHub Actions annotations and step summary"
     },
     "templates/ci/pr-lint.yml": {
       "source": "templates/ci/pr-lint.yml",
       "target": "templates/ci/pr-lint.yml",
       "action": "sync",
-      "description": "GitHub Actions template \u2014 deterministic lint on every PR (no API keys needed)"
+      "description": "GitHub Actions template — deterministic lint on every PR (no API keys needed)"
     },
     "templates/ci/pr-review.yml": {
       "source": "templates/ci/pr-review.yml",
       "target": "templates/ci/pr-review.yml",
       "action": "sync",
-      "description": "GitHub Actions template \u2014 deterministic lint + Claude Code AI review on PRs (requires ANTHROPIC_API_KEY)"
+      "description": "GitHub Actions template — deterministic lint + Claude Code AI review on PRs (requires ANTHROPIC_API_KEY)"
     },
     "examples/README.md": {
       "source": "examples/README.md",
@@ -1300,7 +1300,7 @@
       "source": "examples/user-level-CLAUDE.md",
       "target": "examples/user-level-CLAUDE.md",
       "action": "sync",
-      "description": "Personal overrides template for ~/.claude/CLAUDE.md \u2014 layers on top of project rules"
+      "description": "Personal overrides template for ~/.claude/CLAUDE.md — layers on top of project rules"
     },
     "docs/assets/foundations.png": {
       "source": "docs/assets/foundations.png",
@@ -1330,19 +1330,19 @@
       "source": "hooks/lib/skill-queue.sh",
       "target": "hooks/lib/skill-queue.sh",
       "action": "sync",
-      "description": "Tier-2 skill-invocation queue primitive \u2014 atomic queue_skill writer, drain helpers, kill-switch, analytics counters"
+      "description": "Tier-2 skill-invocation queue primitive — atomic queue_skill writer, drain helpers, kill-switch, analytics counters"
     },
     "hooks/lib/prompt-nudges.sh": {
       "source": "hooks/lib/prompt-nudges.sh",
       "target": "hooks/lib/prompt-nudges.sh",
       "action": "sync",
-      "description": "Tier-1 prompt nudges sourced by the dispatcher \u2014 correction-keyword detection with agreement filter"
+      "description": "Tier-1 prompt nudges sourced by the dispatcher — correction-keyword detection with agreement filter"
     },
     "hooks/userprompt-dispatch.sh": {
       "source": "hooks/userprompt-dispatch.sh",
       "target": "hooks/userprompt-dispatch.sh",
       "action": "sync",
-      "description": "UserPromptSubmit hook \u2014 merges tier-1 nudges and tier-2 queue drain into one additionalContext payload"
+      "description": "UserPromptSubmit hook — merges tier-1 nudges and tier-2 queue drain into one additionalContext payload"
     },
     "hooks/spec-approval-trigger.sh": {
       "source": "hooks/spec-approval-trigger.sh",
@@ -1354,31 +1354,31 @@
       "source": "tests/hooks/test-correction-nudge.sh",
       "target": "tests/hooks/test-correction-nudge.sh",
       "action": "sync",
-      "description": "SC1 integration test \u2014 tier-1 correction-nudge fires on correction keywords and stays silent on agreement phrasing"
+      "description": "SC1 integration test — tier-1 correction-nudge fires on correction keywords and stays silent on agreement phrasing"
     },
     "tests/hooks/test-killswitch.sh": {
       "source": "tests/hooks/test-killswitch.sh",
       "target": "tests/hooks/test-killswitch.sh",
       "action": "sync",
-      "description": "SC3 integration test \u2014 MTK_HOOKS_TIER2=0 silences nudges, drains, and queue writes"
+      "description": "SC3 integration test — MTK_HOOKS_TIER2=0 silences nudges, drains, and queue writes"
     },
     "tests/hooks/test-spec-approval-trigger.sh": {
       "source": "tests/hooks/test-spec-approval-trigger.sh",
       "target": "tests/hooks/test-spec-approval-trigger.sh",
       "action": "sync",
-      "description": "SC2 integration test \u2014 spec-approval transition queues planning-and-task-breakdown and does not re-fire on re-edit"
+      "description": "SC2 integration test — spec-approval transition queues planning-and-task-breakdown and does not re-fire on re-edit"
     },
     "tests/hooks/test-queue-expiry.sh": {
       "source": "tests/hooks/test-queue-expiry.sh",
       "target": "tests/hooks/test-queue-expiry.sh",
       "action": "sync",
-      "description": "SC4 integration test \u2014 queue entries older than ttl_hours are skipped and removed"
+      "description": "SC4 integration test — queue entries older than ttl_hours are skipped and removed"
     },
     "tests/hooks/test-context-estimator.sh": {
       "source": "tests/hooks/test-context-estimator.sh",
       "target": "tests/hooks/test-context-estimator.sh",
       "action": "sync",
-      "description": "SC5+SC6 benchmark \u2014 bytes_read accumulates for unique files; estimated_context_tokens computed correctly"
+      "description": "SC5+SC6 benchmark — bytes_read accumulates for unique files; estimated_context_tokens computed correctly"
     },
     "tests/pressure-tests/hooks-skill-invocation-pressure.md": {
       "source": "tests/pressure-tests/hooks-skill-invocation-pressure.md",
@@ -1390,25 +1390,25 @@
       "source": ".claude/toolsets/read-only.yaml",
       "target": ".claude/toolsets/read-only.yaml",
       "action": "sync",
-      "description": "Read-only toolset \u2014 inspection-only tool surface for review, audit, and drift-detection skills (S2.19)"
+      "description": "Read-only toolset — inspection-only tool surface for review, audit, and drift-detection skills (S2.19)"
     },
     ".claude/toolsets/git-safe.yaml": {
       "source": ".claude/toolsets/git-safe.yaml",
       "target": ".claude/toolsets/git-safe.yaml",
       "action": "sync",
-      "description": "Git-safe toolset \u2014 read-only plus non-destructive staging (no push/reset/branch-delete)"
+      "description": "Git-safe toolset — read-only plus non-destructive staging (no push/reset/branch-delete)"
     },
     ".claude/toolsets/code-edit.yaml": {
       "source": ".claude/toolsets/code-edit.yaml",
       "target": ".claude/toolsets/code-edit.yaml",
       "action": "sync",
-      "description": "Standard implementation toolset \u2014 read/write/edit code, run build and test commands"
+      "description": "Standard implementation toolset — read/write/edit code, run build and test commands"
     },
     ".claude/toolsets/README.md": {
       "source": ".claude/toolsets/README.md",
       "target": ".claude/toolsets/README.md",
       "action": "sync",
-      "description": "Toolset registry docs \u2014 schema, usage in skill frontmatter, and built-in toolset table (S2.19\u201321)"
+      "description": "Toolset registry docs — schema, usage in skill frontmatter, and built-in toolset table (S2.19–21)"
     },
     "scripts/resolve-toolsets.sh": {
       "source": "scripts/resolve-toolsets.sh",
@@ -1420,19 +1420,19 @@
       "source": "scripts/build-triggers-index.sh",
       "target": "scripts/build-triggers-index.sh",
       "action": "sync",
-      "description": "Scans skill frontmatter `triggers:` and emits .claude/triggers.index (S2.22\u201324)"
+      "description": "Scans skill frontmatter `triggers:` and emits .claude/triggers.index (S2.22–24)"
     },
     "hooks/lib/trigger-hints.sh": {
       "source": "hooks/lib/trigger-hints.sh",
       "target": "hooks/lib/trigger-hints.sh",
       "action": "sync",
-      "description": "Keyword-triggered skill hint emitter \u2014 sourced by userprompt-dispatch.sh (OpenHands microagents pattern)"
+      "description": "Keyword-triggered skill hint emitter — sourced by userprompt-dispatch.sh (OpenHands microagents pattern)"
     },
     ".claude/triggers.index": {
       "source": ".claude/triggers.index",
       "target": ".claude/triggers.index",
       "action": "sync",
-      "description": "Generated keyword \u2192 skill index; rebuild via scripts/build-triggers-index.sh"
+      "description": "Generated keyword → skill index; rebuild via scripts/build-triggers-index.sh"
     },
     ".claude/schemas/handoff.schema.json": {
       "source": ".claude/schemas/handoff.schema.json",
@@ -1480,7 +1480,7 @@
       "source": "scripts/learnings.sh",
       "target": "scripts/learnings.sh",
       "action": "sync",
-      "description": "Manage structured learnings (.mtk/learnings.jsonl) \u2014 add | query | regen-markdown | migrate. Drives 5-layer retrieval at start of spec/fix."
+      "description": "Manage structured learnings (.mtk/learnings.jsonl) — add | query | regen-markdown | migrate. Drives 5-layer retrieval at start of spec/fix."
     },
     "scripts/lint-ears.sh": {
       "source": "scripts/lint-ears.sh",
@@ -1492,7 +1492,7 @@
       "source": ".claude/agents/plan-gap-reviewer.md",
       "target": ".claude/agents/plan-gap-reviewer.md",
       "action": "sync",
-      "description": "Anti-anchored fresh review of a saved plan against the current codebase \u2014 does not load lessons or prior reviewer output"
+      "description": "Anti-anchored fresh review of a saved plan against the current codebase — does not load lessons or prior reviewer output"
     },
     "tests/pressure-tests/plan-gap-reviewer-pressure.md": {
       "source": "tests/pressure-tests/plan-gap-reviewer-pressure.md",
@@ -1510,7 +1510,7 @@
       "source": "scripts/run-fixtures.sh",
       "target": "scripts/run-fixtures.sh",
       "action": "sync",
-      "description": "Validates router-decision fixtures under tests/fixtures/ \u2014 structural check, asserts gate names and action consistency without running Claude"
+      "description": "Validates router-decision fixtures under tests/fixtures/ — structural check, asserts gate names and action consistency without running Claude"
     },
     "tests/fixtures/README.md": {
       "source": "tests/fixtures/README.md",
@@ -1522,37 +1522,37 @@
       "source": "tests/fixtures/build-happy-path.json",
       "target": "tests/fixtures/build-happy-path.json",
       "action": "sync",
-      "description": "Fixture: builder green inside manifest \u2192 advance phase, record phase_exit_gate pass"
+      "description": "Fixture: builder green inside manifest → advance phase, record phase_exit_gate pass"
     },
     "tests/fixtures/build-phase-blocked.json": {
       "source": "tests/fixtures/build-phase-blocked.json",
       "target": "tests/fixtures/build-phase-blocked.json",
       "action": "sync",
-      "description": "Fixture: failed batch tests \u2192 remediate, record phase_exit_gate fail"
+      "description": "Fixture: failed batch tests → remediate, record phase_exit_gate fail"
     },
     "tests/fixtures/plan-gap-found.json": {
       "source": "tests/fixtures/plan-gap-found.json",
       "target": "tests/fixtures/plan-gap-found.json",
       "action": "sync",
-      "description": "Fixture: plan-gap-reviewer BLOCKING findings \u2192 return to planning, plan_trust_gate stays pending"
+      "description": "Fixture: plan-gap-reviewer BLOCKING findings → return to planning, plan_trust_gate stays pending"
     },
     "tests/fixtures/failure-stop-triggered.json": {
       "source": "tests/fixtures/failure-stop-triggered.json",
       "target": "tests/fixtures/failure-stop-triggered.json",
       "action": "sync",
-      "description": "Fixture: third remediation iteration on same finding \u2192 failure_stop_gate fail and abort"
+      "description": "Fixture: third remediation iteration on same finding → failure_stop_gate fail and abort"
     },
     "tests/fixtures/auto-proceed-respects-decisions.json": {
       "source": "tests/fixtures/auto-proceed-respects-decisions.json",
       "target": "tests/fixtures/auto-proceed-respects-decisions.json",
       "action": "sync",
-      "description": "Fixture: AUTO_PROCEED set but plan has open decisions \u2192 request engineer, do not auto-default"
+      "description": "Fixture: AUTO_PROCEED set but plan has open decisions → request engineer, do not auto-default"
     },
     "tests/fixtures/resume-active-workflow.json": {
       "source": "tests/fixtures/resume-active-workflow.json",
       "target": "tests/fixtures/resume-active-workflow.json",
       "action": "sync",
-      "description": "Fixture: one active BUILD workflow exists \u2192 offer resume rather than init new uuid"
+      "description": "Fixture: one active BUILD workflow exists → offer resume rather than init new uuid"
     },
     "scripts/mtk-compress.sh": {
       "source": "scripts/mtk-compress.sh",
@@ -1624,13 +1624,13 @@
       "source": "tests/pressure-tests/repo-health.md",
       "target": "tests/pressure-tests/repo-health.md",
       "action": "sync",
-      "description": "Adversarial scenarios for the repo-health skill \u2014 fabricated scores, auto-promotion, route conflicts"
+      "description": "Adversarial scenarios for the repo-health skill — fabricated scores, auto-promotion, route conflicts"
     },
     "tests/pressure-tests/pr-review-mining.md": {
       "source": "tests/pressure-tests/pr-review-mining.md",
       "target": "tests/pressure-tests/pr-review-mining.md",
       "action": "sync",
-      "description": "Adversarial scenarios for pr-review-mining \u2014 single-PR false positives, denylist bypass, hallucinated phrases"
+      "description": "Adversarial scenarios for pr-review-mining — single-PR false positives, denylist bypass, hallucinated phrases"
     },
     "scripts/verify-claims.sh": {
       "source": "scripts/verify-claims.sh",
@@ -1654,25 +1654,25 @@
       "source": ".claude/references/audit-grounding.md",
       "target": ".claude/references/audit-grounding.md",
       "action": "sync",
-      "description": "Rules generators must follow when emitting CLAUDE.md and architecture-principles.md \u2014 rule tags, transient ban, partial-list policy, terminology denylist, SHA stamp"
+      "description": "Rules generators must follow when emitting CLAUDE.md and architecture-principles.md — rule tags, transient ban, partial-list policy, terminology denylist, SHA stamp"
     },
     "references/monorepo-bootstrap.md": {
       "source": ".claude/references/monorepo-bootstrap.md",
       "target": ".claude/references/monorepo-bootstrap.md",
       "action": "sync",
-      "description": "Per-package CLAUDE.md template, generation rules, and root Monorepo Layout block \u2014 read on-demand by setup-bootstrap STEP 4.5"
+      "description": "Per-package CLAUDE.md template, generation rules, and root Monorepo Layout block — read on-demand by setup-bootstrap STEP 4.5"
     },
     "references/bootstrap-customization.md": {
       "source": ".claude/references/bootstrap-customization.md",
       "target": ".claude/references/bootstrap-customization.md",
       "action": "sync",
-      "description": "Per-stack reference-file customization tables for setup-bootstrap \u2014 generic placeholder to concrete replacement, per category"
+      "description": "Per-stack reference-file customization tables for setup-bootstrap — generic placeholder to concrete replacement, per category"
     },
     "tests/pressure-tests/audit-grounding.md": {
       "source": "tests/pressure-tests/audit-grounding.md",
       "target": "tests/pressure-tests/audit-grounding.md",
       "action": "sync",
-      "description": "Adversarial scenarios for grounded-audit \u2014 fabricated paths, partial lists, transient branch names, terminology traps, drift on unstamped docs"
+      "description": "Adversarial scenarios for grounded-audit — fabricated paths, partial lists, transient branch names, terminology traps, drift on unstamped docs"
     },
     "scripts/spec-archive.sh": {
       "source": "scripts/spec-archive.sh",
@@ -1745,6 +1745,108 @@
       "target": "templates/workflows/subagent-implementation.workflow.js",
       "action": "sync",
       "description": "Reference dynamic-workflow script for the subagent-implementation per-batch loop"
+    },
+    "agents/context-miner.md": {
+      "source": ".claude/agents/context-miner.md",
+      "target": ".claude/agents/context-miner.md",
+      "action": "sync",
+      "description": "Read-only review lane that mines organizational memory (git history, PR/issue threads, prior lessons) for context the diff missed"
+    },
+    "references/ai-failure-modes.md": {
+      "source": ".claude/references/ai-failure-modes.md",
+      "target": ".claude/references/ai-failure-modes.md",
+      "action": "sync",
+      "description": "Catalogue of researched LLM-specific failure modes (F1–F14) with citations and bad/good examples; loaded by code-review-and-quality and silent-failure-hunter"
+    },
+    "references/divergence-frames.md": {
+      "source": ".claude/references/divergence-frames.md",
+      "target": ".claude/references/divergence-frames.md",
+      "action": "sync",
+      "description": "Cognitive frames (incl. fintech: regulator, fraudster, auditor) for brainstorming divergence mode"
+    },
+    "references/lesson-mining-rubric.md": {
+      "source": ".claude/references/lesson-mining-rubric.md",
+      "target": ".claude/references/lesson-mining-rubric.md",
+      "action": "sync",
+      "description": "Reject-by-default rubric for lesson-mining — admit/reject rules and transcripts-are-untrusted note"
+    },
+    "skills/lesson-mining/SKILL.md": {
+      "source": ".claude/skills/lesson-mining/SKILL.md",
+      "target": ".claude/skills/lesson-mining/SKILL.md",
+      "action": "sync",
+      "description": "Mine past session transcripts for durable lesson/memory candidates, suggest-only with a reject-by-default rubric"
+    },
+    ".github/workflows/validate-lesson-pr.yml": {
+      "source": ".github/workflows/validate-lesson-pr.yml",
+      "target": ".github/workflows/validate-lesson-pr.yml",
+      "action": "sync",
+      "description": "Validates contribute-back lesson PRs (path whitelist, size caps, secret/injection scans), labels lesson-validated; never auto-merges"
+    },
+    "hooks/read-guard.sh": {
+      "source": "hooks/read-guard.sh",
+      "target": "hooks/read-guard.sh",
+      "action": "sync",
+      "description": "PreToolUse Read/Grep/Glob gate — blocks secret-file reads (exit 2), advises on noise-dir reads; MTK_READ_GUARD=advisory rollout knob"
+    },
+    "hooks/workflow-continuation.sh": {
+      "source": "hooks/workflow-continuation.sh",
+      "target": "hooks/workflow-continuation.sh",
+      "action": "sync",
+      "description": "Stop-hook advisory nudge when an active workflow has unfinished batches; never blocks, never auto-continues; tier-2 gated"
+    },
+    "lessons/contributed/README.md": {
+      "source": "lessons/contributed/README.md",
+      "target": "lessons/contributed/README.md",
+      "action": "sync",
+      "description": "Intake/curation contract for team-wide contributed lessons (validated by validate-lesson-pr.yml, human-merged)"
+    },
+    "tests/fixtures/handoff-evidence-channels.json": {
+      "source": "tests/fixtures/handoff-evidence-channels.json",
+      "target": "tests/fixtures/handoff-evidence-channels.json",
+      "action": "sync",
+      "description": "Fixture: success_criteria with evidence_channel + observable accepted by validate-handoff.sh"
+    },
+    "tests/fixtures/handoff-evidence-channels-bad.json": {
+      "source": "tests/fixtures/handoff-evidence-channels-bad.json",
+      "target": "tests/fixtures/handoff-evidence-channels-bad.json",
+      "action": "sync",
+      "description": "Fixture: invalid evidence_channel rejected by validate-handoff.sh"
+    },
+    "tests/fixtures/router-lesson-mining.json": {
+      "source": "tests/fixtures/router-lesson-mining.json",
+      "target": "tests/fixtures/router-lesson-mining.json",
+      "action": "sync",
+      "description": "Router-mapping fixture: lesson-harvest prompts route to lesson-mining; in-the-moment corrections to correction-capture"
+    },
+    "tests/hooks/test-read-guard.sh": {
+      "source": "tests/hooks/test-read-guard.sh",
+      "target": "tests/hooks/test-read-guard.sh",
+      "action": "sync",
+      "description": "Test for read-guard.sh — block/allowlist/advisory/approval/noise/clean/non-read cases"
+    },
+    "tests/hooks/test-verify-completion-rearm.sh": {
+      "source": "tests/hooks/test-verify-completion-rearm.sh",
+      "target": "tests/hooks/test-verify-completion-rearm.sh",
+      "action": "sync",
+      "description": "Test for verify-completion re-arm rule — edit-after-verification re-arms criteria"
+    },
+    "tests/hooks/test-workflow-continuation.sh": {
+      "source": "tests/hooks/test-workflow-continuation.sh",
+      "target": "tests/hooks/test-workflow-continuation.sh",
+      "action": "sync",
+      "description": "Test for workflow-continuation.sh — nudge/debounce/completed/absent/opt-out cases"
+    },
+    "tests/pressure-tests/lesson-mining-rubric.md": {
+      "source": "tests/pressure-tests/lesson-mining-rubric.md",
+      "target": "tests/pressure-tests/lesson-mining-rubric.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for the lesson-mining reject-by-default rubric (boilerplate, injection, volume pressure)"
+    },
+    "tests/pressure-tests/verification-rearm.md": {
+      "source": "tests/pressure-tests/verification-rearm.md",
+      "target": "tests/pressure-tests/verification-rearm.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for the verification re-arm rule (trivial-edit, cost, same-second, behavior-shaped)"
     }
   },
   "protected": [

@@ -33,9 +33,13 @@ const MODEL = args?.model ?? undefined // 'sonnet' | 'opus' | undefined (inherit
 const BATCH_RESULT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['batch_id', 'actual_files', 'build', 'tests', 'behavioral_diff', 'deviations'],
+  required: ['batch_id', 'status', 'actual_files', 'build', 'tests', 'behavioral_diff', 'deviations'],
   properties: {
     batch_id: { type: 'string' },
+    // completed = delivered + verified; blocked = build/tests red; inconclusive
+    // = returned without runnable evidence. inconclusive is never a pass — the
+    // orchestrator respawns it once with narrowed scope, then halts.
+    status: { type: 'string', enum: ['completed', 'blocked', 'inconclusive'] },
     actual_files: { type: 'array', items: { type: 'string' } },
     build: {
       type: 'object', additionalProperties: false, required: ['ok', 'evidence'],
@@ -88,11 +92,14 @@ for (const wave of waves) {
     const waveResults = await parallel(wave.map((b) => () => runBatch(b)))
     results.push(...waveResults)
   }
-  // Fail fast: if any batch in this wave failed build/tests, stop scheduling
-  // later (dependent) waves. The orchestrator still inspects results on return.
-  const broke = results.find((r) => r && (!r.build?.ok || !r.tests?.ok))
+  // Fail fast: if any batch in this wave failed build/tests, was inconclusive,
+  // or died (null), stop scheduling later (dependent) waves. The orchestrator
+  // still inspects results on return and respawns inconclusive batches once.
+  const broke = results.find(
+    (r) => !r || r.status === 'blocked' || r.status === 'inconclusive' || !r.build?.ok || !r.tests?.ok,
+  )
   if (broke) {
-    log(`Halting: batch ${broke.batch_id} failed build/tests; later waves skipped.`)
+    log(`Halting: batch ${broke?.batch_id ?? '(null result)'} not completed (status=${broke?.status ?? 'missing'}); later waves skipped.`)
     break
   }
 }

@@ -69,6 +69,59 @@ Explore the design space before committing to a single approach. Brainstorming p
    - Include: approaches considered, decision rationale, and constraints that drove the choice
    - This enables session recovery and future reference for why the design was chosen
 
+## Divergence Mode (Isolated Parallel Exploration)
+
+The default workflow above runs in one context — which means every approach is
+generated under the same anchoring. For **architecture-shaping** decisions (a new
+boundary, a public contract, a migration strategy) or when the engineer asks for
+*wide* exploration, switch to divergence mode: generate approaches in **isolated
+parallel subagents** so they don't converge on the first obvious idea, then judge
+them with a separate critic pass.
+
+**When to enter divergence mode:**
+- The engineer explicitly asks for wide / divergent / "blue-sky" exploration, OR
+- The decision is architecture-shaping (new bounded context, new persistence
+  target, cross-slice contract, irreversible migration).
+Otherwise stay on the default light path — divergence mode is more expensive and
+overkill for a routine choice between two known patterns.
+
+**Cost gate (ask first).** Divergence mode spends roughly **6–10 agent calls**
+(one per divergent branch plus the critic deepening). Before running it, state
+that cost in one line and confirm — *unless* the engineer already explicitly
+asked for wide exploration, in which case proceed.
+
+**Phase 1 — Diverge (parallel, isolated).**
+1. Pick **3–5 frames** from `.claude/references/divergence-frames.md`. Always
+   include at least one adversarial/fintech frame when the work touches money,
+   auth, or audited state (`F-REG` regulator, `F-FRD` fraudster, `F-AUD`
+   auditor). Vary the frame selection across sessions so you don't always view
+   the problem the same way.
+2. Spawn one subagent **per frame**, in a single message (parallel), each with
+   **zero shared context** beyond the problem statement and its own frame's
+   vantage prompt. Each subagent is instructed to: reason only from its frame,
+   **ban the first three obvious answers**, and return **JSON only** (no prose):
+   `{ "approach": "...", "how": "...", "load_bearing_assumption": "...", "risk": "..." }`.
+   Branches must not see each other's output — isolation is the whole point.
+
+**Phase 2 — Focus (critic pass, orchestrator-side).**
+3. Collect the branch JSON. Run a **separate critic pass** (you, the orchestrator,
+   with a deliberately skeptical lens — not the generators):
+   - **Score** each approach on novelty / viability / fit (0–10 each).
+   - **Cluster** approaches by underlying angle (not by keyword) so near-duplicates
+     collapse.
+   - **Flag traps**: approaches that are attractive but broken, each with a
+     one-line reason. Carry any frame-specific traps noted in the frames file.
+   - **Deepen** the top 2–3 survivors into full approach blocks (the structure
+     from step 3 of the default workflow).
+4. Present: the deepened survivors + recommendation (as in the default path) **plus
+   a mandatory Trap Register** — the attractive-but-broken approaches and why,
+   so the rejected space is durable knowledge, not lost.
+
+**Trap register carries forward.** When this brainstorm proceeds to a spec, the
+trap register becomes the spec's "Rejected alternatives" — `spec-driven-development`
+reads it. Naming the seductive-but-wrong design is as valuable as naming the
+chosen one.
+
 ## Rules
 
 - No implementation during brainstorming. Not even "let me try something quick."
@@ -76,6 +129,11 @@ Explore the design space before committing to a single approach. Brainstorming p
 - Tradeoffs must be honest. Do not soft-sell the recommended approach.
 - Respect the engineer's choice even when you disagree.
 - If only one approach is viable, say so and explain why alternatives don't work.
+- Divergence mode: branches run isolated (zero shared context) and the critic is a
+  separate pass — never let a generator grade its own idea.
+- Divergence mode self-declares its ~6–10 call cost and confirms before running,
+  unless wide exploration was explicitly requested.
+- A divergence-mode result without a Trap Register is incomplete.
 
 ## Common Rationalizations
 

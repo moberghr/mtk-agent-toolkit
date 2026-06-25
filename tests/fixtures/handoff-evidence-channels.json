@@ -1,0 +1,68 @@
+{
+  "id": "handoff-evidence-channels",
+  "fixture_type": "handoff-validation",
+  "description": "SC1 fixture — success_criteria entries carry evidence_channel (all valid) and observable. validate-handoff.sh must accept this and exit 0 (no channel errors).",
+  "slug": "evidence-channels-test",
+  "date": "2026-06-12",
+  "scope": "new-feature",
+  "security_impact": "none",
+  "change_manifest": [],
+  "success_criteria": [
+    {
+      "id": "SC1",
+      "description": "validate-handoff.sh accepts valid evidence_channel values",
+      "verification": "bash scripts/validate-handoff.sh exits 0 with no CRITICAL channel errors",
+      "evidence_channel": "test-run",
+      "observable": "exit 0 with '## PASS' in output"
+    },
+    {
+      "id": "SC2",
+      "description": "build pipeline reports no failures",
+      "verification": "CI build output shows 0 errors",
+      "evidence_channel": "build-output",
+      "observable": "0 errors, 0 warnings in build output"
+    },
+    {
+      "id": "SC3",
+      "description": "health endpoint returns 200",
+      "verification": "curl returns 200",
+      "evidence_channel": "http-probe",
+      "observable": "HTTP 200 with body containing 'ok'"
+    },
+    {
+      "id": "SC4",
+      "description": "CLI reports correct version",
+      "verification": "mtk --version output",
+      "evidence_channel": "cli-stdout",
+      "observable": "stdout contains '7.14.0'"
+    },
+    {
+      "id": "SC5",
+      "description": "ledger balances reconcile after transfer",
+      "verification": "before/after DB query shows net-zero delta",
+      "evidence_channel": "db-state-diff",
+      "observable": "source account debited, destination credited, sum unchanged"
+    },
+    {
+      "id": "SC6",
+      "description": "UI renders the correct total",
+      "verification": "screenshot or browser assertion",
+      "evidence_channel": "browser",
+      "observable": "total field shows 1234.56 after cart update"
+    },
+    {
+      "id": "SC7",
+      "description": "audit event appears in application log",
+      "verification": "grep audit log for event id",
+      "evidence_channel": "log-capture",
+      "observable": "log line contains event id and 'AUDIT'"
+    },
+    {
+      "id": "SC8",
+      "description": "validate-handoff.sh script output contains PASS",
+      "verification": "bash scripts/validate-handoff.sh <fixture>",
+      "evidence_channel": "script-output",
+      "observable": "stdout contains '## PASS'"
+    }
+  ]
+}

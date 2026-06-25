@@ -73,8 +73,20 @@ When an engineer corrects your approach, that correction contains knowledge that
      --title "Short title" \
      --body  "What the engineer said" \
      --rule  "The reusable rule extracted" \
-     --applies-when "When this rule should activate"
+     --applies-when "When this rule should activate" \
+     --wrong-turns "dead end A,dead end B" \
+     --time-cost 12 \
+     --evolution-actions "routing|claude_md|reference|hook|none"
    bash scripts/learnings.sh regen-markdown   # rebuilds tasks/lessons.md
+
+   # v7.14 enrichment (all optional — omit when not applicable):
+   #   --wrong-turns      comma-separated dead ends tried, so the next session
+   #                      doesn't repeat them (back-compat: absent on old entries)
+   #   --time-cost        rough minutes lost to the absence of this rule
+   #   --evolution-actions which toolkit asset you changed because of this lesson.
+   #                      This is a FORCED decision: pick one. `none` is allowed
+   #                      but state why in the body (e.g. "none — one-off, not a pattern").
+   #                      A lesson that changed nothing is a lesson that will recur.
 
    # decision-origin guidance:
    #   claude-recommended-rejected — engineer stopped the approach the model proposed
@@ -91,6 +103,9 @@ When an engineer corrects your approach, that correction contains knowledge that
    **Rule:** [The reusable rule extracted from the correction]
    **Why:** [Why this matters — the underlying principle]
    **Applies to:** [When this rule should activate in future work]
+   **Wrong turns:** [Dead ends tried this session, so they aren't repeated — omit if none]
+   **Time cost:** [Rough minutes lost — omit if not measurable]
+   **Evolution:** [Which toolkit asset you changed because of this: routing / CLAUDE.md / a reference / a hook / none-and-why]
    ```
 
    The structured form enables 5-layer retrieval (proximity / recurrence / severity / validity / phase) at the start of the next spec or fix. The markdown form remains the team-canonical, committed view.

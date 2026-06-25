@@ -6,7 +6,7 @@
 
 **A Claude Code plugin that enforces your team's coding standards, security policies, and review discipline on every AI-generated line of code. Language-agnostic workflows with pluggable tech stacks for .NET, Python, and TypeScript.**
 
-[![Version](https://img.shields.io/badge/version-7.13.1-blue.svg)](https://github.com/moberghr/mtk-agent-toolkit/releases)
+[![Version](https://img.shields.io/badge/version-7.14.0-blue.svg)](https://github.com/moberghr/mtk-agent-toolkit/releases)
 [![Website](https://img.shields.io/badge/website-moberghr.github.io-6d28d9.svg)](https://moberghr.github.io/mtk-agent-toolkit/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-purple.svg)](https://claude.ai/code)
 [![.NET](https://img.shields.io/badge/.NET-8.0%2B-512BD4.svg)](https://dotnet.microsoft.com/)
@@ -50,6 +50,35 @@ MTK closes that gap with **workflow enforcement** (planning, TDD, batched implem
 ---
 
 ## What's New
+
+### v7.14.0 — Evidence and the closed loop (2026-06-12)
+- **Locked verifiable-criteria contract** — each spec success criterion now carries an `evidence_channel` (one of `test-run` / `build-output` / `http-probe` / `cli-stdout` / `db-state-diff` / `browser` / `log-capture` / `script-output`) and a binary `observable` declared before execution. `verification-before-completion` checks criteria one-by-one and cites the observable per criterion. For behavior-shaped changes, tests alone never prove done — the channel must include a real execution surface.
+- **Gate re-arm** — any edit that lands after the last verification reverts every criterion to `re-armed`; the `hooks/verify-completion` hook emits a re-arm notice and a completion claim is rejected until re-verification runs. Kills the "tiny follow-up edit after I said done" hole.
+- **AI failure-modes catalogue** — `.claude/references/ai-failure-modes.md` documents 14 researched LLM failure modes (catch-all error swallowing, hardcoded-success returns, hallucinated APIs, mock-your-own-DTOs, async-void misuse, …) with citations and C# bad/good examples; `code-review-and-quality` and `silent-failure-hunter` cite F-codes on matching findings.
+- **`read-guard` hook** — PreToolUse gate that blocks reading secret-bearing files (`.env`, `*.pem`, `*.key`, `id_rsa`, …) into context without explicit approval, and advises on noise-dir reads. `MTK_READ_GUARD=advisory` rollout knob; `*.example`/`*.template` allowlisted.
+- **`workflow-continuation` hook** — Stop-hook advisory nudge when an active workflow still has unfinished batches (continue / hand off / abandon). Advisory only — never blocks, never auto-continues.
+- **Claim provenance + package-legitimacy gates** — spec/research claims tag as `[VERIFIED:path]` / `[ASSUMED]` / `[CITED:url]`; an `[ASSUMED]` claim blocks `MTK_AUTO_PROCEED`. New dependencies are verified against their registry (criterion 0 of the dependency-intake checklist) with a human checkpoint before install.
+- **Hardened subagent dispatch contract** — implementer prompts use explicit `TASK` / `DELIVERABLE` / `SCOPE` / `VERIFY` headers; a missing/ack-only/unparseable result is recorded `inconclusive` and respawned once, never counted as a pass.
+- **Closed-loop lessons** — lesson template gains `wrong_turns` / `time_cost` / `evolution_actions`; `promote-lesson` can open a validated **contribute-back PR** (`.github/workflows/validate-lesson-pr.yml` checks path/size/secret/injection then labels — humans merge, no auto-merge); new **`lesson-mining`** skill sweeps past session transcripts with a reject-by-default rubric (suggest-only).
+- **Isolated-divergence brainstorming** — architecture-shaping decisions can run a divergence mode: 3–5 parallel zero-shared-context branches under distinct cognitive frames (incl. fintech: regulator / fraudster / auditor), a separate critic pass, and a mandatory trap register carried into the spec's rejected-alternatives.
+- **`context-miner` review lane** — at HIGH/MAX rigor, a read-only reviewer mines git history, PR/issue threads, and prior lessons for organizational context the diff missed (prior reverts, related open issues, recorded decisions).
+
+### v7.13.0 — Cross-artifact consistency, interview mode, rigor scaling (2026-06-09)
+- **Cross-artifact consistency** — `plan-gap-reviewer` maps spec sidecar ⇄ plan ⇄ `tasks/todo.md` in both directions and flags inconsistencies when all three are passed at dispatch.
+- **Socratic interview mode** — `spec-driven-development`'s ambiguity gate switches to one-question-per-round interview when ≥3 ambiguities or an underspecified multi-file ask, highest-leverage first, re-deriving remaining ambiguities after each answer (5-round cap).
+- **Continuous rigor scaling** — `implement` computes a rigor score (LIGHT / STANDARD / HIGH / MAX) from the spec sidecar that dials the Phase 3 path, the Stage 2 reviewer set, and `MTK_AUTO_PROCEED` eligibility; subagent hard triggers remain a floor.
+- **Living code index** — `spec-archive.sh` appends newly shipped public contracts to `CODE_INDEX.md` so completed delta specs become living documentation.
+- **Release checksums** — `scripts/generate-checksums.sh` + `checksums.sha256` integrity manifest, verified by `mtk-doctor.sh` (rule S4.11).
+
+### v7.11.0 — Delta-spec baseline, cited constitution, rule wake-up layer (2026-06-01)
+- **Delta-spec model** — specs are deltas against a per-area baseline; `spec-archive.sh` syncs a clean-drift delta back into `docs/specs/baseline/<area>.{json,md}` with an audit trail (new Phase 7.5 in `implement`).
+- **Constitution as cited input** — `scripts/constitution-digest.sh` emits Critical Rules + tagged principles; specs require a Constitution Check section and plans cite per-batch governing constraints.
+- **Rule wake-up layer** — rules carry decision/topic/scope axes; `scripts/build-rule-index.sh` generates the always-on `.claude/rules/INDEX.md` and `context-engineering` reads it first, pulling full rules on demand.
+- **Skill-eval coverage report** — `scripts/skill-eval/coverage.sh` reports behavioral-eval coverage and description-overlap sprawl (advisory, `--json` for CI).
+
+### v7.10.0 — Non-destructive bootstrap + setup hardening (2026-05-29)
+- **Non-destructive `setup-bootstrap`** — bootstrap preserves existing files instead of overwriting them (fix for a destructive-deletion bug found during rollout), scopes the DbContext pre-commit item to EF Core, and fixes plugin skill links.
+- **Grounded audit** — `verify-references.sh` hardened against prose false positives and citation-suffix stripping; setup eval round-1 fixes.
 
 ### v7.9.0 — Session-learnings capture for CLAUDE.md (2026-05-29)
 - **`claude-md-capture` skill** — reflects at session end on context `CLAUDE.md` was missing (discovered commands, gotchas, env quirks, patterns), proposes minimal append-only additions as diffs, and applies only with approval. Complements `claude-md-audit` (re-grades existing content) and `correction-capture` (records corrections as lessons). Routed via `/mtk` ("save what we learned to CLAUDE.md").

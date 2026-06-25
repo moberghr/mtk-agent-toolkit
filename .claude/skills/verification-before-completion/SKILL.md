@@ -26,6 +26,10 @@ cat .claude/tech-stack 2>/dev/null || echo "(not set)"
 
 No completion claim is valid without fresh evidence from an actual command execution. "Should work," "probably fixed," and "looks correct" are not verification. Run the command, read the output, check the exit code, then state the result with evidence.
 
+**Verification contract.** Every success criterion carries an `evidence_channel` (the surface where the observable result is captured) and an `observable` (a binary pass/fail statement declared before execution). Verification must go criterion-by-criterion — trust the list over memory. For behavior-shaped changes, tests alone never prove done: the `evidence_channel` must be a real execution surface (`http-probe`, `db-state-diff`, `cli-stdout`, or `browser`), not a build artifact.
+
+**Re-arm rule.** Any edit that lands after the most recent verification resets every criterion's status to `re-armed`. A completion claim is rejected while any criterion is `re-armed`. Re-verification must run after the edit, cite the observable result per criterion, and set each criterion to `verified` before the claim is accepted.
+
 ## When To Use
 
 - Before reporting a batch as complete
@@ -39,26 +43,54 @@ No completion claim is valid without fresh evidence from an actual command execu
 
 - Mid-exploration, where the goal is understanding rather than completion
 
+## Evidence Channel Taxonomy
+
+The `evidence_channel` field on each success criterion names the surface where the observable result is captured. Use the channel that corresponds to what the change actually does:
+
+| Channel | When to use |
+|---|---|
+| `test-run` | Automated test suite (unit, integration, end-to-end) |
+| `build-output` | Compiler, type-checker, or linter output |
+| `http-probe` | HTTP request/response against a running service |
+| `cli-stdout` | Command-line tool output inspected manually |
+| `db-state-diff` | Before/after query of a database or file store |
+| `browser` | Visual or functional check in a browser |
+| `log-capture` | Structured log entry captured at runtime |
+| `script-output` | Shell script execution result |
+
+**Rule:** For behavior-shaped changes (new endpoint, changed handler, migration, state transition), `test-run` and `build-output` are insufficient on their own — the channel must include at least one real execution surface (`http-probe`, `db-state-diff`, `cli-stdout`, or `browser`). Tests alone never prove behavior done.
+
 ## Workflow
 
-1. Identify the verification command for the current claim — read the active tech stack skill (`.claude/skills/tech-stack-{stack}/SKILL.md`, where `{stack}` comes from `.claude/tech-stack`) and pick from its `## Build & Test Commands` section:
+1. **Load the active success criteria.** Read the spec JSON sidecar at `docs/specs/<date>-<slug>.json` (or use the sidecar named in the workflow artifact). Extract `success_criteria[]` — each entry has `id`, `description`, `evidence_channel`, and `observable`. These are the items you verify one by one. Trust the list over memory.
+2. Identify the verification command for the current claim — read the active tech stack skill (`.claude/skills/tech-stack-{stack}/SKILL.md`, where `{stack}` comes from `.claude/tech-stack`) and pick from its `## Build & Test Commands` section:
    - Build claim -> the stack's compile/type-check command (dotnet: `dotnet build`, python: `mypy .`, typescript: `<pm> run build` or `tsc --noEmit`)
    - Test claim -> the stack's test command (dotnet: `dotnet test`, python: `pytest`, typescript: `<pm> test`)
    - Fix claim -> the specific test or reproduction step
    - Deployment claim -> the relevant smoke test
-2. Execute the command to completion. Do not stop at partial output.
-3. Read the full output, including:
+3. Execute the command to completion. Do not stop at partial output.
+4. Read the full output, including:
    - exit code
    - error messages
    - warning count
    - test pass/fail counts
-4. Confirm the output supports the specific claim being made.
-5. Only then state the result, citing the evidence.
-6. Re-check freshness against the latest edit. MTK's hook state tracks the most
+5. **Criterion-by-criterion check.** For each success criterion in the list:
+   a. Run (or re-run) the verification step appropriate to its `evidence_channel`.
+   b. Confirm the result matches the criterion's `observable` (the binary pass/fail statement declared before execution).
+   c. Record the criterion status: `verified` if the observable is met, `re-armed` if any edit landed after this check, `pending` if not yet checked.
+   d. Do not advance past a criterion that remains `re-armed` or `pending`.
+6. Confirm the output supports the specific claim being made.
+7. Only then state the result, citing the evidence per criterion (`SC1: verified — <observable result>`).
+8. Re-check freshness against the latest edit. MTK's hook state tracks the most
    recent file edit and the latest verification command in the session; a
    completion claim is stale when the verification event happened before the
    latest code-change event, even if both landed in the same wall-clock second.
-7. **Wiring check.** For every skill, hook, agent, or reference touched in
+9. **Re-arm check.** If any edit landed after the most recent verification, all
+   criteria revert to `re-armed`. The `hooks/verify-completion` hook compares
+   `last_edit_seq` vs `last_verification_seq` and emits a re-arm notice when
+   stale. Do not claim completion while any criterion is `re-armed` — re-run
+   verification from step 1 after the edit.
+10. **Wiring check.** For every skill, hook, agent, or reference touched in
    this task, run:
    ```bash
    bash scripts/validate-toolkit.sh --task-scoped <comma-separated paths>
@@ -108,6 +140,13 @@ When the work being verified came from a prior agent — a builder subagent, a r
   must use verification that happened after the last edit.
 - If the verification fails, the task is not complete. Do not report it as complete with caveats.
 - Re-verify after any fix-up, even a trivial one.
+- Verify criterion-by-criterion. Passing SC1 does not imply SC2–SCN. Each
+  criterion's `evidence_channel` and `observable` are the contract; confirm both.
+- Any edit after the last verification re-arms all criteria. While any criterion
+  is `re-armed`, the completion claim is rejected. Re-verification must cite
+  the observable result per criterion before the claim is accepted.
+- For behavior-shaped changes, tests alone never prove done. The evidence
+  channel must include at least one real execution surface.
 
 ## Common Rationalizations
 
@@ -121,6 +160,9 @@ See `.claude/skills/context-engineering/SKILL.md` — the shared MTK rationaliza
 - Stale evidence from before the latest edit
 - Success claimed despite warnings or skipped tests in the output
 - New skill / hook / agent / reference authored but not wired (no manifest entry, hook not chmod +x or not referenced from settings, agent missing from plugin.json) — files exist on disk but nothing dispatches them
+- Claiming done while any criterion is `re-armed` (edit landed after verification)
+- Verifying at the batch level instead of criterion-by-criterion
+- Using `test-run` or `build-output` alone for a behavior-shaped change (missing real execution surface)
 
 ## Signal-Based Enforcement
 
@@ -131,6 +173,10 @@ This skill is enforced via hooks in `settings.json`:
   the latest verification command run in the session. `hooks/verify-completion`
   compares those timestamps and warns with `VERIFICATION GAP:` when the evidence
   is stale or missing.
+- **Re-arm notice:** When `last_edit_seq > last_verification_seq`, `hooks/verify-completion`
+  emits `VERIFICATION GAP: criteria re-armed` — all success criteria are reset to
+  `re-armed` and a completion claim is rejected until re-verification runs after
+  the edit.
 
 The Stop hook is the enforcement mechanism. The skill documentation above is the contract; the hook is the guardrail.
 
@@ -151,4 +197,7 @@ Forcing past a stuck state produces garbage output. Admitting difficulty is alwa
 - [ ] The output directly supports the claim
 - [ ] The evidence is from after the most recent code change
 - [ ] No warnings or failures were silently ignored
+- [ ] Every success criterion was verified individually (criterion-by-criterion, citing the `observable` per criterion)
+- [ ] No criterion remains `re-armed` (no edit landed after the last verification)
+- [ ] Behavior-shaped changes cite a real execution surface (`http-probe`, `db-state-diff`, `cli-stdout`, or `browser`), not only `test-run` / `build-output`
 - [ ] If verifying upstream agent work, every factual claim was extracted and reconciled (`VERIFIED`, `CONTRADICTED`, or `UNVERIFIABLE`) — none left `UNVERIFIED`
