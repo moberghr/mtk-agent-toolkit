@@ -134,6 +134,7 @@ Track the cumulative context loaded in the session. Fewer, focused instructions 
 - 5+ skills loaded simultaneously — prune to the 2-3 most relevant
 - Full reference files loaded when only a section is needed
 - Same context loaded multiple times (after compaction recovery)
+- The `context-budget` hook nudges that estimated consumption passed `MTK_CONTEXT_BUDGET_PCT`% (default 60) of `MTK_CONTEXT_WINDOW_TOKENS` (default 200000) — treat it as a floor (it counts read bytes only) and reset/hand off deliberately rather than riding to compaction
 
 ## Context Footprint
 
@@ -170,25 +171,9 @@ After completing reference loading at the end of Phase 0 (and after any subseque
 
 ## Model Routing
 
-Not all tasks need the same model tier. Route work by complexity to optimize cost and quality:
+Route work by complexity: reserve `opus` for code that writes real logic and the adversarial reviews that protect serious software; run discovery, planning, and structured comparison on `sonnet`/`haiku`. The full per-phase tier policy (every phase and agent, with rationale per row) is the **single source of truth** in `.claude/references/model-routing.md` — read it there rather than duplicating a table here that would drift.
 
-| Phase / Skill | Model | Rationale |
-|---|---|---|
-| Pre-commit linter | N/A (bash) | Deterministic — no model needed |
-| Setup-bootstrap scan recipes | haiku | File discovery, grep — structured data collection |
-| Setup-audit scan recipes | haiku | Same — structured data collection |
-| Planning and task breakdown | sonnet | Judgment needed but scope is bounded |
-| Incremental implementation | sonnet | Standard code generation |
-| Test-driven development | sonnet | Standard test generation |
-| Pre-commit AI review | sonnet | Fast review with bounded scope |
-| Compliance review | opus | Security, financial state, audit trails — highest stakes |
-| Security and hardening | opus | Security decisions cannot be shallow |
-| Spec-drift detection | sonnet | Structured comparison, moderate judgment |
-| Architecture review | sonnet | Pattern matching against known rules |
-| Test review | sonnet | Assertion quality, coverage gaps |
-| Brainstorming | opus | Creative exploration benefits from deeper reasoning |
-
-Agent frontmatter `model:` sets the model for subagents. Entry-point skills run on the user's selected model. When a skill spawns a reviewer agent, the agent's frontmatter controls its model. Skill rows in the table above are advisory defaults only (skills run on the session model); the agent rows are the enforced ones.
+Agent frontmatter `model:` sets the model for subagents. Entry-point skills run on the user's selected model. When a skill spawns a reviewer agent, the agent's frontmatter controls its model. In `model-routing.md` the skill rows are advisory defaults only (skills run on the session model); the agent rows are the enforced ones.
 
 ## Common Rationalizations
 

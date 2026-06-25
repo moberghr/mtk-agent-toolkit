@@ -31,7 +31,7 @@ A handoff captures the current session state — branch, in-progress work, decis
 
 ## When To Use
 
-- Context is approaching its limit and compaction is imminent
+- Context is approaching its limit and compaction is imminent — including when the `context-budget` hook nudges that the session is past `MTK_CONTEXT_BUDGET_PCT`% (default 60) of the window: reset deliberately *before* quality degrades rather than riding it to compaction
 - Ending a long session that has unfinished, non-trivial work
 - Handing off to a teammate who will continue the work
 - Switching branches or features mid-stream and the current state needs to survive

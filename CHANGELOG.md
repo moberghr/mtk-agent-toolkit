@@ -2,6 +2,38 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.15.0] - 2026-06-25
+
+### Added — Seven capabilities (cost discipline, context safety, loop safety, guard packs)
+
+Seven capabilities, each a delta on existing infrastructure. Disjoint from the v7.13/v7.14 work.
+
+- **Per-phase model routing.** New `.claude/references/model-routing.md` is the canonical tier policy — `opus` reserved for code that writes real logic and adversarial review; `sonnet`/`haiku` for discovery, planning, and structured comparison. `subagent-implementation` frames its model question with the policy default (Sonnet unless the batch is flagged novel); `context-engineering`, `planning-and-task-breakdown`, `code-review-and-quality`, and `research-context` cite it.
+- **Context-budget checkpoint.** `hooks/context-budget.sh` now nudges a deliberate reset/handoff once estimated consumption (read-bytes floor) passes `MTK_CONTEXT_BUDGET_PCT`% (default 60) of `MTK_CONTEXT_WINDOW_TOKENS` (default 200000). Documented in `handoff` and `context-engineering`. Advisory, fires once.
+- **Remediation circuit-breaker.** `scripts/workflow-artifact.sh remediation <uuid> <trigger> [--score N]` records fix-loop iterations and prints `ESCALATE` at `MTK_MAX_REMEDIATION_ITERS` (default 3) or on score plateau, else `CONTINUE`. Wired into `failure_stop_gate`, `code-review-and-quality`'s iteration cap, and `verification-before-completion`; new `results.remediation` artifact field and `remediation_escalated` event.
+- **`smoke-boot` evidence channel.** New strongest real-execution surface ("the artifact/service boots and responds live") added to the v7.14 evidence-channel taxonomy in `verification-before-completion` and `spec-driven-development`.
+- **Doc-drift linter pack.** New `hooks/linter-patterns/core/docdrift.txt` — heuristic, warning-level smells (absolute reliability claims, empty `<see cref="" />`, placeholders, empty/placeholder links, `[Obsolete]` without a message). Cross-referenced from `ai-failure-modes.md` F12/F3.
+- **Phase-locked tool limits.** `brainstorming` is now `required-toolsets: [read-only]`; `research-context`, `spec-driven-development`, and `planning-and-task-breakdown` carry a written Tool-discipline note (artifacts/web only, never source code — `scope-guard` backs it). S2.20 extended.
+- **Stack/domain guard packs.** Enriched `domain-finance` (anonymous endpoints, audited-record deletes, sensitive-data logging) and `stack-dotnet` (`new HttpClient`, weak hashes) packs; new `.claude/references/guard-packs.md` documents the guard-pack model as a shippable unit.
+
+### Tests
+
+- `tests/hooks/test-context-estimator.sh` extended with the 60%-checkpoint scenarios (SC8).
+- New `tests/hooks/test-remediation-tracker.sh` and `tests/hooks/test-docdrift-pack.sh`.
+
+## [7.14.0] - 2026-06-12
+
+### Added — Evidence and the closed loop (14 competitive-analysis borrows, 8 batches)
+
+- **Evidence contract.** Success criteria carry an `evidence_channel` + a binary `observable`, verified criterion-by-criterion. Any edit after verification **re-arms** all criteria (the `verify-completion` Stop hook emits a re-arm notice); behavior-shaped changes require a real execution surface, not tests alone. Named channels recorded on the workflow artifact (`criteria_status`).
+- **Input hygiene.** New `read-guard` PreToolUse hook blocks secret-file reads (exit 2) with an out-of-band human approval path (no agent-runnable self-approval) and a `MTK_READ_GUARD=advisory` rollout knob; noise-directory reads advise only.
+- **Claim provenance.** `[VERIFIED]`/`[ASSUMED]`/`[CITED]` tags on spec/research claims; an `[ASSUMED]` claim blocks `MTK_AUTO_PROCEED`.
+- **Package-legitimacy gate.** Dependency-intake criterion 0 verifies new deps against their registry with a human checkpoint before install; dirty-worktree paths recorded as risk and `plan-gap-reviewer` rejects overlaps.
+- **AI failure-modes catalogue.** F1–F14 (cited) wired into `code-review-and-quality` and `silent-failure-hunter`; new read-only `context-miner` review lane (git history, PR/issue threads, lessons) at HIGH/MAX rigor.
+- **Hardened subagent dispatch contract.** TASK/DELIVERABLE/SCOPE/VERIFY; an inconclusive result never counts as pass; respawn once.
+- **Closed-loop lessons.** Richer lesson template (`wrong_turns`/`time_cost`/`evolution_actions`); `learnings.sh add` optional write flags; `promote-lesson` offers a validated contribute-back PR (`validate-lesson-pr.yml` checks path/size/secret/injection and labels — humans merge, never auto-merge); new `lesson-mining` skill (reject-by-default transcript sweep, suggest-only).
+- **Workflow + brainstorming.** `workflow-continuation` Stop hook nudges on unfinished workflows (advisory); brainstorming divergence mode runs isolated parallel branches under distinct cognitive frames (incl. fintech) with a critic pass and a mandatory trap register.
+
 ## [7.13.1] - 2026-06-10
 
 ### Fixed — Skill-audit remediation (full-toolkit consistency pass)

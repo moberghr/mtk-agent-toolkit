@@ -48,7 +48,10 @@ Durable orchestration state lives under `.mtk/workflows/`, outside `.claude/` so
     "plan_path": "docs/plans/2026-05-07-foo.md",
     "todo_path": "tasks/todo.md",
     "batches_total": 4,
-    "batches_completed": 2
+    "batches_completed": 2,
+    "remediation": {
+      "build_failure": { "iterations": 2, "scores": [5, 7], "plateau": false }
+    }
   },
   "criteria_status": {
     "SC1": "pending",
@@ -105,6 +108,7 @@ Events are append-only. One line per event in `{uuid}.events.jsonl`.
 | `agent_returned` | A subagent finishes | `agent`, `verdict`, `findings_count` |
 | `remediation_started` | Loop entered to fix issues | `trigger` |
 | `remediation_resolved` | Loop exits successfully | `trigger`, `iterations` |
+| `remediation_escalated` | Circuit-breaker tripped (cap or plateau) | `trigger`, `iterations`, `plateau` |
 | `workflow_completed` | Final phase done | `summary` |
 | `workflow_failed` | Failure-stop gate trips | `reason` |
 

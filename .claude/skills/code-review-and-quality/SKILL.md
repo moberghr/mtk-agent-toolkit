@@ -15,6 +15,8 @@ user-invocable: false
 
 # Code Review And Quality
 
+> **Model tier:** the `compliance-reviewer` agent is pinned to `opus` (highest stakes); `architecture-reviewer`, `test-reviewer`, and `silent-failure-hunter` to `sonnet`. See `.claude/references/model-routing.md`.
+
 ## Current Diff Context
 
 ```!
@@ -119,7 +121,7 @@ If reviewing a PR or branch with CI runs, check CI status before starting the nu
    - Uniform scores across all five dimensions → require a one-line written justification per dimension explaining why that score genuinely applies.
    - A score without a `file:line` evidence quote → treated as 0 (auto-fail).
 
-   **Iteration cap.** If a dimension has scored < 7 in two prior iterations and a third iteration would also score it < 7, **stop and escalate to a human**. Automated remediation has stopped converging. Report the dimension, iteration count, and remaining findings.
+   **Iteration cap (circuit-breaker).** Drive the fix loop through `scripts/workflow-artifact.sh remediation "$MTK_WF_UUID" review_<dimension> --score <n>`: it returns `ESCALATE` when iterations reach `MTK_MAX_REMEDIATION_ITERS` (default 3) or the dimension's score plateaus (did not improve over the prior iteration), else `CONTINUE`. On `ESCALATE`, **stop and escalate to a human** — automated remediation has stopped converging; report the dimension, iteration count, and remaining findings (see `.claude/references/orchestration-gates.md` → `failure_stop_gate`).
 
 7. Emit output in the canonical format:
     - Markdown table of surfaced findings (confidence >= threshold from `.claude/review-config.json`, default 80)

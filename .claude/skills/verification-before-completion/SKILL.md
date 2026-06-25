@@ -26,7 +26,7 @@ cat .claude/tech-stack 2>/dev/null || echo "(not set)"
 
 No completion claim is valid without fresh evidence from an actual command execution. "Should work," "probably fixed," and "looks correct" are not verification. Run the command, read the output, check the exit code, then state the result with evidence.
 
-**Verification contract.** Every success criterion carries an `evidence_channel` (the surface where the observable result is captured) and an `observable` (a binary pass/fail statement declared before execution). Verification must go criterion-by-criterion — trust the list over memory. For behavior-shaped changes, tests alone never prove done: the `evidence_channel` must be a real execution surface (`http-probe`, `db-state-diff`, `cli-stdout`, or `browser`), not a build artifact.
+**Verification contract.** Every success criterion carries an `evidence_channel` (the surface where the observable result is captured) and an `observable` (a binary pass/fail statement declared before execution). Verification must go criterion-by-criterion — trust the list over memory. For behavior-shaped changes, tests alone never prove done: the `evidence_channel` must be a real execution surface (`smoke-boot`, `http-probe`, `db-state-diff`, `cli-stdout`, or `browser`), not a build artifact.
 
 **Re-arm rule.** Any edit that lands after the most recent verification resets every criterion's status to `re-armed`. A completion claim is rejected while any criterion is `re-armed`. Re-verification must run after the edit, cite the observable result per criterion, and set each criterion to `verified` before the claim is accepted.
 
@@ -55,10 +55,11 @@ The `evidence_channel` field on each success criterion names the surface where t
 | `cli-stdout` | Command-line tool output inspected manually |
 | `db-state-diff` | Before/after query of a database or file store |
 | `browser` | Visual or functional check in a browser |
+| `smoke-boot` | The built artifact/service boots and responds to a live request — the strongest real execution surface |
 | `log-capture` | Structured log entry captured at runtime |
 | `script-output` | Shell script execution result |
 
-**Rule:** For behavior-shaped changes (new endpoint, changed handler, migration, state transition), `test-run` and `build-output` are insufficient on their own — the channel must include at least one real execution surface (`http-probe`, `db-state-diff`, `cli-stdout`, or `browser`). Tests alone never prove behavior done.
+**Rule:** For behavior-shaped changes (new endpoint, changed handler, migration, state transition), `test-run` and `build-output` are insufficient on their own — the channel must include at least one real execution surface (`smoke-boot`, `http-probe`, `db-state-diff`, `cli-stdout`, or `browser`). Tests alone never prove behavior done. `smoke-boot` is the strongest: the thing actually starts and answers.
 
 ## Workflow
 
@@ -147,6 +148,10 @@ When the work being verified came from a prior agent — a builder subagent, a r
   the observable result per criterion before the claim is accepted.
 - For behavior-shaped changes, tests alone never prove done. The evidence
   channel must include at least one real execution surface.
+- When re-verification keeps failing the same criterion, do not loop forever:
+  drive it through the remediation circuit-breaker
+  (`scripts/workflow-artifact.sh remediation`) and escalate to a human on
+  `ESCALATE` — iteration cap or plateau (see `.claude/references/orchestration-gates.md`).
 
 ## Common Rationalizations
 
@@ -199,5 +204,5 @@ Forcing past a stuck state produces garbage output. Admitting difficulty is alwa
 - [ ] No warnings or failures were silently ignored
 - [ ] Every success criterion was verified individually (criterion-by-criterion, citing the `observable` per criterion)
 - [ ] No criterion remains `re-armed` (no edit landed after the last verification)
-- [ ] Behavior-shaped changes cite a real execution surface (`http-probe`, `db-state-diff`, `cli-stdout`, or `browser`), not only `test-run` / `build-output`
+- [ ] Behavior-shaped changes cite a real execution surface (`smoke-boot`, `http-probe`, `db-state-diff`, `cli-stdout`, or `browser`), not only `test-run` / `build-output`
 - [ ] If verifying upstream agent work, every factual claim was extracted and reconciled (`VERIFIED`, `CONTRADICTED`, or `UNVERIFIABLE`) — none left `UNVERIFIED`

@@ -81,7 +81,7 @@ await _sender.DispatchAsync(command);
 await _sender.Send(command, cancellationToken);
 ```
 
-**Rule.** Any API call or package reference that cannot be found in the project's dependency manifests or official docs must be flagged. Do not assume the caller will notice a missing method at runtime.
+**Rule.** Any API call or package reference that cannot be found in the project's dependency manifests or official docs must be flagged. Do not assume the caller will notice a missing method at runtime. (Hallucinated *symbols cited in doc-comments* are a related smell — the `core/docdrift.txt` pack flags empty `<see cref="" />`; existence of the cited symbol still needs a reviewer.)
 
 ---
 
@@ -287,6 +287,8 @@ public async Task<OrderDto> GetOrderAsync(Guid orderId) { ... }
 ```
 
 **Rule.** When a public method signature changes, its XML doc must be updated in the same commit. Flag any `<param>` or `<returns>` that describes a type or semantic the current signature does not match.
+
+**Automated heuristic.** The `core/docdrift.txt` linter pack catches a subset of this mechanically (empty `<see cref="" />`, absolute reliability claims, placeholders, `[Obsolete]` without a message) — warning-level, never blocks. Semantic drift like the example above still needs a reviewer; the pack is the cheap first pass, F12 is the judgment pass.
 
 ---
 

@@ -15,6 +15,9 @@ set -euo pipefail
 #   criteria <uuid> <SCn=status>...  Set per-criterion verification status
 #                                    Status values: pending | verified | re-armed
 #                                    --rearm-all  Reset all verified → re-armed
+#   remediation <uuid> <trigger> [--score N]  Record a remediation attempt; prints
+#                                    ESCALATE when iterations >= MTK_MAX_REMEDIATION_ITERS
+#                                    (default 3) or the score plateaus, else CONTINUE
 #   abandon <uuid> [--reason "<text>"]  Mark workflow abandoned
 #
 # Storage: .mtk/workflows/{uuid}.json + .mtk/workflows/{uuid}.events.jsonl
@@ -305,8 +308,70 @@ cmd_gate() {
   printf 'gate %s -> %s\n' "$gate" "$result"
 }
 
+cmd_remediation() {
+  local uuid="${1:-}"
+  shift || true
+  local trigger="${1:-}"
+  shift || true
+  [ -n "$uuid" ] || fail "remediation requires <uuid>"
+  [ -n "$trigger" ] || fail "remediation requires <trigger>"
+  [ -f "${WF_DIR}/${uuid}.json" ] || fail "no artifact for $uuid"
+
+  local score=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --score)
+        [ $# -ge 2 ] || fail "remediation: --score requires a value"
+        score="$2"; shift 2 ;;
+      *) fail "unknown flag: $1" ;;
+    esac
+  done
+  case "$score" in ''|*[!0-9]*) [ -z "$score" ] || fail "remediation: --score must be a non-negative integer" ;; esac
+
+  local max_iters="${MTK_MAX_REMEDIATION_ITERS:-3}"
+  case "$max_iters" in ''|*[!0-9]*) fail "MTK_MAX_REMEDIATION_ITERS must be a positive integer" ;; esac
+
+  # Record the attempt; decide ESCALATE when iterations hit the cap OR the score
+  # stopped improving (plateau). Higher score = better, so a non-increasing latest
+  # score means automated remediation is no longer converging.
+  local verdict
+  verdict="$(python3 - "${WF_DIR}/${uuid}.json" "$(iso_now)" "$trigger" "$score" "$max_iters" <<'PY'
+import json, sys
+path, now, trigger, score, max_iters = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], int(sys.argv[5])
+with open(path) as f: doc = json.load(f)
+results = doc.setdefault("results", {})
+rem = results.setdefault("remediation", {})
+entry = rem.setdefault(trigger, {"iterations": 0, "scores": [], "plateau": False})
+entry["iterations"] = int(entry.get("iterations", 0)) + 1
+if score != "":
+    # Bash guard (case "$score" in ''|*[!0-9]*) already guarantees an integer here.
+    entry.setdefault("scores", []).append(int(score))
+scores = [s for s in entry.get("scores", []) if isinstance(s, int)]
+plateau = len(scores) >= 2 and scores[-1] <= scores[-2]
+entry["plateau"] = plateau
+escalate = entry["iterations"] >= max_iters or plateau
+doc["updated_at"] = now
+with open(path, "w") as f: json.dump(doc, f, indent=2)
+print("ESCALATE" if escalate else "CONTINUE")
+print(entry["iterations"])
+print("plateau" if plateau else "no-plateau")
+PY
+)"
+  local decision iters plat
+  decision="$(printf '%s\n' "$verdict" | sed -n '1p')"
+  iters="$(printf '%s\n' "$verdict" | sed -n '2p')"
+  plat="$(printf '%s\n' "$verdict" | sed -n '3p')"
+
+  if [ "$decision" = "ESCALATE" ]; then
+    local trigger_json
+    trigger_json="$(printf '%s' "$trigger" | json_escape)"
+    cmd_event "$uuid" "remediation_escalated" --data "{\"trigger\":${trigger_json},\"iterations\":${iters},\"plateau\":\"${plat}\"}" >/dev/null
+  fi
+  printf '%s\n' "$decision"
+}
+
 usage() {
-  sed -n '4,18p' "$0"
+  sed -n '4,21p' "$0"
 }
 
 main() {
@@ -320,6 +385,7 @@ main() {
     list)     cmd_list ;;
     gate)     cmd_gate "$@" ;;
     criteria) cmd_criteria "$@" ;;
+    remediation) cmd_remediation "$@" ;;
     abandon)  cmd_abandon "$@" ;;
     ""|-h|--help) usage ;;
     *) fail "unknown subcommand: $sub" ;;

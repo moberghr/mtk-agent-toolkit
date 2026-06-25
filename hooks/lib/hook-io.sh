@@ -158,6 +158,7 @@ last_verification_seq=0
 last_verification_command=''
 last_verification_summary=''
 bytes_read=0
+warned_ctxpct=0
 EOF
 }
 
@@ -185,6 +186,7 @@ mtk_load_session_state() {
   last_verification_command=${last_verification_command:-}
   last_verification_summary=${last_verification_summary:-}
   bytes_read=${bytes_read:-0}
+  warned_ctxpct=${warned_ctxpct:-0}
 }
 
 # Write the session state via escaped-single-quoted values and an atomic
@@ -218,6 +220,7 @@ mtk_save_session_state() {
     printf "last_verification_command='%s'\n" "$cmd_esc"
     printf "last_verification_summary='%s'\n" "$sum_esc"
     printf "bytes_read=%s\n" "${bytes_read:-0}"
+    printf "warned_ctxpct=%s\n" "${warned_ctxpct:-0}"
   } > "$tmp"
   mv "$tmp" "$session_file"
 }

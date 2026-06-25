@@ -105,10 +105,10 @@ Pick the path once, at the top of Phase 3, based on tool availability. Do not mi
 ### Steps (manual Agent-loop path)
 
 1. **Threshold gate.** Read `docs/specs/<date>-<slug>.json`. Dispatch when any hard trigger is met **or** the rigor score is ≥ 8 (rigor HIGH/MAX). If neither holds → return control to `implement/SKILL.md` Phase 3 with the recommendation to use `incremental-implementation` instead. Do not silently fall through.
-2. **Pick implementer model.** Invoke `AskUserQuestion` once (load via `ToolSearch select:AskUserQuestion` if deferred):
+2. **Pick implementer model.** The policy default is **Sonnet** — see `.claude/references/model-routing.md` (reserve Opus for batches the plan flags novel/tricky: concurrency, unfamiliar SDK, subtle invariants). Invoke `AskUserQuestion` once (load via `ToolSearch select:AskUserQuestion` if deferred):
    - Question: `Implementer subagent model? Affects per-batch cost and capability.`
    - Options:
-     - `Sonnet (default — faster, cheaper, suits straightforward batches)`
+     - `Sonnet (policy default — faster, cheaper, suits straightforward batches)`
      - `Opus (more capable — pick when the batch involves novel logic, tricky concurrency, or unfamiliar framework behavior)`
    - Persist the choice in memory for the rest of the loop. Do **not** ask again between batches. If the harness does not expose `AskUserQuestion`, default to Sonnet and emit one line: `Implementer model defaulted to Sonnet (AskUserQuestion unavailable).`
 3. **For each batch in dependency order:**

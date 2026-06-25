@@ -204,6 +204,93 @@ if [ "$est_tokens" -ne "$EXPECTED_TOKENS" ]; then
 fi
 echo "  PASS  bytes_read=$bytes_field, estimated_context_tokens=$est_tokens (=$KNOWN_BYTES/4)"
 
+## --- SC8: context-budget %-of-window checkpoint ---
+echo ""
+echo "--- SC8: context-budget checkpoint (60% default, env-tunable, once-only) ---"
+
+# Mirror the checkpoint block from hooks/context-budget.sh. Returns the message on
+# stdout (empty if it should not fire) and echoes the resulting warned flag on fd 3.
+run_checkpoint() {
+  local bytes_read="$1" warned_ctxpct="$2"
+  local ctx_window="${MTK_CONTEXT_WINDOW_TOKENS:-200000}"
+  local ctx_pct="${MTK_CONTEXT_BUDGET_PCT:-60}"
+  local out="" newflag="$warned_ctxpct"
+  if [ "$warned_ctxpct" -eq 0 ] && [ "${bytes_read:-0}" -gt 0 ]; then
+    local est_tokens=$((bytes_read / 4))
+    local budget_tokens=$((ctx_window * ctx_pct / 100))
+    if [ "$budget_tokens" -gt 0 ] && [ "$est_tokens" -ge "$budget_tokens" ]; then
+      out="CONTEXT BUDGET: estimated ~${est_tokens} context tokens consumed"
+      newflag=1
+    fi
+  fi
+  printf '%s' "$out"
+  echo "$newflag" >&3
+}
+
+# 8a: below threshold (est 100000 < budget 120000 at defaults) → silent
+flag_a=$(run_checkpoint 400000 0 3>"$TMPDIR_TEST/flag_a"); read -r warned_a < "$TMPDIR_TEST/flag_a"
+if [ -n "$flag_a" ] || [ "$warned_a" -ne 0 ]; then
+  echo "  FAIL  8a: should stay silent below 60% (got msg='$flag_a' flag=$warned_a)" >&2; exit 1
+fi
+echo "  PASS  8a: silent below threshold"
+
+# 8b: crosses default 60% (est 150000 >= budget 120000) → fires, flag set
+flag_b=$(run_checkpoint 600000 0 3>"$TMPDIR_TEST/flag_b"); read -r warned_b < "$TMPDIR_TEST/flag_b"
+if [ -z "$flag_b" ] || [ "$warned_b" -ne 1 ]; then
+  echo "  FAIL  8b: should fire at >=60% (got msg='$flag_b' flag=$warned_b)" >&2; exit 1
+fi
+echo "  PASS  8b: fires crossing 60% default"
+
+# 8c: once-only — already warned → silent even when over threshold
+flag_c=$(run_checkpoint 600000 1 3>"$TMPDIR_TEST/flag_c"); read -r warned_c < "$TMPDIR_TEST/flag_c"
+if [ -n "$flag_c" ]; then
+  echo "  FAIL  8c: should not re-fire once warned (got msg='$flag_c')" >&2; exit 1
+fi
+echo "  PASS  8c: fires at most once per session"
+
+# 8d: env-tunable — same bytes that were silent at 60% fire at 40%
+flag_d=$(MTK_CONTEXT_BUDGET_PCT=40 run_checkpoint 400000 0 3>"$TMPDIR_TEST/flag_d"); read -r warned_d < "$TMPDIR_TEST/flag_d"
+if [ -z "$flag_d" ] || [ "$warned_d" -ne 1 ]; then
+  echo "  FAIL  8d: should fire at 40% override (got msg='$flag_d' flag=$warned_d)" >&2; exit 1
+fi
+echo "  PASS  8d: MTK_CONTEXT_BUDGET_PCT override honored"
+
+# 8e: MTK_CONTEXT_WINDOW_TOKENS override — a smaller window fires at the same bytes
+flag_e1=$(run_checkpoint 300000 0 3>"$TMPDIR_TEST/flag_e1"); read -r warned_e1 < "$TMPDIR_TEST/flag_e1"
+flag_e2=$(MTK_CONTEXT_WINDOW_TOKENS=100000 run_checkpoint 300000 0 3>"$TMPDIR_TEST/flag_e2"); read -r warned_e2 < "$TMPDIR_TEST/flag_e2"
+if [ -n "$flag_e1" ]; then echo "  FAIL  8e: 300000 bytes should be silent at default window" >&2; exit 1; fi
+if [ -z "$flag_e2" ] || [ "$warned_e2" -ne 1 ]; then echo "  FAIL  8e: should fire with MTK_CONTEXT_WINDOW_TOKENS=100000 (got '$flag_e2')" >&2; exit 1; fi
+echo "  PASS  8e: MTK_CONTEXT_WINDOW_TOKENS override honored"
+
+## --- SC8-int: real hook end-to-end (stdin parse + sed flag-flip path) ---
+echo ""
+echo "--- SC8-int: hooks/context-budget.sh end-to-end ---"
+HOOK="$REPO_ROOT/hooks/context-budget.sh"
+SESSION_HOOK="$(mtk_session_file)"           # same TMPDIR → same path the hook uses
+mtk_init_session_state "$SESSION_HOOK"
+sed -i.bak 's/^bytes_read=.*/bytes_read=600000/' "$SESSION_HOOK" && rm -f "${SESSION_HOOK}.bak"
+FIXTURE_NEW="$TMPDIR_TEST/integ_new.md"; printf '%0.s#' {1..500} > "$FIXTURE_NEW"
+INPUT_JSON=$(printf '{"tool_name":"Read","tool_input":{"file_path":"%s"}}' "$FIXTURE_NEW")
+
+OUT=$(printf '%s' "$INPUT_JSON" | bash "$HOOK" 2>/dev/null || true)
+if printf '%s' "$OUT" | grep -q "CONTEXT BUDGET: estimated"; then
+  echo "  PASS  real hook emits the checkpoint nudge"
+else
+  echo "  FAIL  real hook did not emit checkpoint (out: $OUT)" >&2; exit 1
+fi
+warned_after=$(grep '^warned_ctxpct=' "$SESSION_HOOK" | cut -d= -f2 | tr -d "'")
+if [ "$warned_after" = "1" ]; then
+  echo "  PASS  warned_ctxpct flipped to 1 via sed (state-flip path exercised)"
+else
+  echo "  FAIL  warned_ctxpct not flipped (got '$warned_after')" >&2; exit 1
+fi
+OUT2=$(printf '%s' "$INPUT_JSON" | bash "$HOOK" 2>/dev/null || true)
+if printf '%s' "$OUT2" | grep -q "CONTEXT BUDGET: estimated"; then
+  echo "  FAIL  checkpoint re-fired — should fire once per session" >&2; exit 1
+else
+  echo "  PASS  checkpoint fires once end-to-end (warned flag respected)"
+fi
+
 echo ""
 echo "========================================"
-echo "BENCHMARK PASSED — all SC5+SC6 assertions green"
+echo "BENCHMARK PASSED — all SC5+SC6+SC8 assertions green"
