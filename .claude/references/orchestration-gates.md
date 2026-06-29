@@ -30,6 +30,8 @@ The gate name is the contract. When skills, agents, and hooks reference a gate t
 
 **Fail:** Any exit criterion is missing OR a downstream verifier (integration verifier, drift detector, reviewer) returned a Critical/Block finding. Triggers remediation loop, not workflow abort.
 
+**Frozen-criteria tamper check.** Before `verification-before-completion` marks a criterion `verified`, it confirms the frozen `success_criteria[]` definitions (`id`, `observable`, `evidence_channel`) have not changed since Phase 2.5 approval. A criteria edit made to force a pass is an unapproved goalpost move — re-open Phase 2.5, and if it slipped in to manufacture a pass, trip `failure_stop_gate`.
+
 **Pending:** Phase still in progress.
 
 **Skill responsible:** `incremental-implementation`, `subagent-implementation`, `code-review-and-quality`, `spec-drift-detection` — each owns the gate at its own phase boundary.

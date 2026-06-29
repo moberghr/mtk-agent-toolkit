@@ -115,7 +115,7 @@ Pick the path once, at the top of Phase 3, based on tool availability. Do not mi
    1. **Build the context bundle.** Concatenate:
       - Spec sections relevant to this batch (`Summary`, `Architecture and design`, `Security and compliance impact` if non-none)
       - The single batch object from `plan.batches[]` (id, files, acceptance, verification, boundary, depends)
-      - **Prior-batch summary:** for every batch already in `sidecar.implement.completed_batches`, include `{id, actual_files, behavioral_diff}`. Do NOT include full prior diffs — just the summary.
+      - **Prior-batch summary:** for every batch already in `sidecar.implement.completed_batches`, include `{id, actual_files, behavioral_diff}`. Do NOT include full prior diffs — just the summary. Emit it as a dense block (one batch per line: `id | n files | behavioral_diff`) and prefix it with the completed-batch count, e.g. `prior-batches: 3` — the implementer can checksum line count against that number and flag a truncated handoff rather than building on a silently-cut summary.
       - Active tech stack name and the path to its skill (don't paste the skill body; the subagent will read it itself).
       - The full `change_manifest` and `out_of_scope` arrays — the subagent must know its boundary.
       - The path to `CLAUDE.md`.
@@ -136,9 +136,17 @@ Pick the path once, at the top of Phase 3, based on tool availability. Do not mi
         "deviations": [
           { "kind": "extra-file|skipped-file|extra-contract|other",
             "detail": "...", "justification": "..." }
-        ]
+        ],
+        "usage": { "tokens": 0, "error_code": null }
       }
       ```
+      `usage` is an **optional** result envelope (borrowed from per-subagent JSON
+      reporting): `tokens` is the batch's output-token spend if the dispatch
+      mechanism exposes it (the dynamic-workflow runtime does via `budget`), and
+      `error_code` is a short machine-readable code (`null` on success). It is a
+      loop-safety / cost signal only — never a pass/fail input. Omit the whole
+      block when no usage data is available; do not fabricate it.
+
       `status` is one of `completed` (delivered + verified), `blocked` (could not
       proceed; build/tests red and the reason stated), or `inconclusive`
       (returned without runnable evidence — see the inconclusive rule below).
@@ -190,6 +198,16 @@ Use this when the `Workflow` tool is available. It moves the per-batch dispatch 
 6. **After all batches:** write the aggregated `behavioral_diff`, emit `phase_exit_gate pass` (or `fail` and stop), and hand back to `implement/SKILL.md` Phase 3.5 → Phase 4. **Unchanged.**
 
 If the `Workflow` tool errors, is denied, or is unavailable mid-run, fall back to the manual Agent-loop path for the remaining batches — do not abandon the per-batch discipline.
+
+### Dispatch hardening (large prompts & args)
+
+Large doc/code batches produce large context bundles, and the dynamic-workflow path has historically been fragile when those bundles are passed the wrong way — an unbound-`args` crash, or the runtime stalling on a multi-kilobyte prompt shoved through a single argument. Three rules make dispatch robust regardless of batch size:
+
+1. **Never pass a large prompt block as a positional/CLI argument.** The implementer prompt and context bundle can be tens of KB. Write the assembled bundle to a file under `.mtk/workflows/<uuid>/batch-<id>.prompt.md` and pass the **path** (the `agent()` prompt string reads it, or the manual `Agent` prompt references it). A prompt block in `argv` is what triggers the arg-length / stall failures.
+2. **Bind `args` as actual JSON, never a stringified blob.** When the generated workflow script reads `args`, pass it as a real JSON value in the `Workflow` call (`args: { batch: {...} }`), not a JSON-encoded string. A stringified list reaches the script as one string, so `args.batches.map(...)` throws — the "args-unbound" crash from the v7.14 dogfooding run. If the script needs no input, do not reference `args` at all.
+3. **Compress before you hand off.** Run the prior-batch summary and any pasted command output through `scripts/mtk-compress.sh` (see `.claude/references/output-compression.md`) before it enters the bundle — dense handoffs keep each batch's dispatch inside a safe size envelope.
+
+These are dispatch-mechanism rules only; the prompt *contract* (TASK/DELIVERABLE/SCOPE/VERIFY) and the orchestrator-side gates are unchanged.
 
 ### Implementer prompt template
 
@@ -251,9 +269,13 @@ DELIVERABLE — return EXACTLY one fenced JSON block matching this schema, then 
   "build":  { "ok": true|false, "evidence": "..." },
   "tests":  { "ok": true|false, "evidence": "..." },
   "behavioral_diff": "...",
-  "deviations": [ { "kind": "...", "detail": "...", "justification": "..." } ]
+  "deviations": [ { "kind": "...", "detail": "...", "justification": "..." } ],
+  "usage": { "tokens": 0, "error_code": null }
 }
 ```
+
+(`usage` is optional — include it only if the dispatch mechanism exposes token
+spend / an error code; it is a cost signal, never a pass/fail input.)
 ```
 
 ## Rules

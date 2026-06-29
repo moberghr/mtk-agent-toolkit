@@ -2,6 +2,26 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.16.0] - 2026-06-29
+
+### Added — Borrowed capabilities, wave 2 (catalogue, dispatch, gates, context economy)
+
+Nine capabilities surfaced by a competitive scan of trending (last-30-day) Claude Code toolkits, each a delta on existing MTK infrastructure. Two strategic items (cross-vendor judge, proxy-fidelity eval gate) were deferred to a future release as they require eval-correlation infrastructure.
+
+- **Failure-modes catalogue extended to F1–F16.** New `F15 — Frozen-Replay / Non-Varying Evidence` (evidence that cannot fail, plus the read-only ground-truth instrument rule) and `F16 — Unverified Prose Claims` (README/changelog/sample claims, the prose-claim slice F12's doc-comment drift does not cover). Citations strengthened: F3 → USENIX'25 package-hallucination/slopsquatting, F4 → GitClear duplication data. `code-review-and-quality` reference updated F1–F14 → F1–F16.
+- **Subagent dispatch hardening.** `subagent-implementation` now writes large context bundles to a file and passes the path (never argv), binds `args` as real JSON (fixes the v7.14 args-unbound crash/stall), and compresses handoffs before dispatch. Prior-batch summaries emit a dense, line-counted block so a truncated handoff is detectable.
+- **Per-subagent usage envelope.** Optional `usage: {tokens, error_code}` on the batch result schema, rolled up to `results.usage` on the workflow artifact — a cost / loop-safety signal, never a gate input.
+- **Frozen success criteria + tamper check.** `success_criteria[]` (`id`/`observable`/`evidence_channel`) are frozen at Phase 2.5; `verification-before-completion` runs a `git diff` tamper check before any completion claim — a moved goalpost is fail-closed and re-opens Phase 2.5 (or trips `failure_stop_gate`). Reflected in `spec-driven-development` and `orchestration-gates.md`.
+- **Completion evidence table + first-verified-output baseline.** Completion is stated as a binary `criterion | verdict | evidence` table; criteria without automated tests persist a golden baseline under `docs/specs/<slug>.baselines/`.
+- **Less-code ladder + safety carve-outs.** `code-simplification` gains the YAGNI ladder and a never-simplify-away list (auth, secrets, validation, migrations, delete-guards, audit logging); mirrored as a never-compress carve-out in `output-compression.md`.
+- **Proactive context reset.** `context-engineering` adds a deliberate ~40%-boundary reset with a rot-symptom override (2+ of: re-reading, re-asking, contradicting a prior decision → reset now), complementing the existing 60% hard floor.
+- **Post-ship Retro mode.** `lesson-mining` gains a deliberate plan-vs-actual retro that classifies each miss to its durable surface (wrong premise → context file; blind spot → plan template) and routes survivors through the reject-by-default/suggest-only discipline.
+- **Provider tier slots.** `model-routing.md` adds `fast`/`default`/`strong` role slots over the concrete `haiku`/`sonnet`/`opus` tiers, so a model rename or backend swap is a one-line re-bind rather than a per-row edit.
+
+### Tests
+
+- New `tests/pressure-tests/verification-frozen-criteria.md` — adversarial scenarios for frozen criteria, the tamper check, and the binary completion table.
+
 ## [7.15.0] - 2026-06-25
 
 ### Added — Seven capabilities (cost discipline, context safety, loop safety, guard packs)
