@@ -136,6 +136,21 @@ Track the cumulative context loaded in the session. Fewer, focused instructions 
 - Same context loaded multiple times (after compaction recovery)
 - The `context-budget` hook nudges that estimated consumption passed `MTK_CONTEXT_BUDGET_PCT`% (default 60) of `MTK_CONTEXT_WINDOW_TOKENS` (default 200000) — treat it as a floor (it counts read bytes only) and reset/hand off deliberately rather than riding to compaction
 
+## Proactive Reset (40% boundary + rot-symptom override)
+
+Quality degrades long before the context window fills, and tool-forced compaction tends to fire at the worst possible moment (mid-phase, mid-edit). Do not ride the budget up to the limit. Reset **deliberately, at a clean boundary** — a phase exit, a finished batch, a green verification — once usage passes **~40%** of the window. A clean reset-and-reseed (re-anchor on the goal + the files now in scope) keeps later work sharp; the 60% `context-budget` nudge (above) is the hard floor, not the target.
+
+Read a real number, never a guess: prefer the harness's `/context` figure or the `context-budget` hook estimate. If neither is available, fall back to the fatigue signals above.
+
+**Rot-symptom override.** Behavioral degradation beats the percentage. If **2 or more** of these appear, reset now regardless of how low the number looks:
+
+- Re-reading files you already read this session (context evicted).
+- Re-asking the engineer something already answered.
+- Contradicting a decision made earlier in the session.
+- Reintroducing code or an approach that was already rejected.
+
+A low token count with active rot symptoms is still a degraded context — the symptoms are the ground truth, the percentage is the proxy. When the reset would lose in-progress state, escalate to `handoff` instead of clearing blind.
+
 ## Context Footprint
 
 After completing reference loading at the end of Phase 0 (and after any subsequent phase that loads new references), emit a one-block footprint report so the engineer can see the cost of what was loaded:
@@ -168,6 +183,9 @@ After completing reference loading at the end of Phase 0 (and after any subseque
   file, do NOT load it as a "just in case" measure. That defeats the budget.
 - When in doubt about which globs match, use `git diff --name-only HEAD` as
   the authoritative list of touched files.
+- Reset proactively at a clean boundary past ~40% usage; do not ride to
+  compaction. 2+ rot symptoms (re-reading, re-asking, contradicting a prior
+  decision) override the number — reset now even if usage is low.
 
 ## Model Routing
 

@@ -1,6 +1,6 @@
 {
-  "version": "7.15.0",
-  "updated": "2026-06-25",
+  "version": "7.16.0",
+  "updated": "2026-06-29",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/claude-helpers",
   "coding-guidelines": {
@@ -1877,6 +1877,12 @@
       "target": "tests/pressure-tests/lesson-mining-rubric.md",
       "action": "sync",
       "description": "Adversarial pressure test for the lesson-mining reject-by-default rubric (boilerplate, injection, volume pressure)"
+    },
+    "tests/pressure-tests/verification-frozen-criteria.md": {
+      "source": "tests/pressure-tests/verification-frozen-criteria.md",
+      "target": "tests/pressure-tests/verification-frozen-criteria.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for frozen success criteria, the tamper check, and the binary criterion|verdict|evidence completion table"
     },
     "tests/pressure-tests/verification-rearm.md": {
       "source": "tests/pressure-tests/verification-rearm.md",

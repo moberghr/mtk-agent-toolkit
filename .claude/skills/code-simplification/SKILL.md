@@ -67,11 +67,39 @@ Trigger this mode when:
 - A reviewer flagged duplication.
 - `CODE_INDEX.md` is older than 30 days and the repo had >50 commits since.
 
+## The less-code ladder (YAGNI)
+
+The cheapest code is the code you do not write. When simplifying — or when reviewing whether a block should exist at all — walk this ladder and **stop at the first rung that satisfies the requirement**:
+
+1. **Does it need to exist?** Delete the requirement before writing the code. Most "just in case" branches never fire.
+2. **Standard library / language built-in?** Prefer it over a hand-rolled helper.
+3. **A capability the codebase already has?** Reuse it (see `--audit-duplicates`) rather than adding a parallel one.
+4. **An existing dependency?** Use it before adding a new one (and clear any new dep through `dependency-intake-checklist.md`).
+5. **One line?** Prefer it over a multi-line abstraction.
+6. **The minimum block that reads clearly?** Stop there — do not generalize for callers that do not exist.
+
+This is the antidote to defensive-guard bloat (F5) and dead-code accretion (F10): every rung climbed is volume a future reader has to carry.
+
+## Safety carve-outs (never simplify away)
+
+Aggressive simplification has a hard boundary. **Never** remove, collapse, or "tidy away" the following just because they look redundant — `lazy ≠ broken`:
+
+- Authentication / authorization checks
+- Secret handling, redaction, and key management
+- Input validation and sanitization at trust boundaries
+- Database migrations and their guards
+- Delete / destructive-operation guards and confirmations
+- Audit-trail and compliance logging
+
+A guard in one of these categories is presumed load-bearing. If you believe one is genuinely dead, that is a `security-and-hardening` question, not a cleanup call — surface it, do not delete it.
+
 ## Rules
 
 - Preserve behavior.
 - Keep cleanup scoped to the task area.
 - Prefer deleting complexity over moving it around.
+- Walk the less-code ladder; stop at the first rung that satisfies the requirement.
+- Never simplify away a safety carve-out — auth, secrets, validation, migrations, delete-guards, audit logging are presumed load-bearing.
 - Ask before removing uncertain dead code.
 
 ## Common Rationalizations
@@ -89,4 +117,5 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared table. Simplifi
 - [ ] Behavior is unchanged
 - [ ] Build and tests still pass
 - [ ] Cleanup stayed within scope
+- [ ] No safety carve-out (auth, secrets, validation, migrations, delete-guards, audit logging) was removed or collapsed
 - [ ] Any uncertain deletion was explicitly surfaced

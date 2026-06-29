@@ -51,7 +51,8 @@ Durable orchestration state lives under `.mtk/workflows/`, outside `.claude/` so
     "batches_completed": 2,
     "remediation": {
       "build_failure": { "iterations": 2, "scores": [5, 7], "plateau": false }
-    }
+    },
+    "usage": { "tokens_total": 0, "error_codes": [] }
   },
   "criteria_status": {
     "SC1": "pending",
@@ -65,6 +66,8 @@ Durable orchestration state lives under `.mtk/workflows/`, outside `.claude/` so
 ```
 
 Implementations may add fields under `results` and `intent` without breaking schema_version 1. Removing or changing an existing field requires a schema bump.
+
+`results.usage` is an optional roll-up of the per-subagent usage envelopes returned by `subagent-implementation` (`tokens_total` summed across batches, `error_codes` collecting any non-null batch `error_code`). It is a cost / loop-safety signal for post-run review — never a gate input.
 
 ## criteria_status
 

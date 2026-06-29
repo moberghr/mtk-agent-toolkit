@@ -24,6 +24,17 @@ Skip when:
 - You need every line preserved (debugging an exact log sequence).
 - The output IS the deliverable (you're going to write it to a file unchanged).
 
+## Never compress (safety carve-outs)
+
+Compression elides; some content must survive verbatim. **Never** route the following through the compressor — `lazy ≠ broken`:
+
+- Secrets, tokens, keys, or anything a redaction pass would touch (compressing a leak does not contain it).
+- Security / auth findings and the exact lines a reviewer must read.
+- Migration plans and destructive-operation output where every step matters.
+- Any content destined for an audit trail or compliance record.
+
+These mirror the `code-simplification` safety carve-outs: the same categories that must not be simplified away must not be summarized away. When in doubt, pass the security-relevant slice through uncompressed and compress only the surrounding noise.
+
 ## Modes
 
 | Mode | What it does |

@@ -30,6 +30,23 @@ No completion claim is valid without fresh evidence from an actual command execu
 
 **Re-arm rule.** Any edit that lands after the most recent verification resets every criterion's status to `re-armed`. A completion claim is rejected while any criterion is `re-armed`. Re-verification must run after the edit, cite the observable result per criterion, and set each criterion to `verified` before the claim is accepted.
 
+## Frozen Criteria & Tamper Check
+
+The `success_criteria[]` definitions (`id`, `observable`, `evidence_channel`) are **frozen at Phase 2.5 approval**. They are the goalposts; the run is not allowed to move them. The criteria are read-only ground truth during implementation — the same invariant F15 (Frozen-Replay / Non-Varying Evidence) names: *editing what measures you to move the number defeats the gate.*
+
+Before accepting any completion claim, run the **tamper check**: confirm the frozen criteria block has not changed since approval. The spec sidecar is committed at Phase 2.5, so the cheapest check is a diff of the criteria block against the approved version:
+
+```bash
+# Tamper check: did success_criteria change since the spec was approved?
+git diff --no-color <approval-ref>..HEAD -- docs/specs/<date>-<slug>.json \
+  | grep -E '"(id|observable|evidence_channel)"' || echo "criteria intact"
+```
+
+- **Intact** → proceed with verification.
+- **Changed** → a goalpost moved. This is **fail-closed**: do NOT verify against the new definition. Re-open Phase 2.5 for explicit re-approval of the amended criteria (an unapproved criteria change is unapproved scope — `failure_stop_gate` territory if it slipped in to force a pass). Record the tamper finding; never silently accept the edited criterion.
+
+A criterion the implementer rewrote to match what the code happens to do is not a verified criterion — it is a laundered one.
+
 ## When To Use
 
 - Before reporting a batch as complete
@@ -81,7 +98,16 @@ The `evidence_channel` field on each success criterion names the surface where t
    c. Record the criterion status: `verified` if the observable is met, `re-armed` if any edit landed after this check, `pending` if not yet checked.
    d. Do not advance past a criterion that remains `re-armed` or `pending`.
 6. Confirm the output supports the specific claim being made.
-7. Only then state the result, citing the evidence per criterion (`SC1: verified — <observable result>`).
+7. Only then state the result as a **completion evidence table** — one row per criterion, three columns, no prose substitute:
+
+   | criterion | verdict | evidence |
+   |---|---|---|
+   | SC1 | verified | `dotnet test --filter Batch2 → 14/14 pass` |
+   | SC2 | verified | `curl :5080/health → 200, body {"status":"ok"}` |
+
+   `verdict` is binary (`verified` / `not-verified`) — there is no "mostly". A table with any `not-verified` row is not a completion. The table is less gameable than a prose summary: every claim is pinned to a re-runnable command and its observed output.
+
+   **First-verified-output baseline.** When a criterion has no automated regression test (e.g. a `cli-stdout` or `db-state-diff` observable checked by hand), persist the first verified output as a golden baseline under `docs/specs/<slug>.baselines/<SCn>.txt` and cite it in the evidence cell. Later runs diff against the baseline instead of re-judging from scratch — a cheap durable regression artifact for criteria the test suite does not cover.
 8. Re-check freshness against the latest edit. MTK's hook state tracks the most
    recent file edit and the latest verification command in the session; a
    completion claim is stale when the verification event happened before the
@@ -148,6 +174,11 @@ When the work being verified came from a prior agent — a builder subagent, a r
   the observable result per criterion before the claim is accepted.
 - For behavior-shaped changes, tests alone never prove done. The evidence
   channel must include at least one real execution surface.
+- Success criteria are frozen at approval. Run the tamper check before any
+  completion claim; a changed `observable`/`evidence_channel`/`id` is fail-closed
+  and re-opens Phase 2.5. Never verify against a goalpost the run moved.
+- State completion as the `criterion | verdict | evidence` table. A prose
+  "all good" without the table is not a completion claim.
 - When re-verification keeps failing the same criterion, do not loop forever:
   drive it through the remediation circuit-breaker
   (`scripts/workflow-artifact.sh remediation`) and escalate to a human on
@@ -168,6 +199,8 @@ See `.claude/skills/context-engineering/SKILL.md` — the shared MTK rationaliza
 - Claiming done while any criterion is `re-armed` (edit landed after verification)
 - Verifying at the batch level instead of criterion-by-criterion
 - Using `test-run` or `build-output` alone for a behavior-shaped change (missing real execution surface)
+- A `success_criteria` `observable` was edited mid-run to match the code (goalpost moved — tamper check skipped)
+- Completion stated as prose instead of the `criterion | verdict | evidence` table
 
 ## Signal-Based Enforcement
 
@@ -206,3 +239,5 @@ Forcing past a stuck state produces garbage output. Admitting difficulty is alwa
 - [ ] No criterion remains `re-armed` (no edit landed after the last verification)
 - [ ] Behavior-shaped changes cite a real execution surface (`smoke-boot`, `http-probe`, `db-state-diff`, `cli-stdout`, or `browser`), not only `test-run` / `build-output`
 - [ ] If verifying upstream agent work, every factual claim was extracted and reconciled (`VERIFIED`, `CONTRADICTED`, or `UNVERIFIABLE`) — none left `UNVERIFIED`
+- [ ] Frozen-criteria tamper check ran (no `success_criteria` `id`/`observable`/`evidence_channel` changed since Phase 2.5 approval)
+- [ ] Completion stated as the `criterion | verdict | evidence` table, every verdict binary

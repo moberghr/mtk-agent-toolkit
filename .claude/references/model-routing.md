@@ -44,6 +44,18 @@ when that phase dominates the work; an agent row is the value already pinned in 
 | Plan-gap / context-miner (agents) | `sonnet` | Structured cross-checks |
 | Brainstorming | `opus` | Creative exploration benefits from deeper reasoning |
 
+## Provider tier slots
+
+The policy table names concrete Claude tiers (`haiku`/`sonnet`/`opus`) because that is what MTK runs on today. But model IDs churn — a tier gets renamed, a new generation ships, or a team routes MTK through a different provider. Pin policy to **role slots**, not model names, so configs survive a rename:
+
+| Slot | Meaning | Current Claude binding |
+|---|---|---|
+| `fast` | Cheapest tier — discovery, grep, structured collection, no judgment | `haiku` |
+| `default` | Workhorse — bounded judgment, standard code generation, most reviews | `sonnet` |
+| `strong` | Highest capability — real logic, adversarial/security review, novel batches | `opus` |
+
+The slot is the stable contract; the binding is one line to update when models change. Read the policy table as *roles*: "discovery → `fast`", "implementation → `default`", "compliance review / security → `strong`". When MTK runs on a non-Anthropic backend (or a future Claude generation), re-bind the three slots in this table once and every phase/agent rule follows — no per-row edits, no agent-frontmatter churn beyond swapping the slot's bound model. Frontmatter `model:` may name either the slot's current concrete model or, where the harness supports it, the slot name itself.
+
 ## How `subagent-implementation` applies this
 
 When the subagent path dispatches per-batch implementers, the default is `sonnet`.

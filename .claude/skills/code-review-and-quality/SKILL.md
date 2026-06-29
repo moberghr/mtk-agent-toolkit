@@ -64,7 +64,7 @@ If reviewing a PR or branch with CI runs, check CI status before starting the nu
    - `.claude/references/security-checklist.md`
    - `.claude/references/testing-patterns.md`
    - `.claude/references/performance-checklist.md`
-   - `.claude/references/ai-failure-modes.md` — the catalogue of researched LLM-specific failure modes (F1–F14). When a finding matches one, cite its F-code in the finding's `failure_mode` field (see step 5) so failure-mode patterns aggregate across reviews.
+   - `.claude/references/ai-failure-modes.md` — the catalogue of researched LLM-specific failure modes (F1–F16). When a finding matches one, cite its F-code in the finding's `failure_mode` field (see step 5) so failure-mode patterns aggregate across reviews.
    - If a domain supplement exists (e.g. `.claude/references/domain-finance.md`), load it for domain-specific rationalizations
 2. Read the behavioral diff if provided.
 3. Review across these axes:

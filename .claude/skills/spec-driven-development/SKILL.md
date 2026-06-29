@@ -312,7 +312,13 @@ Rules:
   `db-state-diff`, `browser`, `smoke-boot`, `log-capture`, `script-output`) and `observable`
   (a binary pass/fail observation declared before execution). Both fields are
   the verification contract that `verification-before-completion` checks
-  criterion-by-criterion.
+  criterion-by-criterion. **Each `observable` is a binary yes/no statement** —
+  not a prose aspiration. Once Phase 2.5 approves the spec, the
+  `success_criteria[]` definitions are **frozen**: their `id`, `observable`, and
+  `evidence_channel` are read-only for the rest of the run. Moving a goalpost to
+  make a criterion pass requires re-opening Phase 2.5, never an in-flight edit —
+  `verification-before-completion` runs a tamper check before accepting any
+  completion claim.
 
 **Provenance tags.** Claims in the `assumptions` and `risks` arrays use tags
 from the `verify-claims.sh` family:
