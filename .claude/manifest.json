@@ -2,7 +2,7 @@
   "version": "7.16.0",
   "updated": "2026-06-29",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
-  "source": "https://github.com/moberghr/claude-helpers",
+  "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
     "repo": "moberghr/coding-guidelines",
     "sha": "4043387ca2c70ed0cd76e005861f5c471908c3bb",
