@@ -7,7 +7,7 @@
 # Setup:
 #   1. Copy this file to .github/workflows/pr-review.yml in your repo
 #   2. Add ANTHROPIC_API_KEY to repo secrets (Settings > Secrets > Actions)
-#   3. Ensure the MTK plugin is installed (/plugin marketplace add moberghr/claude-helpers)
+#   3. Ensure the MTK plugin is installed (/plugin marketplace add moberghr/mtk-agent-toolkit)
 #   4. Push — the workflow runs on every PR to main
 #
 # The deterministic lint always runs. The AI review runs only if the lint passes
