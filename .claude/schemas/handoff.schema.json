@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/moberghr/claude-helpers/schemas/handoff.schema.json",
+  "$id": "https://github.com/moberghr/mtk-agent-toolkit/schemas/handoff.schema.json",
   "title": "MTK Handoff Artifact",
   "description": "Typed handoff artifact between spec-driven-development, planning-and-task-breakdown, incremental-implementation, and spec-drift-detection (MetaGPT-pattern). Lives at docs/specs/<date>-<slug>.json. Each phase appends its section; later sections must reference earlier ones deterministically so drift detection becomes a diff rather than a judgment call.",
   "type": "object",

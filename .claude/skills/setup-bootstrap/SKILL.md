@@ -672,7 +672,7 @@ V=$(python3 -c "import json; print(json.load(open('$PM'))['version'])")
 SHA=$(python3 -c "import json; print(json.load(open('$PM'))['coding-guidelines']['sha'])" 2>/dev/null || echo "")
 S256=$(python3 -c "import json; print(json.load(open('$PM'))['coding-guidelines']['files']['CodingStyle.md'])" 2>/dev/null || echo "")
 cat > .claude/mtk-version.json <<EOF
-{"version":"$V","installed":"$(date -u +%Y-%m-%d)","source":"https://github.com/moberghr/claude-helpers","coding-guidelines":{"repo":"moberghr/coding-guidelines","sha":"$SHA","files":{"CodingStyle.md":"$S256"}}}
+{"version":"$V","installed":"$(date -u +%Y-%m-%d)","source":"https://github.com/moberghr/mtk-agent-toolkit","coding-guidelines":{"repo":"moberghr/coding-guidelines","sha":"$SHA","files":{"CodingStyle.md":"$S256"}}}
 EOF
 ```
 
