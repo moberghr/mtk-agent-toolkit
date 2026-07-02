@@ -13,6 +13,12 @@ set -euo pipefail
 # caught here rather than only at release time.
 
 command -v openssl >/dev/null 2>&1 || { echo "SKIP: openssl not found"; exit 0; }
+# Stock macOS ships LibreSSL, whose pkeyutl has no Ed25519/-rawin support —
+# skip cleanly there instead of erroring out under `set -e`.
+openssl pkeyutl -help 2>&1 | grep -q -- '-rawin' \
+  || { echo "SKIP: openssl lacks pkeyutl -rawin (LibreSSL?) — Ed25519 signing unavailable"; exit 0; }
+openssl genpkey -algorithm ed25519 -out /dev/null >/dev/null 2>&1 \
+  || { echo "SKIP: openssl cannot generate Ed25519 keys"; exit 0; }
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -67,6 +73,23 @@ if openssl pkeyutl -verify -pubin -inkey "$PUB_B" -rawin -in "$CHECKSUMS" -sigfi
   FAILS+=("verify: expected FAILURE against a mismatched public key, got success")
 else
   echo "  PASS  verify rejects a signature from a different keypair"
+fi
+
+# --- invocation-shape drift guard ---
+# The checks above run this test's own copies of the openssl invocations; they
+# prove Ed25519 round-trips, not that the scripts under test still use the same
+# shape. Assert the exact invocation fragments are present in both scripts so a
+# one-sided flag change (e.g. dropping -rawin) fails HERE, not at release time.
+echo ""; echo "--- invocation shape matches the scripts under test ---"
+if grep -qF -- 'openssl pkeyutl -sign -inkey "$MTK_RELEASE_SIGNING_KEY" -rawin -in "$OUT" -out "$SIG"' "$REPO_ROOT/scripts/generate-checksums.sh"; then
+  echo "  PASS  generate-checksums.sh --sign uses the tested invocation shape"
+else
+  FAILS+=("drift: generate-checksums.sh sign invocation no longer matches the shape this test exercises — update both together")
+fi
+if grep -qF -- 'openssl pkeyutl -verify -pubin -inkey "$MTK_RELEASE_PUBLIC_KEY" -rawin -in checksums.sha256 -sigfile checksums.sha256.sig' "$REPO_ROOT/scripts/mtk-doctor.sh"; then
+  echo "  PASS  mtk-doctor.sh verify uses the tested invocation shape"
+else
+  FAILS+=("drift: mtk-doctor.sh verify invocation no longer matches the shape this test exercises — update both together")
 fi
 
 echo ""

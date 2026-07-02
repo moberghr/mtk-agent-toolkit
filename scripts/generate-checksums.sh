@@ -43,7 +43,10 @@ for arg in "$@"; do
     --quiet)  QUIET=1 ;;
     --sign)   SIGN=1 ;;
     -h|--help)
-      grep '^# ' "$0" | head -16 | sed 's/^# \{0,1\}//'
+      # Render the full header comment block (first '# ' line down to the first
+      # non-comment line) — never slice by absolute line count, it silently
+      # truncates when the header grows (see tasks/lessons.md).
+      awk '/^# /{f=1} f{ if (!/^#/) exit; sub(/^# ?/, ""); print }' "$0"
       exit 0
       ;;
     *) echo "Unknown arg: $arg" >&2; exit 2 ;;
@@ -97,13 +100,17 @@ if [ "$VERIFY" -eq 0 ]; then
   # Optional Ed25519 signature over the checksum manifest (opt-in; see --sign in Usage).
   if [ "$SIGN" -eq 1 ]; then
     if [ -z "${MTK_RELEASE_SIGNING_KEY:-}" ]; then
-      echo "--sign requested but MTK_RELEASE_SIGNING_KEY not set — skipping signature"
+      echo "--sign requested but MTK_RELEASE_SIGNING_KEY not set — skipping signature" >&2
     elif ! command -v openssl >/dev/null 2>&1; then
       echo "--sign requested but openssl not found — skipping signature" >&2
     else
       openssl pkeyutl -sign -inkey "$MTK_RELEASE_SIGNING_KEY" -rawin -in "$OUT" -out "$SIG"
       echo "Signed $OUT — wrote $SIG (verify with MTK_RELEASE_PUBLIC_KEY via mtk-doctor.sh)"
     fi
+  elif [ -f "$SIG" ]; then
+    # Regenerating checksums without --sign invalidates any previously shipped
+    # signature; left in place it guarantees a false "tampered" verdict downstream.
+    echo "WARN: $SIG exists but this run did not re-sign — the signature is now stale; re-run with --sign or remove $SIG" >&2
   fi
 
   [ "$MISSING" -eq 0 ] || exit 1

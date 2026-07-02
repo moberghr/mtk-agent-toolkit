@@ -29,6 +29,16 @@ When Playwright MCP tools are available in-session, capture around the observabl
    `<slug>` matches the spec sidecar slug; `<criterion-id>` is the `success_criteria[]` id (e.g. `SC3`).
 4. Cite the evidence directory path in the completion evidence table alongside the criterion.
 
+## Sensitive content — scrub before persisting
+
+Evidence artifacts are committed alongside the spec, so treat them as repo content, not scratch output (see `security-checklist.md`; for regulated data, `domain-finance.md`):
+
+- **`network.json`**: strip `Authorization`/`Cookie`/`Set-Cookie` headers, session tokens, and API keys before writing. Redact request/response bodies containing account numbers, personal data, or other regulated state — keep URL, method, and status; replace redacted values with `"<redacted>"`.
+- **`screenshot.png`**: capture only the state the criterion asserts. If the screen shows real customer or account data, reproduce against test data or crop/mask before persisting.
+- **`console.log`**: scan for leaked tokens or connection strings before committing.
+
+If an artifact cannot be scrubbed, do not commit it — keep it local, cite the path with a note that it is untracked, and gitignore `docs/specs/*.evidence/` in that repo.
+
 ## Degraded path (Playwright MCP unavailable)
 
 When Playwright MCP is **not** available in-session, the `browser` channel falls back to a plain textual description of what was observed. This is a genuine limitation, not an equivalent:

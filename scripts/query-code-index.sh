@@ -29,7 +29,10 @@ set -euo pipefail
 #       Print this usage.
 
 usage() {
-  grep '^# ' "$0" | head -33 | sed 's/^# \{0,1\}//'
+  # Render the full header comment block (first '# ' line down to the first
+  # non-comment line) — never slice by absolute line count, it silently
+  # truncates when the header grows (see tasks/lessons.md).
+  awk '/^# /{f=1} f{ if (!/^#/) exit; sub(/^# ?/, ""); print }' "$0"
 }
 
 cmd="${1:-}"
@@ -99,9 +102,12 @@ case "$cmd" in
           section="$(printf '%s' "$section" | sed 's/[[:space:]]*$//')"
           ;;
         '|'*)
-          # Skip separator rows like |---|---|---|
+          # Skip separator rows like |---|---|---|. The '-' must be last in the
+          # bracket so it is literal — placed mid-class it forms a range (space
+          # through colon) that swallows digits and most punctuation, silently
+          # dropping data rows made only of those characters.
           case "$line" in
-            *[!\|\ -:]*) : ;;  # has content beyond | - : space -> a real row
+            *[!\|\ :-]*) : ;;  # has content beyond | space : - -> a real row
             *) continue ;;      # only separators -> skip
           esac
           # Skip the column-header row: match only when the FIRST cell is
@@ -157,10 +163,8 @@ case "$cmd" in
     # git grep exits 1 specifically for "no matches" — a real tool error
     # (bad invocation, corrupted repo state, git failure) exits >=2 and must
     # be reported distinctly, not conflated with a clean empty result.
-    set +e
-    git grep -n -F -- "$symbol"
-    rc=$?
-    set -e
+    rc=0
+    git grep -n -F -- "$symbol" || rc=$?
     if [ "$rc" -eq 0 ]; then
       :
     elif [ "$rc" -eq 1 ]; then

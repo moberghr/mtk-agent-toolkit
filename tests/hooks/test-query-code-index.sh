@@ -40,6 +40,7 @@ cat > "$FIXTURE" <<'EOF'
 | open db connection | `src/db/Conn.cs:Open` | pooled; do not reimplement |
 | view entry log | `src/audit/Log.cs:ViewEntry` | shows capability grants at entry |
 | parse config[env] | `src/config/Parser.cs:Parse` | matches literal a.b.c keys only |
+| 1.0 -+ 2.0 | 3:4 | (.,/*) |
 EOF
 
 # --- find: known row is found, prefixed with its domain ---
@@ -106,6 +107,21 @@ if out="$(bash "$QUERY" find "config[env]" --file "$FIXTURE" 2>/dev/null)"; then
   fi
 else
   FAILS+=("find: keyword with regex metacharacters ('config[env]') was treated as a regex, got non-zero")
+fi
+
+# --- find: a data row made only of digits/punctuation is not mistaken for   ---
+# --- a separator row. Regression guard for the '[!\|\ -:]' bracket bug: the ---
+# --- mid-class '-' formed a range (space..colon) swallowing digits and most  ---
+# --- punctuation, so rows like '| 1.0 -+ 2.0 | 3:4 | (.,/*) |' were dropped. ---
+echo ""; echo "--- find: digits/punctuation-only data row is not skipped as separator ---"
+if out="$(bash "$QUERY" find "3:4" --file "$FIXTURE" 2>/dev/null)"; then
+  if printf '%s' "$out" | grep -qF '1.0 -+ 2.0'; then
+    echo "  PASS  punctuation-only row matched (not misclassified as separator)"
+  else
+    FAILS+=("find: punctuation-only row matched but output malformed: $out")
+  fi
+else
+  FAILS+=("find: punctuation-only data row was skipped as a separator row")
 fi
 
 # --- find: missing file errors non-zero ---

@@ -55,7 +55,9 @@ Look for an existing implementation of the capability under any name.
    - If `CODE_INDEX.md` exists at the repo root, query it with
      `bash scripts/query-code-index.sh find "<keyword>"` (case-insensitive
      row search that prints each match prefixed with its `## <Domain>`
-     section) rather than a raw `grep`.
+     section) rather than a raw `grep`. If the script is absent (repo
+     bootstrapped before v7.17) or the keyword may live outside table rows
+     (domain headings, prose), fall back to `grep -i "<keyword>" CODE_INDEX.md`.
    - If an MCP code-index tool is available (e.g. `mcp__gitnexus__query`,
      `mcp__ast-index__*`), prefer it over raw grep.
 3. For each hit, report:

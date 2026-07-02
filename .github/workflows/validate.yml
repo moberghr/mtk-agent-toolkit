@@ -20,10 +20,15 @@ jobs:
       - name: Run toolkit validation
         run: bash scripts/validate-toolkit.sh
 
+      - name: Run hook regression tests
+        run: |
+          bash tests/hooks/test-query-code-index.sh
+          bash tests/hooks/test-release-signing.sh
+
       - name: Syntax-check all bash scripts
         run: |
           EXIT_CODE=0
-          for f in $(find hooks scripts -name '*.sh' -type f 2>/dev/null); do
+          for f in $(find hooks scripts tests -name '*.sh' -type f 2>/dev/null); do
             if ! bash -n "$f" 2>/tmp/bash_check; then
               echo "ERROR: Syntax error in $f:"
               cat /tmp/bash_check

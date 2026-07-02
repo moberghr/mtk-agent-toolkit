@@ -40,7 +40,7 @@ fi
 
 # If substantial session but no lessons captured, remind
 if [ "$LESSONS_MODIFIED" -eq 0 ]; then
-  echo "LEARNING CHECK: Substantial session (${ops} operations, ${mods} modifications) with no lessons captured. If the engineer corrected your approach, redirected you, or a non-obvious pattern emerged, capture it in tasks/lessons.md using the correction-capture workflow. Lessons compound across sessions — without them, the same mistakes repeat."
+  echo "LEARNING CHECK: Substantial session (${ops} operations, ${mods} modifications) with no lessons captured. If the engineer corrected your approach, redirected you, or a non-obvious pattern emerged, capture it in tasks/lessons.md using the correction-capture workflow; if YOU struggled 2+ times with the same sub-problem and then found a working approach, use golden-path-capture. Lessons compound across sessions — without them, the same mistakes repeat."
 fi
 
 # If lessons exist, check for promotion candidates (3+ lessons with shared keywords)

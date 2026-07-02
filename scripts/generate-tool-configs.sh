@@ -66,17 +66,21 @@ collapse_blank_lines() {
   '
 }
 
-# Extract the body of the first "## Critical Rules" section (prefix match, so
+# Extract the BODY of the first "## Critical Rules" section (prefix match, so
 # "## Critical Rules" and "## Critical Rules (Always Apply)" both match) from a
-# CLAUDE.md-style file. Emits from the matching heading up to (but not including)
-# the next "## " heading or end of file. Emits nothing if no match is found.
+# CLAUDE.md-style file. The matched heading itself is NOT emitted — every caller
+# prints its own "## Critical Rules (from CLAUDE.md)" heading, and re-emitting
+# the source heading produced two stacked duplicate H2s in generated configs.
+# Warns on stderr (non-fatal) when the file exists but no heading matched, so a
+# renamed heading does not silently drop the rules from every generated config.
 # Duplicated verbatim in generate-agents-md.sh (standalone scripts).
 extract_critical_rules() {
-  local file="$1"
+  local file="$1" body
   [ -f "$file" ] || return 0
-  awk '
-    /^## Critical Rules/ && !started { started=1; print; next }
+  body="$(awk '
+    /^## Critical Rules/ && !started { started=1; next }
     started && /^## / { exit }
+    started && n == 0 && /^[[:space:]]*$/ { next }
     started { lines[++n] = $0; next }
     END {
       # Trim trailing blank lines and horizontal rules (e.g. "---") so the
@@ -84,7 +88,12 @@ extract_critical_rules() {
       while (n > 0 && (lines[n] ~ /^[[:space:]]*$/ || lines[n] ~ /^-{3,}[[:space:]]*$/)) n--
       for (i = 1; i <= n; i++) print lines[i]
     }
-  ' "$file"
+  ' "$file")"
+  if [ -n "$body" ]; then
+    printf '%s\n' "$body"
+  else
+    echo "NOTE: no '## Critical Rules' heading found in $file — generated configs will omit critical rules" >&2
+  fi
 }
 
 # Extract applyTo globs for a manifest target path.
