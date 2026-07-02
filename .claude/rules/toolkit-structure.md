@@ -17,7 +17,7 @@ axes:
 - **S1.1** `.claude/manifest.json` is the single source of truth for what ships. Every skill, agent, reference, hook, test, and script must have an entry in `files`.
 - **S1.2** Each manifest entry must have: `source`, `target`, `action` (sync or merge), and `description`.
 - **S1.3** `description` follows the CSO (Claude Slash-command Output) principle — clear, specific, one sentence explaining what the file does.
-- **S1.4** Version in `manifest.json` and `plugin.json` must always match. Bump both together using semver.
+- **S1.4** Version in `manifest.json`, `plugin.json`, and `.claude-plugin/marketplace.json`'s plugin entry must always match — `validate-toolkit.sh` enforces all three. Bump them together using semver.
 - **S1.5** Protected files (listed in `manifest.protected`) are never overwritten by update. Currently: `settings.json`, `settings.local.json`, `review-config.local.json`, `tech-stack`, `tech-stack-pm`, `CLAUDE.md`, `AGENTS.md`, `tasks/lessons.md`, `tasks/todo.md`, `architecture-principles.md`, `pre-commit-review-list.md`.
 
 ## File Organization

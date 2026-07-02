@@ -49,9 +49,11 @@ that catches duplicates that slipped past it.
    `.claude/references/code-index-template.md`). If absent, skip
    index-guided scanning and note CODE_INDEX.md missing in the report
    (it is generated during `setup-bootstrap`).
-2. Extract capability rows. Group near-duplicates by stem (verb + noun)
-   using simple normalization: lowercase, drop suffixes like `Async` /
-   `_v2` / `Impl`.
+2. Extract capability rows. Query the index with
+   `bash scripts/query-code-index.sh find "<keyword>"` (prints each matching
+   row prefixed with its `## <Domain>` section) instead of grepping it ad hoc.
+   Group near-duplicates by stem (verb + noun) using simple normalization:
+   lowercase, drop suffixes like `Async` / `_v2` / `Impl`.
 3. For each cluster of 2+ entries, emit:
    - the capability name
    - all entry points (path:symbol)

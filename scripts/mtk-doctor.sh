@@ -269,6 +269,21 @@ else
   record PASS integrity "release checksum manifest absent" "generate at release: bash scripts/generate-checksums.sh"
 fi
 
+# Release signature (optional, advisory knob) — proves WHO published, not just that
+# bytes are unmodified. Only checked when both the .sig and a public key are present;
+# absence is never a hard FAIL (opt-in supply-chain hardening, like other advisory knobs).
+if [ -f checksums.sha256.sig ] && [ -n "${MTK_RELEASE_PUBLIC_KEY:-}" ]; then
+  if ! command -v openssl >/dev/null 2>&1; then
+    record WARN integrity "release signature uncheckable" "checksums.sha256.sig present but openssl not found"
+  elif openssl pkeyutl -verify -pubin -inkey "$MTK_RELEASE_PUBLIC_KEY" -rawin -in checksums.sha256 -sigfile checksums.sha256.sig >/dev/null 2>&1; then
+    record PASS integrity "release signature verified" "checksums.sha256 signed by MTK_RELEASE_PUBLIC_KEY"
+  else
+    record FAIL integrity "release signature invalid" "checksums.sha256.sig does not verify against MTK_RELEASE_PUBLIC_KEY — bytes may be tampered or key mismatched"
+  fi
+else
+  record PASS integrity "release signing not configured" "set MTK_RELEASE_PUBLIC_KEY and ship checksums.sha256.sig to enable"
+fi
+
 # Run validate-toolkit as one composite check
 if bash scripts/validate-toolkit.sh >/dev/null 2>&1; then
   record PASS integrity "validate-toolkit passes"

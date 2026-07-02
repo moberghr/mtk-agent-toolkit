@@ -66,6 +66,27 @@ collapse_blank_lines() {
   '
 }
 
+# Extract the body of the first "## Critical Rules" section (prefix match, so
+# "## Critical Rules" and "## Critical Rules (Always Apply)" both match) from a
+# CLAUDE.md-style file. Emits from the matching heading up to (but not including)
+# the next "## " heading or end of file. Emits nothing if no match is found.
+# Duplicated verbatim in generate-agents-md.sh (standalone scripts).
+extract_critical_rules() {
+  local file="$1"
+  [ -f "$file" ] || return 0
+  awk '
+    /^## Critical Rules/ && !started { started=1; print; next }
+    started && /^## / { exit }
+    started { lines[++n] = $0; next }
+    END {
+      # Trim trailing blank lines and horizontal rules (e.g. "---") so the
+      # extracted section does not end with a stray markdown separator.
+      while (n > 0 && (lines[n] ~ /^[[:space:]]*$/ || lines[n] ~ /^-{3,}[[:space:]]*$/)) n--
+      for (i = 1; i <= n; i++) print lines[i]
+    }
+  ' "$file"
+}
+
 # Extract applyTo globs for a manifest target path.
 # Outputs comma-separated quoted strings, e.g.: "**/*DbContext*", "**/Entities/**"
 # Returns empty string if no applyTo found.
@@ -106,6 +127,19 @@ emit_section() {
 
 # Assemble all reference content into a single stream (for flat-file formats).
 assemble_all_content() {
+  # Critical Rules — pulled from the project's CLAUDE.md. Highest-value content
+  # for tools with no hook enforcement, so it leads the file. Skipped silently
+  # if CLAUDE.md has no matching heading.
+  if [ -f "CLAUDE.md" ]; then
+    local critical_rules
+    critical_rules="$(extract_critical_rules "CLAUDE.md")"
+    if [ -n "$critical_rules" ]; then
+      printf '## Critical Rules (from CLAUDE.md)\n\n'
+      printf '%s\n' "$critical_rules" | collapse_blank_lines
+      printf '\n\n'
+    fi
+  fi
+
   # Architecture principles
   emit_section "Architecture Principles" "$REFS_DIR/architecture-principles.md"
 
@@ -179,6 +213,24 @@ generate_cursor_rules() {
 
   # Remove stale MTK-generated rules (only mtk-* prefixed files)
   find .cursor/rules -name "mtk-*.mdc" -delete 2>/dev/null || true
+
+  # Always-apply: Critical Rules from the project's CLAUDE.md. Highest-value
+  # content for a tool with no hook enforcement. Skipped silently if CLAUDE.md
+  # has no matching heading.
+  if [ -f "CLAUDE.md" ]; then
+    local critical_rules
+    critical_rules="$(extract_critical_rules "CLAUDE.md")"
+    if [ -n "$critical_rules" ]; then
+      {
+        printf -- '---\n'
+        printf 'description: %s\n' "Critical rules from CLAUDE.md — always apply"
+        printf 'alwaysApply: true\n'
+        printf -- '---\n\n'
+        printf '## Critical Rules (from CLAUDE.md)\n\n'
+        printf '%s\n' "$critical_rules" | collapse_blank_lines
+      } > ".cursor/rules/mtk-critical-rules.mdc"
+    fi
+  fi
 
   # Always-apply: architecture principles
   if [ -f "$REFS_DIR/architecture-principles.md" ]; then

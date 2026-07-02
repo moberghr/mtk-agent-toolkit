@@ -12,6 +12,18 @@ set -euo pipefail
 #   bash scripts/generate-checksums.sh                   # (re)generate checksums.sha256
 #   bash scripts/generate-checksums.sh --verify          # compare working tree against it
 #   bash scripts/generate-checksums.sh --verify --quiet  # summary line only
+#   bash scripts/generate-checksums.sh --sign            # also emit checksums.sha256.sig
+#
+# --sign is opt-in supply-chain hardening: after writing checksums.sha256 it
+# signs it with an Ed25519 key so an install can prove WHO published the release,
+# not just that the bytes are unmodified. It requires two env vars (both PEM paths):
+#   MTK_RELEASE_SIGNING_KEY  — Ed25519 private key, used here to produce the .sig
+#   MTK_RELEASE_PUBLIC_KEY   — matching public key, used by mtk-doctor.sh to verify
+# If --sign is passed without MTK_RELEASE_SIGNING_KEY, signing is skipped (non-fatal).
+# Without --sign, behavior is unchanged and no signature is produced.
+# checksums.sha256.sig is a release artifact, tracked like checksums.sha256 itself
+# (not gitignored) — only `git add` it as part of an actual release commit; a local
+# `--sign` test run for a key you don't intend to ship should not be staged.
 #
 # Run at release time, after the version bump, as the last change before the
 # release commit (S4.11). Mismatches during development are expected; a
@@ -21,12 +33,15 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
 OUT="checksums.sha256"
+SIG="checksums.sha256.sig"
 VERIFY=0
 QUIET=0
+SIGN=0
 for arg in "$@"; do
   case "$arg" in
     --verify) VERIFY=1 ;;
     --quiet)  QUIET=1 ;;
+    --sign)   SIGN=1 ;;
     -h|--help)
       grep '^# ' "$0" | head -16 | sed 's/^# \{0,1\}//'
       exit 0
@@ -78,6 +93,19 @@ if [ "$VERIFY" -eq 0 ]; then
   mv "$tmp" "$OUT"
   COUNT="$(grep -c '^[0-9a-f]' "$OUT")"
   echo "Wrote $OUT — $COUNT files hashed for v$VERSION${MISSING:+ ($MISSING manifest paths missing on disk)}"
+
+  # Optional Ed25519 signature over the checksum manifest (opt-in; see --sign in Usage).
+  if [ "$SIGN" -eq 1 ]; then
+    if [ -z "${MTK_RELEASE_SIGNING_KEY:-}" ]; then
+      echo "--sign requested but MTK_RELEASE_SIGNING_KEY not set — skipping signature"
+    elif ! command -v openssl >/dev/null 2>&1; then
+      echo "--sign requested but openssl not found — skipping signature" >&2
+    else
+      openssl pkeyutl -sign -inkey "$MTK_RELEASE_SIGNING_KEY" -rawin -in "$OUT" -out "$SIG"
+      echo "Signed $OUT — wrote $SIG (verify with MTK_RELEASE_PUBLIC_KEY via mtk-doctor.sh)"
+    fi
+  fi
+
   [ "$MISSING" -eq 0 ] || exit 1
 else
   [ -f "$OUT" ] || { echo "ERROR: $OUT not found — generate it first" >&2; exit 1; }

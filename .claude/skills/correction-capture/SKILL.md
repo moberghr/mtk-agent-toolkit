@@ -18,6 +18,8 @@ user-invocable: false
 
 When an engineer corrects your approach, that correction contains knowledge that should compound across sessions. Capture it immediately, process it into a reusable lesson, and ensure it loads in future sessions. The goal: the engineer should never need to give the same correction twice.
 
+This skill is specifically for **engineer-driven** corrections. When *you* resolve your own repeated failure through trial and error — same signature failing 2+ times, then a materially different fix, with no human redirect — that is self-driven, not a correction: use `golden-path-capture` instead. (And `lesson-mining` is the after-the-fact transcript sweep for what neither live skill captured.)
+
 ## When To Use
 
 - The engineer says "no", "not like that", "stop doing X", "I told you before"

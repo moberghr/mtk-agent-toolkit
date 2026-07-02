@@ -1,6 +1,6 @@
 {
-  "version": "7.16.0",
-  "updated": "2026-06-29",
+  "version": "7.17.0",
+  "updated": "2026-07-01",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -558,6 +558,12 @@
       "action": "sync",
       "description": "Reusable correction capture and compounding skill"
     },
+    "skills/golden-path-capture/SKILL.md": {
+      "source": ".claude/skills/golden-path-capture/SKILL.md",
+      "target": ".claude/skills/golden-path-capture/SKILL.md",
+      "action": "sync",
+      "description": "Live self-driven lesson capture when you struggle with the same sub-problem 2+ times then find a working approach — no engineer correction required"
+    },
     "skills/handoff/SKILL.md": {
       "source": ".claude/skills/handoff/SKILL.md",
       "target": ".claude/skills/handoff/SKILL.md",
@@ -728,6 +734,12 @@
       "target": "scripts/generate-checksums.sh",
       "action": "sync",
       "description": "Release integrity manifest — writes checksums.sha256 (SHA-256 of every manifest-listed file) at release time; --verify recomputes and reports drift"
+    },
+    "scripts/query-code-index.sh": {
+      "source": "scripts/query-code-index.sh",
+      "target": "scripts/query-code-index.sh",
+      "action": "sync",
+      "description": "Structured text-query front door for CODE_INDEX.md — find <keyword> and callers <symbol> (textual reference search, not a semantic call-graph)"
     },
     "skills/mtk-doctor/SKILL.md": {
       "source": ".claude/skills/mtk-doctor/SKILL.md",
@@ -995,6 +1007,18 @@
       "target": "tests/hooks/test-shrink-guard.sh",
       "action": "sync",
       "description": "Fixture-based tests for hooks/lib/shrink-guard.sh"
+    },
+    "tests/hooks/test-query-code-index.sh": {
+      "source": "tests/hooks/test-query-code-index.sh",
+      "target": "tests/hooks/test-query-code-index.sh",
+      "action": "sync",
+      "description": "Fixture-based tests for scripts/query-code-index.sh find and callers modes"
+    },
+    "tests/hooks/test-release-signing.sh": {
+      "source": "tests/hooks/test-release-signing.sh",
+      "target": "tests/hooks/test-release-signing.sh",
+      "action": "sync",
+      "description": "Round-trip Ed25519 sign/verify test for generate-checksums.sh --sign and mtk-doctor.sh, including tamper and mismatched-key detection"
     },
     "tests/pressure-tests/spec-drift-tags.md": {
       "source": "tests/pressure-tests/spec-drift-tags.md",
@@ -1499,6 +1523,12 @@
       "target": ".claude/references/orchestration-gates.md",
       "action": "sync",
       "description": "Five named fail-closed gates the implement workflow records on the workflow artifact before advancing"
+    },
+    "references/evidence-capture.md": {
+      "source": ".claude/references/evidence-capture.md",
+      "target": ".claude/references/evidence-capture.md",
+      "action": "sync",
+      "description": "Capture procedure for the browser evidence channel — persist Playwright MCP screenshot/console/network artifacts, with an explicit degraded fallback"
     },
     "scripts/workflow-artifact.sh": {
       "source": "scripts/workflow-artifact.sh",
