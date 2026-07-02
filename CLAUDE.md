@@ -60,7 +60,7 @@ Releases regenerate `checksums.sha256` via `bash scripts/generate-checksums.sh` 
 
 ## Critical Rules (Always Apply)
 
-- **C0.1** Manifest versions must match: `.claude/manifest.json` version == `.claude-plugin/plugin.json` version. Bump both when releasing.
+- **C0.1** Manifest versions must match: `.claude/manifest.json` version == `.claude-plugin/plugin.json` version == `.claude-plugin/marketplace.json` plugin entry version. Bump all three when releasing.
 - **C0.2** Every file in the repo must be listed in manifest.json `files` section. Every manifest path must exist on disk.
 - **C0.3** Workflow skills must follow the anatomy: frontmatter + `## Overview` + `## When To Use` + `## Workflow` + `## Verification`. Entry-point skills use `allowed-tools` and `argument-hint` in frontmatter. Skill directory name must match frontmatter `name:`.
 - **C0.4** Agents and skills must have `---` frontmatter blocks.

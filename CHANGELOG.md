@@ -2,6 +2,24 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.17.0] - 2026-07-01
+
+### Added — Borrowed capabilities, wave 3
+
+A third competitive scan of trending (last-30-day) Claude Code toolkits surfaced 6 candidates. Two — cross-platform config export and pre-execution visual review of agent loops — turned out to already exist (`scripts/generate-agents-md.sh`/`generate-tool-configs.sh`, and `implement`'s Phase 2.5 batch rendering) once checked against the codebase; the real gaps found on inspection are what shipped for those two. The other four are net-new deltas on existing infrastructure.
+
+- **Critical Rules in generated cross-tool configs.** `generate-agents-md.sh` and `generate-tool-configs.sh` (AGENTS.md, `.cursor/rules`, Copilot, Windsurf, Gemini, Cline) now extract the project's `CLAUDE.md` `## Critical Rules` section and lead every generated config with it — the highest-value content for a tool with no hook enforcement, previously dropped entirely.
+- **`browser` evidence channel gets a capture procedure.** New `.claude/references/evidence-capture.md` documents persisting screenshots/console logs/network requests (via Playwright MCP) under `docs/specs/<slug>.evidence/<criterion-id>/` for behavior verified in a browser, with an explicit textual-fallback path when Playwright MCP is unavailable. `verification-before-completion` cross-references it and requires the evidence path be cited in the completion table.
+- **`golden-path-capture` — live, in-session lesson harvesting.** New skill, distinct from `correction-capture` (engineer-issued corrections) and `lesson-mining` (after-the-fact transcript sweeps): fires when the agent itself fails the same sub-problem 2+ times and then finds a working approach, capturing the attempt immediately via the existing `learnings.sh`/`.claude/lessons/personal.md` path using the `wrong_turns`/`time_cost` fields that already existed for exactly this case.
+- **Optional cryptographic release signing.** `generate-checksums.sh --sign` signs `checksums.sha256` with an Ed25519 key (`MTK_RELEASE_SIGNING_KEY`) via `openssl pkeyutl`, producing `checksums.sha256.sig`; `mtk-doctor.sh` verifies it against `MTK_RELEASE_PUBLIC_KEY` when both are configured. Fully opt-in — an unsigned release remains valid, and an unconfigured signing setup is an informational PASS, never a FAIL.
+- **Gate-sequence preview at Phase 2.5.** `implement`'s approval-gate rendering now prints the full pipeline that will run against the approved batches (drift check → Stage 1 → Stage 2 reviewer set for the computed rigor level → cleanup → compound), not just the batch list.
+- **`query-code-index.sh` — grep-friendly CODE_INDEX companion.** New `find <keyword>` (searches CODE_INDEX.md rows with domain context) and `callers <symbol>` (textual `git grep` reference search, explicitly not a semantic call-graph) subcommands; `prior-work-check` and `code-simplification --audit-duplicates` now use it instead of ad hoc grepping.
+
+### Tests
+
+- New `tests/hooks/test-query-code-index.sh` — fixture-based coverage for `find` and `callers` modes, including regression guards for fixed-string (not regex) matching and the header-row-skip anchor.
+- New `tests/hooks/test-release-signing.sh` — Ed25519 sign/verify round-trip, tamper detection, and mismatched-key detection for the `--sign` opt-in.
+
 ## [7.16.0] - 2026-06-29
 
 ### Added — Borrowed capabilities, wave 2 (catalogue, dispatch, gates, context economy)

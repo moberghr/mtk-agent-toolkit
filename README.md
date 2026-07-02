@@ -51,6 +51,16 @@ MTK closes that gap with **workflow enforcement** (planning, TDD, batched implem
 
 ## What's New
 
+### v7.17.0 — Borrowed capabilities, wave 3 (2026-07-01)
+- **Critical Rules in generated cross-tool configs** — `generate-agents-md.sh`/`generate-tool-configs.sh` now lead every generated config (AGENTS.md, `.cursor/rules`, Copilot, Windsurf, Gemini, Cline) with the project's `CLAUDE.md` `## Critical Rules` section.
+- **`browser` evidence channel capture procedure** — new `.claude/references/evidence-capture.md` documents persisting screenshots/console logs/network requests under `docs/specs/<slug>.evidence/<criterion-id>/`, with an explicit textual-fallback path when Playwright MCP is unavailable.
+- **`golden-path-capture`** — new skill for live, in-session lesson harvesting when the agent itself struggles 2+ times then finds a working approach, distinct from engineer-driven `correction-capture` and after-the-fact `lesson-mining`.
+- **Optional cryptographic release signing** — `generate-checksums.sh --sign` (Ed25519 via `openssl pkeyutl`) plus `mtk-doctor.sh` verification; fully opt-in, never a hard FAIL when unconfigured.
+- **Gate-sequence preview at Phase 2.5** — `implement`'s approval gate now shows the full pipeline (drift check → Stage 1 → Stage 2 reviewer set → cleanup → compound), not just the batch list.
+- **`query-code-index.sh`** — grep-friendly `find`/`callers` companion for `CODE_INDEX.md`, wired into `prior-work-check` and `code-simplification`.
+
+> Note: the v7.15.0 and v7.16.0 entries were not backfilled here — see `CHANGELOG.md` for the full history.
+
 ### v7.14.0 — Evidence and the closed loop (2026-06-12)
 - **Locked verifiable-criteria contract** — each spec success criterion now carries an `evidence_channel` (one of `test-run` / `build-output` / `http-probe` / `cli-stdout` / `db-state-diff` / `browser` / `log-capture` / `script-output`) and a binary `observable` declared before execution. `verification-before-completion` checks criteria one-by-one and cites the observable per criterion. For behavior-shaped changes, tests alone never prove done — the channel must include a real execution surface.
 - **Gate re-arm** — any edit that lands after the last verification reverts every criterion to `re-armed`; the `hooks/verify-completion` hook emits a re-arm notice and a completion claim is rejected until re-verification runs. Kills the "tiny follow-up edit after I said done" hole.

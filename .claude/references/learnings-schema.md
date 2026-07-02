@@ -21,7 +21,7 @@ Manual edits to `tasks/lessons.md` are preserved on next migrate (re-emitted as 
   "spec_id": "2026-05-08-v7.5.0",
   "workflow_uuid": "wf-20260508T061101Z-af6eff",
   "scope": "personal | team",
-  "source": "correction | promotion | manual | review-finding | incident",
+  "source": "correction | promotion | manual | review-finding | incident | golden-path",
   "decision_origin": "user-directed | claude-recommended-approved | claude-recommended-modified | claude-recommended-rejected | system-inferred",
   "captured_at": "2026-05-08T08:42:00Z",
 
@@ -66,6 +66,7 @@ Manual edits to `tasks/lessons.md` are preserved on next migrate (re-emitted as 
   - `manual` — preserved verbatim from `tasks/lessons.md` markdown additions.
   - `review-finding` — a recurring review finding got escalated.
   - `incident` — postmortem-derived lesson.
+  - `golden-path` — self-driven struggle-then-success within a session, no engineer correction involved (`golden-path-capture` skill). Distinct from `correction`, which requires an engineer-issued redirect.
 - **`decision_origin`** — provenance of the decision that produced this lesson:
   - `user-directed` — engineer dictated the decision.
   - `claude-recommended-approved` — model proposed, engineer accepted unchanged.

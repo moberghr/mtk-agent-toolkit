@@ -111,6 +111,36 @@ collapse_blank_lines() {
   '
 }
 
+# Extract the BODY of the first "## Critical Rules" section (prefix match, so
+# "## Critical Rules" and "## Critical Rules (Always Apply)" both match) from a
+# CLAUDE.md-style file. The matched heading itself is NOT emitted — every caller
+# prints its own "## Critical Rules (from CLAUDE.md)" heading, and re-emitting
+# the source heading produced two stacked duplicate H2s in generated configs.
+# Warns on stderr (non-fatal) when the file exists but no heading matched, so a
+# renamed heading does not silently drop the rules from every generated config.
+# Duplicated verbatim in generate-tool-configs.sh (standalone scripts).
+extract_critical_rules() {
+  local file="$1" body
+  [ -f "$file" ] || return 0
+  body="$(awk '
+    /^## Critical Rules/ && !started { started=1; next }
+    started && /^## / { exit }
+    started && n == 0 && /^[[:space:]]*$/ { next }
+    started { lines[++n] = $0; next }
+    END {
+      # Trim trailing blank lines and horizontal rules (e.g. "---") so the
+      # extracted section does not end with a stray markdown separator.
+      while (n > 0 && (lines[n] ~ /^[[:space:]]*$/ || lines[n] ~ /^-{3,}[[:space:]]*$/)) n--
+      for (i = 1; i <= n; i++) print lines[i]
+    }
+  ' "$file")"
+  if [ -n "$body" ]; then
+    printf '%s\n' "$body"
+  else
+    echo "NOTE: no '## Critical Rules' heading found in $file — generated configs will omit critical rules" >&2
+  fi
+}
+
 # --- Detect active tech stack ---
 
 stack=""
@@ -131,6 +161,18 @@ fi
   printf '# AGENTS.md\n\n'
   printf '%s\n' "$GEN_MARKER"
   printf '> This file provides project conventions to all AI coding assistants.\n\n'
+
+  # Critical Rules — pulled from the project's CLAUDE.md. Highest-value content
+  # for tools with no hook enforcement, so it leads the file. Skipped silently
+  # if CLAUDE.md has no matching heading.
+  if [ -f "CLAUDE.md" ]; then
+    critical_rules="$(extract_critical_rules "CLAUDE.md")"
+    if [ -n "$critical_rules" ]; then
+      printf '## Critical Rules (from CLAUDE.md)\n\n'
+      printf '%s\n' "$critical_rules" | collapse_blank_lines
+      printf '\n'
+    fi
+  fi
 
   # Architecture Principles
   if [ -f "$REFS_DIR/architecture-principles.md" ]; then

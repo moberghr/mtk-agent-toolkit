@@ -71,12 +71,14 @@ The `evidence_channel` field on each success criterion names the surface where t
 | `http-probe` | HTTP request/response against a running service |
 | `cli-stdout` | Command-line tool output inspected manually |
 | `db-state-diff` | Before/after query of a database or file store |
-| `browser` | Visual or functional check in a browser |
+| `browser` | Visual or functional check in a browser — capture an artifact; see below |
 | `smoke-boot` | The built artifact/service boots and responds to a live request — the strongest real execution surface |
 | `log-capture` | Structured log entry captured at runtime |
 | `script-output` | Shell script execution result |
 
 **Rule:** For behavior-shaped changes (new endpoint, changed handler, migration, state transition), `test-run` and `build-output` are insufficient on their own — the channel must include at least one real execution surface (`smoke-boot`, `http-probe`, `db-state-diff`, `cli-stdout`, or `browser`). Tests alone never prove behavior done. `smoke-boot` is the strongest: the thing actually starts and answers.
+
+**`browser` capture.** The `browser` channel must persist what was seen, not just assert it. When Playwright MCP is available, capture `browser_take_screenshot` / `browser_console_messages` / `browser_network_requests` around the observable behavior and save them under `docs/specs/<slug>.evidence/<criterion-id>/`; when MCP is unavailable, fall back to an explicit textual description and say so in the completion table — never silently claim `browser` evidence with no artifact. Procedure: `Read .claude/references/evidence-capture.md`.
 
 ## Workflow
 
@@ -238,6 +240,7 @@ Forcing past a stuck state produces garbage output. Admitting difficulty is alwa
 - [ ] Every success criterion was verified individually (criterion-by-criterion, citing the `observable` per criterion)
 - [ ] No criterion remains `re-armed` (no edit landed after the last verification)
 - [ ] Behavior-shaped changes cite a real execution surface (`smoke-boot`, `http-probe`, `db-state-diff`, `cli-stdout`, or `browser`), not only `test-run` / `build-output`
+- [ ] For a `browser` criterion, the `docs/specs/<slug>.evidence/<criterion-id>/` evidence directory path is cited alongside the criterion in the completion table (or an explicit no-MCP fallback note; see `.claude/references/evidence-capture.md`)
 - [ ] If verifying upstream agent work, every factual claim was extracted and reconciled (`VERIFIED`, `CONTRADICTED`, or `UNVERIFIABLE`) — none left `UNVERIFIED`
 - [ ] Frozen-criteria tamper check ran (no `success_criteria` `id`/`observable`/`evidence_channel` changed since Phase 2.5 approval)
 - [ ] Completion stated as the `criterion | verdict | evidence` table, every verdict binary

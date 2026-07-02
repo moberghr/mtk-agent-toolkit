@@ -1,0 +1,328 @@
+{
+  "slug": "v717-borrowed-capabilities-wave3",
+  "date": "2026-07-01",
+  "scope": "feature",
+  "security_impact": "none",
+  "open_decisions": [],
+  "assumptions": [
+    "[VERIFIED:scripts/generate-agents-md.sh] exists, does not include CLAUDE.md Critical Rules",
+    "[VERIFIED:scripts/generate-tool-configs.sh] exists, same gap across cursor-rules/copilot/windsurf/gemini/cline",
+    "[VERIFIED:.claude/skills/verification-before-completion/SKILL.md] browser channel defined, no capture/persistence procedure",
+    "[VERIFIED:.claude/skills/correction-capture/SKILL.md] scoped to engineer corrections only",
+    "[VERIFIED:scripts/generate-checksums.sh] checksums only, no signing",
+    "[VERIFIED:.claude/references/code-index-template.md] static table, no query script in scripts/",
+    "[ASSUMED] openssl is an acceptable signing dependency; no minisign/age/gpg required"
+  ],
+  "baseline_area": null,
+  "change_manifest": [
+    ".claude/references/evidence-capture.md",
+    ".claude/skills/golden-path-capture/SKILL.md",
+    "scripts/query-code-index.sh",
+    "tests/hooks/test-query-code-index.sh",
+    "scripts/generate-agents-md.sh",
+    "scripts/generate-tool-configs.sh",
+    "scripts/generate-checksums.sh",
+    "scripts/mtk-doctor.sh",
+    ".claude/skills/verification-before-completion/SKILL.md",
+    ".claude/skills/implement/SKILL.md",
+    ".claude/skills/prior-work-check/SKILL.md",
+    ".claude/skills/code-simplification/SKILL.md",
+    ".claude/skills/correction-capture/SKILL.md",
+    ".claude/manifest.json",
+    ".claude-plugin/plugin.json",
+    "CHANGELOG.md",
+    "README.md",
+    ".claude/references.index",
+    ".claude/triggers.index",
+    "checksums.sha256",
+    ".claude-plugin/marketplace.json",
+    "tests/hooks/test-release-signing.sh",
+    ".claude/references/learnings-schema.md",
+    ".claude/rules/toolkit-structure.md",
+    "CLAUDE.md"
+  ],
+  "test_manifest": [
+    "tests/hooks/test-query-code-index.sh",
+    "tests/hooks/test-release-signing.sh"
+  ],
+  "public_contracts": [
+    "reference:evidence-capture.md",
+    "skill:golden-path-capture",
+    "cmd:scripts/query-code-index.sh find <keyword>",
+    "cmd:scripts/query-code-index.sh callers <symbol>",
+    "cmd:scripts/generate-checksums.sh --sign",
+    "env:MTK_RELEASE_SIGNING_KEY",
+    "env:MTK_RELEASE_PUBLIC_KEY",
+    "evidence-channel:browser (capture procedure)"
+  ],
+  "out_of_scope": [
+    "Re-implementing cross-platform config export or Phase 2.5 batch rendering (already exist)",
+    "Real call-graph / language-server-backed code index",
+    "Mandatory release signing",
+    "New tech stacks or domains"
+  ],
+  "plan": {
+    "batches": [
+      {
+        "id": "B1",
+        "title": "F1: Critical Rules section in generate-agents-md.sh + generate-tool-configs.sh"
+      },
+      {
+        "id": "B2",
+        "title": "F2: evidence-capture.md reference + verification-before-completion.md cross-reference"
+      },
+      {
+        "id": "B3",
+        "title": "F3: golden-path-capture skill + correction-capture cross-reference"
+      },
+      {
+        "id": "B4",
+        "title": "F4: generate-checksums.sh --sign + mtk-doctor.sh verification"
+      },
+      {
+        "id": "B5",
+        "title": "F5: Gate-sequence preview in implement/SKILL.md Phase 2.5"
+      },
+      {
+        "id": "B6",
+        "title": "F6: query-code-index.sh + test + prior-work-check/code-simplification references"
+      },
+      {
+        "id": "B7",
+        "title": "Release: version bump to 7.17.0, manifest, CHANGELOG, README, indices, checksums, validate"
+      }
+    ]
+  },
+  "success_criteria": [
+    {
+      "id": "SC1",
+      "description": "generate-agents-md.sh includes CLAUDE.md Critical Rules when present",
+      "verification": "bash scripts/generate-agents-md.sh --force /tmp/AGENTS.test.md && grep -q 'Critical Rules' /tmp/AGENTS.test.md",
+      "evidence_channel": "cli-stdout",
+      "observable": "generated file contains a Critical Rules section sourced from CLAUDE.md"
+    },
+    {
+      "id": "SC2",
+      "description": "generate-tool-configs.sh includes Critical Rules in at least one target format",
+      "verification": "bash scripts/generate-tool-configs.sh --format cursor-rules && grep -rl 'Critical Rules' .cursor/rules/",
+      "evidence_channel": "cli-stdout",
+      "observable": "at least one generated .mdc file contains the Critical Rules section"
+    },
+    {
+      "id": "SC3",
+      "description": "evidence-capture.md exists and is cross-referenced from verification-before-completion",
+      "verification": "test -f .claude/references/evidence-capture.md && grep -q evidence-capture.md .claude/skills/verification-before-completion/SKILL.md",
+      "evidence_channel": "script-output",
+      "observable": "both checks pass"
+    },
+    {
+      "id": "SC4",
+      "description": "golden-path-capture skill passes toolkit validation with correct anatomy",
+      "verification": "bash scripts/validate-toolkit.sh",
+      "evidence_channel": "script-output",
+      "observable": "prints 'Toolkit validation passed', exit 0"
+    },
+    {
+      "id": "SC5",
+      "description": "generate-checksums.sh --sign signs when MTK_RELEASE_SIGNING_KEY is set, no-ops informationally otherwise",
+      "verification": "bash tests/hooks/test-query-code-index.sh; openssl genpkey -algorithm ed25519 -out /tmp/test.key 2>/dev/null; MTK_RELEASE_SIGNING_KEY=/tmp/test.key bash scripts/generate-checksums.sh --sign && test -f checksums.sha256.sig",
+      "evidence_channel": "cli-stdout",
+      "observable": "checksums.sha256.sig produced when a signing key is configured"
+    },
+    {
+      "id": "SC6",
+      "description": "mtk-doctor.sh reports signing status without failing when unconfigured",
+      "verification": "bash scripts/mtk-doctor.sh | grep -i sign",
+      "evidence_channel": "cli-stdout",
+      "observable": "PASS or informational line about release signing, never a hard FAIL when unconfigured"
+    },
+    {
+      "id": "SC7",
+      "description": "implement/SKILL.md Phase 2.5 documents a gate-sequence block",
+      "verification": "grep -n 'Gate sequence' .claude/skills/implement/SKILL.md",
+      "evidence_channel": "cli-stdout",
+      "observable": "match found in the Phase 2.5 section"
+    },
+    {
+      "id": "SC8",
+      "description": "query-code-index.sh find and callers modes work against a fixture CODE_INDEX.md",
+      "verification": "bash tests/hooks/test-query-code-index.sh",
+      "evidence_channel": "test-run",
+      "observable": "all assertions pass, exit 0"
+    },
+    {
+      "id": "SC9",
+      "description": "validate-toolkit passes end to end",
+      "verification": "bash scripts/validate-toolkit.sh",
+      "evidence_channel": "script-output",
+      "observable": "prints 'Toolkit validation passed', exit 0"
+    },
+    {
+      "id": "SC10",
+      "description": "checksums verify clean",
+      "verification": "bash scripts/generate-checksums.sh --verify",
+      "evidence_channel": "script-output",
+      "observable": "0 mismatched"
+    },
+    {
+      "id": "SC11",
+      "description": "versions synced to 7.17.0",
+      "verification": "grep version .claude/manifest.json .claude-plugin/plugin.json",
+      "evidence_channel": "cli-stdout",
+      "observable": "both show 7.17.0"
+    },
+    {
+      "id": "SC12",
+      "description": "derived indices in sync",
+      "verification": "bash scripts/build-references-index.sh --check",
+      "evidence_channel": "script-output",
+      "observable": "exits 0"
+    }
+  ],
+  "implement": {
+    "completed_batches": [
+      {
+        "batch_id": "B2",
+        "actual_files": [
+          ".claude/references/evidence-capture.md",
+          ".claude/skills/verification-before-completion/SKILL.md",
+          ".claude/manifest.json",
+          ".claude/references.index"
+        ],
+        "build": {
+          "ok": true
+        },
+        "tests": {
+          "ok": true
+        },
+        "behavioral_diff": "New browser evidence-capture procedure documented and cross-referenced.",
+        "deviations": [
+          "manifest.json + references.index updated early (in-package, already in whole-feature change_manifest)"
+        ]
+      },
+      {
+        "batch_id": "B5",
+        "actual_files": [
+          ".claude/skills/implement/SKILL.md"
+        ],
+        "build": {
+          "ok": true
+        },
+        "tests": {
+          "ok": true
+        },
+        "behavioral_diff": "Phase 2.5 rendering gains a 'Gate sequence' line summarizing the pipeline for approval.",
+        "deviations": [
+          "renumbered old item 4 (file paths) to item 5"
+        ]
+      },
+      {
+        "batch_id": "B1",
+        "actual_files": [
+          "scripts/generate-agents-md.sh",
+          "scripts/generate-tool-configs.sh"
+        ],
+        "build": {
+          "ok": true
+        },
+        "tests": {
+          "ok": true
+        },
+        "behavioral_diff": "Both generators now lead with a 'Critical Rules (from CLAUDE.md)' section extracted from CLAUDE.md.",
+        "deviations": [
+          ".cursor/rules/ not gitignored - generated test artifacts left untracked, will clean up before commit"
+        ]
+      },
+      {
+        "batch_id": "B3",
+        "actual_files": [
+          ".claude/skills/golden-path-capture/SKILL.md",
+          ".claude/skills/correction-capture/SKILL.md"
+        ],
+        "build": {
+          "ok": true
+        },
+        "tests": {
+          "ok": true
+        },
+        "behavioral_diff": "New golden-path-capture skill for live self-driven struggle-then-success lesson capture, cross-referenced with correction-capture.",
+        "deviations": [
+          "lesson-mining cross-reference skipped (out of scope)",
+          "manifest registration deferred to B7"
+        ]
+      },
+      {
+        "batch_id": "B4",
+        "actual_files": [
+          "scripts/generate-checksums.sh",
+          "scripts/mtk-doctor.sh"
+        ],
+        "build": {
+          "ok": true
+        },
+        "tests": {
+          "ok": true
+        },
+        "behavioral_diff": "Opt-in --sign flag + mtk-doctor verification, advisory when unconfigured.",
+        "deviations": [
+          "added non-fatal openssl-missing branch beyond literal spec, for graceful degradation"
+        ]
+      },
+      {
+        "batch_id": "B6",
+        "actual_files": [
+          "scripts/query-code-index.sh",
+          "tests/hooks/test-query-code-index.sh",
+          ".claude/skills/prior-work-check/SKILL.md",
+          ".claude/skills/code-simplification/SKILL.md"
+        ],
+        "build": {
+          "ok": true
+        },
+        "tests": {
+          "ok": true
+        },
+        "behavioral_diff": "New query-code-index.sh find/callers subcommands, wired into prior-work-check and code-simplification.",
+        "deviations": []
+      },
+      {
+        "batch_id": "B7",
+        "actual_files": [
+          ".claude/manifest.json",
+          ".claude-plugin/plugin.json",
+          ".claude-plugin/marketplace.json",
+          "CHANGELOG.md",
+          "README.md",
+          ".claude/references.index",
+          "checksums.sha256"
+        ],
+        "build": {
+          "ok": true
+        },
+        "tests": {
+          "ok": true
+        },
+        "behavioral_diff": "Version bumped to 7.17.0 across manifest.json, plugin.json, and marketplace.json (drift-amended - discovered mid-batch, in-package auto-fix); CHANGELOG and README updated; indices and checksums regenerated.",
+        "deviations": [
+          "Original B7 subagent dispatch died mid-batch on a session limit (plugin.json bumped, manifest.json/CHANGELOG/README/checksums not yet touched); orchestrator completed the batch directly rather than re-dispatching.",
+          "marketplace.json version was not in the original change_manifest - discovered via validate-toolkit failure, auto-fixed as in-package (no new public contract, security_impact unchanged) per drift rules"
+        ]
+      }
+    ],
+    "review_fixes": [
+      "F-1 header-skip anchored to first cell only",
+      "F-2 grep/git-grep -F fixed-string",
+      "F-3 .sig hygiene doc note",
+      "F-4 trailing --- trimmed in both generators"
+    ],
+    "stage2_review_fixes": [
+      "TR-1/TR-2: added regression-locking fixture rows to test-query-code-index.sh (fixed-string vs regex, header-anchor false-positive)",
+      "silent-failure F1: query-code-index.sh callers now distinguishes git grep exit 1 (no matches) from other exit codes (real tool error)",
+      "TR-5: added tests/hooks/test-release-signing.sh (sign/verify round-trip, tamper detection, mismatched-key detection)",
+      "architecture F001: learnings-schema.md source enum documents golden-path",
+      "architecture F003: toolkit-structure.md S1.4 and CLAUDE.md C0.1 document the marketplace.json triple version sync",
+      "waived: architecture F002 (duplicated extract_critical_rules) - both scripts already documented as standalone/dependency-free by design; a shared lib for 2 call sites of a 12-line function is premature abstraction",
+      "waived: TR-3/TR-4 (low-confidence edge cases, <=55 confidence, narrow low-risk surface)"
+    ]
+  }
+}

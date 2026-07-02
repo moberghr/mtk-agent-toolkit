@@ -73,3 +73,9 @@
 - **Rule:** When a header/help block is rendered by a hard-coded line range, re-count after adding lines — or better, render to a sentinel (`sed -n '/^# Subcommands:/,/^$/p'`) so it never regresses.
 - **Why it matters:** Truncated help hides real capabilities from users with no error.
 - **When it applies:** Any script whose `usage()` slices its own header by absolute line numbers.
+
+## A lesson recorded only in tasks/lessons.md doesn't stop the mistake from recurring — it needs to live in the enforced rule text too
+- **What happened:** The 2026-04-23 lesson "marketplace.json is a third version file the validator checks" was already documented in this file. During the v7.17.0 release batch, the version bump was still done as a two-file operation (manifest.json + plugin.json) — `marketplace.json` was missed again and only caught because `validate-toolkit.sh` failed. The lesson existed but wasn't consulted at spec-writing time, because `CLAUDE.md` C0.1 and `.claude/rules/toolkit-structure.md` S1.4 — the rule text actually read during spec/plan drafting — still only described a two-file sync.
+- **Rule:** When a `tasks/lessons.md` entry documents a gap in a Critical Rule or a numbered rule (Cx.x/S1.x/etc.), don't stop at the lesson — also fix the rule text itself. The lesson describes an incident; the rule is what future work actually reads and enforces.
+- **Why it matters:** `tasks/lessons.md` is read as background context, but the rule text is what's cited and load-bearing at spec time. A lesson that never updates the rule it's about will recur indefinitely — this is the second time this exact mistake shipped.
+- **When it applies:** Any lesson whose root cause is "a documented rule was incomplete," not just "an agent forgot a step." Check whether the referenced rule (CLAUDE.md, `.claude/rules/*.md`) needs a companion fix before closing the lesson.

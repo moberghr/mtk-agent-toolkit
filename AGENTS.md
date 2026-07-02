@@ -17,6 +17,7 @@ flowchart TD
     Q1 -- "Code review /<br/>PR review /<br/>quality audit" --> REV["Load skills:"]
     Q1 -- "Creating or<br/>modifying a skill" --> SKILL["Load skills:"]
     Q1 -- "Engineer corrects<br/>your approach" --> CORR["correction-capture"]
+    Q1 -- "You struggled 2+ times,<br/>then found what works" --> GOLD["golden-path-capture"]
 
     FEAT --> F1["context-engineering"]
     F1 --> F1b["brainstorming<br/><i>if approach unclear</i>"]
@@ -97,6 +98,7 @@ context bloat.
 **Model-invoked skills** (not user-invocable — loaded automatically when triggered):
 - `handoff` — capture session state when context is tight or work is paused mid-stream
 - `correction-capture` — capture engineer corrections as reusable lessons
+- `golden-path-capture` — capture a working approach you found after struggling 2+ times with the same sub-problem in-session (no engineer correction required)
 - `prior-work-check` — before approving a spec or multi-file work, confirm no existing skill/helper/handler/lesson already covers it
 - `subagent-implementation` — replaces incremental-implementation for 3+ batches, 6+ files, or non-none security_impact; one fresh implementer subagent per batch
 - `code-simplification` — after a verified fix/feature, reduce complexity and remove dead code without changing behavior
