@@ -79,3 +79,15 @@
 - **Rule:** When a `tasks/lessons.md` entry documents a gap in a Critical Rule or a numbered rule (Cx.x/S1.x/etc.), don't stop at the lesson — also fix the rule text itself. The lesson describes an incident; the rule is what future work actually reads and enforces.
 - **Why it matters:** `tasks/lessons.md` is read as background context, but the rule text is what's cited and load-bearing at spec time. A lesson that never updates the rule it's about will recur indefinitely — this is the second time this exact mistake shipped.
 - **When it applies:** Any lesson whose root cause is "a documented rule was incomplete," not just "an agent forgot a step." Check whether the referenced rule (CLAUDE.md, `.claude/rules/*.md`) needs a companion fix before closing the lesson.
+
+## bash -c child shells do not inherit pipefail — verification engines report piped failures as success
+- **What happened:** `verify-commands.sh` ran commands via `bash -c "$command"` under a parent `set -euo pipefail`. The child shell starts fresh: `false | tee /dev/null` exited 0 and was reported `verified` — the exact stamp the script exists to guarantee. Caught by silent-failure-hunter with a reproduced fixture.
+- **Rule:** When executing user/config-supplied command strings in a child shell whose exit code you interpret, invoke `bash -o pipefail -c "$cmd"`. Parent-shell `set -o pipefail` never propagates.
+- **Why it matters:** Piping through `tee`/`grep`/`tail` is a common build/test pattern; without child pipefail every such command is un-verifiable, silently.
+- **When it applies:** Any script that runs assembled command strings and records verified/failed status (verify-commands.sh, future CI wrappers, eval executors).
+
+## Skill prose that delegates verification to a script must define the engine-absent and engine-failed branches
+- **What happened:** Three findings in one review wave were the same class: bootstrap's command verification had no branch for `verify-commands.sh` missing (exit 127 → agents improvise silence); converge read weak-claims JSON without checking `verify-claims.sh`'s exit code (engine crash indistinguishable from "zero findings", could read a stale file); `--update-guidelines` hashed curl error pages into the provenance pin (no `-f`, no SHA validation).
+- **Rule:** Every skill step that calls a verification/provenance engine must state explicitly: (1) what happens when the engine is absent (annotate as unverified + report, never silent), (2) what happens when it exits non-zero (abort loudly; never proceed to interpret possibly-stale output), (3) network fetches feeding pins use `curl -fsSL`, validate formats (`^[0-9a-f]{40}$`), and write only after all inputs succeeded.
+- **Why it matters:** A verification layer whose own failure reads as "all clear" is worse than no verification — it converts engine bugs into false confidence, defeating the feature's purpose.
+- **When it applies:** Any SKILL.md step invoking verify-claims.sh / verify-commands.sh / audit-drift-check.sh or fetching pinned external content.

@@ -9,8 +9,10 @@ set -euo pipefail
 #     --out        : JSON output path (default: .claude/.mtk-cache/repomap.json)
 #
 # Strategy (per stack):
-#   dotnet     : signal `defer-to-mcp` so setup-audit drives `mcp__csharp-lsp__csharp_symbols`,
-#                else tree-sitter-c-sharp, else fallback.
+#   dotnet     : signal `defer-to-mcp` so setup-audit drives `mcp__csharp-lsp__csharp_symbols`
+#                for per-file enrichment of the top files found by scan recipes (the tool is
+#                per-file — no solution-wide ranked graph exists), else tree-sitter-c-sharp,
+#                else fallback.
 #   python/ts  : tree-sitter AST walker (scripts/repomap-tree-sitter.py)
 #
 # Output: JSON on disk with schema:
@@ -76,9 +78,11 @@ case "$STACK" in
       exit $?
     fi
     # No local AST parser — signal the audit skill to drive the csharp-lsp MCP if reachable.
-    # A defer-to-mcp stub (not a bare fallback) tells setup-audit it may still get real symbols.
+    # A defer-to-mcp stub (not a bare fallback) tells setup-audit it may still get real
+    # per-file symbol enrichment for the top files found by scan recipes — the tool is
+    # per-file only, there is no solution-wide ranked graph.
     emit_stub "defer-to-mcp" "no-treesitter-csharp"
-    echo "repomap: defer-to-mcp — setup-audit should call mcp__csharp-lsp__csharp_symbols; falls back to llm-only if unreachable (stub written to $OUT)" >&2
+    echo "repomap: defer-to-mcp — setup-audit should call mcp__csharp-lsp__csharp_symbols for per-file enrichment (no solution-wide ranked graph); treat as fallback if unreachable (stub written to $OUT)" >&2
     exit 0
     ;;
   python)

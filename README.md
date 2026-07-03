@@ -6,7 +6,7 @@
 
 **A Claude Code plugin that enforces your team's coding standards, security policies, and review discipline on every AI-generated line of code. Language-agnostic workflows with pluggable tech stacks for .NET, Python, and TypeScript.**
 
-[![Version](https://img.shields.io/badge/version-7.14.0-blue.svg)](https://github.com/moberghr/mtk-agent-toolkit/releases)
+[![Version](https://img.shields.io/badge/version-7.19.0-blue.svg)](https://github.com/moberghr/mtk-agent-toolkit/releases)
 [![Website](https://img.shields.io/badge/website-moberghr.github.io-6d28d9.svg)](https://moberghr.github.io/mtk-agent-toolkit/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-purple.svg)](https://claude.ai/code)
 [![.NET](https://img.shields.io/badge/.NET-8.0%2B-512BD4.svg)](https://dotnet.microsoft.com/)
@@ -50,6 +50,16 @@ MTK closes that gap with **workflow enforcement** (planning, TDD, batched implem
 ---
 
 ## What's New
+
+### v7.19.0 — Setup improvements wave (2026-07-03)
+- **`/mtk-setup --converge`** — new `setup-converge` skill: judges the codebase against agreed `architecture-principles.md`/`conventions.md` and reports drift as graded, read-only work items (blocking/flag/note) — never auto-fixes.
+- **Mechanized detection** — new `scripts/setup-detect.sh --json` consolidates stack/package-manager/RN-Expo/monorepo detection into one tested, read-only script; `setup-bootstrap`/`setup-audit` shrink accordingly and now report mixed-stack repos as `secondary_stacks`.
+- **Verified-commands stamp** — new `scripts/verify-commands.sh` runs the build/test/format commands bootstrap is about to publish and stamps CLAUDE.md's Tech Stack section verified/unverified; opt out with `--no-verify-commands`.
+- **Adaptive interview** — bootstrap now asks up to 3 follow-up questions generated from `setup-audit`'s `[AMBIGUOUS]` findings, persisting resolutions to `setup-answers.json` so they're never re-asked.
+- **Migration-aware bootstrap** — new STEP 2.7 ingests existing `.cursorrules`/Copilot/Windsurf/Cline/Gemini/`AGENTS.md` configs as interview-grade rule candidates, each anchored to its source path.
+- **Product-context artifacts** — new `product.md` (purpose/users/key flows/non-goals) and `decisions.md` (ADR-lite, append-only) generated at STEP 3.8 and never overwritten.
+- **CI staleness gate template** — new `templates/ci/mtk-staleness-check.yml`; `setup-bootstrap` offers to install it on GitHub-hosted repos.
+- **Smaller fixes** — `--update-guidelines` now resolves the coding-guidelines pin correctly from marketplace installs; generation rules point at canonical files (`package.json`, lockfiles) instead of restating version facts.
 
 ### v7.18.0 — Setup refresh loop (2026-07-03)
 - **`/mtk-setup --refresh` (+ `--dry-run`)** — new `setup-refresh` skill: drift-scoped refresh of ALL generated rules and findings (architecture-principles, conventions, detected-tools, reference pruning, AGENTS.md/tool configs, indexes), not just the audit doc.
@@ -243,6 +253,8 @@ Two entry points. Everything else is a workflow routed through `/mtk`.
 | Promote a personal lesson to the team | `/promote-lesson` | Move from gitignored `.claude/lessons/personal.md` into committed `tasks/lessons.md` |
 | Re-audit architecture | `/mtk-setup --audit` | Refreshes `architecture-principles.md` |
 | Unify multi-repo audits | `/mtk-setup --merge` | Merges per-repo audits into team-wide standard |
+| Judge code against agreed principles | `/mtk-setup --converge` | Reports codebase drift from `architecture-principles.md`/`conventions.md` as graded work items (blocking/flag/note) |
+| Bootstrap without command verification | `/mtk-setup --no-verify-commands` | Skips STEP 3.5a's build/test/format execution during CLAUDE.md generation |
 
 For a real-world walkthrough of a `/mtk <feature>` session, see [Examples](#examples). For copy-paste project templates, see [`examples/`](examples/).
 
@@ -516,6 +528,16 @@ MTK is a Claude Code plugin. Use the plugin marketplace to upgrade — there is 
 
 ```bash
 /plugin update mtk@moberg-plugins
+```
+
+### CI staleness gate
+
+`/mtk-setup --check` also ships as a GitHub Actions workflow. `setup-bootstrap` offers to install `templates/ci/mtk-staleness-check.yml` to `.github/workflows/mtk-staleness-check.yml` on repos that host on GitHub — never overwriting an existing workflow file, and skipped silently under `--non-interactive`. The workflow checks out the toolkit repo pinned to the version in your `.claude/mtk-version.json` (never vendoring MTK scripts into your repo) and runs `scripts/setup-refresh-plan.sh --check`: exit 0 is fresh, exit 1 fails the job and posts the plan table to the job summary, exit 2 is a usage/setup error.
+
+A stale PR fails with:
+
+```
+::error::run /mtk-setup --refresh to reconcile
 ```
 
 ---

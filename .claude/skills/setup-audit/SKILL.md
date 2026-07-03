@@ -117,13 +117,13 @@ After re-run merge, update `.claude/.mtk-cache/v${CURRENT_VERSION}/` per the con
 Read `.claude/tech-stack` to determine the active stack. If missing, detect it:
 
 ```bash
-DOTNET=$(find . -maxdepth 3 -name "*.csproj" -o -name "*.sln" -o -name "*.slnx" 2>/dev/null | head -1)
-PYTHON=$(find . -maxdepth 2 -name "pyproject.toml" -o -name "setup.py" -o -name "requirements.txt" 2>/dev/null | head -1)
+bash scripts/setup-detect.sh --json
 ```
+Read `stacks` (array) and `primary_candidate` from the output.
 
-If multiple stacks detected, ask the engineer which to audit first. Multi-stack repos may need multiple audits.
+If multiple stacks detected (`stacks` has more than one entry), ask the engineer which to audit first. Multi-stack repos may need multiple audits.
 
-If no supported stack detected, stop and tell the engineer to run `/mtk-setup` first or add a tech stack skill.
+If no supported stack detected (`stacks` is empty), stop and tell the engineer to run `/mtk-setup` first or add a tech stack skill.
 
 Then load `.claude/skills/tech-stack-{stack}/SKILL.md`. The `## Scan Recipes` section provides the bash commands for that stack.
 
@@ -141,7 +141,7 @@ Read the resulting JSON. The `fit` field tells you the quality tier:
 |---|---|---|
 | `full` | All symbols fit within budget | Cite freely — full graph available |
 | `ranked` | Top-N by in-edge count (PageRank-ish) | Cite top symbols; acknowledge truncation in provenance section |
-| `defer-to-mcp` | .NET only — call `mcp__csharp-lsp__csharp_symbols` directly to enrich | Use MCP tool for the ranked pass, then cite |
+| `defer-to-mcp` | .NET only — attempt csharp-lsp enrichment for the top files found by scan recipes (the tool is per-file — no solution-wide ranked graph exists); if the MCP server is unreachable or the workspace fails to load, treat exactly as `fallback` and disclose in Provenance | Use MCP tool for the ranked pass, then cite |
 | `fallback` | No tree-sitter / no LSP available | Audit degrades to scan-recipes-only; **provenance section must state this** |
 
 When `fit != "fallback"`, the audit prompt changes character — instead of "read the codebase and extract principles", become:
@@ -328,6 +328,7 @@ Write to `.claude/detected-tools.json`:
 ```json
 {
   "stack": "typescript | python | dotnet",
+  "secondary_stacks": ["dotnet" | "python" | "typescript"] | [],
   "framework": ["nextjs-pages" | "nextjs-app" | "express" | "fastapi" | "fastify" | "nest" | "tauri" | "aspnetcore" | "flask" | "django" | ...],
   "data_layer": ["prismic" | "prisma" | "drizzle" | "tanstack-query" | "sqlalchemy" | "efcore" | "dapper" | "raw-sql" | ...],
   "test_framework": ["vitest" | "jest" | "playwright" | "cypress" | "pytest" | "xunit" | "nunit"] | [],
@@ -339,6 +340,7 @@ Write to `.claude/detected-tools.json`:
 
 **Rules:**
 - Use empty arrays (`[]`) when nothing is detected — never use `null` or omit keys. `setup-bootstrap` treats absence as "unknown" and falls back to "ship everything", which is the current bloat behavior we are fixing.
+- `secondary_stacks`: lowercase stack ids only (`dotnet` / `python` / `typescript`); empty array when single-stack; populated from `setup-detect.sh --json`'s `stacks` array minus the primary `stack` (F11).
 - Use lowercase, hyphenated identifiers. These match the `tools:` arrays in stack reference frontmatter.
 - Detection sources: Step 1 scan recipes (project structure, data layer, infrastructure, testing patterns), `package.json` / `pyproject.toml` / `*.csproj` dependency lists, lockfiles, and config files (`next.config.js`, `vitest.config.ts`, `Startup.cs`, etc.).
 - When uncertain, include the candidate AND add a note in `additional` (e.g., `"react-query-v3-limited"`) so reviewers can verify.
@@ -472,6 +474,19 @@ Add a legend block at the top of `architecture-principles.md` (right after the h
 ```
 
 Aim for `[EXTRACTED]` whenever you can; downgrade to `[INFERRED]` only when fewer than 100% of cases match. Use `[AMBIGUOUS]` sparingly — it's an explicit "team decision needed" marker, not a way to dodge analysis.
+
+### Emit Ambiguities Manifest
+
+Every `[AMBIGUOUS]` line the audit writes ALSO lands as an entry in `.claude/.mtk-cache/ambiguities.json`, regenerated wholesale on every audit run (stale file replaced, never appended to):
+
+```json
+{"version":1,"generated":"<ISO8601_UTC>","ambiguities":[{"claim":"<the claim text>","competing_forms":[{"form":"...","count":N},{"form":"...","count":M}],"evidence":"<the line's evidence citation>","doc":"architecture-principles.md|conventions.md","anchor":"<section heading or file:line the claim cites>"}]}
+```
+
+- One entry per `[AMBIGUOUS]` line emitted this run: `claim` is the line's text, `evidence` its citation, `doc` the file it lives in, `anchor` the section heading (or file:line) it cites.
+- `competing_forms` counts come from the majority-verify counting this audit already performs (§ Confidence Tagging above) — never invented.
+- No `[AMBIGUOUS]` lines this run → file absent, or `"ambiguities": []`, both read by consumers as "nothing ambiguous."
+- Consumed by `setup-bootstrap` STEP 2.5's adaptive interview.
 
 ## STEP 3.5: Provenance Section (mandatory)
 

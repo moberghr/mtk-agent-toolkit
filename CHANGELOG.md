@@ -2,6 +2,44 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.19.0] - 2026-07-03
+
+### Added — Setup improvements wave
+
+A competitive analysis of the setup/bootstrap landscape plus a same-session local review surfaced 11 items: three local fixes, four Tier-2 borrows, and four Tier-3 borrows. This release ships all 11.
+
+- **`--update-guidelines` works from marketplace installs.** `mtk-setup` now resolves the coding-guidelines pin against `$CLAUDE_PLUGIN_ROOT` when present, and writes the updated pin to the repo-local `.claude/mtk-version.json` instead of the plugin cache; the report line states which file carries the update.
+- **Mechanized detection (`scripts/setup-detect.sh --json`).** Read-only script consolidating stack markers, package-manager lockfile priority, React Native/Expo markers, and monorepo classification (workspace globs, package counts, 20-package cap) into one tested entry point; `setup-bootstrap`/`setup-audit` shrink accordingly, reporting all detected stacks instead of just the first.
+- **Eval coverage for the setup family.** New `evals/setup-bootstrap/` (grader + clean-bootstrap and rerun-preservation scenarios), discoverable via `scripts/run-evals.sh`.
+- **`/mtk-setup --converge`.** New read-only `setup-converge` skill — the inverse of `--refresh` — treats `architecture-principles.md`/`conventions.md` as normative and reports where the codebase drifted as graded work items (blocking/flag/note), never auto-fixing; writes stay under `.claude/.mtk-cache/` unless the engineer explicitly approves a `tasks/todo.md` append.
+- **Adaptive interview from `[AMBIGUOUS]` findings.** `setup-audit` emits `.claude/.mtk-cache/ambiguities.json`; `setup-bootstrap` STEP 2.5 asks up to 3 additional questions ranked by hit count, persists resolutions under `resolved_ambiguities` in `setup-answers.json`, and never re-asks a resolved anchor.
+- **Migration-aware bootstrap.** New STEP 2.7 ingests existing `.cursorrules`/`.cursor/rules`/Copilot/Windsurf/Cline/Gemini/`AGENTS.md`/`CLAUDE.md` configs as interview-grade rule candidates anchored to their source path, deduped against scan findings with contradictions routed to Needs review.
+- **Verified-commands stamp.** New `scripts/verify-commands.sh` runs the build/test/format commands bootstrap is about to publish (timeboxed, list/collect-only test mode, check-mode formatting) and stamps CLAUDE.md's Tech Stack section verified/unverified; `--no-verify-commands` opts out and non-interactive runs never block on a failing command.
+- **Live file references over restated facts.** Generation rules now point at canonical machine-readable files (`package.json`, lockfiles, `Directory.Packages.props`) instead of restating version/dependency facts inline, shrinking the dependency-rescan staleness surface.
+- **Product-context artifacts.** New `.claude/references/product-context.md` plus bootstrap STEP 3.8 generate `product.md` (purpose/users/key flows/non-goals, ≤40 lines) and seed `decisions.md` (ADR-lite, append-only); both join the never-overwrite preservation set.
+- **CI staleness gate template.** New `templates/ci/mtk-staleness-check.yml` pins the toolkit checkout to the installed version and fails the job on drift; `setup-bootstrap` STEP 4 offers to install it on GitHub-hosted repos.
+- **Minimal mixed-stack support.** `secondary_stacks` recorded in `detected-tools.json`; bootstrap runs secondary-stack scan recipes for conventions and reference pruning, with the primary-stack-only workflow-skill limitation documented in both skills.
+
+### Tests
+
+- New `tests/hooks/test-setup-detect.sh` and `tests/hooks/test-verify-commands.sh` — fixture coverage for the new detection and command-verification scripts.
+- New `tests/pressure-tests/setup-converge.md` — adversarial scenarios pressing converge to rewrite docs, auto-append todos, or claim unanchored violations.
+
+### Hardened (dogfood findings from two production bootstrap runs)
+- secret-scan.sh detects URL-embedded credentials (`scheme://user:pass@host`) with placeholder exemptions + dedicated test
+- generate-agents-md.sh enforces its 60–120-line budget (headings + distillation + pointers; 140-line hard ceiling) + dedicated test
+- Cross-agent config generation is now opt-in: interactive question, AGENTS.md-only default under --non-interactive
+- Settings Merge defines the fresh-bootstrap path ($CLAUDE_PLUGIN_ROOT-relative hook paths) and a permission-blocked fallback (settings.json.mtk-proposed, Needs review)
+- tech-stack-dotnet: dotnet publish deny-only (was contradictorily allowed+denied); dotnet test --list-tests documented for command verification
+- verify-references.sh exempts known-optional boilerplate paths (settings.local.json etc.)
+- setup-audit/repomap: defer-to-mcp documented as per-file enrichment; unreachable LSP treated as fallback with Provenance disclosure
+
+### Hardened (wave 2)
+- verify-claims.sh: DOC_SLUG now derives from the repo-root-relative path (falling back to basename outside the repo) so same-basename docs in different directories — e.g. per-package CLAUDE.md files — no longer clobber each other's weak-claims cache; dedicated regression test
+- command-verification.md: new Tree-mutation guard — commands that mutate the tree as a side effect (e.g. a lockfile touched by `dotnet build`) are restored via `git checkout --` and reported in STEP 5
+- setup-detect.sh: RN/Expo detection now also scans monorepo package dirs and first-level sibling package.json files (maxdepth 2, excluding node_modules), not just the root package.json; dedicated regression fixture
+- tech-stack-dotnet: `dotnet test --list-tests` documentation is now conditional on `.sln` vs `.slnx`/Microsoft.Testing.Platform, matching the `--solution` flag Microsoft.Testing.Platform requires
+
 ## [7.18.0] - 2026-07-03
 
 ### Added — Setup refresh loop

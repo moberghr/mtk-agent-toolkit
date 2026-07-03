@@ -4,9 +4,20 @@ set -euo pipefail
 # generate-agents-md.sh — Generate a portable AGENTS.md for cross-agent compatibility
 # This file is read by Cursor, GitHub Copilot, Gemini CLI, Codex, and other AI coding tools.
 # Run after setup-bootstrap or setup-audit to create/update the cross-agent config.
+#
+# Composition strategy (DF-6): every source reference/rules file is
+# summarized — its own H1/H2 headings, a 1-2 line distillation, and a
+# `See <path>` pointer — never concatenated in full. The one exception is
+# CLAUDE.md's "Critical Rules" section, copied verbatim (it is the line
+# budget's rightful spender). A hard budget check keeps the composed output
+# inside the 60-120 line target, dropping the lowest-priority sections first
+# (stack supplements, then shared checklists) and never emitting more than
+# 140 lines total.
 
 REFS_DIR=".claude/references"
 TECH_STACK_FILE=".claude/tech-stack"
+SOFT_BUDGET=120
+HARD_CEILING=140
 
 # Marker line written into every generated file. Used to detect whether an
 # existing AGENTS.md was produced by this script (safe to overwrite) or is a
@@ -22,8 +33,10 @@ while [ $# -gt 0 ]; do
       cat <<'EOF'
 Usage: generate-agents-md.sh [--force] [output-file]
 
-Generates AGENTS.md by concatenating .claude/references/*.md so non-Claude-Code
-agents (Cursor, Codex, Copilot) can read project conventions in one file.
+Generates AGENTS.md by summarizing .claude/references/*.md (headings +
+distillation + pointer, never full bodies) so non-Claude-Code agents
+(Cursor, Codex, Copilot) can read project conventions in one budget-capped
+file (60-120 lines, 140 hard ceiling).
 
 Safety: refuses to overwrite an existing AGENTS.md unless that file contains
 this script's auto-generated marker. Use --force to override (only when you
@@ -141,6 +154,54 @@ extract_critical_rules() {
   fi
 }
 
+# Extract the `description:` frontmatter field, if present (used as the
+# short distillation for a reference file's summary section).
+extract_frontmatter_description() {
+  local file="$1"
+  awk '
+    NR == 1 && $0 == "---" { infm = 1; next }
+    infm && $0 == "---" { exit }
+    infm && /^description:/ {
+      sub(/^description:[ \t]*/, "")
+      gsub(/^"|"$/, "")
+      print
+      exit
+    }
+  ' "$file" 2>/dev/null || true
+}
+
+# Summarize a reference/rules file for AGENTS.md: its own H1/H2 headings, a
+# short distillation (frontmatter description, falling back to the first
+# body paragraph), and a `See <path>` pointer. Never the full body (DF-6).
+build_summary_section() {
+  local file="$1" heading="$2" h1 h2_list distillation
+  [ -f "$file" ] || return 0
+
+  h1="$(grep -m1 '^# ' "$file" 2>/dev/null | sed 's/^# *//')" || true
+  h2_list="$(grep '^## ' "$file" 2>/dev/null | sed 's/^## *//' | paste -sd '|' - 2>/dev/null | sed 's/|/ · /g')" || true
+
+  distillation="$(extract_frontmatter_description "$file")"
+  if [ -z "$distillation" ]; then
+    distillation="$(strip_frontmatter_and_title "$file" | awk 'NF { print; exit }')" || true
+  fi
+
+  printf '## %s\n\n' "$heading"
+  if [ -n "$h1" ] || [ -n "$h2_list" ]; then
+    printf '**Headings:** %s%s%s\n\n' "$h1" "${h1:+ — }" "$h2_list"
+  fi
+  if [ -n "$distillation" ]; then
+    printf '%s\n\n' "$distillation"
+  fi
+  # shellcheck disable=SC2016 # backticks are literal markdown, %s is the printf substitution
+  printf 'See `%s`.' "$file"
+}
+
+# Number of lines in a string (command substitutions strip trailing
+# newlines, so re-add exactly one before counting).
+count_lines() {
+  printf '%s\n' "$1" | wc -l | tr -d ' '
+}
+
 # --- Detect active tech stack ---
 
 stack=""
@@ -155,93 +216,181 @@ if [ -f "$OUTPUT_FILE" ]; then
   custom_sections="$(awk '/^## Custom:/{found=1} found{print}' "$OUTPUT_FILE")" || true
 fi
 
-# --- Generate ---
+# --- Header (always present, never subject to the drop budget) ---
+
+header="$(printf '# AGENTS.md\n\n%s\n> This file provides project conventions to all AI coding assistants.' "$GEN_MARKER")"
+header_lines="$(count_lines "$header")"
+
+# --- Build sections in display order ---
+# sec_names / sec_content / sec_droppri run in parallel (bash 3.2 compatible —
+# no associative arrays). sec_droppri: 0 = never dropped (Critical Rules,
+# Architecture Principles, Coding Guidelines — DF-6's named "top priority"
+# sections); 10 = stack supplements (dropped first); 20-23 = shared
+# checklists (dropped second, lowest-value-first: Domain, Performance,
+# Testing, Security kept longest).
+
+sec_names=()
+sec_content=()
+sec_droppri=()
+
+if [ -f "CLAUDE.md" ]; then
+  critical_rules="$(extract_critical_rules "CLAUDE.md")"
+  if [ -n "$critical_rules" ]; then
+    cr_body="$(printf '%s\n' "$critical_rules" | collapse_blank_lines)"
+    sec_names+=("Critical Rules (from CLAUDE.md)")
+    sec_content+=("$(printf '## Critical Rules (from CLAUDE.md)\n\n%s' "$cr_body")")
+    sec_droppri+=(0)
+  fi
+fi
+
+if [ -f "$REFS_DIR/architecture-principles.md" ]; then
+  sec_names+=("Architecture Principles")
+  sec_content+=("$(build_summary_section "$REFS_DIR/architecture-principles.md" "Architecture Principles")")
+  sec_droppri+=(0)
+fi
+
+if [ -n "$stack" ] && [ -f "$REFS_DIR/${stack}/coding-guidelines.md" ]; then
+  cg_body="$(build_summary_section "$REFS_DIR/${stack}/coding-guidelines.md" "Coding Guidelines ($stack)")"
+  # shellcheck disable=SC2016 # backticks are literal markdown, %s is the printf substitution
+  cg_body="$(printf '%s\nProject-specific overrides: `.claude/rules/coding-style.md`.' "$cg_body")"
+  sec_names+=("Coding Guidelines ($stack)")
+  sec_content+=("$cg_body")
+  sec_droppri+=(0)
+fi
+
+if [ -f "$REFS_DIR/security-checklist.md" ]; then
+  sec_names+=("Security Requirements")
+  sec_content+=("$(build_summary_section "$REFS_DIR/security-checklist.md" "Security Requirements")")
+  sec_droppri+=(23)
+fi
+
+if [ -f "$REFS_DIR/testing-patterns.md" ]; then
+  sec_names+=("Testing Expectations")
+  sec_content+=("$(build_summary_section "$REFS_DIR/testing-patterns.md" "Testing Expectations")")
+  sec_droppri+=(22)
+fi
+
+if [ -f "$REFS_DIR/performance-checklist.md" ]; then
+  sec_names+=("Performance Guidelines")
+  sec_content+=("$(build_summary_section "$REFS_DIR/performance-checklist.md" "Performance Guidelines")")
+  sec_droppri+=(21)
+fi
+
+# Stack-specific supplements (dropped first — lowest priority tier).
+if [ -n "$stack" ] && [ -d "$REFS_DIR/${stack}" ]; then
+  for supplement in "$REFS_DIR/${stack}/"*.md; do
+    [ -f "$supplement" ] || continue
+    basename_file="$(basename "$supplement")"
+    # Skip coding-guidelines — already included above
+    [ "$basename_file" = "coding-guidelines.md" ] && continue
+    section_name="$(echo "$basename_file" | sed 's/\.md$//' | sed 's/-/ /g')"
+    section_name="$(echo "$section_name" | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2)} 1')"
+    display_stack="$(echo "$stack" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')"
+    heading="$display_stack — $section_name"
+    sec_names+=("$heading")
+    sec_content+=("$(build_summary_section "$supplement" "$heading")")
+    sec_droppri+=(10)
+  done
+fi
+
+# Domain supplement (if present) — shared-checklist tier, dropped before the
+# other shared checklists (most niche of the four).
+if [ -f "$REFS_DIR/domain-finance.md" ]; then
+  sec_names+=("Domain — Finance")
+  sec_content+=("$(build_summary_section "$REFS_DIR/domain-finance.md" "Domain — Finance")")
+  sec_droppri+=(20)
+fi
+
+# --- Budget check: drop lowest-priority sections until <= SOFT_BUDGET ---
+# (estimate includes the header, the blank line after it, and one blank line
+# after every kept section — the same shape the final assembly writes).
+
+n=${#sec_names[@]}
+sec_lines=()
+sec_dropped=()
+i=0
+while [ "$i" -lt "$n" ]; do
+  sec_lines+=("$(count_lines "${sec_content[$i]}")")
+  sec_dropped+=(0)
+  i=$((i + 1))
+done
+
+total=$((header_lines + 1))
+i=0
+while [ "$i" -lt "$n" ]; do
+  total=$((total + sec_lines[i] + 1))
+  i=$((i + 1))
+done
+
+drop_candidates=()
+i=0
+while [ "$i" -lt "$n" ]; do
+  if [ "${sec_droppri[$i]}" -gt 0 ]; then
+    drop_candidates+=("${sec_droppri[$i]}:$i")
+  fi
+  i=$((i + 1))
+done
+
+dropped_names=()
+if [ "$total" -gt "$SOFT_BUDGET" ] && [ "${#drop_candidates[@]}" -gt 0 ]; then
+  sorted_candidates="$(printf '%s\n' "${drop_candidates[@]}" | sort -t: -k1,1n -k2,2n)"
+  while IFS= read -r candidate; do
+    [ "$total" -le "$SOFT_BUDGET" ] && break
+    [ -z "$candidate" ] && continue
+    idx="${candidate#*:}"
+    sec_dropped[idx]=1
+    total=$((total - sec_lines[idx] - 1))
+    dropped_names+=("${sec_names[$idx]}")
+  done <<EOF
+$sorted_candidates
+EOF
+fi
+
+if [ "${#dropped_names[@]}" -gt 0 ]; then
+  total=$((total + 1))
+fi
+
+# --- Assemble generated body (everything except preserved custom sections) ---
+
+dropped_csv=""
+if [ "${#dropped_names[@]}" -gt 0 ]; then
+  dropped_csv="$(printf ', %s' "${dropped_names[@]}")"
+  dropped_csv="${dropped_csv#, }"
+fi
+
+generated_body="$(
+  printf '%s\n\n' "$header"
+  i=0
+  while [ "$i" -lt "$n" ]; do
+    if [ "${sec_dropped[$i]}" -ne 1 ]; then
+      printf '%s\n\n' "${sec_content[$i]}"
+    fi
+    i=$((i + 1))
+  done
+  if [ -n "$dropped_csv" ]; then
+    printf '<!-- sections summarized to fit the %d-line budget: %s -->\n' "$SOFT_BUDGET" "$dropped_csv"
+  fi
+)"
+
+# --- Hard ceiling: the script must never emit more than HARD_CEILING lines
+# of generated content (comment included), even if the non-droppable
+# sections (Critical Rules, Architecture, Coding Guidelines, header) alone
+# exceed it.
+
+gen_lines="$(count_lines "$generated_body")"
+if [ "$gen_lines" -gt "$HARD_CEILING" ]; then
+  truncated="$(printf '%s\n' "$generated_body" | head -n $((HARD_CEILING - 1)))"
+  note="${dropped_csv:-content truncated to the ${HARD_CEILING}-line hard ceiling}"
+  generated_body="$(printf '%s\n<!-- sections summarized to fit the %d-line budget: %s -->' "$truncated" "$SOFT_BUDGET" "$note")"
+fi
+
+# --- Write ---
 
 {
-  printf '# AGENTS.md\n\n'
-  printf '%s\n' "$GEN_MARKER"
-  printf '> This file provides project conventions to all AI coding assistants.\n\n'
-
-  # Critical Rules — pulled from the project's CLAUDE.md. Highest-value content
-  # for tools with no hook enforcement, so it leads the file. Skipped silently
-  # if CLAUDE.md has no matching heading.
-  if [ -f "CLAUDE.md" ]; then
-    critical_rules="$(extract_critical_rules "CLAUDE.md")"
-    if [ -n "$critical_rules" ]; then
-      printf '## Critical Rules (from CLAUDE.md)\n\n'
-      printf '%s\n' "$critical_rules" | collapse_blank_lines
-      printf '\n'
-    fi
-  fi
-
-  # Architecture Principles
-  if [ -f "$REFS_DIR/architecture-principles.md" ]; then
-    printf '## Architecture Principles\n\n'
-    strip_frontmatter_and_title "$REFS_DIR/architecture-principles.md" | collapse_blank_lines
-    printf '\n'
-  fi
-
-  # Coding Guidelines — emit as pointer, not full body.
-  # Inlining 800+ lines of upstream guidelines bloats AGENTS.md with no benefit;
-  # consumers can read the referenced file directly when they need the full text.
-  if [ -n "$stack" ] && [ -f "$REFS_DIR/${stack}/coding-guidelines.md" ]; then
-    printf '## Coding Guidelines (%s)\n\n' "$stack"
-    printf 'Full guide: `.claude/references/%s/coding-guidelines.md`.\n' "$stack"
-    printf 'Project-specific overrides: `.claude/rules/coding-style.md`.\n\n'
-  fi
-
-  # Security Requirements
-  if [ -f "$REFS_DIR/security-checklist.md" ]; then
-    printf '## Security Requirements\n\n'
-    strip_frontmatter_and_title "$REFS_DIR/security-checklist.md" | collapse_blank_lines
-    printf '\n'
-  fi
-
-  # Testing Expectations
-  if [ -f "$REFS_DIR/testing-patterns.md" ]; then
-    printf '## Testing Expectations\n\n'
-    strip_frontmatter_and_title "$REFS_DIR/testing-patterns.md" | collapse_blank_lines
-    printf '\n'
-  fi
-
-  # Performance Guidelines
-  if [ -f "$REFS_DIR/performance-checklist.md" ]; then
-    printf '## Performance Guidelines\n\n'
-    strip_frontmatter_and_title "$REFS_DIR/performance-checklist.md" | collapse_blank_lines
-    printf '\n'
-  fi
-
-  # Stack-specific supplements (if they exist)
-  if [ -n "$stack" ] && [ -d "$REFS_DIR/${stack}" ]; then
-    for supplement in "$REFS_DIR/${stack}/"*.md; do
-      [ -f "$supplement" ] || continue
-      basename_file="$(basename "$supplement")"
-      # Skip coding-guidelines — already included above
-      [ "$basename_file" = "coding-guidelines.md" ] && continue
-      # Derive a section name from the filename
-      section_name="$(echo "$basename_file" | sed 's/\.md$//' | sed 's/-/ /g')"
-      # Capitalize each word (portable: use sed, not \u which is GNU-only)
-      section_name="$(echo "$section_name" | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2)} 1')"
-      # Capitalize stack name for display
-      display_stack="$(echo "$stack" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')"
-      printf '## %s — %s\n\n' "$display_stack" "$section_name"
-      strip_frontmatter_and_title "$supplement" | collapse_blank_lines
-      printf '\n'
-    done
-  fi
-
-  # Domain supplement (if present)
-  if [ -f "$REFS_DIR/domain-finance.md" ]; then
-    printf '## Domain — Finance\n\n'
-    strip_frontmatter_and_title "$REFS_DIR/domain-finance.md" | collapse_blank_lines
-    printf '\n'
-  fi
-
-  # Append preserved custom sections
+  printf '%s\n' "$generated_body"
   if [ -n "$custom_sections" ]; then
-    printf '%s\n' "$custom_sections"
+    printf '\n%s\n' "$custom_sections"
   fi
-
 } > "$OUTPUT_FILE"
 
 line_count="$(wc -l < "$OUTPUT_FILE" | tr -d ' ')"

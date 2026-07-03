@@ -19,7 +19,7 @@ Always project-relative (never prefixed): `CLAUDE.md`, `.claude/tech-stack`, `.c
 
 ---
 
-This skill re-runs setup's generators on an already-bootstrapped repo. It never re-audits blind: it consults `scripts/setup-refresh-plan.sh` for a per-artifact staleness verdict, regenerates only what drifted, and — critically — never silently overwrites a file an engineer has hand-edited. Engineer-edited files go through the diff-proposal contract in `.claude/references/regen-diff-contract.md`, the same contract `setup-audit` and `setup-bootstrap` use for their own re-run merges.
+This skill re-runs setup's generators on an already-bootstrapped repo. It never re-audits blind: it consults `scripts/setup-refresh-plan.sh` for a per-artifact staleness verdict, regenerates only what drifted, and — critically — never silently overwrites a file an engineer has hand-edited. Engineer-edited files go through the diff-proposal contract in `.claude/references/regen-diff-contract.md`, the same contract `setup-audit` and `setup-bootstrap` use for their own re-run merges. This is the inverse of `.claude/skills/setup-converge/SKILL.md`: refresh brings the docs back in line with the code, while converge treats the docs as normative and reports where the *code* has drifted from them.
 
 ## File Preservation Policy
 

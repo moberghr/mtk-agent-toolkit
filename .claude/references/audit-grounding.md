@@ -123,3 +123,11 @@ mtk-version: 7.8.0
 ## 7. Eat our own dogfood
 
 `setup-audit` MUST run `scripts/verify-claims.sh` on the doc it just wrote. A passing audit is not "no weak claims" — it's "weak claims surfaced and reported." Refusing to surface them is the failure mode this whole reference exists to prevent.
+
+## 8. Live references over restated facts
+
+Version and dependency facts (framework/runtime version, package-manager choice, dependency lists) that live in a canonical machine-readable file are **cited**, not restated: `see \`package.json\`` / `see \`Directory.Packages.props\`` rather than inlining the value. A restated version string rots the moment the manifest changes; a pointer never does.
+
+- **The verbatim-quote rule from `setup-audit` STEP 1 still applies where a version IS stated.** If a version genuinely needs to appear inline (the instruction budget requires it), it must be the actual value read from the manifest at generation time — never inferred, rounded, or guessed.
+- **Evidence anchor:** cite the manifest file itself (e.g. `Directory.Packages.props`, `package.json`, `pyproject.toml`) as the evidence for any version/dependency claim, whether pointed-at or (exceptionally) inlined.
+- `@`-import form only for files ≤~50 lines (D6) — never `@`-import a manifest or lockfile; that inlines the whole file into context and defeats the pointer's purpose.
