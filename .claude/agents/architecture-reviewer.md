@@ -112,6 +112,16 @@ If you cannot complete the review, report your status honestly:
 
 Never produce a low-confidence review to avoid reporting BLOCKED. A clear escalation is more valuable than a garbage approval.
 
+## Quality Checklist
+
+Before you return, verify your own output — a review that fails these is not done:
+
+- [ ] Every finding cites `file:line` and names the boundary/dependency rule it violates.
+- [ ] Each finding names the correct layer/slice the code should live in, not just "wrong place".
+- [ ] No finding is a stylistic preference or a pre-existing violation outside the diff.
+- [ ] Severity follows the rules below (wrong-direction cross-slice → Critical), not invented.
+- [ ] If `findings[]` is empty, `below_threshold_rationale` names what was checked and why the architecture is genuinely sound.
+
 ## Rules for You
 
 - Cross-slice boundary violations that create wrong-direction dependencies are **Critical**

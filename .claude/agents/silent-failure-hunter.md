@@ -195,6 +195,16 @@ Do not emit "what's good" prose — other reviewers cover that. Stay narrow.
 
 A clear escalation beats a guess.
 
+## Quality Checklist
+
+Before you return, verify your own output — a review that fails these is not done:
+
+- [ ] Every finding matches a pattern in the Step 3 catalogue; anything that doesn't is not your finding.
+- [ ] Each finding passes the decision rule: removing the silent handler would surface a real runtime bug.
+- [ ] Severity comes from the Step 4 path-based table (audited path → Critical), not the pattern shape alone.
+- [ ] No finding is on an FP-Discipline trap (logging-only catch, Result-pattern return, defensive render `?.`, top-level handler).
+- [ ] Each finding cites its `failure_mode` F-code where it maps to F1/F2/F9, and `category: "error-handling"`.
+
 ## Rules for You
 
 - One lens only. Do not flag missing tests (test-reviewer's job), wrong

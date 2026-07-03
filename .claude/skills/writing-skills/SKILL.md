@@ -60,6 +60,9 @@ Before writing any skill content:
 5. **Keep it under 500 lines.** If the skill needs more, use progressive disclosure:
    - Core workflow in SKILL.md
    - Reference material in separate files loaded on demand
+   - The SKILL.md is a **navigation layer, not a payload** (S2.26): it holds the
+     decision logic and links to references — it does not inline detail it could
+     point to. The budget is the ceiling, not the target.
 
 ### Phase 3: Test Under Pressure
 

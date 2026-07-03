@@ -49,6 +49,7 @@ axes:
 
 - **S2.10** Skills should only load references they need for the current phase. Don't front-load all references.
 - **S2.11** Commands that orchestrate multiple skills should specify which references each phase needs.
+- **S2.26** A SKILL.md is a **navigation layer, not a payload.** It carries decision logic (when to act, which phase, which reference) and routes to `.claude/references/**` for detail — it must not inline reference material it could link. If a block is content the skill needs only sometimes, move it to a reference file and point at it. The line budgets the validator enforces (500 workflow / 1000 phase-based) are the ceiling, not the target.
 
 ## Toolset Scoping
 

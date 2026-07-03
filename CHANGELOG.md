@@ -2,7 +2,22 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [7.19.0] - 2026-07-03
+## [7.20.0] - 2026-07-03
+
+### Added — Borrow wave 1: skill & subagent authoring hardening
+
+First of three minor releases mining the `awesome-agent-cortex` neighborhood (triage in `docs/plans/2026-07-03-agent-cortex-borrow-triage.md`). Batch-1 finding: the ecosystem's *content* (persona agents, thin skills) is behind MTK, so this wave takes only conventions and validator capability — the reusable parts.
+
+- **Navigation-only SKILL.md rule (S2.26).** New rule states a SKILL.md is a navigation layer, not a payload — it holds decision logic and links to `.claude/references/**` rather than inlining detail. Mirrored into `writing-skills` Phase 2. (Borrow: wshobson/agents progressive-disclosure contract.)
+- **Least-privilege agent lint.** `validate-toolkit.sh` now advises (WARN, non-blocking) when a `.claude/agents/*.md` declares neither `required-toolsets` nor `allowed-tools`, or grants a mutating tool (`Edit`/`Write`/`MultiEdit`/`NotebookEdit`) to a read-only reviewer. (Borrow: VoltAgent tool-matrix-by-role.)
+- **Frontmatter enum sanity.** `validate-toolkit.sh` advises on unexpected `model:` (expected `opus|sonnet|haiku|inherit`) and `effort:` (`low|medium|high|max`) tiers in agent frontmatter, catching typo'd tiers early. (Borrow: awesome-copilot schema-validated frontmatter, adapted to bash/advisory.)
+- **Self quality-checklists in reviewer agents.** `compliance-reviewer`, `test-reviewer`, `architecture-reviewer`, and `silent-failure-hunter` each gained a `## Quality Checklist` the agent runs against its *own* output before returning (every finding cites file:line, no FP-class findings, verdict matches scores). (Borrow: 0xfurai embedded `## Quality Checklist`.)
+
+### Deferred
+
+- CLAUDE.md archetype seed skeletons (batch-1 #7): setup-bootstrap already generates bespoke CLAUDE.md from the audit; archetype fallback is low value and would inflate an already-large skill. Left as a note in the triage doc.
+
+
 
 ### Added — Setup improvements wave
 
