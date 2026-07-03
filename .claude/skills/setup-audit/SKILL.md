@@ -78,7 +78,7 @@ options:
     description: "Stop — I'll investigate first."
 ```
 
-On `hand-edited`: treat existing on-disk files as `current`, use them also as the `previous_template` (so any diff shows as intentional engineer change). Proceed to Re-Run Merge Logic.
+On `hand-edited`: follow the **no-ancestor** procedure in `.claude/references/regen-diff-contract.md` §3a — propose **only additive hunks** from the fresh template; never derive removal proposals by diffing the fresh template against the engineer's on-disk content. Sections the fresh template no longer emits are listed informationally under Needs review, not proposed as deletions.
 
 On `stock`: copy existing files into `.claude/.mtk-cache/v${CURRENT_VERSION}-migration/` as pseudo-previous-template, then proceed to Re-Run Merge Logic. New template will cleanly overwrite.
 
@@ -86,51 +86,31 @@ On `cancel`: exit without modifying anything.
 
 ### Re-Run Merge Logic
 
-For each file the audit would regenerate (`.claude/references/architecture-principles.md` is the primary target — other files only if bootstrap-mode and this section is reused from there):
+For each file the audit would regenerate (`.claude/references/architecture-principles.md` is the primary target — other files only if bootstrap-mode and this section is reused from there), classify against the cached ancestor before touching anything:
 
 ```bash
 PREV="${PREV_CACHE}/<file>"    # ancestor: previous stock template
-NEW="/tmp/mtk-new/<file>"       # ours: freshly generated template
-CURRENT="<file>"                # theirs: what's on disk now
-
-if [ ! -f "$CURRENT" ]; then
-  # No existing file — just write the new one.
-  cp "$NEW" "<file>"
-  continue
-fi
-if cmp -s "$CURRENT" "$PREV"; then
-  # No engineer edits — safe to overwrite.
-  cp "$NEW" "<file>"
-  continue
-fi
-# Engineer edits present. Attempt 3-way merge.
-cp "$CURRENT" "/tmp/mtk-merge/<file>.merged"
-if git merge-file --union "/tmp/mtk-merge/<file>.merged" "$PREV" "$NEW"; then
-  # Clean merge or union-merge success.
-  cp "/tmp/mtk-merge/<file>.merged" "<file>"
-else
-  # Conflicts — leave the merged file with conflict markers on disk.
-  cp "/tmp/mtk-merge/<file>.merged" "<file>"
-  echo "CONFLICT: <file> — resolve markers manually before next run" >&2
-  CONFLICTS_FOUND=1
-fi
+CURRENT="<file>"                # what's on disk now
 ```
+
+Classify and resolve every file per `.claude/references/regen-diff-contract.md` — read it now and follow §2 (classification), §3/§3a (proposals), §4 (cache rule), and §6 (invariants: the AskUserQuestion gate is not skippable, non-interactive runs defer engineer-edited files to NEEDS REVIEW, deletion is never an outcome). Do not restate or improvise the contract's rules here; report using its RESULT values.
 
 At end of STEP -1, print a re-run summary:
 ```
 📋 RE-RUN PLAN
 
 FILE                                           CLASSIFICATION    RESULT
-.claude/references/architecture-principles.md  engineer-edited   MERGED (no conflicts)
-CLAUDE.md                                      protected         SKIP
-.claude/rules/security.md                      protected         SKIP
+.claude/references/architecture-principles.md  engineer-edited   PROPOSED (4 hunks: 3 applied, 1 skipped)
+.claude/references/conventions.md              stock             OVERWRITTEN (stock)
+CLAUDE.md                                      protected         SKIP (protected)
+.claude/rules/security.md                      protected         SKIP (protected)
 ```
 
-If `CONFLICTS_FOUND=1`, print: "Re-run left <N> file(s) with conflict markers. Resolve before the next `--audit` run." Do **not** update the `.mtk-cache/` copy for files that had conflicts — only update cache entries for files whose merge succeeded cleanly.
+RESULT values and their meanings are defined in the contract's §5; `SKIP (protected)` applies per the contract's protected-scope rule (`manifest.protected` minus this audit's own declared outputs — which is why `architecture-principles.md` is PROPOSED above while `CLAUDE.md` is SKIP).
 
-**Protected files** (from `manifest.protected`) are never merged — they're left as-is and reported as `SKIP`.
+If any file has `NEEDS REVIEW` hunks, print: "Re-run left <N> file(s) with hunks needing review. Resolve before the next `--audit` run."
 
-After re-run merge, update `.claude/.mtk-cache/v${CURRENT_VERSION}/` with the successfully-merged template outputs, then proceed to the report step (do not re-run STEP 0-4; the merge already produced the new content).
+After re-run merge, update `.claude/.mtk-cache/v${CURRENT_VERSION}/` per the contract's §4 cache rule (fresh stock template, fully-resolved files only). Then proceed to the report step (do not re-run STEP 0-4; the merge already produced the new content).
 
 ## STEP 0: Determine The Tech Stack
 
@@ -169,6 +149,39 @@ When `fit != "fallback"`, the audit prompt changes character — instead of "rea
 > "The following ranked symbols are the structural backbone of this codebase (top by incoming-reference count). For each architectural principle you propose, cite at least one symbol from this list that evidences it. Do not claim a principle you cannot evidence."
 
 Pass the ranked JSON into the prompt context. Keep the symbol list visible while writing principles.
+
+## STEP 0.9: Scan Ledger (resumable)
+
+Long audits on large repos must survive crash, compaction, or session handoff. Use the existing `scripts/workflow-artifact.sh` to record progress as a resumable ledger.
+
+1. **Resume check.** Before starting, run `scripts/workflow-artifact.sh list`. If an incomplete (`status` not `completed`/`abandoned`) artifact of type `setup-audit` exists:
+   - If its `updated` timestamp is **less than 24h old**, ask via `AskUserQuestion`:
+     ```
+     question: "Found an in-progress setup-audit from <updated>. How do you want to proceed?"
+     header: "Resume audit"
+     options:
+       - label: "Resume from <current_step>"
+         description: "Skip completed steps, reload their outputs summaries instead of re-scanning."
+       - label: "Start fresh (abandon)"
+         description: "Abandon the previous run and start a new audit from STEP 0."
+       - label: "Cancel"
+         description: "Stop — don't touch anything."
+     ```
+     On "Resume from <current_step>", skip every STEP already marked `step_completed` in the artifact's event log and reload its recorded `outputs`/`summary` instead of re-running the scan. On "Start fresh (abandon)", run `scripts/workflow-artifact.sh abandon <uuid> --reason "engineer requested restart"`, then continue to step 2. On "Cancel", stop without modifying anything.
+   - If its `updated` timestamp is **24h or older**, auto-abandon it — `scripts/workflow-artifact.sh abandon <uuid> --reason stale-24h` — print a one-line notice, and continue to step 2 without asking.
+
+2. **Start (fresh run).** `bash scripts/workflow-artifact.sh init setup-audit --goal "<one-line audit goal>"` and record the returned UUID for the rest of the run.
+
+3. **After each numbered STEP.** Once a STEP completes, record it on the ledger:
+   ```bash
+   scripts/workflow-artifact.sh event <uuid> step_completed --data '{"step":"STEP 2","outputs":["<files written>"],"summary":"<one concrete sentence>"}'
+   scripts/workflow-artifact.sh set <uuid> current_step="STEP 2"
+   ```
+   Summaries must be concrete — "scanned 214 files, 3 inconsistencies", never "made progress" or other vague phrasing. A vague summary is useless on resume: the next session has nothing to reload.
+
+4. **On completion.** `scripts/workflow-artifact.sh set <uuid> status=completed`.
+
+**Context economy (large repos).** For repos with more than 1000 tracked source files, process each scan category (STEP 1 and STEP 2.5) in turn — write its findings into the ledger event immediately after that category finishes, keep only a 1-2 sentence summary in working context, then move to the next category. The ledger, not the conversation, is the working memory; don't hold the full scan output in context waiting to write the doc at the end.
 
 ## STEP 1: Run The Scan Recipes
 
@@ -425,6 +438,7 @@ Based on EVERYTHING you found, create `.claude/references/architecture-principle
 - **Reproducible numeric claims (MANDATORY).** Every numeric claim (project counts, file censuses, "N of M" proportions) must carry the exact shell command that produced it, runnable from the repo root, so `verify-claims` can re-run it. Real failures: "18 projects" (actual 17, propagated to 4 lines); grep counts that don't reproduce. If you cannot produce a reproducible command, drop the number and state the fact qualitatively ("several projects") instead of guessing one.
 - **Capability requires a usage site, not just an import (MANDATORY).** Do NOT assert a capability or integration exists from an import/using/package-reference alone. Real failures: "CDK provisions EC2/VPC" inferred from a dead `using Amazon.CDK.AWS.EC2;` (zero VPC/Subnet/SG in code); a dead `AWSSQSResource` (0 references) presented as active "SQS access". Require a USAGE SITE — instantiation, call, or DI registration — before claiming the capability. If only an import exists with no usage, omit it or explicitly mark it `dead/unused reference`.
 - **Security-claim grounding (MANDATORY).** NEVER assert that a sanitization / validation / audit / secret-handling path EXISTS unless a usage site is found (imported AND called). Real failures: "use the existing dompurify/sanitize-html path" while dompurify is imported nowhere; "never log raw event XML" framed as an existing invariant while code logs raw XML + MQ creds. If the protection is ABSENT, state it as a GAP ("no input sanitization found on X — add it"), not as an existing convention to follow.
+- **Interview answers are authoritative (MANDATORY).** When `.claude/setup-answers.json` exists, its contents are authoritative human input, not a scan hypothesis. Principles or rules sourced from it cite it as their evidence anchor (e.g. `Evidence: engineer interview — .claude/setup-answers.json (hard_nevers)`) and are never dropped or reworded by regeneration. If a fresh scan contradicts an interview answer, do not silently pick a side — emit a "Needs review" item describing the conflict instead.
 
 ### Confidence Tagging (S1.15)
 
@@ -509,8 +523,13 @@ Prepend a stamp block to each generated doc (after the first `>` blockquote, bef
 audited-against: $(git rev-parse HEAD)
 audited-at: $(date -u +%Y-%m-%dT%H:%M:%SZ)
 mtk-version: <from .claude/manifest.json>
+previous-stamp: <previous audited-against sha, or "none">
+sections-changed: <comma-separated H2 titles, or "none">
+claims-delta: +<added> ~<modified> -<removed>
 -->
 ```
+
+The last three fields (`previous-stamp`, `sections-changed`, `claims-delta`) are **re-run-only** — a fresh first run (no prior stamped doc) omits them entirely. Compute them by diffing the regenerated doc against its previous on-disk version **before writing**: `previous-stamp` is the prior `audited-against` value (or `"none"` if there was no prior stamp); `sections-changed` lists the `##` headings whose content differs (or `"none"`); `claims-delta` counts tagged claim lines added/modified/removed between the two versions. This is the audit trail for what a re-run actually changed.
 
 For `CLAUDE.md` (written by `setup-bootstrap`), the stamp lives in a **footer** comment block — human edits collect above it.
 
@@ -535,9 +554,21 @@ This script:
 - parses tagged claim lines,
 - grep/AST-checks every backticked evidence anchor against the working tree,
 - downgrades zero-hit `[EXTRACTED] → [INFERRED:0.5 unverified]` and `[ENFORCED] → [ASPIRATIONAL unverified]` **in place**,
-- writes `.claude/.mtk-cache/weak-claims.json` (full) and `.claude/.mtk-cache/weak-claims-report.md` (top-5 paste-ready).
+- writes per-doc reports `.claude/.mtk-cache/weak-claims-<doc>.json` (full) and `.claude/.mtk-cache/weak-claims-<doc>.md` (top-5 paste-ready).
 
 The audit is not complete until verify-claims has run. A passing audit surfaces weak claims; it does not pretend they don't exist.
+
+### Retry loop (one pass)
+
+After the first `verify-claims.sh` run on a doc, read `.claude/.mtk-cache/weak-claims-<doc>.json`. For each downgraded claim, make **one** re-derivation attempt:
+- Fix the evidence anchor — the right path, glob, or symbol — so the claim resolves under its original tag, OR
+- If no anchor resolves the claim, delete the claim line — **but only if this run generated that line** (byte-identical to the freshly generated template's version). A line the engineer authored or modified is never deleted here: leave the downgraded tag in place for the engineer to resolve. Every deleted line must be itemized in the STEP 4 report.
+
+Rewrite the doc, then run `verify-claims.sh` once more. Downgrades that survive this second pass are accepted and reported as-is. Never re-upgrade a tag (`[INFERRED:0.5 unverified] → [EXTRACTED]`, `[ASPIRATIONAL unverified] → [ENFORCED]`) without a resolving anchor found during the retry. Never loop more than once per doc.
+
+### Seed template cache
+
+After verify-claims (and the retry loop) completes on a fresh audit, snapshot the final stock outputs to `.claude/.mtk-cache/v<MANIFEST_VERSION>/references/` (`architecture-principles.md`, `conventions.md`) and `.claude/.mtk-cache/v<MANIFEST_VERSION>/detected-tools.json` — same layout and retention rules as `setup-bootstrap` STEP 4.8. Without this seed, the next re-run or refresh has no ancestor and must classify these files conservatively as engineer-edited (regen-diff-contract §2), losing the stock fast-path.
 
 ### Transient-state lint
 
@@ -575,7 +606,7 @@ Inconsistencies found: [N]
   [list the top 3 if any]
 
 ⚠️ Weak claims surfaced: [N]
-  See .claude/.mtk-cache/weak-claims-report.md — paste into PR body or review note.
+  See .claude/.mtk-cache/weak-claims-<doc>.md (per generated doc) — paste into PR body or review note.
   Top failure modes: zero-hit anchors → likely fabricated; terminology flags → likely imprecise.
 
 Next steps:

@@ -51,6 +51,14 @@ MTK closes that gap with **workflow enforcement** (planning, TDD, batched implem
 
 ## What's New
 
+### v7.18.0 — Setup refresh loop (2026-07-03)
+- **`/mtk-setup --refresh` (+ `--dry-run`)** — new `setup-refresh` skill: drift-scoped refresh of ALL generated rules and findings (architecture-principles, conventions, detected-tools, reference pruning, AGENTS.md/tool configs, indexes), not just the audit doc.
+- **`/mtk-setup --check`** — read-only CI staleness gate backed by new `scripts/setup-refresh-plan.sh`: per-artifact plan (stamp drift, dependency rescan, TTLs, regenerate-and-diff, dead paths), exit 1 when stale.
+- **Diff-proposal contract** — new `.claude/references/regen-diff-contract.md` replaces `git merge-file --union` everywhere: engineer-edited files get the toolkit's delta proposed hunk-by-hunk with reasons, never force-merged.
+- **Persisted interview** — bootstrap answers land in committed `.claude/setup-answers.json` (plus a new "definition of done" question); re-runs reuse them, and engineer-stated rules are never auto-downgraded by verify-claims.
+- **Resumable scans** — `setup-audit`/`setup-bootstrap` journal per-step progress via the workflow ledger; interrupted runs resume instead of restarting.
+- **Verify-claims retry + Sync Impact stamp** — one re-derivation pass for weak claims; refreshed docs record `previous-stamp` / `sections-changed` / `claims-delta`.
+
 ### v7.17.0 — Borrowed capabilities, wave 3 (2026-07-01)
 - **Critical Rules in generated cross-tool configs** — `generate-agents-md.sh`/`generate-tool-configs.sh` now lead every generated config (AGENTS.md, `.cursor/rules`, Copilot, Windsurf, Gemini, Cline) with the project's `CLAUDE.md` `## Critical Rules` section.
 - **`browser` evidence channel capture procedure** — new `.claude/references/evidence-capture.md` documents persisting screenshots/console logs/network requests under `docs/specs/<slug>.evidence/<criterion-id>/`, with an explicit textual-fallback path when Playwright MCP is unavailable.

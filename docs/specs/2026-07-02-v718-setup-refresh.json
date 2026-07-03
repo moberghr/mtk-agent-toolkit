@@ -1,0 +1,56 @@
+{
+  "slug": "v718-setup-refresh",
+  "date": "2026-07-02",
+  "scope": "feature",
+  "security_impact": "none",
+  "open_decisions": [],
+  "assumptions": [
+    "[VERIFIED:scripts/audit-drift-check.sh] exists — stamped-SHA drift detection with --json, exit 1 on drift; nothing consumes it yet",
+    "[VERIFIED:scripts/verify-claims.sh] resolves real-path evidence anchors via test -e before content grep, so steering-file anchors are never zero-hit",
+    "[VERIFIED:scripts/generate-agents-md.sh] accepts [--force] [output-file] — supports regenerate-to-temp-and-diff",
+    "[VERIFIED:scripts/workflow-artifact.sh] provides init/event/set/list/abandon durable state under .mtk/workflows/",
+    "[VERIFIED:scripts/refresh-derived.sh] rebuilds references/triggers indexes on demand",
+    "[VERIFIED:.claude/skills/setup-audit/SKILL.md] STEP -1 uses git merge-file --union — the mechanism this spec replaces",
+    "[ASSUMED] 7-day TTL for detected-tools.json staleness matches the existing cache convention in setup-bootstrap STEP 3.6"
+  ],
+  "baseline_area": "setup",
+  "change_manifest": [
+    ".claude/skills/setup-refresh/SKILL.md",
+    ".claude/references/regen-diff-contract.md",
+    "scripts/setup-refresh-plan.sh",
+    "tests/hooks/test-setup-refresh-plan.sh",
+    "tests/pressure-tests/setup-refresh-preservation.md",
+    ".claude/skills/mtk-setup/SKILL.md",
+    ".claude/skills/mtk/SKILL.md",
+    ".claude/skills/setup-audit/SKILL.md",
+    ".claude/skills/setup-bootstrap/SKILL.md",
+    "scripts/workflow-artifact.sh",
+    "scripts/generate-tool-configs.sh",
+    "docs/specs/2026-07-02-v718-setup-refresh.md",
+    "docs/specs/2026-07-02-v718-setup-refresh.json",
+    ".claude/manifest.json",
+    ".claude-plugin/plugin.json",
+    ".claude-plugin/marketplace.json",
+    "CHANGELOG.md",
+    "README.md",
+    "AGENTS.md",
+    ".claude/references.index",
+    "checksums.sha256"
+  ],
+  "features": [
+    {"id": "F1", "title": "setup-refresh skill + --refresh/--dry-run routing in mtk-setup"},
+    {"id": "F2", "title": "setup-refresh-plan.sh staleness plan + --check CI gate"},
+    {"id": "F3", "title": "regen diff-proposal contract replacing git merge-file --union"},
+    {"id": "F4", "title": "persisted interview steering file .claude/setup-answers.json + done-definition question"},
+    {"id": "F5", "title": "resumable scan ledger via workflow-artifact.sh in setup-audit/setup-bootstrap"},
+    {"id": "F6", "title": "verify-claims retry loop + Sync Impact stamp fields on re-runs"}
+  ],
+  "verifiable_criteria": [
+    {"id": "VC1", "criterion": "bash scripts/validate-toolkit.sh passes", "channel": "script-output"},
+    {"id": "VC2", "criterion": "bash tests/hooks/test-setup-refresh-plan.sh passes", "channel": "test-run"},
+    {"id": "VC3", "criterion": "setup-refresh-plan.sh prints plan and exits 0; --check exits 0/1", "channel": "script-output"},
+    {"id": "VC4", "criterion": "no 'merge-file --union' remains in setup-audit/SKILL.md", "channel": "script-output"},
+    {"id": "VC5", "criterion": "all change-manifest paths exist with specified content", "channel": "script-output"},
+    {"id": "VC6", "criterion": "shellcheck clean on setup-refresh-plan.sh", "channel": "script-output"}
+  ]
+}

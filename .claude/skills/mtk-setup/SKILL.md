@@ -3,7 +3,7 @@ name: mtk-setup
 description: One-stop setup entry point that bootstraps a repo or re-runs architecture audit
 type: skill
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
-argument-hint: [--audit|--audit-only] [--merge] [--preview] [--non-interactive] [--update-guidelines]
+argument-hint: [--audit|--audit-only] [--merge] [--preview] [--non-interactive] [--update-guidelines] [--refresh [--dry-run]] [--check]
 user-invocable: true
 ---
 
@@ -18,12 +18,15 @@ MTK distinguishes between two setup tasks:
 - **Bootstrap (first-time setup):** Detect tech stack, pull coding guidelines, audit the codebase once, generate `CLAUDE.md`, `.claude/tech-stack`, and `.claude/references/architecture-principles.md`. This is the one-time preparation.
 - **Re-audit:** Re-run the architectural audit only. Regenerates `.claude/references/architecture-principles.md` (and `conventions.md`) to reflect current reality. Use after significant architectural change.
 - **Merge:** Unify architecture audits from multiple repos (e.g., a team hub repo that aggregates `payfac`, `collection-system`, etc.) into a single team-wide document.
+- **Refresh:** Drift-scoped refresh of ALL generated rules and findings (architecture-principles, conventions, detected-tools, reference pruning, AGENTS.md/tool configs, indexes) — not just the audit doc. `--check` is the CI gate that reports staleness without writing anything.
 
 ## When To Use
 
 - First time onboarding a repo → run `/mtk-setup` with no flags.
 - Architecture has drifted and you want `architecture-principles.md` refreshed → `/mtk-setup --audit`.
 - You have audit files from multiple repos in `.claude/references/audits/` and want one unified doc → `/mtk-setup --merge`.
+- Generated docs (architecture-principles, conventions, detected-tools, AGENTS.md, indexes) have drifted, or you just merged significant changes → `/mtk-setup --refresh` (add `--dry-run` to preview first).
+- CI or a quick staleness question ("are the generated docs still accurate?") → `/mtk-setup --check`.
 
 ## Workflow
 
@@ -38,18 +41,26 @@ Parse the argument string into a mode and flags:
 | `--preview` | Show proposed changes, ask before writing (bootstrap only) |
 | `--non-interactive` | Skip interview questions (bootstrap only) |
 | `--update-guidelines` | Bump the pinned `moberghr/coding-guidelines` SHA in `.claude/manifest.json` to current HEAD and refresh recorded sha256 hashes. Does **not** re-run bootstrap; engineer must invoke `/mtk-setup` afterward if they want the new guidelines applied. Cannot be combined with other flags. |
+| `--refresh` | Drift-scoped refresh of ALL generated rules and findings (not just the audit doc). Delegates to `setup-refresh`. |
+| `--dry-run` | Only with `--refresh`: print the invalidation plan, write nothing. |
+| `--check` | CI staleness gate — run `scripts/setup-refresh-plan.sh --check`, print its output, propagate its exit code. Writes nothing. |
 
 Default mode (no flags): **bootstrap**.
 
 Flag combination rules:
 - `--update-guidelines` is mutually exclusive with every other flag. Reject with a clear message if combined.
 - `--merge` implies audit and is mutually exclusive with `--non-interactive`.
+- `--refresh` and `--check` are each mutually exclusive with `--audit`, `--merge`, `--update-guidelines`, and each other. Reject with a clear message if combined.
+- `--dry-run` requires `--refresh`. Reject with a clear message if passed without it.
+- `--refresh --non-interactive` is allowed: the refresh runs headless, and every engineer-edited file defers to `NEEDS REVIEW` per the regen-diff-contract §6 — proposals are never force-applied without the interactive gate.
 
 ### STEP 1: Decide the Target Skill
 
 | Argument pattern | Invoke |
 |---|---|
 | `--update-guidelines` present | Inline workflow (see below). Does not invoke a target skill. |
+| `--check` present | Inline workflow (see below). Does not invoke a target skill. |
+| `--refresh` present | `.claude/skills/setup-refresh/SKILL.md` (pass `--dry-run` through) |
 | `--merge` present | `.claude/skills/setup-audit/SKILL.md` (pass `--merge`) |
 | `--audit` or `--audit-only` present | `.claude/skills/setup-audit/SKILL.md` (no flags) |
 | None of the above | `.claude/skills/setup-bootstrap/SKILL.md` (pass `--preview` / `--non-interactive` through) |
@@ -69,11 +80,20 @@ Flag combination rules:
 5. Update `.claude/manifest.json` in place (update `coding-guidelines.sha` and each `coding-guidelines.files.<path>` value).
 6. Tell the engineer: "Guidelines pin updated. Run `/mtk-setup --audit` or `/mtk-setup` to apply the new guidelines to this repo." Do **not** auto-invoke bootstrap — the engineer decides when to apply.
 
+**Inline workflow for `--check`:**
+
+1. Run `bash scripts/setup-refresh-plan.sh --check` (resolve the script path per the MTK File Resolution section).
+2. Print its output verbatim — the per-artifact plan table plus the summary line.
+3. Propagate its exit code as the outcome: `0` → report "✅ Generated docs are fresh."; `1` → report "⚠️ Staleness detected — run `/mtk-setup --refresh` to reconcile."; `2` → report the usage/setup error.
+4. Write **nothing**. `--check` is a read-only gate, suitable for CI.
+
 **Ambiguity check:** if the repo has no `.claude/tech-stack` file and the engineer passed `--audit`, warn:
 
 > "No tech stack detected — this looks like a first-time setup. Audit alone won't generate CLAUDE.md. Run `/mtk-setup` with no flags to do a full bootstrap. Proceed with audit only? [y/N]"
 
 Use `AskUserQuestion` for this prompt.
+
+For `--refresh` on a repo with no `.claude/tech-stack`, do **not** offer to proceed — `setup-refresh` hard-stops on an un-bootstrapped repo (its STEP 0 preconditions). Tell the engineer directly: "This repo has not been bootstrapped — run `/mtk-setup` with no flags first; `--refresh` is for re-runs."
 
 ### STEP 2: Read and Follow the Target Skill
 
@@ -87,7 +107,7 @@ When the target skill completes, print a one-line summary:
 ✅ MTK Setup: [mode] complete in [duration]. See [output file(s)].
 ```
 
-Where `[mode]` is one of: `bootstrap`, `audit`, `merge`.
+Where `[mode]` is one of: `bootstrap`, `audit`, `merge`, `refresh`, `check`.
 
 ## MTK File Resolution
 
@@ -107,3 +127,5 @@ Always project-relative (never prefixed): `CLAUDE.md`, `.claude/tech-stack`, `.c
 - [ ] Bootstrap mode: `CLAUDE.md`, `.claude/tech-stack`, and `.claude/references/architecture-principles.md` exist
 - [ ] Audit mode: `.claude/references/architecture-principles.md` updated
 - [ ] Merge mode: unified `.claude/references/architecture-principles.md` written; source audits in `.claude/references/audits/` untouched
+- [ ] Refresh mode: `setup-refresh`'s own Verification section executed; refresh report printed with Updated / Created / Preserved / Needs review counts
+- [ ] Check mode: plan table printed, exit code propagated, no files written
