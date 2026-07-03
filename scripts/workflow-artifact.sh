@@ -55,8 +55,8 @@ json_escape() {
 cmd_init() {
   local wf_type="${1:-}"
   shift || true
-  [ -n "$wf_type" ] || fail "init requires <type> (BUILD|DEBUG|REVIEW|PLAN|FIX)"
-  case "$wf_type" in BUILD|DEBUG|REVIEW|PLAN|FIX) ;; *) fail "unknown workflow type: $wf_type" ;; esac
+  [ -n "$wf_type" ] || fail "init requires <type> (BUILD|DEBUG|REVIEW|PLAN|FIX|setup-audit|setup-bootstrap)"
+  case "$wf_type" in BUILD|DEBUG|REVIEW|PLAN|FIX|setup-audit|setup-bootstrap) ;; *) fail "unknown workflow type: $wf_type" ;; esac
 
   local goal=""
   while [ $# -gt 0 ]; do

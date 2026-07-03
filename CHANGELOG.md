@@ -2,6 +2,24 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.18.0] - 2026-07-03
+
+### Added — Setup refresh loop
+
+`/mtk-setup` was strong on first run but had no coherent re-run story: `--audit` refreshed only two docs, drift detection (`audit-drift-check.sh`) had no consumer, the re-run merge could silently blend engineer edits, interview answers dissolved into generated prose, and long scans didn't survive a crash. This release closes the loop — detect → preview → scoped regen → propose diffs → gate in CI — and hardens the first run.
+
+- **`/mtk-setup --refresh` (+ `--dry-run`).** New `setup-refresh` workflow skill: consults a per-artifact staleness plan, regenerates only what drifted (drift-scoped re-reads with a ~30% full-re-audit threshold), regenerates deterministic artifacts (AGENTS.md, tool configs, indexes), and routes every engineer-edited file through the diff-proposal contract. `--dry-run` prints the invalidation plan and writes nothing.
+- **`/mtk-setup --check` + `scripts/setup-refresh-plan.sh`.** Read-only CI staleness gate: per-artifact plan (stamped-doc drift, CLAUDE.md version + dependency rescan, detected-tools TTL, AGENTS.md regenerate-and-diff, dead path references) with `--json` output; `--check` exits 1 when anything is stale, making "are the generated docs still accurate?" a one-line CI job.
+- **Diff-proposal contract replaces union merge.** New `.claude/references/regen-diff-contract.md`: engineer-edited generated files are never overwritten or union-merged — the toolkit's own delta (cached ancestor template vs fresh template) is proposed hunk-by-hunk with a one-line reason each, applied only on approval; hunks that no longer apply land under Needs review with the conflicting region quoted. `setup-audit` STEP -1 and `setup-bootstrap` merge mode both delegate to it; `git merge-file --union` is gone.
+- **Persisted interview (`.claude/setup-answers.json`).** Bootstrap's post-scan interview now persists answers to a committed steering file (new question 6: definition of done). Re-runs reuse prior answers and only ask new gaps; rules sourced from answers cite the file as their evidence anchor, so the verify-claims pass never auto-downgrades engineer-stated rules; scan findings that contradict an answer become Needs review items instead of silent overrides.
+- **Resumable scan ledger.** `setup-audit` and `setup-bootstrap` record per-step progress (outputs + concrete summary) through `workflow-artifact.sh` (which now accepts `setup-audit`/`setup-bootstrap` types); an interrupted run under 24h old offers Resume/Start fresh/Cancel, older ones auto-archive. Large repos (>1000 tracked files) write findings to the ledger per scan category and keep only summaries in context.
+- **Verify-claims retry loop + Sync Impact stamp.** Downgraded claims get exactly one re-derivation attempt (fix the evidence anchor or delete the claim) before downgrades are accepted; every re-run/refresh stamp now records `previous-stamp`, `sections-changed`, and `claims-delta: +N ~M -K` — a machine-parsable audit trail of what the refresh actually changed.
+
+### Tests
+
+- New `tests/hooks/test-setup-refresh-plan.sh` — fixture-repo coverage for the staleness plan: all-fresh exit 0, drift flips `--check` to exit 1, `--json` shape, dependency-rescan detection.
+- New `tests/pressure-tests/setup-refresh-preservation.md` — adversarial scenarios pressing refresh to delete hand-authored files, silently overwrite engineer edits, or force-apply under non-interactive pressure.
+
 ## [7.17.0] - 2026-07-01
 
 ### Added — Borrowed capabilities, wave 3

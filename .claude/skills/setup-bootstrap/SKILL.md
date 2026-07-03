@@ -164,6 +164,51 @@ Check if `.claude/references/architecture-principles.md` exists.
 
 To refresh the file later as the architecture evolves, the engineer runs `/mtk-setup --audit` explicitly.
 
+## STEP 1.5: Scan Ledger (resumable)
+
+Bootstrap scans and audits can run long enough to hit a session compaction or crash before STEP 5. Persist progress to a durable workflow artifact (`scripts/workflow-artifact.sh`) so a re-run resumes instead of re-scanning from zero.
+
+**Start:**
+```bash
+UUID=$(bash scripts/workflow-artifact.sh init setup-bootstrap --goal "<one-line bootstrap goal>")
+```
+Keep `$UUID` for the rest of the run.
+
+**Resume check (run before `init`, at skill start):**
+```bash
+bash scripts/workflow-artifact.sh list
+```
+If an **incomplete** `setup-bootstrap` artifact is found:
+- **`updated` timestamp < 24h old:** offer via `AskUserQuestion`:
+  ```
+  question: "A previous setup-bootstrap run is in progress (last step: <current_step>). What do you want to do?"
+  header: "Resume bootstrap"
+  options:
+    - label: "Resume from <current_step>"
+      description: "Skip completed STEPs and reload their recorded outputs instead of re-scanning"
+    - label: "Start fresh (abandon previous)"
+      description: "Abandon the prior artifact and run bootstrap from STEP 0"
+    - label: "Cancel"
+      description: "Stop without doing anything"
+  ```
+  On "Resume from …", skip every STEP already marked `step_completed` in the artifact's event log and reload its recorded `outputs`/`summary` instead of re-running that STEP. On "Start fresh", run `bash scripts/workflow-artifact.sh abandon <old-uuid> --reason engineer-choice`, then `init` a new artifact. On "Cancel", stop the bootstrap.
+- **`updated` timestamp ≥ 24h old:** abandon it automatically — `bash scripts/workflow-artifact.sh abandon <old-uuid> --reason stale-24h` — and start fresh, printing: `⚠️ Abandoned stale setup-bootstrap run (> 24h old) — starting fresh.`
+
+**After each numbered STEP completes:**
+```bash
+bash scripts/workflow-artifact.sh event "$UUID" step_completed \
+  --data '{"step":"STEP 2","outputs":["<files written or read>"],"summary":"<one concrete sentence>"}'
+bash scripts/workflow-artifact.sh set "$UUID" current_step="STEP 2"
+```
+Summaries must be concrete ("scanned 214 files, 3 inconsistencies"), never vague ("did the scan").
+
+**On completion (end of STEP 5):**
+```bash
+bash scripts/workflow-artifact.sh set "$UUID" status=completed
+```
+
+**Context economy (STEP 2's scan categories):** for repos with **>1000 tracked source files**, process the Scan Recipes categories one at a time — write each category's findings into the ledger's `step_completed` event immediately after it finishes, and keep only a 1–2 sentence summary in working context before moving to the next category. The ledger, not the conversation, is the working memory for large scans.
+
 ## STEP 2: Audit the Codebase
 
 Use the **`## Scan Recipes`** section from the active tech stack skill (`.claude/skills/tech-stack-{stack}/SKILL.md`). Each tech stack provides its own scanning bash blocks.
@@ -187,12 +232,12 @@ find . -name "pull_request_template*"
 
 Record what you find — this is the input for Step 3.
 
-## STEP 2.5: Post-Scan Interview (skip if `--non-interactive`)
+## STEP 2.5: Post-Scan Interview (skip if `--non-interactive` and no persisted answers)
 
-Auto-detection captures WHAT is in the codebase. It cannot capture the team's implicit knowledge — the things that make CLAUDE.md actually useful. Ask **3–5 focused questions** via `AskUserQuestion`. These answers feed directly into the Critical Rules and `project-specific.md`.
+Auto-detection captures WHAT is in the codebase. It cannot capture the team's implicit knowledge — the things that make CLAUDE.md actually useful. Ask **3–6 focused questions** via `AskUserQuestion`. These answers feed directly into the Critical Rules and `project-specific.md`.
 
 **Rules for the interview:**
-- Keep it short. 5 questions max. If the engineer pushes back or seems unsure, accept "skip" as a valid answer.
+- Keep it short. 6 questions max. If the engineer pushes back or seems unsure, accept "skip" as a valid answer.
 - Do NOT ask anything you can answer from the scan (e.g., "what's your test framework" — you already know).
 - Frame for answers you can convert into trigger-action rules.
 - Record answers; integrate into Step 3 output.
@@ -209,16 +254,44 @@ Auto-detection captures WHAT is in the codebase. It cannot capture the team's im
 
 5. **Compliance / regulatory constraints** (always ask for regulated domains) — "Are there compliance constraints that should surface in reviews? (e.g., PII handling, audit log requirements, SOC2 scope, PCI scope)"
 
+6. **Definition of done** — "What must be true before a change in this repo counts as done? (build + tests green, review passed, manual QA, deploy verification, docs updated …)" Answers feed CLAUDE.md verification guidance and `.claude/rules/project-specific.md`.
+
 **What to do with answers:**
 - Each `hard never` → top of Critical Rules, with `IMPORTANT:` prefix.
 - Each `top failure mode` → rule in the relevant `.claude/rules/` file (e.g., failure about EF queries → `data-layer.md`).
 - Each `invisible convention` → `project-specific.md`.
 - Compliance answers → fold into `security.md` with `§1.x` numbering.
+- Definition-of-done answers → CLAUDE.md's verification guidance (what "done" means for this repo) and `.claude/rules/project-specific.md`.
+- **Evidence anchor (every rule sourced from an answer):** cite the steering file as the rule's evidence, e.g. `Evidence: engineer interview — .claude/setup-answers.json (hard_nevers)`. `scripts/verify-claims.sh` resolves real paths before content-grep, so these anchors always hit — engineer-stated rules are never auto-downgraded by the verify pass.
 
-If `--non-interactive` is passed, skip this entire step but print a notice:
+**Persist answers:**
+
+After the interview (including when some questions are skipped), write `.claude/setup-answers.json` — committed, not gitignored. This write goes through the STEP 3.5c secret-scan gate like any other generated file.
+
+```json
+{
+  "version": 1,
+  "captured": "<ISO8601 UTC>",
+  "source": "engineer-interview",
+  "answers": {
+    "hard_nevers": [],
+    "failure_modes": [],
+    "invisible_conventions": [],
+    "branch_pr_workflow": "",
+    "compliance_constraints": [],
+    "done_definition": []
+  },
+  "skipped": []
+}
 ```
-⚠️ Interview skipped. CLAUDE.md will be auto-detected only — consider running without --non-interactive for better team-specific rules.
-```
+
+**Re-run behavior:**
+- **File exists (interactive re-run):** load it, show a compact summary of prior answers, and ask only the questions whose keys are empty/missing or newly introduced. Offer "revise a previous answer" as one of the `AskUserQuestion` options.
+- **`--non-interactive` + file exists:** reuse the persisted answers silently — skip asking, and print a notice: `ℹ️ Reusing persisted interview answers from .claude/setup-answers.json (--non-interactive).`
+- **`--non-interactive` + no file:** skip this entire step and print the existing notice:
+  ```
+  ⚠️ Interview skipped. CLAUDE.md will be auto-detected only — consider running without --non-interactive for better team-specific rules.
+  ```
 
 ## STEP 3: Generate CLAUDE.md + Rules Files
 
@@ -238,17 +311,7 @@ Create `CLAUDE.md` and `.claude/rules/` files following the templates below.
 2. **If monolithic CLAUDE.md (>200 lines, contains full rule sections):**
    - Extract each section into the corresponding `.claude/rules/` file
    - Replace CLAUDE.md with the lean template, preserving project-specific content
-3. **If lean CLAUDE.md + `.claude/rules/` already exists:**
-   - Compare each rules file against scan findings
-   - Identify stale, missing, and conflicting content
-4. Present a summary:
-   ```
-   CLAUDE.md Structure Analysis:
-     Current: [monolithic N lines | lean + N rule files]
-     Proposed changes:
-       [list each change]
-   ```
-5. Apply the changes (in merge mode, don't ask — the engineer chose init knowing it modifies files)
+3. **If lean CLAUDE.md + `.claude/rules/` already exists:** classify and resolve each regenerated file (`CLAUDE.md`, each `.claude/rules/*.md`) per **`.claude/references/regen-diff-contract.md`** — read it now and follow §2 (classification against the `.claude/.mtk-cache/` ancestor), §3/§3a (per-hunk proposals; no-ancestor → additive-only), §4 (cache rule), and §6 (invariants: gate not skippable, non-interactive defers to NEEDS REVIEW, deletion never an outcome). Do not restate the contract's rules here; report per-file RESULT values and Needs review items in the STEP 5 report.
 
 ### Root CLAUDE.md Template
 
@@ -766,6 +829,9 @@ Files to snapshot (skip any the engineer declined in `--preview`):
 - `AGENTS.md`
 - `.claude/rules/*.md`
 - `.claude/references/pre-commit-review-list.md`
+- `.claude/references/architecture-principles.md` (when this bootstrap generated it)
+- `.claude/references/conventions.md` (when this bootstrap generated it)
+- `.claude/detected-tools.json`
 
 Layout:
 ```
@@ -838,6 +904,11 @@ Preserved hand-authored files (untouched):
   [list any pre-existing nested CLAUDE.md, custom commands/rules, or other non-MTK files left in place — or "none found"]
 Retired prior MTK files (explicitly removed this run):
   [list any MTK-owned files this re-run superseded — or "none". If this section is non-empty, each entry must be an MTK-owned file, never hand-authored content.]
+
+Updated: [N] | Created: [N] | Preserved (untouched): [N] | Needs review: [N]
+[if Needs review > 0:]
+Needs review:
+  [one line per item — file path + the conflicting hunk/region that could not be auto-applied, per .claude/references/regen-diff-contract.md]
 
 Codebase findings:
   [stack-specific summary based on scan]

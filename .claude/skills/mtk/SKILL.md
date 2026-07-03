@@ -149,6 +149,8 @@ MTK — two entry points:
   /mtk-setup                     → first-time setup (bootstrap + audit)
   /mtk-setup --audit             → re-run architecture audit
   /mtk-setup --merge             → merge multi-repo audits
+  /mtk-setup --refresh           → drift-scoped refresh of all generated docs (--dry-run to preview)
+  /mtk-setup --check             → read-only CI staleness gate for generated docs
   /mtk-setup --update-guidelines → bump the pinned coding-guidelines SHA
 
   /mtk <description>             → everything else:
@@ -179,6 +181,6 @@ Once matched, read the target skill file and follow every step of that workflow.
 
 If the route is `/mtk-setup` (setup family), tell the user:
 
-> "Setup lives at `/mtk-setup` — run that directly. Flags: `--audit` re-audits only, `--merge` unifies multi-repo audits, `--preview` shows planned changes, `--non-interactive` skips interview."
+> "Setup lives at `/mtk-setup` — run that directly. Flags: `--audit` re-audits only, `--merge` unifies multi-repo audits, `--refresh` drift-refreshes all generated docs (`--dry-run` previews), `--check` is the read-only staleness gate, `--preview` shows planned changes, `--non-interactive` skips interview."
 
 Do not add preamble or commentary before routing. Just route.

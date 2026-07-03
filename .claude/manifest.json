@@ -1,6 +1,6 @@
 {
-  "version": "7.17.0",
-  "updated": "2026-07-01",
+  "version": "7.18.0",
+  "updated": "2026-07-03",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -1919,6 +1919,36 @@
       "target": "tests/pressure-tests/verification-rearm.md",
       "action": "sync",
       "description": "Adversarial pressure test for the verification re-arm rule (trivial-edit, cost, same-second, behavior-shaped)"
+    },
+    "skills/setup-refresh/SKILL.md": {
+      "source": ".claude/skills/setup-refresh/SKILL.md",
+      "target": ".claude/skills/setup-refresh/SKILL.md",
+      "action": "sync",
+      "description": "Drift-scoped refresh of all generated setup artifacts — staleness plan, scoped regeneration, diff proposals for engineer-edited files"
+    },
+    "references/regen-diff-contract.md": {
+      "source": ".claude/references/regen-diff-contract.md",
+      "target": ".claude/references/regen-diff-contract.md",
+      "action": "sync",
+      "description": "Normative contract for re-running generation over engineer-edited files: ancestor/current/fresh classification, per-hunk diff proposals, cache rules"
+    },
+    "scripts/setup-refresh-plan.sh": {
+      "source": "scripts/setup-refresh-plan.sh",
+      "target": "scripts/setup-refresh-plan.sh",
+      "action": "sync",
+      "description": "Read-only per-artifact staleness plan for generated setup docs; --json output, --check CI gate (exit 1 on staleness)"
+    },
+    "tests/hooks/test-setup-refresh-plan.sh": {
+      "source": "tests/hooks/test-setup-refresh-plan.sh",
+      "target": "tests/hooks/test-setup-refresh-plan.sh",
+      "action": "sync",
+      "description": "Fixture-repo test for setup-refresh-plan.sh: fresh baseline, drift detection, --json shape, dependency rescan"
+    },
+    "tests/pressure-tests/setup-refresh-preservation.md": {
+      "source": "tests/pressure-tests/setup-refresh-preservation.md",
+      "target": "tests/pressure-tests/setup-refresh-preservation.md",
+      "action": "sync",
+      "description": "Pressure test: refresh must preserve hand-authored files, propose diffs instead of overwriting, and never force-apply non-interactively"
     }
   },
   "protected": [
