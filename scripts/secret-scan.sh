@@ -25,7 +25,15 @@ PATTERNS=(
   "password-assignment|(password|passwd|pwd|secret|api[_-]?key)[[:space:]]*[:=][[:space:]]*[\"'][^\"']{12,}[\"']"
   "iban|\\b[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}\\b"
   "jwt|eyJ[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}\\.[A-Za-z0-9_-]{10,}"
+  "url-credential|[a-zA-Z][a-zA-Z0-9+.-]*://[^[:space:]/@:]+:[^[:space:]/@]+@"
 )
+
+# url-credential fires on scheme://user:password@ regardless of whether the
+# credential is a real secret or an obvious placeholder. Placeholders are
+# filtered out below (checked against the matched credential text only, never
+# the full line, so a real secret next to a host like "example.azurewebsites.net"
+# still fires).
+URL_CREDENTIAL_PLACEHOLDER_ERE='user:pass@|<user>:<pass(word)?>@|username:password@|foo:bar@|example|xxx'
 
 scan_file() {
   local file="$1"
@@ -36,6 +44,11 @@ scan_file() {
     local pattern="${entry#*|}"
     while IFS=: read -r lineno _; do
       [[ -n "$lineno" ]] || continue
+      if [[ "$name" == "url-credential" ]]; then
+        local matched
+        matched="$(sed -n "${lineno}p" "$file" | grep -oE -- "$pattern" | head -1)"
+        grep -qEi -- "$URL_CREDENTIAL_PLACEHOLDER_ERE" <<<"$matched" && continue
+      fi
       echo "${file}:${lineno}: ${name}" >&2
       hits=$((hits + 1))
     done < <(grep -nE -e "$pattern" "$file" 2>/dev/null || true)

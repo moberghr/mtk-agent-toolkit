@@ -56,6 +56,10 @@ done
 
 STALE=0
 
+# Known-optional references: paths that are legitimately referenced-but-absent
+# (gitignored, created lazily on first use, or never checked in) — never STALE.
+KNOWN_OPTIONAL='^(\.claude/settings\.local\.json|\.claude\.local\.md|tasks/todo\.md|\.claude/review-config\.local\.json)$'
+
 # --- Check 1: path / directory claims (near-zero false positives) ------------
 # Only path-like tokens INSIDE backtick code spans count (never prose), and a
 # token is declared stale only after it fails to resolve at the root, under
@@ -71,6 +75,7 @@ for file in "${EXISTING[@]}"; do
     # (REST/, SQS/) is prose, NOT a directory claim — excluded to keep FPs near zero.
     echo "$tok" | grep -qE '(^(src|apps|packages|libs|services|tests?|lib)/|\.[A-Za-z0-9]+$)' || continue
     p="${tok%/}"
+    echo "$p" | grep -qE "$KNOWN_OPTIONAL" && continue    # known-optional: legitimately referenced-but-absent
     # resolve subtree-relative before declaring stale: root, src/, then git index
     if [ -e "$p" ] || [ -e "src/$p" ] || git ls-files --error-unmatch "$p" >/dev/null 2>&1 || git ls-files "$p" 2>/dev/null | grep -qF "$p"; then
       continue

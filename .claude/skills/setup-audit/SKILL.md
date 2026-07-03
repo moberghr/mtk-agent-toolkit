@@ -141,7 +141,7 @@ Read the resulting JSON. The `fit` field tells you the quality tier:
 |---|---|---|
 | `full` | All symbols fit within budget | Cite freely — full graph available |
 | `ranked` | Top-N by in-edge count (PageRank-ish) | Cite top symbols; acknowledge truncation in provenance section |
-| `defer-to-mcp` | .NET only — call `mcp__csharp-lsp__csharp_symbols` directly to enrich | Use MCP tool for the ranked pass, then cite |
+| `defer-to-mcp` | .NET only — attempt csharp-lsp enrichment for the top files found by scan recipes (the tool is per-file — no solution-wide ranked graph exists); if the MCP server is unreachable or the workspace fails to load, treat exactly as `fallback` and disclose in Provenance | Use MCP tool for the ranked pass, then cite |
 | `fallback` | No tree-sitter / no LSP available | Audit degrades to scan-recipes-only; **provenance section must state this** |
 
 When `fit != "fallback"`, the audit prompt changes character — instead of "read the codebase and extract principles", become:

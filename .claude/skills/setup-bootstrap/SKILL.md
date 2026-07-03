@@ -574,10 +574,11 @@ mkdir -p .claude/rules
 
 ### Settings Merge
 
-Read the active tech stack skill's `## Settings Additions` section. Merge those entries into `.claude/settings.json`:
-- `allowedTools` — union with existing
-- `deny` — union with existing
-- `hooks.PostToolUse` — append the stack's format hook
+Read the active tech stack skill's `## Settings Additions` section.
+
+- **`.claude/settings.json` does not exist (fresh bootstrap):** create it from the tech-stack skill's Settings Additions layered over a minimal `{}` base. Never copy the toolkit's own `settings.json` — that's MTK's dev config, not a template. Every hook command path written into the target repo must be `$CLAUDE_PLUGIN_ROOT`-relative; bare `hooks/...` or `$CLAUDE_PROJECT_DIR/hooks/...` dangle in plugin-cache installs.
+- **`.claude/settings.json` exists:** merge — `allowedTools`/`deny` union with existing, `hooks.PostToolUse` appends the stack's format hook.
+- **Write refused by the permission/session layer:** write the fully-merged content to `.claude/settings.json.mtk-proposed` instead and list it under **Needs review** in the STEP 5 report — one line: "review the diff, then `mv .claude/settings.json.mtk-proposed .claude/settings.json`". Never silently skip the merge; never retry the refused write verbatim.
 
 ### Git Pre-Commit Hook
 
@@ -758,12 +759,16 @@ After generating CLAUDE.md and rules, generate portable configs for all AI codin
 5. If `AGENTS.md` already exists and has no `## Custom:` sections, the file is regenerated from current references
 6. **Size budget — same instruction-budget discipline as CLAUDE.md** (compliance degrades past ~150 instructions). **Target 60–120 lines**; point to `.claude/rules/` and references rather than restating them.
 7. **Git-ignore check** — surface in the STEP 5 report if the deliverable won't be committed: `git check-ignore -q AGENTS.md && echo "⚠️ AGENTS.md is git-ignored — generated but will NOT be committed."`
-8. Run `bash scripts/generate-tool-configs.sh --all` (if the script exists) to generate native configs for other tools:
-   - `.cursor/rules/mtk-*.mdc` — glob-scoped Cursor rules (applyTo globs from manifest)
-   - `.github/copilot-instructions.md` — GitHub Copilot instructions
-   - `.windsurfrules` — Windsurf rules
-   - `GEMINI.md` — Gemini CLI guidelines
-   - `.clinerules` — Cline/Roo rules
+8. **Cross-agent mirrors (Cursor/Copilot/Windsurf/Gemini/Cline) — ask, don't assume** (real teams have deliberately chosen Claude-only configs before):
+   - Interactive: ask once via `AskUserQuestion` — "Generate cross-agent configs?" options: "AGENTS.md only (Recommended)" / "All tools (AGENTS.md + Cursor/Copilot/Windsurf/Gemini/Cline)" / "None (Claude Code only)".
+   - `--non-interactive`: default to **AGENTS.md only**; skip mirrors and note in the STEP 5 report: "cross-agent mirrors skipped — re-run interactively or run `scripts/generate-tool-configs.sh --all`".
+   - On "All tools": run `bash scripts/generate-tool-configs.sh --all` (if the script exists) to generate:
+     - `.cursor/rules/mtk-*.mdc` — glob-scoped Cursor rules (applyTo globs from manifest)
+     - `.github/copilot-instructions.md` — GitHub Copilot instructions
+     - `.windsurfrules` — Windsurf rules
+     - `GEMINI.md` — Gemini CLI guidelines
+     - `.clinerules` — Cline/Roo rules
+   - Regardless of the answer: a tool with an existing config (marker or not) is regenerated/preserved per the existing marker rules — never orphan an already-adopted tool.
 
 ## STEP 4.5: Monorepo — Per-Package CLAUDE.md (conditional)
 

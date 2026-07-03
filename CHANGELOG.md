@@ -25,6 +25,15 @@ A competitive analysis of the setup/bootstrap landscape plus a same-session loca
 - New `tests/hooks/test-setup-detect.sh` and `tests/hooks/test-verify-commands.sh` — fixture coverage for the new detection and command-verification scripts.
 - New `tests/pressure-tests/setup-converge.md` — adversarial scenarios pressing converge to rewrite docs, auto-append todos, or claim unanchored violations.
 
+### Hardened (dogfood findings from two production bootstrap runs)
+- secret-scan.sh detects URL-embedded credentials (`scheme://user:pass@host`) with placeholder exemptions + dedicated test
+- generate-agents-md.sh enforces its 60–120-line budget (headings + distillation + pointers; 140-line hard ceiling) + dedicated test
+- Cross-agent config generation is now opt-in: interactive question, AGENTS.md-only default under --non-interactive
+- Settings Merge defines the fresh-bootstrap path ($CLAUDE_PLUGIN_ROOT-relative hook paths) and a permission-blocked fallback (settings.json.mtk-proposed, Needs review)
+- tech-stack-dotnet: dotnet publish deny-only (was contradictorily allowed+denied); dotnet test --list-tests documented for command verification
+- verify-references.sh exempts known-optional boilerplate paths (settings.local.json etc.)
+- setup-audit/repomap: defer-to-mcp documented as per-file enrichment; unreachable LSP treated as fallback with Provenance disclosure
+
 ## [7.18.0] - 2026-07-03
 
 ### Added — Setup refresh loop
