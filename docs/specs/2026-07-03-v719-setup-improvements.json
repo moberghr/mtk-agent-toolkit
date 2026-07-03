@@ -1,0 +1,500 @@
+{
+  "slug": "v719-setup-improvements",
+  "date": "2026-07-03",
+  "scope": "feature",
+  "security_impact": "none",
+  "open_decisions": [],
+  "assumptions": [
+    "[VERIFIED:scripts/verify-claims.sh] parses tagged claims, resolves evidence anchors, writes .claude/.mtk-cache/weak-claims-<doc>.json \u2014 converge reuses it on temp copies",
+    "[VERIFIED:scripts/audit-drift-check.sh] --json pairs changed paths with claim anchors",
+    "[VERIFIED:evals/fix/] eval format is frontmatter (category/skill/signal) + grader.md per skill dir; scripts/run-evals.sh discovers by directory under evals/",
+    "[VERIFIED:templates/ci/] is the existing CI template location (pr-review.yml, pr-lint.yml)",
+    "[VERIFIED:.claude/references/regen-diff-contract.md] provides classification/proposal/cache rules that F9's new preserved files route through",
+    "[VERIFIED:.claude/skills/mtk-setup/SKILL.md] inline --update-guidelines workflow reads/writes .claude/manifest.json without CLAUDE_PLUGIN_ROOT resolution \u2014 the defect F1 fixes"
+  ],
+  "baseline_area": "setup",
+  "skill_precedence_gate": "pass",
+  "change_manifest": [
+    "scripts/setup-detect.sh",
+    "tests/hooks/test-setup-detect.sh",
+    "scripts/verify-commands.sh",
+    "tests/hooks/test-verify-commands.sh",
+    ".claude/skills/setup-bootstrap/SKILL.md",
+    ".claude/skills/setup-audit/SKILL.md",
+    ".claude/skills/mtk-setup/SKILL.md",
+    ".claude/skills/setup-converge/SKILL.md",
+    ".claude/skills/setup-refresh/SKILL.md",
+    "tests/pressure-tests/setup-converge.md",
+    ".claude/references/monorepo-bootstrap.md",
+    ".claude/references/audit-grounding.md",
+    ".claude/references/product-context.md",
+    "templates/ci/mtk-staleness-check.yml",
+    "evals/setup-bootstrap/grader.md",
+    "evals/setup-bootstrap/eval-01-clean-bootstrap.md",
+    "evals/setup-bootstrap/eval-02-rerun-preservation.md",
+    "docs/specs/2026-07-03-v719-setup-improvements.md",
+    "docs/specs/2026-07-03-v719-setup-improvements.json",
+    "docs/plans/2026-07-03-v719-setup-improvements.md",
+    "tasks/todo.md",
+    ".claude/manifest.json",
+    ".claude-plugin/plugin.json",
+    ".claude-plugin/marketplace.json",
+    "README.md",
+    "AGENTS.md",
+    "CHANGELOG.md",
+    "checksums.sha256",
+    ".claude/references/config-ingestion.md",
+    ".claude/references/command-verification.md",
+    ".claude/references/preview-gate.md",
+    ".claude/rules/hooks-and-scripts.md",
+    ".claude/rules/INDEX.md"
+  ],
+  "public_contracts": [
+    "/mtk-setup --converge flag (new mode, mutually exclusive with refresh/check/audit/merge/update-guidelines)",
+    "scripts/setup-detect.sh --json (stacks, primary_candidate, package_manager, react_native, monorepo, go_detected)",
+    "scripts/verify-commands.sh (name<TAB>command stdin -> JSON verified/failed/skipped)",
+    ".claude/detected-tools.json gains secondary_stacks array; .claude/setup-answers.json gains resolved_ambiguities key"
+  ],
+  "features": [
+    {
+      "id": "F1",
+      "title": "--update-guidelines plugin-root resolution + never-write-plugin-cache rule"
+    },
+    {
+      "id": "F2",
+      "title": "scripts/setup-detect.sh --json mechanizes stack/pm/monorepo/RN detection; skills shrink"
+    },
+    {
+      "id": "F3",
+      "title": "evals/setup-bootstrap/ fixture-scenario eval coverage"
+    },
+    {
+      "id": "F4",
+      "title": "setup-converge skill + --converge routing: code-vs-principles violations as graded work items"
+    },
+    {
+      "id": "F5",
+      "title": "adaptive interview from [AMBIGUOUS] findings via .claude/.mtk-cache/ambiguities.json"
+    },
+    {
+      "id": "F6",
+      "title": "migration-aware bootstrap STEP 2.7: ingest .cursorrules/AGENTS.md/copilot-instructions etc."
+    },
+    {
+      "id": "F7",
+      "title": "verified-commands stamp: scripts/verify-commands.sh + bootstrap STEP 3.5a extension"
+    },
+    {
+      "id": "F8",
+      "title": "live file references over restated facts in generation rules"
+    },
+    {
+      "id": "F9",
+      "title": "product.md + decisions.md product-context artifacts via product-context.md reference"
+    },
+    {
+      "id": "F10",
+      "title": "templates/ci/mtk-staleness-check.yml CI gate + bootstrap install offer"
+    },
+    {
+      "id": "F11",
+      "title": "mixed-stack support: secondary_stacks recorded, secondary conventions scanned, per-package stack notes"
+    }
+  ],
+  "plan": {
+    "batches": [
+      {
+        "id": "B1",
+        "title": "Detection & command-verification scripts",
+        "files": [
+          "scripts/setup-detect.sh",
+          "tests/hooks/test-setup-detect.sh",
+          "scripts/verify-commands.sh",
+          "tests/hooks/test-verify-commands.sh"
+        ]
+      },
+      {
+        "id": "B2",
+        "title": "Skills consume setup-detect + mixed stacks",
+        "files": [
+          ".claude/skills/setup-bootstrap/SKILL.md",
+          ".claude/skills/setup-audit/SKILL.md",
+          ".claude/references/monorepo-bootstrap.md"
+        ]
+      },
+      {
+        "id": "B3",
+        "title": "mtk-setup routing + guidelines fix + converge skill",
+        "files": [
+          ".claude/skills/mtk-setup/SKILL.md",
+          ".claude/skills/setup-converge/SKILL.md",
+          "tests/pressure-tests/setup-converge.md",
+          ".claude/skills/setup-refresh/SKILL.md"
+        ]
+      },
+      {
+        "id": "B4",
+        "title": "Adaptive interview + migration ingestion",
+        "files": [
+          ".claude/skills/setup-audit/SKILL.md",
+          ".claude/skills/setup-bootstrap/SKILL.md"
+        ]
+      },
+      {
+        "id": "B5",
+        "title": "Verified commands into bootstrap",
+        "files": [
+          ".claude/skills/setup-bootstrap/SKILL.md",
+          ".claude/skills/mtk-setup/SKILL.md"
+        ]
+      },
+      {
+        "id": "B6",
+        "title": "Product context + live references",
+        "files": [
+          ".claude/references/product-context.md",
+          ".claude/skills/setup-bootstrap/SKILL.md",
+          ".claude/references/audit-grounding.md"
+        ]
+      },
+      {
+        "id": "B7",
+        "title": "CI template + evals",
+        "files": [
+          "templates/ci/mtk-staleness-check.yml",
+          ".claude/skills/setup-bootstrap/SKILL.md",
+          "evals/setup-bootstrap/grader.md",
+          "evals/setup-bootstrap/eval-01-clean-bootstrap.md",
+          "evals/setup-bootstrap/eval-02-rerun-preservation.md",
+          "README.md"
+        ]
+      },
+      {
+        "id": "B8",
+        "title": "Release chores",
+        "files": [
+          ".claude/manifest.json",
+          ".claude-plugin/plugin.json",
+          ".claude-plugin/marketplace.json",
+          "README.md",
+          "AGENTS.md",
+          "CHANGELOG.md",
+          "checksums.sha256"
+        ]
+      }
+    ]
+  },
+  "verifiable_criteria": [
+    {
+      "id": "VC1",
+      "criterion": "bash scripts/validate-toolkit.sh prints 'Toolkit validation passed'",
+      "channel": "script-output"
+    },
+    {
+      "id": "VC2",
+      "criterion": "bash tests/hooks/test-setup-detect.sh passes",
+      "channel": "test-run"
+    },
+    {
+      "id": "VC3",
+      "criterion": "bash tests/hooks/test-verify-commands.sh passes",
+      "channel": "test-run"
+    },
+    {
+      "id": "VC4",
+      "criterion": "shellcheck clean on scripts/setup-detect.sh and scripts/verify-commands.sh",
+      "channel": "script-output"
+    },
+    {
+      "id": "VC5",
+      "criterion": "version is 7.19.0 in manifest.json, plugin.json, and marketplace.json",
+      "channel": "script-output"
+    },
+    {
+      "id": "VC6",
+      "criterion": "scripts/run-evals.sh --list shows setup-bootstrap group with 2 evals",
+      "channel": "script-output"
+    },
+    {
+      "id": "VC7",
+      "criterion": "mtk-setup SKILL.md --update-guidelines workflow resolves CLAUDE_PLUGIN_ROOT and never writes into the plugin cache",
+      "channel": "script-output"
+    },
+    {
+      "id": "VC8",
+      "criterion": "all change-manifest paths exist; every new path listed in manifest.json files",
+      "channel": "script-output"
+    },
+    {
+      "id": "VC9",
+      "criterion": "checksums.sha256 regenerated as the last change (S4.11)",
+      "channel": "script-output"
+    }
+  ],
+  "out_of_scope": [
+    "multi-stack workflow-skill execution (documented limitation)",
+    "converge auto-remediation",
+    "MCP/command import from other tools",
+    "new tech stacks (go/java/rust)",
+    "verify-claims.sh rewrite"
+  ],
+  "implement": {
+    "completed_batches": [
+      {
+        "batch_id": "B1",
+        "actual_files": [
+          "scripts/setup-detect.sh",
+          "tests/hooks/test-setup-detect.sh",
+          "scripts/verify-commands.sh",
+          "tests/hooks/test-verify-commands.sh"
+        ],
+        "build": {
+          "ok": true
+        },
+        "tests": {
+          "ok": true
+        },
+        "behavioral_diff": "setup-detect.sh (stacks/pm/RN-Expo/monorepo JSON detection) and verify-commands.sh (timeboxed command verification JSON) now exist with passing tests; nothing consumes them yet",
+        "deviations": [
+          {
+            "kind": "spec-nuance",
+            "detail": ".mtkignore loader not integrated (only ported exclusions)"
+          },
+          {
+            "kind": "spec-nuance",
+            "detail": "gtimeout probed in addition to timeout"
+          },
+          {
+            "kind": "review-fix",
+            "detail": "F001 resolved: enumeration-sources limitation documented in header + nx fixture (e) added asserting is_monorepo=true with packages=[]"
+          }
+        ]
+      },
+      {
+        "batch_id": "B2",
+        "actual_files": [
+          ".claude/skills/setup-bootstrap/SKILL.md",
+          ".claude/skills/setup-audit/SKILL.md",
+          ".claude/references/monorepo-bootstrap.md"
+        ],
+        "build": {
+          "ok": true
+        },
+        "tests": {
+          "ok": true
+        },
+        "behavioral_diff": "setup skills call setup-detect.sh --json instead of inline find/lockfile/monorepo bash; secondary_stacks recorded end-to-end (STEP 0 -> audit 2.6 -> conventions scan -> pruning union -> report); bootstrap shrank 935->893 lines",
+        "deviations": []
+      },
+      {
+        "batch_id": "B3",
+        "actual_files": [
+          ".claude/skills/mtk-setup/SKILL.md",
+          ".claude/skills/setup-converge/SKILL.md",
+          "tests/pressure-tests/setup-converge.md",
+          ".claude/skills/setup-refresh/SKILL.md"
+        ],
+        "build": {
+          "ok": true
+        },
+        "tests": {
+          "ok": true
+        },
+        "behavioral_diff": "--update-guidelines resolves plugin root and never writes plugin cache (repo-local mtk-version.json carries the pin on marketplace installs); --converge routes to new setup-converge skill (temp-copy verify-claims, S1.15-graded work items, read-only outside .mtk-cache, interactive-only todo append)",
+        "deviations": []
+      },
+      {
+        "batch_id": "B4",
+        "actual_files": [
+          ".claude/skills/setup-audit/SKILL.md",
+          ".claude/skills/setup-bootstrap/SKILL.md"
+        ],
+        "build": {
+          "ok": true
+        },
+        "tests": {
+          "ok": true
+        },
+        "behavioral_diff": "audit emits .claude/.mtk-cache/ambiguities.json; bootstrap STEP 2.5 adaptive questions (max 3, resolved_ambiguities key, never re-ask, conflicts->Needs review); new STEP 2.7 ingests existing AI configs read-only with migrated-from evidence anchors",
+        "deviations": []
+      },
+      {
+        "batch_id": "B5",
+        "actual_files": [
+          ".claude/skills/setup-bootstrap/SKILL.md",
+          ".claude/skills/mtk-setup/SKILL.md"
+        ],
+        "build": {
+          "ok": true
+        },
+        "tests": {
+          "ok": true
+        },
+        "behavioral_diff": "bootstrap STEP 3.5a 'Command verification (F7)': build/test-list/format-check commands piped to verify-commands.sh; verified stamp comment in CLAUDE.md Tech Stack; failed commands always annotated [UNVERIFIED]; --no-verify-commands flag plumbed through mtk-setup (bootstrap-only)",
+        "deviations": []
+      },
+      {
+        "batch_id": "B6",
+        "actual_files": [
+          ".claude/references/product-context.md",
+          ".claude/skills/setup-bootstrap/SKILL.md",
+          ".claude/references/audit-grounding.md"
+        ],
+        "build": {
+          "ok": true
+        },
+        "tests": {
+          "ok": true
+        },
+        "behavioral_diff": "product-context.md templates (product.md <=40 lines evidence-anchored; decisions.md ADR-lite append-only); bootstrap Q7 product_purpose + STEP 3.8 generation with preservation + snapshot + report wiring; live-references rule in generation rules + audit-grounding section 8; Project Profile version fields pointer-style",
+        "deviations": [
+          {
+            "kind": "extra-file",
+            "detail": "rebuilt derived gitignored .claude/references.index via build-references-index.sh",
+            "justification": "required for validator; derived artifact, in-package, no contract change"
+          },
+          {
+            "kind": "follow-up",
+            "detail": "STEP 2.5 cap wording ('6 questions max'/'3-6') not updated for Q7+adaptive \u2014 folded into B7"
+          }
+        ]
+      },
+      {
+        "batch_id": "B7",
+        "actual_files": [
+          "templates/ci/mtk-staleness-check.yml",
+          ".claude/skills/setup-bootstrap/SKILL.md",
+          "evals/setup-bootstrap/grader.md",
+          "evals/setup-bootstrap/eval-01-clean-bootstrap.md",
+          "evals/setup-bootstrap/eval-02-rerun-preservation.md",
+          "README.md"
+        ],
+        "build": {
+          "ok": true
+        },
+        "tests": {
+          "ok": true
+        },
+        "behavioral_diff": "two-job CI staleness workflow template (version-pinned toolkit checkout, step-summary plan table); bootstrap STEP 4 install offer + report line; interview cap wording corrected (7 static + 3 adaptive, 10 ceiling); evals/setup-bootstrap group (positive + adversarial) discovered by run-evals; README CI subsection",
+        "deviations": [
+          {
+            "kind": "implementation-choice",
+            "detail": "two-job workflow with needs/if for true job-level skip",
+            "justification": "GitHub Actions can only fully skip a job via job-level if"
+          }
+        ]
+      },
+      {
+        "batch_id": "B8",
+        "actual_files": [
+          ".claude/manifest.json",
+          ".claude-plugin/plugin.json",
+          ".claude-plugin/marketplace.json",
+          "README.md",
+          "AGENTS.md",
+          "CHANGELOG.md",
+          "checksums.sha256"
+        ],
+        "build": {
+          "ok": true
+        },
+        "tests": {
+          "ok": true
+        },
+        "behavioral_diff": "manifest +11 entries; 7.19.0 across all three version files; README routing rows + What's New + badge fix; AGENTS.md converge routing; CHANGELOG F1-F11; checksums regenerated last (310 files, self-verify clean)",
+        "deviations": [
+          {
+            "kind": "convention",
+            "detail": "docs/specs|plans not manifest-listed (mirrors repo-wide convention)"
+          },
+          {
+            "kind": "convention",
+            "detail": "AGENTS.md hand-edited (root file is hand-curated, lacks generator marker)"
+          }
+        ]
+      }
+    ],
+    "intermediate_reviews": [
+      {
+        "after": "B3",
+        "reviewer": "compliance-reviewer",
+        "verdict": "PASS",
+        "findings": [
+          {
+            "id": "F001",
+            "sev": "warning",
+            "resolution": "fixed by B1 agent (documented limitation + test)"
+          }
+        ]
+      }
+    ],
+    "behavioral_diff": "An engineer running /mtk-setup now has: (F1) --update-guidelines that works from marketplace installs \u2014 pin resolution honors CLAUDE_PLUGIN_ROOT and writes to repo-local mtk-version.json, never the plugin cache; (F2) deterministic detection via scripts/setup-detect.sh --json (stacks, package manager, RN/Expo, monorepo classification+enumeration) replacing ~120 lines of inline skill bash \u2014 setup-bootstrap shrank 935\u2192893 lines while gaining features; (F4) /mtk-setup --converge \u2014 read-only code-vs-principles check producing graded work items (blocking/flag/note per S1.15 tags) in .claude/.mtk-cache/converge-report.md with an interactive-only todo-append offer; (F5) interviews that ask up to 3 adaptive questions generated from the audit's [AMBIGUOUS] findings, persisting decisions in setup-answers.json resolved_ambiguities and upgrading doc lines to decided conventions; (F6) bootstrap STEP 2.7 ingesting pre-existing .cursorrules/AGENTS.md/copilot-instructions/etc. as evidence-anchored rule input, read-only; (F7) build/test/format commands executed (timeboxed, list/check variants) before being written into CLAUDE.md \u2014 verified stamp comment or [UNVERIFIED] annotation, --no-verify-commands opt-out; (F8) generation rules that point at canonical manifests instead of restating version facts; (F9) product.md (purpose/users/flows, \u226440 lines) + decisions.md (ADR-lite, append-only) generated once and preserved thereafter; (F10) a shippable GitHub Actions staleness-gate template (version-pinned toolkit checkout) offered during bootstrap; (F11) secondary stacks recorded in detected-tools.json, scanned for conventions, included in reference pruning, and noted per-package in monorepos; (F3) the setup family now has eval coverage (positive clean-bootstrap + adversarial rerun-preservation). Version 7.19.0 across all three version files.",
+    "stage2_reviews": [
+      {
+        "reviewer": "test-reviewer",
+        "verdict": "PASS",
+        "critical": 0,
+        "warnings": 6
+      },
+      {
+        "reviewer": "architecture-reviewer",
+        "verdict": "PASS",
+        "critical": 0,
+        "warnings": 2,
+        "suggestions": 1
+      },
+      {
+        "reviewer": "silent-failure-hunter",
+        "verdict": "PASS",
+        "critical": 0,
+        "warnings": 5
+      }
+    ],
+    "manifest_amendments": [
+      {
+        "files": [
+          ".claude/references/config-ingestion.md",
+          ".claude/references/command-verification.md",
+          ".claude/references/preview-gate.md",
+          ".claude/rules/hooks-and-scripts.md",
+          ".claude/rules/INDEX.md"
+        ],
+        "reason": "Stage-2 review fixes: A-F002 extraction references, A-F001 S3.3 amendment + regenerated rule index"
+      }
+    ],
+    "fix_batches": [
+      {
+        "batch_id": "FIX-A",
+        "fixes": [
+          "S-F001",
+          "S-F002",
+          "S-F004",
+          "S-F005",
+          "T-F001",
+          "T-F002",
+          "T-F003",
+          "T-F004",
+          "T-F005",
+          "T-F006"
+        ],
+        "status": "completed"
+      },
+      {
+        "batch_id": "FIX-B",
+        "fixes": [
+          "A-F001",
+          "A-F002",
+          "A-F003",
+          "S-F003"
+        ],
+        "status": "completed",
+        "bootstrap_lines": {
+          "baseline": 935,
+          "peak": 995,
+          "final": 919
+        }
+      }
+    ],
+    "review_iterations": 2
+  }
+}

@@ -16,7 +16,7 @@ axes:
 
 - **S3.1** All bash scripts must start with `#!/usr/bin/env bash` and `set -euo pipefail`.
 - **S3.2** Hook scripts must be executable (`chmod +x`).
-- **S3.3** No external dependencies beyond coreutils, grep, sed, awk, find, git. The toolkit must work on a fresh macOS or Linux machine. Opt-in features may probe for an extra tool (e.g. openssl for release signing) but must degrade gracefully — never a hard failure — when it is absent or lacks the needed capability (stock macOS LibreSSL has no Ed25519).
+- **S3.3** No external dependencies beyond coreutils, grep, sed, awk, find, git. The toolkit must work on a fresh macOS or Linux machine. Opt-in features may probe for an extra tool (e.g. openssl for release signing) but must degrade gracefully — never a hard failure — when it is absent or lacks the needed capability (stock macOS LibreSSL has no Ed25519). python3 is part of the accepted baseline (macOS and mainstream Linux ship it); scripts may hard-require it with a clear exit-2 message.
 - **S3.12** MCP server code (`mcp/` directory) is exempt from S3.3 — it may use Node.js dependencies. However, the pre-built bundle (`dist/mtk-mcp-server.cjs`) is the only runtime artifact. Users never run `npm install`. The MCP server is optional; all skills must have bash fallback paths.
 - **S3.4** Use `"${VAR:-}"` for optional environment variables to avoid unbound variable errors under `set -u`.
 

@@ -30,8 +30,9 @@ Parse arguments before starting:
 
 - **`--preview`** — run detection, scan, and interview, then **show the proposed CLAUDE.md + rules files diff** and ask for confirmation via `AskUserQuestion` before writing anything. Use this when the engineer wants to review before commit. Without `--preview`, the bootstrap writes files directly (merge mode is still the default for existing CLAUDE.md).
 - **`--non-interactive`** — skip the post-scan interview (STEP 2.5). Use when scripting the bootstrap or when the engineer has no time for questions. Defaults to interactive.
+- **`--no-verify-commands`** — skip STEP 3.5a's "Command verification" subsection entirely: no build/test/format commands are executed, and CLAUDE.md's Tech Stack section is written with no `<!-- verified: ... -->` stamp and no `[UNVERIFIED]` annotations. Use on a slow or sandboxed runner where executing the repo's build is undesirable. Noted in the STEP 5 report (`Command verification: skipped via --no-verify-commands`).
 
-Both flags can combine: `--preview --non-interactive` runs silently but still asks to confirm writes.
+All three flags can combine, e.g. `--preview --non-interactive --no-verify-commands` runs silently, skips command verification, and still asks to confirm writes.
 
 ## Research-backed constraints (read this first)
 
@@ -49,7 +50,7 @@ The content you generate is subject to an **instruction budget** — Claude's co
 
 Bootstrap is **additive and merge-only. It NEVER deletes a file it did not generate**, and it never runs `git rm`, `rm`, or a "replace/fresh-generate" sweep over pre-existing files — even if a wrapper, runner, or `--non-interactive` caller asks for "replace mode." There is no replace mode. This contract holds regardless of how the skill was invoked.
 
-- **Only MTK-owned files may be overwritten in place.** An MTK-owned file is one carrying the `<!-- mtk-setup` provenance stamp, OR one of MTK's known generated paths (`CLAUDE.md` root, `.claude/rules/*` in the standard set, `.claude/references/*`, `.claude/tech-stack`, `.claude/settings.json`, `.claude/detected-tools.json`, `.claude/mtk-version.json`, `CODE_INDEX.md`, `pre-commit-review-list.md`). Overwrite means rewrite the body — never `git rm`.
+- **Only MTK-owned files may be overwritten in place.** An MTK-owned file is one carrying the `<!-- mtk-setup` provenance stamp, OR one of MTK's known generated paths (`CLAUDE.md` root, `.claude/rules/*` in the standard set, `.claude/references/*` — including `.claude/references/product.md` and `.claude/references/decisions.md` (STEP 3.8) — `.claude/tech-stack`, `.claude/settings.json`, `.claude/detected-tools.json`, `.claude/mtk-version.json`, `CODE_INDEX.md`, `pre-commit-review-list.md`). Overwrite means rewrite the body — never `git rm`. **Exception:** `.claude/references/product.md` and `.claude/references/decisions.md` are never overwritten once present — same "leave it alone" rule as `architecture-principles.md` — a later re-run routes any change through `.claude/references/regen-diff-contract.md` instead of rewriting in place.
 - **Everything else is preserved untouched.** Explicitly, never delete: nested/per-package `CLAUDE.md` (at any path other than root — **even when the repo is NOT classified as a monorepo**), `.claude/CLAUDE.md`, custom `.claude/commands/*`, custom `.claude/rules/*` whose name is outside MTK's standard set, custom `.claude/references/*` the team added, lockfiles (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `bun.lock`, etc.), source files, and any AI-assistant config the team adopted.
 - **Superseding a prior MTK file is the one exception, and it must be loud.** If a re-run legitimately retires an MTK-owned file (e.g., consolidating `coding-style.md` into other rules), remove it explicitly AND list every such removal under "Retired prior MTK files" in the STEP 5 report. Never silently delete. If you are unsure a file is MTK-owned, treat it as hand-authored and preserve it.
 - **Stage only your declared output.** When committing, `git add` the specific generated paths — never `git add -A` / `git add .`. That prevents scratch or run-report artifacts from leaking into the commit.
@@ -66,14 +67,13 @@ Scan the repo root for tech stack markers:
 | `package.json`, `tsconfig.json` (and no `*.csproj`) | `typescript` (covers React, Next.js, Tauri, Node backends) |
 | `go.mod` | `go` (not yet supported — stop and warn) |
 
-Detection commands:
+Run the mechanized detector once — it covers every marker above plus package-manager priority, React Native/Expo markers, and monorepo signals (STEP 4.5 reuses this same call):
 ```bash
-DOTNET=$(find . -maxdepth 3 -name "*.csproj" -o -name "*.sln" -o -name "*.slnx" 2>/dev/null | head -1)
-PYTHON=$(find . -maxdepth 2 -name "pyproject.toml" -o -name "setup.py" -o -name "requirements.txt" -o -name "Pipfile" 2>/dev/null | head -1)
-TYPESCRIPT=$(find . -maxdepth 2 -name "package.json" -not -path "*/node_modules/*" 2>/dev/null | head -1)
+bash scripts/setup-detect.sh --json
 ```
+Read `stacks` (array), `primary_candidate`, `package_manager`, `react_native.detected` / `react_native.expo`, `go_detected`, and `multiple_lockfiles` from the output.
 
-If multiple stacks detected, ask the engineer:
+If `stacks` has more than one entry, ask the engineer:
 ```
 question: "Multiple tech stacks detected. Which is the primary stack for this repo?"
 header: "Tech stack"
@@ -85,8 +85,9 @@ options:
   - label: "typescript"
     description: "TypeScript / JavaScript is the primary stack (React, Next.js, Tauri, Node)"
 ```
+Otherwise the primary stack is `primary_candidate`. **F11 — secondary stacks:** once the primary is chosen, if `stacks` had more than one entry, record the rest as secondary stacks — `setup-audit` STEP 2.6 writes them to `detected-tools.json`'s `secondary_stacks` array (STEP 2 runs their naming/testing scan recipes; STEP 3.6 folds their reference files into the detected-tool union).
 
-If no supported stack detected, stop and tell the engineer to add a `tech-stack-{name}/` skill or open an issue.
+If `stacks` is empty, stop and tell the engineer go is not yet supported (when `go_detected` is true) or to add a `tech-stack-{name}/` skill / open an issue (otherwise).
 
 Write the result to `.claude/tech-stack` (plain text, single word):
 ```bash
@@ -109,29 +110,15 @@ bash hooks/check-prerequisites.sh
 
 This checks for recommended tools (shellcheck, shfmt, jq, plus stack-specific tools like ruff/mypy for Python, dotnet-format for .NET, etc.). Missing tools are reported as warnings in the final report — they never block bootstrap. Include the output in the STEP 5 verification report.
 
-### Package manager auto-detect (typescript only)
+### Package manager + React Native/Expo (typescript only)
 
-When the active stack is `typescript`, also write the detected package manager to `.claude/tech-stack-pm` so workflow skills can substitute `<pm>` in commands. Pick automatically by lockfile priority:
-
+When the active stack is `typescript`, write `package_manager` (from the STEP 0 `setup-detect.sh --json` output) to `.claude/tech-stack-pm` so workflow skills can substitute `<pm>` in commands:
 ```bash
-if [ -f bun.lock ] || [ -f bun.lockb ]; then PM=bun
-elif [ -f pnpm-lock.yaml ]; then PM=pnpm
-elif [ -f yarn.lock ]; then PM=yarn
-else PM=npm  # package-lock.json or no lockfile
-fi
 echo "$PM" > .claude/tech-stack-pm
 ```
+If `multiple_lockfiles` is true, warn the engineer — that's almost always a mistake — and note that `package_manager` was picked automatically by priority (bun > pnpm > yarn > npm); do not prompt.
 
-If multiple lockfiles exist (e.g. both `yarn.lock` and `package-lock.json`), that's almost always a mistake — warn the engineer and pick the highest-priority one. Do not prompt; the priority order is: bun > pnpm > yarn > npm.
-
-### React Native / Expo detection (typescript only)
-
-When the stack is `typescript`, also detect RN/Expo so `setup-audit`'s `detected-tools.json` emits it (audit STEP 2.6) and reference pruning (STEP 3.6) keeps RN-relevant refs. Markers: `react-native`/`expo` in `package.json` deps, `app.json` / `app.config.*`, `metro.config.*`. If any match, add `react-native` (and `expo` when the `expo` dep or `app.config.*` is present) to detected tools. Stack stays `typescript`.
-
-```bash
-grep -lE '"(react-native|expo)"[[:space:]]*:' package.json 2>/dev/null
-test -f app.json || ls app.config.* metro.config.* >/dev/null 2>&1
-```
+`react_native.detected` / `react_native.expo` feed `setup-audit`'s `detected-tools.json` (audit STEP 2.6) and reference pruning (STEP 3.6): when `detected` is true, add `react-native` (and `expo` when `react_native.expo` is true) to detected tools. Stack stays `typescript`.
 
 ## STEP 1: Pull External Standards
 
@@ -232,12 +219,14 @@ find . -name "pull_request_template*"
 
 Record what you find — this is the input for Step 3.
 
+**F11 — secondary stacks:** for each secondary stack recorded in STEP 0, also run that stack's `## Scan Recipes` categories 5 (Naming Conventions) and 6 (Testing Patterns) so `conventions.md` covers it too — the rest of that stack's recipes are skipped (workflow skills remain primary-stack only).
+
 ## STEP 2.5: Post-Scan Interview (skip if `--non-interactive` and no persisted answers)
 
-Auto-detection captures WHAT is in the codebase. It cannot capture the team's implicit knowledge — the things that make CLAUDE.md actually useful. Ask **3–6 focused questions** via `AskUserQuestion`. These answers feed directly into the Critical Rules and `project-specific.md`.
+Auto-detection captures WHAT is in the codebase. It cannot capture the team's implicit knowledge — the things that make CLAUDE.md actually useful. Ask **3–7 focused questions** via `AskUserQuestion`. These answers feed directly into the Critical Rules and `project-specific.md`.
 
 **Rules for the interview:**
-- Keep it short. 6 questions max. If the engineer pushes back or seems unsure, accept "skip" as a valid answer.
+- Keep it short. 7 static questions max, plus up to 3 adaptive questions from audit ambiguities (10 total ceiling). If the engineer pushes back or seems unsure, accept "skip" as a valid answer.
 - Do NOT ask anything you can answer from the scan (e.g., "what's your test framework" — you already know).
 - Frame for answers you can convert into trigger-action rules.
 - Record answers; integrate into Step 3 output.
@@ -256,12 +245,23 @@ Auto-detection captures WHAT is in the codebase. It cannot capture the team's im
 
 6. **Definition of done** — "What must be true before a change in this repo counts as done? (build + tests green, review passed, manual QA, deploy verification, docs updated …)" Answers feed CLAUDE.md verification guidance and `.claude/rules/project-specific.md`.
 
+7. **Product purpose** — "One sentence: what does this product do, and for whom?" Skippable like the rest. Feeds `.claude/references/product.md` (STEP 3.8).
+
+**Adaptive questions (from audit ambiguities):** if `.claude/.mtk-cache/ambiguities.json` exists and its `ambiguities` array is non-empty, ask up to **3** additional `AskUserQuestion` items on top of the static set — total interview budget: static 7 + adaptive 3 max (10 total ceiling). Rank ambiguities by total hit count (sum of `competing_forms[].count`), highest first, and ask about the top ones only.
+
+Phrasing pattern: "The codebase splits on `<claim>`: `<form A>` (N/M) vs `<form B>` (K/M). Which is the standard?" — options are the competing forms plus an explicit **"Leave ambiguous (document the split)"** option.
+
+- **Persist:** write each answer under a new top-level `resolved_ambiguities` key in `.claude/setup-answers.json`, an object keyed by the ambiguity's `anchor`: `{"<anchor>": {"choice": "<form chosen, or \"leave-ambiguous\">", "decided": "<ISO8601 UTC>"}}`.
+- **Doc upgrade:** where an ambiguity was resolved (not left ambiguous), upgrade that `[AMBIGUOUS]` line in the generated doc to a decided convention, citing `Evidence: engineer interview — .claude/setup-answers.json (resolved_ambiguities)`.
+- **Re-run rule:** anchors already present in `resolved_ambiguities` are never re-asked. If a fresh scan contradicts a recorded resolution, emit a Needs review item instead of silently picking a side — same interview-conflict contract as setup-audit's "Interview answers are authoritative" rule (cited, not restated).
+
 **What to do with answers:**
 - Each `hard never` → top of Critical Rules, with `IMPORTANT:` prefix.
 - Each `top failure mode` → rule in the relevant `.claude/rules/` file (e.g., failure about EF queries → `data-layer.md`).
 - Each `invisible convention` → `project-specific.md`.
 - Compliance answers → fold into `security.md` with `§1.x` numbering.
 - Definition-of-done answers → CLAUDE.md's verification guidance (what "done" means for this repo) and `.claude/rules/project-specific.md`.
+- Product purpose answer → persisted under answer key `product_purpose`; seeds `.claude/references/product.md` (STEP 3.8).
 - **Evidence anchor (every rule sourced from an answer):** cite the steering file as the rule's evidence, e.g. `Evidence: engineer interview — .claude/setup-answers.json (hard_nevers)`. `scripts/verify-claims.sh` resolves real paths before content-grep, so these anchors always hit — engineer-stated rules are never auto-downgraded by the verify pass.
 
 **Persist answers:**
@@ -279,9 +279,11 @@ After the interview (including when some questions are skipped), write `.claude/
     "invisible_conventions": [],
     "branch_pr_workflow": "",
     "compliance_constraints": [],
-    "done_definition": []
+    "done_definition": [],
+    "product_purpose": ""
   },
-  "skipped": []
+  "skipped": [],
+  "resolved_ambiguities": {}
 }
 ```
 
@@ -292,6 +294,12 @@ After the interview (including when some questions are skipped), write `.claude/
   ```
   ⚠️ Interview skipped. CLAUDE.md will be auto-detected only — consider running without --non-interactive for better team-specific rules.
   ```
+
+## STEP 2.7: Ingest Existing AI-Assistant Configs
+
+Repos migrating to MTK often already carry AI-assistant configuration from other tools (Cursor, Copilot, Windsurf, Cline, Gemini, a prior CLAUDE.md). Treat what's found as interview-grade input feeding STEP 3 generation — read-only, evidence-anchored, with dedup/conflict rules against the STEP 2 scan.
+
+The detection list, evidence-anchor convention, and dedup/conflict rules live in **`.claude/references/config-ingestion.md`**. Read it now and follow it. Report `Ingested AI configs: [list of source paths, or "none found"]` in STEP 5.
 
 ## STEP 3: Generate CLAUDE.md + Rules Files
 
@@ -355,10 +363,13 @@ Resolve `{MANIFEST_VERSION}` and `{MANIFEST_SHA}` from `.claude/manifest.json`. 
 
 ## Tech Stack
 
+<!-- verified: build ✓ test ✓ format ✓ (YYYY-MM-DD) -->
+[The comment line above is the STEP 3.5a command-verification stamp — list only the names that came back `verified`; omit the comment entirely if none did (all skipped/failed) or if the bootstrap ran with `--no-verify-commands`.]
+
 - **Active stack:** [from `.claude/tech-stack`]
-- **Build command:** [from tech stack skill `## Build & Test Commands`]
-- **Test command:** [from tech stack skill `## Build & Test Commands`]
-- **Format:** [human-readable form of the format command from tech stack skill `## Format Command` — show the manual project-wide form, e.g., `dotnet format --verbosity quiet`, `npx biome format --write <file>`, `ruff format <file>`. The PostToolUse hook (`hooks/format-on-edit.sh`) handles per-file targeting via stdin JSON; CLAUDE.md is for human readers.]
+- **Build command:** [from tech stack skill `## Build & Test Commands`; append `[UNVERIFIED — <reason>]` if STEP 3.5a's verifier reported `failed`]
+- **Test command:** [from tech stack skill `## Build & Test Commands`, list/collect-only variant when one exists (STEP 3.5a); append `[UNVERIFIED — <reason>]` if `failed`]
+- **Format:** [human-readable form of the format command from tech stack skill `## Format Command` — show the manual project-wide form, e.g., `dotnet format --verbosity quiet`, `npx biome format --write <file>`, `ruff format <file>`. The PostToolUse hook (`hooks/format-on-edit.sh`) handles per-file targeting via stdin JSON; CLAUDE.md is for human readers. Append `[UNVERIFIED — <reason>]` if STEP 3.5a's check-mode verification reported `failed`.]
 
 For framework-specific build/test commands and patterns, see the `tech-stack-{stack}` skill (provided by the MTK plugin, not a file in this repo).
 
@@ -369,7 +380,7 @@ For framework-specific build/test commands and patterns, see the `tech-stack-{st
 [Generate based on scan findings — adapt fields per stack]
 
 For dotnet:
-- **Framework:** .NET [version]
+- **Framework:** .NET — version per `<csproj TargetFramework>` (pointer, not restated — F8)
 - **Data layer:** [EF Core / Dapper / Data API / etc.]
 - **Patterns:** [MediatR/CQRS, Result pattern, FluentValidation, etc.]
 - **Hosting:** [Lambda / ECS / App Service / etc.]
@@ -378,7 +389,7 @@ For dotnet:
 
 For python:
 - **Framework:** [Django / FastAPI / Flask / etc.]
-- **Python version:** [from pyproject.toml or .python-version]
+- **Python version:** see `pyproject.toml` / `.python-version` (pointer, not restated — F8)
 - **Data layer:** [SQLAlchemy / Django ORM / Tortoise / etc.]
 - **Test stack:** [pytest / unittest, mocking framework]
 - **Hosting:** [Lambda / ECS / docker / etc.]
@@ -429,6 +440,8 @@ Detailed rules in `.claude/rules/` (auto-loaded by Claude Code):
 Full reference docs (read on-demand by skills and review agents):
 - `.claude/references/{stack}/coding-guidelines.md` — Stack-specific coding style
 - `.claude/references/architecture-principles.md` — Architecture principles
+- `.claude/references/product.md` — Product purpose, users, key flows, non-goals
+- `.claude/references/decisions.md` — ADR-lite decision log (append-only)
 - `.claude/references/security-checklist.md` — Security checklist (shared)
 - Stack-specific references listed in the `tech-stack-{stack}` skill's `## Reference Files` (MTK plugin)
 ````
@@ -457,6 +470,7 @@ The rule file templates are largely the same as before — adapt the content per
 - Flag conflicts: "⚠️ Guideline says X, but codebase does Y. Standardize on: [recommendation]"
 - Be specific to THIS project — skip technologies not in use.
 - **Don't duplicate** content from `.claude/references/` — point to the file instead.
+- **Live references over restated facts (F8).** When a fact lives in a canonical machine-readable file (framework/runtime versions, dependency lists, package-manager choice), point at the file — `see \`package.json\`` — instead of restating the value: restated facts rot as the manifest changes; pointers don't. Exception: facts the instruction budget needs inline stay inline (build/test command lines). Use `@`-import form only for files ≤~50 lines (D6); never `@`-import a manifest or lockfile — that inlines the whole file into context and blows the instruction budget this rule protects.
 - Skip rules files for sections that don't apply.
 - **Cache-stable ordering:** put invariants (Critical Rules, Standards Reference, Tech Stack commands) near the top; volatile state (project profile with versions, monorepo layout) below. This keeps the prompt prefix stable across sessions so prompt caching stays warm. See `.claude/skills/writing-skills/SKILL.md` `## Cache-Stable Prefixes`.
 
@@ -484,59 +498,17 @@ bash scripts/verify-references.sh CLAUDE.md \
 
 **Rule:** Never infer disk presence from solution membership, package manifests, or lock files alone. The `test -d` / `test -f` check is the source of truth. The generated content must reflect the repository state AT THE TIME OF WRITING, not at the time of scanning. **Claim-level grounding (MANDATORY):** after writing each generated doc, run `bash scripts/verify-claims.sh <file>` and apply `.claude/references/audit-grounding.md` (rule tags `[ENFORCED]/[CONVENTION]/[ASPIRATIONAL]`, `<!-- mtk-stamp -->` footer on CLAUDE.md, zero-hit downgrades, transient-state and terminology flags, paste-ready weak-claims report).
 
+### Command verification (F7)
+
+Unless `--no-verify-commands` was passed (see `## Modes`), verify the exact commands you are about to publish in the Tech Stack section **before** writing CLAUDE.md. Command assembly (build/test/format), the `verify-commands.sh` invocation, and outcome handling — including the fourth branch for when the verifier itself is missing or returns non-JSON — live in **`.claude/references/command-verification.md`**. Read it now and follow it before writing the Tech Stack section.
+
+Report line reminder: note the outcome (`N verified, N unverified, N skipped`, or `skipped via --no-verify-commands` / `skipped — verify-commands.sh not found`) in the STEP 5 report.
+
 ## STEP 3.5b: Preview Gate (if `--preview`)
 
-If the engineer passed `--preview`, **do not write any files yet**. Instead:
+If the engineer passed `--preview`, **do not write any files yet**. The plan-summary table, the ASCII example, and the `AskUserQuestion` confirmation flow live in **`.claude/references/preview-gate.md`**. Read it now and follow it.
 
-1. Hold the generated content in memory (CLAUDE.md body, each `.claude/rules/*.md` body, AGENTS.md, pre-commit-review-list).
-2. For each pending file, stage it to a temp path and compute size with `scripts/count-tokens.sh`:
-   ```bash
-   TMP=$(mktemp); echo "$CONTENT" > "$TMP"
-   read -r LINES TOKENS < <(bash scripts/count-tokens.sh "$TMP")
-   ```
-3. Print a plan summary in table form (fixed columns, right-aligned numbers):
-   ```
-   📋 PROPOSED CHANGES (preview — nothing written yet)
-
-   FILE                                          STATUS     LINES  ~TOKENS
-   CLAUDE.md                                     NEW          178     1843   (cap 120 ← FAIL)
-   .claude/rules/security.md                     NEW           47      512
-   .claude/rules/architecture.md                 NEW           62      698
-   .claude/rules/testing.md                      NEW           41      452
-   .claude/rules/data-layer.md                   NEW           38      401
-   .claude/rules/project-specific.md             NEW           29      314
-   .claude/references/pre-commit-review-list.md  NEW           24      268
-   AGENTS.md                                     NEW           23      287
-   ```
-   If any row shows `FAIL`, refuse to proceed: print "Generated CLAUDE.md exceeds 120 lines — move <section> to .claude/rules/<name>.md" and abort. This gate fires even without `--preview`.
-
-   Follow the table with a one-block summary:
-   ```
-   Critical Rules (top of CLAUDE.md):
-     §0.1 [first rule]
-     §0.2 [second rule]
-     ...
-   Tech stack:  [stack]
-   Package mgr: [pm, if ts]
-   ```
-4. Print the full CLAUDE.md body inline (inside a fenced code block) so the engineer can review it.
-5. Ask via `AskUserQuestion`:
-   ```
-   question: "Proceed with writing these files?"
-   header: "Bootstrap confirmation"
-   options:
-     - label: "Yes, write all"
-       description: "Commit the proposed files as shown"
-     - label: "Yes, but skip CLAUDE.md"
-       description: "Write rules files only — I'll author CLAUDE.md myself"
-     - label: "Cancel"
-       description: "Discard the proposed output"
-   ```
-6. On "Cancel", stop and leave the repo untouched.
-7. On "skip CLAUDE.md", write everything except root CLAUDE.md.
-8. On "Yes, write all", proceed to STEP 4.
-
-Without `--preview`, still compute the lines/tokens table and enforce the 120-line ceiling on CLAUDE.md — just skip the confirmation prompt.
+**Unconditional (fires even without `--preview`):** compute the lines/tokens table and enforce the 120-line CLAUDE.md ceiling regardless of mode. If CLAUDE.md exceeds 120 lines, refuse to proceed — print "Generated CLAUDE.md exceeds 120 lines — move <section> to .claude/rules/<name>.md" and abort. Without `--preview`, only the confirmation prompt is skipped; the ceiling check always runs.
 
 ## STEP 3.5c: Secret Scan Gate (always)
 
@@ -566,16 +538,30 @@ If the scan exits non-zero:
 
 1. If `.claude/detected-tools.json` is missing → ship every stack reference (current bloat-prone behavior). Print a one-line warning so the engineer knows pruning was skipped.
 2. Otherwise, build the union set: `detected = framework ∪ data_layer ∪ test_framework ∪ additional ∪ {stack}`.
-3. For each candidate stack reference (every file under `.claude/references/{stack}/` not already excluded by `status: placeholder`):
+3. **F11:** when `secondary_stacks` is non-empty, the candidate set spans `.claude/references/{stack}/` for the primary stack **and every secondary stack** — same `detected` filter applies to all.
+4. For each candidate stack reference (not already excluded by `status: placeholder`):
    - Read its frontmatter `tools:` array.
    - **No `tools:` declared** → ship (treat as alwaysApply for the stack).
    - **`tools:` ∩ `detected` non-empty** → ship.
    - **`tools:` ∩ `detected` empty** → SKIP. Do NOT copy into the target repo.
-4. Print one summary line per stack: `references: shipped <N>, pruned <M> (no detected tool match)`. List the pruned filenames so the engineer can override if a tool was missed in detection.
+5. Print one summary line per stack: `references: shipped <N>, pruned <M> (no detected tool match)`. List the pruned filenames so the engineer can override if a tool was missed in detection.
 
 **Override:** Engineers who want a pruned file anyway can either (a) add the relevant tool to `detected-tools.json` and re-run setup, or (b) `cp` the file from `$CLAUDE_PLUGIN_ROOT/.claude/references/{stack}/<file>.md` into their repo manually. Bootstrap never deletes manually-placed reference files.
 
 **Detection cache:** `setup-bootstrap` re-runs `setup-audit` (or skips if a recent `detected-tools.json` exists, < 7 days old by default — same TTL convention as the architecture-principles cache).
+
+## STEP 3.8: Product Context Artifacts
+
+Read `.claude/references/product-context.md` (path per `## MTK File Resolution`) and follow it to generate two artifacts:
+
+- **`.claude/references/product.md`** (≤40 lines) — purpose, users, key flows, non-goals. Sources: the README/docs scan (STEP 2) and interview question 7 (`.claude/setup-answers.json` → `answers.product_purpose`).
+- **`.claude/references/decisions.md`** — ADR-lite, append-only decision log. Seed from detectable history (framework migrations, major version bumps in `git log`) and interview rationale (`hard_nevers`, `invisible_conventions` answers where a reason was given).
+
+**Preservation:** if either file already exists, do NOT regenerate it — preserve it untouched and report it as preserved in STEP 5. Both files are part of the File Preservation Policy's known-generated-paths set and are never overwritten once present (see above); a future re-run routes any change through `.claude/references/regen-diff-contract.md` instead of rewriting in place.
+
+**Gates:** both writes go through the STEP 3.5c secret-scan gate before landing on disk. After generating `.claude/references/product.md`, run `bash scripts/verify-claims.sh .claude/references/product.md` and apply the same one-retry loop used for other generated docs (fix the anchor or delete only the self-generated line that failed verification). It cannot run through STEP 3.5a because `product.md` doesn't exist yet at that point in the flow — it's generated here, in STEP 3.8. Surviving downgrades are reported in STEP 5.
+
+Report one line each in STEP 5 (`generated` or `preserved (existing)`).
 
 ## STEP 4: Set Up Supporting Files & Directories
 
@@ -621,6 +607,26 @@ The hook source lives in the **plugin checkout**, not the target repo. A relativ
    ```
 
 The hook runs `hooks/pre-commit-linters.sh --cached` (< 1 second) and blocks on critical findings. Engineers bypass with `git commit --no-verify`. The full AI review (`/mtk review before commit`) remains a separate, manual step.
+
+### CI Staleness Gate (optional)
+
+If this repo hosts on GitHub — `.github/workflows/` already exists, OR `git remote get-url origin` contains `github.com` — offer to install the CI staleness gate template. This is the `--check` loop's CI counterpart: it fails a PR when MTK-generated artifacts drift from source (D5, `docs/specs/2026-07-03-v719-setup-improvements.md`).
+
+1. **Skip entirely** if neither signal is present (no `.github/workflows/` and no GitHub remote) — this is not a report-worthy skip, just move on.
+2. **`--non-interactive`:** skip silently, no `AskUserQuestion`. Note it in the STEP 5 report as `skipped (--non-interactive)`.
+3. **Already exists:** if `.github/workflows/mtk-staleness-check.yml` is already present, never overwrite it — report `already exists` in STEP 5.
+4. **Otherwise, ask via `AskUserQuestion`:**
+   ```
+   question: "Install a CI staleness gate that fails PRs when MTK-generated files drift out of date?"
+   header: "CI staleness gate"
+   options:
+     - label: "Yes, install the workflow"
+       description: "Adds .github/workflows/mtk-staleness-check.yml — runs setup-refresh-plan.sh --check on every PR"
+     - label: "No, skip"
+       description: "Don't add a GitHub Actions workflow"
+   ```
+5. **On "Yes":** copy `templates/ci/mtk-staleness-check.yml` (path resolved per `## MTK File Resolution` — read from `$CLAUDE_PLUGIN_ROOT/templates/ci/mtk-staleness-check.yml` when set, else the project-relative path) to `.github/workflows/mtk-staleness-check.yml`, creating `.github/workflows/` if missing. Report `installed`.
+6. **On "No":** report `declined`.
 
 ### Skills and Agents
 Ensure the following files exist:
@@ -765,36 +771,11 @@ Research-backed: a documented monorepo case study reduced per-session context lo
 
 ### Detect if this is a monorepo
 
-Run these checks in parallel:
+Reuse STEP 0's `bash scripts/setup-detect.sh --json` output (re-run it if the parsed values fell out of context). Read `monorepo.is_monorepo`, `monorepo.ambiguous`, `monorepo.packages`, and `monorepo.packages_skipped`.
 
-```bash
-# JS/TS workspaces
-LERNA=$(test -f lerna.json && echo "yes")
-PNPM_WS=$(test -f pnpm-workspace.yaml && echo "yes")
-TURBO=$(test -f turbo.json && echo "yes")
-NX=$(test -f nx.json && echo "yes")
-RUSH=$(test -f rush.json && echo "yes")
-PKG_WORKSPACES=$(grep -l '"workspaces"' package.json 2>/dev/null)
-
-# .NET multi-project solutions
-SLN_COUNT=$(find . -maxdepth 2 -name "*.sln" -o -name "*.slnx" 2>/dev/null | wc -l | tr -d ' ')
-CSPROJ_COUNT=$(find . -maxdepth 4 -name "*.csproj" -not -path "*/bin/*" -not -path "*/obj/*" 2>/dev/null | wc -l | tr -d ' ')
-
-# Python multi-package
-PYPROJECT_COUNT=$(find . -maxdepth 3 -name "pyproject.toml" -not -path "*/.venv/*" -not -path "*/node_modules/*" 2>/dev/null | wc -l | tr -d ' ')
-
-# Conventional layout
-HAS_APPS=$(test -d apps && echo "yes")
-HAS_PACKAGES=$(test -d packages && echo "yes")
-HAS_SERVICES=$(test -d services && echo "yes")
-HAS_LIBS=$(test -d libs && echo "yes")
-```
-
-**Classification:**
-- **Not a monorepo** if: single `*.sln` with ≤3 `*.csproj` in a linear hierarchy, or single `pyproject.toml` at root, or single `package.json` with no `workspaces`. Skip the rest of this step. **Preservation:** any pre-existing nested `CLAUDE.md` (in a subdirectory) is hand-authored — leave it untouched and list it under "Preserved hand-authored files" in the STEP 5 report. Deciding not to generate per-package files is NEVER a reason to delete existing ones (see File Preservation Policy).
-- **Monorepo** if: any of LERNA/PNPM_WS/TURBO/NX/RUSH/PKG_WORKSPACES is set, OR `CSPROJ_COUNT >= 4`, OR `SLN_COUNT >= 2`, OR `PYPROJECT_COUNT >= 2`, OR any of the conventional layout dirs exist and contain >1 subdirectory with a project marker.
-
-If classification is ambiguous, ask via `AskUserQuestion`:
+- **`is_monorepo` true:** it's a monorepo — proceed to enumerate packages below.
+- **`is_monorepo` false, `ambiguous` false:** not a monorepo. Skip the rest of this step. **Preservation:** any pre-existing nested `CLAUDE.md` (in a subdirectory) is hand-authored — leave it untouched and list it under "Preserved hand-authored files" in the STEP 5 report. Deciding not to generate per-package files is NEVER a reason to delete existing ones (see File Preservation Policy).
+- **`is_monorepo` false, `ambiguous` true:** ask via `AskUserQuestion`:
 ```
 question: "Is this a monorepo? (Multiple packages/services sharing a repo)"
 header: "Repo layout"
@@ -807,14 +788,7 @@ options:
 
 ### Enumerate packages
 
-Build the list of package directories:
-
-- **JS/TS workspaces:** read `workspaces` from `package.json`, `packages` from `pnpm-workspace.yaml`, or globs from `turbo.json` / `nx.json`. Expand globs.
-- **.NET:** each directory containing a `*.csproj` is a package. Group by top-level folder if there's a clear `src/<Module>/<Project>.csproj` pattern.
-- **Python:** each directory containing a `pyproject.toml`.
-- **Convention-based:** each immediate subdirectory of `apps/`, `services/`, `packages/`, `libs/` that contains a project marker.
-
-Cap at **20 packages**. If there are more, pick the top 20 by file count and print a note: "Skipped N packages — generate per-package CLAUDE.md manually for any that need special context."
+Use `monorepo.packages` as the package list — already resolved from workspaces globs, csproj/pyproject counts, and conventional directories (`apps/`, `services/`, `packages/`, `libs/`), and capped at 20. When `monorepo.packages_skipped` is non-zero, print: "Skipped N packages — generate per-package CLAUDE.md manually for any that need special context."
 
 ### Generate per-package CLAUDE.md + update root
 
@@ -831,6 +805,8 @@ Files to snapshot (skip any the engineer declined in `--preview`):
 - `.claude/references/pre-commit-review-list.md`
 - `.claude/references/architecture-principles.md` (when this bootstrap generated it)
 - `.claude/references/conventions.md` (when this bootstrap generated it)
+- `.claude/references/product.md` (when this bootstrap generated it — STEP 3.8)
+- `.claude/references/decisions.md` (when this bootstrap generated it — STEP 3.8)
 - `.claude/detected-tools.json`
 
 Layout:
@@ -880,6 +856,8 @@ Seed a repo-root `CODE_INDEX.md` from `.claude/references/code-index-template.md
 
 Project: [name]
 Tech stack: [stack name from .claude/tech-stack]
+Secondary stacks: [comma-separated list, or "none"] — workflow skills (implement/fix) operate on the primary stack only.
+Ingested AI configs: [list of source paths, or "none found"]
 
 Standards sources:
   ✓ Tech stack skill: .claude/skills/tech-stack-{stack}/SKILL.md
@@ -892,9 +870,15 @@ Generated/Updated:
   ✓ CLAUDE.md ([N] lines — under 120 ✓)
   ✓ .claude/rules/ — [N] rule files generated
   ✓ .claude/references/pre-commit-review-list.md — [generated with N items | already exists, skipped]
+  ✓ .claude/references/product.md — [generated | preserved (existing)]
+  ✓ .claude/references/decisions.md — [seeded | preserved (existing)]
   ✓ .claude/settings.json — merged [N] stack-specific entries
   ✓ Git pre-commit hook: [installed | ⚠️ existing hook found, skipped]
+  ✓ CI staleness gate: [installed | declined | skipped (--non-interactive) | already exists]
   ✓ Tool prerequisites: [all found | ⚠️ N missing — see details above]
+  ✓ Command verification: [N verified, N unverified, N skipped | skipped via --no-verify-commands]
+  [if any unverified:]
+      ⚠️ [name]: [first line of detail from verify-commands.sh]
   [if monorepo:]
   ✓ Monorepo detected — [N] packages found
       ✓ Generated per-package CLAUDE.md for: [list of packages]

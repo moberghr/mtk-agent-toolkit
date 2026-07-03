@@ -56,6 +56,7 @@ Template:
 ```
 
 **Rules for per-package generation:**
+- **Mixed-stack packages (F11):** when a package's own markers indicate a different stack than the repo primary (per `setup-detect.sh`'s package enumeration), name that stack explicitly in "Framework / runtime" and give its build/test commands (from that stack's `tech-stack-{stack}` skill `## Build & Test Commands`) in "Build / test (local)" — still within the 15–30-line budget.
 - **Omit any section you can't fill with something specific.** An empty "Local conventions" section is worse than no section.
 - If a package has no notable local delta (e.g., a trivial shared `types/` package), generate a 5-line stub:
   ```markdown

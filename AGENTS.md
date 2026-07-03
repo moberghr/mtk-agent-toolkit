@@ -50,7 +50,7 @@ There are just two user-invocable skills:
 
 | Skill | Purpose |
 |:---|:---|
-| `/mtk-setup` | First-time setup (bootstrap + audit), `--audit` to re-audit, `--merge` to unify multi-repo audits, `--refresh` to drift-refresh all generated docs (`--dry-run` to preview), `--check` as read-only CI staleness gate |
+| `/mtk-setup` | First-time setup (bootstrap + audit), `--audit` to re-audit, `--merge` to unify multi-repo audits, `--refresh` to drift-refresh all generated docs (`--dry-run` to preview), `--check` as read-only CI staleness gate, `--converge` to judge code against agreed principles as graded work items |
 | `/mtk <description>` | Natural-language router — dispatches to fix / implement / pre-commit-review / context-report workflow skills |
 
 **Routed workflow skills** (not directly invocable; reached via `/mtk <description>`):
@@ -62,6 +62,7 @@ There are just two user-invocable skills:
 | pre-commit-review | static linter pass *(confidence 100)* → AI review *(confidence-scored)*, merged via `.claude/references/review-finding-schema.md` |
 | context-report | diagnostic snapshot of active MTK configuration |
 | setup-refresh | drift-scoped refresh of all generated setup artifacts (reached via `/mtk-setup --refresh`) — staleness plan → scoped regen → diff proposals for engineer-edited files |
+| setup-converge | judges the codebase against agreed `architecture-principles.md`/`conventions.md` and reports drift as graded, read-only work items (reached via `/mtk-setup --converge`) — never auto-fixes |
 | repo-health | 12-asset AI-readiness scorecard → PR review mining (last N merged PRs) |
 | mtk-doctor | install health check across core files, components, hooks, integrity — PASS/WARN/FAIL, `--json`, `--fix` |
 | toolkit-health | usage stats and adoption signals from analytics.json, with anomaly diagnostics |

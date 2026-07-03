@@ -1,5 +1,5 @@
 {
-  "version": "7.18.0",
+  "version": "7.19.0",
   "updated": "2026-07-03",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
@@ -1734,6 +1734,24 @@
       "action": "sync",
       "description": "Per-stack reference-file customization tables for setup-bootstrap — generic placeholder to concrete replacement, per category"
     },
+    "references/config-ingestion.md": {
+      "source": ".claude/references/config-ingestion.md",
+      "target": ".claude/references/config-ingestion.md",
+      "action": "sync",
+      "description": "Detection list, evidence-anchor convention, and dedup/conflict rules for ingesting existing AI-assistant configs — read on-demand by setup-bootstrap STEP 2.7"
+    },
+    "references/command-verification.md": {
+      "source": ".claude/references/command-verification.md",
+      "target": ".claude/references/command-verification.md",
+      "action": "sync",
+      "description": "Command verification (F7) for setup-bootstrap — assemble build/test/format commands, run verify-commands.sh, apply verified/failed/skipped/unavailable outcomes"
+    },
+    "references/preview-gate.md": {
+      "source": ".claude/references/preview-gate.md",
+      "target": ".claude/references/preview-gate.md",
+      "action": "sync",
+      "description": "Preview Gate for setup-bootstrap --preview — plan-summary table, ASCII example, and the AskUserQuestion confirmation flow"
+    },
     "tests/pressure-tests/audit-grounding.md": {
       "source": "tests/pressure-tests/audit-grounding.md",
       "target": "tests/pressure-tests/audit-grounding.md",
@@ -1949,6 +1967,72 @@
       "target": "tests/pressure-tests/setup-refresh-preservation.md",
       "action": "sync",
       "description": "Pressure test: refresh must preserve hand-authored files, propose diffs instead of overwriting, and never force-apply non-interactively"
+    },
+    "scripts/setup-detect.sh": {
+      "source": "scripts/setup-detect.sh",
+      "target": "scripts/setup-detect.sh",
+      "action": "sync",
+      "description": "Read-only mechanized detection for setup-bootstrap/setup-audit — stack markers, package-manager lockfile priority, RN/Expo markers, and monorepo classification, with --json output"
+    },
+    "tests/hooks/test-setup-detect.sh": {
+      "source": "tests/hooks/test-setup-detect.sh",
+      "target": "tests/hooks/test-setup-detect.sh",
+      "action": "sync",
+      "description": "Fixture-based tests for scripts/setup-detect.sh across single-stack, RN/Expo, monorepo, and mixed-stack scenarios"
+    },
+    "scripts/verify-commands.sh": {
+      "source": "scripts/verify-commands.sh",
+      "target": "scripts/verify-commands.sh",
+      "action": "sync",
+      "description": "Runs named build/test/format commands under a timeout and reports verified/failed/skipped status as JSON for the bootstrap verified-commands stamp"
+    },
+    "tests/hooks/test-verify-commands.sh": {
+      "source": "tests/hooks/test-verify-commands.sh",
+      "target": "tests/hooks/test-verify-commands.sh",
+      "action": "sync",
+      "description": "Fixture-based tests for scripts/verify-commands.sh covering verified, failed, and timeout outcomes"
+    },
+    "skills/setup-converge/SKILL.md": {
+      "source": ".claude/skills/setup-converge/SKILL.md",
+      "target": ".claude/skills/setup-converge/SKILL.md",
+      "action": "sync",
+      "description": "Judges the codebase against agreed architecture-principles.md/conventions.md and reports drift as graded, read-only work items — never auto-fixes"
+    },
+    "tests/pressure-tests/setup-converge.md": {
+      "source": "tests/pressure-tests/setup-converge.md",
+      "target": "tests/pressure-tests/setup-converge.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for setup-converge — resists in-place doc fixes, non-interactive todo auto-append, and unanchored violation claims"
+    },
+    "references/product-context.md": {
+      "source": ".claude/references/product-context.md",
+      "target": ".claude/references/product-context.md",
+      "action": "sync",
+      "description": "Templates and generation rules for product.md and decisions.md, read on-demand by setup-bootstrap STEP 3.8"
+    },
+    "templates/ci/mtk-staleness-check.yml": {
+      "source": "templates/ci/mtk-staleness-check.yml",
+      "target": "templates/ci/mtk-staleness-check.yml",
+      "action": "sync",
+      "description": "GitHub Actions template — pins the toolkit checkout to the installed version and fails the PR when generated setup artifacts have drifted"
+    },
+    "evals/setup-bootstrap/grader.md": {
+      "source": "evals/setup-bootstrap/grader.md",
+      "target": "evals/setup-bootstrap/grader.md",
+      "action": "sync",
+      "description": "Grader prompt for setup-bootstrap evals"
+    },
+    "evals/setup-bootstrap/eval-01-clean-bootstrap.md": {
+      "source": "evals/setup-bootstrap/eval-01-clean-bootstrap.md",
+      "target": "evals/setup-bootstrap/eval-01-clean-bootstrap.md",
+      "action": "sync",
+      "description": "Positive eval: clean bootstrap of a small single-stack fixture repo must be lean and grounded"
+    },
+    "evals/setup-bootstrap/eval-02-rerun-preservation.md": {
+      "source": "evals/setup-bootstrap/eval-02-rerun-preservation.md",
+      "target": "evals/setup-bootstrap/eval-02-rerun-preservation.md",
+      "action": "sync",
+      "description": "Adversarial eval: re-run over hand-authored content must preserve edits and itemize needs-review conflicts"
     }
   },
   "protected": [
@@ -1963,6 +2047,8 @@
     "tasks/todo.md",
     ".claude/references/architecture-principles.md",
     ".claude/references/pre-commit-review-list.md",
+    ".claude/references/product.md",
+    ".claude/references/decisions.md",
     ".claude/domains"
   ]
 }
