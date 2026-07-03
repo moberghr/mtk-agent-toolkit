@@ -30,6 +30,10 @@ set -euo pipefail
 #       react_native.detected=false (the scoped dependencies/devDependencies
 #       fallback never sees the scripts block) and "package.json" is
 #       recorded in the new parse_errors array
+#   (j) DF-11 regression: root package.json (no RN) + non-monorepo sibling
+#       mobile/package.json with an "expo" dep -> react_native.detected=true
+#       and react_native.expo=true (nested first-level package dirs are now
+#       scanned, not just the root package.json)
 #
 # Each fixture is a throwaway directory under mktemp — the script itself is
 # invoked via its real path in THIS repo but with CWD set to the fixture, so
@@ -338,6 +342,47 @@ if [ "$rn_detected_i" = "False" ] && [ "$parse_err_i" = "True" ]; then
   echo "  PASS  react_native.detected=false, parse_errors includes package.json (malformed scripts block never guessed at)"
 else
   FAILS+=("(i) expected react_native.detected=False and 'package.json' in parse_errors, got detected=$rn_detected_i parse_errors_has=$parse_err_i. JSON: $json_i")
+fi
+
+# --- (j) DF-11 regression: root package.json (no RN) + non-monorepo --------
+#     mobile/package.json with "expo" dep -> detected+expo=true
+FIXTURE_J="$TMPDIR_FIXTURES/j-nested-expo"
+mkdir -p "$FIXTURE_J/mobile"
+cat > "$FIXTURE_J/package.json" <<'EOF'
+{
+  "name": "root-app",
+  "private": true,
+  "dependencies": {
+    "react": "^18.2.0"
+  }
+}
+EOF
+cat > "$FIXTURE_J/mobile/package.json" <<'EOF'
+{
+  "name": "mobile-app",
+  "dependencies": {
+    "expo": "^49.0.0",
+    "react": "^18.2.0"
+  }
+}
+EOF
+
+echo ""; echo "--- (j) root pkg (no RN) + mobile/package.json with expo dep: detected+expo=true ---"
+json_j="$(cd "$FIXTURE_J" && bash "$DETECT" --json)"
+result_j="$(printf '%s' "$json_j" | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+print(data["react_native"]["detected"])
+print(data["react_native"]["expo"])
+print(data["monorepo"]["is_monorepo"])
+')"
+rn_detected_j="$(printf '%s\n' "$result_j" | sed -n 1p)"
+rn_expo_j="$(printf '%s\n' "$result_j" | sed -n 2p)"
+is_mono_j="$(printf '%s\n' "$result_j" | sed -n 3p)"
+if [ "$rn_detected_j" = "True" ] && [ "$rn_expo_j" = "True" ] && [ "$is_mono_j" = "False" ]; then
+  echo "  PASS  react_native.detected=true, react_native.expo=true (nested mobile/ package.json scanned, not classified as a monorepo)"
+else
+  FAILS+=("(j) expected detected=True expo=True is_monorepo=False, got detected=$rn_detected_j expo=$rn_expo_j is_monorepo=$is_mono_j. JSON: $json_j")
 fi
 
 # --- exit codes: 0 on empty repo, 2 on unknown flag -------------------------

@@ -34,6 +34,12 @@ A competitive analysis of the setup/bootstrap landscape plus a same-session loca
 - verify-references.sh exempts known-optional boilerplate paths (settings.local.json etc.)
 - setup-audit/repomap: defer-to-mcp documented as per-file enrichment; unreachable LSP treated as fallback with Provenance disclosure
 
+### Hardened (wave 2)
+- verify-claims.sh: DOC_SLUG now derives from the repo-root-relative path (falling back to basename outside the repo) so same-basename docs in different directories — e.g. per-package CLAUDE.md files — no longer clobber each other's weak-claims cache; dedicated regression test
+- command-verification.md: new Tree-mutation guard — commands that mutate the tree as a side effect (e.g. a lockfile touched by `dotnet build`) are restored via `git checkout --` and reported in STEP 5
+- setup-detect.sh: RN/Expo detection now also scans monorepo package dirs and first-level sibling package.json files (maxdepth 2, excluding node_modules), not just the root package.json; dedicated regression fixture
+- tech-stack-dotnet: `dotnet test --list-tests` documentation is now conditional on `.sln` vs `.slnx`/Microsoft.Testing.Platform, matching the `--solution` flag Microsoft.Testing.Platform requires
+
 ## [7.18.0] - 2026-07-03
 
 ### Added — Setup refresh loop

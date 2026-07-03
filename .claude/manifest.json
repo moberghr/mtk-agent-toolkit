@@ -1980,6 +1980,12 @@
       "action": "sync",
       "description": "Fixture-based tests for scripts/setup-detect.sh across single-stack, RN/Expo, monorepo, and mixed-stack scenarios"
     },
+    "tests/hooks/test-verify-claims-slug.sh": {
+      "source": "tests/hooks/test-verify-claims-slug.sh",
+      "target": "tests/hooks/test-verify-claims-slug.sh",
+      "action": "sync",
+      "description": "Regression test for scripts/verify-claims.sh DOC_SLUG derivation — same-basename docs in different directories must not clobber each other's weak-claims report"
+    },
     "scripts/verify-commands.sh": {
       "source": "scripts/verify-commands.sh",
       "target": "scripts/verify-commands.sh",

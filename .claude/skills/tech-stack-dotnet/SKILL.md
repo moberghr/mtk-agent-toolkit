@@ -26,7 +26,9 @@ Loaded automatically by commands and skills when the active tech stack is `dotne
 - **Compile:** `dotnet build`
 - **Test (batch):** `dotnet test` or `dotnet test --filter <project>`
 - **Test (full):** `dotnet test`
-- **Test (list-only):** `dotnet test --list-tests` — enumerates discovered tests without executing them; this is the F7/command-verification list variant used to verify `dotnet test` is runnable without paying for a full suite run.
+- **Test (list-only):** enumerates discovered tests without executing them — the F7/command-verification list variant used to verify `dotnet test` is runnable without paying for a full suite run. Conditional on the solution format:
+  - `.sln`: `dotnet test <sln> --list-tests`
+  - `.slnx` (or `global.json` sets `"test": {"runner": "Microsoft.Testing.Platform"}`): `dotnet test --solution <slnx> --list-tests` — a bare `dotnet test <slnx> --list-tests` fails with `"Specifying a solution for 'dotnet test' should be via '--solution'"` under Microsoft.Testing.Platform.
 - **Format:** `dotnet format --verbosity quiet` (project-wide). Per-file formatting in PostToolUse is wired via `hooks/format-on-edit.sh`, which extracts `tool_input.file_path` from stdin JSON and runs `dotnet format --include <file>`. Do NOT reference `$CLAUDE_FILE` — it is not a Claude Code env var; hook input arrives via stdin.
 
 ## File Extensions & Markers

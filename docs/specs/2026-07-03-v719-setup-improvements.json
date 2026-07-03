@@ -493,6 +493,28 @@
           "peak": 995,
           "final": 919
         }
+      },
+      {
+        "batch_id": "FIX-C",
+        "fixes": [
+          "DF-1 url-cred secret-scan",
+          "DF-2 publish deny-only",
+          "DF-3 dotnet test list variant",
+          "DF-4 verify-references exemptions",
+          "DF-5 defer-to-mcp docs"
+        ],
+        "status": "completed",
+        "origin": "dogfood swc-backend+swc-frontend"
+      },
+      {
+        "batch_id": "FIX-D",
+        "fixes": [
+          "DF-6 agents-md budget",
+          "DF-7 settings merge fresh+blocked paths",
+          "DF-8 cross-agent opt-in"
+        ],
+        "status": "completed",
+        "origin": "dogfood"
       }
     ],
     "review_iterations": 2

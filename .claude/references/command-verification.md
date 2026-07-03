@@ -40,6 +40,18 @@ Omit a `name<TAB>command` line entirely for any entry already marked `skipped`
 in step 1 (e.g. no list-only test variant) rather than sending it to the
 verifier.
 
+## 2.5 Tree-mutation guard
+
+Some verified commands mutate the tree as a side effect (e.g. `dotnet build`
+regenerating `package-lock.json` on SPA-integrated projects). Capture `git
+status --porcelain` before running step 2; after it finishes, diff against a
+fresh `git status --porcelain` and `git checkout -- <path>` any **tracked**
+file newly modified by the verification run (never one already dirty before
+this step). List restored paths in the STEP 5 report line: `command
+verification restored N build-side-effect file(s)`. Newly created
+**untracked** files under build output dirs are left alone (gitignored
+normally).
+
 ## 3. Apply outcomes
 
 When writing the Tech Stack section:

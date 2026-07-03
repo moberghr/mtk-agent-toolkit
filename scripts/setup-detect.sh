@@ -153,6 +153,35 @@ def extract_json_value_block(text, key):
     return None
 
 
+def dep_names_from_package_json(path):
+    """Extract `dependencies`/`devDependencies` keys from the package.json at
+    `path` (root or a nested package dir — same parsing either way, DF-11).
+    Falls back to a scoped text scan of the dependencies/devDependencies
+    value blocks when the file fails to parse as JSON (S-F001): scanning the
+    whole malformed file risks matching unrelated keys (e.g. a "scripts"
+    entry literally named "expo") as dependency names. Returns an empty set
+    when the file is missing, unreadable, or neither block can be located."""
+    names = set()
+    obj = load_json(path)
+    if isinstance(obj, dict):
+        for key in ("dependencies", "devDependencies"):
+            deps = obj.get(key)
+            if isinstance(deps, dict):
+                names.update(deps.keys())
+        return names
+    if not os.path.isfile(path):
+        return names
+    raw = read_text(path)
+    blocks = [
+        b
+        for b in (extract_json_value_block(raw, k) for k in ("dependencies", "devDependencies"))
+        if b
+    ]
+    if blocks:
+        names.update(re.findall(r'"([A-Za-z0-9@/_.-]+)"\s*:', "\n".join(blocks)))
+    return names
+
+
 # --- STEP 0: stack markers ------------------------------------------------
 dotnet_files = find_maxdepth(3, ["*.csproj", "*.sln", "*.slnx"])
 python_files = find_maxdepth(2, ["pyproject.toml", "setup.py", "requirements.txt", "Pipfile"])
@@ -209,28 +238,11 @@ if os.path.isfile("package.json"):
         )
 
 if "typescript" in stacks:
-    dep_names = set()
-    if isinstance(pkg_root, dict):
-        for key in ("dependencies", "devDependencies"):
-            deps = pkg_root.get(key)
-            if isinstance(deps, dict):
-                dep_names.update(deps.keys())
-    elif os.path.isfile("package.json"):
-        # package.json exists but failed to parse as JSON (recorded above in
-        # parse_errors) — fall back to a grep-equivalent scan, but scoped to
-        # the dependencies/devDependencies value blocks only (S-F001).
-        # Scanning the whole malformed file risks matching unrelated keys
-        # (e.g. a "scripts" entry literally named "expo") as dependency
-        # names. If neither block can be located, report no RN/Expo from
-        # this source rather than guessing.
-        raw = read_text("package.json")
-        blocks = [
-            b
-            for b in (extract_json_value_block(raw, k) for k in ("dependencies", "devDependencies"))
-            if b
-        ]
-        if blocks:
-            dep_names.update(re.findall(r'"([A-Za-z0-9@/_.-]+)"\s*:', "\n".join(blocks)))
+    # Root package.json's dependency names — parse_errors for a malformed
+    # root file was already recorded above; dep_names_from_package_json
+    # re-derives the same result (parse-first, scoped-text-scan fallback)
+    # without re-reporting it.
+    dep_names = dep_names_from_package_json("package.json")
 
     has_rn_dep = "react-native" in dep_names
     has_expo_dep = "expo" in dep_names
@@ -384,6 +396,42 @@ packages_skipped = 0
 if len(normalized_packages) > 20:
     packages_skipped = len(normalized_packages) - 20
     normalized_packages = normalized_packages[:20]
+
+# --- STEP 0 (cont.): RN/Expo — nested workspace packages (DF-11) ----------
+# The root-only check above misses a RN/Expo app that lives in a monorepo
+# package dir, or in a first-level sibling directory of a non-monorepo repo
+# (e.g. a root package.json with no RN deps of its own, plus an Expo
+# mobile/ app next to it). Extend detection to those locations, using the
+# same dependencies/devDependencies parsing as the root check; any matching
+# package flips react_native.detected/expo to true.
+if "typescript" in stacks:
+    if is_monorepo:
+        nested_pkg_jsons = [
+            os.path.join(pkg_dir, "package.json") for pkg_dir in normalized_packages
+        ]
+    else:
+        # Same maxdepth-2-excluding-node_modules universe as ts_files,
+        # minus the root package.json already handled above.
+        nested_pkg_jsons = [
+            p for p in ts_files if (os.path.dirname(p) or ".") not in (".", "")
+        ]
+
+    for candidate in nested_pkg_jsons:
+        if not os.path.isfile(candidate):
+            continue
+        nested_dep_names = dep_names_from_package_json(candidate)
+        if load_json(candidate) is None and candidate not in parse_errors:
+            parse_errors.append(candidate)
+            sys.stderr.write(
+                "WARNING: setup-detect: %s exists but failed to parse as "
+                "JSON — falling back to a scoped dependencies/devDependencies "
+                "text scan for React Native/Expo detection\n" % candidate
+            )
+        if "react-native" in nested_dep_names:
+            react_native_detected = True
+        if "expo" in nested_dep_names:
+            react_native_detected = True
+            react_native_expo = True
 
 data = {
     "stacks": stacks,

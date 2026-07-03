@@ -60,7 +60,7 @@ done
 
 Check the exit code of **every** `verify-claims.sh` invocation individually. A nonzero exit means the engine itself failed on that doc — not that the doc verified clean. On nonzero exit, STOP immediately with "verification engine failed for `<doc>` (exit `N`) — converge cannot distinguish engine failure from a clean result; fix the engine error first". Never proceed to STEP 2 or STEP 3 after an engine failure, and never read that doc's `weak-claims-*.json` — after a failed run it may be stale (partially written, or a leftover from a previous invocation) and cannot be trusted as "this doc verified clean."
 
-`verify-claims.sh` names its report by the input file's **basename**, so the report path is the same regardless of the temp location: `.claude/.mtk-cache/weak-claims-<doc-slug>.json` (e.g. `weak-claims-architecture-principles_md.json`). Parse that JSON per stamped doc — its `weak` array is the raw material for STEP 3. Never point `verify-claims.sh` at the on-disk doc; never copy the rewritten temp file back over the original.
+`verify-claims.sh` derives its report name from the input path relative to the repo root, falling back to **basename** when the input lives outside the repo — which these `/tmp/mtk-converge/` scratch copies always do — so the report path is the same regardless of the temp location: `.claude/.mtk-cache/weak-claims-<doc-slug>.json` (e.g. `weak-claims-architecture-principles_md.json`). Parse that JSON per stamped doc — its `weak` array is the raw material for STEP 3. Never point `verify-claims.sh` at the on-disk doc; never copy the rewritten temp file back over the original.
 
 ## STEP 2: Drift Pairing
 

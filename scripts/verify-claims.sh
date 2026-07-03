@@ -22,6 +22,11 @@ set -euo pipefail
 #   - Rewrites the input file in place (atomic, via .tmp + mv).
 #   - Writes per-doc reports: .claude/.mtk-cache/weak-claims-<doc>.json / -<doc>.md
 #     (per-doc filenames prevent one doc's run from clobbering another's report).
+#     <doc> is derived from the repo-root-relative path, not the basename —
+#     two same-named docs in different directories (e.g. per-package
+#     CLAUDE.md files in a monorepo) must not collide. A doc passed by a
+#     path outside the repo (setup-converge's scratch temp copies) has no
+#     meaningful repo-relative form, so that case falls back to basename.
 #
 # Exit codes:
 #   0 — verified, may have downgrades (count printed)
@@ -44,7 +49,26 @@ cd "$REPO_ROOT"
 
 CACHE_DIR=".claude/.mtk-cache"
 mkdir -p "$CACHE_DIR"
-DOC_SLUG="$(basename "$INPUT" | tr '/.' '__')"
+
+# DOC_SLUG: repo-root-relative path with `/` and `.` collapsed to `_`
+# (basename alone lets two same-named docs in different directories clobber
+# each other's report — DF-9). A path outside the repo root (e.g. a
+# setup-converge scratch temp copy — see setup-converge/SKILL.md STEP 1) has
+# no meaningful repo-relative form, so it falls back to basename, unchanged
+# from before this fix.
+case "$INPUT" in
+  /*)
+    case "$INPUT" in
+      "$REPO_ROOT"/*) REL_PATH="${INPUT#"$REPO_ROOT"/}" ;;
+      *) REL_PATH="$(basename "$INPUT")" ;;
+    esac
+    ;;
+  *) REL_PATH="${INPUT#./}" ;;
+esac
+# Collapse a leading underscore run (from a leading "." or "/" in the
+# relative path, e.g. root CLAUDE.md living under a dotdir-less root) so
+# root-level docs keep producing their pre-existing slug unchanged.
+DOC_SLUG="$(printf '%s' "$REL_PATH" | tr '/.' '__' | sed 's/^_*//')"
 WEAK_JSON="$CACHE_DIR/weak-claims-${DOC_SLUG}.json"
 WEAK_MD="$CACHE_DIR/weak-claims-${DOC_SLUG}.md"
 
