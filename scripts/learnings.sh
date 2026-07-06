@@ -91,6 +91,7 @@ cmd_add() {
   local title="" body="" rule="" applies_when=""
   local decision_origin=""
   local wrong_turns_csv="" time_cost="" evolution_actions=""
+  local memory_type="" supersedes=""
   local dry_run=0
 
   while [ $# -gt 0 ]; do
@@ -112,6 +113,9 @@ cmd_add() {
       --wrong-turns) wrong_turns_csv="$2"; shift 2 ;;
       --time-cost) time_cost="$2"; shift 2 ;;
       --evolution-actions) evolution_actions="$2"; shift 2 ;;
+      # content-type tag + conflict-superseding (pass-through; query derives supersession)
+      --memory-type) memory_type="$2"; shift 2 ;;
+      --supersedes) supersedes="$2"; shift 2 ;;
       --dry-run) dry_run=1; shift ;;
       *) printf 'unknown flag: %s\n' "$1" >&2; exit 2 ;;
     esac
@@ -163,6 +167,16 @@ cmd_add() {
   fi
   if [ -n "$evolution_actions" ]; then
     extra="${extra},\"evolution_actions\":\"${evolution_actions}\""
+  fi
+  if [ -n "$memory_type" ]; then
+    case "$memory_type" in
+      episodic|semantic|procedural) ;;
+      *) printf 'add: invalid --memory-type "%s" (one of: episodic | semantic | procedural)\n' "$memory_type" >&2; exit 2 ;;
+    esac
+    extra="${extra},\"memory_type\":\"${memory_type}\""
+  fi
+  if [ -n "$supersedes" ]; then
+    extra="${extra},\"supersedes\":\"$(json_escape "$supersedes")\""
   fi
 
   local entry
@@ -225,11 +239,22 @@ cmd_query() {
 
   [ -s "$LEARNINGS_PATH" ] || return 0
 
+  # Conflict-superseding: collect ids that a newer entry supersedes, then drop
+  # them from results. Derived from the forward `supersedes` ref — no line rewrite.
+  local superseded_ids=","
+  while IFS= read -r sline; do
+    [ -z "$sline" ] && continue
+    local sup; sup="$(jl_field "$sline" supersedes)"
+    [ -n "$sup" ] && superseded_ids="${superseded_ids}${sup},"
+  done < "$LEARNINGS_PATH"
+
   # Score each line; emit "score\tline"; sort -nr; head -max; print formatted.
   local now_epoch; now_epoch="$(date -u +%s)"
 
   while IFS= read -r line; do
     [ -z "$line" ] && continue
+    local this_id; this_id="$(jl_field "$line" id)"
+    case "$superseded_ids" in *",${this_id},"*) continue ;; esac
     local sev; sev="$(jl_field "$line" severity)"
     local ph; ph="$(jl_field "$line" phase)"
     local sc; sc="$(jl_field "$line" scope)"

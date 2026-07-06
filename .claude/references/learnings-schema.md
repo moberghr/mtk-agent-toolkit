@@ -30,6 +30,8 @@ Manual edits to `tasks/lessons.md` are preserved on next migrate (re-emitted as 
   "phase": "spec | plan | implement | review | postmortem | any",
 
   "severity": "info | warn | block | incident",
+  "memory_type": "episodic | semantic | procedural",
+  "supersedes": null,
   "validity": {
     "expires_at": "2027-05-08T00:00:00Z",
     "reconfirmed_at": null,
@@ -81,6 +83,8 @@ Manual edits to `tasks/lessons.md` are preserved on next migrate (re-emitted as 
   - `warn` — should follow.
   - `block` — must follow; violation should fail review.
   - `incident` — derived from a real incident; outranks all other sources.
+- **`memory_type`** *(optional, one of: `episodic` | `semantic` | `procedural`)* — content nature, orthogonal to `source` (which is provenance). `episodic` = a specific session event ("this run tripped the shrink-guard"); `semantic` = an abstracted fact/preference ("the team pins DbContext scoped"); `procedural` = an action pattern/skill ("before regen, check line count"). Improves recall relevance. Absent in pre-v7.22 entries; treated as unset. (Borrow: IAAR-Shanghai/Awesome-AI-Memory content-type taxonomy.)
+- **`supersedes`** *(optional string, an entry `id`)* — conflict-driven superseding. When a new lesson contradicts an existing one, capture the new lesson with `supersedes: "<old-id>"` rather than appending a duplicate. `learnings.sh query` derives the superseded set from these forward refs and drops any entry a newer one supersedes — so the old fact stops surfacing without deleting the audit trail. Absent = supersedes nothing. (Borrow: IAAR-Shanghai conflict-driven forgetting.)
 - **`validity.expires_at`** — default = `captured_at + 12 months`. Lessons go stale; re-confirm or let them expire.
 - **`validity.expired`** — set true after `expires_at` unless `reconfirmed_at` is fresher.
 - **`recurrence.count`** — incremented when the same root rule is captured again. ≥3 hits is the trigger to propose `CLAUDE.md` promotion.
@@ -98,6 +102,7 @@ Used by `learnings.sh query` at the start of `spec-driven-development` and `fix`
 | 2. **Recurrence** | `recurrence.count >= 2`? | +20 score |
 | 3. **Severity** | Map: `incident=40`, `block=25`, `warn=10`, `info=5` | += score |
 | 4. **Validity** | `expired == false`? | required, else drop |
+| 4b. **Superseded** | Is this entry's `id` in some newer entry's `supersedes`? | required not-superseded, else drop |
 | 5. **Phase** | `phase` matches current phase, OR `phase=any`? | required, else drop |
 
 Default: return top 10. Override with `--max N`. Engineer scope filter: include `personal` only if the entry's `captured_by` (env `MTK_USER` or git config user.email) matches; always include `team`.

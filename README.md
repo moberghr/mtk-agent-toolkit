@@ -51,7 +51,7 @@ MTK closes that gap with **workflow enforcement** (planning, TDD, batched implem
 
 ## What's New
 
-### v7.20.0 — Token optimization wave (2026-07-06)
+### v7.23.0 — Token optimization wave (2026-07-06)
 - **Context footprint report** — new `bash scripts/mtk-savings.sh` shows the always-on floor, tokens deferred by progressive disclosure, review-agent bodies offloaded to isolated context, and real output-compression totals from `.claude/observability/compression.jsonl`. See [Token footprint & savings](#token-footprint--savings).
 - **Skill-description budget** — `validate-toolkit.sh` now caps each skill `description` (≤ 200 chars) and the aggregate (~1750 tokens) and prints the running total, protecting routing quality on smaller-context models where Claude Code reserves only ~1% of context for skill metadata.
 - **`security-checklist.md` no longer always-on** — its frontmatter was aligned to the security-scoped globs the manifest already carried; every consumer already loads it explicitly, so behaviour is unchanged while it stops loading on non-security work.
@@ -982,6 +982,12 @@ Dismiss it and move on. If the same false positive recurs, add a clarification t
 <summary><b>How does this differ from writing a CLAUDE.md manually?</b></summary>
 
 Three things: (1) `/mtk-setup` generates CLAUDE.md from your actual codebase, not guesswork; (2) MTK provides workflow enforcement (planning, TDD, review, evidence gates), not just rules; (3) adversarial review agents actively find violations with confidence-scored structured output.
+</details>
+
+<details>
+<summary><b>How does this differ from other AI setup / config-generator tools?</b></summary>
+
+Most tools in this space stop at generation — they emit a CLAUDE.md, a rules pack, or an agent bundle and trust it. MTK's distinguishing move is **claim verification**: generated rules are tagged by provenance and checked against the codebase (`verify-claims.sh` flags fabricated file/symbol anchors, unclosed enumerations, and imprecise terminology), the commands it publishes are actually run before they're stamped verified, and setup is a re-runnable loop (`--refresh`/`--converge`/`--check`) rather than a one-shot dump. The output is a scaffold that keeps proving it's still true, not a static artifact that drifts.
 </details>
 
 <details>

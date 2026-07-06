@@ -1,6 +1,6 @@
 # Token Optimization — 5-item plan
 
-> Drafted 2026-07-03. Shipped as v7.20.0 (2026-07-06) — main had advanced past the drafted v7.18 target.
+> Drafted 2026-07-03. Shipped as v7.23.0 (2026-07-06) — main advanced past the drafted v7.18 target (through the 7.20–7.22 borrow waves) before this landed.
 > Items 1, 3, 4, 5 implemented in full. Item 2 shipped as the **safe subset** (setup-bootstrap Root CLAUDE.md template → on-demand reference); deeper restructuring of the other large workflow skills, and the tech-stack scan-recipe split (cross-consumed by setup-audit), are deferred to their own reviewed change.
 > Goal: push MTK's always-on context floor down, shrink the fattest on-demand loads,
 > and make MTK's (largely already-real) token savings **visible and quantifiable to users**.

@@ -117,4 +117,14 @@ Full reference docs (read on-demand by skills and review agents):
 - `.claude/references/decisions.md` — ADR-lite decision log (append-only)
 - `.claude/references/security-checklist.md` — Security checklist (shared)
 - Stack-specific references listed in the `tech-stack-{stack}` skill's `## Reference Files` (MTK plugin)
+
+## Output Style
+
+How AI agents should write here (prose, code comments, PR text):
+- Avoid the em-dash as a comma or parenthesis substitute; prefer a comma, colon, or a new sentence.
+- Cut filler transitions: "Additionally", "Furthermore", "Moreover", "In today's...".
+- Do not inflate a short answer into a bulleted list; write prose as prose.
+- No per-paragraph summary sentence that restates the paragraph.
+- Back claims with a `file:line` or a command, not "it's worth noting" hedging.
+- Match the surrounding code's naming and comment density; do not over-comment.
 ````

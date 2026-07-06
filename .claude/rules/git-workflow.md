@@ -1,4 +1,10 @@
 ---
+paths:
+  - ".claude/manifest.json"
+  - ".claude-plugin/plugin.json"
+  - ".claude-plugin/marketplace.json"
+  - "CHANGELOG.md"
+  - "checksums.sha256"
 axes:
   decision: process
   topic: git

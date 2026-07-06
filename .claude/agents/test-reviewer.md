@@ -121,6 +121,16 @@ If you cannot complete the review, report your status honestly:
 
 Never produce a low-confidence review to avoid reporting BLOCKED. A clear escalation is more valuable than a garbage approval.
 
+## Quality Checklist
+
+Before you return, verify your own output — a review that fails these is not done:
+
+- [ ] Every finding cites `file:line` for both the test and the production code it fails to cover.
+- [ ] Coverage gaps map to a named public method, not a vague "add more tests".
+- [ ] Assertion-quality findings quote the weak assertion, not just assert it is weak.
+- [ ] Severity follows the rules below (financial/auth mutation → Critical), not invented.
+- [ ] If `findings[]` is empty, `below_threshold_rationale` names what was checked and why the tests are genuinely thorough.
+
 ## Rules for You
 
 - Missing tests on methods that mutate financial data or handle auth are **Critical**

@@ -83,7 +83,15 @@ Common confusions in generated audits. Generators flag these for review; they ar
 | "Link" (in React Router context) | "`Link` component" or "route link" | The unqualified word matches dozens of unrelated things. |
 | "store" (without scope) | "`localStorage`", "Redux store", "MobX store", "React context" | The audit must name *which* store. |
 
-When `verify-claims.sh` finds a denylisted term in a tagged line, it adds an entry to `weak-claims.json` with `reason: "terminology-needs-review"`. Engineers see this in the weak-claims report and can fix or accept.
+**LLM prose tics** (borrow — yzhao062/agent-style field-observed patterns). Generated docs read as machine-written when they carry these; flag for review:
+
+| Wrong | Right | Disambiguation |
+|---|---|---|
+| "Additionally" / "Furthermore" / "Moreover" | (delete, or start the sentence directly) | Filler transitions. The next point stands on its own. |
+| "Delve into" / "plays a crucial role" | plain verb ("covers", "handles") | Register-inflating tics with no added meaning. |
+| "It's worth noting" / "important to note" | (delete the hedge, state the fact) | If it's worth noting, note it. The hedge adds nothing. |
+
+When `verify-claims.sh` finds a denylisted term or LLM-tic in a tagged line, it adds an entry to `weak-claims.json` with `reason: "terminology-needs-review"` (the matched term appears in the `anchor` field). Engineers see this in the weak-claims report and can fix or accept — the line is never auto-rewritten.
 
 ## 5. Weak-claims surfacing
 

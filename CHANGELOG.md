@@ -2,17 +2,60 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [7.20.0] - 2026-07-06
+## [7.23.0] - 2026-07-06
 
 ### Added — Token optimization wave
 
 Five measures to lower MTK's context footprint and make its (largely already-real) savings visible to users. Baseline before this release: ~3.7K always-on tokens/session, ~86K tokens kept out of context by progressive disclosure.
 
-- **Skill-description budget enforced.** `validate-toolkit.sh` now caps each MTK skill `description` at 200 chars and the aggregate at 7000 chars (~1750 tokens), and prints the running total every run. Descriptions load into *every* session against Claude Code's ~1%-of-context skill-listing budget, so this protects routing quality on smaller-context models and stops the always-on floor drifting as skills are added (S2.6a). The 7 longest descriptions were trimmed to fit (6643 → 6407 chars) with keywords preserved.
-- **`security-checklist.md` no longer always-on.** Its frontmatter (`alwaysApply: true`, glob `**/*`) was aligned to the security-scoped `applyTo` the manifest already carried — a split-brain where the MCP resolver treated it as path-scoped but the frontmatter/index/bash-fallback treated it as always-on. Every consumer already loads it explicitly and conditionally (`security-and-hardening` reads it unconditionally), so behaviour is unchanged; it just stops loading on non-security work in the fallback path.
-- **`mtk-savings.sh` — context footprint & savings report.** New script (`bash scripts/mtk-savings.sh`) reports the always-on floor, tokens deferred by progressive disclosure, review-agent bodies offloaded to isolated context, and real output-compression totals read from `.claude/observability/compression.jsonl`. Surfaced from `analytics-report.sh` and the `context-report` skill. Every figure is derived from installed files or the on-disk log — nothing fabricated.
+- **Skill-description budget enforced.** `validate-toolkit.sh` now caps each MTK skill `description` at 200 chars and the aggregate at 7000 chars (~1750 tokens), and prints the running total every run. Descriptions load into *every* session against Claude Code's ~1%-of-context skill-listing budget, so this protects routing quality on smaller-context models and stops the always-on floor drifting as skills are added (S2.6a). The 7 longest descriptions were trimmed to fit (6643 -> 6407 chars) with keywords preserved.
+- **`security-checklist.md` no longer always-on.** Its frontmatter (`alwaysApply: true`, glob `**/*`) was aligned to the security-scoped `applyTo` the manifest already carried, closing a split-brain where the MCP resolver treated it as path-scoped but the frontmatter/index/bash-fallback treated it as always-on. Every consumer already loads it explicitly and conditionally (`security-and-hardening` reads it unconditionally), so behaviour is unchanged; it just stops loading on non-security work in the fallback path.
+- **`mtk-savings.sh` - context footprint & savings report.** New script (`bash scripts/mtk-savings.sh`) reports the always-on floor, tokens deferred by progressive disclosure, review-agent bodies offloaded to isolated context, and real output-compression totals read from `.claude/observability/compression.jsonl`. Surfaced from `analytics-report.sh` and the `context-report` skill. Every figure is derived from installed files or the on-disk log - nothing fabricated.
 - **Prompt-cache-stable CLAUDE.md prefix.** The stale, per-release version banner in `CLAUDE.md` was replaced with a stable pointer to `CHANGELOG.md`, so the always-loaded prefix no longer changes every release (keeps prompt caching warm).
-- **Progressive disclosure of the fattest skill body.** The literal Root CLAUDE.md template moved out of `setup-bootstrap` (924 → 815 lines) into on-demand `references/root-claude-md-template.md`, read by STEP 3 only when generating. (Deeper restructuring of the other large workflow skills is deferred to its own reviewed change to avoid destabilizing skills just changed in 7.19.)
+- **Progressive disclosure of the fattest skill body (S2.26).** The literal Root CLAUDE.md template moved out of `setup-bootstrap` (924 -> 815 lines) into on-demand `references/root-claude-md-template.md`, read by STEP 3 only when generating. Deeper restructuring of the other large workflow skills, and the tech-stack scan-recipe split (cross-consumed by `setup-audit`), are deferred to their own reviewed change to avoid destabilizing skills changed in the recent 7.19-7.22 waves.
+
+## [7.22.0] - 2026-07-06
+
+### Added — Borrow wave 3: routing, memory & context
+
+Final borrow wave from the agent-cortex triage (`docs/plans/2026-07-03-agent-cortex-borrow-triage.md`). The batch-3 sources were research/reading lists with no vendorable code, so this wave takes file-implementable ideas and vocabulary only.
+
+- **Conflict-superseding lesson writes.** `learnings.sh add` gains `--supersedes <id>`; `learnings.sh query` derives the superseded set from those forward refs and drops any entry a newer one supersedes — so a reversed rule stops surfacing without deleting the audit trail (no line rewriting). `correction-capture` now captures a contradicting lesson with `--supersedes` instead of appending a second conflicting rule. (Borrow: IAAR-Shanghai conflict-driven forgetting.)
+- **Memory content-type tag.** New optional `memory_type` (`episodic | semantic | procedural`) on the learnings schema and `learnings.sh add --memory-type`, orthogonal to `source` provenance, to improve recall relevance. (Borrow: IAAR-Shanghai content-type taxonomy.)
+- **Named context operations.** `context-engineering` now opens with the **Write / Select / Compress / Isolate** taxonomy and a one-line definition of context, each mapped to the MTK machinery that already implements it. (Borrow: jihoo-kim / LangChain taxonomy.)
+- **Negative-example route disambiguation.** `/mtk` gained a "Route Disambiguation (negative boundaries)" table encoding the contested pairs (fix vs implement, research-context vs implement, pre-commit-review vs full review, context-report vs toolkit-health, capture vs handoff, promote-lesson vs lesson-mining, setup always → `/mtk-setup`). (Borrow: awesome-harness-engineering negative-example routing.)
+- **MCP shortlist additions.** `docs/recommended-tooling/shared.md` adds Sentry and a read-only Postgres MCP (with a read-only-role caveat) and strengthens the security note to prefer read-only roles / scoped tokens; `dotnet.md` adds Azure DevOps for ADO shops. (Borrow: wong2/awesome-mcp-servers, security-gated.)
+- **Competitor positioning.** README FAQ now distinguishes MTK from other AI setup/config-generator tools by its claim-verification loop (verified rules/commands, re-runnable refresh/converge/check), not just generation.
+
+
+
+### Added — Borrow wave 2: guardrails & generation
+
+Second borrow wave from the agent-cortex triage (`docs/plans/2026-07-03-agent-cortex-borrow-triage.md`). Focus: guardrails that travel with the capability, and cleaner generated output.
+
+- **Per-tool guardrails + no-delete fence in the implementer dispatch contract.** `subagent-implementation` now states each granted tool's boundary inline (Edit/Write: only `batch.files`; Bash: build/test/format/read-git only, no network or destructive commands) and forbids deletion (no `rm`/`git rm`; removals become a `deviation` for the orchestrator). Directly targets the out-of-scope-edit (v7.14) and destructive-deletion (v7.10.3) failure modes. (Borrow: dontriskit + EliFuzz — guardrails baked into the capability.)
+- **Terminology / LLM-tic lint is now enforced.** `verify-claims.sh` implements the previously documentation-only audit-grounding §4 denylist: tagged lines carrying LLM prose tics ("Additionally", "Furthermore", "Moreover", "Delve", "worth noting", "plays a crucial role") get a `terminology-needs-review` weak-claim entry with the matched term. Advisory, never auto-rewritten. (Borrow: yzhao062/agent-style field-observed tics.)
+- **Output-style section in generated CLAUDE.md.** `setup-bootstrap`'s CLAUDE.md template now emits an `## Output Style` block (no em-dash-as-punctuation, no filler transitions, no bullet inflation, no per-paragraph summary, back claims with file:line) so bootstrapped repos steer agent prose from day one. (Borrow: agent-style anti-patterns.)
+- **`paths` axis in the rule wake-up index.** `build-rule-index.sh` now surfaces each rule's `paths:` globs as a column in `.claude/rules/INDEX.md`, giving machine-scoped auto-attach (a rule whose glob matches a touched file is always relevant) alongside the decision/topic/scope axes; `git-workflow.md` gained the `paths:` it was missing. (Borrow: instructa/ai-prompts + awesome-copilot `applyTo` globs.)
+
+### Deferred
+
+- Idempotent import-marker merge in `generate-tool-configs.sh` (batch-2 #12): the copilot/windsurf/cursor generators are overwrite-guarded but not marker-merged. Deferred — it needs careful surgery across five output formats plus smoke tests; tracked in the triage doc.
+
+
+
+### Added — Borrow wave 1: skill & subagent authoring hardening
+
+First of three minor releases mining the `awesome-agent-cortex` neighborhood (triage in `docs/plans/2026-07-03-agent-cortex-borrow-triage.md`). Batch-1 finding: the ecosystem's *content* (persona agents, thin skills) is behind MTK, so this wave takes only conventions and validator capability — the reusable parts.
+
+- **Navigation-only SKILL.md rule (S2.26).** New rule states a SKILL.md is a navigation layer, not a payload — it holds decision logic and links to `.claude/references/**` rather than inlining detail. Mirrored into `writing-skills` Phase 2. (Borrow: wshobson/agents progressive-disclosure contract.)
+- **Least-privilege agent lint.** `validate-toolkit.sh` now advises (WARN, non-blocking) when a `.claude/agents/*.md` declares neither `required-toolsets` nor `allowed-tools`, or grants a mutating tool (`Edit`/`Write`/`MultiEdit`/`NotebookEdit`) to a read-only reviewer. (Borrow: VoltAgent tool-matrix-by-role.)
+- **Frontmatter enum sanity.** `validate-toolkit.sh` advises on unexpected `model:` (expected `opus|sonnet|haiku|inherit`) and `effort:` (`low|medium|high|max`) tiers in agent frontmatter, catching typo'd tiers early. (Borrow: awesome-copilot schema-validated frontmatter, adapted to bash/advisory.)
+- **Self quality-checklists in reviewer agents.** `compliance-reviewer`, `test-reviewer`, `architecture-reviewer`, and `silent-failure-hunter` each gained a `## Quality Checklist` the agent runs against its *own* output before returning (every finding cites file:line, no FP-class findings, verdict matches scores). (Borrow: 0xfurai embedded `## Quality Checklist`.)
+
+### Deferred
+
+- CLAUDE.md archetype seed skeletons (batch-1 #7): setup-bootstrap already generates bespoke CLAUDE.md from the audit; archetype fallback is low value and would inflate an already-large skill. Left as a note in the triage doc.
 
 ## [7.19.0] - 2026-07-03
 

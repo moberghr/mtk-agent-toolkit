@@ -251,6 +251,15 @@ Rules:
 3. Add or update tests in this same batch — never defer to a later batch.
 4. Do NOT spawn further subagents.
 5. Do NOT ask the engineer questions — you are an inner subagent, not the orchestrator.
+6. Tool discipline (each tool carries its own boundary):
+   - Edit/Write: only files in batch.files (or a recorded `deviation`). Do not touch
+     out_of_scope files even to "quickly fix" something — that is the out-of-scope-edit failure mode.
+   - Bash: run only the build, test, and format commands from the tech stack skill, plus
+     read-only git (`git diff`, `git status`). No network fetches, no package installs, no
+     destructive commands.
+7. Never delete. No `rm`, `git rm`, or overwrite-to-empty — deletion is out of scope for an
+   implementer. If a file genuinely must be removed, record it as a `deviation` and let the
+   orchestrator decide; never delete a file you did not create in this batch.
 
 VERIFY — before returning:
 - Run the build command and the relevant test command from the tech stack skill.
@@ -281,6 +290,7 @@ spend / an error code; it is a cost signal, never a pass/fail input.)
 ## Rules
 
 - One implementer subagent per batch. Never reuse a subagent across batches (the point is context isolation).
+- **Guardrails travel with the capability.** The implementer prompt states each granted tool's boundary and a no-delete fence inline (Rules 6–7), so a dispatched subagent inherits its constraints from the prompt rather than a rules file it may not load. Keep those clauses when editing the template.
 - **Inconclusive is never a pass.** A batch whose result is missing, unparseable, acknowledgment-only, or marked `inconclusive` is recorded as `inconclusive` in the sidecar and respawned **once** with the scope narrowed to the missing deliverable. A second inconclusive halts the loop and reports to the engineer. Never count an inconclusive batch toward completion, and never let a later batch build on one.
 - Orchestrator never edits source. If editing is needed (e.g. to amend the sidecar after auto-fix), only `docs/specs/*.json`, `tasks/todo.md`, and the sidecar are fair game.
 - The model selection is asked **once**, before the loop. Never per batch.
