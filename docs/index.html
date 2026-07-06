@@ -1207,11 +1207,15 @@ floor held to ~3,842 tok/session.</span></pre>
       </div>
       <div class="card">
         <h3>On-demand output compression</h3>
-        <p>Pipe noisy build logs, test runs, and JSON through <code>mtk-compress</code> to reclaim most of their tokens — failures and summaries survive, the repetition doesn't. A hook even flags large output you forgot to compress.</p>
+        <p>Pipe noisy build logs, test runs, and JSON through <code>mtk-compress</code> to reclaim most of their tokens — failures and summaries survive, the repetition doesn't. A hook even flags large output you forgot to compress. Measured on this toolkit: a ~1,500-line build log shrinks <strong>~96%</strong> (≈31.6K → 1.2K tokens); a test run collapses to just its failures and summary.</p>
       </div>
       <div class="card">
         <h3>A baseline that can't creep</h3>
         <p>CI caps every skill description at 200 chars (~1,750 tokens total) and prints the running total. A cache-stable prefix, an MCP-gated manifest, and a stack-aware <code>.claudeignore</code> at setup keep the floor low — and <code>mtk-doctor</code> prices it for you.</p>
+      </div>
+      <div class="card">
+        <h3>Deterministic checks are free</h3>
+        <p>The 37-rule linter and the enforcement hooks are plain bash — <strong>detection costs zero model tokens</strong>. They flag secrets, SQL injection, and disabled tests at confidence 100 without the model reasoning about a line; only the findings enter context. The model spends its budget on judgment a regex can't make — and on the review-and-fix round you never pay for, because the issue was caught upstream.</p>
       </div>
     </div>
   </div>
@@ -1484,8 +1488,8 @@ floor held to ~3,842 tok/session.</span></pre>
       </div>
       <div class="terminal" style="margin:0">
         <div class="terminal-bar"><i></i><i></i><i></i></div>
-<pre><span class="k-dim">$</span> /plugin marketplace add moberghr/mtk-agent-toolkit
-<span class="k-dim">$</span> /plugin install mtk@moberghr</pre>
+<pre><span class="k-dim">$</span> /plugin marketplace add moberghr/moberg-plugins
+<span class="k-dim">$</span> /plugin install mtk@moberg-plugins</pre>
       </div>
     </div>
 
