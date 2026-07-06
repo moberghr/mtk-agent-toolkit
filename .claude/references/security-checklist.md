@@ -1,7 +1,7 @@
 ---
 description: Baseline security checklist for any serious software change
-globs: ["**/*"]
-alwaysApply: true
+globs: ["**/auth/**", "**/authentication/**", "**/authorization/**", "**/payments/**", "**/transfers/**", "**/audit/**", "**/secrets/**", "**/infra/**", "**/iam/**", "**/*Auth*.cs", "**/*Auth*.py", "**/*Auth*.ts", "**/appsettings*.json", "**/*.env*", "**/settings.py", "**/config/*.ts"]
+alwaysApply: false
 ---
 # Security Checklist
 

@@ -2,6 +2,18 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.23.0] - 2026-07-06
+
+### Added — Token optimization wave
+
+Five measures to lower MTK's context footprint and make its (largely already-real) savings visible to users. Baseline before this release: ~3.7K always-on tokens/session, ~86K tokens kept out of context by progressive disclosure.
+
+- **Skill-description budget enforced.** `validate-toolkit.sh` now caps each MTK skill `description` at 200 chars and the aggregate at 7000 chars (~1750 tokens), and prints the running total every run. Descriptions load into *every* session against Claude Code's ~1%-of-context skill-listing budget, so this protects routing quality on smaller-context models and stops the always-on floor drifting as skills are added (S2.6a). The 7 longest descriptions were trimmed to fit (6643 -> 6407 chars) with keywords preserved.
+- **`security-checklist.md` no longer always-on.** Its frontmatter (`alwaysApply: true`, glob `**/*`) was aligned to the security-scoped `applyTo` the manifest already carried, closing a split-brain where the MCP resolver treated it as path-scoped but the frontmatter/index/bash-fallback treated it as always-on. Every consumer already loads it explicitly and conditionally (`security-and-hardening` reads it unconditionally), so behaviour is unchanged; it just stops loading on non-security work in the fallback path.
+- **`mtk-savings.sh` - context footprint & savings report.** New script (`bash scripts/mtk-savings.sh`) reports the always-on floor, tokens deferred by progressive disclosure, review-agent bodies offloaded to isolated context, and real output-compression totals read from `.claude/observability/compression.jsonl`. Surfaced from `analytics-report.sh` and the `context-report` skill. Every figure is derived from installed files or the on-disk log - nothing fabricated.
+- **Prompt-cache-stable CLAUDE.md prefix.** The stale, per-release version banner in `CLAUDE.md` was replaced with a stable pointer to `CHANGELOG.md`, so the always-loaded prefix no longer changes every release (keeps prompt caching warm).
+- **Progressive disclosure of the fattest skill body (S2.26).** The literal Root CLAUDE.md template moved out of `setup-bootstrap` (924 -> 815 lines) into on-demand `references/root-claude-md-template.md`, read by STEP 3 only when generating. Deeper restructuring of the other large workflow skills, and the tech-stack scan-recipe split (cross-consumed by `setup-audit`), are deferred to their own reviewed change to avoid destabilizing skills changed in the recent 7.19-7.22 waves.
+
 ## [7.22.0] - 2026-07-06
 
 ### Added — Borrow wave 3: routing, memory & context
@@ -45,7 +57,7 @@ First of three minor releases mining the `awesome-agent-cortex` neighborhood (tr
 
 - CLAUDE.md archetype seed skeletons (batch-1 #7): setup-bootstrap already generates bespoke CLAUDE.md from the audit; archetype fallback is low value and would inflate an already-large skill. Left as a note in the triage doc.
 
-
+## [7.19.0] - 2026-07-03
 
 ### Added — Setup improvements wave
 
