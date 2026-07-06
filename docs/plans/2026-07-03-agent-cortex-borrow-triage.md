@@ -108,6 +108,28 @@ as the larger structural investments (a real eval/validation upgrade).
 `maestro-orchestrate`, `security-sweep`, `backlog` (via ComposioHQ); `agentcairn`, `Selvedge`
 (via awesome-claude-code); read awesome-copilot's `eng/` + `.schemas/` directly as a reference impl.
 
+### Implementation status (shipped)
+
+Three minor releases on `feat/agent-cortex-borrow-waves`:
+
+- **v7.20.0 — wave 1 (authoring & validation):** navigation-only rule S2.26; least-privilege
+  agent lint + frontmatter enum lint (advisory) in `validate-toolkit.sh`; self `## Quality
+  Checklist` in the 4 reviewer agents. *Confirmed already-present (not rebuilt):* model tiers,
+  read-only toolsets, SKILL.md size caps. *Deferred:* CLAUDE.md archetype skeletons (#7).
+- **v7.21.0 — wave 2 (guardrails & generation):** per-tool guardrails + no-delete fence in the
+  implementer dispatch contract; audit-grounding §4 terminology/LLM-tic denylist made real in
+  `verify-claims.sh`; `## Output Style` block in the generated CLAUDE.md template; `paths` axis
+  in the rule INDEX. *Already done (not rebuilt):* multi-harness rule emission (#11). *Deferred:*
+  idempotent import-marker merge in `generate-tool-configs.sh` (#12) — needs 5-format surgery + tests.
+- **v7.22.0 — wave 3 (routing, memory, context):** conflict-superseding lesson writes +
+  `memory_type` tag in `learnings.sh`/schema/correction-capture; Write/Select/Compress/Isolate
+  taxonomy in context-engineering; negative-example route disambiguation in `/mtk`; Sentry +
+  read-only Postgres + Azure DevOps MCP additions; competitor positioning in README.
+
+*Not built (WATCH/SKIP per triage):* persona-agent libraries, flat category taxonomies, bespoke
+install CLI, vector/graph memory systems, LLMLingua token compression, intent/risk permission
+classifier (runtime-dependent, documented only).
+
 ### Batch 1 — Direct peers (repos 1–7) ✅
 
 **Headline:** the *content* in these repos (persona agents, thin skills) is not worth

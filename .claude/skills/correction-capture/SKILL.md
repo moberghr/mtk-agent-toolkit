@@ -60,6 +60,8 @@ This skill is specifically for **engineer-driven** corrections. When *you* resol
    ```
    When *replacing* an existing lesson (vs. appending), write to a temp file and promote via `mtk_guarded_write` so a partial regenerate cannot truncate the file. Pure appends are safe — append never shrinks.
 
+   **If the grep finds a lesson that *contradicts* the new one** (not a duplicate — an actual reversal of prior guidance), do not silently append a second, conflicting rule. Capture the new lesson with `--supersedes <old-id>`: the old entry stays for the audit trail but `learnings.sh query` stops surfacing it, so retrieval never returns two rules that disagree. A duplicate of the *same* rule is different — that just increments `recurrence.count`.
+
 5. **Capture the lesson — structured + markdown.**
 
    **a. Structured (preferred when `scripts/learnings.sh` is present).** Append a JSONL entry to `.mtk/learnings.jsonl` (gitignored, machine-readable). Then regenerate the markdown view:
@@ -78,7 +80,9 @@ This skill is specifically for **engineer-driven** corrections. When *you* resol
      --applies-when "When this rule should activate" \
      --wrong-turns "dead end A,dead end B" \
      --time-cost 12 \
-     --evolution-actions "routing|claude_md|reference|hook|none"
+     --evolution-actions "routing|claude_md|reference|hook|none" \
+     --memory-type "episodic|semantic|procedural" \
+     --supersedes "L-old-id"   # only when this lesson reverses an existing one
    bash scripts/learnings.sh regen-markdown   # rebuilds tasks/lessons.md
 
    # v7.14 enrichment (all optional — omit when not applicable):

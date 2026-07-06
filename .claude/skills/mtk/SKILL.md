@@ -129,6 +129,22 @@ Match the user's input against these patterns. Check from top to bottom; first m
 | `setup`, `bootstrap`, `init`, `initialize`, `first time`, `prepare repo`, `audit`, `architecture`, `principles` | `/mtk-setup` (direct the user) | "set up this repo", "audit this repo" |
 | `help`, `commands`, `what can you do` | (print help below) | "help", "what commands are there?" |
 
+## Route Disambiguation (negative boundaries)
+
+Positive keyword matches collide on adjacent intents. These boundaries say when NOT to take
+the obvious route — encoding the contested pairs measurably cuts misroutes (borrow:
+awesome-harness-engineering negative-example routing).
+
+| Route to… | …NOT… | …when |
+|---|---|---|
+| `fix` | `implement` | the change is 1–3 files with no new public contract; if it's feature-sized or multi-file, it's `implement` (ambig branch → ask once) |
+| `research-context` | `implement`/`fix` | the ask is an external/best-practice/version question ("what's the current way to…"), not a change to this repo |
+| `pre-commit-review` | `code-review-and-quality` | the trigger is staged/about-to-commit; full PR/branch review is the workflow skill, not the pre-commit gate |
+| `context-report` | `toolkit-health` | the ask is "what's loaded right now"; usage/adoption/analytics over time is `toolkit-health` |
+| `claude-md-capture` | `handoff` | the target is CLAUDE.md content; capturing session state to resume later is `handoff` |
+| `promote-lesson` | `lesson-mining` | a specific known lesson goes personal→team; sweeping transcripts for candidates is `lesson-mining` |
+| `/mtk-setup` | `implement`/`fix` | anything setup/bootstrap/audit/architecture-principles — always redirect to `/mtk-setup`, never absorb |
+
 ## Routing Rules
 
 1. **Strip flags first.** If the input starts with `--terse`, `--verbose`, `--staged-only`, `--preview`, `--merge`, `--non-interactive`, pass them through to the target skill.

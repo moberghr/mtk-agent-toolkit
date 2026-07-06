@@ -2,7 +2,20 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [7.21.0] - 2026-07-06
+## [7.22.0] - 2026-07-06
+
+### Added — Borrow wave 3: routing, memory & context
+
+Final borrow wave from the agent-cortex triage (`docs/plans/2026-07-03-agent-cortex-borrow-triage.md`). The batch-3 sources were research/reading lists with no vendorable code, so this wave takes file-implementable ideas and vocabulary only.
+
+- **Conflict-superseding lesson writes.** `learnings.sh add` gains `--supersedes <id>`; `learnings.sh query` derives the superseded set from those forward refs and drops any entry a newer one supersedes — so a reversed rule stops surfacing without deleting the audit trail (no line rewriting). `correction-capture` now captures a contradicting lesson with `--supersedes` instead of appending a second conflicting rule. (Borrow: IAAR-Shanghai conflict-driven forgetting.)
+- **Memory content-type tag.** New optional `memory_type` (`episodic | semantic | procedural`) on the learnings schema and `learnings.sh add --memory-type`, orthogonal to `source` provenance, to improve recall relevance. (Borrow: IAAR-Shanghai content-type taxonomy.)
+- **Named context operations.** `context-engineering` now opens with the **Write / Select / Compress / Isolate** taxonomy and a one-line definition of context, each mapped to the MTK machinery that already implements it. (Borrow: jihoo-kim / LangChain taxonomy.)
+- **Negative-example route disambiguation.** `/mtk` gained a "Route Disambiguation (negative boundaries)" table encoding the contested pairs (fix vs implement, research-context vs implement, pre-commit-review vs full review, context-report vs toolkit-health, capture vs handoff, promote-lesson vs lesson-mining, setup always → `/mtk-setup`). (Borrow: awesome-harness-engineering negative-example routing.)
+- **MCP shortlist additions.** `docs/recommended-tooling/shared.md` adds Sentry and a read-only Postgres MCP (with a read-only-role caveat) and strengthens the security note to prefer read-only roles / scoped tokens; `dotnet.md` adds Azure DevOps for ADO shops. (Borrow: wong2/awesome-mcp-servers, security-gated.)
+- **Competitor positioning.** README FAQ now distinguishes MTK from other AI setup/config-generator tools by its claim-verification loop (verified rules/commands, re-runnable refresh/converge/check), not just generation.
+
+
 
 ### Added — Borrow wave 2: guardrails & generation
 

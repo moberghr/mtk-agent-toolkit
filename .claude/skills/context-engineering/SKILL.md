@@ -24,7 +24,21 @@ if [ -f .claude/tech-stack-pm ]; then echo "--- Package Manager ---"; cat .claud
 
 ## Overview
 
-Good output depends on good context. Load the minimum relevant context needed to act correctly, then refresh it when the task shifts.
+Good output depends on good context. Context is the complete information payload the model
+sees at generation time — load the minimum relevant part needed to act correctly, then refresh
+it when the task shifts.
+
+## Context Operations (Write / Select / Compress / Isolate)
+
+The four moves of context engineering. MTK already implements each; the names give them a
+shared vocabulary (borrow: LangChain / jihoo-kim context-engineering taxonomy).
+
+| Operation | What it means | Where MTK does it |
+|---|---|---|
+| **Write** | Persist state outside the window so it survives compaction/handoff | auto-memory + `tasks/lessons.md`, `workflow-artifacts`, `handoff` |
+| **Select** | Pull in only what the current step needs | rules `INDEX.md` wake-up layer, path-scoped `applyTo` reference loading (below) |
+| **Compress** | Shrink what must stay in-window without losing signal | `.claude/references/output-compression.md`, `mtk-compress.sh` |
+| **Isolate** | Give a sub-task its own fresh window | `subagent-implementation` (one implementer per batch), review agents (`context: fork`) |
 
 ## When To Use
 

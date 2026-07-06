@@ -24,6 +24,7 @@ alwaysApply: false
 | **dotnet-skills (Petabridge)** | Plugin | Large skill pack covering Akka.NET, EF Core patterns, Aspire, modern C# standards, package management, performance analysis, and more. Useful even if you don't use Akka — many skills are general .NET best practices. | `/plugin install petabridge/dotnet-skills` |
 | **JetBrains MCP (Rider)** | MCP | If the team uses Rider, exposes Rider-specific features: Navigate, Inspect, Run Configurations, debugger integration. Complements (not replaces) csharp-lsp. | JetBrains Marketplace → "MCP Server" |
 | **ILSpy CLI** | Tool | Decompile any .NET assembly — inspect framework internals, see how a NuGet package actually works, debug obscure behavior. Skill wrapper available via dotnet-skills. | `dotnet tool install -g ilspycmd` |
+| **azure-devops** | MCP | PR, pipeline, and work-item operations for the many .NET shops on Azure DevOps instead of GitHub. Recommend only if your team lives in ADO; use a scoped PAT. | See Azure DevOps MCP docs |
 
 ## Notes
 
