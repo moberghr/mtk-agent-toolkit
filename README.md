@@ -148,7 +148,7 @@ Summary: MTK keeps ~102954 tok out of your always-on context (deferred + review 
 compresses tool output on demand, and holds the always-on floor to ~3842 tok/session.
 ```
 
-Every number is derived from on-disk files — nothing is fabricated from telemetry MTK doesn't collect. Four levers make it work:
+Every number is derived from on-disk files — nothing is fabricated from telemetry MTK doesn't collect. Five levers make it work:
 
 ### 1 · Progressive disclosure — load one thing at a time
 
@@ -169,6 +169,15 @@ bash scripts/mtk-compress.sh stats                     # session + all-time toke
 
 Five content-aware modes preserve what matters (test failures, error lines, summaries) and elide what doesn't (thousands of PASS lines, long arrays, boilerplate). A `PostToolUse` hook even **flags large Bash output that bypassed compression** and tells you which mode would have reclaimed the tokens — so the savings happen even when you forget.
 
+Measured on this toolkit (reproduce with `mtk-compress` + `wc -c`, at its own ~4 chars/token approximation):
+
+| Tool output piped through `mtk-compress` | Before | After | Reclaimed |
+|:---|--:|--:|--:|
+| ~1,500-line build log (`logs` mode) | ~31,600 tok | ~1,200 tok | **96%** |
+| ~1,480-passing test run (`tests` mode) | ~14,100 tok | ~40 tok | **99%** |
+
+Failures and summary lines survive both times — only the repetition is dropped. Real per-run and session totals accrue in `.claude/observability/compression.jsonl` (`bash scripts/mtk-compress.sh stats`).
+
 ### 4 · A baseline that can't silently creep
 
 - **Cache-stable prefix** — the always-loaded `CLAUDE.md` carries no per-release version banner, so the prompt-cache stays warm across releases.
@@ -176,6 +185,12 @@ Five content-aware modes preserve what matters (test failures, error lines, summ
 - **Budget enforced in CI** — `validate-toolkit.sh` caps each skill description at 200 chars and the whole catalogue at ~1,750 tokens, and prints the running total on every run. Because Claude Code reserves only ~1% of context for skill metadata, this protects routing quality even on smaller-context models.
 - **`.claudeignore` at setup** — bootstrap generates a stack-aware ignore file so Claude Code natively keeps dependency and build directories out of search and reads.
 - **A context-budget hook** nudges a clean handoff once a session passes 60% of the window — so quality resets at a boundary you choose, not a forced mid-edit compaction.
+
+### 5 · Deterministic checks spend no model tokens
+
+The linters and enforcement hooks are plain bash — their *detection* costs **zero model tokens**. A 37-rule linter pass flags hardcoded secrets, SQL injection, disabled tests, and float-money at confidence 100 without the model reading or reasoning about a single line; only the findings it raises — a line or two each — enter context. The gates are just as cheap: `verify-completion`, `security-gate`, and `scope-guard` print a one-line advisory when they fire and stay silent otherwise. The model spends its budget on the judgment calls a regex can't make, not the mechanical checks a script does for free.
+
+The larger saving is the review-and-fix round you *never pay for*. Catching an out-of-scope edit, an evidence-less "done", or a hardcoded secret at the hook/linter stage — before it reaches an adversarial review pass that reads the whole diff and reasons across six scored dimensions — avoids the thousands of tokens that a wasted review round and its follow-up fix would have cost. Deterministic gates are the cheapest possible reviewer: they never think, and they're never wrong about a regex match.
 
 **The payoff:** run many plugins together and MTK stays a good citizen. Its always-on cost is under 4K tokens, and `mtk-doctor` prices that cost for you (`/mtk-doctor` → CONTEXT category).
 
