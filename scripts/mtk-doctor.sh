@@ -305,6 +305,72 @@ else
 fi
 
 # ──────────────────────────────────────────────
+# CONTEXT
+# ──────────────────────────────────────────────
+# Always-on context cost: what loads into every session before the first prompt
+# (CLAUDE.md + the rules wake-up layer + alwaysApply references + MCP tool schemas).
+# Report-only — surfaces the baseline so teams can keep it lean. These checks must
+# stay PASS on a clean repo (pressure-test S1); the numbers live in the detail string.
+ctx_lines=0
+ctx_bytes=0
+add_ctx_file() {
+  local f="$1"
+  [ -f "$f" ] || return 0
+  local l b
+  l="$(wc -l < "$f" | tr -d '[:space:]')"
+  b="$(wc -c < "$f" | tr -d '[:space:]')"
+  ctx_lines=$((ctx_lines + l))
+  ctx_bytes=$((ctx_bytes + b))
+}
+
+add_ctx_file "CLAUDE.md"
+add_ctx_file ".claude/rules/INDEX.md"
+
+# alwaysApply=true references — the only refs that load unconditionally. Read the
+# generated TSV index (tab-separated: path, alwaysApply, description, globs).
+ALWAYSON_REFS=0
+if [ -f ".claude/references.index" ]; then
+  while IFS= read -r ref; do
+    [ -n "$ref" ] || continue
+    if [ -f "$ref" ]; then
+      add_ctx_file "$ref"
+      ALWAYSON_REFS=$((ALWAYSON_REFS + 1))
+    fi
+  done < <(awk -F'\t' '/^#/{next} $2=="true"{print $1}' .claude/references.index)
+fi
+
+if [ "$ctx_bytes" -gt 0 ]; then
+  # ~13 tokens/line proxy, consistent with the context-engineering skill.
+  ctx_tokens=$((ctx_lines * 13))
+  record PASS context "always-on context baseline" \
+    "~${ctx_tokens} tokens (${ctx_lines} lines / ${ctx_bytes} bytes): CLAUDE.md + rules/INDEX.md + ${ALWAYSON_REFS} alwaysApply ref(s)"
+else
+  record PASS context "always-on context baseline" \
+    "no always-on files found (CLAUDE.md / rules/INDEX.md absent — likely the source repo)"
+fi
+
+# MCP schema overhead — every connected server loads its full tool schema at
+# session start (~10-20k tokens each). Count servers declared in this repo's
+# .mcp.json (no jq per S3.3; each server entry carries a "type" key).
+if [ -f ".mcp.json" ]; then
+  MCP_COUNT="$(grep -c '"type"' .mcp.json 2>/dev/null || printf '0')"
+  record PASS context "MCP schema baseline" \
+    "${MCP_COUNT} server(s) in .mcp.json — each adds ~10-20k tokens of tool schema per session"
+else
+  record PASS context "MCP schema baseline" "no .mcp.json — no MCP schema baseline"
+fi
+
+# Tool-search deferral — defers MCP tool schemas until first use instead of
+# loading them all upfront. Advisory either way (never WARN — it is opt-in).
+if grep -q 'ENABLE_TOOL_SEARCH' .claude/settings.json 2>/dev/null; then
+  record PASS context "tool-search deferral enabled" \
+    "ENABLE_TOOL_SEARCH set — MCP tool schemas load on demand"
+else
+  record PASS context "tool-search deferral not set" \
+    "ENABLE_TOOL_SEARCH unset — consider enabling if you connect many MCP servers (defers schema loading)"
+fi
+
+# ──────────────────────────────────────────────
 # OUTPUT
 # ──────────────────────────────────────────────
 if [ "$JSON" -eq 1 ]; then

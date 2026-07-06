@@ -2,6 +2,15 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.24.0] - 2026-07-06
+
+### Added — Context-efficiency: `.claudeignore` at setup + doctor baseline
+
+Two low-friction token/context wins, drawn from a survey of context-saving tooling against MTK's existing machinery (output compression, on-demand loading, model routing were already covered). Complements the 7.23.0 token-optimization wave.
+
+- **Stack-aware `.claudeignore` at setup.** `setup-bootstrap` now generates a `.claudeignore` at the repo root (idempotent, never overwrites, committed) so Claude Code natively keeps dependency/build directories out of search and read results. The floor mirrors the built-in scan defaults in `hooks/lib/mtkignore.sh`; per-stack caches/outputs are appended for dotnet (`TestResults/`, `*.user`), python (`.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `*.egg-info/`), and typescript (`.next/`, `build/`, `coverage/`, `.turbo/`). Distinct from `.mtkignore`, which only MTK's own scans consume.
+- **`CONTEXT` baseline in `mtk-doctor`.** New report-only category surfacing the always-on install cost: the always-on context baseline (CLAUDE.md + `rules/INDEX.md` + `alwaysApply` references, in tokens/bytes), the MCP tool-schema count from `.mcp.json`, and the `ENABLE_TOOL_SEARCH` state. All checks stay PASS on a clean repo; the numbers live in the detail field. Appears in both human and `--json` output.
+
 ## [7.23.0] - 2026-07-06
 
 ### Added — Token optimization wave
