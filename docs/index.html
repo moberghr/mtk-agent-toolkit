@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>MTK — Serious engineering for AI-assisted development · Moberg</title>
-<meta name="description" content="MTK turns any AI coding assistant into a disciplined engineering partner. Evidence-first workflows, adversarial review gates, and deterministic linters for enterprise teams shipping serious software." />
+<meta name="description" content="MTK turns any AI coding assistant into a disciplined engineering partner. Evidence-first workflows, adversarial review gates, and deterministic linters — with a ~3,842-token always-on footprint that keeps ~103K tokens out of your context. For teams shipping serious software." />
 <meta property="og:title" content="MTK · Moberg — Serious engineering for AI-assisted development" />
 <meta property="og:description" content="Stop shipping vibes. Enforce evidence-first AI workflows across Claude Code, Cursor, Copilot, Windsurf, Gemini, and Cline." />
 <meta property="og:type" content="website" />
@@ -780,6 +780,7 @@
     <nav class="nav-links">
       <a href="#problem">Problem</a>
       <a href="#how">How it works</a>
+      <a href="#tokens">Token economics</a>
       <a href="#features">Features</a>
       <a href="#components">Components</a>
       <a href="https://github.com/moberghr/mtk-agent-toolkit" class="cta">
@@ -813,7 +814,7 @@
     </div>
     <div class="hero-stats">
       <span>MIT licensed</span>
-      <span>40 skills · 6 review agents</span>
+      <span>43 skills · 6 review agents</span>
       <span>6 AI assistants supported</span>
     </div>
 
@@ -1144,12 +1145,84 @@
   </div>
 </section>
 
+<!-- === TOKEN ECONOMICS === -->
+<section class="section" id="tokens">
+  <div class="container">
+    <div class="sec-head"><span class="sec-num">03</span> Token economics</div>
+    <h2>The most disciplined toolkit shouldn't be the heaviest.</h2>
+    <p class="lede">
+      MTK ships 43 skills, 6 agents, and 50 reference documents — yet only <strong>~3,842 tokens</strong> load into every session. The other <strong>~103,000 tokens</strong> stay out of always-on context until the exact moment they're relevant. The power lives in the toolkit, not in your context window.
+    </p>
+
+    <div class="grid grid--3" style="margin-top:8px">
+      <div class="card card--hero">
+        <div style="font-family:var(--font-mono);font-size:34px;font-weight:600;line-height:1.1;color:var(--accent)">~3.8K</div>
+        <h3 style="margin-top:10px">Always-on floor</h3>
+        <p>Every session loads only skill descriptions, CLAUDE.md, the rules index, and agent descriptions. That's the entire baseline.</p>
+      </div>
+      <div class="card">
+        <div style="font-family:var(--font-mono);font-size:34px;font-weight:600;line-height:1.1;color:var(--text)">~103K</div>
+        <h3 style="margin-top:10px">Kept out of context</h3>
+        <p>References, rule bodies, and the manifest (~89K) sit behind progressive disclosure; review-agent logic (~14K) runs in isolated subagents. Never inlined.</p>
+      </div>
+      <div class="card">
+        <div style="font-family:var(--font-mono);font-size:34px;font-weight:600;line-height:1.1;color:var(--text)">1 of 43</div>
+        <h3 style="margin-top:10px">Skill bodies at a time</h3>
+        <p>~129K tokens of skill logic exists, but only one body ever enters context — when its skill actually runs. Nothing loads "just in case."</p>
+      </div>
+    </div>
+
+    <p class="lede" style="margin-top:28px;margin-bottom:16px">Every number is computed from your own installed files — run <code>bash scripts/mtk-savings.sh</code> and watch it prove itself:</p>
+
+    <div class="terminal" style="margin-top:0">
+      <div class="terminal-bar"><i></i><i></i><i></i><span class="label">bash scripts/mtk-savings.sh</span></div>
+<pre><span class="k-dim">Always-on — loaded into EVERY session:</span>
+  skill descriptions   ~ 1601 tok  <span class="k-dim">(43 skills)</span>
+  CLAUDE.md            ~ 1597 tok
+  rules/INDEX.md       ~  389 tok
+  agent descriptions   ~  254 tok  <span class="k-dim">(6 agents)</span>
+  <span class="k-green">── always-on floor    ~ 3842 tok</span>
+
+<span class="k-dim">Kept OUT by progressive disclosure (load only when relevant):</span>
+  references           ~59400 tok  <span class="k-dim">(50 files, glob-gated)</span>
+  rule bodies          ~ 3988 tok  <span class="k-dim">(path-gated)</span>
+  manifest.json        ~25664 tok  <span class="k-dim">(MCP-gated, never inlined)</span>
+  <span class="k-yellow">── deferred total     ~89054 tok</span>
+
+<span class="k-dim">Review offloaded to isolated subagent context:</span>
+  6 agent bodies       ~13900 tok  <span class="k-dim">(never enters the main thread)</span>
+
+<span class="k-purple">Summary: ~102,954 tok kept out of your always-on context —
+floor held to ~3,842 tok/session.</span></pre>
+    </div>
+
+    <div class="grid grid--2" style="margin-top:32px">
+      <div class="card">
+        <h3>Progressive disclosure</h3>
+        <p>Skill bodies, rule bodies, and 50 reference docs are glob- and axis-gated. Edit a <code>DbContext</code> and the EF Core checklist loads; edit a controller and it doesn't. A &lt;60-line "wake-up" index decides what enters context.</p>
+      </div>
+      <div class="card">
+        <h3>Review offloaded to isolated context</h3>
+        <p>~13,900 tokens of adversarial review and security logic run in forked subagent windows. They read the diff on their own and return only findings — the heavy machinery never touches your main thread.</p>
+      </div>
+      <div class="card">
+        <h3>On-demand output compression</h3>
+        <p>Pipe noisy build logs, test runs, and JSON through <code>mtk-compress</code> to reclaim most of their tokens — failures and summaries survive, the repetition doesn't. A hook even flags large output you forgot to compress.</p>
+      </div>
+      <div class="card">
+        <h3>A baseline that can't creep</h3>
+        <p>CI caps every skill description at 200 chars (~1,750 tokens total) and prints the running total. A cache-stable prefix, an MCP-gated manifest, and a stack-aware <code>.claudeignore</code> at setup keep the floor low — and <code>mtk-doctor</code> prices it for you.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- === FEATURES === -->
 <section class="section section--alt" id="features">
   <div class="container">
-    <div class="sec-head"><span class="sec-num">03</span> Why enterprise teams choose MTK</div>
+    <div class="sec-head"><span class="sec-num">04</span> Why enterprise teams choose MTK</div>
     <h2>Built for teams that can't afford "mostly right."</h2>
-    <p class="lede">Nine capabilities that separate MTK from prompt-and-pray workflows.</p>
+    <p class="lede">The capabilities that separate MTK from prompt-and-pray workflows.</p>
 
     <div class="grid grid--3">
       <div class="card">
@@ -1246,7 +1319,7 @@
 <!-- === COMPARISON === -->
 <section class="section">
   <div class="container">
-    <div class="sec-head"><span class="sec-num">04</span> The difference</div>
+    <div class="sec-head"><span class="sec-num">05</span> The difference</div>
     <h2>What "done" means, before and after.</h2>
     <p class="lede">The same engineering milestones, compared across stock AI workflows and MTK-enforced pipelines.</p>
 
@@ -1304,8 +1377,8 @@
 <!-- === COMPONENTS === -->
 <section class="section section--alt" id="components">
   <div class="container">
-    <div class="sec-head"><span class="sec-num">05</span> Components</div>
-    <h2>40 skills. 6 agents. 14 hooks. One discipline.</h2>
+    <div class="sec-head"><span class="sec-num">06</span> Components</div>
+    <h2>43 skills. 6 agents. 14 hooks. One discipline.</h2>
     <p class="lede">MTK is composed of small, pressure-tested pieces that snap together. Invoke one entry point — the rest orchestrate themselves.</p>
 
     <div class="grid grid--2">
@@ -1338,7 +1411,7 @@
         </div>
         <div class="compo-row">
           <code class="compo-code">silent-failure-hunter</code>
-          <div><div class="compo-text"><strong style="color:var(--text)">Stage 1 (conditional)</strong> — swallowed catches, silenced promises, optimistic fallbacks, test erosion. Dispatched when the diff touches error-handling tokens.</div></div>
+          <div><div class="compo-text"><strong style="color:var(--text)">Stage 2 (conditional)</strong> — swallowed catches, silenced promises, optimistic fallbacks, test erosion. Dispatched when the diff touches error-handling tokens; always at MAX rigor.</div></div>
         </div>
         <div class="compo-row">
           <code class="compo-code">context-miner</code>
@@ -1360,7 +1433,7 @@
 <!-- === FINDING EXAMPLE === -->
 <section class="section">
   <div class="container">
-    <div class="sec-head"><span class="sec-num">06</span> What a finding looks like</div>
+    <div class="sec-head"><span class="sec-num">07</span> What a finding looks like</div>
     <div class="grid grid--2" style="align-items:center;gap:48px">
       <div>
         <h2>Structured, cited, auditable.</h2>
@@ -1400,7 +1473,7 @@
 <!-- === INSTALL === -->
 <section class="section section--alt" id="install">
   <div class="container">
-    <div class="sec-head"><span class="sec-num">07</span> Get started</div>
+    <div class="sec-head"><span class="sec-num">08</span> Get started</div>
     <h2>Install in one command.</h2>
     <p class="lede">MTK ships as a Claude Code plugin and works with every major AI coding assistant. Install once, bootstrap any repo, stay disciplined.</p>
 
@@ -1464,7 +1537,7 @@
 <!-- === FAQ === -->
 <section class="section section--alt">
   <div class="container">
-    <div class="sec-head"><span class="sec-num">08</span> FAQ</div>
+    <div class="sec-head"><span class="sec-num">09</span> FAQ</div>
     <h2>Common questions.</h2>
 
     <div class="faq" style="margin-top:36px">

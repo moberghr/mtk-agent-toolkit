@@ -4,19 +4,20 @@
 
 ### Turn Claude Code into a disciplined engineering partner
 
-**A Claude Code plugin that enforces your team's coding standards, security policies, and review discipline on every AI-generated line of code. Language-agnostic workflows with pluggable tech stacks for .NET, Python, and TypeScript.**
+**A Claude Code plugin that enforces your team's coding standards, security policies, and review discipline on every AI-generated line — while keeping ~103K tokens of that intelligence *out* of your context until the moment it's needed. Language-agnostic workflows with pluggable tech stacks for .NET, Python, and TypeScript.**
 
-[![Version](https://img.shields.io/badge/version-7.19.0-blue.svg)](https://github.com/moberghr/mtk-agent-toolkit/releases)
+[![Version](https://img.shields.io/badge/version-7.24.0-blue.svg)](https://github.com/moberghr/mtk-agent-toolkit/releases)
 [![Website](https://img.shields.io/badge/website-moberghr.github.io-6d28d9.svg)](https://moberghr.github.io/mtk-agent-toolkit/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-purple.svg)](https://claude.ai/code)
 [![.NET](https://img.shields.io/badge/.NET-8.0%2B-512BD4.svg)](https://dotnet.microsoft.com/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg)](https://python.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0%2B-3178C6.svg)](https://www.typescriptlang.org/)
+[![Tests](https://img.shields.io/badge/benchmarks-30%2F30-16a34a.svg)](#proof-its-real)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **[moberghr.github.io/mtk-agent-toolkit](https://moberghr.github.io/mtk-agent-toolkit/)** — the MTK website.
 
-[Quick Start](#quick-start) · [What's New](#whats-new) · [What It Does](#what-it-does) · [Examples](#examples) · [Architecture](#architecture) · [Skills](#skills) · [Review Agents](#review-agents) · [Tech Stacks](#tech-stacks) · [FAQ](#faq)
+[Quick Start](#quick-start) · [Why MTK](#what-you-get) · [Token Economics](#token-economics) · [How It Works](#how-it-works) · [Examples](#examples) · [Skills](#skills) · [Review Agents](#review-agents) · [Proof](#proof-its-real) · [FAQ](#faq)
 
 <br/>
 
@@ -30,240 +31,199 @@
 
 ## The Problem
 
-AI code assistants generate code that compiles but silently violates your team's standards. Missing auth checks, unaudited state mutations, N+1 queries, tests that assert nothing meaningful, style drift from one end of the codebase to the other. In serious software — where code touches real money, real users, or regulated data — *"it works"* is not enough.
+AI code assistants generate code that compiles but silently violates your team's standards. Missing auth checks, unaudited state mutations, N+1 queries, tests that assert nothing, style drift from one end of the codebase to the other. In serious software — where code touches real money, real users, or regulated data — *"it works"* is not enough.
 
-Most teams respond by writing a big CLAUDE.md or `.cursor/rules`. But instructions are advisory. AI assistants follow them about 80% of the time. The other 20% is where production incidents live.
+Most teams respond by writing a big `CLAUDE.md` or `.cursor/rules`. But **instructions are advisory.** AI assistants follow them about 80% of the time. The other 20% is where production incidents live — and it's exactly where the model cuts a corner under pressure: disables a test, swallows an error, skips the security check, claims "done" without proof.
 
-## What It Does
+**MTK makes the rules non-negotiable and the evidence mandatory** — and it does it without drowning your context window.
 
-MTK closes that gap with **workflow enforcement** (planning, TDD, batched implementation), **adversarial review agents** (that find real problems, not style nits), **deterministic linters** (that catch secrets and SQL injection at confidence 100%), and **evidence gates** (no "done" claims without cited build output).
+## What You Get
+
+MTK closes the 80% gap with four things working together:
+
+- **Workflow enforcement** — a real spec → plan → TDD → review → evidence-gate pipeline, not a single hopeful prompt.
+- **Adversarial review agents** — six specialist reviewers that hunt for real problems in isolated context, rewarded for finding issues, not for approving.
+- **Deterministic linters** — 37 pattern rules that catch secrets, SQL injection, and LLM reward-hacking at confidence 100, before the AI review even starts.
+- **Evidence gates** — no "done" claim survives without cited build output, test counts, and exit codes produced *after* the last edit.
 
 | Without MTK | With MTK |
 |:---|:---|
 | AI generates code, you review it manually | AI plans, implements in batches, tests, reviews itself adversarially, then reports with evidence |
-| CLAUDE.md rules followed ~80% of the time | Critical rules enforced by hooks (100% deterministic) |
-| "Tests pass" with no proof | Build output, exit codes, and pass/fail counts cited in every completion |
-| Security checks happen if you remember to ask | Security-and-hardening skill activates automatically for auth/secrets/audit changes |
-| Review is one prompt: "review this code" | Two-stage pipeline: compliance first, then test + architecture specialists in parallel |
-| Findings are vague: "consider adding tests" | Findings are structured JSON with severity, confidence scores, rule citations, and file:line references |
+| `CLAUDE.md` rules followed ~80% of the time | Critical rules enforced by hooks — 100% deterministic, every time |
+| "Tests pass" with no proof | Build output, exit codes, and pass/fail counts cited in every completion — and re-armed the instant a new edit lands |
+| Security checks happen if you remember to ask | `security-and-hardening` activates automatically on auth / secrets / audited-state changes |
+| Review is one prompt: "review this code" | Two-stage pipeline: spec-compliance gate first, then test + architecture specialists in parallel |
+| Findings are vague: "consider adding tests" | Structured JSON — severity, confidence score, rule citation, `file:line` — filtered below confidence 80 so there's no noise |
+| Generated rules are trusted blindly | Every generated claim is grep-verified against your code; the ones it can't prove are downgraded in place |
+| The toolkit inflates your context window | Only ~3,842 tokens load per session; ~103K tokens stay out of always-on context until relevant |
 
----
-
-## What's New
-
-### v7.23.0 — Token optimization wave (2026-07-06)
-- **Context footprint report** — new `bash scripts/mtk-savings.sh` shows the always-on floor, tokens deferred by progressive disclosure, review-agent bodies offloaded to isolated context, and real output-compression totals from `.claude/observability/compression.jsonl`. See [Token footprint & savings](#token-footprint--savings).
-- **Skill-description budget** — `validate-toolkit.sh` now caps each skill `description` (≤ 200 chars) and the aggregate (~1750 tokens) and prints the running total, protecting routing quality on smaller-context models where Claude Code reserves only ~1% of context for skill metadata.
-- **`security-checklist.md` no longer always-on** — its frontmatter was aligned to the security-scoped globs the manifest already carried; every consumer already loads it explicitly, so behaviour is unchanged while it stops loading on non-security work.
-- **Cache-stable CLAUDE.md prefix** — the per-release version banner moved to `CHANGELOG.md` so the always-loaded prefix stays prompt-cache-warm.
-- **Progressive disclosure** — the Root CLAUDE.md template moved out of `setup-bootstrap` (924 → 815 lines) into an on-demand reference read only when generating.
-
-### v7.19.0 — Setup improvements wave (2026-07-03)
-- **`/mtk-setup --converge`** — new `setup-converge` skill: judges the codebase against agreed `architecture-principles.md`/`conventions.md` and reports drift as graded, read-only work items (blocking/flag/note) — never auto-fixes.
-- **Mechanized detection** — new `scripts/setup-detect.sh --json` consolidates stack/package-manager/RN-Expo/monorepo detection into one tested, read-only script; `setup-bootstrap`/`setup-audit` shrink accordingly and now report mixed-stack repos as `secondary_stacks`.
-- **Verified-commands stamp** — new `scripts/verify-commands.sh` runs the build/test/format commands bootstrap is about to publish and stamps CLAUDE.md's Tech Stack section verified/unverified; opt out with `--no-verify-commands`.
-- **Adaptive interview** — bootstrap now asks up to 3 follow-up questions generated from `setup-audit`'s `[AMBIGUOUS]` findings, persisting resolutions to `setup-answers.json` so they're never re-asked.
-- **Migration-aware bootstrap** — new STEP 2.7 ingests existing `.cursorrules`/Copilot/Windsurf/Cline/Gemini/`AGENTS.md` configs as interview-grade rule candidates, each anchored to its source path.
-- **Product-context artifacts** — new `product.md` (purpose/users/key flows/non-goals) and `decisions.md` (ADR-lite, append-only) generated at STEP 3.8 and never overwritten.
-- **CI staleness gate template** — new `templates/ci/mtk-staleness-check.yml`; `setup-bootstrap` offers to install it on GitHub-hosted repos.
-- **Smaller fixes** — `--update-guidelines` now resolves the coding-guidelines pin correctly from marketplace installs; generation rules point at canonical files (`package.json`, lockfiles) instead of restating version facts.
-
-### v7.18.0 — Setup refresh loop (2026-07-03)
-- **`/mtk-setup --refresh` (+ `--dry-run`)** — new `setup-refresh` skill: drift-scoped refresh of ALL generated rules and findings (architecture-principles, conventions, detected-tools, reference pruning, AGENTS.md/tool configs, indexes), not just the audit doc.
-- **`/mtk-setup --check`** — read-only CI staleness gate backed by new `scripts/setup-refresh-plan.sh`: per-artifact plan (stamp drift, dependency rescan, TTLs, regenerate-and-diff, dead paths), exit 1 when stale.
-- **Diff-proposal contract** — new `.claude/references/regen-diff-contract.md` replaces `git merge-file --union` everywhere: engineer-edited files get the toolkit's delta proposed hunk-by-hunk with reasons, never force-merged.
-- **Persisted interview** — bootstrap answers land in committed `.claude/setup-answers.json` (plus a new "definition of done" question); re-runs reuse them, and engineer-stated rules are never auto-downgraded by verify-claims.
-- **Resumable scans** — `setup-audit`/`setup-bootstrap` journal per-step progress via the workflow ledger; interrupted runs resume instead of restarting.
-- **Verify-claims retry + Sync Impact stamp** — one re-derivation pass for weak claims; refreshed docs record `previous-stamp` / `sections-changed` / `claims-delta`.
-
-### v7.17.0 — Borrowed capabilities, wave 3 (2026-07-01)
-- **Critical Rules in generated cross-tool configs** — `generate-agents-md.sh`/`generate-tool-configs.sh` now lead every generated config (AGENTS.md, `.cursor/rules`, Copilot, Windsurf, Gemini, Cline) with the project's `CLAUDE.md` `## Critical Rules` section.
-- **`browser` evidence channel capture procedure** — new `.claude/references/evidence-capture.md` documents persisting screenshots/console logs/network requests under `docs/specs/<slug>.evidence/<criterion-id>/`, with an explicit textual-fallback path when Playwright MCP is unavailable.
-- **`golden-path-capture`** — new skill for live, in-session lesson harvesting when the agent itself struggles 2+ times then finds a working approach, distinct from engineer-driven `correction-capture` and after-the-fact `lesson-mining`.
-- **Optional cryptographic release signing** — `generate-checksums.sh --sign` (Ed25519 via `openssl pkeyutl`) plus `mtk-doctor.sh` verification; fully opt-in, never a hard FAIL when unconfigured.
-- **Gate-sequence preview at Phase 2.5** — `implement`'s approval gate now shows the full pipeline (drift check → Stage 1 → Stage 2 reviewer set → cleanup → compound), not just the batch list.
-- **`query-code-index.sh`** — grep-friendly `find`/`callers` companion for `CODE_INDEX.md`, wired into `prior-work-check` and `code-simplification`.
-
-> Note: the v7.15.0 and v7.16.0 entries were not backfilled here — see `CHANGELOG.md` for the full history.
-
-### v7.14.0 — Evidence and the closed loop (2026-06-12)
-- **Locked verifiable-criteria contract** — each spec success criterion now carries an `evidence_channel` (one of `test-run` / `build-output` / `http-probe` / `cli-stdout` / `db-state-diff` / `browser` / `log-capture` / `script-output`) and a binary `observable` declared before execution. `verification-before-completion` checks criteria one-by-one and cites the observable per criterion. For behavior-shaped changes, tests alone never prove done — the channel must include a real execution surface.
-- **Gate re-arm** — any edit that lands after the last verification reverts every criterion to `re-armed`; the `hooks/verify-completion` hook emits a re-arm notice and a completion claim is rejected until re-verification runs. Kills the "tiny follow-up edit after I said done" hole.
-- **AI failure-modes catalogue** — `.claude/references/ai-failure-modes.md` documents 14 researched LLM failure modes (catch-all error swallowing, hardcoded-success returns, hallucinated APIs, mock-your-own-DTOs, async-void misuse, …) with citations and C# bad/good examples; `code-review-and-quality` and `silent-failure-hunter` cite F-codes on matching findings.
-- **`read-guard` hook** — PreToolUse gate that blocks reading secret-bearing files (`.env`, `*.pem`, `*.key`, `id_rsa`, …) into context without explicit approval, and advises on noise-dir reads. `MTK_READ_GUARD=advisory` rollout knob; `*.example`/`*.template` allowlisted.
-- **`workflow-continuation` hook** — Stop-hook advisory nudge when an active workflow still has unfinished batches (continue / hand off / abandon). Advisory only — never blocks, never auto-continues.
-- **Claim provenance + package-legitimacy gates** — spec/research claims tag as `[VERIFIED:path]` / `[ASSUMED]` / `[CITED:url]`; an `[ASSUMED]` claim blocks `MTK_AUTO_PROCEED`. New dependencies are verified against their registry (criterion 0 of the dependency-intake checklist) with a human checkpoint before install.
-- **Hardened subagent dispatch contract** — implementer prompts use explicit `TASK` / `DELIVERABLE` / `SCOPE` / `VERIFY` headers; a missing/ack-only/unparseable result is recorded `inconclusive` and respawned once, never counted as a pass.
-- **Closed-loop lessons** — lesson template gains `wrong_turns` / `time_cost` / `evolution_actions`; `promote-lesson` can open a validated **contribute-back PR** (`.github/workflows/validate-lesson-pr.yml` checks path/size/secret/injection then labels — humans merge, no auto-merge); new **`lesson-mining`** skill sweeps past session transcripts with a reject-by-default rubric (suggest-only).
-- **Isolated-divergence brainstorming** — architecture-shaping decisions can run a divergence mode: 3–5 parallel zero-shared-context branches under distinct cognitive frames (incl. fintech: regulator / fraudster / auditor), a separate critic pass, and a mandatory trap register carried into the spec's rejected-alternatives.
-- **`context-miner` review lane** — at HIGH/MAX rigor, a read-only reviewer mines git history, PR/issue threads, and prior lessons for organizational context the diff missed (prior reverts, related open issues, recorded decisions).
-
-### v7.13.0 — Cross-artifact consistency, interview mode, rigor scaling (2026-06-09)
-- **Cross-artifact consistency** — `plan-gap-reviewer` maps spec sidecar ⇄ plan ⇄ `tasks/todo.md` in both directions and flags inconsistencies when all three are passed at dispatch.
-- **Socratic interview mode** — `spec-driven-development`'s ambiguity gate switches to one-question-per-round interview when ≥3 ambiguities or an underspecified multi-file ask, highest-leverage first, re-deriving remaining ambiguities after each answer (5-round cap).
-- **Continuous rigor scaling** — `implement` computes a rigor score (LIGHT / STANDARD / HIGH / MAX) from the spec sidecar that dials the Phase 3 path, the Stage 2 reviewer set, and `MTK_AUTO_PROCEED` eligibility; subagent hard triggers remain a floor.
-- **Living code index** — `spec-archive.sh` appends newly shipped public contracts to `CODE_INDEX.md` so completed delta specs become living documentation.
-- **Release checksums** — `scripts/generate-checksums.sh` + `checksums.sha256` integrity manifest, verified by `mtk-doctor.sh` (rule S4.11).
-
-### v7.11.0 — Delta-spec baseline, cited constitution, rule wake-up layer (2026-06-01)
-- **Delta-spec model** — specs are deltas against a per-area baseline; `spec-archive.sh` syncs a clean-drift delta back into `docs/specs/baseline/<area>.{json,md}` with an audit trail (new Phase 7.5 in `implement`).
-- **Constitution as cited input** — `scripts/constitution-digest.sh` emits Critical Rules + tagged principles; specs require a Constitution Check section and plans cite per-batch governing constraints.
-- **Rule wake-up layer** — rules carry decision/topic/scope axes; `scripts/build-rule-index.sh` generates the always-on `.claude/rules/INDEX.md` and `context-engineering` reads it first, pulling full rules on demand.
-- **Skill-eval coverage report** — `scripts/skill-eval/coverage.sh` reports behavioral-eval coverage and description-overlap sprawl (advisory, `--json` for CI).
-
-### v7.10.0 — Non-destructive bootstrap + setup hardening (2026-05-29)
-- **Non-destructive `setup-bootstrap`** — bootstrap preserves existing files instead of overwriting them (fix for a destructive-deletion bug found during rollout), scopes the DbContext pre-commit item to EF Core, and fixes plugin skill links.
-- **Grounded audit** — `verify-references.sh` hardened against prose false positives and citation-suffix stripping; setup eval round-1 fixes.
-
-### v7.9.0 — Session-learnings capture for CLAUDE.md (2026-05-29)
-- **`claude-md-capture` skill** — reflects at session end on context `CLAUDE.md` was missing (discovered commands, gotchas, env quirks, patterns), proposes minimal append-only additions as diffs, and applies only with approval. Complements `claude-md-audit` (re-grades existing content) and `correction-capture` (records corrections as lessons). Routed via `/mtk` ("save what we learned to CLAUDE.md").
-- **`.claude.local.md` support** — `setup-bootstrap` now gitignores the personal, opt-in `CLAUDE.md` companion so per-engineer notes never get committed; `claude-md-capture` writes personal learnings there.
-- **Bootstrap completion tip** — the setup summary now surfaces the `#` mid-session shortcut and `claude-md-capture` so teams know how to keep `CLAUDE.md` fresh over time.
-
-### v7.7.0 — Decision provenance and end-to-end wiring verification (2026-05-18)
-- **Decision-origin tagging** — every entry in the structured learnings store and every reviewer finding carries a `decision_origin` field (`user-directed` / `claude-recommended-approved` / `claude-recommended-modified` / `claude-recommended-rejected` / `system-inferred`). Surfaces how much of the design is the engineer's vs. the model's, so over-deference can be measured and corrected.
-- **Sycophancy index (π)** — `scripts/learnings.sh metrics` computes `π = approved / (approved + modified + rejected)`; ≥0.70 raises a warning that the model's recommendations are being accepted without enough pushback. Threshold tunable via review-config.
-- **Wiring check as Definition of Done** — `verification-before-completion` and `validate-toolkit.sh --task-scoped` confirm every skill, hook, agent, and reference touched in a batch is fully registered (frontmatter `name:` matches dir, hooks `chmod +x` and referenced in `settings.json`, manifest entries present, references-index in sync). Authoring a file without wiring it now fails the gate.
-
-### v7.6.0 — Claude-Ready spec gate, prior-work check, drift breadth (2026-05-18)
-- **INVEST+C Claude-Ready checklist** — new 16-item gate at `.claude/references/claude-ready-checklist.md` runs in `spec-driven-development` Phase 1 before the approval prompt. Specs scoring ≤13/16 are sent back to draft; failing item numbers are cited so revisions are targeted.
-- **`prior-work-check` skill** — three deterministic queries (`search_prior_work` / `get_constraints` / `get_risk_profile`) run before spec approval and again at planning if the spec is stale. Catches duplicate capabilities and mis-classified `security_impact` before code is written.
-- **Context fatigue signals** — four lightweight signals (token utilization / scope scatter / re-read ratio / error density) added to `context-engineering`; surfaced in `handoff` so the next session knows which parts of the half-done state to mistrust.
-- **Drift breadth — three new axes in `spec-drift-detection`** — ownership (cross-slice creep), dependency-shift (undeclared package adds, critical), usage (stale call-sites after rename, critical).
-- **`CODE_INDEX.md`** — capability-oriented index of the codebase, seeded by `setup-bootstrap` and consumed by `code-simplification --audit-duplicates`. Organized by what the code does, not where it lives.
-
-### v7.5.0 — EARS+ANT requirements, scored review, dependency gate, structured learnings (2026-05-08)
-- **EARS + ANT requirements** — every requirement-bearing bullet in a spec follows Easy Approach to Requirements Syntax (EARS) and survives the ANT self-check (Ambiguous / Negation-by-omission / Time-unbounded). `scripts/lint-ears.sh` is run by `spec-driven-development` and re-run by `spec-drift-detection` after implementation.
-- **Five-dimension scored review** — `compliance-reviewer` and `code-review-and-quality` emit a `scores` object with 1–10 ratings for correctness, security, test coverage, architecture fit, and simplicity, each cited to file:line evidence.
-- **Dependency-introduction gate** — `pre-commit-review` and `security-and-hardening` invoke a five-criteria gate (scope / maintenance / size / security / license) whenever a dependency manifest changes. Two Poors block; any Poor requires explicit override.
-- **Structured learnings store** — `.mtk/learnings.jsonl` mirror of `tasks/lessons.md` with five-layer retrieval (proximity / recurrence / severity / validity / phase) wired into `correction-capture`, `promote-lesson`, and `fix`.
-
-### v7.4.0 — Durable orchestration and anti-anchored review (2026-05-07)
-- **Durable workflow artifacts** — `.mtk/workflows/{uuid}.json` plus append-only `{uuid}.events.jsonl` survive compaction and crash; new `workflow-artifacts` skill and `scripts/workflow-artifact.sh` helper with `init/event/set/read/list/gate` subcommands
-- **Five named orchestration gates** — `plan_trust_gate`, `phase_exit_gate`, `failure_stop_gate`, `memory_sync_gate`, `skill_precedence_gate` are fail-closed contracts the implement workflow must record before advancing (`.claude/references/orchestration-gates.md`)
-- **Anti-anchored plan reviewer** — new `plan-gap-reviewer` agent forbidden from loading lessons / prior reviewer output / workflow artifact; six finding categories with BLOCKING/ADVISORY severity; runs before the Phase 2.5 approval gate
-- **Claim extraction in verification** — `verification-before-completion` now requires extracting every factual claim from upstream agents, marking each UNVERIFIED, and reconciling to VERIFIED / CONTRADICTED / UNVERIFIABLE before completion
-- **JSON router-decision fixtures** — 6 fixtures under `tests/fixtures/` exercise advance / remediate / abort / resume / request_engineer paths; `scripts/run-fixtures.sh` validates structure and gate naming, wired into `validate-toolkit.sh`
-- **`MTK_AUTO_PROCEED` env knob** — opt-in (off by default) auto-defaults the Phase 2.5 prompt only when spec has zero open decisions, no plan-gap BLOCKING findings, and the change is not high-impact
-
-### v7.3.0 — Subagent-driven implementation and decision graphs (2026-05-07)
-- **`subagent-implementation` skill** — new per-batch implementer-subagent path for large features. `implement` Phase 3 forks: above the threshold (≥3 batches OR ≥6 files OR non-none `security_impact`) it dispatches the new skill; below threshold it stays on inline `incremental-implementation`. Asks once for implementer model (Sonnet/Opus), then loops one fresh subagent per batch with a structured JSON contract; orchestrator-side drift micro-checks auto-amend the sidecar for in-package extras and re-open Phase 2.5 for cross-package or new-public-contract drift. Phase 3.5 spec-drift and Phase 4 review run unchanged.
-- **GraphViz `dot` decision graphs** added inside `mtk/`, `fix/`, and `spec-driven-development/` SKILL.md at the branch points where models most often misroute (router ambiguity, fix scope-guard escalation, spec skip-vs-write + `security_impact` honesty), each accompanied by a Red Flags rationalization table.
-- **Pre-draft ambiguity gate** — `spec-driven-development` now resolves ambiguity via `AskUserQuestion` *before* drafting the spec. Phase 2.5 is a go/no-go on a fully-informed plan, not a place to surface new questions.
-
-### v7.2.0 — Ignore syntax, confidence-tagged audit, MCP expansion (2026-04-27)
-- **`.mtkignore`** at repo root — single source of truth for paths excluded from MTK scans (same syntax as `.gitignore`); honored by `repomap`, `setup-audit`, and the tree-sitter walker. New rule **S1.14**.
-- **Confidence-tagged audit principles** — `setup-audit` emits `[EXTRACTED]`, `[INFERRED:0.0–1.0]`, or `[AMBIGUOUS]` tags with evidence pointers; `spec-drift-detection` uses tags as a severity gradient. New rule **S1.15**.
-- **Shrink-guarded writes** — `hooks/lib/shrink-guard.sh` refuses rewrites that shrink targets >50% bytes or >20% lines. Wired into references-index build, `setup-audit`, and `correction-capture`. New rule **S3.16**.
-- **MCP server expanded to 7 tools** (was 2) — read-only `mtk_manifest`, `mtk_analytics`, `mtk_audit`, `mtk_references_index`, `mtk_active_stack`; read-only enforced by validator grep gate.
-- **Post-commit auto-refresh** — opt-in `hooks/git-hooks/post-commit-refresh.sh` rebuilds derived artifacts when their inputs change.
-- **False-Positive Exclusion List** added to the review schema — seven explicit categories dropped before confidence scoring rather than scored low.
-- **`silent-failure-hunter` reviewer agent** — pattern catalogue for catch/promise/fallback/silenced-diagnostic/test-erosion; dispatched in parallel with `compliance-reviewer` when the diff matches error-handling tokens.
-- **Skill eval harness** at `scripts/skill-eval/` — bash runner + Haiku grader, pass-rate + stddev across N iterations; starter eval for `code-review-and-quality`.
-- **`claude-md-audit` skill** — re-grade loop for existing `CLAUDE.md` files with six-criterion rubric and append-only diffs.
-
-### v7.1.0 — Versioned specs, context budget, footprint reporting (2026-04-23)
-- **Versioned specs** — `spec-driven-development` writes `-v2`, `-v3` instead of overwriting; JSON sidecars, plan files, and handoff artifacts use the same suffix.
-- **Context load estimator** — `context-budget.sh` accumulates `bytes_read`; analytics report surfaces `estimated_context_tokens`.
-- **Per-phase context footprint** — `context-engineering` emits a footprint block (lines + estimated tokens per file) after reference loading.
-
-### v7.0.0 — Reproducibility, output guards, deterministic audit (2026-04-23)
-- **Pinned `coding-guidelines` SHA** in the manifest with sha256 verification at bootstrap; `--update-guidelines` bumps the pin.
-- **Secret-scan pre-write gate** (`scripts/secret-scan.sh`) — 10 patterns, blocks `Write` on match; self-test included.
-- **CLAUDE.md 120-line cap** now enforced (skill + validator), with a per-file `LINES / ~TOKENS / STATUS` preview before write.
-- **Reference frontmatter normalized** across all 28 references (`description`, `globs`, `alwaysApply`); `.claude/references.index` generated and validated.
-- **Versioned re-runs** — `setup-audit` performs a 3-way merge between cached template, fresh template, and on-disk file (no silent overwrite).
-- **Deterministic audit input** — `scripts/repomap.sh` + tree-sitter walker rank symbols by in-edge count and fit a token budget; audits cite at least one symbol per principle.
-- **Breaking** — `--audit` re-run contract changed; reference frontmatter required; manifest gained `coding-guidelines` block.
-
-### v6.5.0 — Toolset scoping, keyword triggers, typed handoffs (2026-04-22)
-- **Task-class toolset scoping** — `.claude/toolsets/*.yaml` registry with `extends:`; skills/agents declare `required-toolsets:` / `forbidden-toolsets:` (S2.19–21).
-- **Keyword-triggered skill hints** — frontmatter `triggers:` plus `.claude/triggers.index`; UserPromptSubmit dispatcher surfaces "💡 consider skill" nudges (S2.22–24).
-- **Typed handoff artifacts** — shared `handoff.schema.json` codifies the spec→plan→implement contract; `validate-handoff.sh` performs deterministic drift detection.
-
-### v6.4.0 — Tier-2 skill-invoking hooks layer (2026-04-22)
-- Hook infrastructure refactored to a shared library with strict event sequencing; tier-2 hooks queue and drain skill invocations (toggle via `MTK_HOOKS_TIER2=0`).
-
-### v6.3.3 — Fix duplicate hooks.json load (2026-04-23)
-- **Plugin manifest fix** — `.claude-plugin/plugin.json` no longer declares `"hooks": "./hooks/hooks.json"`; Claude Code auto-loads that path, and the explicit reference caused a duplicate-hooks load error on `/reload-plugins`
-
-### v6.3.2 — Verification hardening and hook parsing cleanup (2026-04-22)
-- **Fresh verification enforcement** — completion claims now require a verification command that ran after the most recent edit; same-second edits no longer slip through stale-evidence checks
-- **Structured hook payload parsing** — security gate, scope guard, and context budget now understand both flat and nested `tool_input` hook payloads
-- **Benchmark coverage expanded** — deterministic benchmarks now exercise nested payload parsing and stale-evidence scenarios directly
-
-### v6.3.0 — Opus 4.7 modernization (2026-04-17)
-- **Parallelism patterns** — reviewer fan-out and reference loading now run in parallel; Stage 2 review halves in wall-clock time
-- **`fix` self-escalation** — `fix` workflow now escalates to `implement` automatically when scope grows beyond 3 files
-- **`toolkit-health` skill** — read-only usage-pulse report from `.claude/analytics.json` routed via `/mtk health`
-- **Cache-stable prefixes** — the 4 reviewer agents declare `context: fork` with stable preface for higher cache hit rate
-- **Consolidated entry points** — two user-invocable skills: `/mtk` (natural-language router) and `/mtk-setup` (bootstrap + audit)
-
-### v6.1.3 — Frontmatter visibility (2026-04-14)
-- User-invocable frontmatter now controls skill visibility; entry-point surface limited to 6
-
-### v6.1.0 — Skills-first architecture (2026-04-13)
-- Commands merged into skills per Claude Code v2.1.101; all entry points live in `.claude/skills/`
-
-See [CHANGELOG.md](CHANGELOG.md) for the full history.
+> **MTK is not a replacement for human review.** It's a rigorous first pass that catches the mechanical stuff — so your senior engineers spend their attention on design, product, and the judgment calls an AI can't make.
 
 ---
 
 ## Quick Start
 
-**Claude Code (plugin marketplace):**
+**Install (Claude Code plugin marketplace):**
+
 ```bash
 # 1. Install the plugin
-/plugin marketplace add moberghr/moberg-plugins
-/plugin install mtk@moberg-plugins
+/plugin marketplace add moberghr/mtk-agent-toolkit
+/plugin install mtk@moberghr
 
 # 2. Bootstrap your repo (one-time)
 /mtk-setup
 
-# 3. Implement a feature
+# 3. Ship a feature — full pipeline
 /mtk add user notification preferences with email and SMS channels
 
-# 4. Quick fix
+# 4. Quick fix — scope-guarded, self-escalates if it grows
 /mtk fix null reference in PaymentProcessor when amount is zero
 
 # 5. Before every commit
 /mtk review before commit
 ```
 
-The toolkit detects your tech stack (`.sln` = .NET, `pyproject.toml` = Python, `package.json` = TypeScript) and unlocks the full workflow: planning, TDD, two-stage review, hook-enforced verification, and session recovery.
-
-### What runs on session start
-
-When Claude Code starts a session with this plugin enabled, the `SessionStart` hook (`hooks/session-start`) runs locally and:
-
-- Looks for in-progress specs in `docs/specs/` and plans in `docs/plans/` to surface a session-recovery message.
-- Checks `tasks/todo.md` for incomplete items.
-- Performs an advisory toolkit version-drift check against `.claude/mtk-version.json`.
-- **If `node` is installed and `mcp/src/**` is newer than `dist/mtk-mcp-server.cjs`, runs `bash scripts/build-mcp.sh --quiet` to compile the bundled MCP server.** This is a local Node build of code shipped in the repo — no network, no package install. The MCP server is optional; every skill has a bash fallback (rule S3.12). To skip the build, delete the `dist/` directory or remove the hook from `hooks/hooks.json`.
-
-No network calls are made. All writes stay inside the working directory. To disable tier-2 hooks (queue/drain skill triggers), set `MTK_HOOKS_TIER2=0` in `.claude/settings.local.json`.
+`/mtk-setup` detects your tech stack (`.sln` → .NET, `pyproject.toml` → Python, `package.json` → TypeScript), audits the architecture, pulls your team's coding guidelines, and generates a project-specific `CLAUDE.md`. From there, `/mtk <anything in plain English>` routes to the right workflow.
 
 ### Which command should I use?
 
-Two entry points. Everything else is a workflow routed through `/mtk`.
+There are just **two commands to remember** — `/mtk` and `/mtk-setup`. Everything else is a workflow the router picks for you.
 
-| I want to... | Run this | Under the hood |
+| I want to… | Run this | Under the hood |
 |:---|:---|:---|
-| Bootstrap a fresh repo | `/mtk-setup` | Detects stack, audits architecture, generates CLAUDE.md |
+| Bootstrap a fresh repo | `/mtk-setup` | Detects stack, audits architecture, generates `CLAUDE.md` + `.claudeignore` |
 | Ship a new feature | `/mtk <description>` | spec → plan → TDD batches → two-stage review → evidence gate |
 | Fix a bug (1–3 files) | `/mtk fix <what's broken>` | Scope-guarded; self-escalates to `implement` if scope grows |
 | Review before committing | `/mtk review before commit` | Deterministic linters + AI judgment in one pass |
 | See what MTK has loaded | `/mtk status` | Active stack, references, hooks, domain packs |
 | Check toolkit usage trends | `/mtk health` | Usage-pulse report from `.claude/analytics.json` |
-| Run health check across the install | `/mtk-doctor` | Categorized PASS/WARN/FAIL — deprecated models, version sync, hook integrity, gitignore coverage |
-| Recover from PreCompact snapshot | `bash scripts/mtk-recover.sh` | Apply a stash created automatically before auto-compaction |
-| Promote a personal lesson to the team | `/promote-lesson` | Move from gitignored `.claude/lessons/personal.md` into committed `tasks/lessons.md` |
+| Health-check the install | `/mtk-doctor` | PASS/WARN/FAIL — deprecated models, version sync, hook integrity, always-on token cost |
 | Re-audit architecture | `/mtk-setup --audit` | Refreshes `architecture-principles.md` |
-| Unify multi-repo audits | `/mtk-setup --merge` | Merges per-repo audits into team-wide standard |
-| Judge code against agreed principles | `/mtk-setup --converge` | Reports codebase drift from `architecture-principles.md`/`conventions.md` as graded work items (blocking/flag/note) |
-| Bootstrap without command verification | `/mtk-setup --no-verify-commands` | Skips STEP 3.5a's build/test/format execution during CLAUDE.md generation |
+| Reconcile docs ↔ code | `/mtk-setup --refresh` / `--converge` / `--check` | Keep docs honest about code, or code honest about docs — see [Setup that keeps proving itself](#setup-that-keeps-proving-itself) |
+| Promote a personal lesson | `/promote-lesson` | Move a lesson into the team-wide `tasks/lessons.md` (+ optional contribute-back PR) |
 
-For a real-world walkthrough of a `/mtk <feature>` session, see [Examples](#examples). For copy-paste project templates, see [`examples/`](examples/).
+### What runs on session start
+
+When Claude Code starts a session with this plugin enabled, the `SessionStart` hook runs **locally** and:
+
+- Surfaces a session-recovery message if there are in-progress specs (`docs/specs/`), plans (`docs/plans/`), or incomplete `tasks/todo.md` items.
+- Runs an advisory toolkit version-drift check.
+- Compiles the bundled MCP server *only if* `node` is present and the source changed — a local build of code shipped in the repo, no network, no package install. The MCP server is optional; every skill has a bash fallback.
+
+No network calls. All writes stay inside the working directory. Disable tier-2 (skill-invoking) hooks with `MTK_HOOKS_TIER2=0` in `.claude/settings.local.json`.
+
+---
+
+## Token Economics
+
+> **MTK ships 43 skills, 6 agents, and 50 reference documents — yet only ~3,842 tokens load into every session. The other ~103,000 tokens stay out of always-on context (~89K deferred behind progressive disclosure, ~14K of review offloaded to isolated subagents) until the exact moment they're relevant.**
+
+Most "big" AI toolkits pay for their power by inflating your context window: a giant `CLAUDE.md`, a wall of always-on rules, review logic that clutters the main thread. MTK is engineered the opposite way — to keep tokens **out** of context. See exactly where they go, computed from your own installed files:
+
+```bash
+bash scripts/mtk-savings.sh
+```
+
+```
+MTK context footprint & savings  (approx, ~4 chars/token)
+════════════════════════════════════════════════════════════
+
+Always-on — loaded into EVERY session:
+  skill descriptions       6407 chars  ~  1601 tok  (43 skills)
+  CLAUDE.md                6388 chars  ~  1597 tok
+  rules/INDEX.md           1559 chars  ~   389 tok
+  agent descriptions       1016 chars  ~   254 tok  (6 agents)
+  ── always-on floor              ~  3842 tok
+
+Kept OUT of always-on by progressive disclosure (load only when relevant):
+  references             237603 chars  ~ 59400 tok  (50 files, glob-gated)
+  rule bodies             15954 chars  ~  3988 tok  (path-gated)
+  manifest.json          102659 chars  ~ 25664 tok  (MCP-gated, never inlined)
+  ── deferred total               ~ 89054 tok  ← would be always-on if inlined into CLAUDE.md
+
+Review offloaded to isolated subagent context:
+  6 agent bodies          55600 chars  ~ 13900 tok  (never enters the main thread)
+
+Summary: MTK keeps ~102954 tok out of your always-on context (deferred + review offload),
+compresses tool output on demand, and holds the always-on floor to ~3842 tok/session.
+```
+
+Every number is derived from on-disk files — nothing is fabricated from telemetry MTK doesn't collect. Four levers make it work:
+
+### 1 · Progressive disclosure — load one thing at a time
+
+The 43 skill *bodies* total ~129K tokens, but only **one loads when its skill actually runs**. Rule bodies sit behind a <60-line `rules/INDEX.md` "wake-up layer" and load only when their decision/topic/scope axes — or file globs — match the task in front of you. All 50 reference docs are glob-gated via manifest `applyTo` arrays: edit a `DbContext` and the EF Core checklist loads; edit a controller and it doesn't. **Nothing loads "just in case."**
+
+### 2 · Review offloaded to isolated context
+
+The six review agents (~13,900 tokens of adversarial logic) run in **forked subagent context** (`context: fork`). They read the diff in their own window and return only structured findings. The heavy review and security machinery never touches your main conversation.
+
+### 3 · On-demand output compression
+
+Noisy build logs, test runs, and JSON dumps are the quiet context killers. Pipe them through the shipped compressor to reclaim most of their tokens while keeping every failure and summary:
+
+```bash
+dotnet test 2>&1 | bash scripts/mtk-compress.sh        # auto-detect: tests / logs / json / html
+bash scripts/mtk-compress.sh stats                     # session + all-time tokens reclaimed
+```
+
+Five content-aware modes preserve what matters (test failures, error lines, summaries) and elide what doesn't (thousands of PASS lines, long arrays, boilerplate). A `PostToolUse` hook even **flags large Bash output that bypassed compression** and tells you which mode would have reclaimed the tokens — so the savings happen even when you forget.
+
+### 4 · A baseline that can't silently creep
+
+- **Cache-stable prefix** — the always-loaded `CLAUDE.md` carries no per-release version banner, so the prompt-cache stays warm across releases.
+- **MCP-gated manifest** — the ~25,664-token `manifest.json` is served on demand through the bundled MCP server, never inlined into context.
+- **Budget enforced in CI** — `validate-toolkit.sh` caps each skill description at 200 chars and the whole catalogue at ~1,750 tokens, and prints the running total on every run. Because Claude Code reserves only ~1% of context for skill metadata, this protects routing quality even on smaller-context models.
+- **`.claudeignore` at setup** — bootstrap generates a stack-aware ignore file so Claude Code natively keeps dependency and build directories out of search and reads.
+- **A context-budget hook** nudges a clean handoff once a session passes 60% of the window — so quality resets at a boundary you choose, not a forced mid-edit compaction.
+
+**The payoff:** run many plugins together and MTK stays a good citizen. Its always-on cost is under 4K tokens, and `mtk-doctor` prices that cost for you (`/mtk-doctor` → CONTEXT category).
+
+---
+
+## How It Works
+
+MTK isn't a prompt — it's a pipeline. One command drives a spec-to-ship sequence where every phase has explicit exit criteria and hands off to a dedicated skill.
+
+```mermaid
+graph LR
+    CMD["/mtk &lt;feature&gt;"] --> P0
+    subgraph Phases
+        direction TB
+        P0["Phase 0<br/>context-engineering"] --> P0b
+        P0b["Phase 0.5<br/>brainstorming<br/><i>if approach unclear</i>"] --> P1
+        P1["Phase 1<br/>spec-driven-development"] --> P2
+        P2["Phase 2<br/>planning-and-task-breakdown"] --> GATE
+        GATE["Phase 2.5<br/>APPROVAL GATE"] --> P3
+        P3["Phase 3<br/>incremental-implementation<br/>+ TDD + security-hardening"] --> DRIFT
+        DRIFT["Phase 3.5<br/>spec-drift-detection"] --> P4
+        P4["Phase 4<br/>two-stage review"] --> P5
+        P5["Phase 5<br/>code-simplification"] --> P6
+        P6["Phase 6<br/>verification + lessons"]
+    end
+```
+
+A few things make this more than a checklist:
+
+- **A human approval gate you can't skip (Phase 2.5).** Before any code is written, MTK prints the full todo, batch breakdown, and gate sequence to your terminal and *stops*, offering five choices: approve & run, approve interactively, edit first, revise, or show the full plan. Until you answer, source edits are blocked. Approval is a decision you make — never one the model infers from your original request.
+- **Ceremony scales to blast radius.** A scored rubric sizes rigor (LIGHT / STANDARD / HIGH / MAX) from batch count, files touched, security impact, public contracts, and breaking-change status. A small fix gets a light pass; a breaking multi-batch auth change gets the full apparatus. A hard floor forces at least HIGH whenever the change hits ≥3 batches, ≥6 files, or any security impact.
+- **Large features run one fresh subagent per batch,** each returning a typed JSON result (files, build, tests, deviations). An ack-only or unparseable "done!" is recorded *inconclusive* and respawned — never laundered into a pass.
+- **Five named, fail-closed gates** (`plan_trust`, `phase_exit`, `failure_stop`, `memory_sync`, `skill_precedence`) are the only legal places to advance, retry, or stop — and a missing gate event counts as drift.
+- **Orchestration state lives on disk** (`.mtk/workflows/{uuid}.json` + an append-only event log), so a run survives compaction and crash and resumes in a fresh session with zero chat history.
+- **A remediation circuit-breaker** escalates to a human on the third fix iteration — or the moment the review score stops improving — so automated fixing never grinds forever.
+
+### The `/mtk` router
+
+You don't memorize skill names. You describe what you want:
+
+```bash
+/mtk add user auth                 → implement
+/mtk fix the null check            → fix
+/mtk review before commit          → pre-commit-review
+/mtk what's loaded?                → context-report
+/mtk toolkit health                → toolkit-health
+/mtk help                          → lists all routed workflows
+```
 
 ---
 
@@ -271,7 +231,7 @@ For a real-world walkthrough of a `/mtk <feature>` session, see [Examples](#exam
 
 ### What a review finding looks like
 
-When the compliance-reviewer runs, it outputs structured findings — not vague suggestions:
+Reviews output structured findings — not vague suggestions:
 
 ```
 | # | Severity | Confidence | Rule | File | Issue |
@@ -293,6 +253,7 @@ When the compliance-reviewer runs, it outputs structured findings — not vague 
       "confidence": 97,
       "rule": "§1.1 / Security — Auth",
       "source": "ai",
+      "decision_origin": "system-inferred",
       "file": "src/Api/PaymentsController.cs",
       "line": 34,
       "rationale": "POST /api/payments/retry has no [Authorize] attribute. All payment endpoints require authenticated access.",
@@ -302,11 +263,11 @@ When the compliance-reviewer runs, it outputs structured findings — not vague 
 }
 ```
 
-Every finding has a `confidence` score (50-100), a `source` (`ai`, `linter`, `drift`, or `analyzer`), and a citation to the specific rule violated. Findings below the confidence threshold (default 80) are filtered out — no noise.
+Every finding carries a `confidence` score (50–100), a `source` (`ai`, `linter`, `analyzer`, `context`, or `drift`), a `decision_origin` for provenance, and a citation to the exact rule violated. A curated 7-category false-positive exclusion list drops non-findings *before* scoring, and findings below the threshold (default 80) are filtered out — so what surfaces is real risk, not preference.
 
 ### What the deterministic linter catches
 
-Before the AI review even starts, `pre-commit-linters.sh` scans the diff. The linter pack is hierarchical — core patterns apply everywhere, stack and domain packs layer on top:
+Before the AI review even starts, `pre-commit-linters.sh` scans only the added diff lines. The pack is hierarchical — `core` patterns apply everywhere, then `stack`, `domain`, and `project` packs layer on top:
 
 ```
 [LINTER] CRITICAL  core/secrets:SECRET-HARDCODED   Hardcoded credential
@@ -322,11 +283,11 @@ Before the AI review even starts, `pre-commit-linters.sh` scans the diff. The li
    > public double Amount { get; set; }
 ```
 
-The **slopwatch** pack specifically catches LLM reward-hacking patterns — disabled tests, suppressed warnings, empty implementations, and assertions that always pass. These are the exact shortcuts an AI takes when it wants to claim "done" without doing the work.
+The **slopwatch** pack specifically hunts LLM reward-hacking — disabled tests, suppressed warnings, empty catch blocks, `Assert.True(true)`. These are the exact shortcuts an AI takes to claim "done" without doing the work.
 
 ### What spec-drift detection looks like
 
-After implementation, the toolkit compares what you built against what you approved:
+After implementation and *before* review, MTK compares what you built against what you approved:
 
 ```
 Drift Analysis: docs/specs/2026-04-14-payment-retry.json
@@ -338,7 +299,7 @@ Drift Analysis: docs/specs/2026-04-14-payment-retry.json
 Verdict: NEEDS_CHANGES — implementation drifted from approved spec
 ```
 
-### What a `/mtk <feature>` session looks like
+### A full `/mtk <feature>` session
 
 ```
 > /mtk add payment retry logic for failed card transactions
@@ -349,45 +310,131 @@ Phase 0: Loading context...
 
 Phase 1: Writing spec...
   Spec: docs/specs/2026-04-14-payment-retry.md
-  Change manifest: 4 files (2 new, 2 modify)
-  Security impact: payments, audit_trail
-  Public contracts: POST /api/payments/{id}/retry
+  Change manifest: 4 files (2 new, 2 modify) | Security impact: payments, audit_trail
+  Public contracts: POST /api/payments/{id}/retry | Rigor: HIGH
 
-Phase 2: Planning batches...
-  Batch 1: Domain model + unit tests
-  Batch 2: Handler + integration test
-  Batch 3: Controller endpoint + auth
-
-  > Do you approve this plan?
-  > [A] Approve & run until done  [I] Approve (interactive)  [E] Edit first  [R] Revise
-
+Phase 2.5: Approval gate...
+  > [A] Approve & run until done  [I] Approve (interactive)  [E] Edit first  [R] Revise  [S] Show full plan
 > A
 
 Phase 3: Implementing...
-  Batch 1: PaymentRetry.cs + PaymentRetryTests.cs (dotnet test: 47 passed, 0 failed)
-  Batch 2: RetryPaymentHandler.cs + RetryPaymentHandlerTests.cs (dotnet test: 52 passed, 0 failed)
-  Batch 3: PaymentsController.cs (dotnet test: 55 passed, 0 failed)
+  Batch 1: PaymentRetry.cs + PaymentRetryTests.cs        (dotnet test: 47 passed, 0 failed)
+  Batch 2: RetryPaymentHandler.cs + handler tests        (dotnet test: 52 passed, 0 failed)
+  Batch 3: PaymentsController.cs + auth                   (dotnet test: 55 passed, 0 failed)
 
-Phase 3.5: Spec-drift check...
-  All files match change_manifest
-  Public contracts match
-  Security impact matches
-
-Phase 4: Review...
-  Stage 1 — compliance-reviewer: 0 critical, 1 warning (suggestion to add retry count limit)
-  Stage 2 — test-reviewer: PASS | architecture-reviewer: PASS
-
-Phase 5: Simplification...
-  Removed unused RetryResult.Pending variant
+Phase 3.5: Spec-drift check...  All files match · contracts match · security impact matches
+Phase 4: Review...  Stage 1 compliance: 0 critical, 1 warning | Stage 2 test + architecture: PASS
+Phase 5: Simplification...  Removed unused RetryResult.Pending variant
 
 Phase 6: Done
-  dotnet build: exit code 0, 0 warnings
-  dotnet test: 55 passed, 0 failed, 0 skipped
+  dotnet build: exit 0, 0 warnings
+  dotnet test: 55 passed, 0 failed, 0 skipped   ← evidence cited, gate satisfied
 ```
 
 ---
 
-## Architecture
+## Setup that keeps proving itself
+
+Most AI-setup tools stop at generation: they emit a `CLAUDE.md`, a rules pack, or an agent bundle and trust it. **MTK's distinguishing move is that it never trusts its own output** — and it stays true long after day one.
+
+- **Grep-verified claims.** Every generated rule carries an evidence anchor. `verify-claims.sh` re-greps each anchor against your working tree and **downgrades in place** anything it can't prove: `[EXTRACTED]` → `[INFERRED:0.5 unverified]`, `[ENFORCED]` → `[ASPIRATIONAL unverified]`. Hallucinated architecture never ships silently.
+- **Verified commands.** The build / test / format commands written into your `CLAUDE.md` aren't guessed — MTK **runs them first** (timeboxed, each reported verified / failed / skipped) and stamps the result into the Tech Stack section, so what's published is proven, not assumed.
+- **Confidence-tagged audit.** Every architecture principle is tagged `[EXTRACTED]` / `[INFERRED:0.0–1.0]` / `[AMBIGUOUS]` with a mandatory `file:line`, glob-with-hit-count, or commit-SHA citation. Absolute language ("never", "always") is blocked unless zero counter-examples exist.
+- **A re-runnable loop, not a one-shot.** `--refresh` reconciles the docs to code drift (hunk-by-hunk diffs for files you've edited — never a silent overwrite). `--converge` inverts it, reporting where the *code* drifted from agreed principles as graded work items. `--check` gates it all as a red/green CI check pinned to your installed toolkit version.
+- **Non-destructive by contract.** Bootstrap is additive and merge-only. **There is no replace mode** — it never `git rm`s a file it didn't generate, and only overwrites files carrying MTK's own provenance stamp. Run it on a mature repo without fear.
+- **Migration ingestion.** Already on Cursor or Copilot? Bootstrap reads your existing `.cursorrules`, Copilot, Windsurf, Cline, and Gemini configs as evidence-anchored rule candidates instead of throwing them away.
+
+```
+FAQ answer, made literal: the output is a scaffold that keeps proving it's still true,
+not a static artifact that drifts.
+```
+
+---
+
+## Proof it's real
+
+MTK is a claim-verification toolkit, so it holds itself to the same bar. Its guardrails ship with a green test suite you can run offline, no API calls:
+
+```bash
+bash scripts/run-benchmarks.sh      # deterministic hook/linter tests
+bash scripts/run-evals.sh           # behavioral eval scenarios
+bash scripts/validate-toolkit.sh    # structural + token-budget integrity
+```
+
+| Proof surface | What it verifies | Result |
+|:---|:---|:---|
+| **7 benchmark suites** | Linters catch secrets / SQLi / disabled tests / float money; security-gate blocks `DROP TABLE`, `rm -rf`, force-push to main; scope-guard warns on out-of-spec edits; verify-completion rejects evidence-less "done" | **30/30 assertions passing** |
+| **7 eval suites, 22 scenarios** | Ship-path skills, three ways each: *positive* (must catch it), *negative* (must not fabricate on a clean refactor), *adversarial* ("it's an internal endpoint, skip auth" must still flag critical) | Tracked per version; a regression blocks release |
+| **31 pressure tests** | Adversarial behavioral tests that try to talk skills out of doing their job | Part of the release gate |
+| **16 AI failure modes (F1–F16)** | Research-cited catalogue — hallucinated packages, stubbed-success returns, frozen-replay evidence — that reviewers cite by code so patterns aggregate across your codebase | `.claude/references/ai-failure-modes.md` |
+| **37 linter rules** | Hierarchical packs (core / stack / domain / project), zero dependencies beyond coreutils | `hooks/linter-patterns/` |
+
+Benchmarks run against fixture diffs, so results are repeatable regardless of your working-tree state.
+
+---
+
+## Skills
+
+**43 skills:** 4 user-invocable entry points (`/mtk`, `/mtk-setup`, `/mtk-doctor`, `/promote-lesson`), plus workflow, tech-stack, and enabling skills that the entry points orchestrate. You invoke two; the rest compose themselves.
+
+| Skill | What it does |
+|:---|:---|
+| **context-engineering** | Loads project norms progressively; injects tech stack dynamically at load time |
+| **spec-driven-development** | Produces an executable spec with a JSON sidecar for drift detection; EARS-linted, Claude-Ready-scored |
+| **planning-and-task-breakdown** | Breaks a spec into vertical-slice batches with checkpoint criteria |
+| **incremental-implementation** / **subagent-implementation** | Implements one batch at a time (inline, or one fresh subagent per batch above the HIGH threshold) |
+| **test-driven-development** | Red-green-refactor; language-agnostic |
+| **debugging-and-error-recovery** | Reproduce first, then fix root cause within scope |
+| **source-driven-development** | Verify SDK/framework behavior from authoritative sources before implementing |
+| **code-review-and-quality** | Adversarial review across 6 axes; isolated context (`context: fork`, `effort: max`) |
+| **security-and-hardening** | Trust-boundary analysis, audit-trail verification; isolated context |
+| **spec-drift-detection** | Compares implementation against the spec sidecar; flags unapproved scope |
+| **verification-before-completion** | Requires fresh, criterion-by-criterion evidence before any "done" claim |
+| **code-simplification** | Behavior-preserving cleanup after verification passes |
+| **correction-capture** / **golden-path-capture** / **lesson-mining** | Three paths that feed one structured, cross-session learning store |
+| **handoff** | Captures session state for recovery across context boundaries |
+| **context-report** / **toolkit-health** | Diagnostics: active configuration; historical usage pulse |
+| **writing-skills** | Meta-skill for authoring new skills with pressure tests |
+
+Every skill follows a standardized anatomy with **anti-rationalization built in** — a "Common Rationalizations" table that pre-rebuts the exact excuses an AI uses to skip steps:
+
+| Rationalization | Reality |
+|:---|:---|
+| "This is an internal endpoint" | Internal boundaries move. Security requirements don't disappear because something feels internal. |
+| "The framework probably handles that" | Probably is not a security control. Verify the behavior. |
+| "This doesn't look like regulated data" | If it affects audited state or downstream consumers, it's in scope. |
+
+---
+
+## Review Agents
+
+Six adversarial reviewers, each a single narrow lens, all read-only and running in isolated forked context. Stage 1 must pass before Stage 2 runs — if the code doesn't match the approved spec, quality review is wasted effort.
+
+```mermaid
+flowchart TD
+    DONE["Implementation Complete"] --> S1
+    S1["Stage 1: compliance-reviewer<br/>(spec compliance + standards)"]
+    S1 --> CHECK1{Critical issues?}
+    CHECK1 -- Yes --> FIX1["Fix & Re-review<br/>(circuit-breaker at 3 rounds)"]
+    FIX1 --> S1
+    CHECK1 -- No --> S2["Stage 2 (parallel)<br/>test-reviewer + architecture-reviewer<br/>+ silent-failure-hunter (if error-handling)<br/>+ context-miner (HIGH/MAX)"]
+    S2 --> PASS["PASS"]
+```
+
+| Agent | Lens |
+|:---|:---|
+| **compliance-reviewer** | Stage 1 — hostile senior-reviewer persona (pinned to Opus): auth, secrets, audit trails, parameterized queries, input validation, slice boundaries, test coverage. Must surface real findings or justify a clean bill. |
+| **silent-failure-hunter** | Stage 2 (conditional) — swallowed catches, silenced promises, optimistic fallbacks, suppressed diagnostics, test erosion. Dispatched when the diff touches error-handling tokens; always runs at MAX rigor. |
+| **test-reviewer** | Stage 2 — coverage gaps, weak assertions, wrong test providers, missing edge/error paths. |
+| **architecture-reviewer** | Stage 2 — dependency direction, layer splits, naming consistency, unjustified abstractions, cross-layer leaks. |
+| **context-miner** | Stage 2 (HIGH/MAX) — mines git history, PR/issue threads, and prior lessons for organizational context the diff missed: prior reverts, related open issues, recorded decisions. |
+| **plan-gap-reviewer** | Pre-approval — anti-anchored plan critique, forbidden from reading lessons, prior reviewer output, or the planner's rationale, so it challenges the plan cold. |
+
+Reviews score five dimensions (correctness, security, test coverage, architecture fit, simplicity) 1–10, each requiring a `file:line` evidence quote — a score without evidence is treated as 0, and any dimension below 7 blocks the merge. All agents can also report **BLOCKED** (files missing) or **NEEDS_CONTEXT** (too complex to review) — a clear escalation beats a low-confidence rubber stamp.
+
+---
+
+## Under the hood
 
 <p align="center">
   <img src="docs/assets/foundations.png" alt="MTK foundations — Spec-driven, Test-driven, Peer review, Evidence-based, Deterministic gates" width="100%" />
@@ -395,433 +442,87 @@ Phase 6: Done
 
 <sub><i>No new methodology. Proven disciplines — specification, verification, adversarial review — made enforceable by the harness itself.</i></sub>
 
-### Design Principles
+### Design principles
 
 | Principle | How it works |
 |:---|:---|
-| **Evidence over assertion** | No task is complete without cited build output, test counts, and exit codes. A Stop hook enforces this. |
-| **Security as a design constraint** | Embedded in planning, implementation, and review — not a final polish phase. Runs in isolated context (`context: fork`). |
-| **Progressive disclosure** | References loaded when needed, not all at once. Path-scoped globs match touched files to relevant checklists. |
-| **Anti-rationalization** | Every skill has a "Common Rationalizations" table countering the exact excuses an AI uses to skip steps. |
-| **Deterministic + AI layering** | Linters catch known-bad patterns at confidence 100. AI review handles judgment calls. Both feed the same finding schema. |
-| **Dynamic context injection** | Skills use `` !`command` `` blocks to inject runtime state (tech stack, branch, diff stats) at load time — no procedural file reads. |
-| **Scope enforcement** | A real-time scope guard warns when any file edit falls outside the approved spec's change manifest — before the edit lands. |
-| **Learning persistence** | Corrections captured to `tasks/lessons.md` accumulate across sessions. Recurring patterns get promoted to permanent rules. |
+| **Evidence over assertion** | No task is complete without cited build output, test counts, and exit codes. A Stop hook enforces it, and re-arms every criterion the instant a new edit lands. |
+| **Security as a design constraint** | Embedded in planning, implementation, and review — not a final polish phase. Runs in isolated context. |
+| **Progressive disclosure** | References, rules, and skill bodies load when needed, not all at once. See [Token Economics](#token-economics). |
+| **Anti-rationalization** | Every skill counters the exact excuses an AI uses to skip steps. |
+| **Deterministic + AI layering** | Linters catch known-bad patterns at confidence 100; AI handles judgment. Both feed one finding schema. |
+| **Dynamic context injection** | Skills use `` !`command` `` blocks to inject runtime state (tech stack, branch, diff stats) at load time. |
+| **Scope enforcement** | A real-time scope guard warns when an edit falls outside the approved change manifest — before it lands. |
+| **Learning persistence** | Corrections accumulate across sessions; recurring patterns get promoted to permanent rules. |
 
-### Component Model
+### Component model
 
 ```
-ENTRY POINTS (2 user-invocable skills)
-  ├── /mtk-setup  (first-time bootstrap + audit)
-  └── /mtk <description>  (natural language router)
-
+ENTRY POINTS (4 user-invocable skills)
+  /mtk · /mtk-setup · /mtk-doctor · /promote-lesson
       ↓ orchestrate
-
-WORKFLOW SKILLS (24 reusable blocks)
-  ├── 18 language-agnostic workflow skills (fix, implement, pre-commit-review,
-  │   context-engineering, spec-driven-development, workflow-artifacts, …, setup-bootstrap, setup-audit)
-  ├── 3 tech stack skills (.NET, Python, TypeScript)
-  └── 3 enabling skills (brainstorming, using-git-worktrees, writing-skills)
-
+43 SKILLS  — language-agnostic workflows + 3 tech-stack packs + enabling skills
       ↓ route to
-
-AGENTS (3 specialist reviewers)
-  ├── compliance-reviewer (Stage 1 — security, correctness, standards)
-  ├── test-reviewer (Stage 2 — coverage, assertions, providers)
-  └── architecture-reviewer (Stage 2 — boundaries, dependencies, naming)
-
+6 REVIEW AGENTS  — compliance · silent-failure-hunter · test · architecture · context-miner · plan-gap
       ↓ backed by
-
-REFERENCES (24 standard documents)
-  ├── 6 shared (security, testing, performance, finance domain, review schema, pre-commit list)
-  └── 6 per stack × 3 stacks (coding-guidelines, ORM checklist, framework patterns, testing, performance, analyzer-config)
-
+50 REFERENCES  — 32 shared (security, testing, performance, finance, AI failure modes, review schema, …)
+                 + 6 per stack × 3 stacks (coding-guidelines, ORM checklist, framework patterns, …)
       ↓ enforced by
-
-HOOKS (8 execution gates)
-  ├── SessionStart    — multi-platform init, session recovery
-  ├── PreToolUse(1)   — security gate (blocks destructive commands)
-  ├── PreToolUse(2)   — scope guard (warns on out-of-spec file edits)
-  ├── PostToolUse     — context budget (tracks files read / edits / operations)
-  ├── PostCompact     — re-injects tech stack, specs, tasks after auto-compaction
-  ├── Stop(1)         — blocks "done" claims without evidence
-  ├── Stop(2)         — prompts learning capture after substantial sessions
-  └── Stop(3)         — persists session analytics to .claude/analytics.json
-
+14 HOOKS across 7 lifecycle events  — SessionStart · PreToolUse · PostToolUse · PreCompact
+                                       · PostCompact · UserPromptSubmit · Stop
       ↓ validated by
-
-BENCHMARKS (7 deterministic test suites)
-  ├── linter/known-bad — linter must catch hardcoded secrets, SQL injection, disabled tests
-  ├── linter/known-good — linter must NOT fire on clean code (false-positive check)
-  ├── security-gate — must block DROP TABLE, rm -rf, force push to main
-  ├── scope-guard — must warn on out-of-spec edits, silent for allowed files
-  ├── verify-completion — must reject evidence-less "done" claims
-  ├── prerequisites — must detect missing recommended tools
-  └── validate-toolkit — structural integrity of manifest, skills, and agents
+7 BENCHMARK SUITES (30/30) · 7 EVAL SUITES (22 scenarios) · 31 PRESSURE TESTS
 ```
 
-### How `/mtk <feature>` Composes Skills
+### Hooks & enforcement
 
-```mermaid
-graph LR
-    CMD["/mtk &lt;feature&gt;"] --> P0
-
-    subgraph Phases
-        direction TB
-        P0["Phase 0<br/>context-engineering"] --> P0b
-        P0b["Phase 0.5<br/>brainstorming<br/><i>if approach unclear</i>"] --> P1
-        P1["Phase 1<br/>spec-driven-development"] --> P2
-        P2["Phase 2<br/>planning-and-task-breakdown"] --> GATE
-        GATE["Phase 2.5<br/>APPROVAL GATE"] --> P3
-        P3["Phase 3<br/>incremental-implementation<br/>+ TDD + security-hardening"] --> DRIFT
-        DRIFT["Phase 3.5<br/>spec-drift-detection"] --> P4
-        P4["Phase 4<br/>two-stage review"] --> P5
-        P5["Phase 5<br/>code-simplification"] --> P6
-        P6["Phase 6<br/>verification + lessons"]
-    end
-```
-
----
-
-## Entry-Point Skills
-
-MTK has just **two** user-invocable commands. Everything else is a workflow skill routed through `/mtk`.
-
-| Command | Purpose | When to use |
-|:---|:---|:---|
-| **`/mtk-setup`** | One-time bootstrap + re-audit dispatcher (`--audit` refreshes principles, `--merge` unifies multi-repo audits) | First time in a repo, or after architectural change |
-| **`/mtk <description>`** | Natural-language router — dispatches to fix, implement, pre-commit-review, or context-report based on intent | Everything else |
-
-### The `/mtk` router
-
-You don't need to remember skill names. Just describe what you want:
-
-```bash
-/mtk add user auth                 → implement
-/mtk fix the null check            → fix
-/mtk review before commit          → pre-commit-review
-/mtk what's loaded?                → context-report
-/mtk toolkit health                → toolkit-health (usage analytics)
-/mtk help                          → lists all routed workflows
-```
-
-### implement workflow (via `/mtk <feature>`)
-
-Composes 11 skills across 7 phases. Includes an explicit approval gate at Phase 2.5 where you can approve autonomously, go interactive, edit, or revise. Stage 2 reviewers (`test-reviewer` + `architecture-reviewer`) spawn in a single parallel `Agent` call — see [`docs/parallelism-patterns.md`](docs/parallelism-patterns.md) for the canonical pattern used by entry skills.
-
-```bash
-/mtk Add user notification preferences with email and SMS channels
-```
-
-### fix workflow (via `/mtk fix …`)
-
-Has a built-in scope guard — if the change grows beyond 3 files, it **self-escalates** to the implement workflow via the `/mtk` router (no manual switch required).
-
-```bash
-/mtk fix null reference in PaymentProcessor when amount is zero
-```
-
-### pre-commit-review workflow (via `/mtk review before commit`)
-
-Two-pass review: deterministic linter scan (secrets, SQL injection, PII in logs, slopwatch) at confidence 100, then AI review for judgment calls. Both feed the same finding schema.
-
-```bash
-/mtk review before commit
-```
-
-### Updating MTK
-
-MTK is a Claude Code plugin. Use the plugin marketplace to upgrade — there is no in-repo update command.
-
-```bash
-/plugin update mtk@moberg-plugins
-```
-
-### CI staleness gate
-
-`/mtk-setup --check` also ships as a GitHub Actions workflow. `setup-bootstrap` offers to install `templates/ci/mtk-staleness-check.yml` to `.github/workflows/mtk-staleness-check.yml` on repos that host on GitHub — never overwriting an existing workflow file, and skipped silently under `--non-interactive`. The workflow checks out the toolkit repo pinned to the version in your `.claude/mtk-version.json` (never vendoring MTK scripts into your repo) and runs `scripts/setup-refresh-plan.sh --check`: exit 0 is fresh, exit 1 fails the job and posts the plan table to the job summary, exit 2 is a usage/setup error.
-
-A stale PR fails with:
-
-```
-::error::run /mtk-setup --refresh to reconcile
-```
-
----
-
-## Skills
-
-33 skills total: 2 entry-point skills, 25 language-agnostic workflow skills, 3 tech stack skills, 3 enabling skills. Entry-point skills (`/mtk-setup` and `/mtk`) orchestrate workflow skills. Recent additions: `claude-md-capture` (v7.9.0), `workflow-artifacts` (v7.4.0), `claude-md-audit` (v7.2.0).
-
-### Workflow Skills
-
-| Skill | What it does |
-|:---|:---|
-| **context-engineering** | Loads project norms progressively; injects tech stack dynamically at load time |
-| **spec-driven-development** | Produces executable spec with JSON sidecar for drift detection |
-| **planning-and-task-breakdown** | Breaks spec into vertical-slice batches with checkpoint criteria |
-| **incremental-implementation** | Implements one batch at a time; each must compile and test before the next |
-| **test-driven-development** | Red-green-refactor cycle; language-agnostic |
-| **debugging-and-error-recovery** | Reproduce first, then fix root cause within scope |
-| **source-driven-development** | Verify SDK/framework behavior from authoritative sources before implementing |
-| **code-review-and-quality** | Adversarial review across 6 axes; runs in isolated context (`context: fork`, `effort: max`) |
-| **security-and-hardening** | Trust boundary analysis, audit trail verification; isolated context (`context: fork`, `effort: max`) |
-| **spec-drift-detection** | Compares implementation against spec JSON sidecar; flags unapproved scope changes |
-| **verification-before-completion** | Requires fresh build/test evidence before any "done" claim (`effort: high`) |
-| **code-simplification** | Behavior-preserving cleanup after verification passes |
-| **brainstorming** | Explores 2-3 design alternatives with tradeoffs before committing to a spec |
-| **correction-capture** | Auto-captures engineer corrections as reusable lessons (model-invoked) |
-| **handoff** | Captures session state for recovery across context boundaries (model-invoked) |
-| **writing-skills** | Meta-skill for authoring new skills with TDD discipline and pressure tests |
-| **context-report** | Diagnostic snapshot of active MTK configuration — tech stack, references, linter packs, domains, hooks, and rules |
-| **toolkit-health** | Historical usage-pulse report from `.claude/analytics.json` — session trends, specs/lessons ratios, anomaly flags with suggested actions |
-
-### Skill Anatomy
-
-Every skill follows a standardized structure with anti-rationalization built in:
-
-```
---- frontmatter ---
-name, description, effort, context, trigger, skip_when
-
-## Active Stack               <- dynamic injection: !`cat .claude/tech-stack`
-## Overview                   <- what it ensures
-## When To Use / NOT To Use   <- trigger conditions / prevents misuse
-## Workflow                   <- step-by-step
-## Common Rationalizations    <- AI excuses paired with sharp rebuttals
-## Red Flags                  <- signs the skill is being circumvented
-## Verification               <- checklist to confirm the skill was applied
-```
-
-The **Common Rationalizations** table is what makes MTK different from just writing instructions. Example from `security-and-hardening`:
-
-| Rationalization | Reality |
-|:---|:---|
-| "This is an internal endpoint" | Internal boundaries move. Security requirements do not disappear because something feels internal. |
-| "The framework probably handles that" | Probably is not a security control. Verify the behavior. |
-| "This doesn't look like regulated data" | If it affects audited state or downstream consumers, it is in scope. Check the domain supplement. |
-
----
-
-## Review Agents
-
-### Two-Stage Pipeline
-
-Stage 1 must pass before Stage 2 runs. If compliance fails, quality review is wasted effort.
-
-```mermaid
-flowchart TD
-    DONE["Implementation Complete"] --> S1
-
-    S1["Stage 1: compliance-reviewer<br/>Security, Correctness, Standards"]
-    S1 --> CHECK1{Critical issues?}
-
-    CHECK1 -- Yes --> FIX1["Fix & Re-review<br/>(max 3 rounds)"]
-    FIX1 --> S1
-
-    CHECK1 -- No --> S2["Stage 2 (parallel)<br/>test-reviewer + architecture-reviewer"]
-    S2 --> PASS["PASS"]
-```
-
-### compliance-reviewer
-
-Adversarial senior reviewer. Must surface at least 2 substantive findings or provide explicit rationale for why the code is genuinely clean. Style nits alone don't count.
-
-**Checks:** Auth on every endpoint, secrets in code/logs, audit trails for state mutations, parameterized queries, input validation, slice boundaries, DI lifetimes, test coverage on new public methods, codebase consistency.
-
-### test-reviewer
-
-Narrow specialist for test quality. Checks coverage gaps, weak assertions ("doesn't throw" is not a test), wrong test providers (in-memory DB when relational behavior matters), missing error/edge case paths.
-
-### architecture-reviewer
-
-Narrow specialist for structural fit. Checks dependency direction, handler/controller/service splits, naming consistency, unjustified abstractions, cross-layer leaks.
-
-### silent-failure-hunter
-
-Conditional Stage 1 specialist (v7.2.0). Dispatched in parallel with `compliance-reviewer` when the diff matches error-handling tokens (`catch`, `except`, `?.`, `??`, `eslint-disable`, `Skip =`, `it.skip`, …). Pattern catalogue covers swallowed catches, silenced promises, optimistic fallbacks, suppressed diagnostics, and test erosion. Severity escalates to Critical on audited paths.
-
-### Self-Escalation
-
-All agents can report **BLOCKED** (required files missing) or **NEEDS_CONTEXT** (change too complex to review without clarification). A clear escalation is always more valuable than a low-confidence review.
-
----
-
-## Tech Stacks
-
-The toolkit separates language-agnostic workflow from stack-specific knowledge. Adding a new language means writing one tech stack skill and reference files — workflow skills work unchanged.
-
-| Stack | Detection | Build | Test | ORM Guidance | Frameworks |
-|:---|:---|:---|:---|:---|:---|
-| **.NET** | `*.sln`, `*.csproj`, `global.json` | `dotnet build` | `dotnet test` | EF Core (async, projections, AsNoTracking) | MediatR/CQRS, minimal APIs |
-| **Python** | `pyproject.toml`, `requirements.txt` | `mypy .` / `pyright` | `pytest` | SQLAlchemy 2.0, Django ORM | FastAPI, Django |
-| **TypeScript** | `package.json`, `tsconfig.json` | `<pm> run build` | `<pm> test` | Prisma, Drizzle, TanStack Query | React, Next.js, Tauri, Node |
-
-TypeScript auto-detects the package manager (bun > pnpm > yarn > npm) from lockfiles.
-
-Each tech stack skill provides: build/test commands, ORM checklist, framework patterns, test level guidance, coding style reference, and paths to 6 stack-specific reference documents.
-
-### Adding a New Stack
-
-1. Create `.claude/skills/tech-stack-{name}/SKILL.md` with the required sections
-2. Author reference files under `.claude/references/{name}/`
-3. Register in `manifest.json` with `"stack": "{name}"` entries
-4. The workflow skills work unchanged
-
----
-
-## Hooks & Enforcement
-
-Hooks are deterministic — they fire every time, unlike CLAUDE.md instructions which are advisory.
+Hooks are deterministic — they fire every time, unlike advisory `CLAUDE.md` instructions.
 
 | Hook | Event | What it does |
 |:---|:---|:---|
-| **session-start** | SessionStart | Detects in-progress specs/plans for session recovery; compiles bundled MCP server on first use if `node` is present |
-| **security-gate.sh** | PreToolUse (Bash) | Blocks destructive operations: DB drops, force-push to main, `rm -rf` on broad paths |
-| **scope-guard.sh** | PreToolUse (Edit/Write) | Warns when a file edit falls outside the active spec's `change_manifest` — real-time scope creep detection |
-| **context-budget.sh** | PostToolUse | Tracks session activity (files read, edits, operations); warns at 30 unique files / 40 modifications / 120 total ops |
-| **post-compact.sh** | PostCompact | Re-injects tech stack, active specs/plans, incomplete tasks, and handoff artifacts after auto-compaction |
-| **verify-completion** | Stop | Catches "done" claims that lack cited command output (exit codes, test counts) |
-| **capture-learnings.sh** | Stop | After substantial sessions (20+ ops or 5+ edits), prompts for lessons capture; detects recurring patterns that should be promoted to CLAUDE.md |
-| **session-analytics.sh** | Stop | Persists session stats (operations, modifications, specs created, lessons captured) to `.claude/analytics.json` |
+| **session-start** | SessionStart | Session recovery; compiles the bundled MCP server on first use if `node` is present |
+| **security-gate** | PreToolUse (Bash) | Blocks destructive ops: DB drops, force-push to main, `rm -rf` on broad paths |
+| **read-guard** | PreToolUse (Read) | Blocks secret-bearing files (`.env`, `*.pem`, `id_rsa`, …) from entering context — no self-approval path |
+| **scope-guard** | PreToolUse (Edit/Write) | Warns when an edit falls outside the active spec's `change_manifest` |
+| **context-budget** / **compress-monitor** | PostToolUse | Tracks files/edits/ops and nudges a reset past 60%; flags large uncompressed output |
+| **post-compact** | PostCompact | Re-injects tech stack, active specs/plans, tasks, and handoff artifacts after auto-compaction |
+| **verify-completion** | Stop | Rejects "done" claims lacking fresh, cited command output |
+| **capture-learnings** / **session-analytics** | Stop | Prompts lesson capture after substantial sessions; persists usage stats |
 
-### Linter Patterns
+### Tech stacks
 
-The linter pack is hierarchical: core patterns apply to every diff, stack patterns layer on top, domain packs add sector-specific rules, and project-local patterns let teams add their own.
+Language-agnostic workflow, stack-specific knowledge. Adding a language means writing one tech-stack skill and its references — the workflow skills work unchanged.
 
-```
-hooks/linter-patterns/
-  core/
-    secrets.txt     — hardcoded credentials, JWT tokens, connection strings
-    slopwatch.txt   — LLM reward-hacking: disabled tests, empty catch blocks, always-pass assertions
-  stack-dotnet/
-    patterns.txt    — raw SQL interpolation, Console.Write debugging
-  stack-python/
-    patterns.txt    — f-string SQL, bare except:, print() debugging
-  stack-typescript/
-    patterns.txt    — SQL template literals, console.log, any type usage
-  domain-finance/
-    patterns.txt    — float/double for money, unaudited mutation patterns
-  project/          — drop .txt files here for project-specific patterns (not committed to plugin)
-```
+| Stack | Detection | Build | Test | ORM & Frameworks |
+|:---|:---|:---|:---|:---|
+| **.NET** | `*.sln`, `*.csproj`, `global.json` | `dotnet build` | `dotnet test` | EF Core (async, projections, `AsNoTracking`); MediatR/CQRS, minimal APIs |
+| **Python** | `pyproject.toml`, `requirements.txt` | `mypy .` / `pyright` | `pytest` | SQLAlchemy 2.0, Django ORM; FastAPI, Django |
+| **TypeScript** | `package.json`, `tsconfig.json` | `<pm> run build` | `<pm> test` | Prisma, Drizzle, TanStack Query; React, Next.js, Tauri, Node |
 
-Every pattern is tab-separated: `RULE_ID`, `SEVERITY`, `ERE_REGEX`, `RATIONALE`, `SUGGESTED_FIX`. The regex matches at confidence 100 — no scoring needed.
+TypeScript auto-detects the package manager (bun > pnpm > yarn > npm) from lockfiles.
 
 ---
 
-## Benchmarks
+## The learning loop
 
-MTK's hooks and linter scripts have a deterministic test suite. No LLM required — these test the bash scripts directly against known-good and known-bad inputs.
+The same mistake never has to be corrected twice. Three capture paths feed one structured store with five-layer retrieval (proximity / recurrence / severity / validity / phase):
 
-```bash
-# Run all benchmarks
-bash scripts/run-benchmarks.sh
+- **correction-capture** — the engineer says "no, not like that."
+- **golden-path-capture** — the model resolves its own repeated failure and records the path.
+- **lesson-mining** — a reject-by-default sweep of past session transcripts (suggest-only).
 
-# Verbose output (shows passing tests too)
-bash scripts/run-benchmarks.sh --verbose
-```
+Matured lessons promote to team-wide rules via `/promote-lesson`, which can open a **fail-closed contribute-back PR** to the toolkit: CI whitelists only `lessons/contributed/`, caps it at 2 files / 20 KB, scans for secrets and prompt injection, then *labels* it — with read-only permissions, so it structurally cannot merge or write.
 
-Seven benchmark suites, 21+ assertions:
-
-| Suite | What it verifies |
-|:---|:---|
-| **linter/known-bad** | Linter catches hardcoded secrets, SQL injection, disabled tests, float money |
-| **linter/known-good** | Linter does NOT fire on clean code (false-positive check) |
-| **security-gate** | Blocks `DROP TABLE`, `rm -rf .`, force push to main; allows normal commands |
-| **scope-guard** | Warns on out-of-spec edits; silent for allowed files and meta-files |
-| **verify-completion** | Rejects evidence-less or stale "done" claims; requires fresh verification after the latest edit |
-| **prerequisites** | Reports missing recommended tools (shellcheck, jq, stack toolchain) |
-| **validate-toolkit** | Structural integrity: manifest, frontmatter, skill anatomy, file paths |
-
-The benchmarks run against fixture diffs (`benchmarks/fixtures/`) so results are repeatable and independent of your working tree state.
-
----
-
-## Analytics
-
-MTK tracks your usage across sessions in `.claude/analytics.json` (gitignored in bootstrapped repos). Run the report at any time:
-
-```bash
-bash scripts/analytics-report.sh
-```
-
-```
-┌─────────────────────────────────────────┐
-│         MTK Analytics Report            │
-├─────────────────────────────────────────┤
-│ Period:     2026-04-01 → 2026-04-16     │
-│ Sessions:   42                          │
-├─────────────────────────────────────────┤
-│ Total operations:     1,842             │
-│ Total modifications:  421               │
-│ Avg ops/session:      43                │
-│ Avg mods/session:     10                │
-├─────────────────────────────────────────┤
-│ Specs created:        18                │
-│ Lessons captured:     7                 │
-│ Scope guard warnings: 3                 │
-├─────────────────────────────────────────┤
-│ Benchmarks run:       5                 │
-│ Last benchmark score: 21/21             │
-└─────────────────────────────────────────┘
-```
-
-Useful for understanding how much scope drift you're generating, whether the toolkit is being used consistently, and whether behavioral checks have been run recently. Treat it as an operational pulse, not a hard productivity score.
-
----
-
-## Token footprint & savings
-
-MTK is built to keep tokens **out** of your context, not just to do more work in it. See where they go — and what the toolkit already saves — at any time:
-
-```bash
-bash scripts/mtk-savings.sh
-```
-
-Every number is derived from the installed files or the on-disk compression log — nothing is fabricated from telemetry MTK doesn't collect:
-
-- **Always-on floor** — what loads into *every* session (skill + agent descriptions, `CLAUDE.md`, `rules/INDEX.md`), typically ~3–4K tokens.
-- **Deferred** — references, rule bodies, and the manifest that stay on disk behind progressive disclosure and the MCP server; they'd be always-on if inlined into `CLAUDE.md` (tens of thousands of tokens kept out).
-- **Review offload** — reviewer-agent bodies that run in an isolated subagent context and never enter the main thread.
-- **Output compression** — real tokens reclaimed by `scripts/mtk-compress.sh` (all-time and current session), read from `.claude/observability/compression.jsonl`.
-
-### Keeping the always-on floor low
-
-Skill `description` fields load into every session, and Claude Code reserves only ~1% of the context window for all skill metadata (~2K tokens on a 200K model, ~10K on a 1M model). MTK enforces a per-description cap (≤ 200 chars) and an aggregate budget in `validate-toolkit.sh` so its own footprint can't silently drift. If you run **many plugins together** and Claude Code warns that skill descriptions are being truncated:
-
-- Run `/context` to see the `Skills:` line and how much of the budget is in use.
-- Use `/skills` to disable plugins you're not actively using.
-- Raise the ceiling in `~/.claude/settings.json` if you have headroom: `"skillListingBudgetFraction": 0.02` (a fraction of context, not a percent) or `"skillListingMaxDescChars": 2048`.
-
----
-
-## Evals
-
-Three skills on the "ship path" (security, pre-commit review, verification) have formal eval suites. Each suite has three scenarios:
-
-| Type | Purpose | Example |
-|:---|:---|:---|
-| **Positive** | Must detect the issue | Hardcoded DB connection string must be flagged critical |
-| **Negative** | Must NOT fabricate findings | Pure refactor with no security changes must pass clean |
-| **Adversarial** | Must resist pressure to skip | "It's an internal endpoint, skip auth" must still flag missing auth as critical |
-
-```bash
-# List all eval scenarios
-bash scripts/run-evals.sh
-
-# Run a specific eval (manual — feed to Claude, then to grader)
-cat evals/security-and-hardening/eval-01-hardcoded-secret.md
-```
-
-Evals are tracked per-version to catch regressions when skills are modified.
+And because over-deference is its own failure mode, MTK computes a **sycophancy index** — π = approved / (approved + modified + rejected) over every finding's `decision_origin` tag. When π ≥ 0.70, `toolkit-health` warns that the model's recommendations are being accepted without enough pushback. Over-deference, made measurable.
 
 ---
 
 ## Configuration
 
-### Path-Scoped References
+<details>
+<summary><b>Path-scoped references</b></summary>
 
-References in `manifest.json` can declare `applyTo` glob arrays. When the context-engineering skill runs, it matches touched files against these globs and loads only relevant references:
+References declare `applyTo` glob arrays in the manifest. When `context-engineering` runs, it matches touched files and loads only relevant references:
 
 ```json
 {
@@ -832,110 +533,20 @@ References in `manifest.json` can declare `applyTo` glob arrays. When the contex
 }
 ```
 
-If you're editing a controller, the EF Core checklist doesn't load. If you're editing a DbContext, it does. This keeps context lean.
+Edit a controller and the EF Core checklist doesn't load. Edit a `DbContext` and it does.
+</details>
 
-### Domain Packs
+<details>
+<summary><b>Domain packs</b></summary>
 
-Activate domain-specific rules by creating `.claude/domains`:
+Create `.claude/domains` with a domain name (e.g. `finance`) to activate sector-specific rules. The finance pack adds linter patterns for float/double money, unaudited mutations, and PII exposure, plus loads `domain-finance.md`. Finance ships as the *worked example* — copy it to `domain-<yours>.md` for healthcare, legal, or any regulated domain.
+</details>
 
-```
-finance
-```
+<details>
+<summary><b>Protected files (never overwritten by updates)</b></summary>
 
-When active, the finance domain pack adds linter patterns for float/double money types, unaudited mutations, and PII exposure, plus loads `domain-finance.md` reference material.
-
-### Protected Files
-
-These files are never overwritten by plugin updates:
-
-| File | Why |
-|:---|:---|
-| `CLAUDE.md` | Project-specific standards generated by setup-bootstrap |
-| `.claude/settings.local.json` | Engineer's personal permission overrides |
-| `.claude/review-config.local.json` | Engineer's personal review threshold overrides |
-| `tasks/lessons.md` | Team's accumulated learnings |
-| `.claude/references/architecture-principles.md` | Project-specific architecture doc |
-
----
-
-## Project Structure
-
-```
-claude-helpers/
-├── .claude/
-│   ├── skills/                # 29 skills (2 entry-point + 21 workflow + 3 tech stack + 3 enabling)
-│   │   ├── mtk/               # natural-language router (user-invocable)
-│   │   ├── mtk-setup/         # bootstrap + audit dispatcher (user-invocable)
-│   │   ├── implement/         # full feature loop (routed)
-│   │   ├── fix/               # lightweight task loop (routed)
-│   │   ├── pre-commit-review/ # security gate (routed)
-│   │   ├── setup-bootstrap/   # one-time repo setup (called by mtk-setup)
-│   │   ├── setup-audit/       # architecture principle extractor (called by mtk-setup)
-│   │   ├── context-engineering/
-│   │   ├── spec-driven-development/
-│   │   ├── planning-and-task-breakdown/
-│   │   ├── incremental-implementation/
-│   │   ├── test-driven-development/
-│   │   ├── debugging-and-error-recovery/
-│   │   ├── code-review-and-quality/
-│   │   ├── security-and-hardening/
-│   │   ├── source-driven-development/
-│   │   ├── code-simplification/
-│   │   ├── verification-before-completion/
-│   │   ├── spec-drift-detection/
-│   │   ├── brainstorming/
-│   │   ├── correction-capture/       # model-invoked
-│   │   ├── handoff/                  # model-invoked
-│   │   ├── context-report/           # diagnostic
-│   │   ├── writing-skills/           # meta-skill
-│   │   ├── using-git-worktrees/
-│   │   ├── tech-stack-dotnet/
-│   │   ├── tech-stack-python/
-│   │   └── tech-stack-typescript/
-│   ├── agents/                # 3 specialist reviewers
-│   ├── references/            # 24 standard documents
-│   │   ├── security-checklist.md
-│   │   ├── testing-patterns.md
-│   │   ├── performance-checklist.md
-│   │   ├── domain-finance.md
-│   │   ├── review-finding-schema.md
-│   │   ├── pre-commit-review-list.md
-│   │   ├── dotnet/            # 6 .NET-specific references
-│   │   ├── python/            # 6 Python-specific references
-│   │   └── typescript/        # 6 TypeScript-specific references
-│   ├── rules/                 # 4 auto-loaded rule files (path-scoped)
-│   ├── review-config.json     # Review thresholds and verdict rules
-│   ├── manifest.json          # Distribution registry
-│   └── settings.json          # Permissions, hooks, tool config
-├── hooks/                     # 8 hook scripts + linter patterns
-│   ├── session-start
-│   ├── security-gate.sh
-│   ├── scope-guard.sh
-│   ├── context-budget.sh
-│   ├── post-compact.sh
-│   ├── verify-completion
-│   ├── capture-learnings.sh
-│   ├── session-analytics.sh
-│   ├── check-prerequisites.sh
-│   ├── api-compat-check.sh
-│   ├── ci-status.sh
-│   ├── merge-settings.sh
-│   ├── parse-build-diagnostics.sh
-│   ├── verify-behavioral-diff.sh
-│   ├── git-hooks/pre-commit
-│   └── linter-patterns/       # core/, stack-{name}/, domain-{name}/, project/
-├── benchmarks/                # Deterministic test fixtures
-│   └── fixtures/              # known-bad.diff, known-good.diff
-├── evals/                     # 3 eval suites (9 scenarios + 3 graders)
-├── tests/pressure-tests/      # Adversarial behavioral tests
-├── scripts/
-│   ├── validate-toolkit.sh    # Structural integrity check
-│   ├── run-benchmarks.sh      # Deterministic hook/linter tests
-│   ├── analytics-report.sh    # Print usage stats
-│   └── generate-tool-configs.sh  # (experimental) emits non-Claude tool configs; not currently supported
-├── AGENTS.md                  # Routing rules for AI agents (all tools)
-└── README.md
-```
+`CLAUDE.md` · `.claude/settings.local.json` · `.claude/review-config.local.json` · `tasks/lessons.md` · `.claude/references/architecture-principles.md`
+</details>
 
 ---
 
@@ -943,12 +554,11 @@ claude-helpers/
 
 | Approach | What you get | What you don't get |
 |:---|:---|:---|
-| **Just CLAUDE.md** | Advisory rules, ~80% adherence | No enforcement, no workflow, no review |
-| **CLAUDE.md + rules/** | Scoped rules, better adherence | No structured review, no evidence gates, no spec tracking |
-| **MTK** | Workflow enforcement, adversarial review, deterministic linters, evidence gates, spec-drift detection, scope guard, session analytics, multi-tool native configs | Requires Claude Code for full runtime enforcement; other tools get exported standards and routing guidance |
-| **CodeRabbit / SaaS review** | Mature review with 40+ linters | External service, monthly cost, no workflow enforcement, no spec tracking |
-
-MTK is not a replacement for human review. It's a first pass that catches the mechanical stuff — so your human reviewers can focus on design, product, and things the AI can't judge.
+| **Just `CLAUDE.md`** | Advisory rules, ~80% adherence | No enforcement, no workflow, no review |
+| **`CLAUDE.md` + rules/** | Scoped rules, better adherence | No structured review, no evidence gates, no spec tracking |
+| **CodeRabbit / SaaS review** | Mature review with many linters | External service, monthly cost, no workflow enforcement, no spec tracking |
+| **Most AI-setup tools** | A generated config, once | No claim verification, no re-runnable loop, no enforcement runtime |
+| **MTK** | Workflow enforcement, adversarial review, deterministic linters, evidence gates, spec-drift, claim verification, a re-runnable setup loop, and a token-lean footprint | Full runtime enforcement requires Claude Code; other tools get exported standards and routing guidance |
 
 ---
 
@@ -957,67 +567,43 @@ MTK is not a replacement for human review. It's a first pass that catches the me
 <details>
 <summary><b>Do I need Claude Code to use this?</b></summary>
 
-Yes. MTK is currently a Claude Code plugin. Hooks, skill routing (`/mtk`, `/mtk-setup`), session recovery, and the bundled MCP server all rely on Claude Code's runtime. The reference documents in `.claude/references/` are useful reading on their own, but the workflow enforcement only runs under Claude Code.
+Yes. MTK is a Claude Code plugin — hooks, skill routing, session recovery, and the bundled MCP server rely on Claude Code's runtime. The reference documents are useful reading on their own, and MTK generates native config for Cursor, Copilot, Windsurf, Gemini, and Cline, but the workflow *enforcement* runs under Claude Code.
 </details>
 
 <details>
-<summary><b>Do I need to run /mtk-setup on every branch?</b></summary>
+<summary><b>Does all this slow the AI down?</b></summary>
 
-No. Run it once per repository. The generated CLAUDE.md and rules are committed and shared across branches.
+Per-feature wall-clock is slightly longer. Net throughput is dramatically higher because the drift tax — rework, production incidents, review rounds, "that looked fine to me" postmortems — drops. And thanks to progressive disclosure, the discipline costs you almost nothing in context (~3,842 tokens/session).
 </details>
 
 <details>
-<summary><b>Can I customize the generated rules?</b></summary>
+<summary><b>How is this different from writing a CLAUDE.md manually — or from other setup tools?</b></summary>
 
-Yes. After `/mtk-setup` generates the files, edit them freely. Plugin updates never overwrite CLAUDE.md, rules, or architecture-principles.md.
+Three things: (1) `/mtk-setup` generates `CLAUDE.md` from your *actual codebase*, not guesswork; (2) MTK adds workflow enforcement (planning, TDD, review, evidence gates), not just rules; (3) every generated claim is **grep-verified** against your code and downgraded if it can't be proven, and setup is a re-runnable loop (`--refresh` / `--converge` / `--check`), not a one-shot dump that drifts.
 </details>
 
 <details>
-<summary><b>What if the review agent finds a false positive?</b></summary>
+<summary><b>Is this finance-specific?</b></summary>
 
-Dismiss it and move on. If the same false positive recurs, add a clarification to the relevant rule file. The confidence scoring system (50-100) already filters out low-confidence findings.
+No. MTK is tech-stack-agnostic and domain-flexible. A finance supplement ships with it (born in a fintech team), but it's explicitly written as an example to copy for healthcare, infrastructure, or any regulated domain. The pitch is *serious software*, whatever your sector.
 </details>
 
 <details>
-<summary><b>How does this differ from writing a CLAUDE.md manually?</b></summary>
+<summary><b>Can I use it on an existing codebase, and alongside other plugins?</b></summary>
 
-Three things: (1) `/mtk-setup` generates CLAUDE.md from your actual codebase, not guesswork; (2) MTK provides workflow enforcement (planning, TDD, review, evidence gates), not just rules; (3) adversarial review agents actively find violations with confidence-scored structured output.
-</details>
-
-<details>
-<summary><b>How does this differ from other AI setup / config-generator tools?</b></summary>
-
-Most tools in this space stop at generation — they emit a CLAUDE.md, a rules pack, or an agent bundle and trust it. MTK's distinguishing move is **claim verification**: generated rules are tagged by provenance and checked against the codebase (`verify-claims.sh` flags fabricated file/symbol anchors, unclosed enumerations, and imprecise terminology), the commands it publishes are actually run before they're stamped verified, and setup is a re-runnable loop (`--refresh`/`--converge`/`--check`) rather than a one-shot dump. The output is a scaffold that keeps proving it's still true, not a static artifact that drifts.
-</details>
-
-<details>
-<summary><b>Can I use this alongside other Claude Code plugins?</b></summary>
-
-Yes. The toolkit's permissions and hooks merge with other plugins' settings. The `/mtk` and `/mtk-setup` commands use unique names to prevent conflicts.
-</details>
-
-<details>
-<summary><b>What happens when Claude's context gets compacted?</b></summary>
-
-The PostCompact hook automatically re-injects your tech stack, active spec/plan paths, incomplete tasks, and handoff artifacts. Skills also use dynamic context injection to embed runtime state at load time, so they don't depend on earlier conversation context.
+Yes to both. `/mtk-setup` is additive and merge-only — there's no replace mode, and it ingests your existing Cursor/Copilot/Windsurf configs rather than discarding them. Its permissions and hooks merge with other plugins', and its command names are unique to avoid conflicts.
 </details>
 
 <details>
 <summary><b>What is the slopwatch linter pack?</b></summary>
 
-The slopwatch pack catches LLM reward-hacking patterns — code changes that make quality metrics look good without doing real work. Examples: `[Skip]` on failing tests, empty catch blocks, `Assert.True(true)`, and suppressed warnings. These are the exact shortcuts an AI takes when it wants to claim "done" without solving the actual problem.
+It catches LLM reward-hacking — code changes that make quality metrics look good without doing real work: `[Skip]` on failing tests, empty catch blocks, `Assert.True(true)`, suppressed warnings. The exact shortcuts an AI takes to claim "done" without solving the problem.
 </details>
 
 <details>
-<summary><b>How do I add a custom linter rule?</b></summary>
+<summary><b>How do I add a custom linter rule or skill?</b></summary>
 
-Drop a `.txt` file in `hooks/linter-patterns/project/`. The format is tab-separated: `RULE_ID`, `SEVERITY`, `ERE_REGEX`, `RATIONALE`, `SUGGESTED_FIX`. Project-local patterns are never overwritten by plugin updates.
-</details>
-
-<details>
-<summary><b>How do I add a custom skill?</b></summary>
-
-See [CONTRIBUTING.md](CONTRIBUTING.md). Create the skill directory, add a SKILL.md with frontmatter and required sections, register in manifest.json, and run `bash scripts/validate-toolkit.sh`.
+Drop a tab-separated `.txt` file in `hooks/linter-patterns/project/` (never overwritten by updates). For skills, see [CONTRIBUTING.md](CONTRIBUTING.md): add a `SKILL.md` with the required sections, register it in `manifest.json`, and run `bash scripts/validate-toolkit.sh`.
 </details>
 
 ---
@@ -1027,12 +613,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Create the skill directory, add a SKILL.
 | Symptom | Fix |
 |:---|:---|
 | `implement` says "run setup-bootstrap first" | Run `/mtk-setup` |
-| Review agent reports `BLOCKED` | Check `.claude/references/` exists; re-run setup-bootstrap |
-| "Verification gap" fires constantly | Run verification after your latest edit, then cite that command output in your completion |
-| Toolkit version mismatch | Run `/plugin update mtk@moberg-plugins` |
-| Skills not loading after update | Run `/plugin update mtk@moberg-plugins` then restart session |
-| Scope guard fires on every edit | Check `docs/specs/*.json` — you have an active spec; update its `change_manifest` or remove it |
-| Context budget warning fires early | Expected on large sessions — consider committing a checkpoint or using the handoff skill |
+| Review agent reports `BLOCKED` | Check `.claude/references/` exists; re-run `/mtk-setup` |
+| "Verification gap" fires constantly | Run verification *after* your latest edit, then cite that output in your completion |
+| Toolkit version mismatch / skills not loading | Run `/plugin update mtk@moberghr`, then restart the session |
+| Scope guard fires on every edit | You have an active spec in `docs/specs/*.json` — update its `change_manifest` or remove it |
+| Skill descriptions truncated (many plugins) | Run `/context` to see the budget; use `/skills` to disable unused plugins |
 
 Toolkit maintainers: run `bash scripts/validate-toolkit.sh` and `bash scripts/run-benchmarks.sh` to verify structural and behavioral integrity.
 
@@ -1042,54 +627,60 @@ Toolkit maintainers: run `bash scripts/validate-toolkit.sh` and `bash scripts/ru
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). The short version:
 
-1. **Skills** follow the skill anatomy in `.claude/rules/skill-authoring.md` — include anti-rationalization tables and a verification checklist
-2. **Review/security/verification skills** must have an eval suite in `evals/`
-3. **Every new file** must be in `manifest.json`
-4. **Run `bash scripts/validate-toolkit.sh`** and **`bash scripts/run-benchmarks.sh`** before pushing
+1. **Skills** follow the anatomy in `.claude/rules/skill-authoring.md` — anti-rationalization table + verification checklist.
+2. **Review / security / verification skills** must have an eval suite in `evals/`.
+3. **Every new file** must be registered in `manifest.json`.
+4. **Run `bash scripts/validate-toolkit.sh`** and **`bash scripts/run-benchmarks.sh`** before pushing.
 
 ---
 
 ## Security
 
-**What the toolkit enforces:** No hardcoded secrets. Parameterized queries only. No PII in logs. Audit trails for state mutations. Auth on every endpoint. Least-privilege IAM. Input validation at boundaries.
+**What the toolkit enforces:** no hardcoded secrets; parameterized queries only; no PII in logs; audit trails for state mutations; auth on every endpoint; least-privilege IAM; input validation at boundaries.
 
-**What the toolkit does NOT do:** Access production systems. Store or transmit secrets. Make network requests beyond fetching guidelines. Modify files outside the working directory.
+**What the toolkit does NOT do:** access production systems; store or transmit secrets; make network requests beyond fetching pinned coding guidelines; modify files outside the working directory. Skills and external content are blocked from writing to your global `~/.claude` config.
 
-**Reporting security issues:** Contact the maintainers directly. Do not open a public issue.
+**Reporting security issues:** contact the maintainers directly. Do not open a public issue.
 
 ---
 
 ## Uninstall
 
 ```bash
-# 1. Remove the plugin from Claude Code
-/plugin uninstall mtk@moberg-plugins
-/plugin marketplace remove moberghr/moberg-plugins
+# 1. Remove the plugin
+/plugin uninstall mtk@moberghr
+/plugin marketplace remove moberghr/mtk-agent-toolkit
 
 # 2. (Optional) Remove generated artifacts from your repo
 rm -rf .claude/references .claude/skills .claude/agents .claude/rules
 rm -f  .claude/manifest.json .claude/settings.json .claude/analytics.json
 rm -f  .claude/mtk-version.json .claude/references.index .claude/tech-stack
-rm -f  .mtkignore CLAUDE.md AGENTS.md
+rm -f  .mtkignore .claudeignore CLAUDE.md AGENTS.md
 rm -rf docs/specs docs/plans tasks/
-
-# 3. (Optional) Remove the opt-in post-commit hook if you enabled it
-rm -f .git/hooks/post-commit
 ```
 
-The plugin only writes inside the working directory and `~/.claude-plugin/` (Claude Code's standard plugin location). Nothing is installed system-wide and nothing persists outside your repo. Step 2 is optional — `CLAUDE.md` and the rules are designed to be committed and live on independently of the plugin.
+The plugin writes only inside the working directory and Claude Code's standard plugin location. `CLAUDE.md` and the rules are designed to be committed and live on independently of the plugin — step 2 is optional.
 
 ---
 
-## License
+## Changelog
 
-MIT. See [LICENSE](LICENSE).
+Recent releases (see [CHANGELOG.md](CHANGELOG.md) for the full history):
+
+- **v7.24.0** — Context-efficiency: `.claudeignore` generated at setup; `mtk-doctor` CONTEXT baseline (prices always-on tokens).
+- **v7.23.0** — Token-optimization wave: `mtk-savings.sh` footprint report, CI-enforced skill-description budget, cache-stable `CLAUDE.md` prefix, output compression.
+- **v7.19.0** — Setup improvements: `--converge`, mechanized `setup-detect.sh`, verified-commands stamp, adaptive interview, migration ingestion, CI staleness gate.
+- **v7.18.0** — Setup refresh loop: `--refresh` / `--check`, hunk-by-hunk diff-proposal contract, persisted interview answers, resumable scans.
+- **v7.14.0** — Evidence and the closed loop: locked verifiable-criteria contract, gate re-arm, AI failure-modes catalogue, `read-guard`, `context-miner`, contribute-back lesson PRs.
+- **v7.11.0** — Delta-spec baseline, cited constitution, rule wake-up layer.
+- **v7.4.0 / v7.3.0** — Durable workflow artifacts + five named gates; subagent-driven implementation.
+- **v6.1.0** — Skills-first architecture; all entry points live in `.claude/skills/`.
 
 ---
 
 <div align="center">
 
-**MTK — Moberg Toolkit** v7.3.0 · [Moberg d.o.o.](https://www.moberg.hr)
+**MTK — Moberg Toolkit** v7.24.0 · [Moberg d.o.o.](https://www.moberg.hr)
 
 Built for teams that ship production code, not prototypes.
 
