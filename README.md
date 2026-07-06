@@ -51,6 +51,13 @@ MTK closes that gap with **workflow enforcement** (planning, TDD, batched implem
 
 ## What's New
 
+### v7.23.0 — Token optimization wave (2026-07-06)
+- **Context footprint report** — new `bash scripts/mtk-savings.sh` shows the always-on floor, tokens deferred by progressive disclosure, review-agent bodies offloaded to isolated context, and real output-compression totals from `.claude/observability/compression.jsonl`. See [Token footprint & savings](#token-footprint--savings).
+- **Skill-description budget** — `validate-toolkit.sh` now caps each skill `description` (≤ 200 chars) and the aggregate (~1750 tokens) and prints the running total, protecting routing quality on smaller-context models where Claude Code reserves only ~1% of context for skill metadata.
+- **`security-checklist.md` no longer always-on** — its frontmatter was aligned to the security-scoped globs the manifest already carried; every consumer already loads it explicitly, so behaviour is unchanged while it stops loading on non-security work.
+- **Cache-stable CLAUDE.md prefix** — the per-release version banner moved to `CHANGELOG.md` so the always-loaded prefix stays prompt-cache-warm.
+- **Progressive disclosure** — the Root CLAUDE.md template moved out of `setup-bootstrap` (924 → 815 lines) into an on-demand reference read only when generating.
+
 ### v7.19.0 — Setup improvements wave (2026-07-03)
 - **`/mtk-setup --converge`** — new `setup-converge` skill: judges the codebase against agreed `architecture-principles.md`/`conventions.md` and reports drift as graded, read-only work items (blocking/flag/note) — never auto-fixes.
 - **Mechanized detection** — new `scripts/setup-detect.sh --json` consolidates stack/package-manager/RN-Expo/monorepo detection into one tested, read-only script; `setup-bootstrap`/`setup-audit` shrink accordingly and now report mixed-stack repos as `secondary_stacks`.
@@ -760,6 +767,31 @@ bash scripts/analytics-report.sh
 ```
 
 Useful for understanding how much scope drift you're generating, whether the toolkit is being used consistently, and whether behavioral checks have been run recently. Treat it as an operational pulse, not a hard productivity score.
+
+---
+
+## Token footprint & savings
+
+MTK is built to keep tokens **out** of your context, not just to do more work in it. See where they go — and what the toolkit already saves — at any time:
+
+```bash
+bash scripts/mtk-savings.sh
+```
+
+Every number is derived from the installed files or the on-disk compression log — nothing is fabricated from telemetry MTK doesn't collect:
+
+- **Always-on floor** — what loads into *every* session (skill + agent descriptions, `CLAUDE.md`, `rules/INDEX.md`), typically ~3–4K tokens.
+- **Deferred** — references, rule bodies, and the manifest that stay on disk behind progressive disclosure and the MCP server; they'd be always-on if inlined into `CLAUDE.md` (tens of thousands of tokens kept out).
+- **Review offload** — reviewer-agent bodies that run in an isolated subagent context and never enter the main thread.
+- **Output compression** — real tokens reclaimed by `scripts/mtk-compress.sh` (all-time and current session), read from `.claude/observability/compression.jsonl`.
+
+### Keeping the always-on floor low
+
+Skill `description` fields load into every session, and Claude Code reserves only ~1% of the context window for all skill metadata (~2K tokens on a 200K model, ~10K on a 1M model). MTK enforces a per-description cap (≤ 200 chars) and an aggregate budget in `validate-toolkit.sh` so its own footprint can't silently drift. If you run **many plugins together** and Claude Code warns that skill descriptions are being truncated:
+
+- Run `/context` to see the `Skills:` line and how much of the budget is in use.
+- Use `/skills` to disable plugins you're not actively using.
+- Raise the ceiling in `~/.claude/settings.json` if you have headroom: `"skillListingBudgetFraction": 0.02` (a fraction of context, not a percent) or `"skillListingMaxDescChars": 2048`.
 
 ---
 

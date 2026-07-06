@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Use when context is approaching limits, before ending a long session with in-progress work, or when handing off to a teammate — capture session state into a recovery artifact so a new session can resume cleanly.
+description: Use when context nears limits, before ending a long session with in-progress work, or handing off to a teammate — captures session state into a recovery artifact so a new session resumes cleanly.
 type: skill
 license: MIT
 compatibility:

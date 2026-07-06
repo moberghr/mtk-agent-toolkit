@@ -1,6 +1,6 @@
 ---
 name: subagent-implementation
-description: Use instead of incremental-implementation when a feature has 3+ batches, 6+ files, or non-none security_impact — dispatches one fresh implementer subagent per batch with orchestrator-side drift checks.
+description: Use instead of incremental-implementation when a feature has 3+ batches, 6+ files, or non-none security_impact — one fresh implementer subagent per batch with orchestrator-side drift checks.
 type: skill
 license: MIT
 compatibility:

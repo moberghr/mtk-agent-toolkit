@@ -198,6 +198,7 @@ total_tokens=$((total_lines * 13))
 echo "  ──────────────────────────────────────────────────────────────────"
 printf "  Total available: %d lines  (~%dk tokens)\n" "$total_lines" "$((total_tokens / 1000 + 1))"
 echo "  (actual load depends on path-scoped matching in context-engineering)"
+echo "  → Full always-on / deferred / compression breakdown: bash scripts/mtk-savings.sh"
 ```
 
 #### 1i. Active Specs

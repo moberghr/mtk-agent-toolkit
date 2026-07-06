@@ -1,6 +1,6 @@
 ---
 name: source-driven-development
-description: Use when framework, SDK, or library behavior is unfamiliar or version-sensitive — verify from local authoritative sources (decompiled sources, SDK code, official docs already in repo context) before implementing.
+description: Use when framework, SDK, or library behavior is unfamiliar or version-sensitive — verify from local authoritative sources (decompiled/SDK code, in-repo docs) before implementing.
 type: skill
 license: MIT
 compatibility:
