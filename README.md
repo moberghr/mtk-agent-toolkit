@@ -67,8 +67,8 @@ MTK closes the 80% gap with four things working together:
 
 ```bash
 # 1. Install the plugin
-/plugin marketplace add moberghr/mtk-agent-toolkit
-/plugin install mtk@moberghr
+/plugin marketplace add moberghr/moberg-plugins
+/plugin install mtk@moberg-plugins
 
 # 2. Bootstrap your repo (one-time)
 /mtk-setup
@@ -615,7 +615,7 @@ Drop a tab-separated `.txt` file in `hooks/linter-patterns/project/` (never over
 | `implement` says "run setup-bootstrap first" | Run `/mtk-setup` |
 | Review agent reports `BLOCKED` | Check `.claude/references/` exists; re-run `/mtk-setup` |
 | "Verification gap" fires constantly | Run verification *after* your latest edit, then cite that output in your completion |
-| Toolkit version mismatch / skills not loading | Run `/plugin update mtk@moberghr`, then restart the session |
+| Toolkit version mismatch / skills not loading | Run `/plugin update mtk@moberg-plugins`, then restart the session |
 | Scope guard fires on every edit | You have an active spec in `docs/specs/*.json` — update its `change_manifest` or remove it |
 | Skill descriptions truncated (many plugins) | Run `/context` to see the budget; use `/skills` to disable unused plugins |
 
@@ -648,8 +648,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). The short version:
 
 ```bash
 # 1. Remove the plugin
-/plugin uninstall mtk@moberghr
-/plugin marketplace remove moberghr/mtk-agent-toolkit
+/plugin uninstall mtk@moberg-plugins
+/plugin marketplace remove moberghr/moberg-plugins
 
 # 2. (Optional) Remove generated artifacts from your repo
 rm -rf .claude/references .claude/skills .claude/agents .claude/rules
