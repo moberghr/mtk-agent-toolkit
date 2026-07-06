@@ -1,6 +1,6 @@
 ---
 name: setup-refresh
-description: Refresh generated setup artifacts (architecture principles, conventions, detected tools, AGENTS.md, tool configs, indexes) against codebase drift, proposing diffs for engineer-edited files instead of overwriting them.
+description: Refresh generated setup artifacts (principles, conventions, detected tools, AGENTS.md, configs, indexes) against codebase drift — proposes diffs for engineer-edited files instead of overwriting.
 type: skill
 user-invocable: false
 ---

@@ -1,6 +1,6 @@
 {
-  "version": "7.19.0",
-  "updated": "2026-07-03",
+  "version": "7.20.0",
+  "updated": "2026-07-06",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -1626,6 +1626,12 @@
       "action": "sync",
       "description": "Pipe-friendly token compressor for tool output (json/logs/tests/html/auto modes) with session analytics"
     },
+    "scripts/mtk-savings.sh": {
+      "source": "scripts/mtk-savings.sh",
+      "target": "scripts/mtk-savings.sh",
+      "action": "sync",
+      "description": "Reports MTK's context-token footprint and savings — always-on floor, deferred references, review offload, and on-disk output-compression totals"
+    },
     "hooks/compress-monitor.sh": {
       "source": "hooks/compress-monitor.sh",
       "target": "hooks/compress-monitor.sh",
@@ -1733,6 +1739,15 @@
       "target": ".claude/references/bootstrap-customization.md",
       "action": "sync",
       "description": "Per-stack reference-file customization tables for setup-bootstrap \u2014 generic placeholder to concrete replacement, per category"
+    },
+    "references/root-claude-md-template.md": {
+      "source": ".claude/references/root-claude-md-template.md",
+      "target": ".claude/references/root-claude-md-template.md",
+      "action": "sync",
+      "applyTo": [
+        ".claude/skills/setup-bootstrap/**"
+      ],
+      "description": "Root CLAUDE.md generation template emitted by setup-bootstrap STEP 3 \u2014 skeleton with skill-routing table, tech-stack and project-profile fields, critical-rules and standards-reference sections"
     },
     "references/config-ingestion.md": {
       "source": ".claude/references/config-ingestion.md",

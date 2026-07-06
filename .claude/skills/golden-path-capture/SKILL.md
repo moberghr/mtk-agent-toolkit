@@ -1,6 +1,6 @@
 ---
 name: golden-path-capture
-description: Use when you struggle with the same sub-problem 2+ times in the current session and then find a working approach — capture the failed attempts and the fix as a reusable lesson, no engineer correction required.
+description: Use when you struggle with the same sub-problem 2+ times then find a working approach — captures the failed attempts and the fix as a reusable lesson, no engineer correction required.
 type: skill
 license: MIT
 compatibility:

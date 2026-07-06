@@ -1,6 +1,6 @@
 ---
 name: research-context
-description: Use when a decision needs current external/web information (library best-practices, version-specific behavior, migration guidance) rather than local source verification — runs web research grounded in named project files and returns a cited brief, deferring to /deep-research for heavy questions.
+description: Use when a decision needs current external/web info (library best-practices, version behavior, migration guidance) rather than local sources — runs grounded web research and returns a cited brief.
 type: skill
 license: MIT
 compatibility:

@@ -1,6 +1,6 @@
 # claude-helpers — MTK Standards
 
-> Updated 2026-06-12 for v7.14.0 ("evidence and the closed loop": locked verifiable-criteria + named evidence channels with gate re-arm, AI failure-modes catalogue, read-guard + workflow-continuation hooks, claim provenance + package-legitimacy gates, hardened subagent dispatch contract, closed-loop lessons (richer template, contribute-back CI, lesson-mining), isolated-divergence brainstorming, context-miner review lane).
+> Version history and per-release notes: see CHANGELOG.md. (Kept out of this file so the always-loaded prefix stays prompt-cache-stable across releases.)
 >
 > This file + `.claude/rules/` are the source of truth for AI agents.
 > Detailed standards live in `.claude/rules/`. Reference docs live in `.claude/references/` (shared) and `.claude/references/{stack}/` (stack-specific).

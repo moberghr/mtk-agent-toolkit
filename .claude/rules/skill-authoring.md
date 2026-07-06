@@ -32,6 +32,7 @@ axes:
 
 - **S2.5** Every `description` field (in manifest, plugin.json, and frontmatter) must be a single clear sentence explaining what the artifact does — not marketing copy, not a list.
 - **S2.6** Descriptions should help Claude route to the right tool. "Reusable planning skill for substantial .NET changes" > "A skill for planning".
+- **S2.6a** Every skill `description` loads into **every** session (Claude Code reserves ~1% of context for skill metadata). Keep each ≤ **200 chars** (keyword-dense "what + when") and the aggregate across all skills under the toolkit budget. `validate-toolkit.sh` enforces both and prints the running total — treat a failure as "tighten wording", not "raise the cap".
 
 ## Pressure Tests
 

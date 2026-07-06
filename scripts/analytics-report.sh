@@ -76,3 +76,15 @@ printf '
   "$specs" "$lessons" "$scope_warns" "$scope_warn_rate" \
   "$benchmarks" "${bench_score:-n/a}" \
   "$tokens_display"
+
+# Always-on context cost (skill descriptions load into every session).
+if ls .claude/skills/*/SKILL.md >/dev/null 2>&1; then
+  desc_chars=0
+  for skill in .claude/skills/*/SKILL.md; do
+    desc="$(awk '/^description:/ { sub(/^description:[[:space:]]*/, ""); print; exit }' "$skill")"
+    desc_chars=$((desc_chars + ${#desc}))
+  done
+  printf 'Always-on skill descriptions: %d chars (~%d tokens) across %d skills.\n' \
+    "$desc_chars" "$((desc_chars / 4))" "$(ls .claude/skills/*/SKILL.md | wc -l | tr -d ' ')"
+fi
+printf 'Full context footprint & savings: bash scripts/mtk-savings.sh\n'

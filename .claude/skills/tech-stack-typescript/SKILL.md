@@ -1,6 +1,6 @@
 ---
 name: tech-stack-typescript
-description: Provides TypeScript/JavaScript-specific build commands, test commands, ORM guidance, framework patterns (React, React Native / Expo, Next.js, Tauri, Node), and reference file paths for workflow skills.
+description: Provides TypeScript/JavaScript build/test commands, ORM guidance, framework patterns (React, React Native/Expo, Next.js, Tauri, Node), and reference paths for workflow skills.
 license: MIT
 compatibility:
   - claude-code

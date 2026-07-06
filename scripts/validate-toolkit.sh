@@ -256,6 +256,24 @@ for skill in "${manifest_skill_paths[@]+"${manifest_skill_paths[@]}"}"; do
   fi
 done
 
+# Skill description budget (S2.5/S2.6): every skill `description` is injected into
+# EVERY session — Claude Code reserves only ~1% of the context window for skill
+# metadata, so on a 200K model the whole skill catalogue shares ~2K tokens. Cap each
+# description and the aggregate so routing survives on smaller-context models and the
+# always-on floor cannot silently drift upward as skills are added.
+DESC_CHAR_CAP=200
+DESC_TOTAL_BUDGET=7000
+desc_total=0
+for skill in "${manifest_skill_paths[@]+"${manifest_skill_paths[@]}"}"; do
+  [ -f "$skill" ] || continue
+  desc="$(awk '/^description:/ { sub(/^description:[[:space:]]*/, ""); print; exit }' "$skill")"
+  desc_len=${#desc}
+  [ "$desc_len" -le "$DESC_CHAR_CAP" ] || fail "Skill description too long ($desc_len > $DESC_CHAR_CAP chars): $skill — tighten to a keyword-dense 'what + when' sentence (S2.5/S2.6)."
+  desc_total=$((desc_total + desc_len))
+done
+printf 'Skill descriptions: %d chars (~%d tokens) / %d-char budget.\n' "$desc_total" "$((desc_total / 4))" "$DESC_TOTAL_BUDGET"
+[ "$desc_total" -le "$DESC_TOTAL_BUDGET" ] || fail "Skill descriptions exceed the aggregate budget ($desc_total > $DESC_TOTAL_BUDGET chars). They load into every session — tighten the longest ones."
+
 if [ -d ".claude/rules" ]; then
   while IFS= read -r rule; do
     rule_lines="$(wc -l < "$rule")"
