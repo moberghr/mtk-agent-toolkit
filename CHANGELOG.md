@@ -2,7 +2,22 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [7.20.0] - 2026-07-03
+## [7.21.0] - 2026-07-06
+
+### Added — Borrow wave 2: guardrails & generation
+
+Second borrow wave from the agent-cortex triage (`docs/plans/2026-07-03-agent-cortex-borrow-triage.md`). Focus: guardrails that travel with the capability, and cleaner generated output.
+
+- **Per-tool guardrails + no-delete fence in the implementer dispatch contract.** `subagent-implementation` now states each granted tool's boundary inline (Edit/Write: only `batch.files`; Bash: build/test/format/read-git only, no network or destructive commands) and forbids deletion (no `rm`/`git rm`; removals become a `deviation` for the orchestrator). Directly targets the out-of-scope-edit (v7.14) and destructive-deletion (v7.10.3) failure modes. (Borrow: dontriskit + EliFuzz — guardrails baked into the capability.)
+- **Terminology / LLM-tic lint is now enforced.** `verify-claims.sh` implements the previously documentation-only audit-grounding §4 denylist: tagged lines carrying LLM prose tics ("Additionally", "Furthermore", "Moreover", "Delve", "worth noting", "plays a crucial role") get a `terminology-needs-review` weak-claim entry with the matched term. Advisory, never auto-rewritten. (Borrow: yzhao062/agent-style field-observed tics.)
+- **Output-style section in generated CLAUDE.md.** `setup-bootstrap`'s CLAUDE.md template now emits an `## Output Style` block (no em-dash-as-punctuation, no filler transitions, no bullet inflation, no per-paragraph summary, back claims with file:line) so bootstrapped repos steer agent prose from day one. (Borrow: agent-style anti-patterns.)
+- **`paths` axis in the rule wake-up index.** `build-rule-index.sh` now surfaces each rule's `paths:` globs as a column in `.claude/rules/INDEX.md`, giving machine-scoped auto-attach (a rule whose glob matches a touched file is always relevant) alongside the decision/topic/scope axes; `git-workflow.md` gained the `paths:` it was missing. (Borrow: instructa/ai-prompts + awesome-copilot `applyTo` globs.)
+
+### Deferred
+
+- Idempotent import-marker merge in `generate-tool-configs.sh` (batch-2 #12): the copilot/windsurf/cursor generators are overwrite-guarded but not marker-merged. Deferred — it needs careful surgery across five output formats plus smoke tests; tracked in the triage doc.
+
+
 
 ### Added — Borrow wave 1: skill & subagent authoring hardening
 

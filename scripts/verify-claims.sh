@@ -151,6 +151,11 @@ while IFS= read -r line || [[ -n "$line" ]]; do
 
   if [[ "$stripped" =~ $TAG_RE ]]; then
     TOTAL_CLAIMS=$((TOTAL_CLAIMS + 1))
+    # Terminology / LLM-tic denylist (audit-grounding.md §4) — flag for review, never rewrite.
+    tic="$(printf '%s' "$stripped" | grep -oiE '\b(additionally|furthermore|moreover|delve|firstly|secondly)\b|worth noting|important to note|plays a (crucial|vital|key) role' | head -1 || true)"
+    if [[ -n "$tic" ]]; then
+      WEAK_ENTRIES+=("{\"file\":\"$INPUT\",\"line\":$LINENO_,\"reason\":\"terminology-needs-review\",\"hits\":0,\"anchor\":$(printf '%s' "$tic" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().strip()))'),\"text\":$(printf '%s' "$line" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().strip()))')}")
+    fi
     anchors=$(extract_anchors "$line")
     if [[ -z "$anchors" ]]; then
       WEAK_ENTRIES+=("{\"file\":\"$INPUT\",\"line\":$LINENO_,\"reason\":\"no-evidence-anchor\",\"hits\":0,\"text\":$(printf '%s' "$line" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().strip()))')}")
