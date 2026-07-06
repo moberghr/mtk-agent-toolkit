@@ -27,6 +27,8 @@ alwaysApply: false
 | **atlassian** | MCP | Jira + Confluence integration — create tickets from specs, search company knowledge, triage bugs, generate status reports. High value for teams that live in Jira. | See Atlassian MCP docs |
 | **jetbrains** | MCP | Exposes JetBrains IDE features (Rider, IntelliJ, WebStorm) to Claude — refactors, symbol navigation, debugger integration. Rider users on .NET benefit most. | JetBrains Marketplace → "MCP Server" |
 | **gitnexus** | MCP | Code knowledge graph — impact analysis, dependency tracing, rename safety. Strong for large codebases where blast-radius reasoning matters. | See gitnexus docs |
+| **sentry** | MCP | Pulls real error/trace/issue context into fix and debugging flows — the agent reads the actual stack trace and breadcrumbs instead of guessing. | See Sentry MCP docs (`mcp.sentry.dev`) |
+| **postgres (read-only)** | MCP | Schema-aware queries so the agent understands your real tables/columns during data-layer work. **Configure a read-only role** — write access against a real DB is a foot-gun. | `claude mcp add postgres -- npx -y @modelcontextprotocol/server-postgres <read-only-conn-string>` |
 | **pr-review-toolkit** | Plugin | Specialized PR review agents (code-reviewer, test-analyzer, comment-analyzer, silent-failure-hunter). Complements MTK's review skills. | `/plugin install pr-review-toolkit` |
 | **visual-explainer** | Plugin | Generates HTML diagrams, architecture overviews, diff reviews, and plan reviews as standalone browser-viewable files. | `/plugin install visual-explainer` |
 
@@ -34,5 +36,5 @@ alwaysApply: false
 
 - **MCP server management:** list installed MCPs with `claude mcp list`; remove with `claude mcp remove <name>`.
 - **Plugin management:** list with `/plugin list`; remove with `/plugin remove <name>`.
-- **Security:** MCP servers run with your local permissions. Only install servers from sources you trust.
+- **Security:** MCP servers run with your local permissions. Only install servers from sources you trust. For servers that reach data or external systems (DB, Sentry, GitHub), prefer a **read-only role or a scoped token** — grant the narrowest access the workflow needs.
 - **Scope:** MCPs installed via `claude mcp add` are local to your machine. For team-wide MCPs, add a project-scoped `.mcp.json` and commit it.

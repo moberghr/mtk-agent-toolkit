@@ -319,4 +319,29 @@ for skill in .claude/skills/*/SKILL.md; do
   fi
 done
 
+# Advisory: least-privilege for agents (borrow — VoltAgent tool-matrix). Reviewer/
+# read-only agents must declare a toolset and must not grant mutating tools. Warn only.
+for agent in .claude/agents/*.md; do
+  [ -f "$agent" ] || continue
+  agent_name="$(basename "$agent" .md)"
+  fm="$(awk 'NR==1&&$0!="---"{exit} /^---[[:space:]]*$/{c++; if(c==2)exit; next} c==1{print}' "$agent")"
+  printf '%s\n' "$fm" | grep -qE '^(required-toolsets|allowed-tools):' \
+    || printf 'WARN: agent %s declares neither required-toolsets nor allowed-tools (least privilege)\n' "$agent_name"
+  allowed="$(printf '%s\n' "$fm" | awk -F: '/^allowed-tools:/{sub(/^[^:]*:[[:space:]]*/,"");print;exit}')"
+  if printf '%s' "$allowed" | grep -qE '\b(Edit|Write|MultiEdit|NotebookEdit)\b'; then
+    printf 'WARN: agent %s grants a mutating tool in allowed-tools — reviewers should be read-only\n' "$agent_name"
+  fi
+done
+
+# Advisory: frontmatter enum sanity on agents (borrow — schema-validated frontmatter).
+# Catch typo'd model/effort tiers early. Warn only, never fail.
+for agent in .claude/agents/*.md; do
+  [ -f "$agent" ] || continue
+  agent_name="$(basename "$agent" .md)"
+  model="$(awk -F: '/^model:/{gsub(/[[:space:]]/,"",$2);print $2;exit}' "$agent")"
+  effort="$(awk -F: '/^effort:/{gsub(/[[:space:]]/,"",$2);print $2;exit}' "$agent")"
+  case "${model:-}" in ''|opus|sonnet|haiku|inherit) : ;; *) printf 'WARN: agent %s has unexpected model tier "%s" (expected opus|sonnet|haiku|inherit)\n' "$agent_name" "$model" ;; esac
+  case "${effort:-}" in ''|low|medium|high|max) : ;; *) printf 'WARN: agent %s has unexpected effort "%s" (expected low|medium|high|max)\n' "$agent_name" "$effort" ;; esac
+done
+
 printf 'Toolkit validation passed.\n'

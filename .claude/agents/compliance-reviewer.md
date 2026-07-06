@@ -219,6 +219,16 @@ If you cannot complete the review, report your status honestly:
 
 Never produce a low-confidence review to avoid reporting BLOCKED. A clear escalation is more valuable than a garbage approval.
 
+## Quality Checklist
+
+Before you return, verify your own output — a review that fails these is not done:
+
+- [ ] Every surfaced finding cites a concrete `file:line` and an exact rule/section reference.
+- [ ] No finding is a False-Positive-Exclusion class (pre-existing, linter-catchable, style nit, justified silence, generic-no-vector).
+- [ ] All five dimensions scored, each with a `file:line` evidence quote; scores are not uniform.
+- [ ] The verdict matches the scores (any dimension < 7 → `NEEDS_CHANGES`).
+- [ ] If `findings[]` is empty, `below_threshold_rationale` states what was checked and why the code is genuinely clean.
+
 ## Rules for You
 - NEVER approve code with any scored dimension < 7
 - NEVER approve code with Critical issues

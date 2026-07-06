@@ -953,6 +953,12 @@ Three things: (1) `/mtk-setup` generates CLAUDE.md from your actual codebase, no
 </details>
 
 <details>
+<summary><b>How does this differ from other AI setup / config-generator tools?</b></summary>
+
+Most tools in this space stop at generation — they emit a CLAUDE.md, a rules pack, or an agent bundle and trust it. MTK's distinguishing move is **claim verification**: generated rules are tagged by provenance and checked against the codebase (`verify-claims.sh` flags fabricated file/symbol anchors, unclosed enumerations, and imprecise terminology), the commands it publishes are actually run before they're stamped verified, and setup is a re-runnable loop (`--refresh`/`--converge`/`--check`) rather than a one-shot dump. The output is a scaffold that keeps proving it's still true, not a static artifact that drifts.
+</details>
+
+<details>
 <summary><b>Can I use this alongside other Claude Code plugins?</b></summary>
 
 Yes. The toolkit's permissions and hooks merge with other plugins' settings. The `/mtk` and `/mtk-setup` commands use unique names to prevent conflicts.
