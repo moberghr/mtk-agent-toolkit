@@ -697,6 +697,31 @@ Add `tasks/todo.md` and `.claude.local.md` (personal, opt-in CLAUDE.md companion
 
 Create `.mtkignore` at the repo root if missing — same syntax as `.gitignore`, single source of truth for MTK scans (audit, repomap). Idempotent: never overwrite existing. Starter content: `graphify-out/`, `docs/translations/`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`. Committed so the team shares one set of exclusions.
 
+### .claudeignore (stack-aware)
+
+Create `.claudeignore` at the repo root if missing — same `.gitignore` syntax, read natively by Claude Code to keep dependency and build directories out of search/read results (a per-repo context saver, distinct from `.mtkignore`, which only MTK's own scans consume). Idempotent: never overwrite existing. Committed so the team shares one set of exclusions.
+
+The floor (all stacks) mirrors the built-in scan defaults in `hooks/lib/mtkignore.sh` — keep the two in sync. Append the stack-specific caches/outputs for the detected `.claude/tech-stack`:
+
+```bash
+if [ ! -f .claudeignore ]; then
+  {
+    # Floor — dependency/build dirs, all stacks. Keep in sync with the built-in
+    # defaults in hooks/lib/mtkignore.sh.
+    printf '%s\n' .git/ node_modules/ dist/ bin/ obj/ .venv/ venv/ __pycache__/
+    # Stack-specific caches/outputs the floor does not cover.
+    stack=""; [ -f .claude/tech-stack ] && stack="$(tr -d '[:space:]' < .claude/tech-stack)"
+    case "$stack" in
+      dotnet)     printf '%s\n' TestResults/ '*.user' ;;
+      python)     printf '%s\n' .pytest_cache/ .mypy_cache/ .ruff_cache/ '*.egg-info/' ;;
+      typescript) printf '%s\n' .next/ build/ coverage/ .turbo/ ;;
+    esac
+  } > .claudeignore
+fi
+```
+
+Report one line in STEP 5 (`generated` or `preserved (existing)`). Do NOT add `.claudeignore` to the `.gitignore` — it must be committed.
+
 ### Analyzer Configuration (opt-in)
 
 After distributing references, ask the engineer whether to configure recommended analyzers for the detected stack. This sets up Roslyn analyzers (.NET), ruff/mypy (Python), or biome/tsc-strict (TypeScript) so that build output feeds into the review pipeline with `source: "analyzer"` and `confidence: 100`.

@@ -56,6 +56,7 @@ user-invocable: true
 - **COMPONENTS** — version sync, skill counts, skill name/directory consistency, deprecated model detection
 - **HOOKS** — registered hooks exist and are executable, event names valid, all hooks use `set -euo pipefail`
 - **INTEGRITY** — manifest paths exist, gitignore coverage, analytics freshness, validate-toolkit passes
+- **CONTEXT** — always-on context baseline (CLAUDE.md + rules/INDEX.md + alwaysApply refs, in tokens/bytes), MCP schema count from `.mcp.json`, `ENABLE_TOOL_SEARCH` state (report-only, never WARN/FAIL)
 
 ## Verification
 
