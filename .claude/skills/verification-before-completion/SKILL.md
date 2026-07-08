@@ -47,6 +47,20 @@ git diff --no-color <approval-ref>..HEAD -- docs/specs/<date>-<slug>.json \
 
 A criterion the implementer rewrote to match what the code happens to do is not a verified criterion — it is a laundered one.
 
+### Approval-seal check (authoritative when a seal is recorded)
+
+When the workflow artifact carries an `approval_seal` (recorded by the implement Phase 2.5 gate over the approved spec/plan/todo bodies), run it **before** the criteria diff — it is a stronger, whole-artifact check the criteria-block diff cannot game:
+
+```bash
+scripts/workflow-artifact.sh verify-seal "$MTK_WF_UUID"
+```
+
+- **exit 0** → the approved bytes are intact; proceed.
+- **exit 1 (STALE)** → a sealed artifact (spec, plan, or todo) changed after approval. **Fail-closed:** do NOT accept the completion claim. The edit re-opens Phase 2.5 — the engineer re-approves and the gate re-seals (`workflow-artifact.sh seal`). Record the printed `sealed=`/`current=` hashes and the named changed file in the block finding.
+- **exit 3 (no seal)** → older workflow with no seal recorded; fall back to the criteria-block tamper check above.
+
+The seal supersedes the git-diff tamper check because it binds the exact approved bytes of all three artifacts, not just the criteria block — a laundered criterion, a quietly-edited plan, or a silently-moved todo item all break the hash.
+
 ## When To Use
 
 - Before reporting a batch as complete
@@ -179,6 +193,10 @@ When the work being verified came from a prior agent — a builder subagent, a r
 - Success criteria are frozen at approval. Run the tamper check before any
   completion claim; a changed `observable`/`evidence_channel`/`id` is fail-closed
   and re-opens Phase 2.5. Never verify against a goalpost the run moved.
+- When the workflow carries an `approval_seal`, `verify-seal` is the authoritative
+  pre-completion check. A STALE seal (exit 1) is fail-closed — the approved
+  spec/plan/todo bytes changed after approval; re-open Phase 2.5 and re-seal
+  before any completion claim. Never complete against a stale seal.
 - State completion as the `criterion | verdict | evidence` table. A prose
   "all good" without the table is not a completion claim.
 - When re-verification keeps failing the same criterion, do not loop forever:
@@ -202,6 +220,7 @@ See `.claude/skills/context-engineering/SKILL.md` — the shared MTK rationaliza
 - Verifying at the batch level instead of criterion-by-criterion
 - Using `test-run` or `build-output` alone for a behavior-shaped change (missing real execution surface)
 - A `success_criteria` `observable` was edited mid-run to match the code (goalpost moved — tamper check skipped)
+- Completion claimed while the workflow's `approval_seal` is STALE (approved spec/plan/todo edited after approval, gate not re-opened)
 - Completion stated as prose instead of the `criterion | verdict | evidence` table
 
 ## Signal-Based Enforcement
@@ -243,4 +262,5 @@ Forcing past a stuck state produces garbage output. Admitting difficulty is alwa
 - [ ] For a `browser` criterion, the `docs/specs/<slug>.evidence/<criterion-id>/` evidence directory path is cited alongside the criterion in the completion table (or an explicit no-MCP fallback note; see `.claude/references/evidence-capture.md`)
 - [ ] If verifying upstream agent work, every factual claim was extracted and reconciled (`VERIFIED`, `CONTRADICTED`, or `UNVERIFIABLE`) — none left `UNVERIFIED`
 - [ ] Frozen-criteria tamper check ran (no `success_criteria` `id`/`observable`/`evidence_channel` changed since Phase 2.5 approval)
+- [ ] When an `approval_seal` exists, `verify-seal` returned exit 0 (not STALE) before the completion claim
 - [ ] Completion stated as the `criterion | verdict | evidence` table, every verdict binary

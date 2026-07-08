@@ -18,6 +18,11 @@ set -euo pipefail
 #   remediation <uuid> <trigger> [--score N]  Record a remediation attempt; prints
 #                                    ESCALATE when iterations >= MTK_MAX_REMEDIATION_ITERS
 #                                    (default 3) or the score plateaus, else CONTINUE
+#   seal <uuid> <path>...            Record a SHA-256 approval seal over the given
+#                                    artifact bodies (spec/plan/todo) at approval time
+#   verify-seal <uuid>               Re-check the recorded seal; exit 0 match,
+#                                    1 stale (prints sealed=/current=), 2 uncheckable
+#                                    (unexpected error), 3 no seal
 #   abandon <uuid> [--reason "<text>"]  Mark workflow abandoned
 #
 # Storage: .mtk/workflows/{uuid}.json + .mtk/workflows/{uuid}.events.jsonl
@@ -370,8 +375,134 @@ PY
   printf '%s\n' "$decision"
 }
 
+# Approval seal — bind the approved artifact bodies (spec/plan/todo) to a
+# combined SHA-256 recorded on the workflow at Phase 2.5 approval time. The
+# hash is derived from disk by this script, so the seal cannot be forged for a
+# different body. `verify-seal` re-derives and compares (hashgate: "approve a
+# state, not an intention").
+cmd_seal() {
+  local uuid="${1:-}"
+  shift || true
+  [ -n "$uuid" ] || fail "seal requires <uuid>"
+  [ -f "${WF_DIR}/${uuid}.json" ] || fail "no artifact for $uuid"
+
+  # With no explicit paths, derive the sealed set from the artifact's own
+  # recorded canonical paths (results.spec_path/plan_path/todo_path) so the seal
+  # binds what the workflow actually approved rather than a re-typed list.
+  if [ $# -eq 0 ]; then
+    local derived
+    derived="$(python3 - "${WF_DIR}/${uuid}.json" <<'PY'
+import json, sys
+r = json.load(open(sys.argv[1])).get("results", {})
+for k in ("spec_path", "plan_path", "todo_path"):
+    v = r.get(k)
+    if v:
+        print(v)
+PY
+)"
+    if [ -n "$derived" ]; then
+      local _oldifs="$IFS"; IFS='
+'; set -- $derived; IFS="$_oldifs"
+    fi
+  fi
+  [ $# -gt 0 ] || fail "seal requires <path>... or recorded results.spec_path/plan_path/todo_path on the artifact"
+
+  local hash
+  hash="$(python3 - "${WF_DIR}/${uuid}.json" "$ROOT_DIR" "$(iso_now)" "$@" <<'PY'
+import json, sys, os, hashlib
+artifact, root, now = sys.argv[1], sys.argv[2], sys.argv[3]
+paths = sorted(set(sys.argv[4:]))
+combined = hashlib.sha256()
+files = []
+for p in paths:
+    fp = os.path.join(root, p)
+    if not os.path.isfile(fp):
+        print(f"workflow-artifact: seal target not found: {p}", file=sys.stderr)
+        sys.exit(1)
+    with open(fp, "rb") as fh:
+        body = fh.read()
+    files.append({"path": p, "sha256": hashlib.sha256(body).hexdigest()})
+    combined.update(p.encode("utf-8")); combined.update(b"\0")
+    combined.update(body); combined.update(b"\0")
+digest = combined.hexdigest()
+with open(artifact) as f:
+    doc = json.load(f)
+doc.setdefault("results", {})["approval_seal"] = {
+    "hash": digest, "algo": "sha256", "files": files, "sealed_at": now
+}
+doc["updated_at"] = now
+with open(artifact, "w") as f:
+    json.dump(doc, f, indent=2)
+print(digest)
+PY
+)"
+  cmd_event "$uuid" "approval_sealed" --data "{\"hash\":\"${hash}\",\"file_count\":$#}" >/dev/null
+  printf '%s\n' "$hash"
+}
+
+cmd_verify_seal() {
+  local uuid="${1:-}"
+  [ -n "$uuid" ] || fail "verify-seal requires <uuid>"
+  [ -f "${WF_DIR}/${uuid}.json" ] || fail "no artifact for $uuid"
+
+  # exit 0 = match, 1 = stale, 2 = uncheckable (unexpected error — corrupt/
+  # malformed artifact), 3 = no seal recorded. Guarded so set -e does not abort
+  # before we can propagate the code to callers (hook / verify-completion). The
+  # distinct code 2 stops a crash from masquerading as STALE (python's default
+  # exit-1-on-unhandled-exception would otherwise look like a real mismatch).
+  local rc=0
+  python3 - "${WF_DIR}/${uuid}.json" "$ROOT_DIR" <<'PY' || rc=$?
+import json, sys, os, hashlib, traceback
+def run():
+    artifact, root = sys.argv[1], sys.argv[2]
+    with open(artifact) as f:
+        doc = json.load(f)
+    seal = doc.get("results", {}).get("approval_seal")
+    if not seal:
+        print("verify-seal: no approval seal recorded", file=sys.stderr)
+        sys.exit(3)
+    combined = hashlib.sha256()
+    changed = []
+    for entry in sorted(seal.get("files", []), key=lambda e: e.get("path", "")):
+        p = entry.get("path")
+        if not p:
+            continue
+        old = entry.get("sha256", "")
+        fp = os.path.join(root, p)
+        if not os.path.isfile(fp):
+            changed.append(p + " (missing)")
+            combined.update(p.encode("utf-8")); combined.update(b"\0"); combined.update(b"\0")
+            continue
+        with open(fp, "rb") as fh:
+            body = fh.read()
+        if hashlib.sha256(body).hexdigest() != old:
+            changed.append(p)
+        combined.update(p.encode("utf-8")); combined.update(b"\0")
+        combined.update(body); combined.update(b"\0")
+    current = combined.hexdigest()
+    sealed = seal.get("hash", "")
+    if current == sealed and not changed:
+        print("verify-seal: OK (%d file(s) match seal)" % len(seal.get("files", [])))
+        sys.exit(0)
+    print("verify-seal: STALE — approval no longer matches the approved bytes")
+    print("  sealed=%s" % sealed)
+    print("  current=%s" % current)
+    print("  changed=%s" % (", ".join(changed) if changed else "(combined mismatch)"))
+    sys.exit(1)
+try:
+    run()
+except SystemExit:
+    raise
+except Exception:
+    traceback.print_exc()
+    print("verify-seal: uncheckable — unexpected error reading the seal/artifact", file=sys.stderr)
+    sys.exit(2)
+PY
+  return $rc
+}
+
 usage() {
-  sed -n '4,21p' "$0"
+  sed -n '4,26p' "$0"
 }
 
 main() {
@@ -384,6 +515,8 @@ main() {
     read)     cmd_read "$@" ;;
     list)     cmd_list ;;
     gate)     cmd_gate "$@" ;;
+    seal)     cmd_seal "$@" ;;
+    verify-seal) cmd_verify_seal "$@" ;;
     criteria) cmd_criteria "$@" ;;
     remediation) cmd_remediation "$@" ;;
     abandon)  cmd_abandon "$@" ;;

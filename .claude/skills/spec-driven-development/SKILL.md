@@ -185,6 +185,8 @@ digraph spec_flow {
 9.5. **EARS + ANT lint.** Run `bash scripts/lint-ears.sh docs/specs/<file>.md` on the just-persisted spec. Zero violations required before handing to the approval gate. If the script is absent (older repos), at minimum eyeball the Requirements section against the rules in `## Requirements Format (EARS)`.
 10. Always stop for approval before implementation. When invoked from the implement workflow, this means handing control back to Phase 2.5 approval gate (which uses `AskUserQuestion`). Do not silently continue to implementation.
 
+**Approval is sealed, not asserted.** On approval, the implement gate records a SHA-256 **approval seal** over the approved spec/plan/todo bodies (`scripts/workflow-artifact.sh seal`). Because the seal binds the exact approved bytes, editing an approved spec afterward invalidates the approval deterministically — `verification-before-completion` re-checks it with `verify-seal` (refusing completion on a STALE seal) and the `spec-approval-trigger.sh` hook re-queues the gate, rather than trusting a stale `status: approved` marker. This is why moving a success-criterion goalpost post-approval requires re-opening Phase 2.5: the seal will not match.
+
 ## Requirements Format (EARS)
 
 Every requirement-bearing bullet in the spec's `## Requirements` section uses **EARS** (Easy Approach to Requirements Syntax). EARS makes requirements testable by forcing a predicate-with-trigger shape; flowery prose has nowhere to hide.

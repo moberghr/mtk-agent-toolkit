@@ -179,7 +179,10 @@ Until the engineer answers: read-only Bash only, no Edit/Write on source code, n
 
 On approval, record the gate decision on the workflow artifact:
 `scripts/workflow-artifact.sh gate "$MTK_WF_UUID" plan_trust_gate pass --reason "<approve mode>"`
-On `Revise` or `Edit first`, leave the gate `pending` and emit a `field_updated` event. See `.claude/references/orchestration-gates.md` for full gate semantics.
+
+Then **seal the approved artifacts** — bind the exact bytes the engineer just approved so a later edit cannot silently keep the approval:
+`scripts/workflow-artifact.sh seal "$MTK_WF_UUID"`
+With no explicit paths, `seal` binds the artifact's own recorded `results.spec_path` / `plan_path` / `todo_path` (set in Phases 1–2) — the exact approved set, not a re-typed list. (Explicit **repo-relative** paths may still be passed; the stale-seal hook matches sealed files by repo-relative path.) The seal is created **only** here, on the engineer's approval answer — never earlier by the agent editing state — and is derived from disk by the script, so it cannot be presented for a body other than the one on disk. `verification-before-completion` (Phase 4) re-checks it with `verify-seal` and refuses completion on a STALE seal, and `spec-approval-trigger.sh` re-queues this gate on any post-approval edit to a sealed artifact. On `Revise` or `Edit first`, leave the gate `pending`, do not seal, and emit a `field_updated` event. See `.claude/references/orchestration-gates.md` for full gate semantics.
 
 Note: this gate controls when *Claude* asks. Harness tool-permission prompts (file-write/Bash approvals) are a separate layer — autonomous mode does not bypass them.
 
