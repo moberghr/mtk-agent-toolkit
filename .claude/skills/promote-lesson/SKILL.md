@@ -47,6 +47,16 @@ Personal lessons in `.claude/lessons/personal.md` are gitignored — they belong
      ```
    - **Markdown fallback.** Append the reworded entry to `tasks/lessons.md` at the bottom (newest last). Keep the structure: `## [Date] — [Title]`, `**Correction:**`, `**Rule:**`, `**Why:**`, `**Applies to:**`. Add a `**Promoted from personal:**` note with the original date so provenance is auditable.
 
+5b. **Optional: attach an executable contract (v7.25).** Promotion is the natural point to make a lesson *checkable* rather than advisory. When the lesson has a verifiable outcome, add the contract fields so a future session can confirm it, not just read it:
+   ```bash
+   bash scripts/learnings.sh add --scope team --source promotion ... \
+     --confidence high \
+     --output-contract '{"required_files":[...],"json_fields":[...]}' \
+     --prefinal-checklist '[{"check_id":"...","description":"...","verification_method":"...","blocking":true}]' \
+     --source-evidence-refs "ref1,ref2"
+   ```
+   Reserve `--confidence high` for a lesson whose golden path was **actually verified** — an unverified guess stays `low`/`medium`. `mtk-doctor` lints contract well-formedness. Contracts are optional; a prose lesson is still a valid lesson. See `.claude/references/learnings-schema.md` → *Executable lesson contract*.
+
 6. **Remove from personal file.** Delete the promoted entry from `.claude/lessons/personal.md`. Do not leave a duplicate — the team file is now authoritative for that rule.
 
 7. **Suggest CLAUDE.md promotion.** If the lesson is foundational (architectural rule, security constraint, repeated correction), tell the engineer this might belong in `CLAUDE.md` or `.claude/rules/` rather than `tasks/lessons.md`. CLAUDE.md is for permanent standards; lessons.md is for accumulated patterns.

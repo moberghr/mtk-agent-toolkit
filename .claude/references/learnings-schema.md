@@ -53,7 +53,14 @@ Manual edits to `tasks/lessons.md` are preserved on next migrate (re-emitted as 
     "Tried append-only path but missed the Auto-generated section boundary."
   ],
   "time_cost": 12,
-  "evolution_actions": "hook"
+  "evolution_actions": "hook",
+
+  "confidence": "high",
+  "output_contract": { "required_files": ["planning_note.md", "summary.json"], "json_fields": ["title", "status"] },
+  "prefinal_verification_checklist": [
+    { "check_id": "required_files_exist", "description": "Both files exist before finishing.", "verification_method": "file_exists", "blocking": true }
+  ],
+  "source_evidence_refs": ["evidence:trace-step-002"]
 }
 ```
 
@@ -91,6 +98,15 @@ Manual edits to `tasks/lessons.md` are preserved on next migrate (re-emitted as 
 - **`wrong_turns`** *(optional array of strings)* — dead ends tried during the session, each with a one-line explanation of why it was wrong. Back-compat: absent in pre-v7.14 entries. `learnings.sh add` accepts the field as pass-through; no parser change needed.
 - **`time_cost`** *(optional integer, minutes)* — rough minutes lost due to the absence of this rule. Used by lesson-mining to satisfy admit rule A4. Null when not measurable.
 - **`evolution_actions`** *(optional string, one of: `routing` | `claude_md` | `reference` | `hook` | `none`)* — which toolkit asset was updated as a result of this lesson. Forced decision at promote time: `none` is allowed but must be accompanied by a stated reason. Absent in pre-v7.14 entries (treated as `none`).
+
+### Executable lesson contract (optional, v7.25)
+
+These four OPTIONAL fields turn a prose lesson into a *checkable* one — a lesson that carries the shape of a correct outcome and the checks that confirm it, rather than only advice. All are absent by default; a lesson that omits them is fully valid and renders exactly as before. (Borrow: Forsy-AI/agent-apprenticeship `runtime_training` schema.) Deep well-formedness is linted by `mtk-doctor`; `learnings.sh add` stays JSON-parser-free (S3.3) and only guards the outer shape.
+
+- **`confidence`** *(optional string, one of: `low` | `medium` | `high`)* — how trustworthy the contract is. Set at promote time; promotion to a team/authoritative asset should require the path was actually verified (`high`).
+- **`output_contract`** *(optional object)* — the shape of a correct result, e.g. `{ "required_files": [...], "json_fields": [...] }`. Caller-authored JSON; `learnings.sh add --output-contract '{...}'` guards that it is a `{...}` object.
+- **`prefinal_verification_checklist`** *(optional array of objects)* — blocking/advisory checks to run before declaring the lesson's task done. Each entry: `{ check_id, description, verification_method, blocking }`. `learnings.sh add --prefinal-checklist '[...]'` guards that it is a `[...]` array; `mtk-doctor` verifies each entry carries the required keys.
+- **`source_evidence_refs`** *(optional array of strings)* — provenance for the lesson's claims (trace steps, artifacts, review records) — ties a lesson to the evidence that produced it. Set via `--source-evidence-refs "ref1,ref2"`.
 
 ## 5-Layer Retrieval Filter
 

@@ -305,6 +305,73 @@ else
 fi
 
 # ──────────────────────────────────────────────
+# LESSONS
+# ──────────────────────────────────────────────
+# Executable lesson-contract well-formedness (v7.25). Optional feature — a lesson
+# with no contract fields is fine, and malformed contracts are WARN (never FAIL),
+# so the check never blocks a repo that doesn't use contracts. See
+# .claude/references/learnings-schema.md → Executable lesson contract.
+LEARN_FILE=".mtk/learnings.jsonl"
+if [ -f "$LEARN_FILE" ] && command -v python3 >/dev/null 2>&1; then
+  LINT_OUT="$(python3 - "$LEARN_FILE" <<'PY'
+import json, sys
+checked = 0
+issues = []
+with open(sys.argv[1]) as f:
+    for n, line in enumerate(f, 1):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            e = json.loads(line)
+        except Exception:
+            issues.append("line %d: unparseable JSON in learnings store (corrupt entry)" % n)
+            continue
+        if not any(k in e for k in ("confidence", "output_contract",
+                                    "prefinal_verification_checklist", "source_evidence_refs")):
+            continue
+        checked += 1
+        lid = e.get("id", "line%d" % n)
+        c = e.get("confidence")
+        if c is not None and c not in ("low", "medium", "high"):
+            issues.append("%s: confidence '%s' not in low|medium|high" % (lid, c))
+        if "output_contract" in e and not isinstance(e["output_contract"], dict):
+            issues.append("%s: output_contract is not an object" % lid)
+        cl = e.get("prefinal_verification_checklist")
+        if cl is not None:
+            if not isinstance(cl, list):
+                issues.append("%s: prefinal_verification_checklist is not an array" % lid)
+            else:
+                for i, item in enumerate(cl):
+                    if not isinstance(item, dict) or "check_id" not in item:
+                        issues.append("%s: checklist[%d] missing check_id" % (lid, i))
+                    elif "blocking" in item and not isinstance(item["blocking"], bool):
+                        issues.append("%s: checklist[%d].blocking must be true/false" % (lid, i))
+        if "source_evidence_refs" in e and not isinstance(e["source_evidence_refs"], list):
+            issues.append("%s: source_evidence_refs is not an array" % lid)
+print(checked)
+for it in issues:
+    print("ISSUE " + it)
+PY
+)"
+  CONTRACT_COUNT="$(printf '%s\n' "$LINT_OUT" | sed -n '1p')"
+  MALFORMED="$(printf '%s\n' "$LINT_OUT" | grep -c '^ISSUE ' || true)"
+  if [ "${MALFORMED:-0}" != "0" ]; then
+    # Surface every issue (malformed contract field OR unparseable store line),
+    # even when there are zero valid contracts — a corrupt store must not read green.
+    while IFS= read -r il; do
+      case "$il" in "ISSUE "*) record WARN lessons "lesson store issue" "${il#ISSUE }" ;; esac
+    done < <(printf '%s\n' "$LINT_OUT")
+  elif [ "${CONTRACT_COUNT:-0}" = "0" ]; then
+    record PASS lessons "no executable lesson contracts to lint"
+  else
+    record PASS lessons "lesson contracts well-formed" "${CONTRACT_COUNT} contract(s)"
+  fi
+else
+  record PASS lessons "no local learnings store" ".mtk/learnings.jsonl absent — nothing to lint"
+fi
+
+# ──────────────────────────────────────────────
 # CONTEXT
 # ──────────────────────────────────────────────
 # Always-on context cost: what loads into every session before the first prompt

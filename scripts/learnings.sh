@@ -84,6 +84,36 @@ expires_at_default() {
   fi
 }
 
+# Validate a JSON value and compact it to a single line so a multi-line or
+# malformed contract value can never corrupt the JSONL store. Uses python3
+# (baseline, S3.3) when present; degrades to an outer-shape glob that also
+# rejects embedded newlines when python3 is absent. Returns non-zero on invalid
+# input or wrong top-level type ($2 = object|array).
+_contract_json() {
+  local raw="$1" kind="$2"
+  if command -v python3 >/dev/null 2>&1; then
+    printf '%s' "$raw" | python3 -c '
+import json, sys
+kind = sys.argv[1]
+try:
+    v = json.load(sys.stdin)
+except Exception:
+    sys.exit(3)
+if kind == "object" and not isinstance(v, dict): sys.exit(4)
+if kind == "array" and not isinstance(v, list): sys.exit(4)
+sys.stdout.write(json.dumps(v, separators=(",", ":")))
+' "$kind" || return 1
+  else
+    case "$raw" in *"
+"*) return 1 ;; esac  # reject embedded newlines in the no-python3 fallback
+    if [ "$kind" = "object" ]; then
+      case "$raw" in "{"*"}") printf '%s' "$raw" ;; *) return 1 ;; esac
+    else
+      case "$raw" in "["*"]") printf '%s' "$raw" ;; *) return 1 ;; esac
+    fi
+  fi
+}
+
 cmd_add() {
   ensure_store
   local spec_id="" workflow_uuid="manual" scope="personal" source_kind="correction"
@@ -92,6 +122,8 @@ cmd_add() {
   local decision_origin=""
   local wrong_turns_csv="" time_cost="" evolution_actions=""
   local memory_type="" supersedes=""
+  # v7.25 optional executable lesson-contract fields (all optional, back-compat)
+  local output_contract="" prefinal_checklist="" confidence="" source_evidence_refs_csv=""
   local dry_run=0
 
   while [ $# -gt 0 ]; do
@@ -116,6 +148,11 @@ cmd_add() {
       # content-type tag + conflict-superseding (pass-through; query derives supersession)
       --memory-type) memory_type="$2"; shift 2 ;;
       --supersedes) supersedes="$2"; shift 2 ;;
+      # v7.25 executable lesson-contract (pass-through; validated by mtk-doctor lint)
+      --output-contract) output_contract="$2"; shift 2 ;;
+      --prefinal-checklist) prefinal_checklist="$2"; shift 2 ;;
+      --confidence) confidence="$2"; shift 2 ;;
+      --source-evidence-refs) source_evidence_refs_csv="$2"; shift 2 ;;
       --dry-run) dry_run=1; shift ;;
       *) printf 'unknown flag: %s\n' "$1" >&2; exit 2 ;;
     esac
@@ -177,6 +214,30 @@ cmd_add() {
   fi
   if [ -n "$supersedes" ]; then
     extra="${extra},\"supersedes\":\"$(json_escape "$supersedes")\""
+  fi
+
+  # v7.25 executable lesson-contract fields. output_contract / prefinal_checklist
+  # are caller-authored JSON (the golden-path-capture / promote-lesson skills build
+  # them); embedded verbatim with a light brace/bracket guard. mtk-doctor runs the
+  # deep well-formedness lint. Keeps learnings.sh JSON-parser-free (S3.3).
+  if [ -n "$confidence" ]; then
+    case "$confidence" in
+      low|medium|high) extra="${extra},\"confidence\":\"${confidence}\"" ;;
+      *) printf 'add: invalid --confidence "%s" (one of: low | medium | high)\n' "$confidence" >&2; exit 2 ;;
+    esac
+  fi
+  if [ -n "$output_contract" ]; then
+    local oc_json
+    oc_json="$(_contract_json "$output_contract" object)" || { printf 'add: --output-contract must be a valid JSON object ({...}), single logical value\n' >&2; exit 2; }
+    extra="${extra},\"output_contract\":${oc_json}"
+  fi
+  if [ -n "$prefinal_checklist" ]; then
+    local pc_json
+    pc_json="$(_contract_json "$prefinal_checklist" array)" || { printf 'add: --prefinal-checklist must be a valid JSON array ([...]), single logical value\n' >&2; exit 2; }
+    extra="${extra},\"prefinal_verification_checklist\":${pc_json}"
+  fi
+  if [ -n "$source_evidence_refs_csv" ]; then
+    extra="${extra},\"source_evidence_refs\":$(csv_to_json_array "$source_evidence_refs_csv")"
   fi
 
   local entry
@@ -340,6 +401,16 @@ cmd_regen_markdown() {
         printf -- '- **%s** [%s, phase=%s] %s\n' "$id" "$sev" "$ph" "$title"
         [ -n "$files" ] && printf -- '  - *Files:* `%s`\n' "$files"
         [ -n "$rule" ] && printf -- '  - *Rule:* %s\n' "$rule"
+        # v7.25 executable contract (rendered only when present — prose lessons unchanged)
+        local conf evrefs parts
+        conf="$(jl_field "$line" confidence)"
+        evrefs="$(jl_array_csv "$line" source_evidence_refs)"
+        parts=""
+        [ -n "$conf" ] && parts="confidence=$conf"
+        case "$line" in *'"output_contract"'*) parts="${parts:+$parts, }output_contract" ;; esac
+        case "$line" in *'"prefinal_verification_checklist"'*) parts="${parts:+$parts, }prefinal_checklist" ;; esac
+        [ -n "$parts" ] && printf -- '  - *Contract:* %s\n' "$parts"
+        [ -n "$evrefs" ] && printf -- '  - *Evidence:* `%s`\n' "$evrefs"
       done < "$LEARNINGS_PATH"
     else
       printf '_(no entries yet)_\n'
