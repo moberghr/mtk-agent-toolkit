@@ -1,6 +1,6 @@
 {
-  "version": "7.24.0",
-  "updated": "2026-07-06",
+  "version": "7.25.0",
+  "updated": "2026-07-07",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -485,6 +485,18 @@
       "target": "tests/pressure-tests/claude-md-audit-pressure.md",
       "action": "sync",
       "description": "Adversarial pressure test for claude-md-audit (stale commands, anti-sandbagging, refuse-rewrite, partial-approval)"
+    },
+    "tests/pressure-tests/approval-seal.md": {
+      "source": "tests/pressure-tests/approval-seal.md",
+      "target": "tests/pressure-tests/approval-seal.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for the approval seal (edit-after-approval → stale, advisory re-queue, blocking on completion, no-seal back-compat)"
+    },
+    "tests/pressure-tests/lesson-contract.md": {
+      "source": "tests/pressure-tests/lesson-contract.md",
+      "target": "tests/pressure-tests/lesson-contract.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for executable lesson contracts (malformed checklist/confidence → WARN, prose lessons stay quiet)"
     },
     "skills/claude-md-capture/SKILL.md": {
       "source": ".claude/skills/claude-md-capture/SKILL.md",

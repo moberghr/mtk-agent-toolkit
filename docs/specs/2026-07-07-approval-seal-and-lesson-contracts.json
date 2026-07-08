@@ -1,0 +1,70 @@
+{
+  "slug": "approval-seal-and-lesson-contracts",
+  "date": "2026-07-07",
+  "scope": "new-feature",
+  "change_manifest": [
+    { "path": "scripts/workflow-artifact.sh", "action": "modify", "purpose": "add seal + verify-seal subcommands" },
+    { "path": ".claude/skills/implement/SKILL.md", "action": "modify", "purpose": "Phase 2.5 calls seal on human approval" },
+    { "path": ".claude/skills/spec-driven-development/SKILL.md", "action": "modify", "purpose": "document the approval seal" },
+    { "path": "hooks/spec-approval-trigger.sh", "action": "modify", "purpose": "stale-seal detection + broadened path match; advisory re-queue" },
+    { "path": ".claude/skills/verification-before-completion/SKILL.md", "action": "modify", "purpose": "blocking seal-check before completion claim" },
+    { "path": "tests/pressure-tests/approval-seal.md", "action": "create", "purpose": "adversarial scenarios SC1-SC4" },
+    { "path": ".claude/references/learnings-schema.md", "action": "modify", "purpose": "four optional lesson contract fields" },
+    { "path": "scripts/learnings.sh", "action": "modify", "purpose": "accept/store/render contract fields" },
+    { "path": ".claude/skills/golden-path-capture/SKILL.md", "action": "modify", "purpose": "document optional contract" },
+    { "path": ".claude/skills/promote-lesson/SKILL.md", "action": "modify", "purpose": "document contract at promotion" },
+    { "path": "scripts/mtk-doctor.sh", "action": "modify", "purpose": "lesson-contract well-formedness lint" },
+    { "path": "tests/pressure-tests/lesson-contract.md", "action": "create", "purpose": "adversarial scenarios SC5-SC6" },
+    { "path": ".claude/manifest.json", "action": "modify", "purpose": "register new pressure tests; version 7.25.0" },
+    { "path": ".claude-plugin/plugin.json", "action": "modify", "purpose": "version 7.25.0" },
+    { "path": ".claude-plugin/marketplace.json", "action": "modify", "purpose": "version 7.25.0" },
+    { "path": "CHANGELOG.md", "action": "modify", "purpose": "7.25.0 entry" },
+    { "path": "scripts/validate-toolkit.sh", "action": "modify", "purpose": "register new structural constraints if needed (S3.10)" },
+    { "path": "checksums.sha256", "action": "modify", "purpose": "regenerate LAST (S4.11)" }
+  ],
+  "public_contracts": [
+    { "kind": "cli-flag", "signature": "workflow-artifact.sh seal <uuid> <path...>", "change": "new" },
+    { "kind": "cli-flag", "signature": "workflow-artifact.sh verify-seal <uuid>", "change": "new" },
+    { "kind": "cli-flag", "signature": "learnings.sh add --output-contract --prefinal-checklist --confidence --source-evidence-refs", "change": "new" },
+    { "kind": "cli-flag", "signature": "mtk-doctor.sh lesson-contract check", "change": "new" }
+  ],
+  "success_criteria": [
+    { "id": "SC1", "description": "seal records combined SHA-256 + file list; verify-seal round-trips", "verification": "tests/pressure-tests/approval-seal.md", "evidence_channel": "script-output", "observable": "verify-seal exits 0 immediately after seal" },
+    { "id": "SC2", "description": "editing a sealed artifact makes verify-seal report a mismatch with both hashes", "verification": "tests/pressure-tests/approval-seal.md", "evidence_channel": "script-output", "observable": "verify-seal exits non-zero and prints sealed=<h1> current=<h2> after an edit" },
+    { "id": "SC3", "description": "spec-approval-trigger.sh advisory re-queue on stale-sealed edit (exit 0)", "verification": "tests/pressure-tests/approval-seal.md", "evidence_channel": "script-output", "observable": "hook exits 0 and queues planning-and-task-breakdown naming the stale seal" },
+    { "id": "SC4", "description": "verification-before-completion refuses done while seal stale", "verification": "tests/pressure-tests/approval-seal.md", "evidence_channel": "script-output", "observable": "block step present; scenario shows completion refused until re-seal" },
+    { "id": "SC5", "description": "well-formed lesson contract passes mtk-doctor; malformed reported", "verification": "bash scripts/mtk-doctor.sh", "evidence_channel": "cli-stdout", "observable": "PASS for well-formed, WARN naming the malformed check_id/field" },
+    { "id": "SC6", "description": "existing prose lessons validate and render unchanged", "verification": "bash scripts/learnings.sh regen-markdown + mtk-doctor", "evidence_channel": "cli-stdout", "observable": "zero new warnings on current tasks/lessons.md" },
+    { "id": "SC7", "description": "validate-toolkit passes with new files registered", "verification": "bash scripts/validate-toolkit.sh", "evidence_channel": "script-output", "observable": "prints Toolkit validation passed" }
+  ],
+  "test_manifest": [
+    { "path": "tests/pressure-tests/approval-seal.md", "covers": ["SC1", "SC2", "SC3", "SC4"] },
+    { "path": "tests/pressure-tests/lesson-contract.md", "covers": ["SC5", "SC6"] },
+    { "path": "scripts/validate-toolkit.sh", "covers": ["SC7"] }
+  ],
+  "out_of_scope": [
+    "Blocking PreToolUse seal gate (full hashgate fail-closed edit blocking)",
+    "Human-types-the-hash approval UX",
+    "scripts/lesson-verify.sh checklist runner",
+    "Wiring lesson checklist into verification-before-completion as a hard gate",
+    "Changes on the docs/readme-landing-refresh branch (implementation branches off main)"
+  ],
+  "security_impact": "requires-audit-trail",
+  "baseline_area": "toolkit-workflow",
+  "delta": {
+    "adds": ["workflow-artifact.sh seal/verify-seal", "learnings contract fields", "mtk-doctor lesson-contract lint", "2 pressure tests"],
+    "modifies": ["spec-approval-trigger.sh", "verification-before-completion", "implement Phase 2.5", "learnings.sh", "golden-path-capture", "promote-lesson"],
+    "removes": []
+  },
+  "assumptions": [
+    "[ASSUMED] Enforcement = Hybrid (advisory + evidence-gate blocking) — unanswered at ambiguity gate; recommended default",
+    "[ASSUMED] Binding = WF artifact over spec+plan+todo bodies — unanswered; recommended default",
+    "[ASSUMED] Lesson depth = schema + doctor lint only (no runner) — unanswered; recommended default; keeps scope minimal",
+    "[VERIFIED:scripts/workflow-artifact.sh] seal/verify-seal absent today",
+    "[VERIFIED:scripts/learnings.sh] contract flags absent today"
+  ],
+  "risks": [
+    "Broadening spec-approval-trigger.sh to plans/todo could raise advisory frequency — mitigated by firing only under an active seal",
+    "dirty-worktree: current branch docs/readme-landing-refresh; must branch off main (S4.1/S4.2) before Phase 3"
+  ]
+}
