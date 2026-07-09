@@ -32,13 +32,60 @@ FILE_PATH="$(mtk_extract_file_path "$INPUT" 2>/dev/null || echo "")"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 REL_PATH="${FILE_PATH#"$REPO_ROOT"/}"
 
-# Only fire for docs/specs/*.md
+# Fire for approved artifacts: specs, plans, and the todo.
 case "$REL_PATH" in
-  docs/specs/*.md) ;;
+  docs/specs/*.md|docs/plans/*.md|tasks/todo.md) ;;
   *) exit 0 ;;
 esac
 
 [ -f "$FILE_PATH" ] || exit 0
+
+# --- Stale approval-seal detection (any sealed spec/plan/todo) ---
+# If an ACTIVE workflow sealed this file at approval and the bytes no longer
+# match, the earlier approval is stale — re-queue the approval step. Advisory
+# (exit 0). See scripts/workflow-artifact.sh seal/verify-seal.
+WF_DIR="${REPO_ROOT}/.mtk/workflows"
+if [ -d "$WF_DIR" ] && command -v python3 >/dev/null 2>&1; then
+  sealed_uuids="$(python3 - "$WF_DIR" "$REL_PATH" <<'PY'
+import json, sys, glob, os
+wf_dir, rel = sys.argv[1], sys.argv[2]
+for jf in glob.glob(os.path.join(wf_dir, "*.json")):
+    try:
+        with open(jf) as f: doc = json.load(f)
+    except Exception:
+        continue
+    if doc.get("status") != "active":
+        continue
+    seal = doc.get("results", {}).get("approval_seal")
+    if not seal:
+        continue
+    if any(e.get("path") == rel for e in seal.get("files", [])):
+        print(doc.get("workflow_uuid", os.path.basename(jf)[:-5]))
+PY
+)"
+  if [ -n "$sealed_uuids" ]; then
+    for u in $sealed_uuids; do
+      rc=0
+      ( cd "$REPO_ROOT" && bash "${SCRIPT_DIR}/../scripts/workflow-artifact.sh" verify-seal "$u" ) >/dev/null 2>&1 || rc=$?
+      # rc 1=stale (re-queue). 0=match, 2=uncheckable, 3=no-seal are all ignored —
+      # only a real mismatch fires the advisory, never a crash or a missing seal.
+      if [ "$rc" -eq 1 ]; then
+        queue_skill "planning-and-task-breakdown" \
+          "approval seal STALE — ${REL_PATH} edited after approval (workflow ${u}); re-approve at Phase 2.5 before continuing" \
+          "spec-approval-seal-stale-${u}" \
+          "stale=${REL_PATH}"
+        exit 0
+      fi
+    done
+  fi
+fi
+
+# The approved-transition trigger below is spec-only (plans/todo have no
+# status marker and are handled by the seal check above).
+case "$REL_PATH" in
+  docs/specs/*.md) ;;
+  *) exit 0 ;;
+esac
 
 # Regex for the approved marker: matches bold list ("- **Status:** approved")
 # or YAML frontmatter ("status: approved"). Case-insensitive on the value.

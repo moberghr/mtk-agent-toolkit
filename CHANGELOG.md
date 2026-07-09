@@ -2,6 +2,15 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.25.0] - 2026-07-07
+
+### Added — Approval seal + executable lesson contracts
+
+Two borrows from a survey of trending AI-coding-agent tooling against MTK's existing machinery, both making a soft state *checkable* rather than asserted.
+
+- **Approval seal.** On Phase 2.5 approval, `implement` now records a SHA-256 **approval seal** over the approved spec/plan/todo bodies via new `scripts/workflow-artifact.sh seal` / `verify-seal` subcommands. The seal binds the exact approved bytes, so editing an approved artifact afterward is caught deterministically: `hooks/spec-approval-trigger.sh` re-queues the approval step (advisory), and `verification-before-completion` refuses a completion claim while the seal is STALE (blocking). The seal is derived from disk by the script and created only on the engineer's approval answer — it cannot be presented for a body other than the one on disk, and any re-seal is recorded as an `approval_sealed` event ("approve a state, not an intention"). `verify-seal` exits 0 (match) / 1 (stale, prints both hashes + the changed file) / 3 (no seal — older workflows fall back to the git-diff criteria tamper check). Backward-compatible.
+- **Executable lesson contract.** Lessons may now carry four OPTIONAL fields — `output_contract`, `prefinal_verification_checklist`, `confidence`, `source_evidence_refs` — that turn a prose lesson into a checkable one. `scripts/learnings.sh add` accepts `--output-contract` / `--prefinal-checklist` / `--confidence` / `--source-evidence-refs` (the JSON values are validated and compacted to a single line so a malformed contract can't corrupt the store), `regen-markdown` renders a Contract line only when present, and `mtk-doctor` gains a `LESSONS` category that WARNs on malformed contracts (never FAIL — the feature is optional). `golden-path-capture` and `promote-lesson` document when to attach one; `promote-lesson` reserves `confidence: high` for a verified path. Prose lessons are unchanged.
+
 ## [7.24.0] - 2026-07-06
 
 ### Added — Context-efficiency: `.claudeignore` at setup + doctor baseline
