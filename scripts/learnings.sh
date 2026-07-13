@@ -14,8 +14,14 @@ set -euo pipefail
 #
 # See .claude/references/learnings-schema.md for full field reference.
 
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$ROOT_DIR"
+# Script root — used ONLY to locate the toolkit's own libs (shrink-guard),
+# which ship alongside this script and are NOT present in target repos.
+SCRIPT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# Store root — anchored to the INVOKING repo (git toplevel of cwd), falling back
+# to cwd outside a repo. A plugin-path invocation must write into the caller's
+# repo, never the shared plugin cache under SCRIPT_ROOT.
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "$REPO_ROOT"
 
 LEARNINGS_PATH="${MTK_LEARNINGS_PATH:-.mtk/learnings.jsonl}"
 LESSONS_MD="${MTK_LESSONS_MD:-tasks/lessons.md}"
@@ -66,7 +72,9 @@ next_id() {
       case "$line" in
         *"\"id\":\"${prefix}"*)
           local n; n="$(printf '%s\n' "$line" | sed -nE "s/.*\"id\":\"${prefix}([0-9]+)\".*/\1/p")"
-          [ -n "$n" ] && [ "$n" -gt "$max_n" ] && max_n="$n"
+          # Force base-10: ids are %03d zero-padded, so bare arithmetic parses
+          # 008/009 as octal and aborts ("value too great for base").
+          [ -n "$n" ] && n=$((10#$n)) && [ "$n" -gt "$max_n" ] && max_n="$n"
           ;;
       esac
     done < "$LEARNINGS_PATH"
@@ -285,6 +293,12 @@ jl_array_csv() {
     | tr -d '"' | head -1
 }
 
+# Stable hash of a lesson title, for idempotent migrate dedup. cksum is POSIX
+# (present on BSD/macOS and coreutils) so this needs no md5/shasum probe.
+title_hash() {
+  printf '%s' "$1" | cksum | awk '{print $1}'
+}
+
 cmd_query() {
   ensure_store
   local files_csv="" phase="any" max=10 scope_filter="all"
@@ -383,7 +397,16 @@ cmd_query() {
 
 cmd_regen_markdown() {
   ensure_store
+  local force=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --force) force=1; shift ;;
+      *) printf 'unknown flag: %s\n' "$1" >&2; exit 2 ;;
+    esac
+  done
+
   local tmp; tmp="$(mktemp)"
+  local rendered=0
   {
     printf '# Lessons\n\n'
     printf '<!-- Auto-generated below — managed by scripts/learnings.sh. Edit the "Manual additions" section freely. -->\n\n'
@@ -391,6 +414,10 @@ cmd_regen_markdown() {
     if [ -s "$LEARNINGS_PATH" ]; then
       while IFS= read -r line; do
         [ -z "$line" ] && continue
+        # Team-scope only: personal entries stay in the gitignored store and
+        # never render into the committed team file (lessons-split S1).
+        local sc; sc="$(jl_field "$line" scope)"
+        [ "$sc" = "team" ] || continue
         local id title sev ph files rule
         id="$(jl_field "$line" id)"
         title="$(jl_field "$line" title)"
@@ -411,10 +438,10 @@ cmd_regen_markdown() {
         case "$line" in *'"prefinal_verification_checklist"'*) parts="${parts:+$parts, }prefinal_checklist" ;; esac
         [ -n "$parts" ] && printf -- '  - *Contract:* %s\n' "$parts"
         [ -n "$evrefs" ] && printf -- '  - *Evidence:* `%s`\n' "$evrefs"
+        rendered=$((rendered + 1))
       done < "$LEARNINGS_PATH"
-    else
-      printf '_(no entries yet)_\n'
     fi
+    [ "$rendered" -eq 0 ] && printf '_(no entries yet)_\n'
     printf '\n## Manual additions (preserved across regen)\n\n'
     printf '<!-- Anything below this marker is read on `learnings.sh migrate` and re-emitted as source="manual" entries. -->\n'
     # Preserve existing manual section if present
@@ -424,11 +451,32 @@ cmd_regen_markdown() {
     fi
   } > "$tmp"
 
-  # Use shrink-guard if available; otherwise plain mv.
-  if [ -f hooks/lib/shrink-guard.sh ]; then
+  # Refuse to clobber a legacy, hand-written lessons.md that predates the
+  # structured store (no auto-generated marker) — the same marker-refusal
+  # convention as scripts/generate-agents-md.sh. `migrate` passes --force after
+  # it has already ingested the legacy content into the store.
+  if [ "$force" -ne 1 ] && [ -f "$LESSONS_MD" ] \
+     && ! grep -q '<!-- Auto-generated below' "$LESSONS_MD"; then
+    rm -f "$tmp"
+    printf 'regen-markdown: refusing to overwrite %s — no MTK auto-generated marker (looks hand-written). Run `learnings.sh migrate` first to ingest it, or pass --force.\n' "$LESSONS_MD" >&2
+    return 1
+  fi
+
+  mkdir -p "$(dirname "$LESSONS_MD")"
+
+  # Use shrink-guard if available (resolved from the script root, not the
+  # invoking repo — target repos have no hooks/lib/); otherwise plain mv.
+  if [ -f "$SCRIPT_ROOT/hooks/lib/shrink-guard.sh" ]; then
     # shellcheck disable=SC1091
-    . hooks/lib/shrink-guard.sh
-    mtk_guarded_write "$LESSONS_MD" "$(cat "$tmp")"
+    . "$SCRIPT_ROOT/hooks/lib/shrink-guard.sh"
+    if [ "$force" -eq 1 ]; then
+      # --force (migrate) is an intentional prose->summary rewrite: full bodies
+      # live in the JSONL store, so a large byte/line shrink of the markdown
+      # view is expected and the shrink-guard must not block it.
+      MTK_SHRINK_GUARD_OVERRIDE=1 mtk_guarded_write "$LESSONS_MD" "$tmp"
+    else
+      mtk_guarded_write "$LESSONS_MD" "$tmp"
+    fi
   else
     mv "$tmp" "$LESSONS_MD"
   fi
@@ -446,24 +494,57 @@ cmd_migrate() {
     return 0
   fi
 
-  # Parse: every bullet line "- ..." or "* ..." becomes one entry.
-  # Heading-only sections are skipped (no body).
-  local count=0
+  # Idempotency: collect title hashes already in the store so re-running migrate
+  # over the same legacy content adds nothing (schema: matched by title hash).
+  local existing_hashes=" "
+  if [ -s "$LEARNINGS_PATH" ]; then
+    while IFS= read -r sline; do
+      [ -z "$sline" ] && continue
+      local st; st="$(jl_field "$sline" title)"
+      [ -n "$st" ] && existing_hashes="${existing_hashes}$(title_hash "$st") "
+    done < "$LEARNINGS_PATH"
+  fi
+
+  # Parse "## <heading>" blocks: title from the heading line, body from the
+  # lines beneath it up to the next heading. The toolkit's own tasks/lessons.md
+  # uses heading blocks, not bullets — bullet-only parsing shredded each lesson
+  # into fragments and dropped the heading-titled ones entirely.
+  local count=0 title="" body=""
+  _flush_block() {
+    [ -n "$title" ] || return 0
+    local short_title="${title:0:120}"
+    local h; h="$(title_hash "$short_title")"
+    case "$existing_hashes" in
+      *" $h "*) title=""; body=""; return 0 ;;
+    esac
+    local b="${body%$'\n'}"
+    [ -n "$b" ] || b="$title"
+    cmd_add --source manual --scope team --severity warn --phase any \
+      --title "$short_title" --body "$b" >/dev/null
+    existing_hashes="${existing_hashes}${h} "
+    count=$((count + 1))
+    title=""; body=""
+  }
   while IFS= read -r line; do
     case "$line" in
-      "- "*|"* "*)
-        local title="${line#* }"
-        # Truncate to ~120 chars for title; full text in body.
-        local short_title="${title:0:120}"
-        cmd_add --source manual --scope team --severity warn --phase any \
-          --title "$short_title" --body "$title" >/dev/null
-        count=$((count + 1))
+      "## "*)
+        _flush_block
+        title="${line#"## "}"
+        body=""
+        ;;
+      "# "*)
+        _flush_block
+        title=""; body=""
+        ;;
+      *)
+        [ -n "$title" ] && body="${body}${line}"$'\n'
         ;;
     esac
   done < "$LESSONS_MD"
+  _flush_block
 
   printf 'Migrated %d entries to %s\n' "$count" "$LEARNINGS_PATH"
-  cmd_regen_markdown
+  cmd_regen_markdown --force
 }
 
 cmd_list() {
@@ -539,7 +620,7 @@ main() {
     add) cmd_add "$@" ;;
     query) cmd_query "$@" ;;
     metrics) cmd_metrics "$@" ;;
-    regen-markdown) cmd_regen_markdown ;;
+    regen-markdown) cmd_regen_markdown "$@" ;;
     migrate) cmd_migrate ;;
     list) cmd_list ;;
     -h|--help|help|"")

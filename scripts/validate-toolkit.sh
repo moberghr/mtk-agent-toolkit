@@ -124,10 +124,9 @@ grep -q 'MTK_HOOKS_TIER2' .claude/settings.json || fail "settings.json missing M
 require_file "scripts/build-triggers-index.sh"
 require_file "hooks/lib/trigger-hints.sh"
 if [ -f ".claude/triggers.index" ]; then
-  # Index must be in sync with skill frontmatter.
-  expected="$(bash scripts/build-triggers-index.sh >/dev/null && grep -v '^#' .claude/triggers.index | sort)"
-  actual="$(grep -v '^#' .claude/triggers.index | sort)"
-  [ "$expected" = "$actual" ] || fail ".claude/triggers.index out of sync — run: bash scripts/build-triggers-index.sh"
+  # Index must be in sync with skill frontmatter. --check builds to a tempfile
+  # and diffs — it never rewrites the tracked file during validation.
+  bash scripts/build-triggers-index.sh --check >/dev/null 2>&1 || fail ".claude/triggers.index out of sync — run: bash scripts/build-triggers-index.sh"
   # Every skill referenced in the index must exist.
   while IFS=$'\t' read -r _ skill; do
     [ -n "$skill" ] || continue
@@ -188,6 +187,15 @@ while IFS= read -r path; do
     .claude/skills/*/SKILL.md) manifest_skill_paths+=("$path") ;;
   esac
 done < <(grep -E '^[[:space:]]*"source":' .claude/manifest.json | sed -E 's/.*"source":[[:space:]]*"([^"]+)".*/\1/' | grep -v '://')
+
+# Disk -> manifest completeness for hook tests. Every tests/hooks/*.sh is
+# individually registered by convention (C0.2); a file on disk but absent from
+# the manifest ships untracked and the suite is falsely green. This is a
+# disk->manifest direction the source-path loop above cannot catch.
+for t in tests/hooks/*.sh; do
+  [ -e "$t" ] || continue
+  grep -qF "\"$t\"" .claude/manifest.json || fail "Hook test not registered in manifest.json: $t (add a files entry — C0.2)"
+done
 
 # applyTo values must be glob patterns (strings). Quick sanity: any applyTo line
 # must be an array opener or a quoted glob. Detect obvious errors (non-array value).

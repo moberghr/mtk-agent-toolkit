@@ -69,7 +69,10 @@ The capture reuses `correction-capture`'s destinations and the same `scripts/lea
 
    **a. Structured (preferred when `scripts/learnings.sh` is present).** The distinctive fields for this skill are `--wrong-turns` (the failed attempts) and `--time-cost` (minutes the loop cost) — populate them; they are what the trigger produces. Use `--source golden-path`. Since this is self-driven trial-and-error with no human or model *recommendation*, the decision origin is `system-inferred`.
    ```bash
-   bash scripts/learnings.sh add \
+   # Resolve the script: project copy first, else the plugin's copy (plugin
+   # installs never receive scripts/ into the target repo).
+   LS="scripts/learnings.sh"; [ -f "$LS" ] || LS="${CLAUDE_PLUGIN_ROOT:-.}/scripts/learnings.sh"
+   bash "$LS" add \
      --workflow "${MTK_WF_UUID:-manual}" \
      --scope "personal|team" \
      --source golden-path \
@@ -84,7 +87,7 @@ The capture reuses `correction-capture`'s destinations and the same `scripts/lea
      --wrong-turns "failed attempt A — why it failed,failed attempt B — why it failed" \
      --time-cost 15 \
      --evolution-actions "routing|claude_md|reference|hook|none"
-   bash scripts/learnings.sh regen-markdown   # rebuilds tasks/lessons.md
+   bash "$LS" regen-markdown   # rebuilds tasks/lessons.md
    ```
    - `--wrong-turns` — the dead ends you tried, each with a one-line why, so the next session doesn't repeat them. This is the core of a golden-path lesson.
    - `--time-cost` — rough minutes lost to the loop. Makes the value of the golden path concrete.

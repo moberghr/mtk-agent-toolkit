@@ -11,8 +11,29 @@
 
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$ROOT_DIR"
+# Resolve the toolkit root from THIS script's real location so a checkout of the
+# toolkit into a subdirectory (see templates/ci/pr-lint.yml) can lint the target
+# repo in the current working directory. Do NOT cd — the linter diffs cwd (the
+# PR checkout) while loading pattern packs from the toolkit checkout.
+mtk_realpath() {
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$1"
+    return
+  fi
+  local p="$1" target
+  while [ -L "$p" ]; do
+    target="$(readlink "$p")"
+    case "$target" in
+      /*) p="$target" ;;
+      *)  p="$(cd "$(dirname "$p")" && pwd)/$target" ;;
+    esac
+  done
+  printf '%s/%s\n' "$(cd "$(dirname "$p")" && pwd)" "$(basename "$p")"
+}
+
+SELF="$(mtk_realpath "$0")"
+TOOLKIT_ROOT="$(cd "$(dirname "$SELF")/.." && pwd)"
+LINTER="$TOOLKIT_ROOT/hooks/pre-commit-linters.sh"
 
 BASE_REF="origin/main"
 while [ $# -gt 0 ]; do
@@ -22,8 +43,10 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-# Run the linter on the diff between base and HEAD
-LINTER_OUTPUT=$(bash hooks/pre-commit-linters.sh --head 2>/dev/null || true)
+# Lint the diff between the base ref and HEAD. Three-dot range = changes on the
+# PR branch since it diverged from base (git diff base...HEAD), which matches
+# what a reviewer sees — a plain HEAD diff is empty on a clean CI checkout.
+LINTER_OUTPUT=$(bash "$LINTER" --range "${BASE_REF}...HEAD" 2>/dev/null || true)
 
 if [ -z "$LINTER_OUTPUT" ]; then
   echo "Linter produced no output."

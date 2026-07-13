@@ -22,8 +22,21 @@ jobs:
 
       - name: Run hook regression tests
         run: |
-          bash tests/hooks/test-query-code-index.sh
-          bash tests/hooks/test-release-signing.sh
+          # Run every hook regression test, not a hardcoded subset — new
+          # tests/hooks/test-*.sh files are picked up automatically. Run all,
+          # then fail if any failed, so CI shows the full picture.
+          EXIT_CODE=0
+          for t in tests/hooks/test-*.sh; do
+            [ -f "$t" ] || continue
+            echo "=== $t ==="
+            if bash "$t"; then
+              echo "PASS: $t"
+            else
+              echo "FAIL: $t"
+              EXIT_CODE=1
+            fi
+          done
+          exit $EXIT_CODE
 
       - name: Syntax-check all bash scripts
         run: |

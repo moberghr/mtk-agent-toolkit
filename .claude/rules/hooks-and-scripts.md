@@ -23,10 +23,10 @@ axes:
 ## Hook Configuration
 
 - **S3.5** Plugin hooks are defined in `hooks/hooks.json` under the `hooks` key. Settings hooks are in `.claude/settings.json` under `hooks`.
-- **S3.6** Plugin hooks (`hooks.json`) handle cross-platform session init. Settings hooks (`settings.json`) handle verify-completion, security gate, and compaction recovery.
-- **S3.7** The verify-completion hook must check for evidence keywords before allowing completion claims. It prints a one-liner if triggered, nothing otherwise.
+- **S3.6** Plugin hooks (`hooks.json`) carry the full enforcement suite (security gate, scope/read guards, context budget, verify-completion, compaction snapshot/recovery, prompt dispatch, learnings/analytics/workflow Stop hooks) with `${CLAUDE_PLUGIN_ROOT}` paths so it runs in plugin-installed repos. Settings hooks (`settings.json`) wire the same hooks for this dev checkout; the double-run guard in `hooks/lib/hook-io.sh` makes the plugin-invoked copy exit early when the project wires the same hook basename.
+- **S3.7** The verify-completion Stop hook reads the Stop payload from stdin and checks the transcript's final completion claim for evidence keywords. On a gap it blocks the stop once (`decision: "block"` with a VERIFICATION GAP reason) so the model restates fresh evidence; it never blocks when `stop_hook_active` is set, and stays silent otherwise.
 - **S3.8** Session-start hook must support multiple platforms: Claude Code, Cursor, Copilot CLI, Gemini CLI.
-- **S3.11** The PostCompact hook (`hooks/post-compact.sh`) re-injects on-disk state (tech stack, active specs/plans, incomplete tasks, handoff artifacts) after auto-compaction. It emits `{"context": "..."}` JSON — no blocking, no side effects.
+- **S3.11** `hooks/post-compact.sh` re-injects on-disk state (tech stack, active specs/plans, incomplete tasks, handoff artifacts) after auto-compaction. There is no `PostCompact` hook event — it is wired as a `SessionStart` hook with matcher `compact` (the documented channel that regains model-visible context after compaction) in both `hooks/hooks.json` and `.claude/settings.json`. It emits a `SessionStart` `hookSpecificOutput.additionalContext` envelope — no blocking, no side effects.
 
 ## Hook Tiers
 

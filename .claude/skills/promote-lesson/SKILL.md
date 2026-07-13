@@ -38,18 +38,21 @@ Personal lessons in `.claude/lessons/personal.md` are gitignored — they belong
 5. **Append to team store.**
    - **Structured (preferred when `scripts/learnings.sh` is present).** Add a JSONL entry with `--scope team --source promotion` and the reworded body, then `learnings.sh regen-markdown` to rebuild `tasks/lessons.md`:
      ```bash
-     bash scripts/learnings.sh add --scope team --source promotion \
+     # Resolve the script: project copy first, else the plugin's copy.
+     LS="scripts/learnings.sh"; [ -f "$LS" ] || LS="${CLAUDE_PLUGIN_ROOT:-.}/scripts/learnings.sh"
+     bash "$LS" add --scope team --source promotion \
        --decision-origin "<inherit from the personal entry being promoted>" \
        --severity warn --phase any \
        --title "<reworded title>" --body "<reworded body>" \
        --rule "<rule>" --applies-when "<when>"
-     bash scripts/learnings.sh regen-markdown
+     bash "$LS" regen-markdown
      ```
    - **Markdown fallback.** Append the reworded entry to `tasks/lessons.md` at the bottom (newest last). Keep the structure: `## [Date] — [Title]`, `**Correction:**`, `**Rule:**`, `**Why:**`, `**Applies to:**`. Add a `**Promoted from personal:**` note with the original date so provenance is auditable.
 
 5b. **Optional: attach an executable contract (v7.25).** Promotion is the natural point to make a lesson *checkable* rather than advisory. When the lesson has a verifiable outcome, add the contract fields so a future session can confirm it, not just read it:
    ```bash
-   bash scripts/learnings.sh add --scope team --source promotion ... \
+   # $LS resolved in step 5 (project copy, else plugin copy).
+   bash "$LS" add --scope team --source promotion ... \
      --confidence high \
      --output-contract '{"required_files":[...],"json_fields":[...]}' \
      --prefinal-checklist '[{"check_id":"...","description":"...","verification_method":"...","blocking":true}]' \

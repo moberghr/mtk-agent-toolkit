@@ -17,6 +17,71 @@ mtk_repo_root() {
   git rev-parse --show-toplevel 2>/dev/null || pwd
 }
 
+# --- Hook output envelope helpers (Claude Code hooks contract) --------------
+# Model/user-visible output must use the documented JSON envelopes, not plain
+# stdout (which reaches neither on exit 0). See code.claude.com/docs/en/hooks.
+
+# JSON-escape a string using bash parameter substitution only (no jq).
+mtk_json_escape() {
+  local s="${1:-}"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//$'\n'/\\n}"
+  s="${s//$'\r'/\\r}"
+  s="${s//$'\t'/\\t}"
+  printf '%s' "$s"
+}
+
+# Model-visible advisory context for events that support it (PreToolUse,
+# PostToolUse, UserPromptSubmit, SessionStart, Stop). Non-blocking.
+mtk_emit_additional_context() {
+  local event="$1" text="$2" esc
+  esc="$(mtk_json_escape "$text")"
+  printf '{"hookSpecificOutput":{"hookEventName":"%s","additionalContext":"%s"}}\n' "$event" "$esc"
+}
+
+# Stop-hook gate: block the stop and hand `reason` to the model, which then
+# continues. Caller must have already honored stop_hook_active to avoid loops.
+mtk_emit_stop_block() {
+  local esc
+  esc="$(mtk_json_escape "${1:-}")"
+  printf '{"decision":"block","reason":"%s"}\n' "$esc"
+}
+
+# User-visible, non-blocking warning. Used by advisory Stop hooks where forcing
+# the model to continue (the only model-visible Stop channel) would be wrong.
+mtk_emit_system_message() {
+  local esc
+  esc="$(mtk_json_escape "${1:-}")"
+  printf '{"systemMessage":"%s"}\n' "$esc"
+}
+
+# Promotion guard: when this hook is a plugin-install copy (its own directory is
+# outside the current project) AND the project also wires a hook of the same
+# basename in its .claude/settings.json, the plugin copy is redundant and must
+# not run — otherwise the hook fires twice. Returns 0 when the caller should
+# exit early. Cheap: git toplevel + one grep of settings.json.
+mtk_is_redundant_plugin_invocation() {
+  local self="${1:-}"
+  [ -n "$self" ] || return 1
+  local self_dir project_root base settings
+  self_dir="$(cd "$(dirname "$self")" 2>/dev/null && pwd -P)" || return 1
+  project_root="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" 2>/dev/null && pwd -P)" || return 1
+  # Physically inside the project → this IS the project copy; never skip.
+  case "$self_dir/" in
+    "$project_root"/*) return 1 ;;
+  esac
+  base="$(basename "$self")"
+  settings="$project_root/.claude/settings.json"
+  [ -f "$settings" ] || return 1
+  grep -qF "hooks/$base" "$settings" 2>/dev/null || return 1
+  # Skip only when the project-wired copy actually resolves — a dangling
+  # settings entry (legacy bootstrap, no hooks/ dir) must not silence the
+  # plugin copy too, or the hook fires from neither place.
+  [ -f "$project_root/hooks/$base" ] && return 0
+  return 1
+}
+
 mtk_session_file() {
   local project_id
   project_id=$(mtk_repo_root | cksum | cut -d' ' -f1)

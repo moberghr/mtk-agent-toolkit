@@ -55,16 +55,20 @@ fi
 [ -n "$INPUT" ] || { echo '{"findings":[]}'; exit 0; }
 
 # --- Load severity mappings ---
-declare -A SEVERITY_MAP
+# Bash 3.2 has no associative arrays; look the rule up in the tab-separated
+# severity file per call. File format: RULE_ID<TAB>severity<TAB>description.
+SEVERITY_FILE=""
 if [ -n "$STACK" ] && [ -f "$SEVERITY_DIR/$STACK.txt" ]; then
-  while IFS=$'\t' read -r rule_id sev desc; do
-    [ -n "$rule_id" ] && [[ ! "$rule_id" =~ ^# ]] && SEVERITY_MAP["$rule_id"]="$sev"
-  done < "$SEVERITY_DIR/$STACK.txt"
+  SEVERITY_FILE="$SEVERITY_DIR/$STACK.txt"
 fi
 
 get_severity() {
   local rule_id="$1"
-  echo "${SEVERITY_MAP[$rule_id]:-warning}"
+  local sev=""
+  if [ -n "$SEVERITY_FILE" ]; then
+    sev="$(awk -F'\t' -v r="$rule_id" '$1 == r { print $2; exit }' "$SEVERITY_FILE")"
+  fi
+  echo "${sev:-warning}"
 }
 
 # --- Format auto-detection ---

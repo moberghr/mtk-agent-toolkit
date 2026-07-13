@@ -7,13 +7,21 @@ Measurable quality gates for critical skills. Evals complement pressure tests
 - **negative** — a situation where the skill MUST NOT trigger or must be silent
 - **adversarial** — a situation designed to make the skill skip steps or inflate output
 
-Three skills are covered in the baseline eval set because they gate shipping:
+Seven skills carry evals under `evals/` (one directory each). Six use the
+markdown scenario format described here (`eval-NN-<slug>.md` + `grader.md`);
+`code-review-and-quality` uses the JSONL skill-eval harness instead
+(`prompts.jsonl`, run via `scripts/skill-eval/run-eval.sh`).
+
+Three of them gate shipping and must stay green on every release:
 
 | Skill                               | Why it gates shipping                                       |
 |-------------------------------------|-------------------------------------------------------------|
 | `security-and-hardening`            | A miss here can leak PII, secrets, or audit trail.          |
 | `pre-commit-review`                 | Last-line defense before every commit.                      |
 | `verification-before-completion`    | Prevents false "done" claims from propagating downstream.   |
+
+The remainder (`fix`, `setup-bootstrap`, `spec-drift-detection`, and the
+JSONL-based `code-review-and-quality`) are covered but not release blockers.
 
 ## Directory Layout
 
@@ -50,6 +58,18 @@ verdict with evidence.
 For CI-style automation, wire `claude -p` in a wrapper — see `scripts/run-evals.sh`
 for the hook points (`EVAL_EXECUTOR`, `EVAL_GRADER`). Left unset, the runner
 stays read-only.
+
+### Executor & grader input contract
+
+When `EVAL_EXECUTOR` is set, the runner feeds it (on stdin) the **full eval
+file** as `--- CONTEXT (eval scenario) ---` followed by the extracted
+` ```prompt ` block as `--- INSTRUCTION (run this) ---`. The executor therefore
+sees the same scenario and setup the grader does — never the prompt fence
+alone. Its stdout is captured as the run output.
+
+When `EVAL_GRADER` is set (and the skill has a `grader.md`), the runner feeds it
+(on stdin) `grader.md`, then the full eval file under `EVAL FILE:`, then the
+captured executor output under `ACTUAL OUTPUT:`. Its stdout is the verdict.
 
 ## Results & Interpretation
 
