@@ -79,6 +79,18 @@
           { "kind": "format", "detail": "3 redundant STEP 3.7 subsections collapsed to bold-label one-line pointers, dropping their ### heading lines", "justification": "Faithful to 'collapse to one-line pointers'; no consumer references those ### names" },
           { "kind": "safety-placement", "detail": "MERGE MODE read-only invariants moved into audit-merge-mode.md (AUDIT MODE invariants stay inline)", "justification": "Accepted by orchestrator: the mandatory read at the MERGE MODE entry point precedes any merge action; invariants verbatim in companion; skipping the read leaves no merge procedure to execute" }
         ]
+      },
+      {
+        "batch_id": "B3",
+        "actual_files": [".claude/references/bootstrap-interview.md", ".claude/references/bootstrap-supporting-files.md", ".claude/references/bootstrap-template-cache.md", ".claude/references/bootstrap-report.md", ".claude/skills/setup-bootstrap/SKILL.md", ".claude/manifest.json"],
+        "build": { "ok": true, "evidence": "validate-toolkit.sh exit 0 'Toolkit validation passed' (subagent run + fresh orchestrator re-run)" },
+        "tests": { "ok": false, "evidence": "SKILL.md 472 lines (<=520 PASS); 18 STEP headings byte-identical (PASS, orchestrator re-verified); 'do not reconstruct' x1 (PASS); safety contracts byte-unmodified — File Preservation Policy, STEP 3.5c secret-scan, STEP 3.5b 120-ceiling, STEP 4.5 nesting, ## IMPORTANT, ## Modes, ## MTK File Resolution (PASS); content-loss markers unique (PASS); diff limited to batch.files (PASS); SC6 whole-feature word sum FAIL: 11457 vs <=10500 ceiling (36.5% cut vs spec'd ~42%)" },
+        "behavioral_diff": "None behaviorally; SKILL.md 845->472 lines. STEP 2.5 interview, STEP 4 supporting-file subsections + STEP 3.6 pruning, STEP 4.8 template-cache spec, and STEP 5 report template load via imperative on-demand reads; --non-interactive gates and all safety contracts inline and byte-stable.",
+        "deviations": [
+          { "kind": "other", "detail": "Regenerated gitignored .claude/references.index (validator sync check)", "justification": "Same as B1/B2" },
+          { "kind": "state-reconciliation", "detail": "Worktree not clean on entry (first B3 attempt's leftovers, invisible to the orchestrator's earlier check): reverted SKILL.md to HEAD, verified the 4 leftover companions byte-identical to HEAD source ranges via diff, reused them", "justification": "Deterministic recovery; final state re-verified from scratch" },
+          { "kind": "blocker-open-decision", "detail": "SC6 (whole-feature word sum <=10500) infeasible within authorized scope: extractions were fence-heavy/word-light; remaining inline text is the spec-designated stay-inline safety core (~2.5k words) plus MANDATORY gates. Sum lands at 11457 (-36.5% from 18057).", "justification": "Frozen success criterion — NOT amended in-flight. Batch work accepted as mechanically correct; SC6 resolution (amend to <=11500 / authorize more extraction / trim B1-B2) re-opened to the engineer per Phase 2.5 rules. OPEN as of 2026-07-13." }
+        ]
       }
     ]
   },

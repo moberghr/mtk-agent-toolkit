@@ -1845,6 +1845,42 @@
       ],
       "description": "The entire setup-audit MERGE MODE (--merge) branch \u2014 STEP 0-3 flow, Confidence Tag Merge Rules, unified-document template, and read-only invariants; read only when invoked with --merge"
     },
+    "references/bootstrap-interview.md": {
+      "source": ".claude/references/bootstrap-interview.md",
+      "target": ".claude/references/bootstrap-interview.md",
+      "action": "sync",
+      "applyTo": [
+        ".claude/skills/setup-bootstrap/**"
+      ],
+      "description": "STEP 2.5 post-scan interview for setup-bootstrap \u2014 question set, adaptive-ambiguity protocol, answer routing, and the setup-answers.json schema; read on-demand at STEP 2.5"
+    },
+    "references/bootstrap-supporting-files.md": {
+      "source": ".claude/references/bootstrap-supporting-files.md",
+      "target": ".claude/references/bootstrap-supporting-files.md",
+      "action": "sync",
+      "applyTo": [
+        ".claude/skills/setup-bootstrap/**"
+      ],
+      "description": "Once-consulted setup-bootstrap supporting-file procedures (git hook, CI gate, skills/agents, review list, tasks dir, ignore files, analyzer, companion plugin, tooling, version stamp, cross-agent) plus STEP 3.6 stack-reference pruning and the typescript package-manager note; read on-demand at STEP 4, STEP 3.6, and STEP 0"
+    },
+    "references/bootstrap-template-cache.md": {
+      "source": ".claude/references/bootstrap-template-cache.md",
+      "target": ".claude/references/bootstrap-template-cache.md",
+      "action": "sync",
+      "applyTo": [
+        ".claude/skills/setup-bootstrap/**"
+      ],
+      "description": "STEP 4.8 template-cache snapshot spec for setup-bootstrap \u2014 files to snapshot, cache layout, copy implementation, and retention; read on-demand at STEP 4.8"
+    },
+    "references/bootstrap-report.md": {
+      "source": ".claude/references/bootstrap-report.md",
+      "target": ".claude/references/bootstrap-report.md",
+      "action": "sync",
+      "applyTo": [
+        ".claude/skills/setup-bootstrap/**"
+      ],
+      "description": "The STEP 5 verbatim MTK INIT COMPLETE report template for setup-bootstrap that ~15 earlier steps route their report lines into and verify-claims.sh consumes; read on-demand at STEP 5"
+    },
     "tests/pressure-tests/audit-grounding.md": {
       "source": "tests/pressure-tests/audit-grounding.md",
       "target": "tests/pressure-tests/audit-grounding.md",
