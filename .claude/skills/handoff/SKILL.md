@@ -110,8 +110,11 @@ A handoff captures the current session state — branch, in-progress work, decis
 
 4. **Ensure gitignored.** Add `docs/handoffs/` to `.gitignore` if not already there. Handoffs are working artifacts, not committed deliverables.
 
+4.5. **Publish/update the workflow artifact (additive, capability-gated).** If a workflow uuid resolves, record the handoff path (`scripts/workflow-artifact.sh set "$MTK_WF_UUID" results.handoff_path=docs/handoffs/<file>.md`) and follow `.claude/references/artifact-publishing.md` to add the Handoff section to the workflow's Claude Artifact — updating the existing URL in place so a teammate opening the link sees current state. If no workflow is active (a bare handoff), publishing standalone is fine; report the URL. Silent no-op when the tool is unavailable or `MTK_ARTIFACT_PUBLISH=0`. Disk is written first regardless.
+
 5. **Report.** Tell the engineer:
    - Where the handoff was saved
+   - The artifact URL, if one was published (and that it reflects the latest state)
    - How to resume: "Start a new session, read `docs/handoffs/[file]`, then continue"
 
 ## Rules
@@ -140,3 +143,4 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared table. Handoff-
 - [ ] Branch, in-progress work, decisions, and key files are all listed
 - [ ] `docs/handoffs/` is in `.gitignore`
 - [ ] Engineer was told the path and how to resume
+- [ ] Handoff published/updated to the workflow artifact (or gate correctly closed) per `.claude/references/artifact-publishing.md`; disk written first (step 4.5)

@@ -1,0 +1,58 @@
+{
+  "slug": "workflow-artifact-publishing",
+  "date": "2026-07-13",
+  "scope": "new-feature",
+  "change_manifest": [
+    { "path": ".claude/references/artifact-publishing.md", "action": "create", "purpose": "Canonical publish procedure: capability+opt-out gate, resolve uuid, assemble rollup, publish/update-in-place, persist URL, data-egress note" },
+    { "path": "scripts/workflow-artifact-md.sh", "action": "create", "purpose": "Deterministic assembler of .mtk/workflows/<uuid>.artifact.md from recorded source docs" },
+    { "path": ".claude/skills/spec-driven-development/SKILL.md", "action": "modify", "purpose": "Publish artifact after disk-persist; creates the workflow artifact" },
+    { "path": ".claude/skills/planning-and-task-breakdown/SKILL.md", "action": "modify", "purpose": "Publish/update artifact after plan-persist" },
+    { "path": ".claude/skills/handoff/SKILL.md", "action": "modify", "purpose": "Record handoff_path and publish/update artifact after write" },
+    { "path": ".claude/skills/repo-health/SKILL.md", "action": "modify", "purpose": "Record health_report_path and publish/update artifact after report write" },
+    { "path": ".claude/references/workflow-artifact-schema.md", "action": "modify", "purpose": "Document results.artifact_url and recorded source-path fields" },
+    { "path": ".claude/manifest.json", "action": "modify", "purpose": "Register new reference and script (C0.2)" },
+    { "path": "CLAUDE.md", "action": "modify", "purpose": "Document MTK_ARTIFACT_PUBLISH env opt-out in Skill Routing env table" },
+    { "path": "tests/pressure-tests/artifact-publishing.md", "action": "create", "purpose": "Adversarial test: egress-note skip, publish-from-fork, mint-new-url-instead-of-update, gate bypass" }
+  ],
+  "public_contracts": [
+    { "kind": "cli-flag", "signature": "scripts/workflow-artifact-md.sh <uuid>", "change": "new" },
+    { "kind": "cli-flag", "signature": "MTK_ARTIFACT_PUBLISH env (default 1; 0 disables publishing)", "change": "new" },
+    { "kind": "event", "signature": "workflow-artifact results.artifact_url / results.handoff_path / results.health_report_path fields", "change": "new" }
+  ],
+  "success_criteria": [
+    { "id": "SC1", "description": "Spec persist publishes an artifact and records results.artifact_url on the active workflow", "verification": "manual run of spec-driven-development with Artifact tool available", "evidence_channel": "cli-stdout", "observable": "workflow-artifact.sh read <uuid> shows a non-empty results.artifact_url after spec persist" },
+    { "id": "SC2", "description": "A later skill updates the same artifact URL in place", "verification": "manual run of plan skill after spec in same workflow", "evidence_channel": "cli-stdout", "observable": "results.artifact_url is identical before and after the second publish" },
+    { "id": "SC3", "description": "Rollup contains exactly the sections whose source docs exist on disk", "verification": "run assembler on a fixture uuid with a subset of paths recorded", "evidence_channel": "script-output", "observable": ".mtk/workflows/<uuid>.artifact.md contains a section for each existing recorded path and none for missing ones" },
+    { "id": "SC4", "description": "Absent tool or MTK_ARTIFACT_PUBLISH=0 leaves disk output unchanged with no publish and no error", "verification": "simulate absent tool / set env 0", "evidence_channel": "cli-stdout", "observable": "skill exits 0, disk docs written, no artifact URL recorded, no error emitted" },
+    { "id": "SC5", "description": "Toolkit validation passes with new files registered", "verification": "bash scripts/validate-toolkit.sh", "evidence_channel": "script-output", "observable": "prints 'Toolkit validation passed' with exit 0" }
+  ],
+  "test_manifest": [
+    { "path": "scripts/validate-toolkit.sh", "covers": ["SC5"] },
+    { "path": "scripts/workflow-artifact-md.sh", "covers": ["SC3"] },
+    { "path": "tests/pressure-tests/artifact-publishing.md", "covers": ["SC2", "SC4"] }
+  ],
+  "out_of_scope": [
+    "code-review-and-quality publishing (forked subagent; orchestrator-side, deferred to v2)",
+    "styled HTML artifact rendering (v1 is raw markdown)",
+    "version bump + checksums.sha256 regeneration (separate release commit, S4.11)",
+    "committing .mtk/ artifacts (remain gitignored, local-only)"
+  ],
+  "security_impact": "none",
+  "baseline_area": "toolkit-workflow",
+  "delta": {
+    "adds": [".claude/references/artifact-publishing.md", "scripts/workflow-artifact-md.sh", "results.artifact_url field", "MTK_ARTIFACT_PUBLISH env"],
+    "modifies": ["spec-driven-development", "planning-and-task-breakdown", "handoff", "repo-health", "workflow-artifact-schema.md", "CLAUDE.md env table"],
+    "removes": []
+  },
+  "assumptions": [
+    "[ASSUMED] Artifact tool url param reliably targets an existing artifact across sessions for cross-compaction update-in-place",
+    "[VERIFIED:scripts/workflow-artifact.sh] set results.artifact_url=<url> works via dotted-path setter",
+    "[VERIFIED:.claude/skills/repo-health/SKILL.md] repo-health writes .claude/repo-health-latest.md in the main loop",
+    "[ASSUMED] Standalone skill runs without an active workflow uuid may publish without persisting the URL"
+  ],
+  "risks": [
+    "Data egress: workflow content transmitted to claude.ai; mitigated by MTK_ARTIFACT_PUBLISH opt-out and reference note, not enforced",
+    "trap: publishing from inside the forked code-review subagent would violate the orchestrator-writes-artifacts rule — code-review intentionally deferred",
+    "Regulated-repo engineers may not notice egress despite documentation"
+  ]
+}

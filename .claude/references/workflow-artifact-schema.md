@@ -47,6 +47,9 @@ Durable orchestration state lives under `.mtk/workflows/`, outside `.claude/` so
     "spec_path": "docs/specs/2026-05-07-foo.md",
     "plan_path": "docs/plans/2026-05-07-foo.md",
     "todo_path": "tasks/todo.md",
+    "handoff_path": "docs/handoffs/2026-05-07-foo.md",
+    "health_report_path": ".claude/repo-health-latest.md",
+    "artifact_url": "https://claude.ai/code/artifact/<id>",
     "batches_total": 4,
     "batches_completed": 2,
     "remediation": {
@@ -68,6 +71,8 @@ Durable orchestration state lives under `.mtk/workflows/`, outside `.claude/` so
 Implementations may add fields under `results` and `intent` without breaking schema_version 1. Removing or changing an existing field requires a schema bump.
 
 `results.usage` is an optional roll-up of the per-subagent usage envelopes returned by `subagent-implementation` (`tokens_total` summed across batches, `error_codes` collecting any non-null batch `error_code`). It is a cost / loop-safety signal for post-run review — never a gate input.
+
+`results.artifact_url` is the URL of the workflow's published Claude Artifact (the single browsable rollup of spec/plan/handoff/health, updated in place across phases). It is set only when artifact publishing is enabled and available — see `.claude/references/artifact-publishing.md`. The `*_path` fields (`spec_path`, `plan_path`, `todo_path`, `handoff_path`, `health_report_path`) are the on-disk source docs the assembler (`scripts/workflow-artifact-md.sh`) concatenates into `.mtk/workflows/{uuid}.artifact.md`. Disk remains the source of truth; the artifact is an additive rendered mirror.
 
 ## criteria_status
 

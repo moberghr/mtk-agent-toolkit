@@ -96,9 +96,12 @@ Writes the combined report to `.claude/repo-health-latest.md` (always) and `.cla
 
 6. **Present to the engineer.** Echo the report path and the medal + top-3 in chat. Do not dump the full report inline unless asked.
 
+6.5. **Publish the report artifact (additive, capability-gated).** After the report is on disk, follow `.claude/references/artifact-publishing.md`. repo-health usually runs standalone (no active workflow), so this publishes `.claude/repo-health-latest.md` directly as a Claude Artifact and reports the URL in chat; if a REVIEW workflow is active, it records `results.health_report_path` and updates that workflow's artifact in place instead. Silent no-op when the tool is unavailable or `MTK_ARTIFACT_PUBLISH=0`. Disk is written first regardless.
+
 ## Verification
 
 - `.claude/repo-health-latest.md` exists and contains a `Medal:` line, a 12-row asset table, and a "Top 3 actionable changes" section.
+- Report published as an artifact (or gate correctly closed) per `.claude/references/artifact-publishing.md`; the on-disk report was written first regardless.
 - The mining section either lists phrases with PR citations OR an explicit `Skipped: <reason>` line — never fabricated phrases.
 - No edits were made to `.claude/references/architecture-principles.md`.
 - `bash scripts/repo-health-score.sh --json | jq .medal` returns a non-empty string.
