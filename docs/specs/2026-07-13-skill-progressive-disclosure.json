@@ -92,7 +92,9 @@
           { "kind": "blocker-open-decision", "detail": "SC6 (whole-feature word sum <=10500) infeasible within authorized scope: extractions were fence-heavy/word-light; remaining inline text is the spec-designated stay-inline safety core (~2.5k words) plus MANDATORY gates. Sum lands at 11457 (-36.5% from 18057).", "justification": "Frozen success criterion — NOT amended in-flight. Batch work accepted as mechanically correct; SC6 resolution (amend to <=11500 / authorize more extraction / trim B1-B2) re-opened to the engineer per Phase 2.5 rules. OPEN as of 2026-07-13." }
         ]
       }
-    ]
+    ],
+    "behavioral_diff": "None behaviorally across all three skills — verified two ways: compliance review (APPROVE, scores 9/9/8/8/8, zero findings) and an adversarial byte-level equivalence audit of all 972 moved lines (HOLDS: zero content loss, zero fabrication, 58 gate-bearing sentences all accounted for). Context economy: SKILL.md payloads 845/732/347 -> 472/338/182 lines (1,924 -> 992, -48%); words 18,057 -> 11,457 (-36.5%, ~23.5k -> ~14.9k tokens). Detail now loads via imperative on-demand reads only in the branch that needs it. Final SC sweep 2026-07-13: SC1-SC5, SC7, SC8 PASS with fresh evidence; SC6 (<=10,500 words) FAILED at 11,457 — open engineer decision, criterion NOT amended in-flight.",
+    "phase4_review": { "compliance": "APPROVE (9/9/8/8/8, 0 findings)", "equivalence_audit": "HOLDS (byte-level, exhaustive)" }
   },
   "risks": [
     "Model skips the mandatory Read and improvises (worst for bootstrap-report.md, consumed by verify-claims.sh) — mitigated by imperative wording + SC7 stop rule",
