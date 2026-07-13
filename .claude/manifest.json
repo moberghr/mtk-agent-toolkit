@@ -1809,6 +1809,42 @@
       ],
       "description": "Implementer prompt template (TASK/DELIVERABLE/SCOPE/VERIFY contract) plus the canonical batch-result JSON schema for subagent-implementation \u2014 read before building each batch's context bundle"
     },
+    "references/audit-rerun-migration.md": {
+      "source": ".claude/references/audit-rerun-migration.md",
+      "target": ".claude/references/audit-rerun-migration.md",
+      "action": "sync",
+      "applyTo": [
+        ".claude/skills/setup-audit/**"
+      ],
+      "description": "Migration Path (pre-v7 to v7+), Re-Run Merge Logic, and the generated-doc stamp-block format with re-run-only delta fields \u2014 read on-demand by setup-audit at STEP -1 (migration/re-run) and STEP 3.7 (stamp)"
+    },
+    "references/audit-convention-scans.md": {
+      "source": ".claude/references/audit-convention-scans.md",
+      "target": ".claude/references/audit-convention-scans.md",
+      "action": "sync",
+      "applyTo": [
+        ".claude/skills/setup-audit/**"
+      ],
+      "description": "The five STEP 2.5 convention-extraction scan blocks, the conventions.md output template, and the STEP 2.6 detected-tools.json schema \u2014 read on-demand by setup-audit at STEP 2.5 and STEP 2.6"
+    },
+    "references/audit-output-templates.md": {
+      "source": ".claude/references/audit-output-templates.md",
+      "target": ".claude/references/audit-output-templates.md",
+      "action": "sync",
+      "applyTo": [
+        ".claude/skills/setup-audit/**"
+      ],
+      "description": "Verbatim setup-audit output templates \u2014 architecture-principles.md skeleton, confidence line-format example and legend, ambiguities.json schema, Provenance section, and STEP 4 results block; read once at STEP 3 start"
+    },
+    "references/audit-merge-mode.md": {
+      "source": ".claude/references/audit-merge-mode.md",
+      "target": ".claude/references/audit-merge-mode.md",
+      "action": "sync",
+      "applyTo": [
+        ".claude/skills/setup-audit/**"
+      ],
+      "description": "The entire setup-audit MERGE MODE (--merge) branch \u2014 STEP 0-3 flow, Confidence Tag Merge Rules, unified-document template, and read-only invariants; read only when invoked with --merge"
+    },
     "tests/pressure-tests/audit-grounding.md": {
       "source": "tests/pressure-tests/audit-grounding.md",
       "target": "tests/pressure-tests/audit-grounding.md",

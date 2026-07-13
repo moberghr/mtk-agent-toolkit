@@ -66,6 +66,19 @@
         "deviations": [
           { "kind": "other", "detail": "Regenerated gitignored .claude/references.index via scripts/build-references-index.sh (validator sync check requires it)", "justification": "Generated artifact, not committed, no source impact — accepted by orchestrator as auto-fix class" }
         ]
+      },
+      {
+        "batch_id": "B2",
+        "actual_files": [".claude/references/audit-rerun-migration.md", ".claude/references/audit-convention-scans.md", ".claude/references/audit-output-templates.md", ".claude/references/audit-merge-mode.md", ".claude/skills/setup-audit/SKILL.md", ".claude/manifest.json"],
+        "build": { "ok": true, "evidence": "validate-toolkit.sh exit 0 'Toolkit validation passed' (subagent run + fresh orchestrator re-run)" },
+        "tests": { "ok": true, "evidence": "SKILL.md 338 lines (<=340); 17 '^## STEP' headings byte-identical (diff vs HEAD empty, re-verified by orchestrator); 'do not reconstruct' x1; MANDATORY count 8=8 pre/post with all gates inline; 9 content-loss markers each unique across 5 files; diff limited to batch.files" },
+        "behavioral_diff": "None behaviorally; SKILL.md 732->338 lines. Migration/re-run logic, STEP 2.5 scans + conventions/detected-tools templates, STEP 3/3.5/4 output templates, and the entire MERGE MODE branch load via mandatory on-demand reads only in the branch that needs them; 3 redundant STEP 3.7 subsections now point at existing audit-grounding.md sections 1/2/4.",
+        "deviations": [
+          { "kind": "other", "detail": "Regenerated gitignored .claude/references.index (validator sync check)", "justification": "Same as B1 — generated artifact, not committed" },
+          { "kind": "kept-inline", "detail": "Verify-claims pass/retry/seed-cache, STEP 3.5 not-optional gate, STEP -1 classification table kept inline verbatim", "justification": "Named in the spec's keep-inline list" },
+          { "kind": "format", "detail": "3 redundant STEP 3.7 subsections collapsed to bold-label one-line pointers, dropping their ### heading lines", "justification": "Faithful to 'collapse to one-line pointers'; no consumer references those ### names" },
+          { "kind": "safety-placement", "detail": "MERGE MODE read-only invariants moved into audit-merge-mode.md (AUDIT MODE invariants stay inline)", "justification": "Accepted by orchestrator: the mandatory read at the MERGE MODE entry point precedes any merge action; invariants verbatim in companion; skipping the read leaves no merge procedure to execute" }
+        ]
       }
     ]
   },
