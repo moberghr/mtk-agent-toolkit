@@ -18,7 +18,7 @@ Skill behavior is intended to be byte-for-byte equivalent: no gate, ordering rul
 | SC3 | No content loss: every extracted section's distinctive heading/marker occurs exactly once across (SKILL.md + its companions) | grep loop per moved section (see Test manifest) reports 0 missing, 0 duplicated |
 | SC4 | Cross-skill step coupling intact: the `^## STEP` heading sets of `setup-bootstrap` (18) and `setup-audit` (17) are unchanged | `diff <(git show HEAD:<file> \| grep '^## STEP') <(grep '^## STEP' <file>)` is empty for both |
 | SC5 | Anatomy intact: `subagent-implementation/SKILL.md` retains `## Overview`, `## When To Use`, `## Workflow`, `## Verification` | `grep -c` finds all four headings |
-| SC6 | Combined payload cut ≥ 40%: sum of `wc -w` across the three SKILL.md files ≤ 10,500 words (pre-change: 18,057) | `wc -w` sum |
+| SC6 | Combined payload cut: sum of `wc -w` across the three SKILL.md files ≤ 11,500 words (pre-change: 18,057). *Amended 2026-07-13 from ≤10,500 via Phase 2.5 re-open, engineer-approved: the original ceiling assumed prose-density removal, but the authorized extractions were template-heavy (word-light) and the remaining inline text is the spec-designated stay-inline safety core. Actual: 11,457 (−36.5%).* | `wc -w` sum |
 | SC7 | Missing-file branch defined: each of the three SKILL.md files states exactly once that an unresolvable companion file stops the affected step (never reconstructed from memory) | `grep -c "do not reconstruct"` = 1 per file |
 | SC8 | Stale pointer fixed: `templates/workflows/subagent-implementation.workflow.js` comment cites the new companion path | `grep "subagent-implementer-prompt" templates/workflows/subagent-implementation.workflow.js` |
 
