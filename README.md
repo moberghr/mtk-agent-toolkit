@@ -484,7 +484,7 @@ ENTRY POINTS (4 user-invocable skills)
                  + 6 per stack × 3 stacks (coding-guidelines, ORM checklist, framework patterns, …)
       ↓ enforced by
 14 HOOKS across 7 lifecycle events  — SessionStart · PreToolUse · PostToolUse · PreCompact
-                                       · PostCompact · UserPromptSubmit · Stop
+                                       · SessionStart(compact) · UserPromptSubmit · Stop
       ↓ validated by
 7 BENCHMARK SUITES (30/30) · 7 EVAL SUITES (22 scenarios) · 31 PRESSURE TESTS
 ```
@@ -500,7 +500,7 @@ Hooks are deterministic — they fire every time, unlike advisory `CLAUDE.md` in
 | **read-guard** | PreToolUse (Read) | Blocks secret-bearing files (`.env`, `*.pem`, `id_rsa`, …) from entering context — no self-approval path |
 | **scope-guard** | PreToolUse (Edit/Write) | Warns when an edit falls outside the active spec's `change_manifest` |
 | **context-budget** / **compress-monitor** | PostToolUse | Tracks files/edits/ops and nudges a reset past 60%; flags large uncompressed output |
-| **post-compact** | PostCompact | Re-injects tech stack, active specs/plans, tasks, and handoff artifacts after auto-compaction |
+| **post-compact** | SessionStart (matcher `compact`) | Re-injects tech stack, active specs/plans, tasks, and handoff artifacts after auto-compaction |
 | **verify-completion** | Stop | Rejects "done" claims lacking fresh, cited command output |
 | **capture-learnings** / **session-analytics** | Stop | Prompts lesson capture after substantial sessions; persists usage stats |
 

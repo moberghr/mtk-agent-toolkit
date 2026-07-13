@@ -16,6 +16,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
 
+mtk_is_redundant_plugin_invocation "$0" && exit 0
+
 INPUT=$(cat)
 
 # Extract file_path from the tool input JSON
@@ -96,7 +98,7 @@ done <<< "$ALLOWED_FILES"
 if [ "$MATCHED" -eq 0 ]; then
   SPEC_NAME=$(basename "$SPEC_JSON" .json)
   mtk_record_scope_guard_warning
-  echo "SCOPE GUARD: ${REL_PATH} is not in the approved spec (${SPEC_NAME}). If this change is necessary, update the spec's change_manifest first. Undeclared file modifications are the #1 source of spec drift."
+  mtk_emit_additional_context "PreToolUse" "SCOPE GUARD: ${REL_PATH} is not in the approved spec (${SPEC_NAME}). If this change is necessary, update the spec's change_manifest first. Undeclared file modifications are the #1 source of spec drift."
 fi
 
 exit 0

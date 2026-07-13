@@ -7,13 +7,35 @@
 
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$ROOT_DIR"
+# Resolve the script's real location (following symlinks) so pattern packs load
+# from the plugin checkout even when this script is invoked via a symlinked git
+# hook installed in a target repo. The diff, by contrast, runs against the
+# current working directory (the invoking repo) — we deliberately do NOT cd.
+mtk_realpath() {
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$1"
+    return
+  fi
+  # Fallback: resolve symlinks manually (no readlink -f on stock macOS).
+  local p="$1" target
+  while [ -L "$p" ]; do
+    target="$(readlink "$p")"
+    case "$target" in
+      /*) p="$target" ;;
+      *)  p="$(cd "$(dirname "$p")" && pwd)/$target" ;;
+    esac
+  done
+  printf '%s/%s\n' "$(cd "$(dirname "$p")" && pwd)" "$(basename "$p")"
+}
 
-PATTERNS_DIR="$ROOT_DIR/hooks/linter-patterns"
+SELF="$(mtk_realpath "$0")"
+SCRIPT_ROOT="$(cd "$(dirname "$SELF")/.." && pwd)"
+
+PATTERNS_DIR="$SCRIPT_ROOT/hooks/linter-patterns"
 
 # --- Options ---
-DIFF_SOURCE="cached"          # cached | head
+DIFF_SOURCE="cached"          # cached | head | range
+DIFF_RANGE=""                 # git range expression when DIFF_SOURCE=range
 STACK=""                      # auto-detect if empty
 OUTPUT="json"                 # json | human
 
@@ -21,24 +43,34 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --cached)  DIFF_SOURCE="cached"; shift ;;
     --head)    DIFF_SOURCE="head"; shift ;;
+    --range)   DIFF_SOURCE="range"; DIFF_RANGE="${2:-}"; shift 2 ;;
     --stack)   STACK="${2:-}"; shift 2 ;;
     --human)   OUTPUT="human"; shift ;;
     -h|--help)
       cat <<'EOF'
-Usage: hooks/pre-commit-linters.sh [--cached | --head] [--stack <name>] [--human]
+Usage: hooks/pre-commit-linters.sh [--cached | --head | --range <expr>] [--stack <name>] [--human]
 
-Scans staged changes (--cached, default) or HEAD changes (--head) with
-deterministic patterns. Emits JSON findings on stdout.
+Scans staged changes (--cached, default), HEAD changes (--head), or a git range
+(--range base...HEAD) with deterministic patterns. The diff runs against the
+current working directory; pattern packs load from the plugin checkout. Emits
+JSON findings on stdout.
 
---cached     Scan staged changes (default)
---stack      Override tech stack detection (default reads .claude/tech-stack)
---human      Human-readable output instead of JSON
+--cached      Scan staged changes (default)
+--head        Scan working-tree changes vs HEAD
+--range <e>   Scan the given git diff range (e.g. origin/main...HEAD)
+--stack       Override tech stack detection (default reads .claude/tech-stack)
+--human       Human-readable output instead of JSON
 EOF
       exit 0
       ;;
     *) printf 'Unknown arg: %s\n' "$1" >&2; exit 1 ;;
   esac
 done
+
+if [ "$DIFF_SOURCE" = "range" ] && [ -z "$DIFF_RANGE" ]; then
+  printf '%s\n' "--range requires a range expression (e.g. origin/main...HEAD)" >&2
+  exit 1
+fi
 
 # --- Stack detection ---
 if [ -z "$STACK" ] && [ -f .claude/tech-stack ]; then
@@ -73,8 +105,8 @@ if [ -n "$STACK" ]; then
   fi
 fi
 
-# Domain packs (activated by .claude/domains — one domain name per line)
-DOMAINS_FILE="$ROOT_DIR/.claude/domains"
+# Domain packs (activated by the invoking repo's .claude/domains — one per line)
+DOMAINS_FILE=".claude/domains"
 if [ -f "$DOMAINS_FILE" ]; then
   while IFS= read -r domain || [ -n "$domain" ]; do
     domain="$(echo "$domain" | tr -d '[:space:]')"
@@ -95,12 +127,12 @@ if [ -d "$PATTERNS_DIR/project" ]; then
   done
 fi
 
-# --- Get diff ---
-if [ "$DIFF_SOURCE" = "cached" ]; then
-  DIFF_CMD=(git diff --cached -U0 --no-color)
-else
-  DIFF_CMD=(git diff HEAD -U0 --no-color)
-fi
+# --- Get diff (runs against the current working directory / invoking repo) ---
+case "$DIFF_SOURCE" in
+  cached) DIFF_CMD=(git diff --cached -U0 --no-color) ;;
+  range)  DIFF_CMD=(git diff "$DIFF_RANGE" -U0 --no-color) ;;
+  *)      DIFF_CMD=(git diff HEAD -U0 --no-color) ;;
+esac
 
 # --- Extract file:line:content for added lines ---
 # awk walks the unified diff. Hunk header @@ -a,b +c,d @@ gives new-side

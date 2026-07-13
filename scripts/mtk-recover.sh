@@ -15,8 +15,12 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
   exit 1
 }
 
-# Filter to saved entries, newest first.
-mapfile -t ENTRIES < <(grep -E $'\tsaved\t' "$LOG" | tac)
+# Filter to saved entries, newest first. Bash 3.2 has no mapfile and BSD has
+# no tac, so read line-by-line and reverse with awk (portable everywhere).
+ENTRIES=()
+while IFS= read -r _line; do
+  ENTRIES+=("$_line")
+done < <(grep -E $'\tsaved\t' "$LOG" | awk '{ a[NR] = $0 } END { for (i = NR; i >= 1; i--) print a[i] }')
 if [ "${#ENTRIES[@]}" -eq 0 ]; then
   printf 'No saved snapshots in %s.\n' "$LOG"
   exit 0
@@ -61,5 +65,9 @@ if [ -z "$STASH_REF" ]; then
 fi
 
 printf 'Applying %s (%s)...\n' "$STASH_REF" "$MSG"
-git stash apply "$STASH_REF"
+# Restore the staged/unstaged split the snapshot preserved; fall back to a
+# plain apply if the index can't be reinstated (e.g. conflicting tree state).
+if ! git stash apply --index "$STASH_REF"; then
+  git stash apply "$STASH_REF"
+fi
 printf '\nApplied. The stash is still in the list — drop it after verifying with: git stash drop %s\n' "$STASH_REF"

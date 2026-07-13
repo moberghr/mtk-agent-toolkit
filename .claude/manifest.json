@@ -715,7 +715,7 @@
       "source": "hooks/post-compact.sh",
       "target": "hooks/post-compact.sh",
       "action": "sync",
-      "description": "PostCompact hook that re-injects tech stack, in-progress specs, plans, task state, and active workflow artifacts (.mtk/workflows/) after auto-compaction"
+      "description": "Post-compaction hook (SessionStart matcher compact) that re-injects tech stack, in-progress specs, plans, task state, and active workflow artifacts (.mtk/workflows/) after auto-compaction"
     },
     "hooks/pre-compact-snapshot.sh": {
       "source": "hooks/pre-compact-snapshot.sh",
@@ -1212,6 +1212,12 @@
       "action": "sync",
       "description": "MCP server package manifest \u2014 dependencies and build script for mtk-context"
     },
+    "mcp/package-lock.json": {
+      "source": "mcp/package-lock.json",
+      "target": "mcp/package-lock.json",
+      "action": "sync",
+      "description": "Pinned dependency lockfile for the MCP server \u2014 consumed by `npm ci` in scripts/build-mcp.sh for reproducible, transitive-pinned installs"
+    },
     "mcp/tsconfig.json": {
       "source": "mcp/tsconfig.json",
       "target": "mcp/tsconfig.json",
@@ -1247,6 +1253,12 @@
       "target": "scripts/build-mcp.sh",
       "action": "sync",
       "description": "Build script for the MCP server \u2014 runs esbuild to produce dist/mtk-mcp-server.cjs"
+    },
+    "dist/mtk-mcp-server.cjs": {
+      "source": "dist/mtk-mcp-server.cjs",
+      "target": "dist/mtk-mcp-server.cjs",
+      "action": "sync",
+      "description": "Prebuilt, tracked MCP server bundle (S3.12) \u2014 the only runtime artifact; ships so plugin installs never run npm at runtime"
     },
     "hooks/ci-status.sh": {
       "source": "hooks/ci-status.sh",
@@ -1941,11 +1953,59 @@
       "action": "sync",
       "description": "Test for verify-completion re-arm rule \u2014 edit-after-verification re-arms criteria"
     },
+    "tests/hooks/test-mtk-recover.sh": {
+      "source": "tests/hooks/test-mtk-recover.sh",
+      "target": "tests/hooks/test-mtk-recover.sh",
+      "action": "sync",
+      "description": "Verifies scripts/mtk-recover.sh lists snapshots newest-first without mapfile/tac and restores the staged/unstaged split via git stash apply --index on bash 3.2"
+    },
+    "tests/hooks/test-parse-build-diagnostics.sh": {
+      "source": "tests/hooks/test-parse-build-diagnostics.sh",
+      "target": "tests/hooks/test-parse-build-diagnostics.sh",
+      "action": "sync",
+      "description": "Verifies hooks/parse-build-diagnostics.sh runs on bash 3.2 (no declare -A) with the severity-file lookup intact and byte-identical output across shells"
+    },
+    "tests/hooks/test-merge-settings.sh": {
+      "source": "tests/hooks/test-merge-settings.sh",
+      "target": "tests/hooks/test-merge-settings.sh",
+      "action": "sync",
+      "description": "Verifies hooks/merge-settings.sh deep-merges settings.json into byte-valid JSON on bash 3.2 / BSD (union arrays, all hook events, matchers/timeouts, scalar target-wins)"
+    },
+    "tests/hooks/test-learnings.sh": {
+      "source": "tests/hooks/test-learnings.sh",
+      "target": "tests/hooks/test-learnings.sh",
+      "action": "sync",
+      "description": "Regression coverage for scripts/learnings.sh defects A-E in a sandboxed throwaway git repo"
+    },
     "tests/hooks/test-workflow-continuation.sh": {
       "source": "tests/hooks/test-workflow-continuation.sh",
       "target": "tests/hooks/test-workflow-continuation.sh",
       "action": "sync",
       "description": "Test for workflow-continuation.sh \u2014 nudge/debounce/completed/absent/opt-out cases"
+    },
+    "tests/hooks/test-ci-lint-base.sh": {
+      "source": "tests/hooks/test-ci-lint-base.sh",
+      "target": "tests/hooks/test-ci-lint-base.sh",
+      "action": "sync",
+      "description": "Verifies scripts/ci-lint.sh diffs base...HEAD via --base instead of the vacuous git diff HEAD on a clean CI checkout"
+    },
+    "tests/hooks/test-compress-monitor.sh": {
+      "source": "tests/hooks/test-compress-monitor.sh",
+      "target": "tests/hooks/test-compress-monitor.sh",
+      "action": "sync",
+      "description": "Verifies compress-monitor.sh reads tool_response and emits a hookSpecificOutput.additionalContext envelope; silent on short output, non-Bash tools, and self-compressing commands"
+    },
+    "tests/hooks/test-pre-commit-target-repo.sh": {
+      "source": "tests/hooks/test-pre-commit-target-repo.sh",
+      "target": "tests/hooks/test-pre-commit-target-repo.sh",
+      "action": "sync",
+      "description": "Verifies the git pre-commit hook works in a bootstrapped target repo where .git/hooks/pre-commit symlinks into the plugin checkout and the repo has no hooks/ dir"
+    },
+    "tests/hooks/test-promotion-guard.sh": {
+      "source": "tests/hooks/test-promotion-guard.sh",
+      "target": "tests/hooks/test-promotion-guard.sh",
+      "action": "sync",
+      "description": "Verifies mtk_is_redundant_plugin_invocation skips a plugin-copy hook when the project wires the same basename, and always runs a project-local copy"
     },
     "tests/pressure-tests/lesson-mining-rubric.md": {
       "source": "tests/pressure-tests/lesson-mining-rubric.md",

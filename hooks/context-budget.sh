@@ -24,6 +24,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
 
+mtk_is_redundant_plugin_invocation "$0" && exit 0
+
 INPUT=$(cat)
 
 TOOL_NAME=$(mtk_extract_tool_name "$INPUT" 2>/dev/null || echo "")
@@ -93,20 +95,25 @@ fi
 mtk_save_session_state "$SESSION_FILE"
 mtk_session_lock_release
 
-# Check thresholds (warn once per threshold)
+# Check thresholds (warn once per threshold). Advisories are accumulated and
+# emitted once as a PostToolUse additionalContext envelope — plain stdout on
+# exit 0 is invisible to the model.
+ADVISORY=""
+append_advisory() { ADVISORY="${ADVISORY:+$ADVISORY }$1"; }
+
 if [ "$unique_files" -ge 30 ] && [ "$warned_files" -eq 0 ]; then
   sed -i.bak 's/warned_files=0/warned_files=1/' "$SESSION_FILE" && rm -f "${SESSION_FILE}.bak"
-  echo "CONTEXT BUDGET: ${unique_files} unique files read this session. Consider narrowing focus to the files that matter for your current task. Use context-engineering to load only relevant references."
+  append_advisory "CONTEXT BUDGET: ${unique_files} unique files read this session. Consider narrowing focus to the files that matter for your current task. Use context-engineering to load only relevant references."
 fi
 
 if [ "$mods" -ge 40 ] && [ "$warned_mods" -eq 0 ]; then
   sed -i.bak 's/warned_mods=0/warned_mods=1/' "$SESSION_FILE" && rm -f "${SESSION_FILE}.bak"
-  echo "CONTEXT BUDGET: ${mods} file modifications this session. Consider committing a checkpoint to preserve work. Long uncommitted sessions risk losing state on compaction."
+  append_advisory "CONTEXT BUDGET: ${mods} file modifications this session. Consider committing a checkpoint to preserve work. Long uncommitted sessions risk losing state on compaction."
 fi
 
 if [ "$ops" -ge 120 ] && [ "$warned_ops" -eq 0 ]; then
   sed -i.bak 's/warned_ops=0/warned_ops=1/' "$SESSION_FILE" && rm -f "${SESSION_FILE}.bak"
-  echo "CONTEXT BUDGET: ${ops} total operations this session. Context window may be approaching limits. If switching tasks, capture state with the handoff skill first."
+  append_advisory "CONTEXT BUDGET: ${ops} total operations this session. Context window may be approaching limits. If switching tasks, capture state with the handoff skill first."
 fi
 
 # Context-budget checkpoint: nudge a deliberate reset/handoff before quality degrades.
@@ -118,8 +125,10 @@ if [ "$warned_ctxpct" -eq 0 ] && [ "${bytes_read:-0}" -gt 0 ]; then
   budget_tokens=$((ctx_window * ctx_pct / 100))
   if [ "$budget_tokens" -gt 0 ] && [ "$est_tokens" -ge "$budget_tokens" ]; then
     sed -i.bak 's/warned_ctxpct=0/warned_ctxpct=1/' "$SESSION_FILE" && rm -f "${SESSION_FILE}.bak"
-    echo "CONTEXT BUDGET: estimated ~${est_tokens} context tokens consumed (read-bytes floor) — past ${ctx_pct}% of the ${ctx_window}-token window. Reset deliberately before quality degrades: capture state with the handoff skill and start a fresh session. (Estimate under-counts; tune via MTK_CONTEXT_WINDOW_TOKENS / MTK_CONTEXT_BUDGET_PCT.)"
+    append_advisory "CONTEXT BUDGET: estimated ~${est_tokens} context tokens consumed (read-bytes floor) — past ${ctx_pct}% of the ${ctx_window}-token window. Reset deliberately before quality degrades: capture state with the handoff skill and start a fresh session. (Estimate under-counts; tune via MTK_CONTEXT_WINDOW_TOKENS / MTK_CONTEXT_BUDGET_PCT.)"
   fi
 fi
+
+[ -n "$ADVISORY" ] && mtk_emit_additional_context "PostToolUse" "$ADVISORY"
 
 exit 0

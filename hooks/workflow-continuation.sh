@@ -21,6 +21,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
 
+mtk_is_redundant_plugin_invocation "$0" && exit 0
+
 REPO_ROOT="$(mtk_repo_root 2>/dev/null || pwd)"
 WF_DIR="${REPO_ROOT}/.mtk/workflows"
 [ -d "$WF_DIR" ] || exit 0
@@ -61,5 +63,8 @@ fi
 printf '%s' "$DONE" > "$MARKER" 2>/dev/null || true
 
 REMAINING=$((TOTAL - DONE))
-echo "WORKFLOW IN PROGRESS: ${UUID} has ${REMAINING} of ${TOTAL} batches unfinished (${DONE} done). Resume it (continue the next batch per tasks/todo.md), hand off (\`handoff\` skill), or close it: bash scripts/workflow-artifact.sh abandon ${UUID} --reason \"<why>\"."
+# User-visible advisory (systemMessage): surfaces one line for the engineer to
+# decide. Not model-visible — the only model-visible Stop channel forces the
+# model to continue, which this hook explicitly must never do.
+mtk_emit_system_message "WORKFLOW IN PROGRESS: ${UUID} has ${REMAINING} of ${TOTAL} batches unfinished (${DONE} done). Resume it (continue the next batch per tasks/todo.md), hand off (\`handoff\` skill), or close it: bash scripts/workflow-artifact.sh abandon ${UUID} --reason \"<why>\"."
 exit 0

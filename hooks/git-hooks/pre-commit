@@ -7,12 +7,36 @@
 
 set -euo pipefail
 
-REPO_ROOT="$(git rev-parse --show-toplevel)"
-LINTER="$REPO_ROOT/hooks/pre-commit-linters.sh"
+# Resolve the linter relative to THIS hook's real location, not the repo being
+# committed to. Bootstrap installs .git/hooks/pre-commit as a symlink into the
+# plugin checkout, so the linter lives next to the resolved script — never in
+# the target repo. git runs this hook with cwd = the target repo toplevel, and
+# the linter diffs that working directory while loading patterns from the plugin.
+mtk_realpath() {
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$1"
+    return
+  fi
+  # Fallback: resolve symlinks manually (no readlink -f on stock macOS).
+  local p="$1" target
+  while [ -L "$p" ]; do
+    target="$(readlink "$p")"
+    case "$target" in
+      /*) p="$target" ;;
+      *)  p="$(cd "$(dirname "$p")" && pwd)/$target" ;;
+    esac
+  done
+  printf '%s/%s\n' "$(cd "$(dirname "$p")" && pwd)" "$(basename "$p")"
+}
 
-# If the linter script doesn't exist, skip silently (toolkit may have been
-# partially uninstalled or the repo structure changed).
+SELF="$(mtk_realpath "$0")"
+LINTER="$(cd "$(dirname "$SELF")/.." && pwd)/pre-commit-linters.sh"
+
+# If the linter genuinely can't be found, warn once and let the commit proceed.
+# A missing tooling dependency must never silently pass unnoticed, nor block a
+# commit — the AI review remains the enforcing gate.
 if [ ! -x "$LINTER" ]; then
+  printf 'MTK pre-commit: linter not found at %s — skipping deterministic lint.\n' "$LINTER" >&2
   exit 0
 fi
 

@@ -112,8 +112,9 @@
         ]
       }
     ],
-    "PostCompact": [
+    "SessionStart": [
       {
+        "matcher": "compact",
         "hooks": [
           {
             "type": "command",
@@ -139,7 +140,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/hooks/verify-completion \"$ARGUMENTS\""
+            "command": "$CLAUDE_PROJECT_DIR/hooks/verify-completion"
           }
         ]
       },

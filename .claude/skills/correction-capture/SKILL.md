@@ -66,7 +66,10 @@ This skill is specifically for **engineer-driven** corrections. When *you* resol
 
    **a. Structured (preferred when `scripts/learnings.sh` is present).** Append a JSONL entry to `.mtk/learnings.jsonl` (gitignored, machine-readable). Then regenerate the markdown view:
    ```bash
-   bash scripts/learnings.sh add \
+   # Resolve the script: project copy first, else the plugin's copy (plugin
+   # installs never receive scripts/ into the target repo).
+   LS="scripts/learnings.sh"; [ -f "$LS" ] || LS="${CLAUDE_PLUGIN_ROOT:-.}/scripts/learnings.sh"
+   bash "$LS" add \
      --workflow "${MTK_WF_UUID:-manual}" \
      --scope "personal|team" \
      --source correction \
@@ -83,7 +86,7 @@ This skill is specifically for **engineer-driven** corrections. When *you* resol
      --evolution-actions "routing|claude_md|reference|hook|none" \
      --memory-type "episodic|semantic|procedural" \
      --supersedes "L-old-id"   # only when this lesson reverses an existing one
-   bash scripts/learnings.sh regen-markdown   # rebuilds tasks/lessons.md
+   bash "$LS" regen-markdown   # rebuilds tasks/lessons.md
 
    # v7.14 enrichment (all optional — omit when not applicable):
    #   --wrong-turns      comma-separated dead ends tried, so the next session

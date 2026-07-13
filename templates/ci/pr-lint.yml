@@ -3,11 +3,16 @@
 # Runs the MTK deterministic linter on every PR. No AI, no API keys needed.
 # Catches secrets, SQL injection, empty catches, and stack-specific issues.
 #
+# How it works: the target repo does NOT contain the linter — it ships with the
+# MTK toolkit. This workflow checks out the toolkit alongside your PR and runs
+# ITS ci-lint.sh against your checkout, so nothing needs to be vendored in.
+#
 # Setup:
 #   1. Copy this file to .github/workflows/pr-lint.yml in your repo
-#   2. Ensure hooks/pre-commit-linters.sh and hooks/linter-patterns/ exist
-#      (they're synced by the MTK plugin)
-#   3. Push — the workflow runs on every PR to main
+#   2. Commit and push — the workflow runs on every PR to main
+#
+# It pins the toolkit to the version recorded in .claude/mtk-version.json when
+# present, otherwise uses the toolkit's default branch.
 
 name: MTK Lint
 
@@ -23,10 +28,33 @@ jobs:
     name: Deterministic Lint
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout PR
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Full history needed for diff
+          fetch-depth: 0  # Full history needed for base...HEAD diff
+
+      - name: Resolve MTK toolkit version
+        id: mtkver
+        run: |
+          REF=""
+          if [ -f .claude/mtk-version.json ]; then
+            V=$(python3 -c 'import json; print(json.load(open(".claude/mtk-version.json")).get("version",""))' 2>/dev/null || true)
+            # Only accept a plain version token — a crafted multiline value would
+            # inject extra $GITHUB_OUTPUT lines.
+            case "$V" in
+              ""|*[!0-9A-Za-z.-]*) : ;;
+              *) REF="v$V" ;;
+            esac
+          fi
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout MTK toolkit
+        uses: actions/checkout@v4
+        with:
+          repository: moberghr/mtk-agent-toolkit
+          ref: ${{ steps.mtkver.outputs.ref }}  # empty => default branch
+          path: _mtk
+          fetch-depth: 1
 
       - name: Run MTK linter on PR diff
-        run: bash scripts/ci-lint.sh --base "origin/${{ github.base_ref }}"
+        run: bash _mtk/scripts/ci-lint.sh --base "${{ github.event.pull_request.base.sha }}"

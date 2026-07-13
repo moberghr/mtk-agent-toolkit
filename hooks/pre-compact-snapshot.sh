@@ -7,6 +7,22 @@ set -euo pipefail
 # Never block compaction.
 trap 'exit 0' ERR
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/lib/hook-io.sh"
+
+mtk_is_redundant_plugin_invocation "$0" && exit 0
+
+# Stash push/apply mutates git state — opt-in for plugin installs so team
+# repos never get surprise stash entries. Project-local wiring (the toolkit's
+# own settings.json) keeps the original always-on behavior.
+SELF_DIR_P="$(cd "$(dirname "$0")" && pwd -P)"
+PROJ_ROOT_P="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && pwd -P)"
+case "$SELF_DIR_P/" in
+  "$PROJ_ROOT_P"/*) : ;;
+  *) [ "${MTK_COMPACT_SNAPSHOT:-0}" = "1" ] || exit 0 ;;
+esac
+
 # Read JSON payload (advisory; may be empty in some harnesses).
 INPUT="$(cat 2>/dev/null || true)"
 
@@ -54,9 +70,14 @@ if ! git stash push --include-untracked --quiet -m "$MSG" >/dev/null 2>&1; then
   exit 0
 fi
 
-# Re-apply so the working tree is unchanged.
-if ! git stash apply --quiet stash@\{0\} >/dev/null 2>&1; then
-  printf '[mtk] precompact: stash created (%s) but apply failed — recover via: git stash apply\n' "$MSG" >&2
+# Re-apply so the working tree is unchanged. Apply with --index first so a
+# carefully staged index is restored exactly; a plain apply would flatten
+# staged hunks back into the working tree. Fall back to plain apply if the
+# index cannot be reinstated (e.g. conflicting staged/unstaged states).
+if ! git stash apply --index --quiet stash@\{0\} >/dev/null 2>&1; then
+  if ! git stash apply --quiet stash@\{0\} >/dev/null 2>&1; then
+    printf '[mtk] precompact: stash created (%s) but apply failed — recover via: git stash apply\n' "$MSG" >&2
+  fi
 fi
 
 mkdir -p .claude/observability 2>/dev/null || true
