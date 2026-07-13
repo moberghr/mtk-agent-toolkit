@@ -32,7 +32,7 @@ NEWEST=""
 NEWEST_MTIME=0
 for f in "$WF_DIR"/*.json; do
   [ -f "$f" ] || continue
-  m=$(stat -f '%m' "$f" 2>/dev/null || stat -c '%Y' "$f" 2>/dev/null || echo 0)
+  m=$(stat -c '%Y' "$f" 2>/dev/null || stat -f '%m' "$f" 2>/dev/null || echo 0)
   if [ "$m" -gt "$NEWEST_MTIME" ]; then NEWEST_MTIME=$m; NEWEST="$f"; fi
 done
 [ -n "$NEWEST" ] || exit 0
