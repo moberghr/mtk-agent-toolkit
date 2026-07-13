@@ -8,8 +8,8 @@ alwaysApply: false
 
 Two-tier model:
 
-- **`tasks/lessons.md`** — committed, team-canonical, human-readable. Source of truth for cross-machine sharing.
-- **`.mtk/learnings.jsonll`** — local-only (gitignored), machine-readable JSON Lines (one entry per line), indexed for retrieval. Generated from `tasks/lessons.md` and updated by `correction-capture` / `promote-lesson`. JSONL is used (rather than a single JSON array) so pure-bash tooling can append and grep without an external JSON parser, per S3.3.
+- **`tasks/lessons.md`** — committed, team-canonical, human-readable. Source of truth for cross-machine sharing. `learnings.sh regen-markdown` renders **only `scope: "team"` entries** here — `personal` entries stay in the gitignored store and never leak into the committed team file.
+- **`.mtk/learnings.jsonl`** — local-only (gitignored), machine-readable JSON Lines (one entry per line), indexed for retrieval. Updated by `correction-capture` / `promote-lesson`. JSONL is used (rather than a single JSON array) so pure-bash tooling can append and grep without an external JSON parser, per S3.3. The store is anchored to the **invoking repo** (git toplevel of the current directory, else cwd), so a plugin-path invocation of `learnings.sh` writes into the caller's repo, never the shared plugin cache.
 
 Manual edits to `tasks/lessons.md` are preserved on next migrate (re-emitted as entries with `source: "manual"`).
 
@@ -121,13 +121,13 @@ Used by `learnings.sh query` at the start of `spec-driven-development` and `fix`
 | 4b. **Superseded** | Is this entry's `id` in some newer entry's `supersedes`? | required not-superseded, else drop |
 | 5. **Phase** | `phase` matches current phase, OR `phase=any`? | required, else drop |
 
-Default: return top 10. Override with `--max N`. Engineer scope filter: include `personal` only if the entry's `captured_by` (env `MTK_USER` or git config user.email) matches; always include `team`.
+Default: return top 10. Override with `--max N`. Scope filter via `--scope team|personal|all` (default `all`): `team` returns only committed team lessons, `personal` only the engineer's local lessons, `all` both.
 
 ## File Layout
 
 ```
-.mtk/learnings.jsonl      ← single JSON document, top-level array
-tasks/lessons.md         ← markdown view; `## Auto-generated` and `## Manual` sections
+.mtk/learnings.jsonl     ← JSON Lines: one entry object per line (NOT a single array)
+tasks/lessons.md         ← markdown view; `## Auto-generated` (team-scope only) and `## Manual` sections
 ```
 
 `tasks/lessons.md` structure after migration:
@@ -151,7 +151,7 @@ tasks/lessons.md         ← markdown view; `## Auto-generated` and `## Manual` 
 
 ## Migration
 
-`learnings.sh migrate` reads existing `tasks/lessons.md` (any prior format), parses entries on a best-effort basis (heading or bullet level), and emits one JSON entry per recognizable lesson with:
+`learnings.sh migrate` reads existing `tasks/lessons.md`, parses each `## <heading>` block into one entry (title from the heading line, body from the lines beneath it up to the next heading), and emits one JSON entry per block with:
 
 - `source: "manual"`
 - `scope: "team"` (since the file was committed)
@@ -159,7 +159,7 @@ tasks/lessons.md         ← markdown view; `## Auto-generated` and `## Manual` 
 - `phase: "any"`
 - `expires_at`: `captured_at + 12 months`
 
-Migration is idempotent. Re-running does not duplicate entries when matched by title hash.
+Migration is idempotent two ways: (1) once the file carries the auto-generated marker it short-circuits with "Already migrated"; (2) even against a marker-less re-feed, each block's title is hashed (`cksum`) and a block whose hash already exists in the store is skipped — so re-running never duplicates. After ingesting, migrate regenerates the markdown view (`regen-markdown --force`), which is an intentional prose→summary rewrite (full bodies live in the store) and therefore bypasses the shrink-guard.
 
 ## Sycophancy Index (π)
 

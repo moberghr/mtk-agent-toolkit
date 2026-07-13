@@ -21,6 +21,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
 
+mtk_is_redundant_plugin_invocation "$0" && exit 0
+
 REPO_ROOT="$(mtk_repo_root 2>/dev/null || pwd)"
 WF_DIR="${REPO_ROOT}/.mtk/workflows"
 [ -d "$WF_DIR" ] || exit 0
@@ -30,7 +32,7 @@ NEWEST=""
 NEWEST_MTIME=0
 for f in "$WF_DIR"/*.json; do
   [ -f "$f" ] || continue
-  m=$(stat -f '%m' "$f" 2>/dev/null || stat -c '%Y' "$f" 2>/dev/null || echo 0)
+  m=$(stat -c '%Y' "$f" 2>/dev/null || stat -f '%m' "$f" 2>/dev/null || echo 0)
   if [ "$m" -gt "$NEWEST_MTIME" ]; then NEWEST_MTIME=$m; NEWEST="$f"; fi
 done
 [ -n "$NEWEST" ] || exit 0
@@ -61,5 +63,8 @@ fi
 printf '%s' "$DONE" > "$MARKER" 2>/dev/null || true
 
 REMAINING=$((TOTAL - DONE))
-echo "WORKFLOW IN PROGRESS: ${UUID} has ${REMAINING} of ${TOTAL} batches unfinished (${DONE} done). Resume it (continue the next batch per tasks/todo.md), hand off (\`handoff\` skill), or close it: bash scripts/workflow-artifact.sh abandon ${UUID} --reason \"<why>\"."
+# User-visible advisory (systemMessage): surfaces one line for the engineer to
+# decide. Not model-visible — the only model-visible Stop channel forces the
+# model to continue, which this hook explicitly must never do.
+mtk_emit_system_message "WORKFLOW IN PROGRESS: ${UUID} has ${REMAINING} of ${TOTAL} batches unfinished (${DONE} done). Resume it (continue the next batch per tasks/todo.md), hand off (\`handoff\` skill), or close it: bash scripts/workflow-artifact.sh abandon ${UUID} --reason \"<why>\"."
 exit 0

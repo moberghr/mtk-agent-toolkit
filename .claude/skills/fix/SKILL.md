@@ -114,9 +114,11 @@ digraph fix_flow {
    - **Before commit:** `.claude/references/pre-commit-review-list.md` if present
 5. Resolve and scan relevant lessons. When `scripts/learnings.sh` is present, prefer the structured query (5-layer filter — proximity / recurrence / severity / validity / phase) over the flat markdown file:
    ```bash
-   bash scripts/learnings.sh query --phase implement --files "<target file paths>" --max 8
+   # Resolve the script: project copy first, else the plugin's copy.
+   LS="scripts/learnings.sh"; [ -f "$LS" ] || LS="${CLAUDE_PLUGIN_ROOT:-.}/scripts/learnings.sh"
+   bash "$LS" query --phase implement --files "<target file paths>" --max 8
    ```
-   Falls back to scanning `tasks/lessons.md` directly when the script is absent (older repos).
+   Falls back to scanning `tasks/lessons.md` directly when the script is absent from both the project and the plugin (older repos).
 6. Read the target file and its closest neighbors before editing.
 
 **Progressive disclosure principle:** Small fixes do not need all references loaded. Load what's relevant to the specific fix, then load additional references if the scope shifts.

@@ -91,7 +91,9 @@ run_scenario() {
     return 0
   fi
 
-  # Automated path — extract prompt block and invoke executor.
+  # Automated path — extract the prompt block, then send the executor the FULL
+  # eval file as context plus the prompt fence as the instruction. Sending only
+  # the fence would grade the agent against scenario/setup it never saw.
   local prompt_file="$result_dir/$scenario_name.prompt.txt"
   awk '/^```prompt$/{flag=1; next} /^```$/{flag=0} flag' "$scenario_path" > "$prompt_file"
   if [ ! -s "$prompt_file" ]; then
@@ -99,8 +101,18 @@ run_scenario() {
     return 1
   fi
 
+  local exec_input="$result_dir/$scenario_name.exec.input"
+  {
+    printf 'You are being evaluated. The CONTEXT below is the eval scenario and its setup.\n'
+    printf 'Read it, then carry out the INSTRUCTION exactly as if a user had sent it.\n\n'
+    printf -- '--- CONTEXT (eval scenario) ---\n'
+    cat "$scenario_path"
+    printf '\n--- INSTRUCTION (run this) ---\n'
+    cat "$prompt_file"
+  } > "$exec_input"
+
   local out_file="$result_dir/$scenario_name.output.md"
-  "$EVAL_EXECUTOR" < "$prompt_file" > "$out_file"
+  "$EVAL_EXECUTOR" < "$exec_input" > "$out_file"
 
   if [ -n "${EVAL_GRADER:-}" ] && [ -f "evals/$skill/grader.md" ]; then
     local grade_input="$result_dir/$scenario_name.grade.input"
@@ -127,10 +139,19 @@ case "$MODE" in
   skill)
     [ -n "$SKILL" ] || { printf 'ERROR: --skill requires a name\n' >&2; exit 1; }
     [ -d "evals/$SKILL" ] || { printf 'ERROR: no such skill: %s\n' "$SKILL" >&2; exit 1; }
+    ran=0
     for scenario_file in "evals/$SKILL"/eval-*.md; do
       [ -f "$scenario_file" ] || continue
       run_scenario "$scenario_file"
+      ran=1
     done
+    if [ "$ran" -eq 0 ]; then
+      printf 'NOTE: %s has no eval-*.md scenarios — nothing run.\n' "$SKILL"
+      if ls "evals/$SKILL"/*.jsonl >/dev/null 2>&1; then
+        printf '      This skill uses the JSONL skill-eval harness instead. Run:\n'
+        printf '        bash scripts/skill-eval/run-eval.sh %s\n' "$SKILL"
+      fi
+    fi
     ;;
   scenario)
     [ -n "$EVAL_FILE" ] || { printf 'ERROR: --eval requires a path\n' >&2; exit 1; }

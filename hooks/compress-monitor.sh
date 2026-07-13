@@ -6,15 +6,22 @@ set -euo pipefail
 # that landed in context without being piped through `mtk-compress.sh`.
 #
 # Reads the Claude Code PostToolUse hook payload on stdin (JSON) and emits a
-# `{"continue": true, "additionalContext": "..."}` envelope when:
+# `hookSpecificOutput.additionalContext` envelope (the model-visible PostToolUse
+# channel) when:
 #   - the tool was Bash
-#   - the tool result exceeds MTK_COMPRESS_WARN_CHARS (default 5000)
+#   - the tool response exceeds MTK_COMPRESS_WARN_CHARS (default 5000)
 #   - the bash command did NOT already include `mtk-compress`
 #
 # This is advisory only — it does not modify the tool result. The compression
 # itself happens in the shell pipe (`<command> | bash scripts/mtk-compress.sh`).
 #
 # Disable per machine via `MTK_COMPRESS_MONITOR_DISABLED=1`.
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/lib/hook-io.sh"
+
+mtk_is_redundant_plugin_invocation "$0" && exit 0
 
 if [ "${MTK_COMPRESS_MONITOR_DISABLED:-0}" = "1" ]; then
   exit 0
@@ -51,7 +58,7 @@ else:
 if "mtk-compress" in cmd or "MTK_COMPRESS_DISABLED" in cmd:
     sys.exit(0)
 
-result = payload.get("tool_result") or payload.get("result") or ""
+result = payload.get("tool_response") or payload.get("tool_result") or payload.get("result") or ""
 if isinstance(result, dict):
     result = result.get("output") or result.get("stdout") or json.dumps(result)
 if not isinstance(result, str):
@@ -78,5 +85,10 @@ msg = (
     f"Set MTK_COMPRESS_MONITOR_DISABLED=1 in .claude/settings.local.json env to silence."
 )
 
-sys.stdout.write(json.dumps({"continue": True, "additionalContext": msg}))
+sys.stdout.write(json.dumps({
+    "hookSpecificOutput": {
+        "hookEventName": "PostToolUse",
+        "additionalContext": msg,
+    }
+}))
 PY

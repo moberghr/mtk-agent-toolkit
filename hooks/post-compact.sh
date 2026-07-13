@@ -1,12 +1,20 @@
 #!/usr/bin/env bash
-# PostCompact hook: re-inject key context after auto-compaction.
-# Ensures the session doesn't lose awareness of tech stack, in-progress work,
-# or active artifacts that were in the pre-compaction conversation.
+# Post-compaction context re-injection. There is no "PostCompact" hook event;
+# this runs as a SessionStart hook with matcher "compact" (the documented way to
+# regain a model-visible channel after compaction). It re-injects awareness of
+# tech stack, in-progress work, and active artifacts that were in the
+# pre-compaction conversation.
 set -euo pipefail
 
 # Diagnostic: emit hook name + exit code on non-zero exit (silent on success).
 _mtk_hook_diag() { local c=$?; [[ $c -ne 0 ]] && echo "[mtk-hook:$(basename "$0")] exit $c" >&2 2>/dev/null || true; return 0; }
 trap _mtk_hook_diag EXIT
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/lib/hook-io.sh"
+
+mtk_is_redundant_plugin_invocation "$0" && exit 0
 
 CONTEXT=""
 
@@ -71,10 +79,5 @@ if [ -d .mtk/workflows ]; then
 fi
 
 if [ -n "$CONTEXT" ]; then
-  # Escape for JSON (no external deps — bash parameter substitution only)
-  ESCAPED="${CONTEXT//\\/\\\\}"
-  ESCAPED="${ESCAPED//\"/\\\"}"
-  ESCAPED="${ESCAPED//$'\n'/\\n}"
-  ESCAPED="${ESCAPED//$'\t'/\\t}"
-  printf '{"context": "POST-COMPACTION RECOVERY: %s"}\n' "$ESCAPED"
+  mtk_emit_additional_context "SessionStart" "POST-COMPACTION RECOVERY: ${CONTEXT}"
 fi

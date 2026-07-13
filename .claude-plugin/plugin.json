@@ -29,6 +29,7 @@
     "./.claude/agents/architecture-reviewer.md",
     "./.claude/agents/compliance-reviewer.md",
     "./.claude/agents/test-reviewer.md",
+    "./.claude/agents/silent-failure-hunter.md",
     "./.claude/agents/plan-gap-reviewer.md",
     "./.claude/agents/context-miner.md"
   ],

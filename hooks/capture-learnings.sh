@@ -10,9 +10,17 @@ trap _mtk_hook_diag EXIT
 # substantial but no lessons were recorded, prompts the agent.
 # Also detects when 3+ lessons share a keyword, suggesting CLAUDE.md promotion.
 
-# Check if the session was substantial (context-budget tracks this)
-PROJECT_ID=$(pwd | cksum | cut -d' ' -f1)
-SESSION_FILE="${TMPDIR:-/tmp}/mtk-context-budget-${PROJECT_ID}-$(date +%Y%m%d)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/lib/hook-io.sh"
+
+mtk_is_redundant_plugin_invocation "$0" && exit 0
+
+# Check if the session was substantial (context-budget tracks this). Resolve the
+# session file via mtk_session_file so this hook keys off the same project root
+# (git toplevel) that context-budget.sh writes under — a bare `pwd` disagrees
+# when Claude is launched from a subdirectory.
+SESSION_FILE="$(mtk_session_file)"
 
 ops=0
 mods=0
@@ -27,8 +35,10 @@ if [ "$ops" -lt 20 ] && [ "$mods" -lt 5 ]; then
   exit 0
 fi
 
+# Resolve lessons.md against the project root, not cwd (subdirectory-safe).
+REPO_ROOT="$(mtk_repo_root)"
 # Check if tasks/lessons.md exists and was modified recently (within last 2 hours)
-LESSONS_FILE="tasks/lessons.md"
+LESSONS_FILE="${REPO_ROOT}/tasks/lessons.md"
 LESSONS_MODIFIED=0
 
 if [ -f "$LESSONS_FILE" ]; then
@@ -38,9 +48,16 @@ if [ -f "$LESSONS_FILE" ]; then
   fi
 fi
 
+# Advisory Stop nudges are user-visible (systemMessage) rather than model-visible:
+# the only model-visible Stop channel forces the model to keep going, which is
+# wrong for a "consider capturing lessons" reminder (and would loop until
+# lessons.md is touched). Accumulate and emit once at the end.
+ADVISORY=""
+append_advisory() { ADVISORY="${ADVISORY:+$ADVISORY }$1"; }
+
 # If substantial session but no lessons captured, remind
 if [ "$LESSONS_MODIFIED" -eq 0 ]; then
-  echo "LEARNING CHECK: Substantial session (${ops} operations, ${mods} modifications) with no lessons captured. If the engineer corrected your approach, redirected you, or a non-obvious pattern emerged, capture it in tasks/lessons.md using the correction-capture workflow; if YOU struggled 2+ times with the same sub-problem and then found a working approach, use golden-path-capture. Lessons compound across sessions — without them, the same mistakes repeat."
+  append_advisory "LEARNING CHECK: Substantial session (${ops} operations, ${mods} modifications) with no lessons captured. If the engineer corrected your approach, redirected you, or a non-obvious pattern emerged, capture it in tasks/lessons.md using the correction-capture workflow; if YOU struggled 2+ times with the same sub-problem and then found a working approach, use golden-path-capture. Lessons compound across sessions — without them, the same mistakes repeat."
 fi
 
 # If lessons exist, check for promotion candidates (3+ lessons with shared keywords)
@@ -61,9 +78,11 @@ if [ -f "$LESSONS_FILE" ] && [ -s "$LESSONS_FILE" ]; then
 
     if [ -n "$REPEATED" ]; then
       KEYWORDS=$(echo "$REPEATED" | tr '\n' ', ' | sed 's/, $//')
-      echo "PROMOTION CANDIDATE: ${LESSON_COUNT} lessons in tasks/lessons.md with recurring themes: ${KEYWORDS}. Consider promoting the pattern to a permanent rule in CLAUDE.md or .claude/rules/. Repeated corrections that stay in lessons.md don't compound — they just accumulate."
+      append_advisory "PROMOTION CANDIDATE: ${LESSON_COUNT} lessons in tasks/lessons.md with recurring themes: ${KEYWORDS}. Consider promoting the pattern to a permanent rule in CLAUDE.md or .claude/rules/. Repeated corrections that stay in lessons.md don't compound — they just accumulate."
     fi
   fi
 fi
+
+[ -n "$ADVISORY" ] && mtk_emit_system_message "$ADVISORY"
 
 exit 0

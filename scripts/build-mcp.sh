@@ -23,10 +23,16 @@ fi
 
 cd "$MCP_DIR"
 
-# Install deps if needed
+# Install deps if needed. Prefer `npm ci` — it installs exactly the tree pinned
+# in the shipped package-lock.json (reproducible, no transitive-version drift).
+# Fall back to `npm install` only if the lockfile is somehow absent.
 if [ ! -d "node_modules" ]; then
   log "Installing MCP dependencies..."
-  npm install --no-audit --no-fund ${QUIET:+--silent} 2>&1 | { [ "$QUIET" = "--quiet" ] && cat >/dev/null || cat; }
+  if [ -f "package-lock.json" ]; then
+    npm ci --no-audit --no-fund ${QUIET:+--silent} 2>&1 | { [ "$QUIET" = "--quiet" ] && cat >/dev/null || cat; }
+  else
+    npm install --no-audit --no-fund ${QUIET:+--silent} 2>&1 | { [ "$QUIET" = "--quiet" ] && cat >/dev/null || cat; }
+  fi
 fi
 
 # Build

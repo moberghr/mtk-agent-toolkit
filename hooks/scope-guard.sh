@@ -16,6 +16,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
 
+mtk_is_redundant_plugin_invocation "$0" && exit 0
+
 INPUT=$(cat)
 
 # Extract file_path from the tool input JSON
@@ -30,7 +32,7 @@ REL_PATH="${FILE_PATH#"$REPO_ROOT"/}"
 SPEC_JSON=""
 if [ -d docs/specs ]; then
   SPEC_JSON=$(find docs/specs -name '*.json' -type f -mtime -7 2>/dev/null | while read -r f; do
-    echo "$(stat -f '%m' "$f" 2>/dev/null || stat -c '%Y' "$f" 2>/dev/null || echo 0) $f"
+    echo "$(stat -c '%Y' "$f" 2>/dev/null || stat -f '%m' "$f" 2>/dev/null || echo 0) $f"
   done | sort -rn | head -1 | cut -d' ' -f2-)
 fi
 
@@ -40,7 +42,7 @@ fi
 # Use a session cache to avoid re-parsing the spec on every tool call.
 # Cache key: spec file path + mtime.
 CACHE_DIR="${TMPDIR:-/tmp}"
-SPEC_MTIME=$(stat -f '%m' "$SPEC_JSON" 2>/dev/null || stat -c '%Y' "$SPEC_JSON" 2>/dev/null || echo "0")
+SPEC_MTIME=$(stat -c '%Y' "$SPEC_JSON" 2>/dev/null || stat -f '%m' "$SPEC_JSON" 2>/dev/null || echo "0")
 CACHE_KEY=$(printf '%s-%s' "$SPEC_JSON" "$SPEC_MTIME" | cksum | cut -d' ' -f1)
 CACHE_FILE="$CACHE_DIR/mtk-scope-cache-$CACHE_KEY"
 
@@ -96,7 +98,7 @@ done <<< "$ALLOWED_FILES"
 if [ "$MATCHED" -eq 0 ]; then
   SPEC_NAME=$(basename "$SPEC_JSON" .json)
   mtk_record_scope_guard_warning
-  echo "SCOPE GUARD: ${REL_PATH} is not in the approved spec (${SPEC_NAME}). If this change is necessary, update the spec's change_manifest first. Undeclared file modifications are the #1 source of spec drift."
+  mtk_emit_additional_context "PreToolUse" "SCOPE GUARD: ${REL_PATH} is not in the approved spec (${SPEC_NAME}). If this change is necessary, update the spec's change_manifest first. Undeclared file modifications are the #1 source of spec drift."
 fi
 
 exit 0

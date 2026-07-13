@@ -475,7 +475,7 @@ Read the active tech stack skill's `## Settings Additions` section.
 
 Install the deterministic linter as a git pre-commit hook so critical findings (secrets, raw SQL, etc.) block the commit automatically.
 
-The hook source lives in the **plugin checkout**, not the target repo. A relative `ln -s ../../hooks/...` dangles once installed into a bootstrapped repo — resolve an ABSOLUTE source and verify it before linking, or copy the file.
+The hook source lives in the **plugin checkout**, not the target repo. Install it as a **symlink** with an ABSOLUTE source: the hook resolves its own real path to locate the plugin's `pre-commit-linters.sh` (and its pattern packs) while linting the repo being committed to, so the symlink is what lets a copy-free install find the linter. A relative `ln -s ../../hooks/...` dangles once installed into a bootstrapped repo — resolve an absolute source and verify the link is not dangling before relying on it.
 
 1. **If `.git/hooks/pre-commit` does not exist** — install, guarding against a dangling symlink:
    ```bash
@@ -485,8 +485,11 @@ The hook source lives in the **plugin checkout**, not the target repo. A relativ
      echo "⚠️ Hook source not found at $HOOK_SOURCE — skipping git hook install."
    else
      mkdir -p .git/hooks && ln -s "$HOOK_SOURCE" "$HOOK_TARGET"
-     # Dangling link → source path was wrong; copy instead.
-     [ -e "$HOOK_TARGET" ] || { rm -f "$HOOK_TARGET"; cp "$HOOK_SOURCE" "$HOOK_TARGET" && chmod +x "$HOOK_TARGET"; }
+     # The hook must stay a symlink: it resolves its real path back to the
+     # plugin to find the linter. A dangling link means the source path was
+     # wrong — remove it and warn rather than copying (a copied hook can't
+     # locate the plugin's linter and would warn on every commit).
+     [ -e "$HOOK_TARGET" ] || { rm -f "$HOOK_TARGET"; echo "⚠️ Symlink to $HOOK_SOURCE dangled — git pre-commit hook NOT installed. Re-run after verifying CLAUDE_PLUGIN_ROOT."; }
    fi
    ```
 2. **If it exists and is already a symlink to our hook** — skip (idempotent; check `readlink`).
@@ -498,7 +501,7 @@ The hook source lives in the **plugin checkout**, not the target repo. A relativ
      exec hooks/git-hooks/pre-commit
    ```
 
-The hook runs `hooks/pre-commit-linters.sh --cached` (< 1 second) and blocks on critical findings. Engineers bypass with `git commit --no-verify`. The full AI review (`/mtk review before commit`) remains a separate, manual step.
+The hook runs the plugin's `pre-commit-linters.sh --cached` (< 1 second) against **this repo's** staged changes — it loads pattern packs from the plugin checkout but diffs the repo being committed to — and blocks on critical findings. If the linter can't be found it warns to stderr and lets the commit through (never a silent pass, never a hard block for a tooling gap). Engineers bypass with `git commit --no-verify`. The full AI review (`/mtk review before commit`) remains a separate, manual step.
 
 ### CI Staleness Gate (optional)
 
@@ -520,6 +523,8 @@ If this repo hosts on GitHub — `.github/workflows/` already exists, OR `git re
 5. **On "Yes":** copy `templates/ci/mtk-staleness-check.yml` (path resolved per `## MTK File Resolution` — read from `$CLAUDE_PLUGIN_ROOT/templates/ci/mtk-staleness-check.yml` when set, else the project-relative path) to `.github/workflows/mtk-staleness-check.yml`, creating `.github/workflows/` if missing. Report `installed`.
 6. **On "No":** report `declined`.
 
+Two further PR templates are available for teams that want lint/review on GitHub PRs: `templates/ci/pr-lint.yml` (deterministic linter only, no secrets) and `templates/ci/pr-review.yml` (adds AI review; needs `ANTHROPIC_API_KEY`). Both check out the MTK toolkit alongside the PR and run its linter/rubric against the target checkout — nothing is vendored in. Mention them in the STEP 5 report as optional copy-installs; do not install them automatically.
+
 ### Skills and Agents
 Ensure the following files exist:
 - `.claude/skills/implement/SKILL.md` — main implementation loop
@@ -537,7 +542,7 @@ Ensure the following files exist:
 - `.claude/agents/architecture-reviewer.md`
 - `AGENTS.md`
 
-If any are missing, tell the engineer to re-install the MTK plugin from the marketplace (`/plugin install mtk@moberghr`).
+If any are missing, tell the engineer to re-install the MTK plugin from the marketplace: `/plugin marketplace add moberghr/moberg-plugins` then `/plugin install mtk@moberg-plugins`.
 
 ### Reference File Customization
 

@@ -13,7 +13,64 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
 
-MSG="$*"
+mtk_is_redundant_plugin_invocation "$0" && exit 0
+
+# Stop event JSON arrives on stdin (there is no argv substitution for hooks).
+INPUT="$(cat 2>/dev/null || true)"
+
+# Honor stop_hook_active: if we already blocked this stop once, never block
+# again — that would spin an infinite stop loop.
+if printf '%s' "$INPUT" | grep -qE '"stop_hook_active"[[:space:]]*:[[:space:]]*true'; then
+  exit 0
+fi
+
+# The last assistant message text is the completion claim to inspect. Derive it
+# from the transcript JSONL; exit silently if the transcript is missing,
+# unreadable, or has no assistant text.
+TRANSCRIPT="$(mtk_extract_json_string "$INPUT" "transcript_path" 2>/dev/null || printf '')"
+[ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ] || exit 0
+command -v python3 >/dev/null 2>&1 || exit 0
+
+MSG="$(python3 - "$TRANSCRIPT" <<'PY' 2>/dev/null || printf ''
+import json, sys
+last = ""
+try:
+    with open(sys.argv[1]) as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except Exception:
+                continue
+            if not isinstance(obj, dict):
+                continue
+            msg = obj.get("message") if isinstance(obj.get("message"), dict) else obj
+            role = msg.get("role") or obj.get("role") or obj.get("type")
+            if role != "assistant":
+                continue
+            content = msg.get("content")
+            text = ""
+            if isinstance(content, str):
+                text = content
+            elif isinstance(content, list):
+                parts = []
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        parts.append(block.get("text") or "")
+                    elif isinstance(block, str):
+                        parts.append(block)
+                text = "\n".join(p for p in parts if p)
+            if text.strip():
+                last = text
+except Exception:
+    sys.exit(0)
+sys.stdout.write(last)
+PY
+)"
+
+[ -n "$MSG" ] || exit 0
 
 # Strong completion claim: a deliberate top-level "task is done" statement.
 # Avoid firing on casual phrases like "I fixed the typo, now let's..." and
@@ -25,22 +82,26 @@ if echo "$MSG" | grep -qiE "$STRONG_CLAIM"; then
   SESSION_FILE="$(mtk_session_file)"
   mtk_load_session_state "$SESSION_FILE"
 
+  GAP=""
   if [ "${last_verification_epoch:-0}" -eq 0 ]; then
-    echo "VERIFICATION GAP: completion claim without a fresh verification command. Run the verification command from your active tech stack (.claude/skills/tech-stack-{stack}/SKILL.md → ## Build & Test Commands) and cite exit code + pass/fail counts. For toolkit work: 'bash scripts/validate-toolkit.sh' and cite 'Toolkit validation passed.'"
-    exit 0
+    GAP="VERIFICATION GAP: completion claim without a fresh verification command. Run the verification command from your active tech stack (.claude/skills/tech-stack-{stack}/SKILL.md → ## Build & Test Commands) and cite exit code + pass/fail counts. For toolkit work: 'bash scripts/validate-toolkit.sh' and cite 'Toolkit validation passed.'"
+  elif [ "${last_edit_seq:-0}" -gt "${last_verification_seq:-0}" ]; then
+    GAP="VERIFICATION GAP: criteria re-armed — all success criteria have reverted to 're-armed' status because an edit landed after the last verification (last cmd: ${last_verification_command:-unknown}). Re-run verification after your latest change, confirm each criterion's observable result, then cite exit code + pass/fail counts before claiming completion."
+  else
+    # Evidence of actual execution: exit codes, shell prompts, fenced blocks,
+    # diagnostic counts, or output from common test/build tools. Keep this as a
+    # secondary signal so the final message still cites the command output, but
+    # do not treat it as a substitute for fresh session evidence.
+    EVIDENCE='(exit code|Build succeeded|Build FAILED|Passed!|Failed!|PASSED|FAILED|\$ |```|Tests:|Test Files|tests? ran|[0-9]+ (passed|failed|errors?|warnings?)|Checked [0-9]+ file|[Ff]ound [0-9]+ (error|warning|issue)|Toolkit validation passed|No issues found)'
+    if ! echo "$MSG" | grep -qE "$EVIDENCE"; then
+      GAP="VERIFICATION GAP: completion claim is missing cited command output. Reuse the fresh verification result from '${last_verification_command:-the latest verification command}' and include exit code plus pass/fail counts in the final message."
+    fi
   fi
 
-  if [ "${last_edit_seq:-0}" -gt "${last_verification_seq:-0}" ]; then
-    echo "VERIFICATION GAP: criteria re-armed — all success criteria have reverted to 're-armed' status because an edit landed after the last verification (last cmd: ${last_verification_command:-unknown}). Re-run verification after your latest change, confirm each criterion's observable result, then cite exit code + pass/fail counts before claiming completion."
-    exit 0
-  fi
-
-  # Evidence of actual execution: exit codes, shell prompts, fenced blocks,
-  # diagnostic counts, or output from common test/build tools. Keep this as a
-  # secondary signal so the final message still cites the command output, but do
-  # not treat it as a substitute for fresh session evidence.
-  EVIDENCE='(exit code|Build succeeded|Build FAILED|Passed!|Failed!|PASSED|FAILED|\$ |```|Tests:|Test Files|tests? ran|[0-9]+ (passed|failed|errors?|warnings?)|Checked [0-9]+ file|[Ff]ound [0-9]+ (error|warning|issue)|Toolkit validation passed|No issues found)'
-  if ! echo "$MSG" | grep -qE "$EVIDENCE"; then
-    echo "VERIFICATION GAP: completion claim is missing cited command output. Reuse the fresh verification result from '${last_verification_command:-the latest verification command}' and include exit code plus pass/fail counts in the final message."
+  # Block the stop and surface the gap to the model (the only model-visible Stop
+  # channel). stop_hook_active was already checked above, so this blocks at most
+  # once per stop.
+  if [ -n "$GAP" ]; then
+    mtk_emit_stop_block "$GAP"
   fi
 fi

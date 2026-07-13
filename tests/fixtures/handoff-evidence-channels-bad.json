@@ -2,6 +2,7 @@
   "id": "handoff-evidence-channels-bad",
   "fixture_type": "handoff-validation",
   "description": "SC1 bad-channel fixture — one success_criteria entry carries an invalid evidence_channel value. validate-handoff.sh must reject this and exit 1 with a clear CRITICAL message.",
+  "expected_exit": 1,
   "slug": "evidence-channels-bad-test",
   "date": "2026-06-12",
   "scope": "new-feature",

@@ -288,35 +288,56 @@ source hooks/lib/hook-io.sh
 SESSION_FILE="$(mtk_session_file)"
 rm -f "$SESSION_FILE"
 
+# verify-completion reads the Stop event from stdin and derives the claim from
+# the transcript's last assistant message (there is no argv substitution for
+# hooks). Wrap that contract: write a one-message transcript, then pipe a Stop
+# payload pointing at it. A gap is emitted as a decision:block whose `reason`
+# still contains "VERIFICATION GAP", so the assertions below are unchanged.
+vc() {
+  local msg="$1" tr pl
+  tr="${TMPDIR:-/tmp}/mtk-bench-vc-transcript.jsonl"
+  python3 - "$tr" "$msg" <<'PY'
+import json, sys
+open(sys.argv[1], "w").write(json.dumps({"type": "assistant", "message": {"role": "assistant",
+    "content": [{"type": "text", "text": sys.argv[2]}]}}) + "\n")
+PY
+  pl="$(python3 - "$tr" <<'PY'
+import json, sys
+print(json.dumps({"hook_event_name": "Stop", "transcript_path": sys.argv[1], "stop_hook_active": False}))
+PY
+)"
+  printf '%s' "$pl" | bash hooks/verify-completion
+}
+
 # Claim without evidence should warn
-NO_EV_OUT=$(bash hooks/verify-completion "All done. Task complete." 2>&1 || true)
+NO_EV_OUT=$(vc "All done. Task complete." 2>&1 || true)
 assert_match "rejects evidence-less done claim" "$NO_EV_OUT" "VERIFICATION GAP"
 
 # Fresh verification command recorded in session state should satisfy the hook
 printf '{"tool_name":"Bash","tool_input":{"command":"bash scripts/validate-toolkit.sh"}}' | bash hooks/context-budget.sh >/dev/null 2>&1 || true
 
 # Claim with evidence should pass silently
-EV_OUT=$(bash hooks/verify-completion "All done. Toolkit validation passed, exit code 0." 2>&1 || true)
+EV_OUT=$(vc "All done. Toolkit validation passed, exit code 0." 2>&1 || true)
 assert_no_match "accepts claim with evidence" "$EV_OUT" "VERIFICATION GAP"
 
 # A later edit makes the verification stale
 printf '{"tool_name":"Edit","tool_input":{"file_path":"%s/README.md"}}' "$(pwd)" | bash hooks/context-budget.sh >/dev/null 2>&1 || true
-STALE_OUT=$(bash hooks/verify-completion "All done. Toolkit validation passed, exit code 0." 2>&1 || true)
+STALE_OUT=$(vc "All done. Toolkit validation passed, exit code 0." 2>&1 || true)
 assert_match "rejects stale evidence after edit" "$STALE_OUT" "VERIFICATION GAP"
 
 # Non-completion message should be silent
-NC_OUT=$(bash hooks/verify-completion "I'll now work on the next file." 2>&1 || true)
+NC_OUT=$(vc "I'll now work on the next file." 2>&1 || true)
 assert_no_match "non-completion message is silent" "$NC_OUT" "VERIFICATION GAP"
 
 # Descriptive phrases like "the migration is complete" must NOT trigger the
 # completion-claim gate — they describe state, not task completion.
-DESCR_OUT=$(bash hooks/verify-completion "The migration is complete in the DB, now I'll wire up the UI." 2>&1 || true)
+DESCR_OUT=$(vc "The migration is complete in the DB, now I'll wire up the UI." 2>&1 || true)
 assert_no_match "descriptive 'is complete' phrase is silent" "$DESCR_OUT" "VERIFICATION GAP"
 
 # Verification command behind a prefix (cd && ...) must register as verification
 rm -f "$SESSION_FILE"
 printf '{"tool_name":"Bash","tool_input":{"command":"cd services/api && dotnet test"}}' | bash hooks/context-budget.sh >/dev/null 2>&1 || true
-PREFIX_OUT=$(bash hooks/verify-completion "All done. Build succeeded, 42 tests passed, exit code 0." 2>&1 || true)
+PREFIX_OUT=$(vc "All done. Build succeeded, 42 tests passed, exit code 0." 2>&1 || true)
 assert_no_match "accepts cd && dotnet test as verification" "$PREFIX_OUT" "VERIFICATION GAP"
 
 # Single-quoted arg in a verification command must round-trip through session

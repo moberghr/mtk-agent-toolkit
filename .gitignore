@@ -47,7 +47,9 @@ hooks/linter-patterns/project/*.txt
 .claude/worktrees/
 
 mcp/node_modules
-mcp/package-lock.json
 
-# MCP build artifact — built on first session via hooks/session-start
-dist/
+# MCP: the prebuilt bundle and its lockfile ship tracked (S3.12). package-lock.json
+# pins transitive deps for the reproducible `npm ci` in scripts/build-mcp.sh; the
+# bundle is the only runtime artifact. Ignore any other dist output.
+dist/*
+!dist/mtk-mcp-server.cjs

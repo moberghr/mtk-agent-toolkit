@@ -11,6 +11,10 @@ trap _mtk_hook_diag EXIT
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="${SCRIPT_DIR}/.."
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/lib/hook-io.sh"
+
+mtk_is_redundant_plugin_invocation "$0" && exit 0
 
 # Build MCP server on first use (silent, non-blocking)
 # Rebuilds when dist/ is missing OR when any mcp/src/** file is newer than the bundle.
@@ -95,8 +99,9 @@ if [[ -n "${CURSOR_PLUGIN_ROOT:-}" ]]; then
   # Cursor format
   printf '{"context": "%s"}\n' "$ESCAPED_CONTEXT"
 elif [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]] && [[ -z "${COPILOT_CLI:-}" ]]; then
-  # Claude Code format
-  printf '{"context": "%s"}\n' "$ESCAPED_CONTEXT"
+  # Claude Code format — SessionStart's model-visible channel is
+  # hookSpecificOutput.additionalContext (a top-level "context" field is ignored).
+  mtk_emit_additional_context "SessionStart" "$CONTEXT"
 elif [[ -n "${COPILOT_CLI:-}" ]]; then
   # GitHub Copilot CLI — SDK standard format
   printf '{"role": "system", "content": "%s"}\n' "$ESCAPED_CONTEXT"

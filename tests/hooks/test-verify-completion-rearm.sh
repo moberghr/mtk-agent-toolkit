@@ -43,9 +43,25 @@ EOF
 }
 
 run_hook() {
-  # Always feed stdin and bound runtime so the test can never hang.
+  # Stop-event contract: JSON on stdin carrying transcript_path. The "message"
+  # under test is written as the last assistant message in a fake transcript.
   local msg="$1"
-  echo '' | TMPDIR="$TMPDIR_OVERRIDE" MTK_HOOKS_TIER2=1 bash "$HOOK" "$msg" 2>&1 || true
+  local stop_active="${2:-false}"
+  local transcript="$TMPDIR_OVERRIDE/transcript.jsonl"
+  python3 - "$transcript" "$msg" <<'PY'
+import json, sys
+with open(sys.argv[1], "w") as fh:
+    fh.write(json.dumps({"type": "assistant", "message": {"role": "assistant",
+             "content": [{"type": "text", "text": sys.argv[2]}]}}) + "\n")
+PY
+  local payload
+  payload="$(python3 - "$transcript" "$stop_active" <<'PY'
+import json, sys
+print(json.dumps({"hook_event_name": "Stop", "transcript_path": sys.argv[1],
+                  "stop_hook_active": sys.argv[2] == "true"}))
+PY
+)"
+  printf '%s' "$payload" | TMPDIR="$TMPDIR_OVERRIDE" MTK_HOOKS_TIER2=1 bash "$HOOK" 2>&1 || true
 }
 
 fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
@@ -72,5 +88,18 @@ if echo "$out" | grep -qi 're-arm'; then
   fail "equal seqs (4==4) wrongly emitted a re-arm gap. Got: $out"
 fi
 printf '  PASS  equal seqs do not re-arm\n'
+
+# --- Case 4: stop_hook_active=true → never block (avoid infinite stop loop) --
+write_state 5 3
+out="$(run_hook 'All done. Task complete. ✅' true)"
+[ -z "$out" ] || fail "stop_hook_active=true must never emit a block. Got: $out"
+printf '  PASS  stop_hook_active honored — no re-block\n'
+
+# --- Case 5: a gap is emitted as a decision:block envelope, not plain text ---
+write_state 5 3
+out="$(run_hook 'All done. Task complete. ✅')"
+echo "$out" | grep -q '"decision"[[:space:]]*:[[:space:]]*"block"' \
+  || fail "gap must be a decision:block Stop envelope. Got: $out"
+printf '  PASS  gap emitted as decision:block envelope\n'
 
 printf '\nAll verify-completion re-arm checks passed.\n'

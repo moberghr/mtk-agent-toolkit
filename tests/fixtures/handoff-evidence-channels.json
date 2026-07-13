@@ -2,6 +2,7 @@
   "id": "handoff-evidence-channels",
   "fixture_type": "handoff-validation",
   "description": "SC1 fixture — success_criteria entries carry evidence_channel (all valid) and observable. validate-handoff.sh must accept this and exit 0 (no channel errors).",
+  "expected_exit": 0,
   "slug": "evidence-channels-test",
   "date": "2026-06-12",
   "scope": "new-feature",

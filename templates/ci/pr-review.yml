@@ -1,17 +1,23 @@
 # MTK Full Review — GitHub Actions workflow template (optional)
 #
-# Runs the deterministic linter AND Claude Code AI review on every PR.
-# Requires ANTHROPIC_API_KEY secret. Costs ~$0.05-0.50 per review depending
+# Runs the deterministic linter AND a Claude Code AI review on every PR.
+# Requires an ANTHROPIC_API_KEY secret. Costs ~$0.05-0.50 per review depending
 # on diff size and model routing.
+#
+# How it works: the target repo does NOT contain the linter or the review
+# rubric — both ship with the MTK toolkit. This workflow checks out the toolkit
+# alongside your PR and runs its ci-lint.sh + review rubric against your
+# checkout. No plugin install and no vendored files are required.
 #
 # Setup:
 #   1. Copy this file to .github/workflows/pr-review.yml in your repo
 #   2. Add ANTHROPIC_API_KEY to repo secrets (Settings > Secrets > Actions)
-#   3. Ensure the MTK plugin is installed (/plugin marketplace add moberghr/mtk-agent-toolkit)
-#   4. Push — the workflow runs on every PR to main
+#   3. Commit and push — the workflow runs on every PR to main
 #
-# The deterministic lint always runs. The AI review runs only if the lint passes
-# (no point reviewing code with hardcoded secrets).
+# The deterministic lint always runs. The AI review runs only after the lint
+# passes (no point spending tokens reviewing code with hardcoded secrets), and
+# only for same-repo PRs — fork PRs get a read-only token with no access to
+# secrets, so they are skipped with an explicit notice instead of failing.
 
 name: MTK Review
 
@@ -21,31 +27,80 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write  # Needed for posting review comments
+  pull-requests: write  # Needed for posting the review comment
 
 jobs:
   lint:
     name: Deterministic Lint
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout PR
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Resolve MTK toolkit version
+        id: mtkver
+        run: |
+          REF=""
+          if [ -f .claude/mtk-version.json ]; then
+            V=$(python3 -c 'import json; print(json.load(open(".claude/mtk-version.json")).get("version",""))' 2>/dev/null || true)
+            # Only accept a plain version token — a crafted multiline value would
+            # inject extra $GITHUB_OUTPUT lines.
+            case "$V" in
+              ""|*[!0-9A-Za-z.-]*) : ;;
+              *) REF="v$V" ;;
+            esac
+          fi
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout MTK toolkit
+        uses: actions/checkout@v4
+        with:
+          repository: moberghr/mtk-agent-toolkit
+          ref: ${{ steps.mtkver.outputs.ref }}  # empty => default branch
+          path: _mtk
+          fetch-depth: 1
+
       - name: Run MTK linter on PR diff
-        run: bash scripts/ci-lint.sh --base "origin/${{ github.base_ref }}"
+        run: bash _mtk/scripts/ci-lint.sh --base "${{ github.event.pull_request.base.sha }}"
 
   ai-review:
     name: AI Review
     needs: lint
     runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false
+    # Skip drafts, and skip fork PRs (no secret access, read-only token).
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository
     steps:
-      - name: Checkout
+      - name: Checkout PR
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Resolve MTK toolkit version
+        id: mtkver
+        run: |
+          REF=""
+          if [ -f .claude/mtk-version.json ]; then
+            V=$(python3 -c 'import json; print(json.load(open(".claude/mtk-version.json")).get("version",""))' 2>/dev/null || true)
+            # Only accept a plain version token — a crafted multiline value would
+            # inject extra $GITHUB_OUTPUT lines.
+            case "$V" in
+              ""|*[!0-9A-Za-z.-]*) : ;;
+              *) REF="v$V" ;;
+            esac
+          fi
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout MTK toolkit
+        uses: actions/checkout@v4
+        with:
+          repository: moberghr/mtk-agent-toolkit
+          ref: ${{ steps.mtkver.outputs.ref }}
+          path: _mtk
+          fetch-depth: 1
 
       - name: Install Claude Code
         run: npm install -g @anthropic-ai/claude-code
@@ -53,18 +108,39 @@ jobs:
       - name: Run AI review
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          # Get the diff for context
-          DIFF=$(git diff "origin/${{ github.base_ref }}"...HEAD)
-          FILES=$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD)
+          # The review rubric travels with the toolkit checkout — no plugin
+          # install needed. Feed it to Claude Code verbatim along with the PR
+          # diff range. A failure here fails the job (no silent masking).
+          RUBRIC="$(cat _mtk/.claude/skills/pre-commit-review/SKILL.md)"
+          PROMPT="You are running a pre-commit security and correctness review on a GitHub pull request in the current directory. Review ONLY the changes introduced by this branch: run \`git diff ${BASE_SHA}...HEAD\` to see them. Apply the following MTK pre-commit-review rubric verbatim; do not invent additional rules and do not modify any files.
 
-          # Run pre-commit-review via Claude Code in non-interactive mode
-          claude -p "Review this PR diff for security, correctness, and architecture issues. Use /mtk:pre-commit-review on the staged changes. Files changed: ${FILES}" \
-            --allowedTools Read,Grep,Glob,Bash,Agent \
-            --output-format json \
-            > /tmp/review-output.json 2>&1 || true
+          --- BEGIN RUBRIC ---
+          ${RUBRIC}
+          --- END RUBRIC ---
 
-          # Post review summary as PR comment
-          if [ -f /tmp/review-output.json ]; then
-            echo "AI review completed. See workflow logs for details."
-          fi
+          Produce a concise Markdown report. The first line must be exactly 'VERDICT: PASS' or 'VERDICT: NEEDS_CHANGES'. Follow with a bulleted findings list (file:line, severity, issue, fix). If there are no findings, say so."
+          claude -p "$PROMPT" \
+            --allowedTools "Read,Grep,Glob,Bash" \
+            --output-format text \
+            > review.md
+          echo "--- AI review report ---"
+          cat review.md
+
+      - name: Post review comment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --body-file review.md
+
+  fork-notice:
+    name: AI Review (skipped for fork)
+    needs: lint
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.head.repo.full_name != github.repository
+    steps:
+      - name: Explain skip
+        run: |
+          echo "::notice::AI review skipped for this fork PR — fork PRs run with a read-only token and no access to ANTHROPIC_API_KEY. The deterministic lint still ran. A maintainer can re-run the review from a same-repo branch."

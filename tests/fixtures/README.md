@@ -1,13 +1,23 @@
-# Router-Decision Fixtures
+# Deterministic Fixtures
 
-Each `*.json` fixture in this directory describes a deterministic input → expected-action pair for the `/mtk implement` orchestrator. The runner at `scripts/run-fixtures.sh` validates structure and asserts the orchestrator's documented decision rules — it does not execute Claude.
+Each `*.json` fixture in this directory describes a deterministic input → expected-outcome pair. The runner at `scripts/run-fixtures.sh` dispatches on the fixture's `fixture_type` and applies the strongest deterministic check possible for that type — it does not execute Claude.
 
 These fixtures complement the markdown pressure tests in `tests/pressure-tests/`:
 
 - **Pressure tests** are adversarial scenarios — read by humans or replayed against a live agent to verify rationalization resistance.
-- **Fixtures** are deterministic state → decision pairs — checked by `validate-toolkit.sh` so orchestrator rules cannot drift silently.
+- **Fixtures** are deterministic state → outcome pairs — checked by `validate-toolkit.sh` so behavior cannot drift silently.
 
-## Fixture shape
+## What each fixture type validates
+
+| `fixture_type` | Runner check | What it does NOT check |
+|---|---|---|
+| `router-decision` (default when `workflow_type` is present) | JSON shape; `workflow_type`, gate names, and `next_action` against the documented vocabularies; cross-rules (`abort` ⇒ `failure_stop_gate: fail`; `advance_phase` ⇒ a gate is recorded). | The `rationale` **text** (only its presence/length) — that stays human review. |
+| `handoff-validation` | Runs `scripts/validate-handoff.sh` against the fixture and asserts its declared `expected_exit` (0 = accepted, 1 = rejected). | The full drift report body — only the exit code contract is asserted. |
+| `router-mapping` | Each case's `expected_skill` has a directory under `.claude/skills/`, and each case is grounded: a `/mtk` route-table keyword for that skill appears in the prompt, or a `note` documents a boundary/hook-routed case. | Whether a **live** `/mtk` invocation actually routes the prompt there — that is a pressure test / eval, not a structural fixture. |
+
+Reported markers: `OK` (router-decision, handoff), `OK (structural)` (router-mapping). No fixture is silently skipped.
+
+## Router-decision fixture shape
 
 ```json
 {
@@ -30,6 +40,14 @@ These fixtures complement the markdown pressure tests in `tests/pressure-tests/`
 ```
 
 A fixture is **valid** if every `gate_to_record` names a real gate from `.claude/references/orchestration-gates.md` and the `phase_cursor_after` is consistent with `next_action`. Validation does NOT verify the rationale text — that is human review territory.
+
+## Handoff-validation fixture shape
+
+Carries `"fixture_type": "handoff-validation"`, a `success_criteria` array (each entry may carry an `evidence_channel`), and a declared `"expected_exit"` (`0` = `validate-handoff.sh` must accept, `1` = must reject). The runner executes `scripts/validate-handoff.sh <fixture>` and fails unless the exit code matches `expected_exit`.
+
+## Router-mapping fixture shape
+
+Carries `"fixture_type": "router-mapping"` and a `cases` array. Each case is `{ "prompt": "...", "expected_skill": "<skill-dir>", "note": "optional" }`. The runner asserts the skill directory exists and the mapping is grounded in the `/mtk` route table (or a `note` documents a boundary / hook-routed case). It does not invoke the live router.
 
 ## How to add a fixture
 

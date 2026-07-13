@@ -108,12 +108,32 @@ jobs:
 
           echo "All contribute-back checks passed."
 
-      - name: Label validated
+      # Decorations only — the label and comment are a green light, not a gate.
+      # They must NEVER fail an otherwise-passing PR: fork PRs get a read-only
+      # GITHUB_TOKEN, and the label may not exist yet. So this step is
+      # best-effort (continue-on-error + no `set -e`, each action `|| notice`).
+      # The hard validation lives in the step above and stays fatal.
+      - name: Label validated (best-effort)
         if: success()
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          set -euo pipefail
-          gh pr edit "$PR" --add-label "lesson-validated"
-          gh pr comment "$PR" --body "✅ Contribute-back checks passed (path whitelist, size cap, secret scan, injection scan). Labeled \`lesson-validated\`. A maintainer will review and merge — this workflow does not auto-merge."
+          set -uo pipefail   # deliberately NOT -e: decorations must not fail the job
+
+          # Create the label if missing (no-op when it exists; tolerated when the
+          # token is read-only, e.g. on a fork PR).
+          if ! gh label list --limit 200 2>/dev/null | grep -q '^lesson-validated'; then
+            gh label create "lesson-validated" \
+              --color "0e8a16" \
+              --description "Contribute-back lesson passed automated validation" \
+              2>/dev/null \
+              || echo "::notice::could not create 'lesson-validated' label (read-only token on a fork PR?) — skipping."
+          fi
+
+          gh pr edit "$PR" --add-label "lesson-validated" 2>/dev/null \
+            || echo "::notice::could not add 'lesson-validated' label (unknown label or read-only token) — validation still passed."
+
+          gh pr comment "$PR" --body "✅ Contribute-back checks passed (path whitelist, size cap, secret scan, injection scan). A maintainer will review and merge — this workflow does not auto-merge." 2>/dev/null \
+            || echo "::notice::could not post success comment (read-only token on a fork PR?) — validation still passed."
