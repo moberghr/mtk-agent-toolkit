@@ -1791,6 +1791,24 @@
       "action": "sync",
       "description": "Preview Gate for setup-bootstrap --preview \u2014 plan-summary table, ASCII example, and the AskUserQuestion confirmation flow"
     },
+    "references/subagent-dynamic-workflow.md": {
+      "source": ".claude/references/subagent-dynamic-workflow.md",
+      "target": ".claude/references/subagent-dynamic-workflow.md",
+      "action": "sync",
+      "applyTo": [
+        ".claude/skills/subagent-implementation/**"
+      ],
+      "description": "Dynamic-workflow dispatch for subagent-implementation \u2014 decision graph and step-by-step runtime path, read when the Workflow tool is available"
+    },
+    "references/subagent-implementer-prompt.md": {
+      "source": ".claude/references/subagent-implementer-prompt.md",
+      "target": ".claude/references/subagent-implementer-prompt.md",
+      "action": "sync",
+      "applyTo": [
+        ".claude/skills/subagent-implementation/**"
+      ],
+      "description": "Implementer prompt template (TASK/DELIVERABLE/SCOPE/VERIFY contract) plus the canonical batch-result JSON schema for subagent-implementation \u2014 read before building each batch's context bundle"
+    },
     "tests/pressure-tests/audit-grounding.md": {
       "source": "tests/pressure-tests/audit-grounding.md",
       "target": "tests/pressure-tests/audit-grounding.md",

@@ -36,71 +36,24 @@ Phase 3 of `implement/SKILL.md` invokes this skill when **any** of these are tru
 
 ## Workflow
 
+Companion files: this skill's detail payloads live in `.claude/references/subagent-implementer-prompt.md` and `.claude/references/subagent-dynamic-workflow.md` — resolve them under `$CLAUDE_PLUGIN_ROOT` when set (plugin-cache installs), else project-relative. If a companion cannot be resolved, stop the affected step and report the missing file — do not reconstruct its content from memory.
+
 ### Decision Graph
 
 The orchestrator never edits source. The implementer subagent never spawns further subagents. The drift check is fast and orchestrator-side — no reviewer agent per batch.
 
-```dot
-digraph subagent_impl {
-  rankdir=TB;
-  node [shape=box, style=rounded, fontname="Helvetica"];
-  edge [fontname="Helvetica", fontsize=10];
-
-  start    [label="Phase 3 entered\n(spec + sidecar approved)"];
-  thr      [label="threshold met?\n(≥3 batches OR ≥6 files OR\nsecurity_impact != none)", shape=diamond];
-  inline   [label="dispatch to\nincremental-implementation\n(inline path)", style="rounded,filled", fillcolor="#e0f0e0"];
-  ask      [label="ASK ONCE: implementer model\n(Sonnet faster/cheaper |\nOpus more capable)\nvia AskUserQuestion",
-            style="rounded,filled", fillcolor="#fff8d0"];
-
-  next     [label="next batch\n(dependency order)", shape=diamond];
-  bundle   [label="build context bundle:\nspec excerpt · batch.files ·\nbatch.acceptance · prior batches'\nactual_files · diff summary"];
-  spawn    [label="Agent(subagent_type=general-purpose,\nmodel=<chosen>, tools=read+edit+bash)\n→ implementer prompt"];
-  parse    [label="parse structured result:\nactual_files · build · tests ·\nbehavioral_diff · deviations"];
-  buildok  [label="build + batch tests\ngreen?", shape=diamond];
-  retry    [label="retry budget left?", shape=diamond];
-  halt     [label="HALT — report to engineer\n(autonomous mode also halts here)",
-            style="rounded,filled", fillcolor="#ff9090"];
-
-  drift    [label="drift micro-check\n(orchestrator-side):\nactual_files ⊆ batch.files?\npublic_contracts touched ⊆ planned?", shape=diamond];
-  fixable  [label="auto-fixable?\n(extra file is helper /\nin-package only)", shape=diamond];
-  reapprove[label="re-open Phase 2.5\nfor scope amendment",
-            style="rounded,filled", fillcolor="#fff8d0"];
-  amend    [label="orchestrator amends\nchange_manifest + sidecar"];
-
-  persist  [label="append batch result to\nsidecar.implement.completed_batches\n+ tick tasks/todo.md"];
-  more     [label="more batches?", shape=diamond];
-  done     [label="hand back to\nPhase 3.5 (drift) → Phase 4 (review)",
-            style="rounded,filled", fillcolor="#e0f0e0"];
-
-  start -> thr;
-  thr -> inline [label="no"];
-  thr -> ask    [label="yes"];
-  ask -> next;
-  next -> bundle -> spawn -> parse -> buildok;
-  buildok -> retry [label="no"];
-  retry -> spawn  [label="yes (≤2 retries)"];
-  retry -> halt   [label="no"];
-  buildok -> drift [label="yes"];
-  drift -> persist [label="clean"];
-  drift -> fixable [label="drifted"];
-  fixable -> amend [label="yes"];
-  fixable -> reapprove [label="no"];
-  amend -> persist;
-  reapprove -> halt;
-  persist -> more;
-  more -> next [label="yes"];
-  more -> done [label="no"];
-}
-```
+The full decision graph lives in `.claude/references/subagent-dynamic-workflow.md` (under `$CLAUDE_PLUGIN_ROOT` when set). Read it when you need the branch/halt topology.
 
 ### Execution paths
 
 There are two ways to run the per-batch loop. Both share the **same implementer prompt template, the same structured JSON result, and the same orchestrator-side drift / sidecar / churn / Phase-4 discipline.** Only the dispatch mechanism differs.
 
-- **Dynamic-workflow path (preferred when the `Workflow` tool is available).** The orchestrator generates a JavaScript orchestration script that runs the batches through Claude Code's native dynamic-workflow runtime in the background, with its built-in plan-approval gate. The runtime handles concurrency, retries, and structured-output validation. The orchestrator then does the drift micro-check and sidecar persistence **after** the run returns. See "Dynamic-workflow path" below.
+- **Dynamic-workflow path (preferred when the `Workflow` tool is available).** The orchestrator generates a JavaScript orchestration script that runs the batches through Claude Code's native dynamic-workflow runtime in the background, with its built-in plan-approval gate. The runtime handles concurrency, retries, and structured-output validation. The orchestrator then does the drift micro-check and sidecar persistence **after** the run returns. See `.claude/references/subagent-dynamic-workflow.md`.
 - **Manual Agent-loop path (fallback).** When the `Workflow` tool is not exposed in this harness, dispatch one implementer subagent per batch by hand. See "Steps (manual Agent-loop path)" below.
 
 Pick the path once, at the top of Phase 3, based on tool availability. Do not mix them within one feature.
+
+When the `Workflow` tool is available the dynamic-workflow path MUST be used — read `.claude/references/subagent-dynamic-workflow.md` now and follow it; choosing the manual path to avoid the Read is a scope violation.
 
 ### Steps (manual Agent-loop path)
 
@@ -124,34 +77,7 @@ Pick the path once, at the top of Phase 3, based on tool availability. Do not mi
       - `model: <chosen>` (Sonnet or Opus from step 2)
       - `description: Batch <id> — <one-line intent>`
       - `prompt`: see "Implementer prompt template" below
-   3. **Parse the structured result.** The implementer must return a fenced JSON block matching:
-      ```json
-      {
-        "batch_id": "B2",
-        "status": "completed",
-        "actual_files": ["src/Foo.cs", "tests/FooTests.cs"],
-        "build": { "ok": true, "evidence": "command + tail" },
-        "tests": { "ok": true, "evidence": "test summary" },
-        "behavioral_diff": "what an external caller now observes that they didn't before",
-        "deviations": [
-          { "kind": "extra-file|skipped-file|extra-contract|other",
-            "detail": "...", "justification": "..." }
-        ],
-        "usage": { "tokens": 0, "error_code": null }
-      }
-      ```
-      `usage` is an **optional** result envelope (borrowed from per-subagent JSON
-      reporting): `tokens` is the batch's output-token spend if the dispatch
-      mechanism exposes it (the dynamic-workflow runtime does via `budget`), and
-      `error_code` is a short machine-readable code (`null` on success). It is a
-      loop-safety / cost signal only — never a pass/fail input. Omit the whole
-      block when no usage data is available; do not fabricate it.
-
-      `status` is one of `completed` (delivered + verified), `blocked` (could not
-      proceed; build/tests red and the reason stated), or `inconclusive`
-      (returned without runnable evidence — see the inconclusive rule below).
-      **A missing fenced block, a JSON parse failure, or an acknowledgment-only
-      reply ("done!", no JSON) is recorded as `inconclusive` — never as a pass.**
+   3. **Parse the structured result.** The implementer must return one fenced JSON block with `batch_id, status(completed|blocked|inconclusive), actual_files, build{ok,evidence}, tests{ok,evidence}, behavioral_diff, deviations[]` (`usage` optional). Inconclusive is never a pass. See `.claude/references/subagent-implementer-prompt.md` for the canonical schema and semantics.
    4. **Build/test/inconclusive gate.**
       - `status == inconclusive` (or unparseable / ack-only): respawn **once**
         with the scope narrowed to the missing deliverable and an explicit
@@ -180,24 +106,7 @@ Pick the path once, at the top of Phase 3, based on tool availability. Do not mi
 
 ### Dynamic-workflow path
 
-Use this when the `Workflow` tool is available. It moves the per-batch dispatch loop into a generated JS script that the native runtime executes in the background, so the orchestrator's main context stays light. **What does NOT move into the workflow:** the drift micro-check, sidecar amendment, cumulative churn check, and Phase 4 review. Those stay orchestrator-side, exactly as in the manual path. The workflow is a faster, runtime-managed replacement for steps 3.1–3.4 only.
-
-1. **Threshold gate + model pick.** Identical to manual steps 1–2. The model chosen (Sonnet/Opus) is passed as the `model` option on each `agent()` call in the script.
-2. **Build the batch schedule (dependency order).** Compute a serial order from each batch's `depends` array. **Default to sequential execution** — a later batch may rely on files an earlier batch created, and `pipeline()`/`parallel()` run items concurrently. Only group batches into a parallel wave when their `depends` arrays prove they are mutually independent (no shared files, no ordering edge). When unsure, keep them sequential; correctness beats wall-clock here.
-3. **Generate the workflow script.** Adapt `templates/workflows/subagent-implementation.workflow.js`. Each batch becomes one `agent()` call that:
-   - receives the **same self-sufficient prompt** as the manual path (see "Implementer prompt template" — repo root, CLAUDE.md, tech stack skill path, the single batch object, spec excerpt, full `change_manifest`, `out_of_scope`, and prior-batch summaries),
-   - passes the batch-result JSON schema as the `schema` option so the runtime validates structured output and retries on mismatch (this replaces the manual JSON-parse-failure retry),
-   - sets `model` to the chosen tier and a `label` of `batch:<id>`.
-   Dependent batches run in a sequential `for…await` loop; independent waves may use `parallel()`. The script returns the array of structured batch results, in batch order.
-4. **Run it via the `Workflow` tool.** The native runtime shows its own plan-approval gate (the planned phases + Yes / View raw script / No). Because MTK Phase 2.5 has **already** approved the spec and scope, this gate is a transparency checkpoint, not a re-litigation: in interactive mode let the engineer see/approve the script; in autonomous mode (Phase 2.5 returned `Approve & run until done`) proceed without re-prompting, governed by the session permission mode. Do not author a second scope question here.
-5. **On return, run the orchestrator-side gates per batch, in order** — these did NOT run inside the workflow:
-   - **Build/test/inconclusive gate.** Inspect each result's `status` and `build.ok` / `tests.ok`. `status: inconclusive` (or a result the runtime could not validate against the schema) → respawn once with narrowed scope; a second inconclusive halts and reports. Any `build.ok`/`tests.ok == false` (`status: blocked`, after the runtime's own retries) → halt and report, exactly as the manual path. An inconclusive or failing batch poisons later ones — never count it as pass.
-   - **Drift micro-check.** `actual_files ⊆ batch.files`? public contracts touched ⊆ planned? Clean → persist. Auto-fixable (in-package, no new contract, security unchanged) → amend sidecar. Otherwise → re-open Phase 2.5. The subagent is too close to its own diff; drift is judged here, never inside the workflow.
-   - **Persist.** Append `{batch_id, actual_files, build, tests, behavioral_diff, deviations}` to `sidecar.implement.completed_batches[]`; tick `tasks/todo.md`; record progress on the workflow artifact (`scripts/workflow-artifact.sh set "$MTK_WF_UUID" results.batches_completed=<n>`).
-   - **Cumulative churn check.** Same 300/500-line thresholds as the manual path.
-6. **After all batches:** write the aggregated `behavioral_diff`, emit `phase_exit_gate pass` (or `fail` and stop), and hand back to `implement/SKILL.md` Phase 3.5 → Phase 4. **Unchanged.**
-
-If the `Workflow` tool errors, is denied, or is unavailable mid-run, fall back to the manual Agent-loop path for the remaining batches — do not abandon the per-batch discipline.
+Steps 1-6 of the dynamic-workflow path and the "If the `Workflow` tool errors…" fallback rule live in `.claude/references/subagent-dynamic-workflow.md` (resolve under `$CLAUDE_PLUGIN_ROOT` when set). Read it now and follow it when the `Workflow` tool is available.
 
 ### Dispatch hardening (large prompts & args)
 
@@ -211,81 +120,7 @@ These are dispatch-mechanism rules only; the prompt *contract* (TASK/DELIVERABLE
 
 ### Implementer prompt template
 
-The implementer subagent has no MTK context other than what you give it. The prompt must be self-sufficient. **This template is shared by both execution paths** — in the manual path you pass it as the `Agent` prompt; in the dynamic-workflow path it is the `agent()` prompt string in the generated script.
-
-The template is organized under four explicit contract headers — **TASK** (what
-to do), **DELIVERABLE** (what to return), **SCOPE** (the hard boundary), and
-**VERIFY** (the gate that must pass before returning). The headers are part of
-the contract, not decoration: an implementer that returns without satisfying
-VERIFY is `inconclusive`, not done.
-
-```
-You are implementing one batch of a planned feature.
-
-Repo root: <absolute path>
-Read first (in this order):
-  - CLAUDE.md
-  - .claude/skills/tech-stack-<stack>/SKILL.md (build/test commands, ORM/framework patterns, reference files)
-  - The coding guidelines listed in that tech stack's "## Reference Files" section
-
-TASK — implement this batch:
-<paste batch object: id, files, acceptance, verification, boundary, depends>
-
-Spec context for this batch:
-<paste relevant spec sections>
-
-Prior batches already completed (you can rely on these existing; do NOT re-edit them):
-<paste prior actual_files + behavioral_diff summaries>
-
-SCOPE — your hard boundary:
-- Whole-feature change_manifest (do NOT touch files outside this list without returning a "deviation"
-  entry; do NOT add new public contracts not listed):
-  <paste change_manifest>
-- Out of scope (must not be touched):
-  <paste out_of_scope>
-
-Rules:
-1. Read before editing. Match local patterns.
-2. Stay within batch.files. If you discover an unavoidable extra file, edit it but record it
-   as a `deviation` in your final JSON.
-3. Add or update tests in this same batch — never defer to a later batch.
-4. Do NOT spawn further subagents.
-5. Do NOT ask the engineer questions — you are an inner subagent, not the orchestrator.
-6. Tool discipline (each tool carries its own boundary):
-   - Edit/Write: only files in batch.files (or a recorded `deviation`). Do not touch
-     out_of_scope files even to "quickly fix" something — that is the out-of-scope-edit failure mode.
-   - Bash: run only the build, test, and format commands from the tech stack skill, plus
-     read-only git (`git diff`, `git status`). No network fetches, no package installs, no
-     destructive commands.
-7. Never delete. No `rm`, `git rm`, or overwrite-to-empty — deletion is out of scope for an
-   implementer. If a file genuinely must be removed, record it as a `deviation` and let the
-   orchestrator decide; never delete a file you did not create in this batch.
-
-VERIFY — before returning:
-- Run the build command and the relevant test command from the tech stack skill.
-- If build or tests fail, set `status: "blocked"`, return the error in `build.evidence` /
-  `tests.evidence` with `ok: false` and a one-line analysis. Do not loop endlessly.
-- Returning without running the verify commands, or with a partial/ack-only reply, is
-  `status: "inconclusive"` — it is NOT a pass and will be respawned.
-
-DELIVERABLE — return EXACTLY one fenced JSON block matching this schema, then stop:
-
-```json
-{
-  "batch_id": "<id>",
-  "status": "completed|blocked|inconclusive",
-  "actual_files": ["..."],
-  "build":  { "ok": true|false, "evidence": "..." },
-  "tests":  { "ok": true|false, "evidence": "..." },
-  "behavioral_diff": "...",
-  "deviations": [ { "kind": "...", "detail": "...", "justification": "..." } ],
-  "usage": { "tokens": 0, "error_code": null }
-}
-```
-
-(`usage` is optional — include it only if the dispatch mechanism exposes token
-spend / an error code; it is a cost signal, never a pass/fail input.)
-```
+The implementer prompt template is shared by both execution paths and is organized under the four contract headers TASK / DELIVERABLE / SCOPE / VERIFY. Read `.claude/references/subagent-implementer-prompt.md` before building the first context bundle — do not paraphrase it from memory.
 
 ## Rules
 

@@ -1,0 +1,81 @@
+{
+  "slug": "skill-progressive-disclosure",
+  "date": "2026-07-13",
+  "scope": "internal-refactoring",
+  "change_manifest": [
+    { "path": ".claude/skills/setup-bootstrap/SKILL.md", "action": "modify", "purpose": "Replace 4 extractable section groups with imperative pointer stubs; add missing-file note" },
+    { "path": ".claude/skills/setup-audit/SKILL.md", "action": "modify", "purpose": "Replace 4 section groups + 3 redundant STEP 3.7 subsections with pointers; add missing-file note" },
+    { "path": ".claude/skills/subagent-implementation/SKILL.md", "action": "modify", "purpose": "Replace implementer prompt template + dynamic-path/decision-graph with pointers; add missing-file note" },
+    { "path": ".claude/references/bootstrap-interview.md", "action": "create", "purpose": "STEP 2.5 post-scan interview protocol" },
+    { "path": ".claude/references/bootstrap-supporting-files.md", "action": "create", "purpose": "STEP 4 supporting-file subsections + STEP 3.6 stack-reference pruning" },
+    { "path": ".claude/references/bootstrap-template-cache.md", "action": "create", "purpose": "STEP 4.8 template-cache snapshot spec" },
+    { "path": ".claude/references/bootstrap-report.md", "action": "create", "purpose": "STEP 5 verbatim report template (mandatory-read)" },
+    { "path": ".claude/references/audit-rerun-migration.md", "action": "create", "purpose": "Migration path + re-run merge logic + stamp delta rules" },
+    { "path": ".claude/references/audit-convention-scans.md", "action": "create", "purpose": "STEP 2.5 scan blocks + conventions.md/detected-tools.json templates" },
+    { "path": ".claude/references/audit-output-templates.md", "action": "create", "purpose": "Architecture-principles skeleton + report/provenance/ambiguities templates" },
+    { "path": ".claude/references/audit-merge-mode.md", "action": "create", "purpose": "Entire MERGE MODE (--merge) branch" },
+    { "path": ".claude/references/subagent-implementer-prompt.md", "action": "create", "purpose": "Implementer prompt template + canonical batch-result JSON schema" },
+    { "path": ".claude/references/subagent-dynamic-workflow.md", "action": "create", "purpose": "Dynamic-workflow path steps + DOT decision graph" },
+    { "path": ".claude/manifest.json", "action": "modify", "purpose": "Register 10 new references/* entries (C0.2)" },
+    { "path": "templates/workflows/subagent-implementation.workflow.js", "action": "modify", "purpose": "Update stale comment pointer to subagent-implementer-prompt.md" },
+    { "path": "CHANGELOG.md", "action": "modify", "purpose": "Release-notes entry at release time" }
+  ],
+  "public_contracts": [],
+  "success_criteria": [
+    { "id": "SC1", "description": "Toolkit validation passes after every batch", "verification": "bash scripts/validate-toolkit.sh", "evidence_channel": "script-output", "observable": "exit 0 and 'Toolkit validation passed' printed" },
+    { "id": "SC2", "description": "Line budgets met: setup-bootstrap <= 520, setup-audit <= 340, subagent-implementation <= 220 lines", "verification": "wc -l .claude/skills/{setup-bootstrap,setup-audit,subagent-implementation}/SKILL.md", "evidence_channel": "cli-stdout", "observable": "all three counts at or under their targets" },
+    { "id": "SC3", "description": "No content loss: each extracted section's distinctive heading occurs exactly once across SKILL.md + companions", "verification": "grep loop over the moved-section heading list", "evidence_channel": "script-output", "observable": "checker prints 0 missing, 0 duplicated" },
+    { "id": "SC4", "description": "Byte-stable STEP headings in setup-bootstrap (18) and setup-audit (17)", "verification": "diff <(git show HEAD:<file> | grep '^## STEP') <(grep '^## STEP' <file>) for both files", "evidence_channel": "cli-stdout", "observable": "both diffs empty (exit 0)" },
+    { "id": "SC5", "description": "subagent-implementation keeps all four anatomy sections", "verification": "grep -c '^## Overview\\|^## When To Use\\|^## Workflow\\|^## Verification' .claude/skills/subagent-implementation/SKILL.md", "evidence_channel": "cli-stdout", "observable": "all four headings present (count 4)" },
+    { "id": "SC6", "description": "Combined word count of the three SKILL.md files cut >= 40% (pre: 18,057)", "verification": "wc -w on the three SKILL.md files, summed", "evidence_channel": "cli-stdout", "observable": "sum <= 10500 words" },
+    { "id": "SC7", "description": "Missing-file stop rule present exactly once per modified skill", "verification": "grep -c 'do not reconstruct' on each of the three SKILL.md files", "evidence_channel": "cli-stdout", "observable": "count is exactly 1 in each of the three files" },
+    { "id": "SC8", "description": "workflow.js comment cites the new companion path", "verification": "grep 'subagent-implementer-prompt' templates/workflows/subagent-implementation.workflow.js", "evidence_channel": "cli-stdout", "observable": "grep exits 0 with at least one match" }
+  ],
+  "test_manifest": [
+    { "path": "scripts/validate-toolkit.sh", "covers": ["SC1", "SC2", "SC5"] },
+    { "path": "evals/setup-bootstrap/", "covers": ["SC3"] }
+  ],
+  "out_of_scope": [
+    ".claude/skills/implement/SKILL.md — only ~60 extractable lines, load-bearing control flow; MTK_AUTO_PROCEED precondition list must stay inline",
+    "Raising validate-toolkit.sh line caps",
+    "Per-skill .claude/skills/<skill>/references/ subdirectories — shared .claude/references/ is the established pattern",
+    "Any behavioral change to the three skills (gates, ordering, abort conditions, report semantics)",
+    "Version bump and checksums.sha256 regeneration — release-commit protocol, not this change"
+  ],
+  "security_impact": "none",
+  "baseline_area": "toolkit-workflow",
+  "delta": {
+    "adds": ["10 companion reference files under .claude/references/"],
+    "modifies": ["setup-bootstrap, setup-audit, subagent-implementation SKILL.md bodies (pointerized)", ".claude/manifest.json files section", "templates/workflows/subagent-implementation.workflow.js comment"],
+    "removes": []
+  },
+  "assumptions": [
+    "[VERIFIED:.claude/references/config-ingestion.md] Companion pattern: frontmatter (name/description/globs/alwaysApply:false) + manifest entry (source/target/action:sync/applyTo/description) + imperative 'Read it now' pointer",
+    "[VERIFIED:scripts/validate-toolkit.sh] Caps: 500 workflow / 1000 phase-based lines; references frontmatter enforced; manifest-disk sync enforced",
+    "[VERIFIED:docs/plans/2026-07-03-token-optimization.md] Item 2 (progressive-disclosure of fattest skills) explicitly deferred and not claimed by any newer spec",
+    "[VERIFIED:templates/workflows/subagent-implementation.workflow.js] The only content-coupled external consumer of moving sections is this file's comment; hooks/scripts/evals grep none of the moving content"
+  ],
+  "implement": {
+    "completed_batches": [
+      {
+        "batch_id": "B1",
+        "actual_files": [".claude/references/subagent-implementer-prompt.md", ".claude/references/subagent-dynamic-workflow.md", ".claude/skills/subagent-implementation/SKILL.md", ".claude/manifest.json", "templates/workflows/subagent-implementation.workflow.js"],
+        "build": { "ok": true, "evidence": "validate-toolkit.sh exit 0, 'Toolkit validation passed' (subagent run + fresh orchestrator re-run)" },
+        "tests": { "ok": true, "evidence": "SKILL.md 182 lines (<=220); 4 anatomy headings; 'do not reconstruct' x1; workflow.js cites new companion (line 26); content-loss markers each unique across 3 files; git diff limited to batch.files" },
+        "behavioral_diff": "None behaviorally; SKILL.md 347->182 lines (~48% / ~2.5k tokens off every invocation). Decision graph + dynamic-workflow steps -> subagent-dynamic-workflow.md; implementer prompt template + canonical batch-result schema -> subagent-implementer-prompt.md; all gates, fork rule, dispatch hardening, Rules/Red Flags/Verification stay inline.",
+        "deviations": [
+          { "kind": "other", "detail": "Regenerated gitignored .claude/references.index via scripts/build-references-index.sh (validator sync check requires it)", "justification": "Generated artifact, not committed, no source impact — accepted by orchestrator as auto-fix class" }
+        ]
+      }
+    ]
+  },
+  "risks": [
+    "Model skips the mandatory Read and improvises (worst for bootstrap-report.md, consumed by verify-claims.sh) — mitigated by imperative wording + SC7 stop rule",
+    "Plugin-cache installs need $CLAUDE_PLUGIN_ROOT-prefixed resolution — all pointers route through ## MTK File Resolution",
+    "Cross-skill STEP-number coupling (setup-refresh re-runs setup-audit STEPs) — mitigated by SC4 byte-stable headings",
+    "Preferred-path inversion on subagent-implementation — inline fork rule keeps the dynamic path mandatory when the Workflow tool is available",
+    "Audit section line counts are +/-5 approximations; a section may prove load-bearing — Unwanted-behaviour requirement licenses leaving it inline with a reported deviation",
+    "Release-time: version bump is a three-file operation (manifest.json, plugin.json, marketplace.json) and checksums.sha256 regenerates last (S4.11)",
+    "trap: per-skill references/ subdirs — rejected (second convention, loses validator frontmatter coverage); see Rejected alternatives"
+  ]
+}

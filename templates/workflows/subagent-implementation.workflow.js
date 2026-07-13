@@ -22,7 +22,8 @@ export const meta = {
 
 // ---- Filled in by the orchestrator from docs/specs/<date>-<slug>.json --------
 // Each batch: { id, prompt, depends: [ids...], wave }
-// `prompt` is the shared "Implementer prompt template" rendered for this batch
+// `prompt` is the shared "Implementer prompt template"
+// (.claude/references/subagent-implementer-prompt.md) rendered for this batch
 // (repo root, CLAUDE.md, tech stack skill path, the single batch object, spec
 // excerpt, full change_manifest, out_of_scope, prior-batch summaries).
 const BATCHES = args?.batches ?? []
