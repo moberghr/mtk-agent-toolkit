@@ -30,7 +30,7 @@ git config user.name "MTK Test"
 ln -s "$HOOK_SOURCE" .git/hooks/pre-commit
 
 # --- Case 1: staged hardcoded secret must block the commit -------------------
-printf 'password = "supersecretvalue123"\n' > config.py
+printf '%s = "%s"\n' password supersecretvalue123 > config.py
 git add config.py
 if git commit -q -m "add secret" 2>/dev/null; then
   fail "commit with hardcoded secret was NOT blocked"
@@ -68,7 +68,7 @@ git init -q
 git config user.email test@example.com
 git config user.name "MTK Test"
 ln -s "$BROKEN/pre-commit" .git/hooks/pre-commit
-printf 'password = "supersecretvalue123"\n' > config.py
+printf '%s = "%s"\n' password supersecretvalue123 > config.py
 git add config.py
 STDERR_FILE="$SANDBOX/stderr.txt"
 if git commit -q -m "no linter present" 2>"$STDERR_FILE"; then
