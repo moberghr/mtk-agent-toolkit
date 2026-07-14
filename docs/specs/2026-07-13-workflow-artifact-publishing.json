@@ -12,7 +12,14 @@
     { "path": ".claude/references/workflow-artifact-schema.md", "action": "modify", "purpose": "Document results.artifact_url and recorded source-path fields" },
     { "path": ".claude/manifest.json", "action": "modify", "purpose": "Register new reference and script (C0.2)" },
     { "path": "CLAUDE.md", "action": "modify", "purpose": "Document MTK_ARTIFACT_PUBLISH env opt-out in Skill Routing env table" },
-    { "path": "tests/pressure-tests/artifact-publishing.md", "action": "create", "purpose": "Adversarial test: egress-note skip, publish-from-fork, mint-new-url-instead-of-update, gate bypass" }
+    { "path": "tests/pressure-tests/artifact-publishing.md", "action": "create", "purpose": "Adversarial test: egress-note skip, publish-from-fork, mint-new-url-instead-of-update, gate bypass" },
+    { "path": ".claude-plugin/plugin.json", "action": "modify", "purpose": "Patch version bump 7.25.0 -> 7.25.1 (reviewer request; S1.4 version sync)" },
+    { "path": ".claude-plugin/marketplace.json", "action": "modify", "purpose": "Patch version bump 7.25.0 -> 7.25.1 (reviewer request; S1.4 version sync)" },
+    { "path": "CHANGELOG.md", "action": "modify", "purpose": "Add 7.25.1 entry for artifact publishing (reviewer request)" },
+    { "path": "README.md", "action": "modify", "purpose": "Add 7.25.1 to recent-releases list and bump footer version (reviewer request; S4.9)" },
+    { "path": "docs/how-it-works.data.json", "action": "modify", "purpose": "Document artifact publishing on spec/plan/handoff/repo-health + two new feature entries (reviewer request)" },
+    { "path": "docs/how-it-works.html", "action": "modify", "purpose": "Regenerated from how-it-works.data.json via build-how-it-works.py" },
+    { "path": "checksums.sha256", "action": "modify", "purpose": "Regenerated after version bump (S4.11)" }
   ],
   "public_contracts": [
     { "kind": "cli-flag", "signature": "scripts/workflow-artifact-md.sh <uuid>", "change": "new" },

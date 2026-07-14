@@ -682,6 +682,7 @@ The plugin writes only inside the working directory and Claude Code's standard p
 
 Recent releases (see [CHANGELOG.md](CHANGELOG.md) for the full history):
 
+- **v7.25.1** — Publish workflow outputs (spec/plan/handoff/health) as one in-place-updated Claude Artifact per run; additive to disk, capability-gated, `MTK_ARTIFACT_PUBLISH=0` egress opt-out.
 - **v7.24.0** — Context-efficiency: `.claudeignore` generated at setup; `mtk-doctor` CONTEXT baseline (prices always-on tokens).
 - **v7.23.0** — Token-optimization wave: `mtk-savings.sh` footprint report, CI-enforced skill-description budget, cache-stable `CLAUDE.md` prefix, output compression.
 - **v7.19.0** — Setup improvements: `--converge`, mechanized `setup-detect.sh`, verified-commands stamp, adaptive interview, migration ingestion, CI staleness gate.
@@ -695,7 +696,7 @@ Recent releases (see [CHANGELOG.md](CHANGELOG.md) for the full history):
 
 <div align="center">
 
-**MTK — Moberg Toolkit** v7.24.0 · [Moberg d.o.o.](https://www.moberg.hr)
+**MTK — Moberg Toolkit** v7.25.1 · [Moberg d.o.o.](https://www.moberg.hr)
 
 Built for teams that ship production code, not prototypes.
 

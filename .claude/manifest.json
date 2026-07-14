@@ -1,6 +1,6 @@
 {
-  "version": "7.25.0",
-  "updated": "2026-07-07",
+  "version": "7.25.1",
+  "updated": "2026-07-14",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
