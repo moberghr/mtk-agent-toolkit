@@ -13,9 +13,9 @@ MTK skills and shared references live either in the project (local install) or t
 
 1. If `$CLAUDE_PLUGIN_ROOT` is set, prefix `.claude/skills/` and `.claude/references/` reads with it.
 2. Otherwise, if `.claude/skills/context-engineering/SKILL.md` exists locally → project-relative paths work as-is.
-3. Otherwise, fall back to `find ~/.claude/plugins -maxdepth 8 -name "SKILL.md" -path "*/mtk/*/context-engineering/*" -type f 2>/dev/null | head -1 | sed 's|/.claude/skills/context-engineering/SKILL.md||'`. If empty, MTK skills are unavailable — warn the engineer and proceed with `CLAUDE.md` only.
+3. Otherwise, fall back to `find ~/.claude/plugins -maxdepth 8 -name "SKILL.md" -path "*/mtk/*/context-engineering/*" -type f 2>/dev/null | sort -V | tail -1 | sed 's|/.claude/skills/context-engineering/SKILL.md||'`. If empty, MTK skills are unavailable — warn the engineer and proceed with `CLAUDE.md` only.
 
-Always project-relative (never prefixed): `CLAUDE.md`, `.claude/tech-stack`, `.claude/rules/`, `tasks/`, `docs/`, `.claude/references/architecture-principles.md`, `.claude/references/pre-commit-review-list.md`.
+Always project-relative (never prefixed): `CLAUDE.md`, `.claude/tech-stack`, `.claude/rules/`, `tasks/`, `docs/`, `.claude/references/architecture-principles.md`, `.claude/references/pre-commit-review-list.md`, `.mtk/` (workflow state). Resolve skills and scripts from the same root: a split (skills from a local dev checkout, scripts from the plugin cache) risks version drift — anchor both the same way.
 
 ---
 
@@ -62,9 +62,12 @@ digraph fix_flow {
   edit   [label="edit target file(s)"];
 
   files4 [label="4th file\nrequired?", shape=diamond, style="filled", fillcolor="#ffe0e0"];
+  multi  [label="several INDEPENDENT\nfixes, no new\ncontract?", shape=diamond, style="filled", fillcolor="#fff8d0"];
   slice  [label="new handler /\nentity / slice?", shape=diamond, style="filled", fillcolor="#ffe0e0"];
   arch   [label="needs architectural\nre-planning?", shape=diamond, style="filled", fillcolor="#ffe0e0"];
-  esc    [label="STOP — self-escalate:\nSkill('mtk', '<desc> —\nescalated from fix: <reason>')",
+  escb   [label="STOP — escalate to batch-fix:\nSkill('mtk', '<desc> —\nescalated from fix (batch): <reason>')",
+          style="rounded,filled", fillcolor="#e8f0ff"];
+  esc    [label="STOP — escalate to implement:\nSkill('mtk', '<desc> —\nescalated from fix: <reason>')",
           style="rounded,filled", fillcolor="#ff9090"];
 
   tdd    [label="behavior\nchanged?", shape=diamond];
@@ -76,7 +79,9 @@ digraph fix_flow {
           style="rounded,filled", fillcolor="#e0f0e0"];
 
   start -> load -> repro -> edit -> files4;
-  files4 -> esc   [label="yes"];
+  files4 -> multi [label="yes"];
+  multi  -> escb  [label="yes — several independent fixes, no new contract"];
+  multi  -> esc   [label="no — one growing change"];
   files4 -> slice [label="no"];
   slice  -> esc   [label="yes"];
   slice  -> arch  [label="no"];
@@ -96,8 +101,8 @@ digraph fix_flow {
 
 | Rationalization | Reality |
 |---|---|
-| "Just one more file and I'm done" | That's the 4th file. Stop. Escalate. |
-| "I'll add the new handler quickly, it's still a fix" | New slice = new feature. Escalate. |
+| "Just one more file and I'm done" | That's the 4th file. Stop. Several independent fixes, no new contract → escalate to batch-fix; one growing change or new slice → escalate to implement. |
+| "I'll add the new handler quickly, it's still a fix" | New slice = new feature. Escalate to implement. |
 | "The test fails but the fix is right, I'll relax the assertion" | Debug the implementation, don't weaken the test. |
 | "Scope grew but the engineer wants it fast" | Escalation is faster than a half-broken sprawl. The router still routes; you just hand off. |
 
@@ -139,20 +144,18 @@ If behavior changed, add or update tests.
 
 ### Scope Guard
 
-If any of these become true, **self-escalate to `/mtk implement`** instead of expanding scope in place:
+If scope grows past 1-3 files, **stop and self-escalate** instead of expanding in place. Where it escalates depends on *why* it grew:
 
-- a 4th file is required
-- a new handler/entity/slice is needed
-- the fix requires architectural re-planning
+- **Several independent trivial fixes, no new contract** — the growth is just more small unrelated fixes (e.g. a review threw up 5 nits across 5 files) → escalate to **`batch-fix`**.
+- **One growing change past 3 files, a new handler/entity/slice, a new/changed public contract, or architectural re-planning** → escalate to **`implement`**.
 
 **Self-escalation procedure:**
 
 1. Summarize what's been discovered so far (root cause, files identified, why the scope grew).
-2. Invoke the router skill with the original fix description plus the discovered scope:
-   ```
-   Skill(skill: "mtk", args: "<original description> — escalated from fix: <short reason>")
-   ```
-3. Do NOT continue editing. The router picks `implement` based on the escalation keyword.
+2. Invoke the router with the original fix description plus the discovered scope, using the marker the router catches:
+   - To batch-fix: `Skill(skill: "mtk", args: "<original description> — escalated from fix (batch): <short reason>")`
+   - To implement: `Skill(skill: "mtk", args: "<original description> — escalated from fix: <short reason>")`
+3. Do NOT continue editing. The router picks the target from the escalation marker.
 4. If the engineer prefers to keep the fix narrow, they can override by re-invoking `/mtk fix` with a scoped-down description.
 
 Silent scope creep past 3 files is a red flag — always escalate rather than quietly expanding.
@@ -177,7 +180,7 @@ Report briefly:
 ## Verification
 
 - [ ] Root cause was reproduced before fixing (per `debugging-and-error-recovery`)
-- [ ] Change stayed within 1-3 files; escalated to implement workflow if scope grew
+- [ ] Change stayed within 1-3 files; escalated to batch-fix (several independent fixes) or implement (new slice/contract/re-planning) if scope grew
 - [ ] Tests added or updated for the regression
 - [ ] Build is clean and relevant tests pass
 - [ ] Final report lists files changed, root cause, tests, and verification evidence

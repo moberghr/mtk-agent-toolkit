@@ -2,6 +2,33 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.26.0] - 2026-07-14
+
+### Added — `batch-fix` lane for corrective batches
+
+A new routed workflow skill sits between `fix` (1–3 files, one coherent change) and `implement` (new behavior/contract/architecture). It handles a corrective batch of multiple small **independent** fixes — applying review findings, several unrelated one-liners across more than three files — with no new public contract and no architectural re-planning. Previously such work fell into `implement` and inherited the full spec+plan+approval apparatus; `batch-fix` gives it proportional ceremony.
+
+- **Lightweight front-end.** Enumerate findings → short findings-list spec stub + `tasks/todo.md` → a **single** approval gate → per-finding TDD (mechanical findings skip) → **inline** implementation (no subagent-per-batch) → proportional review (pre-commit-review always; specialized reviewers only when a finding crosses a boundary) → verification. `MTK_AUTO_PROCEED`-eligible.
+- **Router wiring.** `/mtk` gains the lane across the decision graph, route table, disambiguation rows, the clarifying question, and help output. `fix`'s Scope Guard now reroutes *multiple independent trivial fixes* to `batch-fix` (marker `escalated from fix (batch)`) while genuine new-slice/contract/re-planning growth still escalates to `implement`. Marker matching is most-specific-first so `escalated from fix (batch)` never mis-binds to the generic `escalated from fix`.
+- **Escape hatch.** A single finding that turns out to need a new contract/slice escalates to `implement` via `escalated from batch-fix`. New router fixture, pressure test, and eval cover the lane.
+
+### Changed — rigor ceremony no longer over-escalates on mechanical edits
+
+The `implement` rigor floor and size score now count only **non-mechanical** `change_manifest` entries. A mechanical entry changes no logic and no public contract (rename-only, formatting-only, generated, no-behavioral-change — the TDD `skip_when` vocabulary); an entry touching any public contract is never mechanical. A batch of pure renames no longer gets force-floored to HIGH (subagent fleet + both reviewers) purely on file count.
+
+- The hard-trigger floor (`>= 6` files), the size score (`+1 per 3 files`), the Phase 3 subagent-path fork, `subagent-implementation`'s trigger, and the dynamic-workflow decision node all count non-mechanical entries consistently. Mechanical entries are still implemented and verified — they just don't inflate ceremony.
+- The Phase 2.5 gate rendering surfaces the split (e.g. `Rigor: STANDARD (score 4 — 8 files, 6 mechanical)`) so the engineer can veto the discount. The optional per-entry `mechanical` boolean is documented in the spec JSON sidecar schema.
+- At rigor HIGH, `architecture-reviewer` now runs only when the boundary/slice condition holds (a pure rename / frontmatter-only batch skips it); `test-reviewer` still always runs, and MAX still runs both plus `silent-failure-hunter`.
+
+### Fixed — resolution robustness for split installs and cached versions
+
+- **Graceful degrade on missing tech stack.** `implement` Phase 0 no longer hard-stops when `.claude/tech-stack` is absent: it infers the stack via `scripts/setup-detect.sh --json` (read-only), loading the matching `tech-stack-{stack}` skill, and otherwise warns and proceeds with `CLAUDE.md`-only context. A partial setup no longer blocks a straightforward change.
+- **Project-anchored workflow state.** `workflow-artifact.sh`, `workflow-artifact-md.sh`, and `workflow-dashboard.sh` now resolve `.mtk/workflows/` under `$CLAUDE_PROJECT_DIR` (falling back to the git top-level, then cwd) instead of bare `$(pwd)`, so state lands in the target project when MTK skills live in a separate checkout. `.mtk/` is added to the File Resolution "always project-relative" allow-list.
+- **Deterministic version binding.** The File Resolution plugin-cache fallback uses `sort -V | tail -1` instead of `head -1`, so it binds the newest cached MTK version rather than whichever `find` happened to emit first.
+- **Split-brain caveat.** The File Resolution block now warns that skills and scripts must resolve from the same root; a split (skills from a local dev checkout, scripts from the plugin cache) risks version drift.
+
+> Known follow-up: `.claude/tech-stack` is single-valued, so a polyglot repo (e.g. .NET API + React/TS SPA) loads only one stack's build/test commands. Multi-stack loading with merged command sets is tracked as a separate change.
+
 ## [7.25.1] - 2026-07-14
 
 ### Added — Publish workflow outputs as a Claude Artifact

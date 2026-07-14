@@ -18,7 +18,7 @@ digraph subagent_impl {
   edge [fontname="Helvetica", fontsize=10];
 
   start    [label="Phase 3 entered\n(spec + sidecar approved)"];
-  thr      [label="threshold met?\n(≥3 batches OR ≥6 files OR\nsecurity_impact != none)", shape=diamond];
+  thr      [label="threshold met?\n(≥3 batches OR ≥6 non-mechanical files OR\nsecurity_impact != none)", shape=diamond];
   inline   [label="dispatch to\nincremental-implementation\n(inline path)", style="rounded,filled", fillcolor="#e0f0e0"];
   ask      [label="ASK ONCE: implementer model\n(Sonnet faster/cheaper |\nOpus more capable)\nvia AskUserQuestion",
             style="rounded,filled", fillcolor="#fff8d0"];

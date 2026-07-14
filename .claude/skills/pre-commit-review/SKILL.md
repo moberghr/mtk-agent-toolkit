@@ -13,7 +13,7 @@ MTK files (`hooks/`, `.claude/references/`, `.claude/review-config.json`) live e
 
 1. If `$CLAUDE_PLUGIN_ROOT` is set, prefix `hooks/`, `.claude/references/`, and `.claude/review-config.json` reads with it.
 2. Otherwise, if `hooks/pre-commit-linters.sh` exists locally → project-relative paths work as-is.
-3. Otherwise, fall back to `find ~/.claude/plugins -maxdepth 8 -name "pre-commit-linters.sh" -path "*/mtk/*" -type f 2>/dev/null | head -1 | sed 's|/hooks/pre-commit-linters.sh||'`. If empty, skip the linter pass and run the AI review only.
+3. Otherwise, fall back to `find ~/.claude/plugins -maxdepth 8 -name "pre-commit-linters.sh" -path "*/mtk/*" -type f 2>/dev/null | sort -V | tail -1 | sed 's|/hooks/pre-commit-linters.sh||'`. If empty, skip the linter pass and run the AI review only.
 
 ---
 

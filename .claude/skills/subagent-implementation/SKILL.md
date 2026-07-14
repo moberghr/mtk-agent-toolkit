@@ -23,7 +23,7 @@ This skill is a **branch** of `incremental-implementation`, not a replacement. `
 Phase 3 of `implement/SKILL.md` invokes this skill when **any** of these are true (read from `docs/specs/<date>-<slug>.json`):
 
 - `plan.batches.length >= 3`
-- `change_manifest.length >= 6`
+- non-mechanical `change_manifest` entries >= 6
 - `security_impact != "none"`
 - rigor score ≥ 8 from the spec sidecar (rigor level HIGH or MAX — see `implement/SKILL.md` Rigor Score)
 

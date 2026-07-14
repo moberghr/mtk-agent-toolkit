@@ -93,7 +93,8 @@ There are just **two commands to remember** — `/mtk` and `/mtk-setup`. Everyth
 |:---|:---|:---|
 | Bootstrap a fresh repo | `/mtk-setup` | Detects stack, audits architecture, generates `CLAUDE.md` + `.claudeignore` |
 | Ship a new feature | `/mtk <description>` | spec → plan → TDD batches → two-stage review → evidence gate |
-| Fix a bug (1–3 files) | `/mtk fix <what's broken>` | Scope-guarded; self-escalates to `implement` if scope grows |
+| Fix a bug (1–3 files) | `/mtk fix <what's broken>` | Scope-guarded; self-escalates to `batch-fix` or `implement` if scope grows |
+| Apply a batch of small fixes | `/mtk apply these findings` | `batch-fix` — several independent fixes (>3 files, no new contract); one gate, inline, proportional review |
 | Review before committing | `/mtk review before commit` | Deterministic linters + AI judgment in one pass |
 | See what MTK has loaded | `/mtk status` | Active stack, references, hooks, domain packs |
 | Check toolkit usage trends | `/mtk health` | Usage-pulse report from `.claude/analytics.json` |

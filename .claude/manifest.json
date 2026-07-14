@@ -1,5 +1,5 @@
 {
-  "version": "7.25.1",
+  "version": "7.26.0",
   "updated": "2026-07-14",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
@@ -28,6 +28,12 @@
       "target": ".claude/skills/setup-audit/SKILL.md",
       "action": "sync",
       "description": "Audit architecture principles, or with --merge unify audits from multiple repos"
+    },
+    "skills/batch-fix/SKILL.md": {
+      "source": ".claude/skills/batch-fix/SKILL.md",
+      "target": ".claude/skills/batch-fix/SKILL.md",
+      "action": "sync",
+      "description": "Corrective-batch workflow: multiple small independent fixes across >3 files with no new contract; broader than fix, lighter than implement"
     },
     "skills/fix/SKILL.md": {
       "source": ".claude/skills/fix/SKILL.md",
@@ -486,6 +492,12 @@
       "action": "sync",
       "description": "Adversarial pressure test for claude-md-audit (stale commands, anti-sandbagging, refuse-rewrite, partial-approval)"
     },
+    "tests/pressure-tests/batch-fix.md": {
+      "source": "tests/pressure-tests/batch-fix.md",
+      "target": "tests/pressure-tests/batch-fix.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for batch-fix (skipping the gate, treating a new-contract finding as a small fix, skipping TDD on behavioral findings)"
+    },
     "tests/pressure-tests/approval-seal.md": {
       "source": "tests/pressure-tests/approval-seal.md",
       "target": "tests/pressure-tests/approval-seal.md",
@@ -887,6 +899,30 @@
       "target": "evals/README.md",
       "action": "sync",
       "description": "Eval pipeline overview, directory layout, and manual/automated run guidance"
+    },
+    "evals/rigor/eval-01-mechanical-batch.md": {
+      "source": "evals/rigor/eval-01-mechanical-batch.md",
+      "target": "evals/rigor/eval-01-mechanical-batch.md",
+      "action": "sync",
+      "description": "Rigor eval: an all-mechanical (rename/frontmatter) 6-file batch must score LIGHT/STANDARD, not force-floored to HIGH"
+    },
+    "evals/rigor/grader.md": {
+      "source": "evals/rigor/grader.md",
+      "target": "evals/rigor/grader.md",
+      "action": "sync",
+      "description": "Grader for the rigor eval: floor-avoidance, mechanical-split surfacing, and the contract-touch guard"
+    },
+    "evals/batch-fix/eval-01-corrective-batch.md": {
+      "source": "evals/batch-fix/eval-01-corrective-batch.md",
+      "target": "evals/batch-fix/eval-01-corrective-batch.md",
+      "action": "sync",
+      "description": "Batch-fix eval: five independent small fixes with no new contract must route to batch-fix with one gate and inline review"
+    },
+    "evals/batch-fix/grader.md": {
+      "source": "evals/batch-fix/grader.md",
+      "target": "evals/batch-fix/grader.md",
+      "action": "sync",
+      "description": "Grader for the batch-fix eval: correct routing, single approval gate, inline implementation, proportional review"
     },
     "evals/security-and-hardening/eval-01-hardcoded-secret.md": {
       "source": "evals/security-and-hardening/eval-01-hardcoded-secret.md",
@@ -2042,6 +2078,12 @@
       "target": "tests/fixtures/handoff-evidence-channels-bad.json",
       "action": "sync",
       "description": "Fixture: invalid evidence_channel rejected by validate-handoff.sh"
+    },
+    "tests/fixtures/router-batch-fix.json": {
+      "source": "tests/fixtures/router-batch-fix.json",
+      "target": "tests/fixtures/router-batch-fix.json",
+      "action": "sync",
+      "description": "Router-mapping fixture for the batch-fix lane (batch-fix vs fix vs implement)"
     },
     "tests/fixtures/router-lesson-mining.json": {
       "source": "tests/fixtures/router-lesson-mining.json",

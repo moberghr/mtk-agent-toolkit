@@ -7,7 +7,7 @@ Measurable quality gates for critical skills. Evals complement pressure tests
 - **negative** — a situation where the skill MUST NOT trigger or must be silent
 - **adversarial** — a situation designed to make the skill skip steps or inflate output
 
-Seven skills carry evals under `evals/` (one directory each). Six use the
+Nine skills carry evals under `evals/` (one directory each). Eight use the
 markdown scenario format described here (`eval-NN-<slug>.md` + `grader.md`);
 `code-review-and-quality` uses the JSONL skill-eval harness instead
 (`prompts.jsonl`, run via `scripts/skill-eval/run-eval.sh`).

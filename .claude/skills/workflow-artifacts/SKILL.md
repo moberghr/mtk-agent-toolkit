@@ -33,7 +33,7 @@ Orchestration state that lives only in chat is lost on compaction or restart. Th
 
 ## Workflow
 
-1. **Resolve helper path.** The script ships at `scripts/workflow-artifact.sh` in this repo and at the same path in target installs. If `$CLAUDE_PLUGIN_ROOT` is set and the repo install lacks the script, prefix the plugin root.
+1. **Resolve helper path.** The script ships at `scripts/workflow-artifact.sh` in this repo and at the same path in target installs. If `$CLAUDE_PLUGIN_ROOT` is set and the repo install lacks the script, prefix the plugin root. **State is project-anchored:** the script writes `.mtk/workflows/` under `$CLAUDE_PROJECT_DIR` (falling back to the git top-level, then cwd), so when MTK skills live outside the target project (plugin/marketplace install), export `CLAUDE_PROJECT_DIR=<project root>` or run from the project root — otherwise state lands in the wrong tree.
 2. **Init at workflow start.** Capture the returned uuid into a session variable `MTK_WF_UUID`:
    ```bash
    MTK_WF_UUID=$(scripts/workflow-artifact.sh init BUILD --goal "<one-line user goal>")

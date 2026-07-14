@@ -24,7 +24,8 @@ digraph mtk_routing {
   start    [label="user input"];
   empty    [label="empty / help?", shape=diamond];
   help     [label="print help", style="rounded,filled", fillcolor="#e8f0ff"];
-  esc      [label="contains\n'escalated from fix'?", shape=diamond];
+  bfesc    [label="contains\n'escalated from fix (batch)'?", shape=diamond];
+  esc      [label="contains 'escalated from fix'\nor 'escalated from batch-fix'?", shape=diamond];
   setup    [label="setup / bootstrap /\naudit / init / first time?", shape=diamond];
   redirect [label="redirect: /mtk-setup", style="rounded,filled", fillcolor="#e8f0ff"];
   rev      [label="review / commit /\nstaged / pre-commit?", shape=diamond];
@@ -42,8 +43,10 @@ digraph mtk_routing {
   fixv     [label="fix / bug / broken /\nerror / typo / failing?", shape=diamond];
   feat     [label="add / create / build /\nfeature / implement / new?", shape=diamond];
   ambig    [label="ALSO matches feature\n(e.g. 'fix the auth feature')?", shape=diamond];
-  ask      [label="ask ONE Q:\nsmall fix (1-3 files) or\nlarger feature?", style="rounded,filled", fillcolor="#fff8d0"];
+  ask      [label="ask ONE Q:\nsmall fix (1-3 files),\nbatch of small independent fixes,\nor larger feature?", style="rounded,filled", fillcolor="#fff8d0"];
+  bfixv    [label="multiple independent small\nfixes / corrective batch,\nno new contract?", shape=diamond];
   fix      [label="fix", style="rounded,filled", fillcolor="#e0f0e0"];
+  bfix     [label="batch-fix", style="rounded,filled", fillcolor="#e0f0e0"];
   impl     [label="implement", style="rounded,filled", fillcolor="#e0f0e0"];
   stat     [label="status / report /\nwhat's loaded / diagnostic?", shape=diamond];
   cr       [label="context-report", style="rounded,filled", fillcolor="#e0f0e0"];
@@ -58,9 +61,11 @@ digraph mtk_routing {
 
   start -> empty;
   empty -> help [label="yes"];
-  empty -> esc  [label="no"];
-  esc   -> impl [label="yes (internal marker)"];
-  esc   -> rev  [label="no"];
+  empty -> bfesc [label="no"];
+  bfesc -> bfix  [label="yes (internal marker)"];
+  bfesc -> esc   [label="no"];
+  esc   -> impl  [label="yes (internal marker)"];
+  esc   -> rev   [label="no"];
   rev   -> pcr  [label="yes"];
   rev   -> rhlth [label="no"];
   rhlth -> rh   [label="yes"];
@@ -76,9 +81,12 @@ digraph mtk_routing {
   fixv  -> ambig [label="yes"];
   ambig -> ask  [label="yes"];
   ambig -> fix  [label="no"];
-  ask   -> fix  [label="user: small"];
-  ask   -> impl [label="user: larger"];
-  fixv  -> feat [label="no"];
+  ask   -> fix  [label="user: small fix"];
+  ask   -> bfix [label="user: batch of small fixes"];
+  ask   -> impl [label="user: larger feature"];
+  fixv  -> bfixv [label="no"];
+  bfixv -> bfix  [label="yes"];
+  bfixv -> feat  [label="no"];
   feat  -> impl [label="yes"];
   feat  -> stat [label="no"];
   stat  -> cr   [label="yes"];
@@ -104,6 +112,7 @@ digraph mtk_routing {
 | "Setup-ish wording, I'll route to implement" | Setup is `/mtk-setup` only. Always redirect, never absorb. |
 | "I'll summarize what they want before routing" | Pass the original description through verbatim (Rule 6). |
 | "Two diamonds match, I'll just pick one" | If both match with similar specificity, ask one Q. Silent guessing = wrong half the time. |
+| "Several small fixes, so route to implement" | Multiple independent fixes with no new contract is `batch-fix`, not implement's full apparatus. |
 
 ## Route Table
 
@@ -111,7 +120,8 @@ Match the user's input against these patterns. Check from top to bottom; first m
 
 | Pattern (keywords / intent) | Route to | Example inputs |
 |---|---|---|
-| `escalated from fix` (internal marker from fix Scope Guard) | `.claude/skills/implement/SKILL.md` | — internal self-escalation only |
+| `escalated from fix (batch)` (internal marker: fix found multiple independent fixes) | `.claude/skills/batch-fix/SKILL.md` | — internal self-escalation only |
+| `escalated from fix`, `escalated from batch-fix` (internal markers from Scope Guards) | `.claude/skills/implement/SKILL.md` | — internal self-escalation only |
 | `review`, `check`, `commit`, `staged`, `pre-commit`, `before I commit` | `.claude/skills/pre-commit-review/SKILL.md` | "review before commit", "check staged changes" |
 | `repo-health`, `repo health`, `readiness`, `scorecard`, `ai-ready`, `ai ready`, `repo report` | `.claude/skills/repo-health/SKILL.md` | "is this repo AI-ready?", "run repo-health" |
 | `mine prs`, `pr mining` | `.claude/skills/pr-review-mining/SKILL.md` | "mine the last 10 PRs", "what do reviewers keep repeating?" |
@@ -119,6 +129,7 @@ Match the user's input against these patterns. Check from top to bottom; first m
 | `usage`, `stats`, `analytics`, `adoption` | `.claude/skills/toolkit-health/SKILL.md` | "toolkit usage", "show usage stats" |
 | `research`, `best practice`, `best-practice`, `current way`, `latest version`, `up to date`, `migration guide`, `upgrade guide` | `.claude/skills/research-context/SKILL.md` | "research the current EF Core batching approach", "what's the best-practice for X in v9" |
 | `fix`, `bug`, `broken`, `error`, `typo`, `patch`, `wrong`, `failing` | `.claude/skills/fix/SKILL.md` | "fix the null check", "this test is broken" |
+| `batch fix`, `apply findings`, `apply review findings`, `corrective batch`, `several fixes`, `multiple fixes` | `.claude/skills/batch-fix/SKILL.md` | "apply these review findings", "fix these 5 things" |
 | `add`, `create`, `build`, `feature`, `implement`, `new`, `endpoint`, `refactor` (multi-file) | `.claude/skills/implement/SKILL.md` | "add user auth", "create a payment endpoint" |
 | `status`, `report`, `what's loaded`, `diagnostic`, `context` | `.claude/skills/context-report/SKILL.md` | "what's loaded?", "show toolkit status" |
 | `audit claude.md`, `claude.md audit`, `is claude.md still good`, `claude.md stale`, `memory rot`, `claude.md quality` | `.claude/skills/claude-md-audit/SKILL.md` | "audit CLAUDE.md", "is CLAUDE.md still good?" |
@@ -137,7 +148,9 @@ awesome-harness-engineering negative-example routing).
 
 | Route to… | …NOT… | …when |
 |---|---|---|
-| `fix` | `implement` | the change is 1–3 files with no new public contract; if it's feature-sized or multi-file, it's `implement` (ambig branch → ask once) |
+| `fix` | `implement` | the change is 1–3 files with no new public contract; if it's feature-sized it's `implement`, if it's several small independent fixes it's `batch-fix` (ambig branch → ask once) |
+| `batch-fix` | `fix` | the batch is more than 3 files OR multiple distinct independent fixes — too big for the single-change `fix` loop |
+| `batch-fix` | `implement` | the batch introduces no new public contract and no architecture; a finding that needs one escalates THAT finding to `implement` |
 | `research-context` | `implement`/`fix` | the ask is an external/best-practice/version question ("what's the current way to…"), not a change to this repo |
 | `pre-commit-review` | `code-review-and-quality` | the trigger is staged/about-to-commit; full PR/branch review is the workflow skill, not the pre-commit gate |
 | `context-report` | `toolkit-health` | the ask is "what's loaded right now"; usage/adoption/analytics over time is `toolkit-health` |
@@ -149,8 +162,8 @@ awesome-harness-engineering negative-example routing).
 
 1. **Strip flags first.** If the input starts with `--terse`, `--verbose`, `--staged-only`, `--preview`, `--merge`, `--non-interactive`, pass them through to the target skill.
 2. **Unambiguous → route silently.** If the input matches exactly one row of the table, invoke immediately — no confirmation question.
-3. **Escalation marker → implement.** If the input literally contains `escalated from fix`, route straight to `implement` (produced only by the `fix` Scope Guard).
-4. **Ambiguous → ask, but only if genuinely ambiguous.** If input matches two rows with similar specificity (e.g., "fix the auth feature" — fix verb + feature-sized noun), ask one clarifying question: "Is this a small fix (1-3 files) or a larger feature?" Do not ask for inputs that clearly match one row.
+3. **Escalation marker → route by marker (most specific first).** If the input contains `escalated from fix (batch)`, route to `batch-fix`. Otherwise, if it contains `escalated from fix` or `escalated from batch-fix`, route straight to `implement`. These markers are produced only by the `fix` / `batch-fix` Scope Guards.
+4. **Ambiguous → ask, but only if genuinely ambiguous.** If input matches two rows with similar specificity (e.g., "fix the auth feature" — fix verb + feature-sized noun), ask one clarifying question: "Is this a small fix (1-3 files), a batch of small independent fixes, or a larger feature?" Do not ask for inputs that clearly match one row.
 5. **No input → help.** If invoked with no argument, print the help text.
 6. **Pass description through.** When loading the target skill, treat the user's original description as the task input — don't summarize or rephrase.
 7. **Setup requests → redirect.** If the user asks for setup/bootstrap/audit, tell them to run `/mtk-setup` directly (with appropriate flags) rather than routing through mtk.
@@ -173,6 +186,7 @@ MTK — two entry points:
     /mtk review before commit      → pre-commit security review
     /mtk repo-health               → AI-readiness scorecard + PR mining
     /mtk fix <description>         → small fix (1-3 files)
+    /mtk apply these findings      → batch-fix: several small independent fixes, one gate
     /mtk <feature description>     → full implementation workflow
     /mtk research <question>       → cited brief, grounded in this repo's versions
     /mtk status                    → show what's loaded

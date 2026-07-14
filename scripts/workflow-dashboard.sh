@@ -22,7 +22,7 @@ set -euo pipefail
 # port with the ngrok-expose or cfd (Cloudflare Tunnel) skill. This script does
 # not embed a tunnel — it stays a self-contained static renderer.
 
-ROOT_DIR="$(pwd)"
+ROOT_DIR="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 WF_DIR="${ROOT_DIR}/.mtk/workflows"
 OUT_DIR_DEFAULT="${WF_DIR}/dashboard"
 
