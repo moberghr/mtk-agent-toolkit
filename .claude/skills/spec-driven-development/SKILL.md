@@ -183,6 +183,7 @@ digraph spec_flow {
      the baseline (`docs/specs/baseline/`) and its audit trail are committed
      (see `.claude/references/delta-spec-model.md`).
 9.5. **EARS + ANT lint.** Run `bash scripts/lint-ears.sh docs/specs/<file>.md` on the just-persisted spec. Zero violations required before handing to the approval gate. If the script is absent (older repos), at minimum eyeball the Requirements section against the rules in `## Requirements Format (EARS)`.
+9.6. **Publish the spec artifact (additive, capability-gated).** After the spec is on disk, follow `.claude/references/artifact-publishing.md` to create the workflow's Claude Artifact from the spec — this is the first section of a single browsable URL that later phases (plan, handoff, health) update in place. Publishing is additive: disk is the source of truth and the step is a silent no-op when the `Artifact` tool is unavailable or `MTK_ARTIFACT_PUBLISH=0`. Never publish anything not already written to disk.
 10. Always stop for approval before implementation. When invoked from the implement workflow, this means handing control back to Phase 2.5 approval gate (which uses `AskUserQuestion`). Do not silently continue to implementation.
 
 **Approval is sealed, not asserted.** On approval, the implement gate records a SHA-256 **approval seal** over the approved spec/plan/todo bodies (`scripts/workflow-artifact.sh seal`). Because the seal binds the exact approved bytes, editing an approved spec afterward invalidates the approval deterministically — `verification-before-completion` re-checks it with `verify-seal` (refusing completion on a STALE seal) and the `spec-approval-trigger.sh` hook re-queues the gate, rather than trusting a stale `status: approved` marker. This is why moving a success-criterion goalpost post-approval requires re-opening Phase 2.5: the seal will not match.
@@ -396,3 +397,4 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared table. Spec-spe
 - [ ] A Constitution Check section is present in the spec
 - [ ] Claude-Ready +C score > 13/16 recorded (step 8b)
 - [ ] `prior-work-check` ran with no BLOCK verdict (step 8c)
+- [ ] Spec artifact published (or gate correctly closed) per `.claude/references/artifact-publishing.md` — disk written first regardless (step 9.6)

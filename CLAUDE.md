@@ -22,6 +22,7 @@
 | Mine lessons from past sessions | `/mtk mine lessons` | Sweep recent session transcripts for durable lesson/memory candidates (reject-by-default rubric, suggest-only) |
 | Disable tier-2 hooks | `MTK_HOOKS_TIER2=0` in `.claude/settings.local.json` env | Silences skill-invoking hooks (queue + drain) without touching shared settings |
 | Auto-approve safe plans | `MTK_AUTO_PROCEED=1` in `.claude/settings.local.json` env | Skips Phase 2.5 prompt only when spec has no open decisions and no plan-gap BLOCKING findings |
+| Disable artifact publishing | `MTK_ARTIFACT_PUBLISH=0` in `.claude/settings.local.json` env | Stops workflow skills publishing spec/plan/handoff/health to a claude.ai Artifact (data-egress opt-out for regulated repos); disk output is unaffected. See `.claude/references/artifact-publishing.md` |
 | Enable compaction snapshots (plugin installs) | `MTK_COMPACT_SNAPSHOT=1` in `.claude/settings.local.json` env | Opts a plugin-installed repo into pre-compaction git-stash snapshots; always on in this dev checkout |
 
 **Decision rule for `/mtk`:** Say what you want in plain English. The router picks the right workflow skill — fix / implement / pre-commit-review / repo-health / context-report / research-context / claude-md-audit / claude-md-capture / toolkit-health / mtk-doctor.

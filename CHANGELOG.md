@@ -2,6 +2,17 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.25.1] - 2026-07-14
+
+### Added — Publish workflow outputs as a Claude Artifact
+
+Workflow skills persist their human-facing outputs (spec, plan, handoff, health report) to disk, and disk stays the source of truth — the machine pipeline (drift detection, approval seal, EARS lint, plan-gap review, session recovery, baseline archive) reads local files and cannot read a hosted page. This release **additively** publishes those outputs as one browsable Claude Artifact per workflow run, updated in place across phases, so the engineer gets a single always-current URL rendered for review outside the terminal.
+
+- **One artifact per workflow run.** Keyed to the existing `workflow_uuid`: `spec-driven-development` creates it (Spec section), then `planning-and-task-breakdown` (Plan), `handoff` (Handoff), and `repo-health` (Health report) re-publish the same file in place — reusing the recorded `results.artifact_url` rather than minting a new link — so one URL fills in as the workflow progresses.
+- **Additive and capability-gated.** Disk is written first and unconditionally; publishing never gates or replaces it. It happens only when the harness exposes the `Artifact` tool (Claude Code / claude.ai) and `MTK_ARTIFACT_PUBLISH` != `0`. On cursor/codex, or with the opt-out set, every skill behaves exactly as before — disk only, no error, no stall.
+- **Data-egress opt-out.** Because publishing transmits internal spec/plan content to claude.ai, `MTK_ARTIFACT_PUBLISH=0` disables it repo-wide for regulated contexts (documented in the CLAUDE.md skill-routing env table).
+- **New pieces.** `scripts/workflow-artifact-md.sh` deterministically assembles the rollup (`.mtk/workflows/<uuid>.artifact.md`) from whichever recorded source docs exist, skipping missing ones; `.claude/references/artifact-publishing.md` is the single canonical procedure the skills link to (thin navigation layer, S2.26); the workflow-artifact schema documents `results.artifact_url` and the source-path fields. `code-review-and-quality` publishing is deliberately deferred (forked subagent — the orchestrator writes artifacts, not the fork).
+
 ## [7.25.0] - 2026-07-07
 
 ### Added — Approval seal + executable lesson contracts

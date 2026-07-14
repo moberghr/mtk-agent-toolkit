@@ -91,6 +91,7 @@ Convert the approved plan into small, executable tasks that can be verified one 
    If it does not, re-plan first — don't quietly widen scope here.
 9. Keep the task list synchronized with reality. If a new file is needed, re-plan before continuing.
 10. Record the plan/todo paths on the workflow artifact and leave `plan_trust_gate` at `pending` — only the engineer's Phase 2.5 approval flips it to `pass`. See `.claude/references/orchestration-gates.md`.
+10.5. **Update the workflow artifact (additive, capability-gated).** With `plan_path`/`todo_path` recorded, follow `.claude/references/artifact-publishing.md` to add the Plan section to the workflow's Claude Artifact. Because the artifact is keyed to the workflow uuid, this **updates the existing URL in place** (passing the recorded `results.artifact_url`) — it does not mint a new link. Silent no-op when the tool is unavailable or `MTK_ARTIFACT_PUBLISH=0`.
 11. **Anti-anchored gap check.** Before surfacing the plan to the engineer, dispatch the `plan-gap-reviewer` agent with the original user request and the saved plan path — plus, when they exist, the spec markdown path, the spec JSON sidecar path, and `tasks/todo.md`. Passing the sidecar and todo activates the agent's **cross-artifact consistency check**: spec ↔ plan ↔ todo are mapped against each other in both directions (manifest entries ↔ batches, success criteria ↔ tests, out-of-scope ↔ batch contents) so disagreement between the artifacts is caught before the approval gate, not after implementation. The agent runs in a forked context and is forbidden from reading lessons, prior reviewer output, or the workflow artifact — its job is to challenge the plan against the repo with no anchors. Surface every `BLOCKING` finding back to the planner and revise before the approval gate. Surface `ADVISORY` findings unchanged at the approval gate so the engineer decides.
 
 ## Rules
@@ -122,3 +123,4 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared table. Planning
 - [ ] Each batch ends with a concrete checkpoint
 - [ ] Each task has Boundary and Depends annotations
 - [ ] No circular dependencies exist between tasks
+- [ ] Workflow artifact updated in place (same URL) or gate correctly closed, per `.claude/references/artifact-publishing.md` (step 10.5)

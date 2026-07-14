@@ -1,6 +1,6 @@
 {
-  "version": "7.25.0",
-  "updated": "2026-07-07",
+  "version": "7.25.1",
+  "updated": "2026-07-14",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -491,6 +491,12 @@
       "target": "tests/pressure-tests/approval-seal.md",
       "action": "sync",
       "description": "Adversarial pressure test for the approval seal (edit-after-approval → stale, advisory re-queue, blocking on completion, no-seal back-compat)"
+    },
+    "tests/pressure-tests/artifact-publishing.md": {
+      "source": "tests/pressure-tests/artifact-publishing.md",
+      "target": "tests/pressure-tests/artifact-publishing.md",
+      "action": "sync",
+      "description": "Adversarial pressure test for artifact publishing (tool-absent no-op, disk-first, update-in-place vs new URL, egress opt-out, no publishing from review fork)"
     },
     "tests/pressure-tests/lesson-contract.md": {
       "source": "tests/pressure-tests/lesson-contract.md",
@@ -1548,6 +1554,12 @@
       "action": "sync",
       "description": "Five named fail-closed gates the implement workflow records on the workflow artifact before advancing"
     },
+    "references/artifact-publishing.md": {
+      "source": ".claude/references/artifact-publishing.md",
+      "target": ".claude/references/artifact-publishing.md",
+      "action": "sync",
+      "description": "Additive, capability-gated procedure for publishing workflow outputs (spec/plan/handoff/health) as a single in-place-updated Claude Artifact"
+    },
     "references/evidence-capture.md": {
       "source": ".claude/references/evidence-capture.md",
       "target": ".claude/references/evidence-capture.md",
@@ -1565,6 +1577,12 @@
       "target": "scripts/workflow-dashboard.sh",
       "action": "sync",
       "description": "Render a read-only HTML dashboard from .mtk/workflows/ artifacts; --watch serves it over HTTP"
+    },
+    "scripts/workflow-artifact-md.sh": {
+      "source": "scripts/workflow-artifact-md.sh",
+      "target": "scripts/workflow-artifact-md.sh",
+      "action": "sync",
+      "description": "Assemble a single markdown rollup of a workflow's on-disk outputs (spec/plan/handoff/health) for publishing as a Claude Artifact"
     },
     "scripts/learnings.sh": {
       "source": "scripts/learnings.sh",
