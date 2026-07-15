@@ -50,6 +50,7 @@ Orchestration state that lives only in chat is lost on compaction or restart. Th
    scripts/workflow-artifact.sh event "$MTK_WF_UUID" phase_started   --data '{"phase":"phase-3"}'
    scripts/workflow-artifact.sh event "$MTK_WF_UUID" phase_completed --data '{"phase":"phase-3"}'
    ```
+   A `phase_started` event carrying a `phase` auto-advances the artifact's `phase_cursor` to that phase — no separate `set phase_cursor=` call is needed, and the resume protocol (step 6) can trust `phase_cursor` rather than replaying the event log.
 5. **Record gate decisions.** Every named gate (`plan_trust_gate`, `phase_exit_gate`, `failure_stop_gate`, `memory_sync_gate`, `skill_precedence_gate`) must be persisted via:
    ```bash
    scripts/workflow-artifact.sh gate "$MTK_WF_UUID" phase_exit_gate pass --reason "all batch tests green"

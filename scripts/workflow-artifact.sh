@@ -141,14 +141,28 @@ sys.stdout.write(json.dumps({
 }, separators=(",", ":")) + "\n")
 PY
 
-  # Bump updated_at on the main artifact.
-  python3 - "${WF_DIR}/${uuid}.json" "$now" <<'PY'
+  # Bump updated_at on the main artifact, and advance phase_cursor when this
+  # event is a phase_started marker carrying a phase. The event log is the
+  # source of truth; the cursor is derived from it so a resume driven off
+  # phase_cursor alone never restarts at phase-0 after progress was made.
+  python3 - "${WF_DIR}/${uuid}.json" "$now" "$etype" "$data" <<'PY'
 import json, sys
-path, now = sys.argv[1:3]
+path, now, etype, data_raw = sys.argv[1:5]
 with open(path) as f: doc = json.load(f)
 doc["updated_at"] = now
+if etype == "phase_started":
+    try:
+        phase = json.loads(data_raw).get("phase") if data_raw else None
+    except json.JSONDecodeError:
+        phase = None
+    if phase:
+        doc["phase_cursor"] = phase
 with open(path, "w") as f: json.dump(doc, f, indent=2)
 PY
+
+  # Confirm on stdout (internal callers redirect stdout to /dev/null, so only
+  # a top-level `event` invocation surfaces this).
+  printf 'workflow-artifact: recorded %s for %s\n' "$etype" "$uuid"
 }
 
 cmd_set() {
@@ -181,6 +195,7 @@ doc["updated_at"] = now
 with open(path, "w") as f: json.dump(doc, f, indent=2)
 PY
   cmd_event "$uuid" "field_updated" --data "{\"keys\":$(printf '%s\n' "$@" | python3 -c 'import sys, json; print(json.dumps([l.split("=",1)[0] for l in sys.stdin.read().splitlines() if l]))')}" >/dev/null
+  printf 'workflow-artifact: set %s on %s\n' "$*" "$uuid"
 }
 
 cmd_read() {
