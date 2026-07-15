@@ -305,11 +305,12 @@ Rules:
   with files you "might" touch.
 - `mechanical` is an OPTIONAL per-entry boolean (default `false`). An entry is
   **mechanical** only when it changes no logic and no public contract —
-  rename-only, formatting-only, generated, or otherwise no-behavioral-change
-  (the TDD `skip_when` vocabulary); an entry touching any public contract is
-  never mechanical. Mechanical entries are still implemented and verified, but
-  they don't count toward the `implement` rigor floor or size score (see
-  `implement/SKILL.md` Rigor Score).
+  rename-only, formatting-only, or otherwise no-behavioral-change (cf. the TDD
+  `skip_when` categories `rename-only|formatting-only|no-behavioral-change`); an
+  entry touching any public contract — including a serialized shape, persisted
+  schema, or wire format — is never mechanical. Mechanical entries are still
+  implemented and verified, but they don't count toward the `implement` rigor
+  floor or size score (see `implement/SKILL.md` Rigor Score).
 - `public_contracts` is what callers or external consumers will see change.
   Internal helpers don't count.
 - `security_impact` is NOT `none` if the diff touches auth, payments,

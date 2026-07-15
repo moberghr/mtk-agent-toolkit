@@ -113,12 +113,14 @@ digraph batch_fix_flow {
 | "All of these actually need contracts" | Then it's not a corrective batch — route the whole thing to implement. |
 | "It's really one change in two files" | Then it's `fix`, not `batch-fix`. Hand it down. |
 
+**Op-cost:** each behavioral finding is roughly 3 tool ops (read test → edit test → edit source). Batches beyond ~5 findings can exhaust a context or op budget mid-loop — group trivially-related edits where safe, and if a budget warning fires, checkpoint with `handoff` and resume rather than pushing through a degraded window.
+
 ### Phase 1: Load Context (Progressive Disclosure)
 
 1. Follow `.claude/skills/context-engineering/SKILL.md`.
 2. Read `CLAUDE.md`. If missing, stop and tell the engineer to run `/mtk-setup`.
-3. Load the active tech stack: read `.claude/tech-stack` and `.claude/skills/tech-stack-{stack}/SKILL.md` (build/test commands, stack reference paths).
-4. Read only what the batch needs — the coding guidelines always; the ORM checklist if a finding touches the data layer; `.claude/references/security-checklist.md` if a finding touches auth/secrets/financial; `.claude/references/testing-patterns.md` when adding tests; `.claude/references/pre-commit-review-list.md` before commit.
+3. Load the active tech stack: read `.claude/tech-stack` and `.claude/skills/tech-stack-{stack}/SKILL.md` (build/test commands, stack reference paths). If `.claude/tech-stack` is missing, do not halt: infer via `bash scripts/setup-detect.sh --json` (read-only) and load the matching `tech-stack-{stack}` skill; if inference is empty, announce **degraded mode** (stack build/test commands unavailable) and proceed with `CLAUDE.md`-only context.
+4. Read only what the batch needs — the coding guidelines always; the ORM checklist if a finding touches the data layer; `.claude/references/security-checklist.md` if a finding touches auth/secrets/financial; `.claude/references/testing-patterns.md` when adding tests; `.claude/references/pre-commit-review-list.md` before commit. Resolve each via the File Resolution block (project → `$CLAUDE_PLUGIN_ROOT` → plugin cache); if a needed reference resolves nowhere, announce degraded mode for that check rather than skipping it silently — in particular, if `pre-commit-review-list.md` is absent the pre-commit gate still runs, AI-review-only (degraded), and must say so.
 5. Resolve and scan relevant lessons. Prefer the structured query when present:
    ```bash
    LS="scripts/learnings.sh"; [ -f "$LS" ] || LS="${CLAUDE_PLUGIN_ROOT:-.}/scripts/learnings.sh"
@@ -132,7 +134,7 @@ digraph batch_fix_flow {
 
 1. Triage the batch into a **numbered list of independent findings**. Each finding gets: a one-line description, the file(s) it touches, whether it is behavioral or mechanical, and whether it crosses a boundary (auth/secrets/data-layer/public surface). Independence is a precondition — if findings are ordered steps of one change, this is `implement`, not a batch.
 2. If the whole thing collapses to one coherent 1-3 file change, hand it to `fix` instead (`Skill(skill: "mtk", args: "<desc>")`) and stop.
-3. Write a **short findings-list spec stub** to `docs/specs/YYYY-MM-DD-<slug>-batch.md`: the enumerated findings and a one-line scope note (`no new public contract; no architectural change`). This is a stub, **not** a full executable feature spec — no change_manifest apparatus, no JSON sidecar, no batches, no `docs/plans/` file.
+3. Write a **short findings-list spec stub** to `docs/specs/YYYY-MM-DD-<slug>-batch.md`: the enumerated findings and a one-line scope note (`no new public contract; no architectural change`). This is a stub, **not** a full executable feature spec — no change_manifest apparatus, no batches, no `docs/plans/` file. Also write a minimal JSON sidecar `docs/specs/YYYY-MM-DD-<slug>-batch.json` = `{"workflow": "batch-fix", "scope_guard": "skip"}` (no `change_manifest`). This makes the batch stub the **freshest active spec** so `scope-guard.sh` anchors to it instead of a stale prior sidecar, and the `scope_guard: skip` marker tells the guard to no-op — batch-fix scopes by the findings list, not a file manifest. Without it, every edit fires a false "not in the approved spec" warning against whatever spec was last touched.
 4. Write `tasks/todo.md`: one checkable item per finding, plus post-batch review/verify items.
 
 ### Phase 3: Single Approval Gate (STOP HERE)
