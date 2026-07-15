@@ -39,6 +39,12 @@ fi
 # No active spec — nothing to guard
 [ -z "${SPEC_JSON:-}" ] || [ ! -f "$SPEC_JSON" ] && exit 0
 
+# Manifest-less workflows (batch-fix) declare a skip marker: they scope by a
+# findings list, not a file manifest, so enforcing one is a false positive.
+if grep -Eq '"scope_guard"[[:space:]]*:[[:space:]]*"skip"|"workflow"[[:space:]]*:[[:space:]]*"batch-fix"' "$SPEC_JSON" 2>/dev/null; then
+  exit 0
+fi
+
 # Use a session cache to avoid re-parsing the spec on every tool call.
 # Cache key: spec file path + mtime.
 CACHE_DIR="${TMPDIR:-/tmp}"

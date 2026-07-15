@@ -27,7 +27,9 @@ The `implement` rigor floor and size score now count only **non-mechanical** `ch
 - **Deterministic version binding.** The File Resolution plugin-cache fallback uses `sort -V | tail -1` instead of `head -1`, so it binds the newest cached MTK version rather than whichever `find` happened to emit first.
 - **Split-brain caveat.** The File Resolution block now warns that skills and scripts must resolve from the same root; a split (skills from a local dev checkout, scripts from the plugin cache) risks version drift.
 
-> Known follow-up: `.claude/tech-stack` is single-valued, so a polyglot repo (e.g. .NET API + React/TS SPA) loads only one stack's build/test commands. Multi-stack loading with merged command sets is tracked as a separate change.
+- **Batch-fix scope-guard false positives + graceful degrade.** `scope-guard.sh` anchors to the most-recently-modified spec sidecar, but batch-fix wrote none — so every edit was checked against a *stale* spec's manifest (a real run hit 18 false "not in the approved spec" warnings). batch-fix now writes a minimal `{"workflow":"batch-fix","scope_guard":"skip"}` JSON sidecar so it becomes the freshest active spec, and `scope-guard.sh` recognizes the marker and no-ops (batch-fix scopes by its findings list, not a file manifest). batch-fix's Phase 0 also degrades on missing setup (infer stack via `setup-detect`, resolve references from the plugin cache, announce degraded mode), and it flags that batches beyond ~5 findings may warrant a `handoff` checkpoint.
+
+> Known follow-ups (tracked separately): (1) `.claude/tech-stack` is single-valued, so a polyglot repo (e.g. .NET API + React/TS SPA) loads only one stack's build/test commands — multi-stack loading with merged command sets; (2) `learnings.sh query` returning zero matches silently — needs an explicit "0 matches" vs "error" signal and a `tasks/lessons.md` fallback; (3) `MTK_AUTO_PROCEED` keying off an explicit "fix all / just do it" in the invoking message when there are zero open decisions.
 
 ## [7.25.1] - 2026-07-14
 
