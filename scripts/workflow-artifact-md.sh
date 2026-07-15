@@ -22,7 +22,7 @@ set -euo pipefail
 # This file is the source the `Artifact` tool publishes; see
 # .claude/references/artifact-publishing.md for the full procedure.
 
-ROOT_DIR="$(pwd)"
+ROOT_DIR="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 WF_DIR="${ROOT_DIR}/.mtk/workflows"
 
 fail() { printf 'workflow-artifact-md: %s\n' "$1" >&2; exit 1; }

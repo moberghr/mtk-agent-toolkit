@@ -51,13 +51,14 @@ There are just two user-invocable skills:
 | Skill | Purpose |
 |:---|:---|
 | `/mtk-setup` | First-time setup (bootstrap + audit), `--audit` to re-audit, `--merge` to unify multi-repo audits, `--refresh` to drift-refresh all generated docs (`--dry-run` to preview), `--check` as read-only CI staleness gate, `--converge` to judge code against agreed principles as graded work items |
-| `/mtk <description>` | Natural-language router — dispatches to fix / implement / pre-commit-review / context-report workflow skills |
+| `/mtk <description>` | Natural-language router — dispatches to fix / batch-fix / implement / pre-commit-review / context-report workflow skills |
 
 **Routed workflow skills** (not directly invocable; reached via `/mtk <description>`):
 
 | Workflow | Composition |
 |:---|:---|
 | fix | debugging/error recovery → focused verification |
+| batch-fix | corrective batch of multiple small independent fixes (>3 files, no new contract) → findings list + spec stub + one gate → per-finding TDD → inline impl → proportional review; between `fix` and `implement` |
 | implement | brainstorm *(optional)* → context → spec *(+ JSON sidecar)* → task breakdown → TDD → source-driven impl → **spec-drift-detection** → two-stage review → simplification |
 | pre-commit-review | static linter pass *(confidence 100)* → AI review *(confidence-scored)*, merged via `.claude/references/review-finding-schema.md` |
 | context-report | diagnostic snapshot of active MTK configuration |
@@ -102,7 +103,7 @@ context bloat.
 - `correction-capture` — capture engineer corrections as reusable lessons
 - `golden-path-capture` — capture a working approach you found after struggling 2+ times with the same sub-problem in-session (no engineer correction required)
 - `prior-work-check` — before approving a spec or multi-file work, confirm no existing skill/helper/handler/lesson already covers it
-- `subagent-implementation` — replaces incremental-implementation for 3+ batches, 6+ files, or non-none security_impact; one fresh implementer subagent per batch
+- `subagent-implementation` — replaces incremental-implementation for 3+ batches, 6+ non-mechanical files, or non-none security_impact; one fresh implementer subagent per batch
 - `code-simplification` — after a verified fix/feature, reduce complexity and remove dead code without changing behavior
 - `workflow-artifacts` — durable workflow state under `.mtk/workflows/` so orchestration survives compaction, crash, and handoff
 

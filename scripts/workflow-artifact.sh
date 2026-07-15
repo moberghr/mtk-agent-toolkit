@@ -29,7 +29,7 @@ set -euo pipefail
 # Artifacts live OUTSIDE .claude/ to avoid Claude Code's sensitive-file gate.
 # Add `.mtk/` to .gitignore in target repos (not committed by default).
 
-ROOT_DIR="$(pwd)"
+ROOT_DIR="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 WF_DIR="${ROOT_DIR}/.mtk/workflows"
 
 fail() { printf 'workflow-artifact: %s\n' "$1" >&2; exit 1; }

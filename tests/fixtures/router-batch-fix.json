@@ -1,0 +1,15 @@
+{
+  "id": "router-batch-fix",
+  "fixture_type": "router-mapping",
+  "description": "A corrective batch of multiple small independent fixes routes to batch-fix; a single 1-3 file fix stays with fix; a new-behavior/contract request goes to implement. Disambiguates the middle lane between fix and implement for the /mtk router.",
+  "cases": [
+    { "prompt": "apply review findings from the PR", "expected_skill": "batch-fix" },
+    { "prompt": "run a batch fix over these five unrelated nits", "expected_skill": "batch-fix" },
+    { "prompt": "fix the null check in OrderService", "expected_skill": "fix", "note": "single coherent 1-3 file change stays with fix, not batch-fix" },
+    { "prompt": "add a new payment endpoint with a handler and migration", "expected_skill": "implement", "note": "new public contract + architecture is implement, not a corrective batch" }
+  ],
+  "expected": {
+    "next_action": "route",
+    "rationale": "Multiple independent small fixes with no new contract map to batch-fix; a lone small change maps to fix; new behavior/contract/architecture maps to implement. Encodes the fix <-> batch-fix <-> implement boundaries."
+  }
+}

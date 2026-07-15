@@ -271,7 +271,7 @@ later by downstream skills (MetaGPT typed-handoff pattern).
   "date": "YYYY-MM-DD",
   "scope": "new-feature | internal-refactoring | breaking-change",
   "change_manifest": [
-    { "path": "src/X.cs", "action": "create | modify | delete", "purpose": "one-line why" }
+    { "path": "src/X.cs", "action": "create | modify | delete", "purpose": "one-line why", "mechanical": false }
   ],
   "public_contracts": [
     { "kind": "endpoint | handler | method | event | cli-flag",
@@ -303,6 +303,13 @@ Rules:
 
 - Every entry in `change_manifest` must be intended — do not pre-populate
   with files you "might" touch.
+- `mechanical` is an OPTIONAL per-entry boolean (default `false`). An entry is
+  **mechanical** only when it changes no logic and no public contract —
+  rename-only, formatting-only, generated, or otherwise no-behavioral-change
+  (the TDD `skip_when` vocabulary); an entry touching any public contract is
+  never mechanical. Mechanical entries are still implemented and verified, but
+  they don't count toward the `implement` rigor floor or size score (see
+  `implement/SKILL.md` Rigor Score).
 - `public_contracts` is what callers or external consumers will see change.
   Internal helpers don't count.
 - `security_impact` is NOT `none` if the diff touches auth, payments,
