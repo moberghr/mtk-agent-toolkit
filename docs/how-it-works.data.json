@@ -343,7 +343,7 @@
    "one_liner": "A points score from the spec sidecar that scales ceremony to blast radius: LIGHT / STANDARD / HIGH / MAX.",
    "what": "Instead of a binary 'small vs big change', MTK computes a numeric rigor score from the approved plan and maps it to one of four levels. The level dials three things: whether Phase 3 runs inline or via subagents, which Stage-2 reviewers run, and whether MTK_AUTO_PROCEED is even eligible.",
    "example": "A change with 3 implementation batches (+3), 8 files (+3), and `security_impact` new-auth-path (+3) scores 9 → HIGH. implement prints `Rigor: HIGH (score 9 — 3 batches, 8 files, security_impact=new-auth-path)` at the gate, routes Phase 3 to subagent-implementation, and forces both `test-reviewer` + `architecture-reviewer` in Stage 2 regardless of the per-reviewer conditions.",
-   "how": "Points: +1 per batch, +1 per 3 files (rounded up), +3 if security_impact != none, +1 per public contract added/modified (cap +4), +3 if scope == breaking-change. Bands: <=3 LIGHT, 4-7 STANDARD, 8-11 HIGH, >=12 MAX. A hard-trigger floor forces at least HIGH whenever plan.batches.length >= 3, change_manifest.length >= 6, or security_impact != none — the score scales ceremony continuously between those long-standing triggers but never relaxes them. HIGH/MAX force the subagent path, add reviewers (MAX adds `silent-failure-hunter`), and make MTK_AUTO_PROCEED ineligible.",
+   "how": "Points: +1 per batch, +1 per 3 non-mechanical files (rounded up), +3 if security_impact != none, +1 per public contract added/modified (cap +4), +3 if scope == breaking-change. Bands: <=3 LIGHT, 4-7 STANDARD, 8-11 HIGH, >=12 MAX. A hard-trigger floor forces at least HIGH whenever plan.batches.length >= 3, >= 6 non-mechanical change_manifest entries, or security_impact != none — the score scales ceremony continuously between those long-standing triggers but never relaxes them. HIGH/MAX force the subagent path, add reviewers (MAX adds `silent-failure-hunter`), and make MTK_AUTO_PROCEED ineligible.",
    "why": "Ceremony that's all-or-nothing either over-burdens small fixes or under-protects big changes. Proportional rigor gives a one-line justification the engineer sees at the gate for why this particular change is getting the apparatus it's getting.",
    "key_files": [
     ".claude/skills/implement/SKILL.md"
@@ -430,7 +430,7 @@
    "id": "subagent-implementation",
    "name": "subagent-implementation",
    "kind": "skill",
-   "invocation": "Loaded on-demand by implement Phase 3 as the subagent path when any hard trigger holds (plan.batches.length >= 3, change_manifest.length >= 6, security_impact != \"none\") or rigor score >= 8; user-invocable:false.",
+   "invocation": "Loaded on-demand by implement Phase 3 as the subagent path when any hard trigger holds (plan.batches.length >= 3, non-mechanical change_manifest entries >= 6, security_impact != \"none\") or rigor score >= 8; user-invocable:false.",
    "category": "Build",
    "one_liner": "Per-batch context isolation — one fresh implementer subagent per batch, with all drift/persistence judged orchestrator-side.",
    "what": "A branch of incremental-implementation for large features. The orchestrator (main context) holds the spec, plan, and JSON sidecar; each batch's actual editing happens inside a fresh subagent that receives only what it needs and returns a structured JSON result. The orchestrator never edits source and the implementer never spawns further subagents.",

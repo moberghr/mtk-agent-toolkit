@@ -430,7 +430,7 @@
       "source": ".claude/skills/subagent-implementation/SKILL.md",
       "target": ".claude/skills/subagent-implementation/SKILL.md",
       "action": "sync",
-      "description": "Per-batch subagent-driven implementation for large features (3+ batches, 6+ files, or non-none security_impact); orchestrator-side drift checks"
+      "description": "Per-batch subagent-driven implementation for large features (3+ batches, 6+ non-mechanical files, or non-none security_impact); orchestrator-side drift checks"
     },
     "skills/debugging-and-error-recovery/SKILL.md": {
       "source": ".claude/skills/debugging-and-error-recovery/SKILL.md",

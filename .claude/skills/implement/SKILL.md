@@ -125,7 +125,7 @@ Compute once after Phase 2, from the JSON sidecar at `docs/specs/<date>-<slug>.j
 | 8–11 | HIGH |
 | ≥ 12 | MAX |
 
-**Hard-trigger floor:** any of `plan.batches.length >= 3`, the count of non-mechanical `change_manifest` entries `>= 6`, or `security_impact != "none"` forces the level to at least HIGH regardless of score. An entry is **mechanical** only when it changes no logic and no public contract — rename-only, formatting-only, generated, or otherwise no-behavioral-change (the TDD `skip_when` vocabulary); an entry touching any public contract is never mechanical; mechanical entries are still implemented and verified, they just don't count toward the floor or the size score. These are the long-standing subagent-path triggers — the score scales ceremony continuously *between* them; it never relaxes them.
+**Hard-trigger floor:** any of `plan.batches.length >= 3`, the count of non-mechanical `change_manifest` entries `>= 6`, or `security_impact != "none"` forces the level to at least HIGH regardless of score. An entry is **mechanical** only when it changes no logic and no public contract — rename-only, formatting-only, or otherwise no-behavioral-change (cf. the TDD `skip_when` categories `rename-only|formatting-only|no-behavioral-change`); an entry touching any public contract — including a serialized shape, persisted schema, or wire format — is never mechanical; mechanical entries are still implemented and verified, they just don't count toward the floor or the size score. These are the long-standing subagent-path triggers — the score scales ceremony continuously *between* them; it never relaxes them.
 
 What the level dials:
 

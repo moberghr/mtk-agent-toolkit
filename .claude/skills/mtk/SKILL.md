@@ -46,6 +46,7 @@ digraph mtk_routing {
   ask      [label="ask ONE Q:\nsmall fix (1-3 files),\nbatch of small independent fixes,\nor larger feature?", style="rounded,filled", fillcolor="#fff8d0"];
   bfixv    [label="multiple independent small\nfixes / corrective batch,\nno new contract?", shape=diamond];
   fix      [label="fix", style="rounded,filled", fillcolor="#e0f0e0"];
+  bfixkw   [label="explicit batch-fix keywords?\n('batch fix' / 'apply review\nfindings' / 'corrective batch')", shape=diamond];
   bfix     [label="batch-fix", style="rounded,filled", fillcolor="#e0f0e0"];
   impl     [label="implement", style="rounded,filled", fillcolor="#e0f0e0"];
   stat     [label="status / report /\nwhat's loaded / diagnostic?", shape=diamond];
@@ -65,7 +66,9 @@ digraph mtk_routing {
   bfesc -> bfix  [label="yes (internal marker)"];
   bfesc -> esc   [label="no"];
   esc   -> impl  [label="yes (internal marker)"];
-  esc   -> rev   [label="no"];
+  esc   -> bfixkw [label="no"];
+  bfixkw -> bfix [label="yes"];
+  bfixkw -> rev  [label="no"];
   rev   -> pcr  [label="yes"];
   rev   -> rhlth [label="no"];
   rhlth -> rh   [label="yes"];
@@ -118,10 +121,13 @@ digraph mtk_routing {
 
 Match the user's input against these patterns. Check from top to bottom; first match wins.
 
+**Order matters — do not "tidy" it.** `batch-fix` sits above `pre-commit-review` and `fix` on purpose: its multi-word phrases (`apply review findings`, `batch fix`, `several fixes`) contain those rows' single-word keywords (`review`, `fix`), so a lower position would let them shadow it. `scripts/run-fixtures.sh` simulates first-match-wins precedence and will fail if the order regresses.
+
 | Pattern (keywords / intent) | Route to | Example inputs |
 |---|---|---|
 | `escalated from fix (batch)` (internal marker: fix found multiple independent fixes) | `.claude/skills/batch-fix/SKILL.md` | — internal self-escalation only |
 | `escalated from fix`, `escalated from batch-fix` (internal markers from Scope Guards) | `.claude/skills/implement/SKILL.md` | — internal self-escalation only |
+| `batch fix`, `apply findings`, `apply review findings`, `corrective batch`, `several fixes`, `multiple fixes` | `.claude/skills/batch-fix/SKILL.md` | "apply these review findings", "run a batch fix over these nits" |
 | `review`, `check`, `commit`, `staged`, `pre-commit`, `before I commit` | `.claude/skills/pre-commit-review/SKILL.md` | "review before commit", "check staged changes" |
 | `repo-health`, `repo health`, `readiness`, `scorecard`, `ai-ready`, `ai ready`, `repo report` | `.claude/skills/repo-health/SKILL.md` | "is this repo AI-ready?", "run repo-health" |
 | `mine prs`, `pr mining` | `.claude/skills/pr-review-mining/SKILL.md` | "mine the last 10 PRs", "what do reviewers keep repeating?" |
@@ -129,7 +135,6 @@ Match the user's input against these patterns. Check from top to bottom; first m
 | `usage`, `stats`, `analytics`, `adoption` | `.claude/skills/toolkit-health/SKILL.md` | "toolkit usage", "show usage stats" |
 | `research`, `best practice`, `best-practice`, `current way`, `latest version`, `up to date`, `migration guide`, `upgrade guide` | `.claude/skills/research-context/SKILL.md` | "research the current EF Core batching approach", "what's the best-practice for X in v9" |
 | `fix`, `bug`, `broken`, `error`, `typo`, `patch`, `wrong`, `failing` | `.claude/skills/fix/SKILL.md` | "fix the null check", "this test is broken" |
-| `batch fix`, `apply findings`, `apply review findings`, `corrective batch`, `several fixes`, `multiple fixes` | `.claude/skills/batch-fix/SKILL.md` | "apply these review findings", "fix these 5 things" |
 | `add`, `create`, `build`, `feature`, `implement`, `new`, `endpoint`, `refactor` (multi-file) | `.claude/skills/implement/SKILL.md` | "add user auth", "create a payment endpoint" |
 | `status`, `report`, `what's loaded`, `diagnostic`, `context` | `.claude/skills/context-report/SKILL.md` | "what's loaded?", "show toolkit status" |
 | `audit claude.md`, `claude.md audit`, `is claude.md still good`, `claude.md stale`, `memory rot`, `claude.md quality` | `.claude/skills/claude-md-audit/SKILL.md` | "audit CLAUDE.md", "is CLAUDE.md still good?" |
@@ -151,6 +156,7 @@ awesome-harness-engineering negative-example routing).
 | `fix` | `implement` | the change is 1–3 files with no new public contract; if it's feature-sized it's `implement`, if it's several small independent fixes it's `batch-fix` (ambig branch → ask once) |
 | `batch-fix` | `fix` | the batch is more than 3 files OR multiple distinct independent fixes — too big for the single-change `fix` loop |
 | `batch-fix` | `implement` | the batch introduces no new public contract and no architecture; a finding that needs one escalates THAT finding to `implement` |
+| `batch-fix` | `pre-commit-review` | the ask is "apply review findings" / "apply the review comments" — running the corrective-batch loop, not a staged-changes security gate; batch-fix's row sits above `pre-commit-review` so `review` cannot shadow it |
 | `research-context` | `implement`/`fix` | the ask is an external/best-practice/version question ("what's the current way to…"), not a change to this repo |
 | `pre-commit-review` | `code-review-and-quality` | the trigger is staged/about-to-commit; full PR/branch review is the workflow skill, not the pre-commit gate |
 | `context-report` | `toolkit-health` | the ask is "what's loaded right now"; usage/adoption/analytics over time is `toolkit-health` |

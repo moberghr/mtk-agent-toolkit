@@ -189,6 +189,7 @@ skills_dir = os.path.join(root, ".claude", "skills")
 # Parse the /mtk route table: rows whose target column names a skill path.
 # Build skill -> set of backtick-quoted keyword phrases from the pattern column.
 route_targets = {}
+ordered_rows = []  # (skill, [kw,...]) in route-table order, for first-match-wins precedence
 mtk_path = os.path.join(skills_dir, "mtk", "SKILL.md")
 try:
     mtk = open(mtk_path).read()
@@ -205,7 +206,9 @@ for line in mtk.splitlines():
     cols = [c.strip() for c in s.strip("|").split("|")]
     skill = m.group(1)
     kws = re.findall(r"`([^`]+)`", cols[0]) if cols else []
-    route_targets.setdefault(skill, set()).update(k.lower() for k in kws)
+    kws_l = [k.lower() for k in kws]
+    route_targets.setdefault(skill, set()).update(kws_l)
+    ordered_rows.append((skill, kws_l))
 
 errs = []
 for c in cases:
@@ -219,17 +222,19 @@ for c in cases:
     if not os.path.isdir(os.path.join(skills_dir, exp)):
         errs.append(f"case {prompt!r}: expected_skill {exp!r} has no directory under .claude/skills/")
         continue
-    # B) routing claim must be grounded.
+    # B) routing claim must survive first-match-wins precedence, not just keyword membership.
     pl = prompt.lower()
     if exp in route_targets:
-        if any(kw in pl for kw in route_targets[exp]):
-            pass  # grounded: a route-table keyword for this skill appears in the prompt
+        actual = next((sk for sk, kws in ordered_rows if any(kw in pl for kw in kws)), None)
+        if actual == exp:
+            pass  # correct: the expected skill is the first route-table row that matches
         elif note:
-            pass  # documented boundary case (disambiguation) — grounded by note
+            pass  # documented boundary the router resolves via disambiguation/ask — grounded by note
         else:
+            hint = f"; first-match row routes to {actual!r}" if actual and actual != exp else ""
             errs.append(
-                f"case {prompt!r}: claims route to {exp} but no /mtk route-table "
-                f"keyword for {exp} appears in the prompt and no 'note' explains it"
+                f"case {prompt!r}: claims route to {exp} but first-match-wins precedence "
+                f"does not select it{hint} — reorder the route table or add a 'note'"
             )
     else:
         # Not a /mtk route target (e.g. hook-routed skill like correction-capture).

@@ -96,7 +96,7 @@ These scenarios deliberately try to break `subagent-implementation`'s discipline
 
 **Setup:** A feature has 2 batches but `change_manifest` lists 7 files (one batch is large). Orchestrator interprets the threshold as "all three must be true".
 
-**Expected behavior:** Threshold is **OR** — any of: ≥3 batches OR ≥6 files OR non-none security. 7 files alone triggers subagent path. (If unsure, prefer subagent path; the cost is bounded, the upside is real.)
+**Expected behavior:** Threshold is **OR** — any of: ≥3 batches OR ≥6 non-mechanical files OR non-none security. 7 non-mechanical files alone triggers subagent path. (If unsure, prefer subagent path; the cost is bounded, the upside is real.)
 
 **Failure mode:** Orchestrator routes a 7-file feature to inline `incremental-implementation`, loses the isolation benefit on the exact features where it matters most.
 
