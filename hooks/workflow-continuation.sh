@@ -37,9 +37,14 @@ for f in "$WF_DIR"/*.json; do
 done
 [ -n "$NEWEST" ] || exit 0
 
-# Numeric/string field extraction without jq (S3.3).
-json_num() { grep -oE "\"$1\"[[:space:]]*:[[:space:]]*[0-9]+" "$2" 2>/dev/null | grep -oE '[0-9]+$' | head -1; }
-json_str() { grep -oE "\"$1\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" "$2" 2>/dev/null | sed 's/.*:[[:space:]]*"//;s/"$//' | head -1; }
+# Numeric/string field extraction without jq (S3.3). The trailing `|| true` is
+# load-bearing: under `set -euo pipefail` a legitimate no-match (grep exits 1)
+# would otherwise abort the whole hook via the assignment `VAR="$(json_num …)"`
+# — before the `[ -n "$TOTAL" ] || exit 0` guard below could handle the absent
+# field. An active workflow that has not yet recorded batch accounting is the
+# common case early in a run, so this fired an exit-1 on every such Stop.
+json_num() { grep -oE "\"$1\"[[:space:]]*:[[:space:]]*[0-9]+" "$2" 2>/dev/null | grep -oE '[0-9]+$' | head -1 || true; }
+json_str() { grep -oE "\"$1\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" "$2" 2>/dev/null | sed 's/.*:[[:space:]]*"//;s/"$//' | head -1 || true; }
 
 STATUS="$(json_str status "$NEWEST")"
 [ "$STATUS" = "active" ] || exit 0

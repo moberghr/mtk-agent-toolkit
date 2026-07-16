@@ -67,6 +67,10 @@ if [ -f "$LESSONS_FILE" ] && [ -s "$LESSONS_FILE" ]; then
 
   if [ "$LESSON_COUNT" -ge 3 ]; then
     # Extract Rule: lines and find repeated keywords (2+ word tokens appearing 3+ times)
+    # `|| true` is load-bearing: under `set -euo pipefail`, a lessons.md with
+    # 3+ `## ` headers but no `Rule:` lines makes grep exit 1, which (via
+    # pipefail) would abort the whole hook at this assignment before the
+    # `[ -n "$REPEATED" ]` guard below. Empty-on-no-match is the intended result.
     REPEATED=$(grep -i '^[*]*Rule:[*]*' "$LESSONS_FILE" 2>/dev/null \
       | tr '[:upper:]' '[:lower:]' \
       | tr -cs '[:alpha:]' '\n' \
@@ -74,7 +78,7 @@ if [ -f "$LESSONS_FILE" ] && [ -s "$LESSONS_FILE" ]; then
       | uniq -c \
       | sort -rn \
       | awk '$1 >= 3 && length($2) > 4 { print $2 }' \
-      | head -3)
+      | head -3 || true)
 
     if [ -n "$REPEATED" ]; then
       KEYWORDS=$(echo "$REPEATED" | tr '\n' ', ' | sed 's/, $//')
