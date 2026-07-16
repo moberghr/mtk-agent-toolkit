@@ -308,9 +308,10 @@ cmd_gate() {
   shift 3 || true
   [ -n "$uuid" ] && [ -n "$gate" ] && [ -n "$result" ] || fail "gate requires <uuid> <gate_name> <pass|fail>"
   case "$result" in pass|fail) ;; *) fail "gate result must be 'pass' or 'fail'" ;; esac
-  case "$gate" in
-    plan_trust_gate|phase_exit_gate|failure_stop_gate|memory_sync_gate|skill_precedence_gate) ;;
-    *) fail "unknown gate: $gate (see .claude/references/orchestration-gates.md)" ;;
+  local valid_gates="plan_trust_gate phase_exit_gate failure_stop_gate memory_sync_gate skill_precedence_gate"
+  case " $valid_gates " in
+    *" $gate "*) ;;
+    *) fail "unknown gate: $gate — must be one of: $valid_gates (see .claude/references/orchestration-gates.md)" ;;
   esac
 
   local reason=""

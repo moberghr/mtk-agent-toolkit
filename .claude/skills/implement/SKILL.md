@@ -49,7 +49,7 @@ Before doing anything else:
    - Emit `phase_started phase-0` immediately after init/resume.
 1. Follow `.claude/skills/context-engineering/SKILL.md`.
 2. Read `CLAUDE.md`. If missing, stop and tell the engineer to run `/mtk-setup`.
-3. **Load the active tech stack:** read `.claude/tech-stack` (plain text, single word like `dotnet` or `python`). Then read `.claude/skills/tech-stack-{stack}/SKILL.md`. This provides build/test commands, ORM guidance, framework patterns, and reference file paths used throughout the workflow. If `.claude/tech-stack` is missing, do not halt: run `bash scripts/setup-detect.sh --json` (read-only) to infer the stack, and load the matching `tech-stack-{stack}` skill if one exists for the inferred primary. If inference is empty or no matching skill exists, warn the engineer that the tech stack is unconfigured (suggest `/mtk-setup`) and proceed with `CLAUDE.md`-only context.
+3. **Load the active tech stack:** resolve it with `bash scripts/resolve-tech-stack.sh "$PWD"` (a single word like `dotnet` or `python`). The resolver is **polyglot-monorepo aware** — for a subproject under a differently-stacked root it returns the subproject's stack via a nested `.claude/tech-stack` or a root `.claude/tech-stack.map` glob, falling back to the repo-root `.claude/tech-stack`. When the change targets a specific subtree, pass a representative path from the `change_manifest` (e.g. `bash scripts/resolve-tech-stack.sh "src/web/spa"`) rather than `$PWD`, so the workflow loads the right stack for the files it will touch. Then read `.claude/skills/tech-stack-{stack}/SKILL.md`. This provides build/test commands, ORM guidance, framework patterns, and reference file paths used throughout the workflow. If it resolves empty, do not halt: run `bash scripts/setup-detect.sh --json` (read-only) to infer the stack, and load the matching `tech-stack-{stack}` skill if one exists for the inferred primary. If inference is empty or no matching skill exists, warn the engineer that the tech stack is unconfigured (suggest `/mtk-setup`) and proceed with `CLAUDE.md`-only context.
 4. Read only the references needed for the **current phase**:
    - **Always (Phase 0):** the coding guidelines from the tech stack's `## Reference Files`, `.claude/references/architecture-principles.md` if present
    - **Defer to Phase 1 (spec):** `.claude/references/security-checklist.md` (only if scope touches auth/financial/infra), `.claude/references/testing-patterns.md`
@@ -108,7 +108,7 @@ Create `docs/plans/` if missing. Then record both paths on the workflow artifact
 
 ## Rigor Score (Continuous Ceremony Scaling)
 
-Compute once after Phase 2, from the JSON sidecar at `docs/specs/<date>-<slug>.json`. Ceremony scales with the change's blast radius — a small fix gets a light pass, a breaking multi-batch change gets the full apparatus, and everything in between gets *proportional* rigor rather than a binary jump.
+Compute after Phase 2, from the JSON sidecar at `docs/specs/<date>-<slug>.json`, and **recompute when the approved scope shrinks** (see *Recompute on scope reduction* below). Ceremony scales with the change's blast radius — a small fix gets a light pass, a breaking multi-batch change gets the full apparatus, and everything in between gets *proportional* rigor rather than a binary jump.
 
 | Signal | Points |
 |---|---|
@@ -135,7 +135,15 @@ What the level dials:
 | Phase 4 Stage 2 reviewers | conditional (per Stage 2 rules) | conditional | `test-reviewer` always; `architecture-reviewer` if boundary/slice condition applies | both + `silent-failure-hunter` |
 | `MTK_AUTO_PROCEED` eligibility | yes | yes | no | no |
 
+**Per-batch mechanical exception (Phase 3 path).** Even at HIGH/MAX, an individual batch whose `change_manifest` entries are *all* mechanical (per the mechanical definition above) runs **inline**, not through a fresh implementer subagent — context isolation buys nothing when a batch changes no logic and no contract. The subagent path governs the non-mechanical batches; a pure config/rename/formatting batch inside an otherwise-HIGH run is implemented inline, with the orchestrator's drift micro-check and verification still applied. See `subagent-implementation/SKILL.md`.
+
 State the score and level in one line in the Phase 2.5 gate rendering (e.g. `Rigor: HIGH (score 9 — 3 batches, 8 files, security_impact=new-auth-path)`) so the engineer sees why the ceremony is sized the way it is. When any `change_manifest` entries are mechanical, surface the split in that line so the engineer can veto the discount (e.g. `Rigor: STANDARD (score 4 — 8 files, 6 mechanical)`).
+
+**Recompute on scope reduction.** The score is set at Phase 2, but the approved batch set can shrink mid-run — a batch is deferred, dropped, or split to a follow-up. When it does (detected at a **phase boundary** — a batch deferral during Phase 3, or the Phase 3.5 drift check — never mid-batch), **recompute the score and level from the batches that remain in scope** and their `change_manifest` entries, then adopt the recomputed level for the rest of the run (Phase 4 reviewer set and `MTK_AUTO_PROCEED` eligibility both follow it). Guardrails:
+
+- **Recompute only relaxes — it never drops below the hard-trigger floor of the *remaining* work.** If the deferred batch removed the only `security_impact` or the last public-contract change, that floor legitimately lifts; if the remaining batches still count `>= 3` or `>= 6` non-mechanical files, the floor holds at HIGH regardless of the lower score.
+- **A scope *increase* is never a silent recompute — it re-opens the Phase 2.5 gate** (unchanged; see Phase 3.5). Only a *reduction* auto-relaxes: the engineer already approved the larger scope, so shipping less of it needs no new approval.
+- **Log the transition.** Record it on the workflow artifact (`scripts/workflow-artifact.sh set "$MTK_WF_UUID" results.rigor_recomputed="HIGH->STANDARD (2 of 4 batches deferred; score 9->5)"`) and state it to the engineer in one line mirroring the rendering above, so the ceremony change is visible rather than silent.
 
 ## Phase 2.5: Approval Gate (STOP HERE)
 
@@ -236,10 +244,18 @@ If critical drift is found:
 3. If spec incomplete → amend the spec + JSON sidecar via
    `spec-driven-development`, re-open the Phase 2.5 approval gate for the
    scope change, then re-run drift check.
-4. Do NOT proceed to review until drift is clean.
+4. If the drift is a **scope reduction** — batches deferred, dropped, or split
+   to a follow-up, with no new file, contract, or security surface — this is
+   the one drift class that does **not** re-open the gate. Recompute the Rigor
+   Score from the remaining batches (see *Rigor Score → Recompute on scope
+   reduction*), record the transition on the workflow artifact, and continue at
+   the recomputed level. Relaxing ceremony for work already approved needs no
+   new approval; only *added* scope does.
+5. Do NOT proceed to review until drift is clean.
 
-Silent drift repair is forbidden — every change to scope goes through the
-approval gate.
+Silent drift repair is forbidden. Every *increase* in scope goes through the
+approval gate; a *reduction* is recorded and re-scores rigor (item 4) but does
+not re-open it.
 
 ## Phase 4: Review (Two-Stage)
 
@@ -266,7 +282,7 @@ Only after Stage 1 passes (no Critical issues). When both reviewers apply, run t
 - `test-reviewer` — when the change introduces or changes public behavior
 - `architecture-reviewer` — when the change introduces new slices, boundaries, handlers, or cross-project interactions
 
-At rigor MAX, run **both** reviewers regardless of the conditions above, plus `silent-failure-hunter` (empty catches, swallowed errors, masking fallbacks). At rigor HIGH, always run `test-reviewer`, but run `architecture-reviewer` only when the boundary/slice condition above holds — a change that adds or moves no modules and crosses no boundary (e.g. a pure rename or frontmatter-only batch) skips it. At LIGHT/STANDARD, the conditions above decide.
+Size this from the **current** rigor level — the level recomputed in Phase 3.5 if scope was reduced, not the original Phase 2 level. At rigor MAX, run **both** reviewers regardless of the conditions above, plus `silent-failure-hunter` (empty catches, swallowed errors, masking fallbacks). At rigor HIGH, always run `test-reviewer`, but run `architecture-reviewer` only when the boundary/slice condition above holds — a change that adds or moves no modules and crosses no boundary (e.g. a pure rename or frontmatter-only batch) skips it. At LIGHT/STANDARD, the conditions above decide.
 
 Provide all reviewers with the same diff and behavioral diff.
 

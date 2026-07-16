@@ -2,6 +2,32 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.27.0] - 2026-07-16
+
+### Added — rigor re-scales when scope shrinks mid-run
+
+`implement`'s Rigor Score was computed once at Phase 2 and never revisited. A six-batch spec that scored MAX kept the MAX apparatus — subagent path, both reviewers plus `silent-failure-hunter` — even when the biggest batches were deferred mid-run and the work that actually shipped was LIGHT/STANDARD. Field feedback flagged the mismatch: engineers were right-sizing the review by hand.
+
+- **Recompute on scope reduction.** When the approved batch set shrinks at a phase boundary (a batch deferred during Phase 3, or the Phase 3.5 drift check — never mid-batch), the score and level are recomputed from the batches that remain, and the Phase 4 reviewer set + `MTK_AUTO_PROCEED` eligibility follow the recomputed level.
+- **Relax-only, floor-respecting.** A recompute never drops below the hard-trigger floor of the *remaining* work (≥ 3 batches, ≥ 6 non-mechanical files, or any surviving `security_impact` still hold the floor). A scope *increase* is never a silent recompute — it re-opens the Phase 2.5 gate as before; only a reduction auto-relaxes, because the engineer already approved the larger scope. The transition is logged to the workflow artifact (`results.rigor_recomputed`) and surfaced in one line. New `evals/rigor/eval-02` + grader coverage.
+
+### Added — per-directory tech-stack resolution for polyglot monorepos
+
+Closes the per-directory half of the 7.26.0 follow-up (1): `.claude/tech-stack` resolved repo-root-only, so a TypeScript subproject under a .NET root loaded the wrong stack's build/test commands until the engineer overrode it by hand.
+
+- **New `scripts/resolve-tech-stack.sh`** resolves the active stack for a given path — `MTK_STACK` env → nearest subproject `.claude/tech-stack` (closest-declaration-wins) → root `.claude/tech-stack.map` glob → repo-root `.claude/tech-stack` default. Coreutils + git only; empty output means "unconfigured", same as a missing file.
+- **Wiring.** `implement`'s *load the active tech stack* step and `context-engineering`'s Active Stack panel resolve through it (pass a subtree path from the change manifest to load the stack for the files being touched); `check-prerequisites.sh` and `repomap.sh` prefer it with a graceful fallback to the old root read. `setup-bootstrap` documents the `.claude/tech-stack.map` convention. Repo-wide generators (AGENTS.md, tool configs, repo-health) still use the primary stack — multi-stack *merged* command sets for a single repo-wide operation remain the open half of the follow-up.
+
+### Changed — a mechanical batch runs inline even under HIGH/MAX
+
+The subagent path was binary on rigor level: at HIGH/MAX every batch drew a fresh implementer subagent. A pure config/rename/formatting batch has no logic or contract to isolate, so the isolation bought only cold-load latency.
+
+- An **all-mechanical batch** (every entry mechanical per the existing Rigor Score definition; an entry touching any public contract is never mechanical) is now implemented **inline** by the orchestrator even inside an otherwise-HIGH/MAX run, with the drift micro-check, result persistence, and churn check still applied. Non-mechanical batches take the full dispatch path unchanged. The "orchestrator never edits source" invariant gains an explicit carve-out for this one case, and a new pressure-test scenario guards against *over*-applying it to a logic batch wearing a "mechanical" label.
+
+### Fixed — workflow-artifact gate error lists the valid set
+
+`workflow-artifact.sh gate` rejected an unknown gate name with only a pointer to a doc. It now lists the valid gate names inline (`must be one of: plan_trust_gate phase_exit_gate failure_stop_gate memory_sync_gate skill_precedence_gate`), mirroring the existing `criteria` status-validation idiom and giving the valid set a single source of truth in the function.
+
 ## [7.26.0] - 2026-07-14
 
 ### Added — `batch-fix` lane for corrective batches
@@ -34,7 +60,7 @@ The `implement` rigor floor and size score now count only **non-mechanical** `ch
 - **Workflow artifact `set`/`event` confirm on success.** Both were silent on success, so state changes could only be confirmed by re-reading the JSON. They now print a one-line confirmation to stdout; internal callers (which already redirect stdout to `/dev/null`) stay quiet, so only top-level invocations surface it.
 - **Stop hooks aborted (exit 1) on absent optional fields.** `workflow-continuation.sh` and `capture-learnings.sh` extract fields with `VAR="$(grep … | … | head -1)"` under `set -euo pipefail`. A legitimate no-match makes `grep` exit 1, and `pipefail` propagated that through the assignment, aborting the hook **before** the guard written to handle the absent value (`[ -n "$TOTAL" ] || exit 0`; `[ -n "$REPEATED" ]`) — turning an intended silent no-op into a visible `Stop hook error … exit 1`. It surfaced specifically in `mtk:implement` sessions because that is the only scenario reaching those extractions: an active workflow whose batch accounting is not recorded yet (`workflow-artifact.sh` init writes no `batches_total`/`batches_completed`), and a substantial session whose `tasks/lessons.md` has ≥3 lessons but no `Rule:` lines. Both extractions now terminate in `|| true`, so a no-match yields empty output and exit 0 and the guards run as designed. Other hooks were scanned for the same shape; the remaining `$(…)` extractions use `awk`/`sed`, which exit 0 on no-match, so they are unaffected.
 
-> Known follow-ups (tracked separately): (1) `.claude/tech-stack` is single-valued, so a polyglot repo (e.g. .NET API + React/TS SPA) loads only one stack's build/test commands — multi-stack loading with merged command sets; (2) `learnings.sh query` returning zero matches silently — needs an explicit "0 matches" vs "error" signal and a `tasks/lessons.md` fallback; (3) `MTK_AUTO_PROCEED` keying off an explicit "fix all / just do it" in the invoking message when there are zero open decisions.
+> Known follow-ups (tracked separately): (1) per-directory resolution shipped in 7.27.0 (a subproject loads its own stack via `.claude/tech-stack.map` or a nested `.claude/tech-stack`); the open remainder is multi-stack *merged* command sets for a single repo-wide operation; (2) `learnings.sh query` returning zero matches silently — needs an explicit "0 matches" vs "error" signal and a `tasks/lessons.md` fallback; (3) `MTK_AUTO_PROCEED` keying off an explicit "fix all / just do it" in the invoking message when there are zero open decisions.
 
 ## [7.25.1] - 2026-07-14
 

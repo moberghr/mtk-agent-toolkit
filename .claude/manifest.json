@@ -1,6 +1,6 @@
 {
-  "version": "7.26.0",
-  "updated": "2026-07-14",
+  "version": "7.27.0",
+  "updated": "2026-07-16",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -765,6 +765,12 @@
       "action": "sync",
       "description": "Release integrity manifest \u2014 writes checksums.sha256 (SHA-256 of every manifest-listed file) at release time; --verify recomputes and reports drift"
     },
+    "scripts/resolve-tech-stack.sh": {
+      "source": "scripts/resolve-tech-stack.sh",
+      "target": "scripts/resolve-tech-stack.sh",
+      "action": "sync",
+      "description": "Polyglot-aware tech-stack resolver \u2014 resolves the active stack for a path via MTK_STACK, a nested .claude/tech-stack, a root .claude/tech-stack.map glob, then the repo-root default"
+    },
     "scripts/query-code-index.sh": {
       "source": "scripts/query-code-index.sh",
       "target": "scripts/query-code-index.sh",
@@ -905,6 +911,12 @@
       "target": "evals/rigor/eval-01-mechanical-batch.md",
       "action": "sync",
       "description": "Rigor eval: an all-mechanical (rename/frontmatter) 6-file batch must score LIGHT/STANDARD, not force-floored to HIGH"
+    },
+    "evals/rigor/eval-02-scope-reduction-recompute.md": {
+      "source": "evals/rigor/eval-02-scope-reduction-recompute.md",
+      "target": "evals/rigor/eval-02-scope-reduction-recompute.md",
+      "action": "sync",
+      "description": "Rigor eval: deferring the biggest batches mid-run must recompute the level down and right-size Phase 4 review, without dropping below the remaining work's floor"
     },
     "evals/rigor/grader.md": {
       "source": "evals/rigor/grader.md",

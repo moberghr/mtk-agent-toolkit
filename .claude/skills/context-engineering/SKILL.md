@@ -18,7 +18,8 @@ user-invocable: false
 
 ```!
 echo "--- Tech Stack ---"
-cat .claude/tech-stack 2>/dev/null || echo "(not set)"
+_rts="${CLAUDE_PLUGIN_ROOT:-.}/scripts/resolve-tech-stack.sh"; [ -f "$_rts" ] || _rts="scripts/resolve-tech-stack.sh"
+if [ -f "$_rts" ]; then bash "$_rts" --explain "$PWD" 2>&1; echo; else cat .claude/tech-stack 2>/dev/null || echo "(not set)"; fi
 if [ -f .claude/tech-stack-pm ]; then echo "--- Package Manager ---"; cat .claude/tech-stack-pm; fi
 ```
 

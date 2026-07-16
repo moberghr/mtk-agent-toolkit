@@ -6,7 +6,7 @@ These scenarios deliberately try to break `subagent-implementation`'s discipline
 
 **Setup:** A 4-batch feature passed Phase 2.5. The engineer is impatient. The orchestrator notices that Batch 1 only touches 2 small files and could be edited inline in seconds.
 
-**Expected behavior:** The orchestrator dispatches an implementer subagent for Batch 1 anyway. The cost of context contamination is invisible but real; the threshold gate already decided this feature uses the subagent path.
+**Expected behavior:** The orchestrator dispatches an implementer subagent for Batch 1 anyway. The cost of context contamination is invisible but real; the threshold gate already decided this feature uses the subagent path. "Small" is **not** "mechanical" — these 2 files contain real logic. (The genuine all-mechanical carve-out is Scenario 15; it does not apply to a small *logic* batch.)
 
 **Failure mode:** Orchestrator inlines Batch 1 "just this once" and accumulates state that pollutes Batch 4's reasoning.
 
@@ -139,6 +139,18 @@ These scenarios deliberately try to break `subagent-implementation`'s discipline
 **Expected behavior:** Reject. Drift is judged orchestrator-side, by code comparing structured output against the plan — not by an in-workflow agent that is too close to the diff. The generated script contains only implementer `agent()` calls; drift, sidecar amendment, and churn checks live in the orchestrator after the workflow returns.
 
 **Failure mode:** Drift logic moves into the workflow, the orchestrator trusts it, and real scope drift is self-certified by the same context that produced it.
+
+---
+
+## Scenario 15: "This whole batch is just renames — still dispatch a subagent?" (mechanical exception)
+
+**Setup:** A 5-batch HIGH-rigor feature. Batch 4 is a pure rename — every `change_manifest` entry in it is `mechanical: true` (rename-only, no logic, no public contract). Following Scenario 1's "always dispatch" instinct, the orchestrator is about to spawn a fresh implementer for it.
+
+**Expected behavior:** Batch 4 is implemented **inline** by the orchestrator — no subagent. An all-mechanical batch has no reasoning to isolate, so a fresh context buys only latency. The orchestrator still runs the drift micro-check, result persistence, and churn check for Batch 4; the other (non-mechanical) batches still dispatch. This is the one carve-out to "orchestrator never edits source."
+
+**Failure mode (under-applying):** Dispatches a subagent for a pure-rename batch anyway, paying cold-load latency for isolation it cannot use.
+
+**Failure mode (over-applying — the dangerous one):** Labels a batch "mechanical" to skip dispatch when it actually changes logic or a public contract (a serialized shape, endpoint, handler signature, event). An entry touching any public contract is never mechanical; when in doubt, dispatch. Inlining a logic batch is the Scenario 1 failure wearing a "mechanical" label.
 
 ---
 
