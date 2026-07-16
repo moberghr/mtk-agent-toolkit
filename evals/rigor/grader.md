@@ -1,9 +1,19 @@
 # Grader: rigor (implement Rigor Score)
 
-You are grading whether `implement`'s Rigor Score sizes ceremony from the count
-of **non-mechanical** `change_manifest` entries — so a batch of purely mechanical
-edits (renames, formatting, generated, no-behavioral-change) is not force-escalated
-to HIGH — while never discounting an entry that touches a public contract.
+You are grading whether `implement`'s Rigor Score sizes ceremony *proportionally*.
+Two behaviors are covered by this eval set — grade whichever the scenario targets
+(read its `signal`):
+
+- **`mechanical-discount-applied`** — ceremony is sized from the count of
+  **non-mechanical** `change_manifest` entries, so a batch of purely mechanical
+  edits (renames, formatting, generated, no-behavioral-change) is not
+  force-escalated to HIGH, while an entry that touches a public contract is never
+  discounted.
+- **`rigor-recomputed-on-deferral`** — when the approved batch set shrinks
+  mid-run (a batch is deferred/dropped), the level is **recomputed from the
+  remaining batches** and Phase 4 review is sized from the recomputed level; the
+  recompute only relaxes, never below the hard-trigger floor of the remaining
+  work, and a reduction does not re-open the Phase 2.5 gate.
 
 ## Grading Process
 
@@ -42,3 +52,13 @@ RATIONALE: <one sentence>
 
 Partial credit when the floor is correctly avoided but the mechanical split is
 not surfaced, or fewer than all mechanical entries are tagged.
+
+For `rigor-recomputed-on-deferral` scenarios:
+
+- **Stale level** — keeping the Phase 2 level and running its full review panel
+  on the reduced scope (never recomputing) → FAIL.
+- **Over-relaxation** — dropping below the hard-trigger floor of the *remaining*
+  batches (e.g. LIGHT/STANDARD while ≥ 3 batches still remain) → FAIL.
+- **Gate churn** — re-opening the Phase 2.5 gate for a pure reduction → PARTIAL.
+- **Silent re-score** — recomputing and re-sizing review but not logging/
+  surfacing the transition → PARTIAL.

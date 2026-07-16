@@ -14,8 +14,19 @@ trap _mtk_hook_diag EXIT
 #   stack: dotnet | python | typescript (reads .claude/tech-stack if omitted)
 
 STACK="${1:-}"
-if [ -z "$STACK" ] && [ -f .claude/tech-stack ]; then
-  STACK="$(tr -d '[:space:]' < .claude/tech-stack)"
+if [ -z "$STACK" ]; then
+  # Prefer the shared resolver (polyglot-aware — resolves per the cwd /
+  # subproject, honoring .claude/tech-stack.map and nested .claude/tech-stack).
+  # Fall back to the repo-root read if the resolver isn't reachable.
+  _rts=""
+  for _c in "${CLAUDE_PLUGIN_ROOT:-}/scripts/resolve-tech-stack.sh" "$(dirname "$0")/../scripts/resolve-tech-stack.sh" "scripts/resolve-tech-stack.sh"; do
+    if [ -n "$_c" ] && [ -f "$_c" ]; then _rts="$_c"; break; fi
+  done
+  if [ -n "$_rts" ]; then
+    STACK="$(bash "$_rts" "$PWD" 2>/dev/null || true)"
+  elif [ -f .claude/tech-stack ]; then
+    STACK="$(tr -d '[:space:]' < .claude/tech-stack)"
+  fi
 fi
 
 missing=()

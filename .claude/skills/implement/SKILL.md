@@ -43,13 +43,17 @@ The skill itself is intentionally thin. The source of truth for workflow behavio
 Before doing anything else:
 
 0. Init or resume a workflow artifact (`.claude/skills/workflow-artifacts/SKILL.md`).
-   - Run `scripts/workflow-artifact.sh list`.
+   - **Resolve the helper once** — plugin-cache installs may not have it project-relative and `$CLAUDE_PLUGIN_ROOT` is sometimes unset, so a bare `scripts/workflow-artifact.sh` can fail. Resolve it project-first with a plugin fallback and use `"$WFA"` for every `workflow-artifact.sh` call in this skill:
+     ```bash
+     WFA="$([ -f scripts/workflow-artifact.sh ] && echo scripts/workflow-artifact.sh || echo "${CLAUDE_PLUGIN_ROOT:-.}/scripts/workflow-artifact.sh")"
+     ```
+   - Run `"$WFA" list`.
    - If a single active `BUILD` workflow exists for this feature, ask via `AskUserQuestion` whether to resume that uuid or start a new one.
-   - Otherwise: `MTK_WF_UUID=$(scripts/workflow-artifact.sh init BUILD --goal "<one-line user goal>")` and remember the uuid for the rest of the session.
+   - Otherwise: `MTK_WF_UUID=$("$WFA" init BUILD --goal "<one-line user goal>")` and remember the uuid for the rest of the session.
    - Emit `phase_started phase-0` immediately after init/resume.
 1. Follow `.claude/skills/context-engineering/SKILL.md`.
 2. Read `CLAUDE.md`. If missing, stop and tell the engineer to run `/mtk-setup`.
-3. **Load the active tech stack:** read `.claude/tech-stack` (plain text, single word like `dotnet` or `python`). Then read `.claude/skills/tech-stack-{stack}/SKILL.md`. This provides build/test commands, ORM guidance, framework patterns, and reference file paths used throughout the workflow. If `.claude/tech-stack` is missing, do not halt: run `bash scripts/setup-detect.sh --json` (read-only) to infer the stack, and load the matching `tech-stack-{stack}` skill if one exists for the inferred primary. If inference is empty or no matching skill exists, warn the engineer that the tech stack is unconfigured (suggest `/mtk-setup`) and proceed with `CLAUDE.md`-only context.
+3. **Load the active tech stack:** resolve it with `bash scripts/resolve-tech-stack.sh "$PWD"` (a single word like `dotnet` or `python`). The resolver is **polyglot-monorepo aware** — for a subproject under a differently-stacked root it returns the subproject's stack via a nested `.claude/tech-stack` or a root `.claude/tech-stack.map` glob, falling back to the repo-root `.claude/tech-stack`. When the change targets a specific subtree, pass a representative path from the `change_manifest` (e.g. `bash scripts/resolve-tech-stack.sh "src/web/spa"`) rather than `$PWD`, so the workflow loads the right stack for the files it will touch. Then read `.claude/skills/tech-stack-{stack}/SKILL.md`. This provides build/test commands, ORM guidance, framework patterns, and reference file paths used throughout the workflow. If it resolves empty, do not halt: run `bash scripts/setup-detect.sh --json` (read-only) to infer the stack, and load the matching `tech-stack-{stack}` skill if one exists for the inferred primary. If inference is empty or no matching skill exists, warn the engineer that the tech stack is unconfigured (suggest `/mtk-setup`) and proceed with `CLAUDE.md`-only context.
 4. Read only the references needed for the **current phase**:
    - **Always (Phase 0):** the coding guidelines from the tech stack's `## Reference Files`, `.claude/references/architecture-principles.md` if present
    - **Defer to Phase 1 (spec):** `.claude/references/security-checklist.md` (only if scope touches auth/financial/infra), `.claude/references/testing-patterns.md`
@@ -61,6 +65,7 @@ Before doing anything else:
    - **`--terse`:** Minimal output. Skip explanations, rationale, and intermediate status. Report only: decisions, actions, findings, and evidence. No filler phrases. Aimed at senior engineers who read diffs.
    - **`--verbose`:** Full explanations. Include rationale for each decision, alternatives considered, references consulted, and step-by-step reasoning. Aimed at engineers learning the codebase or reviewing unfamiliar areas.
    - **Default (no flag):** Balanced output. Brief rationale for non-obvious decisions, standard reporting, no excess explanation.
+7. **Worktree pre-flight (capture only).** Run `git status --porcelain` and remember the set of already-modified and untracked paths — the *pre-existing dirty set*. This is a read-only snapshot, not a gate yet. It feeds two later checks: (a) the spec's dirty-worktree risk step (`spec-driven-development` step 4b, for **out-of-manifest** paths), and (b) the **Phase 2.9 worktree collision gate** (for **in-manifest** paths — the parallel-session case). Capturing it now, before any edit, is what lets the collision gate tell "already dirty when we started" apart from "dirty because this workflow touched it."
 
 **Progressive disclosure principle:** Load references at the phase where they are first needed, not all upfront. This preserves context budget for the actual code and decisions that matter in each phase. Re-anchor on references when switching phases.
 
@@ -74,6 +79,17 @@ Skip this phase when:
 - The engineer already specified the approach
 - The task is a straightforward addition following existing patterns
 - The scope is narrow enough that only one viable design exists
+
+## Phase 0.7: Ingest a Supplied Plan or Spec (When Provided)
+
+If the engineer supplied a spec or plan as the input — a path they handed you, or an existing `docs/specs/<…>.md` / `docs/plans/<…>.md` already on disk that this run is meant to execute — **adopt it as the source of truth instead of authoring a new one.** "User supplies the plan" is a first-class entry mode, not a path collision: never write a fresh spec/plan to a path the engineer's file already occupies, and never invent a `-impl` / `-v2` suffix just to dodge overwriting their input.
+
+1. **Detect the input.** A supplied plan/spec is one the engineer names, points the run at, or an on-disk `docs/plans|specs/*.md` the request references. If none was supplied, skip this phase — Phases 1–2 author the artifacts normally.
+2. **Adopt, don't recreate.** Record the supplied path on the workflow artifact (`"$WFA" set "$MTK_WF_UUID" results.plan_path=<path>` and/or `results.spec_path=<path>`). If a JSON sidecar exists beside it, validate it against `.claude/schemas/handoff.schema.json`; if only markdown exists, derive the sidecar (`change_manifest`, `plan.batches`, `success_criteria`) via `spec-driven-development` / `planning-and-task-breakdown` **without rewriting the engineer's markdown**. Phase 2's authoring write is skipped for any artifact adopted here.
+3. **Reconcile against current code (mandatory).** A supplied plan may be stale — batches already implemented since it was written. Run `prior-work-check` in its *existing-plan reconciliation mode*: classify each batch `already-satisfied` / `partially-done` / `not-started` with `file:line` evidence. Mark `already-satisfied` batches complete in the sidecar and tick them in `tasks/todo.md` with a one-line note naming what was pruned; surface `partially-done` batches for the engineer to re-scope. **Do not re-implement done work**, and never edit source in this phase.
+4. **Then continue to Phase 1/2 for whatever is missing.** A supplied spec still needs a plan if none was given (and vice versa); the ambiguity gate, prior-work check, and JSON sidecar all still apply to the not-yet-authored half.
+
+Adopting the engineer's artifact does **not** skip the approval gate — Phase 2.5 still runs, on the adopted-plus-reconciled scope, exactly as it would on a freshly authored one.
 
 ## Phase 1: Produce The Executable Spec
 
@@ -92,7 +108,7 @@ The resulting plan must include:
 **Persist the spec to disk before continuing.** Save to `docs/specs/YYYY-MM-DD-<feature-slug>.md` using today's date and a kebab-case slug. Create `docs/specs/` if missing. This is mandatory — the engineer must be able to read and edit the spec outside of chat.
 
 After the spec lands, record its path on the workflow artifact:
-`scripts/workflow-artifact.sh set "$MTK_WF_UUID" results.spec_path=docs/specs/<file>`
+`"$WFA" set "$MTK_WF_UUID" results.spec_path=docs/specs/<file>`
 
 ## Phase 2: Write The Task Breakdown
 
@@ -104,19 +120,22 @@ Write **both** files (mandatory, not optional):
 2. `docs/plans/YYYY-MM-DD-<feature-slug>.md` — full plan alongside the spec, same date and slug as Phase 1
 
 Create `docs/plans/` if missing. Then record both paths on the workflow artifact:
-`scripts/workflow-artifact.sh set "$MTK_WF_UUID" results.plan_path=docs/plans/<file> results.todo_path=tasks/todo.md`
+`"$WFA" set "$MTK_WF_UUID" results.plan_path=docs/plans/<file> results.todo_path=tasks/todo.md`
 
 ## Rigor Score (Continuous Ceremony Scaling)
 
-Compute once after Phase 2, from the JSON sidecar at `docs/specs/<date>-<slug>.json`. Ceremony scales with the change's blast radius — a small fix gets a light pass, a breaking multi-batch change gets the full apparatus, and everything in between gets *proportional* rigor rather than a binary jump.
+Compute after Phase 2, from the JSON sidecar at `docs/specs/<date>-<slug>.json`, and **recompute when the approved scope shrinks** (see *Recompute on scope reduction* below). Ceremony scales with the change's blast radius — a small fix gets a light pass, a breaking multi-batch change gets the full apparatus, and everything in between gets *proportional* rigor rather than a binary jump.
 
 | Signal | Points |
 |---|---|
 | Implementation batches | +1 per batch |
 | Change manifest size | +1 per 3 non-mechanical files (rounded up) |
 | `security_impact != "none"` | +3 |
-| Public contracts added or modified | +1 each (cap +4) |
+| External public contracts added or modified (`surface: external`) | +1 each (cap +4) |
+| Internal-tooling contracts (`surface: internal-tooling`) | +1 total if any present |
 | `scope == "breaking-change"` | +3 |
+
+> **Contract surface matters (do not conflate the two).** A `public_contracts[]` entry scores by its `surface` field (schema default `external`). **External/wire contracts** — HTTP endpoints, published events, library methods callers depend on, persisted or wire schemas — score +1 each (cap +4). **Internal-tooling contracts** — repo-internal build/IaC/CLI knobs (CDK config props, an internal CLI flag, a build-script option) with no external consumer — score **+1 total regardless of count**, because an internal flag carries nowhere near the blast radius of a public endpoint. This stops a handful of CDK props or an internal CLI flag from swinging the score ±4 and flipping HIGH↔MAX. When genuinely unsure whether a surface is external, treat it as external (the safer, higher-ceremony choice).
 
 | Score | Rigor level |
 |---|---|
@@ -135,7 +154,15 @@ What the level dials:
 | Phase 4 Stage 2 reviewers | conditional (per Stage 2 rules) | conditional | `test-reviewer` always; `architecture-reviewer` if boundary/slice condition applies | both + `silent-failure-hunter` |
 | `MTK_AUTO_PROCEED` eligibility | yes | yes | no | no |
 
+**Per-batch mechanical exception (Phase 3 path).** Even at HIGH/MAX, an individual batch whose `change_manifest` entries are *all* mechanical (per the mechanical definition above) runs **inline**, not through a fresh implementer subagent — context isolation buys nothing when a batch changes no logic and no contract. The subagent path governs the non-mechanical batches; a pure config/rename/formatting batch inside an otherwise-HIGH run is implemented inline, with the orchestrator's drift micro-check and verification still applied. See `subagent-implementation/SKILL.md`.
+
 State the score and level in one line in the Phase 2.5 gate rendering (e.g. `Rigor: HIGH (score 9 — 3 batches, 8 files, security_impact=new-auth-path)`) so the engineer sees why the ceremony is sized the way it is. When any `change_manifest` entries are mechanical, surface the split in that line so the engineer can veto the discount (e.g. `Rigor: STANDARD (score 4 — 8 files, 6 mechanical)`).
+
+**Recompute on scope reduction.** The score is set at Phase 2, but the approved batch set can shrink mid-run — a batch is deferred, dropped, or split to a follow-up. When it does (detected at a **phase boundary** — a batch deferral during Phase 3, or the Phase 3.5 drift check — never mid-batch), **recompute the score and level from the batches that remain in scope** and their `change_manifest` entries, then adopt the recomputed level for the rest of the run (Phase 4 reviewer set and `MTK_AUTO_PROCEED` eligibility both follow it). Guardrails:
+
+- **Recompute only relaxes — it never drops below the hard-trigger floor of the *remaining* work.** If the deferred batch removed the only `security_impact` or the last public-contract change, that floor legitimately lifts; if the remaining batches still count `>= 3` or `>= 6` non-mechanical files, the floor holds at HIGH regardless of the lower score.
+- **A scope *increase* is never a silent recompute — it re-opens the Phase 2.5 gate** (unchanged; see Phase 3.5). Only a *reduction* auto-relaxes: the engineer already approved the larger scope, so shipping less of it needs no new approval.
+- **Log the transition.** Record it on the workflow artifact (`"$WFA" set "$MTK_WF_UUID" results.rigor_recomputed="HIGH->STANDARD (2 of 4 batches deferred; score 9->5)"`) and state it to the engineer in one line mirroring the rendering above, so the ceremony change is visible rather than silent.
 
 ## Phase 2.5: Approval Gate (STOP HERE)
 
@@ -161,7 +188,7 @@ Keep the rendering proportional — the todo and batch breakdown are bounded by 
 - The scope classification is not "breaking change" or "high security_impact".
 - The rigor level is LIGHT or STANDARD (HIGH/MAX changes always get a human at the gate).
 
-If any condition fails, AUTO_PROCEED MUST NOT be applied — fall back to `AskUserQuestion`. Auto-proceed never overrides explicit user standards, open plan decisions, or the failure-stop gate. When AUTO_PROCEED is applied, record the gate decision on the workflow artifact: `scripts/workflow-artifact.sh gate "$MTK_WF_UUID" plan_trust_gate pass --reason "AUTO_PROCEED — all preconditions met"`.
+If any condition fails, AUTO_PROCEED MUST NOT be applied — fall back to `AskUserQuestion`. Auto-proceed never overrides explicit user standards, open plan decisions, or the failure-stop gate. When AUTO_PROCEED is applied, record the gate decision on the workflow artifact: `"$WFA" gate "$MTK_WF_UUID" plan_trust_gate pass --reason "AUTO_PROCEED — all preconditions met"`.
 
 Then invoke `AskUserQuestion` with:
 
@@ -178,19 +205,33 @@ If `AskUserQuestion` is deferred in this session, call `ToolSearch` with `select
 Until the engineer answers: read-only Bash only, no Edit/Write on source code, no Phase 3. Proceed to Phase 3 only after `Approve & run until done` or `Approve (interactive)`. In autonomous mode, never call `AskUserQuestion` again for Phases 3-7 — stop and report instead.
 
 On approval, record the gate decision on the workflow artifact:
-`scripts/workflow-artifact.sh gate "$MTK_WF_UUID" plan_trust_gate pass --reason "<approve mode>"`
+`"$WFA" gate "$MTK_WF_UUID" plan_trust_gate pass --reason "<approve mode>"`
 
-Then **seal the approved artifacts** — bind the exact bytes the engineer just approved so a later edit cannot silently keep the approval:
-`scripts/workflow-artifact.sh seal "$MTK_WF_UUID"`
-With no explicit paths, `seal` binds the artifact's own recorded `results.spec_path` / `plan_path` / `todo_path` (set in Phases 1–2) — the exact approved set, not a re-typed list. (Explicit **repo-relative** paths may still be passed; the stale-seal hook matches sealed files by repo-relative path.) The seal is created **only** here, on the engineer's approval answer — never earlier by the agent editing state — and is derived from disk by the script, so it cannot be presented for a body other than the one on disk. `verification-before-completion` (Phase 4) re-checks it with `verify-seal` and refuses completion on a STALE seal, and `spec-approval-trigger.sh` re-queues this gate on any post-approval edit to a sealed artifact. On `Revise` or `Edit first`, leave the gate `pending`, do not seal, and emit a `field_updated` event. See `.claude/references/orchestration-gates.md` for full gate semantics.
+Then **seal the approved scope** — bind the exact spec + plan bytes the engineer just approved so a later edit cannot silently keep the approval:
+`"$WFA" seal "$MTK_WF_UUID"`
+With no explicit paths, `seal` binds the artifact's own recorded `results.spec_path` / `plan_path` (set in Phases 1–2) — the exact approved scope, not a re-typed list. **`results.todo_path` is deliberately excluded:** the todo is progress state that mutates as batches complete, so sealing it would flip the seal STALE on the first checkbox tick — a false tamper signal. Scope lives in spec + plan; progress lives in todo. (Explicit **repo-relative** paths may still be passed; the stale-seal hook matches sealed files by repo-relative path.) The seal is created **only** here, on the engineer's approval answer — never earlier by the agent editing state — and is derived from disk by the script, so it cannot be presented for a body other than the one on disk. `verification-before-completion` (Phase 4) re-checks it with `verify-seal` and refuses completion on a STALE seal, and `spec-approval-trigger.sh` re-queues this gate on any post-approval edit to a sealed spec or plan. On `Revise` or `Edit first`, leave the gate `pending`, do not seal, and emit a `field_updated` event. See `.claude/references/orchestration-gates.md` for full gate semantics.
 
 Note: this gate controls when *Claude* asks. Harness tool-permission prompts (file-write/Bash approvals) are a separate layer — autonomous mode does not bypass them.
+
+## Phase 2.9: Worktree Collision Gate (Pre-Flight)
+
+**Before dispatching the first batch**, confirm no other work is already editing files this run is about to touch. A parallel session — or forgotten uncommitted local work — editing an in-scope file is the collision the per-batch drift check only catches *after* an implementer has already started. This gate catches it first, before any edit.
+
+1. Re-run `git status --porcelain` and collect the currently modified/untracked paths.
+2. Compute the **collision set**: paths that are (a) in the plan's `change_manifest[].path` or any batch's `files`, AND (b) currently modified/untracked, AND (c) present in the Phase 0 *pre-existing dirty set* (dirty *before* this workflow ran — so this workflow's own spec/plan/todo writes never self-trip the gate).
+3. **No collision** → emit `phase_started phase-3` and proceed.
+4. **Collision found** → almost always a parallel session or forgotten local edit on an in-scope file. Do **not** start editing.
+   - **Interactive mode:** halt and ask via `AskUserQuestion` — options: `Stop (let me resolve the other work first)` (recommended), `Proceed anyway (I understand these files are already modified)`, `Re-scope (drop the colliding files from this run)`. Act on the answer; on `Stop`, leave the workflow active and report.
+   - **Autonomous mode:** do not ask — stop and report the collision set (autonomous mode halts on scope/safety conditions, and a parallel editor on an in-scope file is one). Record `failure_stop_gate fail` only once the engineer confirms stopping; otherwise leave it pending for their decision.
+5. Record the check either way so the decision is auditable: `"$WFA" event "$MTK_WF_UUID" worktree_preflight --data '{"collisions":<n>}'`.
+
+This gate does not replace the per-batch drift micro-check (which catches drift an implementer *introduces*); it catches drift that already exists *before* the first edit.
 
 ## Phase 3: Implement In Batches
 
 **Fork — pick the implementation path from the JSON sidecar at `docs/specs/<date>-<slug>.json`:**
 
-- **Subagent path** (`.claude/skills/subagent-implementation/SKILL.md`) — when the rigor level is HIGH or MAX (any hard trigger — `plan.batches.length >= 3`, non-mechanical `change_manifest` entries >= 6, `security_impact != "none"` — or score ≥ 8; see Rigor Score). Dispatches one fresh implementer subagent per batch with orchestrator-side drift micro-checks. Asks once which model (Sonnet/Opus) to use for the implementer. Prefers the native dynamic-workflow runtime when the `Workflow` tool is available (drift/persistence/Phase-4 stay orchestrator-side), falling back to a manual Agent-per-batch loop otherwise.
+- **Subagent path** (`.claude/skills/subagent-implementation/SKILL.md`) — when the rigor level is HIGH or MAX (any hard trigger — `plan.batches.length >= 3`, non-mechanical `change_manifest` entries >= 6, `security_impact != "none"` — or score ≥ 8; see Rigor Score). Dispatches one fresh implementer subagent per batch with orchestrator-side drift micro-checks. In interactive mode it asks once which model (Sonnet/Opus) to use for the implementer; in autonomous mode it does **not** ask — the Sonnet policy default applies (Opus for plan-flagged novel/tricky batches), consistent with the autonomous "never ask in Phases 3-7" rule. Prefers the native dynamic-workflow runtime when the `Workflow` tool is available (drift/persistence/Phase-4 stay orchestrator-side), falling back to a manual Agent-per-batch loop otherwise.
 - **Inline path** (`.claude/skills/incremental-implementation/SKILL.md`) — for everything below threshold. Smaller features stay in the main context.
 
 Always also follow:
@@ -215,7 +256,7 @@ After all batches:
 - emit the final `phase_exit_gate pass` (or `fail` and stop) on the workflow artifact (per-batch gate decisions are already recorded by the implementation skill)
 
 Record per-batch progress:
-`scripts/workflow-artifact.sh set "$MTK_WF_UUID" results.batches_completed=<n>`
+`"$WFA" set "$MTK_WF_UUID" results.batches_completed=<n>`
 
 ## Phase 3.5: Spec-Drift Check
 
@@ -236,10 +277,18 @@ If critical drift is found:
 3. If spec incomplete → amend the spec + JSON sidecar via
    `spec-driven-development`, re-open the Phase 2.5 approval gate for the
    scope change, then re-run drift check.
-4. Do NOT proceed to review until drift is clean.
+4. If the drift is a **scope reduction** — batches deferred, dropped, or split
+   to a follow-up, with no new file, contract, or security surface — this is
+   the one drift class that does **not** re-open the gate. Recompute the Rigor
+   Score from the remaining batches (see *Rigor Score → Recompute on scope
+   reduction*), record the transition on the workflow artifact, and continue at
+   the recomputed level. Relaxing ceremony for work already approved needs no
+   new approval; only *added* scope does.
+5. Do NOT proceed to review until drift is clean.
 
-Silent drift repair is forbidden — every change to scope goes through the
-approval gate.
+Silent drift repair is forbidden. Every *increase* in scope goes through the
+approval gate; a *reduction* is recorded and re-scores rigor (item 4) but does
+not re-open it.
 
 ## Phase 4: Review (Two-Stage)
 
@@ -266,7 +315,7 @@ Only after Stage 1 passes (no Critical issues). When both reviewers apply, run t
 - `test-reviewer` — when the change introduces or changes public behavior
 - `architecture-reviewer` — when the change introduces new slices, boundaries, handlers, or cross-project interactions
 
-At rigor MAX, run **both** reviewers regardless of the conditions above, plus `silent-failure-hunter` (empty catches, swallowed errors, masking fallbacks). At rigor HIGH, always run `test-reviewer`, but run `architecture-reviewer` only when the boundary/slice condition above holds — a change that adds or moves no modules and crosses no boundary (e.g. a pure rename or frontmatter-only batch) skips it. At LIGHT/STANDARD, the conditions above decide.
+Size this from the **current** rigor level — the level recomputed in Phase 3.5 if scope was reduced, not the original Phase 2 level. At rigor MAX, run **both** reviewers regardless of the conditions above, plus `silent-failure-hunter` (empty catches, swallowed errors, masking fallbacks). At rigor HIGH, always run `test-reviewer`, but run `architecture-reviewer` only when the boundary/slice condition above holds — a change that adds or moves no modules and crosses no boundary (e.g. a pure rename or frontmatter-only batch) skips it. At LIGHT/STANDARD, the conditions above decide.
 
 Provide all reviewers with the same diff and behavioral diff.
 
@@ -335,9 +384,9 @@ bash scripts/spec-archive.sh docs/specs/<date>-<slug>.json --verdict PASS
 
 Close the workflow artifact:
 ```bash
-scripts/workflow-artifact.sh gate "$MTK_WF_UUID" memory_sync_gate pass --reason "lessons captured"
-scripts/workflow-artifact.sh set "$MTK_WF_UUID" status=completed
-scripts/workflow-artifact.sh event "$MTK_WF_UUID" workflow_completed --data '{"summary":"<short>"}'
+"$WFA" gate "$MTK_WF_UUID" memory_sync_gate pass --reason "lessons captured"
+"$WFA" set "$MTK_WF_UUID" status=completed
+"$WFA" event "$MTK_WF_UUID" workflow_completed --data '{"summary":"<short>"}'
 ```
 
 Report:

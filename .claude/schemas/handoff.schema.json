@@ -29,7 +29,11 @@
         "properties": {
           "kind": { "enum": ["endpoint", "handler", "method", "event", "cli-flag", "schema"] },
           "signature": { "type": "string" },
-          "change": { "enum": ["new", "modified", "removed"] }
+          "change": { "enum": ["new", "modified", "removed"] },
+          "surface": {
+            "enum": ["external", "internal-tooling"],
+            "description": "Who consumes this contract. 'external' (default when absent) = a wire/API/published-library surface that callers or external consumers depend on. 'internal-tooling' = a repo-internal build/IaC/CLI knob (e.g. CDK config props, an internal CLI flag, a build-script option) with no external consumer. Drives rigor weighting in implement/SKILL.md: external contracts score +1 each (cap +4); internal-tooling contracts do not swing the score the way external ones do."
+          }
         }
       }
     },

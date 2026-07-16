@@ -28,6 +28,31 @@ FILE_PATH=$(mtk_extract_file_path "$INPUT" 2>/dev/null || echo "")
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 REL_PATH="${FILE_PATH#"$REPO_ROOT"/}"
 
+# Out-of-repo and workflow-state writes can never be scope violations, so they
+# must not trip the guard. A still-absolute REL_PATH means the prefix strip was
+# a no-op — FILE_PATH is not under REPO_ROOT (a session scratchpad / temp review
+# artifact, /tmp, an absolute path elsewhere). `.mtk/` is durable workflow state
+# (batch prompt bundles, artifacts) written outside the change_manifest by
+# design. Neither is repo source, so exempt both before manifest matching.
+case "$REL_PATH" in
+  /*|.mtk/*) exit 0 ;;
+esac
+
+# Deterministic skip pointer — checked before any mtime-based spec selection.
+# Manifest-less workflows (batch-fix) scope by a findings list, not a file
+# manifest, so they drop .mtk/scope-guard-skip while running and this guard
+# no-ops. This is immune to the mtime race that anchoring to the "freshest"
+# sidecar suffers when a concurrent feature spec is newer than the batch stub.
+# Freshness-windowed (4h) so a pointer left by a crashed run ages out instead
+# of disabling the guard forever; the owning workflow removes it on completion.
+# Anchor .mtk/ the same way workflow state does ($CLAUDE_PROJECT_DIR -> git
+# top-level -> cwd) so the pointer is found even from a worktree/sub-dir cwd,
+# where the writing workflow anchors it identically.
+MTK_STATE_ROOT="${CLAUDE_PROJECT_DIR:-$REPO_ROOT}"
+if [ -n "$(find "${MTK_STATE_ROOT}/.mtk" -maxdepth 1 -name scope-guard-skip -mmin -240 2>/dev/null || true)" ]; then
+  exit 0
+fi
+
 # Find the active spec JSON sidecar (most recently modified, within 7 days)
 SPEC_JSON=""
 if [ -d docs/specs ]; then

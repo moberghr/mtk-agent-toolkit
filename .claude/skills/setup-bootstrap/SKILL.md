@@ -100,6 +100,18 @@ echo "dotnet" > .claude/tech-stack
 >
 > ⚠️ **Do not chain `mkdir` + `rm -rf` + `echo >` into one shell command.** Conservative permission modes reject any command that contains `rm -rf`, causing the entire chain to abort. Run each step as its own Bash call so a single denied command doesn't take down the bootstrap.
 
+**Polyglot monorepo (optional).** When `setup-detect` reports more than one stack (e.g. a .NET API plus a React/TS SPA), `.claude/tech-stack` still holds the **primary** stack (the repo-wide default), and subprojects can override it. Two mechanisms — both honored by `scripts/resolve-tech-stack.sh`, which every stack-aware skill and hook resolves through:
+
+- A nested `.claude/tech-stack` inside a subproject directory (closest declaration wins), or
+- A root `.claude/tech-stack.map` mapping path globs to stacks, one `<glob> <stack>` per line:
+
+```text
+web/*        typescript
+src/api/*    dotnet
+```
+
+Add a `.map` only when the repo is genuinely polyglot; a single-stack repo needs just `.claude/tech-stack`. Repo-wide generators (AGENTS.md, tool configs, repo-health) use the primary stack; per-directory resolution drives the workflow skills' build/test command loading.
+
 Then load `.claude/skills/tech-stack-{stack}/SKILL.md` — this is the source of truth for build commands, scan recipes, and reference paths used in the rest of init.
 
 ### Tool Prerequisites Check

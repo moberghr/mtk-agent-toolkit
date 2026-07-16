@@ -39,10 +39,18 @@ for arg in "$@"; do
 done
 
 if [[ "$STACK" == "auto" ]]; then
-  if [[ -f .claude/tech-stack ]]; then
+  # Prefer the shared resolver (polyglot-aware); fall back to the repo-root read.
+  _rts=""
+  for _c in "${CLAUDE_PLUGIN_ROOT:-}/scripts/resolve-tech-stack.sh" "$(dirname "$0")/resolve-tech-stack.sh" "scripts/resolve-tech-stack.sh"; do
+    if [[ -n "$_c" && -f "$_c" ]]; then _rts="$_c"; break; fi
+  done
+  if [[ -n "$_rts" ]]; then
+    STACK="$(bash "$_rts" "$PWD" 2>/dev/null || true)"
+  elif [[ -f .claude/tech-stack ]]; then
     STACK=$(tr -d '[:space:]' < .claude/tech-stack)
-  else
-    echo "repomap: no stack specified and .claude/tech-stack missing" >&2
+  fi
+  if [[ -z "$STACK" || "$STACK" == "auto" ]]; then
+    echo "repomap: no stack specified and could not resolve tech stack (.claude/tech-stack missing)" >&2
     exit 2
   fi
 fi

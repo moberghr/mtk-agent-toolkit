@@ -30,6 +30,9 @@ the spec is handed to the approval gate or the planner begins task breakdown.
 
 - During `spec-driven-development` step 8c, before the implement Phase 2.5 approval gate
 - Before `planning-and-task-breakdown` opens a batch
+- During `implement` Phase 0.7 when a **pre-written plan is supplied as input** —
+  run the *existing-plan reconciliation mode* below so already-implemented
+  batches are not re-run
 - When the engineer says "let's add an X" and X sounds generic (cache, retry,
   validator, formatter, normalizer)
 - When the change manifest names files in an area you haven't touched recently
@@ -99,6 +102,31 @@ Identify the risk surface this change crosses.
    If `security_impact: none` but a regulated path is touched, **emit a
    BLOCKING finding** — the spec is mis-classified.
 
+## Existing-Plan Reconciliation Mode
+
+Invoked by `implement` Phase 0.7 when the input is a **pre-written plan**
+(supplied by the engineer) rather than a fresh request. A supplied plan may be
+stale — some batches were implemented since it was written. Re-implementing done
+work is waste and a drift risk, so reconcile the plan against current code
+**before** the Phase 2.5 gate:
+
+1. Run Query 1 (`search_prior_work`) as usual to catch capability duplication.
+2. **Per-batch satisfied-check (read-only).** For each batch in the supplied
+   plan, take its `acceptance` / `verification` / linked `success_criteria` and
+   probe current code for whether it is *already satisfied*:
+   - grep for the batch's target symbols and `change_manifest` paths (and any
+     public-contract signatures) and read the relevant lines;
+   - where a batch has a runnable, non-mutating `verification`, note whether it
+     already passes. Never mutate state to find out.
+   - Classify each batch: `already-satisfied` | `partially-done` | `not-started`,
+     each with `file:line` evidence.
+3. Emit a reconciliation table (batch id → classification → evidence). The
+   orchestrator then, before Phase 2.5: marks `already-satisfied` batches
+   complete/skipped in the JSON sidecar and ticks them in `tasks/todo.md` with a
+   one-line note naming what was pruned; surfaces `partially-done` batches for
+   the engineer to re-scope. Never silently re-run a done batch, and never edit
+   source here — this mode only classifies and reports.
+
 ## Output
 
 Emit one fenced block summarizing all three queries:
@@ -138,6 +166,9 @@ Emit one fenced block summarizing all three queries:
 - `planning-and-task-breakdown` runs this skill again if the spec was
   approved more than a session ago — risk profile and prior work may have
   shifted.
+- `implement` Phase 0.7 runs this skill in *existing-plan reconciliation mode*
+  when a pre-written plan is the input, so stale (already-implemented) batches
+  are pruned before the approval gate instead of being re-run.
 - `code-simplification --audit-duplicates` uses Query 1's grep recipe to
   find duplicate capabilities across the codebase.
 

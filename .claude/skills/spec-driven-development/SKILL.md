@@ -19,6 +19,8 @@ Write the implementation spec before writing code. The spec is the shared source
 
 > **Tool discipline (phase-locked):** spec authoring is a read + spec-artifact phase. Write **only** the spec artifacts (`docs/specs/<date>-<slug>.md` and its `.json` sidecar) — never source or test code. Code starts at Phase 3, after the approval gate; a source edit here is a scope violation. (Not toolset-locked to `read-only` because it must write its spec files.)
 
+> **Supplied spec/plan (adoption, not authoring):** when the engineer hands in a complete spec or plan as the input (e.g. `docs/specs/…md` or `docs/plans/…md` already on disk), `implement`'s Phase 0.7 *adopts* it as the source of truth. In that case this skill validates the supplied artifact against the schema and reconciles it against the current code (see `prior-work-check`'s existing-plan reconciliation) rather than re-authoring to a fresh path — never overwrite or version-bump the engineer's input. See `implement/SKILL.md` Phase 0.7.
+
 ## When To Use
 
 - New endpoints, handlers, routes, or views
@@ -186,7 +188,7 @@ digraph spec_flow {
 9.6. **Publish the spec artifact (additive, capability-gated).** After the spec is on disk, follow `.claude/references/artifact-publishing.md` to create the workflow's Claude Artifact from the spec — this is the first section of a single browsable URL that later phases (plan, handoff, health) update in place. Publishing is additive: disk is the source of truth and the step is a silent no-op when the `Artifact` tool is unavailable or `MTK_ARTIFACT_PUBLISH=0`. Never publish anything not already written to disk.
 10. Always stop for approval before implementation. When invoked from the implement workflow, this means handing control back to Phase 2.5 approval gate (which uses `AskUserQuestion`). Do not silently continue to implementation.
 
-**Approval is sealed, not asserted.** On approval, the implement gate records a SHA-256 **approval seal** over the approved spec/plan/todo bodies (`scripts/workflow-artifact.sh seal`). Because the seal binds the exact approved bytes, editing an approved spec afterward invalidates the approval deterministically — `verification-before-completion` re-checks it with `verify-seal` (refusing completion on a STALE seal) and the `spec-approval-trigger.sh` hook re-queues the gate, rather than trusting a stale `status: approved` marker. This is why moving a success-criterion goalpost post-approval requires re-opening Phase 2.5: the seal will not match.
+**Approval is sealed, not asserted.** On approval, the implement gate records a SHA-256 **approval seal** over the approved spec/plan bodies — the two scope-encoding artifacts (`scripts/workflow-artifact.sh seal`). The todo is deliberately *not* sealed: it is progress state designed to mutate as batches complete, so sealing it would flip the seal STALE on the first checkbox tick. Because the seal binds the exact approved bytes, editing an approved spec or plan afterward invalidates the approval deterministically — `verification-before-completion` re-checks it with `verify-seal` (refusing completion on a STALE seal) and the `spec-approval-trigger.sh` hook re-queues the gate, rather than trusting a stale `status: approved` marker. This is why moving a success-criterion goalpost post-approval requires re-opening Phase 2.5: the seal will not match.
 
 ## Requirements Format (EARS)
 
@@ -276,7 +278,8 @@ later by downstream skills (MetaGPT typed-handoff pattern).
   "public_contracts": [
     { "kind": "endpoint | handler | method | event | cli-flag",
       "signature": "POST /api/orders or Namespace.Class.Method(...) or OrderCreated event",
-      "change": "new | modified | removed" }
+      "change": "new | modified | removed",
+      "surface": "external | internal-tooling" }
   ],
   "success_criteria": [
     {
@@ -312,7 +315,14 @@ Rules:
   implemented and verified, but they don't count toward the `implement` rigor
   floor or size score (see `implement/SKILL.md` Rigor Score).
 - `public_contracts` is what callers or external consumers will see change.
-  Internal helpers don't count.
+  Internal helpers don't count. Tag each entry's `surface`: **`external`**
+  (the default when absent) for a wire/API/published-library surface a caller
+  or external consumer depends on; **`internal-tooling`** for a repo-internal
+  build/IaC/CLI knob (CDK config props, an internal CLI flag, a build-script
+  option) with no external consumer. The distinction is not cosmetic — the
+  implement Rigor Score weights them differently, so an internal CLI flag does
+  not inflate ceremony the way a new public endpoint does. When genuinely
+  unsure, default to `external` (the safer, higher-ceremony choice).
 - `security_impact` is NOT `none` if the diff touches auth, payments,
   audit trails, secrets, PII paths, or IAM configuration. Be honest here;
   `spec-drift-detection` will catch understated impact and block.

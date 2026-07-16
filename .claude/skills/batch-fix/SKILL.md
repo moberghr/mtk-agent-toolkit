@@ -44,6 +44,8 @@ Source of truth for the composed workflow:
 
 Use `batch-fix` when the work is **more than `fix`** (>3 files OR multiple distinct fixes) but **less than `implement`** (introduces NO new public contract and needs NO architectural re-planning).
 
+**Proportionality check.** If, after enumeration, the batch is almost entirely mechanical (renames, formatting, i18n/string deletes, comment moves) with no behavioral or boundary-crossing finding, the stub + gate scaffolding buys little. Prefer plain `fix` for the low-risk cosmetic sweep even if it stretches past 3 files, or keep the stub to one line per finding — the full ceremony earns its keep on batches where at least one finding is behavioral or crosses a boundary.
+
 Do NOT use it when:
 
 - The whole change is one coherent edit in 1-3 files → that's `fix`.
@@ -134,8 +136,14 @@ digraph batch_fix_flow {
 
 1. Triage the batch into a **numbered list of independent findings**. Each finding gets: a one-line description, the file(s) it touches, whether it is behavioral or mechanical, and whether it crosses a boundary (auth/secrets/data-layer/public surface). Independence is a precondition — if findings are ordered steps of one change, this is `implement`, not a batch.
 2. If the whole thing collapses to one coherent 1-3 file change, hand it to `fix` instead (`Skill(skill: "mtk", args: "<desc>")`) and stop.
-3. Write a **short findings-list spec stub** to `docs/specs/YYYY-MM-DD-<slug>-batch.md`: the enumerated findings and a one-line scope note (`no new public contract; no architectural change`). This is a stub, **not** a full executable feature spec — no change_manifest apparatus, no batches, no `docs/plans/` file. Also write a minimal JSON sidecar `docs/specs/YYYY-MM-DD-<slug>-batch.json` = `{"workflow": "batch-fix", "scope_guard": "skip"}` (no `change_manifest`). This makes the batch stub the **freshest active spec** so `scope-guard.sh` anchors to it instead of a stale prior sidecar, and the `scope_guard: skip` marker tells the guard to no-op — batch-fix scopes by the findings list, not a file manifest. Without it, every edit fires a false "not in the approved spec" warning against whatever spec was last touched.
-4. Write `tasks/todo.md`: one checkable item per finding, plus post-batch review/verify items.
+3. **Resolve the batch slug — resumed vs. new.** The SessionStart recovery pointer and any existing `docs/specs/*-batch.md` may belong to a *prior* batch on the same feature, not this one. Before writing anything, list existing `docs/specs/*-batch.md` stubs; if one exists, compare its enumerated findings to this batch's. If they match, **resume** it (reuse the slug, reconcile `tasks/todo.md`). If they differ, this is a **new** batch — mint a distinct slug (`<slug>-batch-2`, `-batch-3`, …) and do not overwrite the prior stub. Never silently adopt a recovered spec whose findings you did not just enumerate.
+4. Write a **short findings-list spec stub** to `docs/specs/YYYY-MM-DD-<slug>-batch.md`: the enumerated findings and a one-line scope note (`no new public contract; no architectural change`). This is a stub, **not** a full executable feature spec — no change_manifest apparatus, no batches, no `docs/plans/` file, and no JSON sidecar. Then drop a **scope-guard skip pointer** so the `PreToolUse` guard does not fire on every edit (batch-fix scopes by the findings list, not a file manifest):
+   ```bash
+   D="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+   mkdir -p "$D/.mtk" && printf '%s\n' "batch-fix: <slug> — scopes by findings list, not a file manifest" > "$D/.mtk/scope-guard-skip"
+   ```
+   Anchor `.mtk/` the same way workflow state does (`$CLAUDE_PROJECT_DIR` → git top-level → cwd) so the guard hook finds the pointer even from a worktree or sub-dir cwd. `scope-guard.sh` no-ops while this pointer is fresh, regardless of which spec sidecar is newest. (An earlier version wrote a "freshest sidecar" JSON marker instead; that mis-fired on every edit whenever a concurrent feature spec was newer than the batch stub, so the guard anchored to the wrong spec's manifest.) Remove the pointer in the Final Report; it also ages out on its own (4h) if the run is interrupted.
+5. Write `tasks/todo.md`: one checkable item per finding, plus post-batch review/verify items.
 
 ### Phase 3: Single Approval Gate (STOP HERE)
 
@@ -152,7 +160,7 @@ If `AskUserQuestion` is deferred, load it with `ToolSearch select:AskUserQuestio
 
 ### Phase 4: Execute Per Finding (Inline)
 
-Work the findings **inline** in the main context — no subagent-per-batch. For each finding, in order:
+Work the findings **inline** in the main context — no subagent-per-batch. batch-fix does not assume a frozen tree: **re-read each target file immediately before editing it** — a concurrent human edit, or an earlier finding touching the same file, may have moved it since Phase 2. For each finding, in order:
 
 1. **Scope Guard first** (see below). If the finding needs a new slice/contract/re-planning, escalate it and move on — do not edit it here.
 2. **Behavioral finding:** follow `.claude/skills/debugging-and-error-recovery/SKILL.md` to confirm the cause, then `.claude/skills/test-driven-development/SKILL.md` — write the failing test first, then the fix.
@@ -197,6 +205,7 @@ Follow `.claude/skills/verification-before-completion/SKILL.md`. Using the activ
 
 - run the build command
 - run the tests for every changed area (fresh execution evidence, not a claim)
+- remove the scope-guard skip pointer now that edits are done: `rm -f "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}/.mtk/scope-guard-skip"`
 
 ### Final Report
 
@@ -220,7 +229,8 @@ Report briefly:
 ## Verification
 
 - [ ] Findings enumerated as an independent, numbered list before editing
-- [ ] Short findings spec stub and `tasks/todo.md` written; no `docs/plans/` plan file, no JSON sidecar
+- [ ] Batch slug resolved against existing `*-batch.md` stubs / recovery pointer — a differing prior batch got a distinct slug, not an overwrite
+- [ ] Short findings spec stub and `tasks/todo.md` written; `.mtk/scope-guard-skip` pointer dropped for the run and removed on completion; no `docs/plans/` plan file, no JSON sidecar
 - [ ] Exactly one approval gate ran before edits (AskUserQuestion, or AUTO_PROCEED when eligible)
 - [ ] Each behavioral finding has a failing-first test; mechanical findings correctly skipped TDD
 - [ ] Any new-slice/contract/re-planning finding was escalated with the `escalated from batch-fix` marker, not absorbed

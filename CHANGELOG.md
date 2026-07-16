@@ -2,6 +2,63 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.28.0] - 2026-07-16
+
+A batch of `implement`-workflow hardening from a field run of the full build loop. Two themes plus four localized fixes: the workflow now treats *supplied inputs and parallel-session activity* as first-class, and the approval seal + scope-guard stop conflating an artifact's expected mutation/temp state with real drift.
+
+### Added — supplied plan/spec ingestion, worktree collision gate, plan↔code reconciliation
+
+The build loop assumed it authored everything, so a pre-written plan collided with the path the workflow writes to, a stale supplied plan got re-implemented, and a parallel session editing in-scope files was only caught *after* an implementer had started.
+
+- **First-class plan/spec ingestion (new Phase 0.7).** When the engineer supplies a spec or plan as the input — a path they hand you, or an existing `docs/specs|plans/*.md` the run is meant to execute — `implement` now *adopts* it as the source of truth instead of authoring a new one. No path collision, no `-impl`/`-v2` suffix workaround, never an overwrite of the engineer's file. `spec-driven-development` and `planning-and-task-breakdown` gained matching "adopt, don't recreate" branches.
+- **Plan↔code reconciliation (`prior-work-check` existing-plan mode).** A supplied plan may be stale — batches already implemented since it was written. Phase 0.7 runs `prior-work-check` in a new read-only reconciliation mode that classifies each batch `already-satisfied` / `partially-done` / `not-started` with `file:line` evidence; satisfied batches are marked done and ticked before the approval gate instead of being re-run.
+- **Worktree collision gate (Phase 0 pre-flight capture + new Phase 2.9).** Phase 0 snapshots the pre-existing dirty set; before the first batch, Phase 2.9 intersects the current `git status` against the change manifest and halts (interactive `AskUserQuestion`, or stop-and-report in autonomous mode) when an **in-scope** file is already modified by other work. The prior dirty-worktree step only flagged *out-of-manifest* paths as advisory risk; the in-scope parallel-session collision now gates before any edit.
+
+### Changed — approval seal binds spec + plan only (todo is progress state)
+
+The Phase 2.5 seal bound spec **+ plan + todo**, but `tasks/todo.md` is designed to mutate as batches complete — so the seal flipped STALE on the first checkbox tick, and `verification-before-completion` (fail-closed on STALE) then refused the completion. The seal cried wolf on expected progress.
+
+- `seal` now derives its default set from `results.spec_path` + `results.plan_path` only; `results.todo_path` is excluded (`scripts/workflow-artifact.sh`). `hooks/spec-approval-trigger.sh` no longer watches `tasks/todo.md`. Scope lives in spec + plan; progress lives in todo — a moved success-criterion goalpost is still caught (seal on the spec .md, plus the frozen-criteria diff). Existing seals recorded before this release still verify against whatever they sealed (back-compatible). Wording synced across `implement`, `spec-driven-development`, `verification-before-completion`, and the `approval-seal` pressure test, which gains a scenario asserting a checkbox tick must **not** trip the seal.
+
+### Changed — rigor score distinguishes external from internal-tooling contracts
+
+"Public contract" was a single external/internal axis, so an internal CLI flag or a handful of IaC/CDK config props scored +1 each just like a public HTTP endpoint — a ±4 swing that could flip HIGH↔MAX and change the reviewer set.
+
+- `public_contracts[]` gains an optional `surface: external | internal-tooling` field (`handoff.schema.json`, default `external` for back-compat). The `implement` Rigor Score now weights **external/wire contracts** +1 each (cap +4) but **internal-tooling contracts** (build/IaC/CLI knobs with no external consumer) +1 total regardless of count. `spec-driven-development` defines the two classes with CDK-props / internal-CLI-flag as the canonical internal example; when unsure, default to external.
+
+### Fixed — four localized implement-loop gaps
+
+- **Autonomous vs "ask which model" contradiction.** `subagent-implementation` said "ask once" for the implementer model; autonomous mode said "never ask in Phases 3-7". Resolved explicitly: the model ask is **interactive-only** — autonomous mode skips it and applies the Sonnet policy default (Opus for plan-flagged novel/tricky batches). Stated in `subagent-implementation`, `implement`, and `model-routing.md`.
+- **Script path resolution.** `implement` and `workflow-artifacts` now resolve `workflow-artifact.sh` once into `$WFA` (project-first, `${CLAUDE_PLUGIN_ROOT:-.}` fallback — the same idiom already used for `learnings.sh`) and call `"$WFA"` at every site, so a plugin-cache install with `$CLAUDE_PLUGIN_ROOT` unset no longer fails on a bare `scripts/…` path.
+- **scope-guard false positive on temp writes.** `hooks/scope-guard.sh` now exits early for out-of-repo paths (a still-absolute `REL_PATH` — session scratchpad, `/tmp`) and `.mtk/` workflow state, which can never be scope violations; it was warning on a scratchpad review artifact.
+- **`gate` help lists the valid set.** The `workflow-artifact.sh` usage/`--help` header now enumerates the five valid gate names (the runtime error already did as of 7.27.0).
+
+## [7.27.0] - 2026-07-16
+
+### Added — rigor re-scales when scope shrinks mid-run
+
+`implement`'s Rigor Score was computed once at Phase 2 and never revisited. A six-batch spec that scored MAX kept the MAX apparatus — subagent path, both reviewers plus `silent-failure-hunter` — even when the biggest batches were deferred mid-run and the work that actually shipped was LIGHT/STANDARD. Field feedback flagged the mismatch: engineers were right-sizing the review by hand.
+
+- **Recompute on scope reduction.** When the approved batch set shrinks at a phase boundary (a batch deferred during Phase 3, or the Phase 3.5 drift check — never mid-batch), the score and level are recomputed from the batches that remain, and the Phase 4 reviewer set + `MTK_AUTO_PROCEED` eligibility follow the recomputed level.
+- **Relax-only, floor-respecting.** A recompute never drops below the hard-trigger floor of the *remaining* work (≥ 3 batches, ≥ 6 non-mechanical files, or any surviving `security_impact` still hold the floor). A scope *increase* is never a silent recompute — it re-opens the Phase 2.5 gate as before; only a reduction auto-relaxes, because the engineer already approved the larger scope. The transition is logged to the workflow artifact (`results.rigor_recomputed`) and surfaced in one line. New `evals/rigor/eval-02` + grader coverage.
+
+### Added — per-directory tech-stack resolution for polyglot monorepos
+
+Closes the per-directory half of the 7.26.0 follow-up (1): `.claude/tech-stack` resolved repo-root-only, so a TypeScript subproject under a .NET root loaded the wrong stack's build/test commands until the engineer overrode it by hand.
+
+- **New `scripts/resolve-tech-stack.sh`** resolves the active stack for a given path — `MTK_STACK` env → nearest subproject `.claude/tech-stack` (closest-declaration-wins) → root `.claude/tech-stack.map` glob → repo-root `.claude/tech-stack` default. Coreutils + git only; empty output means "unconfigured", same as a missing file.
+- **Wiring.** `implement`'s *load the active tech stack* step and `context-engineering`'s Active Stack panel resolve through it (pass a subtree path from the change manifest to load the stack for the files being touched); `check-prerequisites.sh` and `repomap.sh` prefer it with a graceful fallback to the old root read. `setup-bootstrap` documents the `.claude/tech-stack.map` convention. Repo-wide generators (AGENTS.md, tool configs, repo-health) still use the primary stack — multi-stack *merged* command sets for a single repo-wide operation remain the open half of the follow-up.
+
+### Changed — a mechanical batch runs inline even under HIGH/MAX
+
+The subagent path was binary on rigor level: at HIGH/MAX every batch drew a fresh implementer subagent. A pure config/rename/formatting batch has no logic or contract to isolate, so the isolation bought only cold-load latency.
+
+- An **all-mechanical batch** (every entry mechanical per the existing Rigor Score definition; an entry touching any public contract is never mechanical) is now implemented **inline** by the orchestrator even inside an otherwise-HIGH/MAX run, with the drift micro-check, result persistence, and churn check still applied. Non-mechanical batches take the full dispatch path unchanged. The "orchestrator never edits source" invariant gains an explicit carve-out for this one case, and a new pressure-test scenario guards against *over*-applying it to a logic batch wearing a "mechanical" label.
+
+### Fixed — workflow-artifact gate error lists the valid set
+
+`workflow-artifact.sh gate` rejected an unknown gate name with only a pointer to a doc. It now lists the valid gate names inline (`must be one of: plan_trust_gate phase_exit_gate failure_stop_gate memory_sync_gate skill_precedence_gate`), mirroring the existing `criteria` status-validation idiom and giving the valid set a single source of truth in the function.
+
 ## [7.26.0] - 2026-07-14
 
 ### Added — `batch-fix` lane for corrective batches
@@ -11,6 +68,8 @@ A new routed workflow skill sits between `fix` (1–3 files, one coherent change
 - **Lightweight front-end.** Enumerate findings → short findings-list spec stub + `tasks/todo.md` → a **single** approval gate → per-finding TDD (mechanical findings skip) → **inline** implementation (no subagent-per-batch) → proportional review (pre-commit-review always; specialized reviewers only when a finding crosses a boundary) → verification. `MTK_AUTO_PROCEED`-eligible.
 - **Router wiring.** `/mtk` gains the lane across the decision graph, route table, disambiguation rows, the clarifying question, and help output. `fix`'s Scope Guard now reroutes *multiple independent trivial fixes* to `batch-fix` (marker `escalated from fix (batch)`) while genuine new-slice/contract/re-planning growth still escalates to `implement`. Marker matching is most-specific-first so `escalated from fix (batch)` never mis-binds to the generic `escalated from fix`.
 - **Escape hatch.** A single finding that turns out to need a new contract/slice escalates to `implement` via `escalated from batch-fix`. New router fixture, pressure test, and eval cover the lane.
+- **Resumed vs. new batch.** Phase 2 now reconciles the batch slug against any existing `*-batch.md` stub and the SessionStart recovery pointer before writing: matching findings resume the prior stub, differing findings mint a distinct slug (`-batch-2`) instead of overwriting. Field feedback hit this — a stale recovery pointer and an existing stub both pointed at a prior batch on the same feature, forcing a hand-minted slug.
+- **Proportionality + concurrency guidance.** A `When To Use` note steers a mostly-mechanical batch toward plain `fix` (the stub + gate ceremony earns its keep on behavioral/boundary findings, not cosmetic sweeps), and Phase 4 now tells the loop to re-read each target file immediately before editing rather than assuming a frozen tree (concurrent human edits, or an earlier finding touching the same file).
 
 ### Changed — rigor ceremony no longer over-escalates on mechanical edits
 
@@ -27,9 +86,12 @@ The `implement` rigor floor and size score now count only **non-mechanical** `ch
 - **Deterministic version binding.** The File Resolution plugin-cache fallback uses `sort -V | tail -1` instead of `head -1`, so it binds the newest cached MTK version rather than whichever `find` happened to emit first.
 - **Split-brain caveat.** The File Resolution block now warns that skills and scripts must resolve from the same root; a split (skills from a local dev checkout, scripts from the plugin cache) risks version drift.
 
-- **Batch-fix scope-guard false positives + graceful degrade.** `scope-guard.sh` anchors to the most-recently-modified spec sidecar, but batch-fix wrote none — so every edit was checked against a *stale* spec's manifest (a real run hit 18 false "not in the approved spec" warnings). batch-fix now writes a minimal `{"workflow":"batch-fix","scope_guard":"skip"}` JSON sidecar so it becomes the freshest active spec, and `scope-guard.sh` recognizes the marker and no-ops (batch-fix scopes by its findings list, not a file manifest). batch-fix's Phase 0 also degrades on missing setup (infer stack via `setup-detect`, resolve references from the plugin cache, announce degraded mode), and it flags that batches beyond ~5 findings may warrant a `handoff` checkpoint.
+- **Batch-fix scope-guard false positives + graceful degrade.** `scope-guard.sh` anchors to the most-recently-modified spec sidecar, so a manifest-less workflow like batch-fix had every edit checked against a *stale* spec's manifest (a real run hit 18 false "not in the approved spec" warnings). batch-fix now drops a freshness-windowed skip pointer (`.mtk/scope-guard-skip`, 4h TTL) and `scope-guard.sh` checks that pointer **before** any mtime-based spec selection and no-ops — batch-fix scopes by its findings list, not a file manifest. This replaces an interim "write a freshest JSON sidecar" marker that still mis-fired: a concurrent feature spec touched in the same session is legitimately newer than the batch stub, so the guard anchored to the wrong spec and warned on every edit anyway. The pointer is race-immune (it is not selected by timestamp), self-expiring (a crashed run's pointer ages out instead of disabling the guard forever), and anchored under `$CLAUDE_PROJECT_DIR` → git top-level → cwd so writer and hook agree on its location from a worktree or sub-dir cwd. batch-fix's Phase 0 also degrades on missing setup (infer stack via `setup-detect`, resolve references from the plugin cache, announce degraded mode), and it flags that batches beyond ~5 findings may warrant a `handoff` checkpoint.
+- **Workflow artifact `phase_cursor` now advances.** `phase_cursor` was written only at init (`phase-0`) and never moved — the skill emits `phase_started` as an event, but nothing updated the cursor field, so a resume driven off `phase_cursor` alone restarted at phase-0 even after reaching a later phase. `workflow-artifact.sh event` now derives the cursor from the event log: a `phase_started` event carrying a `phase` advances `phase_cursor` to it. No skill change is required (the `phase_started` emission already exists), and existing callers are fixed retroactively. Non-phase events leave the cursor untouched.
+- **Workflow artifact `set`/`event` confirm on success.** Both were silent on success, so state changes could only be confirmed by re-reading the JSON. They now print a one-line confirmation to stdout; internal callers (which already redirect stdout to `/dev/null`) stay quiet, so only top-level invocations surface it.
+- **Stop hooks aborted (exit 1) on absent optional fields.** `workflow-continuation.sh` and `capture-learnings.sh` extract fields with `VAR="$(grep … | … | head -1)"` under `set -euo pipefail`. A legitimate no-match makes `grep` exit 1, and `pipefail` propagated that through the assignment, aborting the hook **before** the guard written to handle the absent value (`[ -n "$TOTAL" ] || exit 0`; `[ -n "$REPEATED" ]`) — turning an intended silent no-op into a visible `Stop hook error … exit 1`. It surfaced specifically in `mtk:implement` sessions because that is the only scenario reaching those extractions: an active workflow whose batch accounting is not recorded yet (`workflow-artifact.sh` init writes no `batches_total`/`batches_completed`), and a substantial session whose `tasks/lessons.md` has ≥3 lessons but no `Rule:` lines. Both extractions now terminate in `|| true`, so a no-match yields empty output and exit 0 and the guards run as designed. Other hooks were scanned for the same shape; the remaining `$(…)` extractions use `awk`/`sed`, which exit 0 on no-match, so they are unaffected.
 
-> Known follow-ups (tracked separately): (1) `.claude/tech-stack` is single-valued, so a polyglot repo (e.g. .NET API + React/TS SPA) loads only one stack's build/test commands — multi-stack loading with merged command sets; (2) `learnings.sh query` returning zero matches silently — needs an explicit "0 matches" vs "error" signal and a `tasks/lessons.md` fallback; (3) `MTK_AUTO_PROCEED` keying off an explicit "fix all / just do it" in the invoking message when there are zero open decisions.
+> Known follow-ups (tracked separately): (1) per-directory resolution shipped in 7.27.0 (a subproject loads its own stack via `.claude/tech-stack.map` or a nested `.claude/tech-stack`); the open remainder is multi-stack *merged* command sets for a single repo-wide operation; (2) `learnings.sh query` returning zero matches silently — needs an explicit "0 matches" vs "error" signal and a `tasks/lessons.md` fallback; (3) `MTK_AUTO_PROCEED` keying off an explicit "fix all / just do it" in the invoking message when there are zero open decisions.
 
 ## [7.25.1] - 2026-07-14
 

@@ -11,6 +11,9 @@ set -euo pipefail
 #   read <uuid>                      Print {uuid}.json to stdout
 #   list                             List active workflows (id, type, status, updated)
 #   gate <uuid> <gate_name> <pass|fail> [--reason "<text>"]
+#                                    gate_name one of: plan_trust_gate |
+#                                    phase_exit_gate | failure_stop_gate |
+#                                    memory_sync_gate | skill_precedence_gate.
 #                                    Record gate decision as event + status update
 #   criteria <uuid> <SCn=status>...  Set per-criterion verification status
 #                                    Status values: pending | verified | re-armed
@@ -19,7 +22,7 @@ set -euo pipefail
 #                                    ESCALATE when iterations >= MTK_MAX_REMEDIATION_ITERS
 #                                    (default 3) or the score plateaus, else CONTINUE
 #   seal <uuid> <path>...            Record a SHA-256 approval seal over the given
-#                                    artifact bodies (spec/plan/todo) at approval time
+#                                    artifact bodies (spec/plan) at approval time
 #   verify-seal <uuid>               Re-check the recorded seal; exit 0 match,
 #                                    1 stale (prints sealed=/current=), 2 uncheckable
 #                                    (unexpected error), 3 no seal
@@ -141,14 +144,28 @@ sys.stdout.write(json.dumps({
 }, separators=(",", ":")) + "\n")
 PY
 
-  # Bump updated_at on the main artifact.
-  python3 - "${WF_DIR}/${uuid}.json" "$now" <<'PY'
+  # Bump updated_at on the main artifact, and advance phase_cursor when this
+  # event is a phase_started marker carrying a phase. The event log is the
+  # source of truth; the cursor is derived from it so a resume driven off
+  # phase_cursor alone never restarts at phase-0 after progress was made.
+  python3 - "${WF_DIR}/${uuid}.json" "$now" "$etype" "$data" <<'PY'
 import json, sys
-path, now = sys.argv[1:3]
+path, now, etype, data_raw = sys.argv[1:5]
 with open(path) as f: doc = json.load(f)
 doc["updated_at"] = now
+if etype == "phase_started":
+    try:
+        phase = json.loads(data_raw).get("phase") if data_raw else None
+    except json.JSONDecodeError:
+        phase = None
+    if phase:
+        doc["phase_cursor"] = phase
 with open(path, "w") as f: json.dump(doc, f, indent=2)
 PY
+
+  # Confirm on stdout (internal callers redirect stdout to /dev/null, so only
+  # a top-level `event` invocation surfaces this).
+  printf 'workflow-artifact: recorded %s for %s\n' "$etype" "$uuid"
 }
 
 cmd_set() {
@@ -181,6 +198,7 @@ doc["updated_at"] = now
 with open(path, "w") as f: json.dump(doc, f, indent=2)
 PY
   cmd_event "$uuid" "field_updated" --data "{\"keys\":$(printf '%s\n' "$@" | python3 -c 'import sys, json; print(json.dumps([l.split("=",1)[0] for l in sys.stdin.read().splitlines() if l]))')}" >/dev/null
+  printf 'workflow-artifact: set %s on %s\n' "$*" "$uuid"
 }
 
 cmd_read() {
@@ -293,9 +311,10 @@ cmd_gate() {
   shift 3 || true
   [ -n "$uuid" ] && [ -n "$gate" ] && [ -n "$result" ] || fail "gate requires <uuid> <gate_name> <pass|fail>"
   case "$result" in pass|fail) ;; *) fail "gate result must be 'pass' or 'fail'" ;; esac
-  case "$gate" in
-    plan_trust_gate|phase_exit_gate|failure_stop_gate|memory_sync_gate|skill_precedence_gate) ;;
-    *) fail "unknown gate: $gate (see .claude/references/orchestration-gates.md)" ;;
+  local valid_gates="plan_trust_gate phase_exit_gate failure_stop_gate memory_sync_gate skill_precedence_gate"
+  case " $valid_gates " in
+    *" $gate "*) ;;
+    *) fail "unknown gate: $gate — must be one of: $valid_gates (see .claude/references/orchestration-gates.md)" ;;
   esac
 
   local reason=""
@@ -375,8 +394,12 @@ PY
   printf '%s\n' "$decision"
 }
 
-# Approval seal — bind the approved artifact bodies (spec/plan/todo) to a
+# Approval seal — bind the approved SCOPE artifacts (spec + plan) to a
 # combined SHA-256 recorded on the workflow at Phase 2.5 approval time. The
+# todo file is deliberately NOT sealed: it is progress state designed to mutate
+# as batches complete, so sealing it would flip the seal STALE on the first
+# checkbox tick — a false tamper signal. Scope lives in spec + plan; progress
+# lives in todo. The
 # hash is derived from disk by this script, so the seal cannot be forged for a
 # different body. `verify-seal` re-derives and compares (hashgate: "approve a
 # state, not an intention").
@@ -387,14 +410,16 @@ cmd_seal() {
   [ -f "${WF_DIR}/${uuid}.json" ] || fail "no artifact for $uuid"
 
   # With no explicit paths, derive the sealed set from the artifact's own
-  # recorded canonical paths (results.spec_path/plan_path/todo_path) so the seal
+  # recorded canonical scope paths (results.spec_path/plan_path) so the seal
   # binds what the workflow actually approved rather than a re-typed list.
+  # todo_path is intentionally excluded — it is mutable progress state, not
+  # scope (see the cmd_seal header comment above).
   if [ $# -eq 0 ]; then
     local derived
     derived="$(python3 - "${WF_DIR}/${uuid}.json" <<'PY'
 import json, sys
 r = json.load(open(sys.argv[1])).get("results", {})
-for k in ("spec_path", "plan_path", "todo_path"):
+for k in ("spec_path", "plan_path"):
     v = r.get(k)
     if v:
         print(v)
@@ -405,7 +430,7 @@ PY
 '; set -- $derived; IFS="$_oldifs"
     fi
   fi
-  [ $# -gt 0 ] || fail "seal requires <path>... or recorded results.spec_path/plan_path/todo_path on the artifact"
+  [ $# -gt 0 ] || fail "seal requires <path>... or recorded results.spec_path/plan_path on the artifact"
 
   local hash
   hash="$(python3 - "${WF_DIR}/${uuid}.json" "$ROOT_DIR" "$(iso_now)" "$@" <<'PY'
@@ -502,7 +527,7 @@ PY
 }
 
 usage() {
-  sed -n '4,26p' "$0"
+  sed -n '4,30p' "$0"
 }
 
 main() {
