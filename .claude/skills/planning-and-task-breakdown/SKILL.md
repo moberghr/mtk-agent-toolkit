@@ -69,6 +69,13 @@ Convert the approved plan into small, executable tasks that can be verified one 
    - batches with checkboxes
    - post-implementation review items
 7. If a spec file exists in `docs/specs/`, persist the plan alongside it:
+   - **If the plan was supplied by the engineer as input** (adopted by
+     `implement` Phase 0.7 — the file already exists at the plan path): do **not**
+     author a new plan or version-bump the engineer's file. Adopt the supplied
+     path as-is, validate its `plan.batches` against the JSON sidecar schema, and
+     run `prior-work-check`'s *existing-plan reconciliation mode* so
+     already-implemented batches are marked done before the approval gate rather
+     than re-run. Skip the authoring sub-steps below.
    - Use the **full filename stem of the active spec**, including any version suffix (e.g., `-v2`, `-v3`). If the spec was written as `docs/specs/2026-04-23-foo-v2.md`, the plan is `docs/plans/2026-04-23-foo-v2.md`.
    - If no spec path is available (standalone planning run), use `YYYY-MM-DD-<feature-slug>.md` with no suffix.
    - Create `docs/plans/` if it does not exist.

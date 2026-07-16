@@ -62,6 +62,14 @@ When the subagent path dispatches per-batch implementers, the default is `sonnet
 Choose `opus` for a batch only when the plan flags it novel/tricky (concurrency,
 unfamiliar SDK, subtle invariants) per the "novel/tricky batch" row above.
 
+**Interactive vs autonomous.** In *interactive* mode the orchestrator confirms
+this default once via `AskUserQuestion` before the loop. In *autonomous* mode
+(Phase 2.5 → `Approve & run until done`) it does **not** ask — the `sonnet`
+default applies silently, with `opus` reserved for plan-flagged novel/tricky
+batches. This is the resolution of the apparent conflict between
+subagent-implementation's "ask once" rule and autonomous mode's "never ask in
+Phases 3-7": the ask is interactive-only, so autonomous mode simply skips it.
+
 ## Override
 
 These are defaults, not handcuffs. An engineer may run any phase on a higher tier;

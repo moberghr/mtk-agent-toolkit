@@ -34,15 +34,18 @@ FILE_PATH="$(mtk_extract_file_path "$INPUT" 2>/dev/null || echo "")"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 REL_PATH="${FILE_PATH#"$REPO_ROOT"/}"
 
-# Fire for approved artifacts: specs, plans, and the todo.
+# Fire for approved SCOPE artifacts: specs and plans. tasks/todo.md is
+# deliberately excluded — it is mutable progress state, not sealed scope, so a
+# routine checkbox tick as a batch completes must not re-queue approval
+# (see scripts/workflow-artifact.sh cmd_seal: the seal binds spec+plan only).
 case "$REL_PATH" in
-  docs/specs/*.md|docs/plans/*.md|tasks/todo.md) ;;
+  docs/specs/*.md|docs/plans/*.md) ;;
   *) exit 0 ;;
 esac
 
 [ -f "$FILE_PATH" ] || exit 0
 
-# --- Stale approval-seal detection (any sealed spec/plan/todo) ---
+# --- Stale approval-seal detection (any sealed spec/plan) ---
 # If an ACTIVE workflow sealed this file at approval and the bytes no longer
 # match, the earlier approval is stale — re-queue the approval step. Advisory
 # (exit 0). See scripts/workflow-artifact.sh seal/verify-seal.
@@ -82,8 +85,8 @@ PY
   fi
 fi
 
-# The approved-transition trigger below is spec-only (plans/todo have no
-# status marker and are handled by the seal check above).
+# The approved-transition trigger below is spec-only (plans have no status
+# marker and are handled by the seal check above).
 case "$REL_PATH" in
   docs/specs/*.md) ;;
   *) exit 0 ;;

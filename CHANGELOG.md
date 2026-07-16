@@ -2,6 +2,37 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.28.0] - 2026-07-16
+
+A batch of `implement`-workflow hardening from a field run of the full build loop. Two themes plus four localized fixes: the workflow now treats *supplied inputs and parallel-session activity* as first-class, and the approval seal + scope-guard stop conflating an artifact's expected mutation/temp state with real drift.
+
+### Added — supplied plan/spec ingestion, worktree collision gate, plan↔code reconciliation
+
+The build loop assumed it authored everything, so a pre-written plan collided with the path the workflow writes to, a stale supplied plan got re-implemented, and a parallel session editing in-scope files was only caught *after* an implementer had started.
+
+- **First-class plan/spec ingestion (new Phase 0.7).** When the engineer supplies a spec or plan as the input — a path they hand you, or an existing `docs/specs|plans/*.md` the run is meant to execute — `implement` now *adopts* it as the source of truth instead of authoring a new one. No path collision, no `-impl`/`-v2` suffix workaround, never an overwrite of the engineer's file. `spec-driven-development` and `planning-and-task-breakdown` gained matching "adopt, don't recreate" branches.
+- **Plan↔code reconciliation (`prior-work-check` existing-plan mode).** A supplied plan may be stale — batches already implemented since it was written. Phase 0.7 runs `prior-work-check` in a new read-only reconciliation mode that classifies each batch `already-satisfied` / `partially-done` / `not-started` with `file:line` evidence; satisfied batches are marked done and ticked before the approval gate instead of being re-run.
+- **Worktree collision gate (Phase 0 pre-flight capture + new Phase 2.9).** Phase 0 snapshots the pre-existing dirty set; before the first batch, Phase 2.9 intersects the current `git status` against the change manifest and halts (interactive `AskUserQuestion`, or stop-and-report in autonomous mode) when an **in-scope** file is already modified by other work. The prior dirty-worktree step only flagged *out-of-manifest* paths as advisory risk; the in-scope parallel-session collision now gates before any edit.
+
+### Changed — approval seal binds spec + plan only (todo is progress state)
+
+The Phase 2.5 seal bound spec **+ plan + todo**, but `tasks/todo.md` is designed to mutate as batches complete — so the seal flipped STALE on the first checkbox tick, and `verification-before-completion` (fail-closed on STALE) then refused the completion. The seal cried wolf on expected progress.
+
+- `seal` now derives its default set from `results.spec_path` + `results.plan_path` only; `results.todo_path` is excluded (`scripts/workflow-artifact.sh`). `hooks/spec-approval-trigger.sh` no longer watches `tasks/todo.md`. Scope lives in spec + plan; progress lives in todo — a moved success-criterion goalpost is still caught (seal on the spec .md, plus the frozen-criteria diff). Existing seals recorded before this release still verify against whatever they sealed (back-compatible). Wording synced across `implement`, `spec-driven-development`, `verification-before-completion`, and the `approval-seal` pressure test, which gains a scenario asserting a checkbox tick must **not** trip the seal.
+
+### Changed — rigor score distinguishes external from internal-tooling contracts
+
+"Public contract" was a single external/internal axis, so an internal CLI flag or a handful of IaC/CDK config props scored +1 each just like a public HTTP endpoint — a ±4 swing that could flip HIGH↔MAX and change the reviewer set.
+
+- `public_contracts[]` gains an optional `surface: external | internal-tooling` field (`handoff.schema.json`, default `external` for back-compat). The `implement` Rigor Score now weights **external/wire contracts** +1 each (cap +4) but **internal-tooling contracts** (build/IaC/CLI knobs with no external consumer) +1 total regardless of count. `spec-driven-development` defines the two classes with CDK-props / internal-CLI-flag as the canonical internal example; when unsure, default to external.
+
+### Fixed — four localized implement-loop gaps
+
+- **Autonomous vs "ask which model" contradiction.** `subagent-implementation` said "ask once" for the implementer model; autonomous mode said "never ask in Phases 3-7". Resolved explicitly: the model ask is **interactive-only** — autonomous mode skips it and applies the Sonnet policy default (Opus for plan-flagged novel/tricky batches). Stated in `subagent-implementation`, `implement`, and `model-routing.md`.
+- **Script path resolution.** `implement` and `workflow-artifacts` now resolve `workflow-artifact.sh` once into `$WFA` (project-first, `${CLAUDE_PLUGIN_ROOT:-.}` fallback — the same idiom already used for `learnings.sh`) and call `"$WFA"` at every site, so a plugin-cache install with `$CLAUDE_PLUGIN_ROOT` unset no longer fails on a bare `scripts/…` path.
+- **scope-guard false positive on temp writes.** `hooks/scope-guard.sh` now exits early for out-of-repo paths (a still-absolute `REL_PATH` — session scratchpad, `/tmp`) and `.mtk/` workflow state, which can never be scope violations; it was warning on a scratchpad review artifact.
+- **`gate` help lists the valid set.** The `workflow-artifact.sh` usage/`--help` header now enumerates the five valid gate names (the runtime error already did as of 7.27.0).
+
 ## [7.27.0] - 2026-07-16
 
 ### Added — rigor re-scales when scope shrinks mid-run

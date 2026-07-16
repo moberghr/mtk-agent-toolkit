@@ -58,12 +58,14 @@ When the `Workflow` tool is available the dynamic-workflow path MUST be used —
 ### Steps (manual Agent-loop path)
 
 1. **Threshold gate.** Read `docs/specs/<date>-<slug>.json`. Dispatch when any hard trigger is met **or** the rigor score is ≥ 8 (rigor HIGH/MAX). If neither holds → return control to `implement/SKILL.md` Phase 3 with the recommendation to use `incremental-implementation` instead. Do not silently fall through.
-2. **Pick implementer model.** The policy default is **Sonnet** — see `.claude/references/model-routing.md` (reserve Opus for batches the plan flags novel/tricky: concurrency, unfamiliar SDK, subtle invariants). Invoke `AskUserQuestion` once (load via `ToolSearch select:AskUserQuestion` if deferred):
-   - Question: `Implementer subagent model? Affects per-batch cost and capability.`
-   - Options:
-     - `Sonnet (policy default — faster, cheaper, suits straightforward batches)`
-     - `Opus (more capable — pick when the batch involves novel logic, tricky concurrency, or unfamiliar framework behavior)`
-   - Persist the choice in memory for the rest of the loop. Do **not** ask again between batches. If the harness does not expose `AskUserQuestion`, default to Sonnet and emit one line: `Implementer model defaulted to Sonnet (AskUserQuestion unavailable).`
+2. **Pick implementer model.** The policy default is **Sonnet** — see `.claude/references/model-routing.md` (reserve Opus for batches the plan flags novel/tricky: concurrency, unfamiliar SDK, subtle invariants). Whether to *ask* depends on the Phase 2.5 mode:
+   - **Autonomous mode (Phase 2.5 returned `Approve & run until done`): do NOT ask.** An `AskUserQuestion` here would violate the autonomous "never call `AskUserQuestion` in Phases 3-7" rule (`implement/SKILL.md`) — the two rules only appear to conflict; the model ask is an interactive affordance, and autonomous mode resolves it by *not asking*. Default to the policy tier (Sonnet), escalate to Opus only for batches the plan flags novel/tricky, and emit one line: `Implementer model: Sonnet (autonomous default; Opus for plan-flagged novel/tricky batches).`
+   - **Interactive mode: invoke `AskUserQuestion` once** (load via `ToolSearch select:AskUserQuestion` if deferred):
+     - Question: `Implementer subagent model? Affects per-batch cost and capability.`
+     - Options:
+       - `Sonnet (policy default — faster, cheaper, suits straightforward batches)`
+       - `Opus (more capable — pick when the batch involves novel logic, tricky concurrency, or unfamiliar framework behavior)`
+     - Persist the choice in memory for the rest of the loop. Do **not** ask again between batches. If the harness does not expose `AskUserQuestion`, default to Sonnet and emit one line: `Implementer model defaulted to Sonnet (AskUserQuestion unavailable).`
 3. **For each batch in dependency order:**
 
    **Mechanical batch → inline (skip dispatch).** Before building a bundle, check the batch: if *every* entry in it is mechanical (rename-only, formatting-only, generated, no-behavioral-change — the `implement/SKILL.md` Rigor Score definition; an entry touching any public contract is never mechanical), do **not** dispatch a fresh implementer. Implement it inline in the orchestrator context — with no logic or contract to isolate, a fresh subagent buys nothing but latency. Still apply the drift micro-check (sub-step 5), result persistence (6), and churn check (7) for that batch; skip only the dispatch (sub-steps 1–4). Non-mechanical batches take the full dispatch path below. This keeps a stray config/rename batch inside an otherwise-HIGH run from paying subagent ceremony it cannot use.
@@ -133,7 +135,7 @@ The implementer prompt template is shared by both execution paths and is organiz
 - **Guardrails travel with the capability.** The implementer prompt states each granted tool's boundary and a no-delete fence inline (Rules 6–7), so a dispatched subagent inherits its constraints from the prompt rather than a rules file it may not load. Keep those clauses when editing the template.
 - **Inconclusive is never a pass.** A batch whose result is missing, unparseable, acknowledgment-only, or marked `inconclusive` is recorded as `inconclusive` in the sidecar and respawned **once** with the scope narrowed to the missing deliverable. A second inconclusive halts the loop and reports to the engineer. Never count an inconclusive batch toward completion, and never let a later batch build on one.
 - Orchestrator never edits source **for a dispatched (non-mechanical) batch** — those edits happen inside the batch's subagent. The one carve-out is an **all-mechanical batch, which the orchestrator implements inline** (renames/formatting/generated edits carry no reasoning to contaminate later batches). Otherwise, if editing is needed (e.g. to amend the sidecar after auto-fix), only `docs/specs/*.json`, `tasks/todo.md`, and the sidecar are fair game.
-- The model selection is asked **once**, before the loop. Never per batch.
+- The model selection is asked **once**, before the loop, and never per batch — **in interactive mode only.** In autonomous mode it is not asked at all; the Sonnet policy default applies (Opus for plan-flagged novel/tricky batches). See step 2.
 - In autonomous mode (Phase 2.5 returned `Approve & run until done`), the loop runs without further `AskUserQuestion` calls **except** the Phase 2.5 re-open required by non-auto-fixable drift. That re-open is a structural halt, not a chatty confirmation.
 - Drift micro-check is orchestrator-side and synchronous. No agent call per batch.
 - Phase 4 review (compliance, test, architecture, silent-failure-hunter) runs unchanged after the loop — sized from the **current** rigor level, which may have been recomputed lower if scope was reduced mid-loop (see next rule).

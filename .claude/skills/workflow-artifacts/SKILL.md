@@ -33,43 +33,47 @@ Orchestration state that lives only in chat is lost on compaction or restart. Th
 
 ## Workflow
 
-1. **Resolve helper path.** The script ships at `scripts/workflow-artifact.sh` in this repo and at the same path in target installs. If `$CLAUDE_PLUGIN_ROOT` is set and the repo install lacks the script, prefix the plugin root. **State is project-anchored:** the script writes `.mtk/workflows/` under `$CLAUDE_PROJECT_DIR` (falling back to the git top-level, then cwd), so when MTK skills live outside the target project (plugin/marketplace install), export `CLAUDE_PROJECT_DIR=<project root>` or run from the project root — otherwise state lands in the wrong tree.
+1. **Resolve helper path once into `$WFA`.** The script ships at `scripts/workflow-artifact.sh` in this repo and at the same path in target installs, but a plugin-cache install may have it only under `$CLAUDE_PLUGIN_ROOT` — and that variable is sometimes unset. Resolve it once, project-first with a plugin fallback (the same idiom `spec-driven-development` uses for `learnings.sh`), then call `"$WFA"` everywhere below instead of a bare path:
+   ```bash
+   WFA="$([ -f scripts/workflow-artifact.sh ] && echo scripts/workflow-artifact.sh || echo "${CLAUDE_PLUGIN_ROOT:-.}/scripts/workflow-artifact.sh")"
+   ```
+   **State is project-anchored:** the script writes `.mtk/workflows/` under `$CLAUDE_PROJECT_DIR` (falling back to the git top-level, then cwd), so when MTK skills live outside the target project (plugin/marketplace install), export `CLAUDE_PROJECT_DIR=<project root>` or run from the project root — otherwise state lands in the wrong tree.
 2. **Init at workflow start.** Capture the returned uuid into a session variable `MTK_WF_UUID`:
    ```bash
-   MTK_WF_UUID=$(scripts/workflow-artifact.sh init BUILD --goal "<one-line user goal>")
+   MTK_WF_UUID=$("$WFA" init BUILD --goal "<one-line user goal>")
    ```
 3. **Persist anchors as soon as they exist.** When the spec, plan, and todo files are written, record their paths:
    ```bash
-   scripts/workflow-artifact.sh set "$MTK_WF_UUID" \
+   "$WFA" set "$MTK_WF_UUID" \
      results.spec_path=docs/specs/2026-05-07-foo.md \
      results.plan_path=docs/plans/2026-05-07-foo.md \
      results.todo_path=tasks/todo.md
    ```
 4. **Emit phase events.** At the start and end of every phase:
    ```bash
-   scripts/workflow-artifact.sh event "$MTK_WF_UUID" phase_started   --data '{"phase":"phase-3"}'
-   scripts/workflow-artifact.sh event "$MTK_WF_UUID" phase_completed --data '{"phase":"phase-3"}'
+   "$WFA" event "$MTK_WF_UUID" phase_started   --data '{"phase":"phase-3"}'
+   "$WFA" event "$MTK_WF_UUID" phase_completed --data '{"phase":"phase-3"}'
    ```
    A `phase_started` event carrying a `phase` auto-advances the artifact's `phase_cursor` to that phase — no separate `set phase_cursor=` call is needed, and the resume protocol (step 6) can trust `phase_cursor` rather than replaying the event log.
 5. **Record gate decisions.** Every named gate (`plan_trust_gate`, `phase_exit_gate`, `failure_stop_gate`, `memory_sync_gate`, `skill_precedence_gate`) must be persisted via:
    ```bash
-   scripts/workflow-artifact.sh gate "$MTK_WF_UUID" phase_exit_gate pass --reason "all batch tests green"
+   "$WFA" gate "$MTK_WF_UUID" phase_exit_gate pass --reason "all batch tests green"
    ```
    `fail` on any gate is a hard stop — see `failure_stop_gate` semantics.
 6. **Resume protocol.** On entry to a workflow with no explicit uuid:
-   - Run `scripts/workflow-artifact.sh list`.
+   - Run `"$WFA" list`.
    - If a single active workflow matches the requested type, offer resume.
    - If multiple, ask via `AskUserQuestion` which uuid to resume.
    - If none, init a new one.
 7. **Close the workflow.** At end of phase 7:
    ```bash
-   scripts/workflow-artifact.sh set "$MTK_WF_UUID" status=completed
-   scripts/workflow-artifact.sh event "$MTK_WF_UUID" workflow_completed --data '{"summary":"<short>"}'
+   "$WFA" set "$MTK_WF_UUID" status=completed
+   "$WFA" event "$MTK_WF_UUID" workflow_completed --data '{"summary":"<short>"}'
    ```
    On unrecoverable failure, close with the failure pair instead:
    ```bash
-   scripts/workflow-artifact.sh set "$MTK_WF_UUID" status=failed
-   scripts/workflow-artifact.sh event "$MTK_WF_UUID" workflow_failed --data '{"reason":"<short>"}'
+   "$WFA" set "$MTK_WF_UUID" status=failed
+   "$WFA" event "$MTK_WF_UUID" workflow_failed --data '{"reason":"<short>"}'
    ```
 
 ## Viewing Progress (Dashboard)
@@ -108,7 +112,7 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared table. Workflow
 
 ## Verification
 
-- [ ] `scripts/workflow-artifact.sh list` shows the current workflow with the expected type and phase
+- [ ] `"$WFA" list` (resolved per step 1) shows the current workflow with the expected type and phase
 - [ ] The event log ends with the most recent gate or phase event (no orphan state)
 - [ ] On a fresh session, `list` plus reading the artifact reproduces the workflow's current state without chat history
 - [ ] No direct `Edit`/`Write` calls were made against `.mtk/workflows/*.json`

@@ -28,6 +28,16 @@ FILE_PATH=$(mtk_extract_file_path "$INPUT" 2>/dev/null || echo "")
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 REL_PATH="${FILE_PATH#"$REPO_ROOT"/}"
 
+# Out-of-repo and workflow-state writes can never be scope violations, so they
+# must not trip the guard. A still-absolute REL_PATH means the prefix strip was
+# a no-op — FILE_PATH is not under REPO_ROOT (a session scratchpad / temp review
+# artifact, /tmp, an absolute path elsewhere). `.mtk/` is durable workflow state
+# (batch prompt bundles, artifacts) written outside the change_manifest by
+# design. Neither is repo source, so exempt both before manifest matching.
+case "$REL_PATH" in
+  /*|.mtk/*) exit 0 ;;
+esac
+
 # Deterministic skip pointer — checked before any mtime-based spec selection.
 # Manifest-less workflows (batch-fix) scope by a findings list, not a file
 # manifest, so they drop .mtk/scope-guard-skip while running and this guard
