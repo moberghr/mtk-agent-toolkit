@@ -107,7 +107,7 @@ digraph spec_flow {
    - `.claude/references/security-checklist.md`
    - `.claude/references/testing-patterns.md`
    - `.claude/references/architecture-principles.md` if present
-   - Relevant lessons via `bash "$([ -f scripts/learnings.sh ] && echo scripts/learnings.sh || echo "${CLAUDE_PLUGIN_ROOT:-.}/scripts/learnings.sh")" query --phase spec --files "<comma-separated paths from initial scope>" --max 8` (resolves the project copy first, else the plugin copy; 5-layer retrieval: proximity / recurrence / severity / validity / phase). Falls back to reading `tasks/lessons.md` directly if the script is absent from both project and plugin (older repos).
+   - Relevant lessons via `bash "$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/learnings.sh" || ([ -f scripts/learnings.sh ] && echo scripts/learnings.sh || echo "${CLAUDE_PLUGIN_ROOT:-.}/scripts/learnings.sh"))" query --phase spec --files "<comma-separated paths from initial scope>" --max 8` (resolves a pinned `MTK_HELPER_ROOT` checkout first, else the project copy, else the plugin copy; 5-layer retrieval: proximity / recurrence / severity / validity / phase). Falls back to reading `tasks/lessons.md` directly if the script is absent from all three (older repos).
 2. Resolve the lessons path using the main worktree when in a worktree.
 3. Surface assumptions before planning. State what you believe about runtime, architecture, storage, auth, and boundaries. Do not silently fill in major gaps.
 4. Classify scope:
