@@ -2,6 +2,14 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.28.2] - 2026-07-20
+
+### Fixed — `session-analytics.sh` cross-invocation temp-file collision
+
+Several copies of the analytics Stop hook fire per session (plugin-cache versions plus the dev-checkout settings wiring), and all wrote through one fixed temp path `.claude/analytics.json.tmp`. The first copy's `mv` consumed the file a later copy was about to `mv`, so every session surfaced a non-blocking `mv: .claude/analytics.json.tmp: No such file or directory` / `[mtk-hook:session-analytics.sh] exit 1`. Analytics were still written (the winning copy), but the error was constant noise.
+
+- `session-analytics.sh` now writes to a per-invocation `mktemp "${ANALYTICS}.XXXXXX"` instead of a shared `.tmp`, so concurrent copies race harmlessly on the final rename (last writer wins) rather than erroring. The deeper cause — multiple hook copies registered by a multi-version plugin cache — is tracked separately.
+
 ## [7.28.1] - 2026-07-20
 
 Script-plumbing fixes from a field run of the full workflow against a repo where MTK ran from a *separate* checkout with `$CLAUDE_PLUGIN_ROOT` unset. The decision layer (routing, rigor scaling, gates, drift, review) behaved well; these fixes address the plumbing that assumed the toolkit runs from within the target repo.
