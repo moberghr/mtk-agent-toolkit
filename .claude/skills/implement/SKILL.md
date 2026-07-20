@@ -43,14 +43,14 @@ The skill itself is intentionally thin. The source of truth for workflow behavio
 Before doing anything else:
 
 0. Init or resume a workflow artifact (`.claude/skills/workflow-artifacts/SKILL.md`).
-   - **Resolve the helper once** — plugin-cache installs may not have it project-relative and `$CLAUDE_PLUGIN_ROOT` is sometimes unset, so a bare `scripts/workflow-artifact.sh` can fail. Resolve it project-first with a plugin fallback and use `"$WFA"` for every `workflow-artifact.sh` call in this skill:
+   - **Resolve the helper once** — plugin-cache installs may not have it project-relative and `$CLAUDE_PLUGIN_ROOT` is sometimes unset, so a bare `scripts/workflow-artifact.sh` can fail. Resolve it `MTK_HELPER_ROOT`-first (a checkout you pin — see `CLAUDE.md`), then project, then plugin, and use `"$WFA"` for every `workflow-artifact.sh` call in this skill:
      ```bash
-     WFA="$([ -f scripts/workflow-artifact.sh ] && echo scripts/workflow-artifact.sh || echo "${CLAUDE_PLUGIN_ROOT:-.}/scripts/workflow-artifact.sh")"
+     WFA="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/workflow-artifact.sh" || ([ -f scripts/workflow-artifact.sh ] && echo scripts/workflow-artifact.sh || echo "${CLAUDE_PLUGIN_ROOT:-.}/scripts/workflow-artifact.sh"))"
      ```
    - Run `"$WFA" list`.
    - If a single active `BUILD` workflow exists for this feature, ask via `AskUserQuestion` whether to resume that uuid or start a new one.
    - Otherwise: `MTK_WF_UUID=$("$WFA" init BUILD --goal "<one-line user goal>")` and remember the uuid for the rest of the session.
-   - Emit `phase_started phase-0` immediately after init/resume.
+   - Emit the phase-0 marker immediately after init/resume — the phase goes in `--data`, not as a positional: `"$WFA" event "$MTK_WF_UUID" phase_started --data '{"phase":"phase-0"}'`.
 1. Follow `.claude/skills/context-engineering/SKILL.md`.
 2. Read `CLAUDE.md`. If missing, stop and tell the engineer to run `/mtk-setup`.
 3. **Load the active tech stack:** resolve it with `bash scripts/resolve-tech-stack.sh "$PWD"` (a single word like `dotnet` or `python`). The resolver is **polyglot-monorepo aware** — for a subproject under a differently-stacked root it returns the subproject's stack via a nested `.claude/tech-stack` or a root `.claude/tech-stack.map` glob, falling back to the repo-root `.claude/tech-stack`. When the change targets a specific subtree, pass a representative path from the `change_manifest` (e.g. `bash scripts/resolve-tech-stack.sh "src/web/spa"`) rather than `$PWD`, so the workflow loads the right stack for the files it will touch. Then read `.claude/skills/tech-stack-{stack}/SKILL.md`. This provides build/test commands, ORM guidance, framework patterns, and reference file paths used throughout the workflow. If it resolves empty, do not halt: run `bash scripts/setup-detect.sh --json` (read-only) to infer the stack, and load the matching `tech-stack-{stack}` skill if one exists for the inferred primary. If inference is empty or no matching skill exists, warn the engineer that the tech stack is unconfigured (suggest `/mtk-setup`) and proceed with `CLAUDE.md`-only context.
@@ -219,7 +219,7 @@ Note: this gate controls when *Claude* asks. Harness tool-permission prompts (fi
 
 1. Re-run `git status --porcelain` and collect the currently modified/untracked paths.
 2. Compute the **collision set**: paths that are (a) in the plan's `change_manifest[].path` or any batch's `files`, AND (b) currently modified/untracked, AND (c) present in the Phase 0 *pre-existing dirty set* (dirty *before* this workflow ran — so this workflow's own spec/plan/todo writes never self-trip the gate).
-3. **No collision** → emit `phase_started phase-3` and proceed.
+3. **No collision** → emit the phase-3 marker (`"$WFA" event "$MTK_WF_UUID" phase_started --data '{"phase":"phase-3"}'`) and proceed.
 4. **Collision found** → almost always a parallel session or forgotten local edit on an in-scope file. Do **not** start editing.
    - **Interactive mode:** halt and ask via `AskUserQuestion` — options: `Stop (let me resolve the other work first)` (recommended), `Proceed anyway (I understand these files are already modified)`, `Re-scope (drop the colliding files from this run)`. Act on the answer; on `Stop`, leave the workflow active and report.
    - **Autonomous mode:** do not ask — stop and report the collision set (autonomous mode halts on scope/safety conditions, and a parallel editor on an in-scope file is one). Record `failure_stop_gate fail` only once the engineer confirms stopping; otherwise leave it pending for their decision.

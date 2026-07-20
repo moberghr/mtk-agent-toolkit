@@ -12,8 +12,9 @@ set -euo pipefail
 # Scope:  only lines under "## Requirements" (and EARS subsections) are checked;
 #         code blocks are skipped.
 
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$ROOT_DIR"
+# No cd: this linter resolves the spec paths it is handed against the caller's
+# CWD (the target repo). cd-ing to a script-derived root breaks repo-relative
+# args when MTK runs from a separate checkout — the paths would resolve there.
 
 [ $# -ge 1 ] || { printf 'usage: lint-ears.sh <spec.md>...\n' >&2; exit 2; }
 

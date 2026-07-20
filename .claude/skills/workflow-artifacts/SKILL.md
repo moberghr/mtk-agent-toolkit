@@ -33,10 +33,11 @@ Orchestration state that lives only in chat is lost on compaction or restart. Th
 
 ## Workflow
 
-1. **Resolve helper path once into `$WFA`.** The script ships at `scripts/workflow-artifact.sh` in this repo and at the same path in target installs, but a plugin-cache install may have it only under `$CLAUDE_PLUGIN_ROOT` — and that variable is sometimes unset. Resolve it once, project-first with a plugin fallback (the same idiom `spec-driven-development` uses for `learnings.sh`), then call `"$WFA"` everywhere below instead of a bare path:
+1. **Resolve helper path once into `$WFA`.** The script ships at `scripts/workflow-artifact.sh` in this repo and at the same path in target installs, but a plugin-cache install may have it only under `$CLAUDE_PLUGIN_ROOT` — and that variable is sometimes unset. Resolve it once with the same three-tier idiom `spec-driven-development` uses for `learnings.sh` — `MTK_HELPER_ROOT` first (a checkout you pin; see `CLAUDE.md`), then the project copy, then the plugin copy — and call `"$WFA"` everywhere below instead of a bare path:
    ```bash
-   WFA="$([ -f scripts/workflow-artifact.sh ] && echo scripts/workflow-artifact.sh || echo "${CLAUDE_PLUGIN_ROOT:-.}/scripts/workflow-artifact.sh")"
+   WFA="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/workflow-artifact.sh" || ([ -f scripts/workflow-artifact.sh ] && echo scripts/workflow-artifact.sh || echo "${CLAUDE_PLUGIN_ROOT:-.}/scripts/workflow-artifact.sh"))"
    ```
+   Set `MTK_HELPER_ROOT=<toolkit checkout>` to force the scripts from that clone — the reliable path when dogfooding MTK from a separate checkout with `$CLAUDE_PLUGIN_ROOT` unset, or to pin one version out of a multi-version plugin cache.
    **State is project-anchored:** the script writes `.mtk/workflows/` under `$CLAUDE_PROJECT_DIR` (falling back to the git top-level, then cwd), so when MTK skills live outside the target project (plugin/marketplace install), export `CLAUDE_PROJECT_DIR=<project root>` or run from the project root — otherwise state lands in the wrong tree.
 2. **Init at workflow start.** Capture the returned uuid into a session variable `MTK_WF_UUID`:
    ```bash

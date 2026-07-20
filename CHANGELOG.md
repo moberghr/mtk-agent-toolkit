@@ -2,6 +2,23 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.28.1] - 2026-07-20
+
+Script-plumbing fixes from a field run of the full workflow against a repo where MTK ran from a *separate* checkout with `$CLAUDE_PLUGIN_ROOT` unset. The decision layer (routing, rigor scaling, gates, drift, review) behaved well; these fixes address the plumbing that assumed the toolkit runs from within the target repo.
+
+### Fixed — silent cross-repo write in `spec-archive.sh`
+
+- **`spec-archive.sh` wrote baseline artifacts into the wrong repo.** It resolved its output root from the *script's own* location (`dirname "$0"/..`) and `cd`'d there, so when MTK ran from a separate checkout it created `docs/specs/baseline/*` and appended to `CODE_INDEX.md` inside the **toolkit clone** — while printing a success banner naming the target's paths. It now resolves the **target** repo root via `${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel)}` (mirroring `workflow-artifact.sh` / `learnings.sh`), so output always lands in the project being archived. This also fixes the sibling symptom where a valid repo-relative spec path 404'd (the arg was checked *after* the wrong `cd`).
+- **`lint-ears.sh` broke on repo-relative spec paths.** It set a script-derived `ROOT_DIR` and `cd`'d there — but never used `ROOT_DIR` again; the `cd` only served to make repo-relative file args resolve against the toolkit instead of the target. Removed; the linter now resolves its args against the caller's CWD.
+
+### Added — `MTK_HELPER_ROOT` for running from a separate checkout
+
+- **`MTK_HELPER_ROOT` env var** pins skill script-path resolvers (`workflow-artifact.sh`, `learnings.sh`) to a chosen checkout **first**, before the project copy and the plugin cache. This makes dogfooding MTK from a separate clone deterministic when `$CLAUDE_PLUGIN_ROOT` is unset, and lets you pin one version out of a multi-version plugin cache. Documented in `CLAUDE.md`; the resolvers in `workflow-artifacts`, `implement`, and `spec-driven-development` gained the three-tier idiom.
+
+### Fixed — `implement` docs mis-showed the `phase_started` event call
+
+- **`implement/SKILL.md` documented `phase_started phase-0` as a positional**, but `workflow-artifact.sh event` takes the phase in `--data` (`event <uuid> phase_started --data '{"phase":"phase-0"}'`) — following the doc literally produced `unknown flag: phase-0`. Both spots now show the `--data` form the canonical `workflow-artifacts` skill already uses.
+
 ## [7.28.0] - 2026-07-16
 
 A batch of `implement`-workflow hardening from a field run of the full build loop. Two themes plus four localized fixes: the workflow now treats *supplied inputs and parallel-session activity* as first-class, and the approval seal + scope-guard stop conflating an artifact's expected mutation/temp state with real drift.

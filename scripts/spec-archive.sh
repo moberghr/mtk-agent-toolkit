@@ -15,7 +15,11 @@ set -euo pipefail
 #
 # Idempotent: re-archiving the same slug for the same area is a no-op.
 
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+# Resolve the TARGET repo root — never this script's own location. Baseline
+# artifacts (docs/specs/baseline/*, CODE_INDEX.md) must land in the project being
+# archived, so when MTK runs from a separate checkout the output can't leak into
+# the toolkit clone. Mirrors workflow-artifact.sh / learnings.sh.
+ROOT_DIR="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 cd "$ROOT_DIR"
 
 command -v jq >/dev/null || { echo "ERROR: jq is required" >&2; exit 2; }
