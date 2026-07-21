@@ -142,8 +142,11 @@ digraph batch_fix_flow {
    D="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
    mkdir -p "$D/.mtk" && printf '%s\n' "batch-fix: <slug> — scopes by findings list, not a file manifest" > "$D/.mtk/scope-guard-skip"
    ```
+   If a shell-permission classifier blocks the `>` redirect, run just `mkdir -p "$D/.mtk"; echo "$D"` (no redirect) and write the same one-line content to `<printed $D>/.mtk/scope-guard-skip` with the Write tool. The guard reads the pointer's content and location, not the mechanism that produced it — so the Write-tool path is equivalent, and it still anchors under the resolved `$D` (not a bare project-relative path, which would miss the target from a worktree cwd).
    Anchor `.mtk/` the same way workflow state does (`$CLAUDE_PROJECT_DIR` → git top-level → cwd) so the guard hook finds the pointer even from a worktree or sub-dir cwd. `scope-guard.sh` no-ops while this pointer is fresh, regardless of which spec sidecar is newest. (An earlier version wrote a "freshest sidecar" JSON marker instead; that mis-fired on every edit whenever a concurrent feature spec was newer than the batch stub, so the guard anchored to the wrong spec's manifest.) Remove the pointer in the Final Report; it also ages out on its own (4h) if the run is interrupted.
 5. Write `tasks/todo.md`: one checkable item per finding, plus post-batch review/verify items.
+
+**Baseline the working tree before editing.** Snapshot what is *already* dirty so review can tell your work apart from it: run `git status --porcelain` (read-only) and record the files already modified/untracked that this batch does **not** touch. When the tree starts dirty, `git diff HEAD` is *not* "this batch's changes" — pre-existing edits would otherwise be attributed to the batch and draw false "missing test / missing X" findings for code you did not write (Phase 5 scopes review to the batch's own files using this baseline).
 
 ### Phase 3: Single Approval Gate (STOP HERE)
 
@@ -155,6 +158,8 @@ Exactly **one** gate for the whole batch. Render the findings list and `tasks/to
 Cite the stub and `tasks/todo.md` paths at the end as bare repo-relative paths.
 
 **`MTK_AUTO_PROCEED` opt-in.** If `MTK_AUTO_PROCEED=1` is set, the recommended option may be defaulted without an `AskUserQuestion` round-trip **only** when the findings list has zero open decisions and zero unresolved `[ASSUMED]` claims, and no finding is flagged as boundary-crossing/escalation-bound. Otherwise fall back to `AskUserQuestion`.
+
+**Gate already satisfied by an explicit directive.** The gate approves *this enumerated list*. If the engineer has already given an explicit, unambiguous go-ahead on the exact list this batch enumerated — e.g. they said "do all N in one commit" in direct response to the same numbered findings (whether you wrote them to the stub this phase or enumerated them in a prior turn the engineer then approved) — the gate is **satisfied**, not skipped. Record it satisfied in the stub/todo (cite the approving message) and proceed to Phase 4 without re-firing `AskUserQuestion`; re-asking re-litigates a decision the engineer already made. This is narrow: it holds only when the approval names or directly answers the *same* findings list. A vague "just fix it" on the original request is **not** approval of a list you produced afterward — that still gets the gate. (Inferring approval from a vague request is what Critical Rule 1 forbids; honoring an explicit directive on the enumerated list is not that.)
 
 If `AskUserQuestion` is deferred, load it with `ToolSearch select:AskUserQuestion`. If the harness does not expose it, stop and print the four options as one line and wait. Until the engineer answers: read-only Bash only, no edits. Do not start Phase 4 until an approval answer.
 
@@ -172,12 +177,14 @@ Work the findings **inline** in the main context — no subagent-per-batch. batc
 
 Scale review to what the batch actually touched:
 
-- **Always:** run `.claude/skills/pre-commit-review/SKILL.md` (or the `.claude/references/pre-commit-review-list.md` gate) over the whole diff.
+- **Always:** run `.claude/skills/pre-commit-review/SKILL.md` (or the `.claude/references/pre-commit-review-list.md` gate) over the files this batch changed — the enumerated findings' files plus any touched during the run — not a blanket `git diff HEAD`.
 - **`test-reviewer`** — only if a finding introduced or changed public behavior.
 - **`architecture-reviewer`** — only if a finding crossed a boundary/slice (rare in a batch; a finding that genuinely needs one should already have escalated).
 - **`security-and-hardening`** — only if a finding touched auth, audited state, secrets, or infra.
 
 A pure mechanical batch (renames/formatting) gets the pre-commit gate and nothing heavier.
+
+**Scope reviewers to this batch's changes.** Hand every reviewer the batch's own changed-file set (the findings' files + any edited during the run) and exclude the Phase 2 pre-existing-dirty baseline. When the tree started dirty, a reviewer given `git diff HEAD` will attribute pre-existing edits to this batch — e.g. a "missing test" finding for code you never wrote. State the in-scope files explicitly in each reviewer's prompt.
 
 ### Scope Guard
 
@@ -219,7 +226,7 @@ Report briefly:
 
 ## Critical Rules
 
-1. One approval gate on the findings list before any edit — never infer approval from the request.
+1. One approval gate on the findings list before any edit — never infer approval from a vague request. The gate is *satisfied* (not skipped) only when the engineer has already given an explicit go-ahead on the exact enumerated list; see Phase 3.
 2. Findings must be INDEPENDENT; interdependent steps of one feature are `implement`.
 3. A finding that needs a new slice/contract/re-planning escalates to implement — it is never "just another small fix."
 4. Behavioral findings get a failing test first; only mechanical findings skip TDD.
@@ -231,9 +238,9 @@ Report briefly:
 - [ ] Findings enumerated as an independent, numbered list before editing
 - [ ] Batch slug resolved against existing `*-batch.md` stubs / recovery pointer — a differing prior batch got a distinct slug, not an overwrite
 - [ ] Short findings spec stub and `tasks/todo.md` written; `.mtk/scope-guard-skip` pointer dropped for the run and removed on completion; no `docs/plans/` plan file, no JSON sidecar
-- [ ] Exactly one approval gate ran before edits (AskUserQuestion, or AUTO_PROCEED when eligible)
+- [ ] Exactly one approval gate ran before edits (AskUserQuestion; AUTO_PROCEED when eligible; or satisfied by an explicit engineer directive on the exact enumerated list)
 - [ ] Each behavioral finding has a failing-first test; mechanical findings correctly skipped TDD
 - [ ] Any new-slice/contract/re-planning finding was escalated with the `escalated from batch-fix` marker, not absorbed
-- [ ] Proportional review ran (pre-commit-review always; specialized reviewers only where a finding warranted)
+- [ ] Proportional review ran (pre-commit-review always; specialized reviewers only where a finding warranted), scoped to the batch's changed files — pre-existing dirty-tree changes were not attributed to the batch
 - [ ] Build is clean and tests pass with fresh execution evidence
 - [ ] Final report lists findings + disposition, files, tests, review, and verification evidence

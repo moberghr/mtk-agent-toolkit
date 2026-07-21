@@ -131,8 +131,15 @@ fi
 first_session=$(read_str "first_session")
 [ -z "$first_session" ] && first_session="$TODAY"
 
-# Write updated analytics (temp file to avoid truncation race)
-ANALYTICS_TMP="${ANALYTICS}.tmp"
+# Write updated analytics via a UNIQUE temp file. A fixed "${ANALYTICS}.tmp"
+# collided across invocations: several copies of this Stop hook fire per session
+# (plugin-cache versions + settings wiring), and with one shared temp name the
+# first copy's `mv` consumed the file a later copy was about to `mv`, surfacing
+# `mv: .claude/analytics.json.tmp: No such file or directory` on Stop. A per-run
+# mktemp gives each copy its own source, so concurrent copies race harmlessly on
+# the final rename (last writer wins) instead of erroring. mktemp is coreutils
+# (S3.3); .claude/ is guaranteed to exist by the init block above.
+ANALYTICS_TMP="$(mktemp "${ANALYTICS}.XXXXXX")"
 cat > "$ANALYTICS_TMP" <<EOF
 {
   "first_session": "$first_session",

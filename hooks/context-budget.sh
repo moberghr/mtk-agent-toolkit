@@ -8,17 +8,22 @@ trap _mtk_hook_diag EXIT
 # PostToolUse hook: tracks session activity and warns when context is getting heavy.
 # Maintains per-session counters in a temp file. Advisory only.
 #
-# Thresholds (tuned for Claude Code's ~200k usable context):
-#   30+ unique files read  → narrow your focus
-#   40+ modifications      → commit a checkpoint
-#   120+ total operations  → consider handoff
-#   read bytes estimate ≥ MTK_CONTEXT_BUDGET_PCT% of window → reset/handoff before degradation
+# Thresholds scale with the declared context window so a large-context model is
+# not nagged on a 200k-calibrated budget — following that advice (a mid-task
+# handoff on a 1M-context model) is actively harmful. At the default 200k window
+# they reproduce the historical values:
+#   30+ unique files read  → narrow your focus    (override: MTK_CTX_FILES_WARN)
+#   40+ modifications      → commit a checkpoint   (override: MTK_CTX_MODS_WARN)
+#   120+ total operations  → consider handoff      (override: MTK_CTX_OPS_WARN)
+#   read bytes estimate ≥ MTK_CONTEXT_BUDGET_PCT% of window → reset before degradation
 #
-# Context-budget checkpoint (borrowed from tworkflow's "reset before degradation"):
+# One knob rescales all four: set MTK_CONTEXT_WINDOW_TOKENS to your real window
+# (e.g. 1000000 for a 1M-context model) and the count thresholds scale linearly
+# from the 200k baseline; a per-threshold MTK_CTX_*_WARN override wins outright.
 #   MTK_CONTEXT_WINDOW_TOKENS  usable context window in tokens (default 200000)
 #   MTK_CONTEXT_BUDGET_PCT     consumed-% at which to nudge a handoff (default 60)
-# The estimate is bytes_read/4 — a read-bytes FLOOR (it cannot see assistant output
-# or non-read tool results), so it under-counts. Advisory only; never blocks.
+# The bytes estimate is bytes_read/4 — a read-bytes FLOOR (it cannot see assistant
+# output or non-read tool results), so it under-counts. Advisory only; never blocks.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
@@ -101,24 +106,36 @@ mtk_session_lock_release
 ADVISORY=""
 append_advisory() { ADVISORY="${ADVISORY:+$ADVISORY }$1"; }
 
-if [ "$unique_files" -ge 30 ] && [ "$warned_files" -eq 0 ]; then
+# Context-window-scaled thresholds. One knob (MTK_CONTEXT_WINDOW_TOKENS, default
+# 200000) governs the whole hook so large-context models don't get 200k-calibrated
+# nags whose advice (a mid-task handoff) would be harmful. Defaults reproduce the
+# historical 30/40/120 at a 200k window; per-threshold env overrides win outright.
+ctx_window="${MTK_CONTEXT_WINDOW_TOKENS:-200000}"
+files_warn="${MTK_CTX_FILES_WARN:-$(( 30 * ctx_window / 200000 ))}"
+mods_warn="${MTK_CTX_MODS_WARN:-$(( 40 * ctx_window / 200000 ))}"
+ops_warn="${MTK_CTX_OPS_WARN:-$(( 120 * ctx_window / 200000 ))}"
+[ "$files_warn" -lt 1 ] && files_warn=1
+[ "$mods_warn" -lt 1 ] && mods_warn=1
+[ "$ops_warn" -lt 1 ] && ops_warn=1
+
+if [ "$unique_files" -ge "$files_warn" ] && [ "$warned_files" -eq 0 ]; then
   sed -i.bak 's/warned_files=0/warned_files=1/' "$SESSION_FILE" && rm -f "${SESSION_FILE}.bak"
   append_advisory "CONTEXT BUDGET: ${unique_files} unique files read this session. Consider narrowing focus to the files that matter for your current task. Use context-engineering to load only relevant references."
 fi
 
-if [ "$mods" -ge 40 ] && [ "$warned_mods" -eq 0 ]; then
+if [ "$mods" -ge "$mods_warn" ] && [ "$warned_mods" -eq 0 ]; then
   sed -i.bak 's/warned_mods=0/warned_mods=1/' "$SESSION_FILE" && rm -f "${SESSION_FILE}.bak"
   append_advisory "CONTEXT BUDGET: ${mods} file modifications this session. Consider committing a checkpoint to preserve work. Long uncommitted sessions risk losing state on compaction."
 fi
 
-if [ "$ops" -ge 120 ] && [ "$warned_ops" -eq 0 ]; then
+if [ "$ops" -ge "$ops_warn" ] && [ "$warned_ops" -eq 0 ]; then
   sed -i.bak 's/warned_ops=0/warned_ops=1/' "$SESSION_FILE" && rm -f "${SESSION_FILE}.bak"
   append_advisory "CONTEXT BUDGET: ${ops} total operations this session. Context window may be approaching limits. If switching tasks, capture state with the handoff skill first."
 fi
 
 # Context-budget checkpoint: nudge a deliberate reset/handoff before quality degrades.
 # Estimate is a read-bytes floor (bytes_read/4); fires once per session.
-ctx_window="${MTK_CONTEXT_WINDOW_TOKENS:-200000}"
+# ctx_window resolved above with the count thresholds.
 ctx_pct="${MTK_CONTEXT_BUDGET_PCT:-60}"
 if [ "$warned_ctxpct" -eq 0 ] && [ "${bytes_read:-0}" -gt 0 ]; then
   est_tokens=$((bytes_read / 4))

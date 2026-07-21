@@ -11,6 +11,8 @@ set -euo pipefail
 #   - the tool was Bash
 #   - the tool response exceeds MTK_COMPRESS_WARN_CHARS (default 5000)
 #   - the bash command did NOT already include `mtk-compress`
+#   - the command is not a read-only inspection command (git diff/show/log/
+#     status/blame, grep/rg/ag, find, ls, tree) whose value is verbatim output
 #
 # This is advisory only — it does not modify the tool result. The compression
 # itself happens in the shell pipe (`<command> | bash scripts/mtk-compress.sh`).
@@ -56,6 +58,20 @@ else:
     cmd = ""
 
 if "mtk-compress" in cmd or "MTK_COMPRESS_DISABLED" in cmd:
+    sys.exit(0)
+
+# Inspection commands whose value is their verbatim output — diffs, matches,
+# listings — have no meaningful mtk-compress mode (the modes are tests/logs/
+# html/json) and dominate review-heavy sessions, so nagging on them is pure
+# noise. Parse the leading command word, tolerating global flags after `git`.
+_toks = cmd.strip().split()
+_head = _toks[0] if _toks else ""
+_inspection = _head in ("grep", "rg", "ag", "find", "ls", "tree")
+if _head == "git":
+    _rest = [t for t in _toks[1:] if not t.startswith("-")]
+    if (_rest[0] if _rest else "") in ("diff", "show", "log", "status", "blame"):
+        _inspection = True
+if _inspection:
     sys.exit(0)
 
 result = payload.get("tool_response") or payload.get("tool_result") or payload.get("result") or ""

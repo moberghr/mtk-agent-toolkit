@@ -2,6 +2,37 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.29.0] - 2026-07-21
+
+Maintenance driven by field use of MTK across kvika/moberghr repos.
+
+### Removed — MTK Staleness Check CI action
+
+The `templates/ci/mtk-staleness-check.yml` GitHub Actions workflow and the `setup-bootstrap` STEP 4 offer to install it are gone. The workflow ran `setup-refresh-plan.sh --check` on every PR and failed the build when MTK-generated docs drifted from source; teams did not want it as a blocking gate on their repos. The local check is unchanged — `/mtk-setup --check` (and `scripts/setup-refresh-plan.sh --check`) still run the same staleness plan on demand. The `pr-lint.yml` / `pr-review.yml` copy-install templates are unaffected.
+
+### Changed — context-budget & compress-monitor calibration (field feedback)
+
+- `context-budget.sh` now scales its file/mod/op nudges with the declared context window. `MTK_CONTEXT_WINDOW_TOKENS` (default 200000) rescales all four thresholds so a large-context (e.g. 1M) model is no longer nudged to checkpoint or hand off mid-task; per-threshold `MTK_CTX_FILES_WARN` / `MTK_CTX_MODS_WARN` / `MTK_CTX_OPS_WARN` overrides win outright. Defaults reproduce the historical 30/40/120 at a 200k window.
+- `compress-monitor.sh` no longer nags on read-only inspection commands (git diff/show/log/status/blame, grep/rg/ag, find, ls, tree) whose value is verbatim output and have no matching compress mode — cutting noise on review-heavy sessions.
+
+### Changed — batch-fix guardrails (field feedback)
+
+- The single approval gate is now explicitly *satisfied* (not skipped) when the engineer has already given an unambiguous go-ahead on the exact enumerated findings list — distinct from inferring approval from a vague request (Critical Rule 1 clarified).
+- The `.mtk/scope-guard-skip` pointer documents a Write-tool fallback for when a shell-permission classifier blocks the `>` redirect.
+- Proportional review is scoped to the batch's own changed files against a Phase-2 working-tree baseline, so pre-existing dirty-tree changes are not misattributed to the batch (no more false "missing test" findings for code the batch never touched).
+
+### Fixed — `learnings.sh` migrate title-hash dedup on quoted titles
+
+`jl_field` extracted JSON string values with a `"key":"([^"]*)"` regex that stopped at the first quote inside an escaped value and never reversed `json_escape`, so a lesson title containing `"` (e.g. `… trusting a "borrow" …`) round-tripped lossily. `migrate`'s title-hash dedup then re-added such a lesson on every marker-less re-feed, failing the `tests/hooks/test-learnings.sh` D regression (11 → 12). `jl_field` now walks the value honoring `\"` / `\\` / `\n` / `\r` / `\t` and stops only at an unescaped closing quote.
+
+## [7.28.2] - 2026-07-20
+
+### Fixed — `session-analytics.sh` cross-invocation temp-file collision
+
+Several copies of the analytics Stop hook fire per session (plugin-cache versions plus the dev-checkout settings wiring), and all wrote through one fixed temp path `.claude/analytics.json.tmp`. The first copy's `mv` consumed the file a later copy was about to `mv`, so every session surfaced a non-blocking `mv: .claude/analytics.json.tmp: No such file or directory` / `[mtk-hook:session-analytics.sh] exit 1`. Analytics were still written (the winning copy), but the error was constant noise.
+
+- `session-analytics.sh` now writes to a per-invocation `mktemp "${ANALYTICS}.XXXXXX"` instead of a shared `.tmp`, so concurrent copies race harmlessly on the final rename (last writer wins) rather than erroring. The deeper cause — multiple hook copies registered by a multi-version plugin cache — is tracked separately.
+
 ## [7.28.1] - 2026-07-20
 
 Script-plumbing fixes from a field run of the full workflow against a repo where MTK ran from a *separate* checkout with `$CLAUDE_PLUGIN_ROOT` unset. The decision layer (routing, rigor scaling, gates, drift, review) behaved well; these fixes address the plumbing that assumed the toolkit runs from within the target repo.

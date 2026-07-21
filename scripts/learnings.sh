@@ -281,9 +281,40 @@ cmd_add() {
 
 # Extract a top-level string field from a JSONL line. Best-effort, no jq.
 # Usage: jl_field "$line" id
+# Extract a JSON string value and reverse json_escape (unescape \" \\ \n \r \t).
+# A plain "key":"([^"]*)" regex is wrong: it stops at the first quote inside an
+# escaped value (a title containing \") and never unescapes, so the round-trip is
+# lossy — which broke migrate's title-hash dedup. Walk the value honoring escapes
+# and stop only at an unescaped closing quote.
 jl_field() {
   local line="$1" key="$2"
-  printf '%s\n' "$line" | sed -nE "s/.*\"${key}\":\"([^\"]*)\".*/\1/p" | head -1
+  printf '%s\n' "$line" | awk -v k="$key" '
+    {
+      needle = "\"" k "\":\""
+      idx = index($0, needle)
+      if (idx == 0) next
+      s = substr($0, idx + length(needle))
+      out = ""; i = 1; n = length(s)
+      while (i <= n) {
+        c = substr(s, i, 1)
+        if (c == "\\") {
+          nc = substr(s, i + 1, 1)
+          if (nc == "n") out = out "\n"
+          else if (nc == "r") out = out "\r"
+          else if (nc == "t") out = out "\t"
+          else out = out nc
+          i += 2
+        } else if (c == "\"") {
+          break
+        } else {
+          out = out c
+          i += 1
+        }
+      }
+      print out
+      exit
+    }
+  '
 }
 
 # Extract a JSON array of strings as a comma-separated list.
