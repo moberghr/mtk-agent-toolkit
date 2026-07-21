@@ -129,6 +129,18 @@ done <<< "$ALLOWED_FILES"
 if [ "$MATCHED" -eq 0 ]; then
   SPEC_NAME=$(basename "$SPEC_JSON" .json)
   mtk_record_scope_guard_warning
+  # Enforcing mode (opt-in, borrow — kyzo allowlist guard, P0#1). Default is
+  # advisory (tier-1, exit 0): emit a warning, never block. When
+  # MTK_SCOPE_GUARD_ENFORCE is truthy (1/true/yes), a write to a file outside the
+  # approved change_manifest/test_manifest is a HARD DENY (exit 2) with a single
+  # named reason — deterministic scope enforcement instead of a persuadable nudge.
+  # Off by default so existing installs and manifest-less flows are unaffected.
+  case "${MTK_SCOPE_GUARD_ENFORCE:-0}" in
+    1|true|TRUE|yes|YES|on|ON)
+      echo "MTK_SCOPE_GUARD: DENY ${REL_PATH} — not in approved manifest (${SPEC_NAME}). Add it to the spec's change_manifest, or unset MTK_SCOPE_GUARD_ENFORCE to fall back to advisory mode." >&2
+      exit 2
+      ;;
+  esac
   mtk_emit_additional_context "PreToolUse" "SCOPE GUARD: ${REL_PATH} is not in the approved spec (${SPEC_NAME}). If this change is necessary, update the spec's change_manifest first. Undeclared file modifications are the #1 source of spec drift."
 fi
 

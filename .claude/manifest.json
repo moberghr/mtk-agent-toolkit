@@ -1662,6 +1662,12 @@
       "action": "sync",
       "description": "Deterministic lint for fenced bash blocks inside skills \u2014 flags grep brace-glob includes, PATH clobbering, and ungrouped find -o expressions"
     },
+    "scripts/poison-lint.sh": {
+      "source": "scripts/poison-lint.sh",
+      "target": "scripts/poison-lint.sh",
+      "action": "sync",
+      "description": "Poison-floor supply-chain lint \u2014 scans shipped skills/agents/hook config for prompt-injection, credential-exfil, and hidden-Unicode red flags (assay-borrow)"
+    },
     "scripts/run-fixtures.sh": {
       "source": "scripts/run-fixtures.sh",
       "target": "scripts/run-fixtures.sh",
