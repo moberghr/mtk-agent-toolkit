@@ -56,6 +56,20 @@ scripts reading `.mtk/workflows/` state.
 
 Priority = value × portability to MTK's markdown/bash/JSON stack.
 
+> **Prior-work reconciliation (added 2026-07-21, from dogfooding this backlog into MTK).**
+> This backlog was first written without auditing `hooks/` in depth, and it over-stated
+> the gap. A `prior-work-check` pass found MTK already ships most of the P0 enforcement
+> surface: **P0-1** — `hooks/scope-guard.sh` already parses the spec `change_manifest`/
+> `test_manifest` and flags out-of-scope edits; it was only *advisory* (exit 0). Now
+> shipped with an opt-in **enforcing mode** (`MTK_SCOPE_GUARD_ENFORCE=1` → hard deny,
+> exit 2). **P0-2/P0-3** — the `verify-completion` Stop hook already enforces
+> cited-command completion evidence, and `scope-guard` already computes manifest
+> membership; these are refinements of an existing surface, not new builds. **P0-4** —
+> `scripts/verify-commands.sh` already runs named commands and reports JSON (adjacent).
+> **P0-5 (poison-floor lint) was the one genuine gap** and is now implemented as
+> `scripts/poison-lint.sh`, wired into `validate-toolkit.sh` (hard FAIL) and `mtk-doctor`.
+> Lesson: run MTK's own `prior-work-check` before trusting any borrow backlog.
+
 ### P0 — high value, directly portable
 
 1. **PreToolUse allowlist guard armed from the approved plan.** *(kyzodb/plan, fable-director)*

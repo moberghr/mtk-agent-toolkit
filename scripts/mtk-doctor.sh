@@ -372,6 +372,25 @@ else
 fi
 
 # ──────────────────────────────────────────────
+# SECURITY (poison-floor supply-chain lint)
+# ──────────────────────────────────────────────
+# Scan shipped context-entering artifacts (skills/agents/hook config) for
+# prompt-injection / credential-exfil / hidden-Unicode red flags. See P0#5.
+if [ -f "scripts/poison-lint.sh" ]; then
+  POISON_OUT="$(bash scripts/poison-lint.sh --quiet 2>&1 || true)"
+  POISON_SUMMARY="$(printf '%s\n' "$POISON_OUT" | grep '^poison-lint:' | tail -1 || true)"
+  if printf '%s\n' "$POISON_OUT" | grep -q '^FAIL '; then
+    record FAIL security "poison-floor lint found injection/exfil patterns" "${POISON_SUMMARY:-see: bash scripts/poison-lint.sh}"
+  elif printf '%s\n' "$POISON_OUT" | grep -q '^WARN '; then
+    record WARN security "poison-floor lint advisories" "${POISON_SUMMARY:-see: bash scripts/poison-lint.sh}"
+  else
+    record PASS security "poison-floor lint clean" "${POISON_SUMMARY:-no injection/exfil patterns in shipped artifacts}"
+  fi
+else
+  record WARN security "poison-floor lint unavailable" "scripts/poison-lint.sh not found"
+fi
+
+# ──────────────────────────────────────────────
 # CONTEXT
 # ──────────────────────────────────────────────
 # Always-on context cost: what loads into every session before the first prompt
