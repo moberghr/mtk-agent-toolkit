@@ -21,6 +21,10 @@ The `templates/ci/mtk-staleness-check.yml` GitHub Actions workflow and the `setu
 - The `.mtk/scope-guard-skip` pointer documents a Write-tool fallback for when a shell-permission classifier blocks the `>` redirect.
 - Proportional review is scoped to the batch's own changed files against a Phase-2 working-tree baseline, so pre-existing dirty-tree changes are not misattributed to the batch (no more false "missing test" findings for code the batch never touched).
 
+### Fixed — `learnings.sh` migrate title-hash dedup on quoted titles
+
+`jl_field` extracted JSON string values with a `"key":"([^"]*)"` regex that stopped at the first quote inside an escaped value and never reversed `json_escape`, so a lesson title containing `"` (e.g. `… trusting a "borrow" …`) round-tripped lossily. `migrate`'s title-hash dedup then re-added such a lesson on every marker-less re-feed, failing the `tests/hooks/test-learnings.sh` D regression (11 → 12). `jl_field` now walks the value honoring `\"` / `\\` / `\n` / `\r` / `\t` and stops only at an unescaped closing quote.
+
 ## [7.28.2] - 2026-07-20
 
 ### Fixed — `session-analytics.sh` cross-invocation temp-file collision
