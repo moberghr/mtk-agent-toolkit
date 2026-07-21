@@ -32,7 +32,6 @@ Generated/Updated:
   ✓ .claude/references/decisions.md — [seeded | preserved (existing)]
   ✓ .claude/settings.json — merged [N] stack-specific entries
   ✓ Git pre-commit hook: [installed | ⚠️ existing hook found, skipped]
-  ✓ CI staleness gate: [installed | declined | skipped (--non-interactive) | already exists]
   ✓ Tool prerequisites: [all found | ⚠️ N missing — see details above]
   ✓ Command verification: [N verified, N unverified, N skipped | skipped via --no-verify-commands]
   [if any unverified:]

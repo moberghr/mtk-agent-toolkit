@@ -1,6 +1,6 @@
 {
-  "version": "7.28.2",
-  "updated": "2026-07-20",
+  "version": "7.29.0",
+  "updated": "2026-07-21",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -2264,12 +2264,6 @@
       "target": ".claude/references/product-context.md",
       "action": "sync",
       "description": "Templates and generation rules for product.md and decisions.md, read on-demand by setup-bootstrap STEP 3.8"
-    },
-    "templates/ci/mtk-staleness-check.yml": {
-      "source": "templates/ci/mtk-staleness-check.yml",
-      "target": "templates/ci/mtk-staleness-check.yml",
-      "action": "sync",
-      "description": "GitHub Actions template \u2014 pins the toolkit checkout to the installed version and fails the PR when generated setup artifacts have drifted"
     },
     "evals/setup-bootstrap/grader.md": {
       "source": "evals/setup-bootstrap/grader.md",

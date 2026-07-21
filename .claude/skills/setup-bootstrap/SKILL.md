@@ -415,7 +415,7 @@ The per-stack substitution tables (which generic placeholder maps to which concr
 The once-consulted setup procedures — the git pre-commit hook, CI staleness gate, skills/agents checklist, `pre-commit-review-list.md` selection, `tasks/` directory, `.mtkignore`, `.claudeignore`, analyzer configuration, the .NET companion plugin, recommended tooling, the `.claude/mtk-version.json` version stamp, and cross-agent compatibility mirrors — live in **`.claude/references/bootstrap-supporting-files.md`**. Read it now and follow it.
 
 **Decisions that stay in force (surfaced here so they bind without the Read):**
-- Never overwrite an already-present git pre-commit hook, `.mtkignore`, `.claudeignore`, `pre-commit-review-list.md`, or `mtk-staleness-check.yml` — skip it and report it.
+- Never overwrite an already-present git pre-commit hook, `.mtkignore`, `.claudeignore`, or `pre-commit-review-list.md` — skip it and report it.
 - Keep `tasks/lessons.md` tracked (never gitignore it); `.mtkignore` and `.claudeignore` are committed too.
 - Recommended tooling and the .NET companion plugin are surfaced for the engineer but never installed automatically.
 - Cross-agent config mirrors require an explicit ask — never orphan a tool a team already adopted.

@@ -41,27 +41,9 @@ The hook source lives in the **plugin checkout**, not the target repo. Install i
 
 The hook runs the plugin's `pre-commit-linters.sh --cached` (< 1 second) against **this repo's** staged changes — it loads pattern packs from the plugin checkout but diffs the repo being committed to — and blocks on critical findings. If the linter can't be found it warns to stderr and lets the commit through (never a silent pass, never a hard block for a tooling gap). Engineers bypass with `git commit --no-verify`. The full AI review (`/mtk review before commit`) remains a separate, manual step.
 
-### CI Staleness Gate (optional)
+### CI PR Templates (optional)
 
-If this repo hosts on GitHub — `.github/workflows/` already exists, OR `git remote get-url origin` contains `github.com` — offer to install the CI staleness gate template. This is the `--check` loop's CI counterpart: it fails a PR when MTK-generated artifacts drift from source (D5, `docs/specs/2026-07-03-v719-setup-improvements.md`).
-
-1. **Skip entirely** if neither signal is present (no `.github/workflows/` and no GitHub remote) — this is not a report-worthy skip, just move on.
-2. **`--non-interactive`:** skip silently, no `AskUserQuestion`. Note it in the STEP 5 report as `skipped (--non-interactive)`.
-3. **Already exists:** if `.github/workflows/mtk-staleness-check.yml` is already present, never overwrite it — report `already exists` in STEP 5.
-4. **Otherwise, ask via `AskUserQuestion`:**
-   ```
-   question: "Install a CI staleness gate that fails PRs when MTK-generated files drift out of date?"
-   header: "CI staleness gate"
-   options:
-     - label: "Yes, install the workflow"
-       description: "Adds .github/workflows/mtk-staleness-check.yml — runs setup-refresh-plan.sh --check on every PR"
-     - label: "No, skip"
-       description: "Don't add a GitHub Actions workflow"
-   ```
-5. **On "Yes":** copy `templates/ci/mtk-staleness-check.yml` (path resolved per `## MTK File Resolution` — read from `$CLAUDE_PLUGIN_ROOT/templates/ci/mtk-staleness-check.yml` when set, else the project-relative path) to `.github/workflows/mtk-staleness-check.yml`, creating `.github/workflows/` if missing. Report `installed`.
-6. **On "No":** report `declined`.
-
-Two further PR templates are available for teams that want lint/review on GitHub PRs: `templates/ci/pr-lint.yml` (deterministic linter only, no secrets) and `templates/ci/pr-review.yml` (adds AI review; needs `ANTHROPIC_API_KEY`). Both check out the MTK toolkit alongside the PR and run its linter/rubric against the target checkout — nothing is vendored in. Mention them in the STEP 5 report as optional copy-installs; do not install them automatically.
+Two PR templates are available for teams that want lint/review on GitHub PRs: `templates/ci/pr-lint.yml` (deterministic linter only, no secrets) and `templates/ci/pr-review.yml` (adds AI review; needs `ANTHROPIC_API_KEY`). Both check out the MTK toolkit alongside the PR and run its linter/rubric against the target checkout — nothing is vendored in. Mention them in the STEP 5 report as optional copy-installs; do not install them automatically.
 
 ### Skills and Agents
 Ensure the following files exist:
