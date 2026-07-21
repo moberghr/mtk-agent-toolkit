@@ -336,6 +336,13 @@ fi
 require_file "scripts/lint-skill-bash.sh"
 bash scripts/lint-skill-bash.sh || fail "skill bash lint failed (run: bash scripts/lint-skill-bash.sh)"
 
+# Poison-floor supply-chain lint (borrow — assay poison floor; see P0#5). Scans the
+# context-entering artifacts MTK ships (skills, agents, plugin hook config) for
+# prompt-injection / credential-exfil / hidden-Unicode red flags. Hard FAIL on any
+# P-* FAIL finding; advisory WARN findings do not fail the build.
+require_file "scripts/poison-lint.sh"
+bash scripts/poison-lint.sh --quiet || fail "poison-floor lint failed (run: bash scripts/poison-lint.sh)"
+
 # Advisory: multi-sentence skill descriptions hurt routing (S2.5) — warn only, never fail.
 for skill in .claude/skills/*/SKILL.md; do
   [ -f "$skill" ] || continue
