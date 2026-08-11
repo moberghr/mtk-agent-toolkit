@@ -58,7 +58,9 @@ JSON findings on stdout.
 --cached      Scan staged changes (default)
 --head        Scan working-tree changes vs HEAD
 --range <e>   Scan the given git diff range (e.g. origin/main...HEAD)
---stack       Override tech stack detection (default reads .claude/tech-stack)
+--stack       Override tech stack detection (default resolves polyglot-aware via
+              scripts/resolve-tech-stack.sh: subproject .claude/tech-stack, then
+              root .claude/tech-stack.map, then root .claude/tech-stack)
 --human       Human-readable output instead of JSON
 EOF
       exit 0
@@ -73,8 +75,17 @@ if [ "$DIFF_SOURCE" = "range" ] && [ -z "$DIFF_RANGE" ]; then
 fi
 
 # --- Stack detection ---
-if [ -z "$STACK" ] && [ -f .claude/tech-stack ]; then
-  STACK="$(tr -d '[:space:]' < .claude/tech-stack)"
+# An explicit --stack always wins. Otherwise resolve polyglot-aware (subproject
+# `.claude/tech-stack` → root `tech-stack.map` glob → root file) so a subtree
+# with its own stack gets its own linter packs instead of the root's.
+if [ -z "$STACK" ]; then
+  _RTS="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)/scripts/resolve-tech-stack.sh"
+  [ -f "$_RTS" ] || _RTS="${CLAUDE_PLUGIN_ROOT:-.}/scripts/resolve-tech-stack.sh"
+  if [ -f "$_RTS" ]; then
+    STACK="$(bash "$_RTS" "$PWD" 2>/dev/null || true)"
+  elif [ -f .claude/tech-stack ]; then
+    STACK="$(tr -d '[:space:]' < .claude/tech-stack)"
+  fi
 fi
 
 # --- Build pattern list from composable packs ---

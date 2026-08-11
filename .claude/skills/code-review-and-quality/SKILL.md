@@ -59,7 +59,7 @@ If reviewing a PR or branch with CI runs, check CI status before starting the nu
 
 1. Load standards:
    - `CLAUDE.md`
-   - `.claude/tech-stack` to identify the active stack, then `.claude/skills/tech-stack-{stack}/SKILL.md` for stack-specific reference paths
+   - The active stack via `bash scripts/resolve-tech-stack.sh --check <changed file paths>` — polyglot-aware (subproject `.claude/tech-stack` → root `.claude/tech-stack.map` glob → root file), and `--check` warns when the resolved stack disagrees with the files under review, which would otherwise mean reviewing a subtree against the wrong guidelines. Then `.claude/skills/tech-stack-{stack}/SKILL.md` for stack-specific reference paths
    - The coding guidelines and other reference files listed in the tech stack's `## Reference Files` section
    - `.claude/references/security-checklist.md`
    - `.claude/references/testing-patterns.md`
@@ -97,6 +97,25 @@ If reviewing a PR or branch with CI runs, check CI status before starting the nu
      schema; merge and dedupe like the others. At LIGHT/STANDARD rigor it is
      skipped (the diff is small enough that organizational context rarely
      changes the verdict).
+4b. **Account for every dispatched lane before reading any findings.**
+    Build the roster first — one row per reviewer you dispatched in step 4, with its
+    outcome: `PASS`, `NEEDS_CHANGES`, `ABSTAINED`, or `NO_RESPONSE`. See
+    **Lane Accounting** in `.claude/references/review-finding-schema.md`.
+
+    - A lane dispatched but returning nothing (crashed, returned null, timed out,
+      emitted unparseable output) is `NO_RESPONSE`, which counts as `ABSTAINED`.
+      **Silence is not assent.**
+    - **The overall verdict cannot be `PASS` while any lane is `ABSTAINED` or
+      `NO_RESPONSE`** — the aggregate becomes `NEEDS_HUMAN_REVIEW`. The change may
+      well be fine; this review did not establish that.
+    - Report the roster alongside the findings. "3 reviewers, 0 findings" is not a
+      reportable result when one of the three never came back.
+    - When lanes overlap, corroboration outranks volume: a finding raised
+      independently by two lanes ranks above one raised loudly by one lane.
+
+    Do this *before* aggregating findings. Counting findings first and reconciling
+    lanes afterwards is how an unrun lane becomes an implicit pass.
+
 5. Categorize findings per the schema in `.claude/references/review-finding-schema.md`:
     - Apply the **False-Positive Exclusion List** in that schema before
       scoring confidence — drop candidates that match an FP category rather
@@ -152,6 +171,8 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared MTK rationaliza
 
 ## Verification
 
+- [ ] Every dispatched lane is accounted for as PASS / NEEDS_CHANGES / ABSTAINED / NO_RESPONSE
+- [ ] Verdict is not PASS if any lane abstained or never returned
 - [ ] Findings are actionable and severity-ordered
 - [ ] Review references governing rules or checklists
 - [ ] Testing gaps are explicitly called out or explicitly cleared

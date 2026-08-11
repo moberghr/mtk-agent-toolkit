@@ -219,6 +219,14 @@ If you cannot complete the review, report your status honestly:
 
 Never produce a low-confidence review to avoid reporting BLOCKED. A clear escalation is more valuable than a garbage approval.
 
+**Emit the abstention in the JSON block, not only in prose.** Set `"verdict": "ABSTAINED"`
+with a populated `abstention.reason` naming the concrete blocker, and `abstention.checked`
+listing the axes you did complete. Do **not** emit an empty `findings[]` with a PASS-shaped
+result — downstream that is indistinguishable from "I looked and it is clean", and a missing
+reviewer must never read as a clean one. Omit `scores` for dimensions you could not evaluate
+rather than inventing a passing number. See `.claude/references/review-finding-schema.md`
+→ **ABSTAINED**.
+
 ## Quality Checklist
 
 Before you return, verify your own output — a review that fails these is not done:

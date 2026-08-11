@@ -9,7 +9,13 @@ trap _mtk_hook_diag EXIT
 # Emits a warning when a recent spec exists but lacks a behavioral diff.
 # Non-blocking — advisory only, per team adoption strategy.
 
-SPECS_DIR="docs/specs"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/lib/hook-io.sh"
+
+# Anchored to the resolved artifact root, not the CWD — a subtree that owns its
+# own docs/specs must be checked against its own specs.
+SPECS_DIR="$(mtk_artifact_root "$PWD" 2>/dev/null || printf '.')/docs/specs"
 [ -d "$SPECS_DIR" ] || exit 0
 
 # Find specs modified in the last 24 hours

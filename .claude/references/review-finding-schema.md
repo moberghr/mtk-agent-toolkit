@@ -19,7 +19,12 @@ full review envelope expected from review skills and reviewer agents.
 
 ```json
 {
-  "verdict": "PASS | NEEDS_CHANGES",
+  "verdict": "PASS | NEEDS_CHANGES | ABSTAINED",
+  "abstention": {
+    "reason": "Required when verdict is ABSTAINED. One line: what stopped the review.",
+    "stage": "load-standards | get-diff | review | score | emit",
+    "checked": ["axes that WERE completed before the reviewer gave up"]
+  },
   "threshold": 80,
   "summary": {
     "critical": 0,
@@ -175,6 +180,7 @@ honest filter.
 
 ## Verdict Mapping
 
+- **Review could not be completed → `ABSTAINED`** (evaluated first; see below)
 - Any `critical` finding at or above threshold → `NEEDS_CHANGES`
 - Any finding with `gate: "mandatory"` → `NEEDS_CHANGES`
 - **Any `scores.<dim>.value < 7` → `NEEDS_CHANGES`** (per the scored-evaluator contract)
@@ -182,6 +188,62 @@ honest filter.
 - Otherwise → `PASS`
 
 Warnings and suggestions do not force `NEEDS_CHANGES` but should be addressed.
+
+## ABSTAINED — a lane that did not run is not a clean lane
+
+`PASS` and `NEEDS_CHANGES` both assert that a review *happened*. A reviewer that errored,
+timed out, could not read the diff, ran out of context, or produced unparseable output has
+asserted nothing — and the single most dangerous thing it can do is emit an empty
+`findings[]`, because downstream that is indistinguishable from "I looked and it is clean."
+
+**A missing reviewer must never read as a clean one.**
+
+Emit `ABSTAINED` when any of these hold:
+
+- Required standards, the diff, or the files under review could not be loaded.
+- The change is too large or too unfamiliar to review honestly within budget.
+- The reviewer would otherwise emit an empty `findings[]` **without** being able to write an
+  honest `below_threshold_rationale` naming what it checked.
+- Any error, timeout, or truncation prevented completing the axes the reviewer owns.
+
+Rules for an abstaining reviewer:
+
+- `abstention.reason` is **required** and must name the concrete blocker — not "unable to
+  complete". `"git diff returned empty and no files were supplied"` is a reason.
+- `abstention.checked` lists axes genuinely completed before stopping. Partial work is still
+  useful; claiming coverage that did not happen is not.
+- `findings[]` may contain real findings discovered before abstaining. They are reported,
+  but they do **not** convert the verdict to `PASS`.
+- `scores` may be omitted entirely. A dimension that was not evaluated must **not** be
+  scored — inventing a 7 to fill the schema is the exact failure this verdict exists to stop.
+- Never choose `ABSTAINED` to dodge work. Abstention is for genuine inability, not
+  reluctance. A reviewer that can review and does not is failing, not abstaining.
+
+## Lane Accounting (orchestrator contract)
+
+An orchestrator that dispatches N reviewer lanes must account for all N. For each lane
+record exactly one outcome:
+
+| Outcome | Meaning |
+|---|---|
+| `PASS` | Reviewer ran and found nothing blocking |
+| `NEEDS_CHANGES` | Reviewer ran and found blocking issues |
+| `ABSTAINED` | Reviewer ran and reported it could not complete |
+| `NO_RESPONSE` | Lane was dispatched and never returned (crash, null, timeout) |
+
+Binding rules:
+
+1. **A dispatched lane that returns nothing is `NO_RESPONSE`, and `NO_RESPONSE` is treated
+   exactly as `ABSTAINED`.** Silence is not assent.
+2. **The overall verdict cannot be `PASS` while any lane is `ABSTAINED` or `NO_RESPONSE`.**
+   The aggregate is `NEEDS_HUMAN_REVIEW`: the change may be fine, but the toolkit did not
+   establish that.
+3. **Report the roster, not just the findings.** State which lanes ran, which abstained, and
+   why. "3 reviewers, 0 findings" is not a reportable result when one of the three abstained.
+4. **Corroboration outranks volume.** When lanes overlap, a finding raised independently by
+   two lanes ranks above one raised loudly by a single lane. Dedupe by `(file, line, rule)`.
+5. **Never silently re-dispatch to turn an abstention into a pass.** A retry is allowed; the
+   abstention still appears in the roster with both attempts recorded.
 
 ## Scores Block (Scored Adversarial Evaluator)
 

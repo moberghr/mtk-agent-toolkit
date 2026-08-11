@@ -166,8 +166,9 @@ digraph spec_flow {
    acknowledgement. Output is appended under a `## Prior Work Check` section
    in the spec markdown so reviewers can see what was checked.
 9. Persist the spec to disk:
-   - Create `docs/specs/` if it does not exist.
-   - Compute the base target: `docs/specs/YYYY-MM-DD-<feature-slug>` (no extension yet).
+   - **Resolve the artifact root first:** `bash scripts/resolve-artifact-root.sh "<a path the change touches>"`. Every `docs/specs/...` path below is relative to **that** root, not automatically the repo root. In a polyglot repo a subtree that owns its artifacts (its own `docs/specs/` plus a `CLAUDE.md`) keeps them — writing to the repo root instead would scatter one project's specs across two locations. A repo with no such subtree resolves to the repo root, so single-project repos are unaffected.
+   - Create `docs/specs/` under the resolved root if it does not exist.
+   - Compute the base target: `<artifact-root>/docs/specs/YYYY-MM-DD-<feature-slug>` (no extension yet).
    - **Version detection:** Check whether `docs/specs/YYYY-MM-DD-<feature-slug>.md` already exists.
      - If it does NOT exist → write to `docs/specs/YYYY-MM-DD-<feature-slug>.md` (no suffix).
      - If it DOES exist → find the highest existing `-vN` suffix:

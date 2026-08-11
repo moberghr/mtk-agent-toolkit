@@ -9,6 +9,10 @@ axes:
   decision: process
   topic: git
   scope: global
+trigger:
+  tool: "Bash"
+  pattern: "git[[:space:]]+(commit|push|tag)|gh[[:space:]]+(pr|release)[[:space:]]+create"
+strength: inject
 ---
 
 # Git & Workflow (S4)

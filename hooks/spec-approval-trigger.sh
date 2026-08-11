@@ -32,7 +32,19 @@ FILE_PATH="$(mtk_extract_file_path "$INPUT" 2>/dev/null || echo "")"
 [ -z "$FILE_PATH" ] && exit 0
 
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-REL_PATH="${FILE_PATH#"$REPO_ROOT"/}"
+# Relative to the ARTIFACT root, not the repo root: a subtree that owns its own
+# docs/specs yields e.g. `web/docs/specs/x.md` against the repo root, which the
+# `docs/specs/*` match below would miss entirely. Resolving from the edited
+# file's own path makes the match correct in both layouts (they are identical
+# when no subtree owns artifacts).
+#
+# Spelling-robust too: a plain string strip no-ops when the payload spells the
+# root differently than git does (case-insensitive FS, symlinked root), leaving
+# REL_PATH absolute so the match misses and this trigger silently never fires.
+ARTIFACT_ROOT="$(mtk_artifact_root "$FILE_PATH" 2>/dev/null || printf '%s' "$REPO_ROOT")"
+REL_PATH="$(mtk_repo_relative_path "$FILE_PATH" "$ARTIFACT_ROOT" 2>/dev/null \
+  || mtk_repo_relative_path "$FILE_PATH" "$REPO_ROOT" 2>/dev/null \
+  || printf '%s' "$FILE_PATH")"
 
 # Fire for approved SCOPE artifacts: specs and plans. tasks/todo.md is
 # deliberately excluded — it is mutable progress state, not sealed scope, so a

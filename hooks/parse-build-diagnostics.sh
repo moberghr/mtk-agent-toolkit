@@ -31,7 +31,9 @@ Parses build tool diagnostics into review-finding-schema JSON.
 Reads from stdin if --file is not specified.
 
 --format    Override format detection (default: auto-detect from input)
---stack     Override tech stack (default: reads .claude/tech-stack)
+--stack     Override tech stack (default: resolves polyglot-aware via
+            scripts/resolve-tech-stack.sh — subproject .claude/tech-stack,
+            then root .claude/tech-stack.map, then root .claude/tech-stack)
 --file      Read from file instead of stdin
 EOF
       exit 0
@@ -41,8 +43,17 @@ EOF
 done
 
 # --- Stack detection ---
-if [ -z "$STACK" ] && [ -f .claude/tech-stack ]; then
-  STACK="$(tr -d '[:space:]' < .claude/tech-stack)"
+# An explicit --stack always wins. Otherwise resolve polyglot-aware (subproject
+# `.claude/tech-stack` → root `tech-stack.map` glob → root file) so build output
+# from a subtree is parsed with that subtree's diagnostic patterns.
+if [ -z "$STACK" ]; then
+  _RTS="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)/scripts/resolve-tech-stack.sh"
+  [ -f "$_RTS" ] || _RTS="${CLAUDE_PLUGIN_ROOT:-.}/scripts/resolve-tech-stack.sh"
+  if [ -f "$_RTS" ]; then
+    STACK="$(bash "$_RTS" "$PWD" 2>/dev/null || true)"
+  elif [ -f .claude/tech-stack ]; then
+    STACK="$(tr -d '[:space:]' < .claude/tech-stack)"
+  fi
 fi
 
 # --- Read input ---

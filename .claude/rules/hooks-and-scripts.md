@@ -6,6 +6,10 @@ axes:
   decision: process
   topic: hooks
   scope: global
+trigger:
+  tool: "Edit|Write"
+  path: "^(hooks|scripts)/"
+strength: inject
 ---
 
 # Hooks & Scripts (S3)

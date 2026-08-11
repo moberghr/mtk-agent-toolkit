@@ -28,9 +28,12 @@ if [ -f .claude/tech-stack ]; then
   fi
 fi
 
-# In-progress spec (JSON sidecar — critical for drift detection)
-if [ -d docs/specs ]; then
-  RECENT_SPEC=$(find docs/specs -name '*.json' -mtime -1 2>/dev/null | head -1 || true)
+# In-progress spec (JSON sidecar — critical for drift detection). Anchored to
+# the resolved artifact root so a subtree that owns its specs is re-injected
+# after compaction instead of the repo root's unrelated ones.
+MTK_ARTIFACT_DIR="$(mtk_artifact_root "$PWD" 2>/dev/null || printf '.')"
+if [ -d "$MTK_ARTIFACT_DIR/docs/specs" ]; then
+  RECENT_SPEC=$(find "$MTK_ARTIFACT_DIR/docs/specs" -name '*.json' -mtime -1 2>/dev/null | head -1 || true)
   if [ -n "${RECENT_SPEC:-}" ]; then
     CONTEXT="${CONTEXT} Active spec: ${RECENT_SPEC} — read before resuming implementation or review."
   fi

@@ -82,8 +82,12 @@ checks before scoring:
 2. **Files and paths referenced exist.** Extract any path-like strings
    (`src/...`, `tests/...`, `app/...`). Confirm each path resolves. Stale
    paths from old layouts are common rot.
-3. **Tech stack matches.** Read `.claude/tech-stack`. If CLAUDE.md describes a
-   different stack, that is a Critical currency issue.
+3. **Tech stack matches.** Resolve with `bash scripts/resolve-tech-stack.sh "$PWD"`.
+   If CLAUDE.md describes a different stack, that is a Critical currency issue.
+   In a polyglot repo, a root CLAUDE.md that names only one stack while other
+   subtrees declare their own is a currency issue too — it should name the
+   per-subtree pins (`<subtree>/.claude/tech-stack` or `.claude/tech-stack.map`)
+   so a reader is not handed the root's build commands for every directory.
 
 Record each broken reference. These are evidence for the Currency criterion.
 

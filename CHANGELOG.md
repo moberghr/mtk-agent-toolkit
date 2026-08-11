@@ -2,6 +2,40 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.30.0] - 2026-08-11
+
+Polyglot-monorepo support and a class of silent guard failures, both driven by field use of MTK in a mixed-stack repo (.NET root with a Vite/TypeScript subtree owning its own `docs/specs/` and `CLAUDE.md`).
+
+### Fixed — guards failed open under a path-spelling mismatch (security relevant)
+
+`scope-guard.sh`, `read-guard.sh`, `spec-approval-trigger.sh` and `rule-trigger.sh` each derived a repo-relative path with a plain `"${FILE_PATH#"$REPO_ROOT"/}"` string strip. `REPO_ROOT` comes from `git rev-parse --show-toplevel` (canonical case), while the payload path is spelled however the session was launched — and a case-insensitive filesystem serves the same checkout as both `/Users/x/Dev/repo` and `/Users/x/dev/repo` (`pwd -P` resolves symlinks but not case). The strip then silently no-opped, `REL_PATH` stayed absolute, every `case ... in docs/specs/*)` match missed, and the hook exited 0. **`scope-guard` treats a still-absolute path as "outside the repo", so it failed open on every edit.** New shared helper `mtk_repo_relative_path` compares by device+inode, so the result never depends on spelling; it also supersedes the ad-hoc lowercase retry that had been applied to `rule-trigger.sh` alone. Recorded as S1.17.
+
+### Fixed — `.claude/tech-stack.map` globs never matched under a symlinked root
+
+`resolve-tech-stack.sh` built its target directory with a logical `pwd` while the repo root came from git as a physical path. Under any symlinked root the prefix strip no-opped and **every `tech-stack.map` glob silently failed to match**, degrading to the root default with no diagnostic. Resolved with `pwd -P`.
+
+### Added — artifact-root resolution for polyglot repos
+
+`scripts/resolve-artifact-root.sh` resolves where `docs/specs/` and `docs/plans/` live for a given path: `$MTK_ARTIFACT_ROOT` → nearest `<dir>/.claude/artifact-root` marker → nearest directory strictly below the repo root holding **both** `CLAUDE.md` and `docs/specs/` → repo root. Closest declaration wins, and both signals are required so neither a stray `docs/specs/` nor a stray nested `CLAUDE.md` can hijack resolution. A repo with no qualifying subtree resolves to the repo root, so single-project repos are unaffected. Wired into `scope-guard`, `spec-approval-trigger`, `post-compact`, `verify-behavioral-diff`, `session-analytics`, `spec-archive.sh` and `repo-health-score.sh`, plus `spec-driven-development` and `batch-fix`. Recorded as S1.16.
+
+### Changed — polyglot tech-stack resolution is now actually wired up
+
+`resolve-tech-stack.sh` existed but had only two callers. Six sites still inlined a repo-root-only read and would hand `dotnet build` to a Vite subtree: `api-compat-check.sh`, `pre-commit-linters.sh`, `parse-build-diagnostics.sh`, `generate-tool-configs.sh`, `generate-agents-md.sh`, `repo-health-score.sh`. All now resolve through it (explicit `--stack` overrides still win), and seven skills carry the polyglot wording. `repo-health-score.sh` check 3 now scores whether a stack *resolves* rather than whether the root file exists — a correctly per-subtree-pinned repo previously scored "missing".
+
+### Added — `resolve-tech-stack.sh --check`
+
+Warns when the resolved stack disagrees with the extensions of the files being touched (resolves `dotnet`, but the targets are `.tsx`). Advisory only: never blocks, never changes the resolved value or exit code. Non-stack-bearing extensions (`.md`, `.json`, `.sh`) are ignored.
+
+### Fixed — analytics scattered across subtrees
+
+`session-analytics.sh` wrote to a bare `.claude/analytics.json`, so running commands with a subtree CWD minted a second analytics file; its spec and lesson counts were cwd-relative too. Now anchored to the project root (`analytics-report.sh` likewise), with spec counting anchored to the resolved artifact root.
+
+### Changed — batch-fix grouping and gate staleness
+
+- Batches past ~5 findings now group into labelled clusters with a checkpoint per group, and a budget stop must land on a group boundary rather than mid-group. Previously the skill only offered "checkpoint with `handoff`".
+- The approval gate now explicitly goes stale on a **material** change to the enumeration — a finding escalating out, narrowing, merging, or appearing — even when the original directive was explicit. Cosmetic changes (renumbering, sub-step splits) do not re-open it.
+- Dirty-tree overlap between the working-tree baseline and the batch's target files must be surfaced *at the gate*, with the choice to proceed, stash, or drop the overlapping findings.
+
 ## [7.29.0] - 2026-07-21
 
 Maintenance driven by field use of MTK across kvika/moberghr repos.

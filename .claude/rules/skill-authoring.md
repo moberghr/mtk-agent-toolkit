@@ -8,6 +8,10 @@ axes:
   decision: authoring
   topic: skills
   scope: global
+trigger:
+  tool: "Edit|Write"
+  path: "^\.claude/skills/.*SKILL\.md$|^tests/pressure-tests/|^evals/"
+strength: inject
 ---
 
 # Skill Authoring (S2)

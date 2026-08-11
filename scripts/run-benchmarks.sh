@@ -21,16 +21,140 @@ PASS=0
 FAIL=0
 TOTAL=0
 
+# ─── Per-section attribution ───────────────────────────────────────────────────
+# Global PASS/FAIL alone cannot answer "which capability regressed?". Sections give
+# each benchmark block its own counts so benchmarks/results.json is diagnosable.
+# Parallel indexed arrays, not associative — macOS bash 3.2 has no `declare -A`.
+SECTION_NAMES=()
+SECTION_PASS=()
+SECTION_FAIL=()
+CUR_NAME=""
+CUR_PASS=0
+CUR_FAIL=0
+
+_flush_section() {
+  [ -z "$CUR_NAME" ] && return 0
+  SECTION_NAMES+=("$CUR_NAME")
+  SECTION_PASS+=("$CUR_PASS")
+  SECTION_FAIL+=("$CUR_FAIL")
+  CUR_NAME=""; CUR_PASS=0; CUR_FAIL=0
+}
+
+# section <name> — close the previous section, open a new one, print its header.
+section() {
+  _flush_section
+  CUR_NAME="$1"
+  printf '\n== %s ==\n' "$CUR_NAME"
+}
+
+_tally_pass() { PASS=$(( PASS + 1 )); CUR_PASS=$(( CUR_PASS + 1 )); }
+_tally_fail() { FAIL=$(( FAIL + 1 )); CUR_FAIL=$(( CUR_FAIL + 1 )); }
+
+# ─── Publish measured results ──────────────────────────────────────────────────
+# Numbers nobody can read are not published numbers. benchmarks/results.json is
+# committed so "MTK's guards work" is checkable without re-running anything.
+# python3 (not jq) — S3.3 keeps jq off the dependency list; python3 is baseline.
+#
+# Installed as an EXIT trap on purpose. Under `set -e` one failing helper aborts
+# the run, and the previous script then printed no summary and recorded nothing —
+# a silent hole exactly where the evidence belongs. A partial run still produced
+# real measurements; publish them flagged run_complete:false rather than drop them.
+RESULTS_JSON="benchmarks/results.json"
+RUN_COMPLETED=0
+
+print_summary() {
+  printf '\n══════════════════════════════════════\n'
+  if [ "$RUN_COMPLETED" -ne 1 ]; then
+    printf 'BENCHMARKS ABORTED after %d assertions (%d passed, %d failed)\n' "$TOTAL" "$PASS" "$FAIL"
+  elif [ "$FAIL" -eq 0 ]; then
+    printf 'BENCHMARKS PASSED: %d/%d\n' "$PASS" "$TOTAL"
+  else
+    printf 'BENCHMARKS: %d passed, %d FAILED (of %d)\n' "$PASS" "$FAIL" "$TOTAL"
+  fi
+  printf '══════════════════════════════════════\n'
+}
+
+publish_results() {
+  local rc=$?
+  trap - EXIT
+  _flush_section
+  print_summary
+  {
+    printf '%s\n%s\n%s\n%s\n' "$PASS" "$FAIL" "$TOTAL" "$RUN_COMPLETED"
+    printf '%s\n' "${#SECTION_NAMES[@]}"
+    local i=0
+    while [ "$i" -lt "${#SECTION_NAMES[@]}" ]; do
+      printf '%s\n%s\n%s\n' "${SECTION_NAMES[$i]}" "${SECTION_PASS[$i]}" "${SECTION_FAIL[$i]}"
+      i=$((i + 1))
+    done
+  } | RESULTS_JSON="$RESULTS_JSON" python3 -c '
+import json, os, subprocess, sys
+
+lines = sys.stdin.read().splitlines()
+p, f, t, complete = (int(lines[i]) for i in range(4))
+n = int(lines[4])
+sections, k = [], 5
+for _ in range(n):
+    sections.append({"name": lines[k], "passed": int(lines[k+1]), "failed": int(lines[k+2])})
+    k += 3
+
+def sh(*cmd):
+    try:
+        return subprocess.check_output(cmd, stderr=subprocess.DEVNULL).decode().strip()
+    except Exception:
+        return None
+
+# Section counts must reconcile with the totals, or the published number is a lie.
+assert sum(s["passed"] for s in sections) == p, "section pass counts do not sum to total"
+assert sum(s["failed"] for s in sections) == f, "section fail counts do not sum to total"
+
+json.dump({
+    "schema": "mtk.benchmarks.v1",
+    "generated_at": sh("date", "-u", "+%Y-%m-%dT%H:%M:%SZ"),
+    "commit": sh("git", "rev-parse", "--short", "HEAD"),
+    "toolkit_version": json.load(open(".claude/manifest.json")).get("version"),
+    "runner": "scripts/run-benchmarks.sh",
+    "run_complete": bool(complete),
+    "totals": {"passed": p, "failed": f, "total": t},
+    "sections": sections,
+    "measures":
+        "Deterministic behaviour of MTK bash hooks, linter pattern packs, and the "
+        "structural validator, executed against fixed in-repo fixtures. Every assertion "
+        "is a real process invocation with a checked exit code or matched output — no "
+        "LLM is involved in producing or grading these numbers.",
+    "excludes": [
+        "Model behaviour: whether an agent actually follows a skill is NOT measured here (see evals/).",
+        "Cross-model coverage: results reflect one bash environment, not model-version differences.",
+        "Real-world hit rate: linter sections measure pattern behaviour on curated known-good/known-bad fixtures, not prevalence in production diffs.",
+        "False-negative rate: fixtures prove the patterns fire on seeded cases; they do not bound what the patterns miss.",
+        "Timing and cost: no wall-clock or token measurements are collected.",
+        "Environment coverage: one run on one host. run_complete:false means the run aborted early and the counts are partial.",
+    ],
+}, open(os.environ["RESULTS_JSON"], "w"), indent=2, sort_keys=False)
+open(os.environ["RESULTS_JSON"], "a").write("\n")
+' || printf 'WARN: results.json not written (python3 missing or totals failed to reconcile)\n' >&2
+
+  [ -f "$RESULTS_JSON" ] && printf 'Published: %s (%d sections, run_complete=%d)\n' \
+    "$RESULTS_JSON" "${#SECTION_NAMES[@]}" "$RUN_COMPLETED"
+
+  mtk_record_benchmark_run "${PASS}/${TOTAL}" || true
+
+  [ "$RUN_COMPLETED" -eq 1 ] && exit "$FAIL"
+  exit "$rc"
+}
+trap publish_results EXIT
+
+
 # ─── Test helpers ──────────────────────────────────────────────────────────────
 
 assert_match() {
   local name="$1" output="$2" pattern="$3"
   TOTAL=$((TOTAL + 1))
   if echo "$output" | grep -qE "$pattern"; then
-    PASS=$((PASS + 1))
+    _tally_pass
     if [ "$VERBOSE" -eq 1 ]; then printf '  ✓ %s\n' "$name"; fi
   else
-    FAIL=$((FAIL + 1))
+    _tally_fail
     printf '  ✗ %s — expected pattern: %s\n' "$name" "$pattern"
     printf '    got: %s\n' "$(echo "$output" | head -3)"
   fi
@@ -40,11 +164,11 @@ assert_no_match() {
   local name="$1" output="$2" pattern="$3"
   TOTAL=$((TOTAL + 1))
   if echo "$output" | grep -qE "$pattern"; then
-    FAIL=$((FAIL + 1))
+    _tally_fail
     printf '  ✗ %s — unexpected pattern matched: %s\n' "$name" "$pattern"
     printf '    got: %s\n' "$(echo "$output" | grep -E "$pattern" | head -1)"
   else
-    PASS=$((PASS + 1))
+    _tally_pass
     if [ "$VERBOSE" -eq 1 ]; then printf '  ✓ %s\n' "$name"; fi
   fi
 }
@@ -53,10 +177,10 @@ assert_exit() {
   local name="$1" actual="$2" expected="$3"
   TOTAL=$((TOTAL + 1))
   if [ "$actual" -eq "$expected" ]; then
-    PASS=$((PASS + 1))
+    _tally_pass
     if [ "$VERBOSE" -eq 1 ]; then printf '  ✓ %s\n' "$name"; fi
   else
-    FAIL=$((FAIL + 1))
+    _tally_fail
     printf '  ✗ %s — expected exit %d, got %d\n' "$name" "$expected" "$actual"
   fi
 }
@@ -67,7 +191,7 @@ assert_exit() {
 # disabled test, float money (if finance domain active)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-printf '\n== Linter Patterns: known-bad.diff ==\n'
+section "Linter Patterns: known-bad.diff"
 
 # Test linter patterns directly against fixture diffs (no git needed).
 # Extract added lines (+ prefix) and match against pattern ERE regexes.
@@ -86,10 +210,10 @@ if [ -d "$PATTERNS_DIR" ]; then
   done < "$PATTERNS_DIR/core/secrets.txt"
   TOTAL=$((TOTAL + 1))
   if [ "$SECRETS_HIT" -gt 0 ]; then
-    PASS=$((PASS + 1))
+    _tally_pass
     [ "$VERBOSE" -eq 1 ] && printf '  ✓ secrets patterns catch hardcoded password (%d hits)\n' "$SECRETS_HIT"
   else
-    FAIL=$((FAIL + 1))
+    _tally_fail
     printf '  ✗ secrets patterns missed hardcoded password\n'
   fi
 
@@ -104,10 +228,10 @@ if [ -d "$PATTERNS_DIR" ]; then
   done < "$PATTERNS_DIR/core/slopwatch.txt"
   TOTAL=$((TOTAL + 1))
   if [ "$SLOP_HIT" -gt 0 ]; then
-    PASS=$((PASS + 1))
+    _tally_pass
     [ "$VERBOSE" -eq 1 ] && printf '  ✓ slopwatch patterns catch disabled/empty test (%d hits)\n' "$SLOP_HIT"
   else
-    FAIL=$((FAIL + 1))
+    _tally_fail
     printf '  ✗ slopwatch patterns missed disabled/empty test\n'
   fi
 
@@ -123,10 +247,10 @@ if [ -d "$PATTERNS_DIR" ]; then
     done < "$PATTERNS_DIR/stack-dotnet/patterns.txt"
     TOTAL=$((TOTAL + 1))
     if [ "$DOTNET_HIT" -gt 0 ]; then
-      PASS=$((PASS + 1))
+      _tally_pass
       [ "$VERBOSE" -eq 1 ] && printf '  ✓ dotnet patterns catch SQL interpolation (%d hits)\n' "$DOTNET_HIT"
     else
-      FAIL=$((FAIL + 1))
+      _tally_fail
       printf '  ✗ dotnet patterns missed SQL interpolation\n'
     fi
   fi
@@ -143,10 +267,10 @@ if [ -d "$PATTERNS_DIR" ]; then
     done < "$PATTERNS_DIR/domain-finance/patterns.txt"
     TOTAL=$((TOTAL + 1))
     if [ "$FIN_HIT" -gt 0 ]; then
-      PASS=$((PASS + 1))
+      _tally_pass
       [ "$VERBOSE" -eq 1 ] && printf '  ✓ finance patterns catch float money (%d hits)\n' "$FIN_HIT"
     else
-      FAIL=$((FAIL + 1))
+      _tally_fail
       printf '  ✗ finance patterns missed float money\n'
     fi
   fi
@@ -158,7 +282,7 @@ fi
 # BENCHMARK 2: Linter Patterns — known-good.diff (no false positives)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-printf '\n== Linter Patterns: known-good.diff ==\n'
+section "Linter Patterns: known-good.diff"
 
 GOOD_ADDED=$(grep '^+' benchmarks/fixtures/known-good.diff | grep -v '^+++' || true)
 
@@ -189,10 +313,65 @@ else
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# BENCHMARK 3: Security Gate — blocks destructive commands
+# BENCHMARK 3: Rule Trigger — just-in-time rule delivery
+# Deliberately placed early: later sections can abort the run, and a regression
+# test that never executes is not a regression test.
 # ═══════════════════════════════════════════════════════════════════════════════
 
-printf '\n== Security Gate: destructive commands ==\n'
+section "Rule Trigger: just-in-time delivery"
+
+RT_INDEX=".claude/rules/triggers.index"
+RT_BAK="${TMPDIR:-/tmp}/mtk-bench-triggers.bak"
+RT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+
+rt() { printf '%s' "$1" | bash hooks/rule-trigger.sh 2>&1 || true; }
+rt_exit() { local rc=0; printf '%s' "$1" | bash hooks/rule-trigger.sh >/dev/null 2>&1 || rc=$?; echo "$rc"; }
+
+if [ -f "$RT_INDEX" ]; then
+  cp "$RT_INDEX" "$RT_BAK"
+
+  # A Bash command matching a rule's pattern delivers that rule.
+  RT_HIT=$(rt '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"}}')
+  assert_match "matching Bash command delivers a rule" "$RT_HIT" "rule: git-workflow"
+
+  # A non-matching command delivers nothing.
+  RT_MISS=$(rt '{"tool_name":"Bash","tool_input":{"command":"ls -la"}}')
+  assert_no_match "non-matching command is silent" "$RT_MISS" "rule:"
+
+  # Path-scoped rules match on the repo-relative path.
+  RT_PATH=$(rt "$(printf '{"tool_name":"Edit","tool_input":{"file_path":"%s/hooks/x.sh"}}' "$RT_ROOT")")
+  assert_match "path-scoped rule matches hooks/" "$RT_PATH" "rule: hooks-and-scripts"
+
+  RT_NOPATH=$(rt "$(printf '{"tool_name":"Edit","tool_input":{"file_path":"%s/README.md"}}' "$RT_ROOT")")
+  assert_no_match "unrelated path is silent" "$RT_NOPATH" "rule:"
+
+  # Lowercase repo root (macOS case-insensitive FS) must still match — the prefix
+  # strip silently failing here would make every path rule a no-op.
+  RT_CASE=$(rt "$(printf '{"tool_name":"Edit","tool_input":{"file_path":"%s/hooks/x.sh"}}' \
+    "$(printf '%s' "$RT_ROOT" | tr '[:upper:]' '[:lower:]')")")
+  assert_match "case-differing repo root still matches" "$RT_CASE" "rule: hooks-and-scripts"
+
+  # Fail-open: a corrupt index must never block a tool call.
+  printf 'garbage\tnot\ttabs\n' > "$RT_INDEX"
+  assert_exit "corrupt index fails open (exit 0)" \
+    "$(rt_exit '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"}}')" 0
+
+  # Fail-open: a missing index must never block a tool call.
+  rm -f "$RT_INDEX"
+  assert_exit "missing index fails open (exit 0)" \
+    "$(rt_exit '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"}}')" 0
+
+  cp "$RT_BAK" "$RT_INDEX"
+  rm -f "$RT_BAK"
+else
+  printf '  (skipped — %s not generated; run scripts/build-rule-index.sh)\n' "$RT_INDEX"
+fi
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# BENCHMARK 4: Security Gate — blocks destructive commands
+# ═══════════════════════════════════════════════════════════════════════════════
+
+section "Security Gate: destructive commands"
 
 # Helper: run security gate and capture both output and exit code
 run_gate() { local out; out=$(printf '%s' "$1" | bash hooks/security-gate.sh 2>&1) || true; echo "$out"; }
@@ -244,7 +423,7 @@ assert_exit "allows benign echo with escaped quotes (exit 0)" "$ESCAPED_ECHO_EXI
 # BENCHMARK 4: Scope Guard — detects out-of-scope edits
 # ═══════════════════════════════════════════════════════════════════════════════
 
-printf '\n== Scope Guard: spec-aware scope detection ==\n'
+section "Scope Guard: spec-aware scope detection"
 
 # Set up a mock spec
 mkdir -p docs/specs
@@ -282,7 +461,7 @@ rm -f "${TMPDIR:-/tmp}"/mtk-scope-cache-* 2>/dev/null || true
 # BENCHMARK 5: Verify Completion — rejects evidence-less claims
 # ═══════════════════════════════════════════════════════════════════════════════
 
-printf '\n== Verify Completion: evidence gating ==\n'
+section "Verify Completion: evidence gating"
 
 source hooks/lib/hook-io.sh
 SESSION_FILE="$(mtk_session_file)"
@@ -352,7 +531,7 @@ assert_match "single-quoted pytest arg survives state round-trip" "$ROUND_TRIP" 
 # BENCHMARK 6: Prerequisites Check — reports missing tools
 # ═══════════════════════════════════════════════════════════════════════════════
 
-printf '\n== Prerequisites: tool detection ==\n'
+section "Prerequisites: tool detection"
 
 PREREQ_OUT=$(bash hooks/check-prerequisites.sh dotnet 2>&1 || true)
 # jq and dotnet should be found on this machine, so we just check the format
@@ -362,10 +541,14 @@ assert_match "produces formatted output" "$PREREQ_OUT" "(Prerequisites|recommend
 # BENCHMARK 7: Validate Toolkit — structural integrity
 # ═══════════════════════════════════════════════════════════════════════════════
 
-printf '\n== Toolkit Validation ==\n'
+section "Toolkit Validation"
 
-VAL_OUT=$(bash scripts/validate-toolkit.sh 2>&1 || true)
-VAL_EXIT=$?
+# `VAL_EXIT=$?` after `VAL_OUT=$(... || true)` read the *assignment's* status, which
+# `|| true` pins to 0 — so this assertion could never fail. Capture the real exit
+# code instead; a benchmark that cannot fail is worse than no benchmark, and this
+# one is published in results.json.
+VAL_EXIT=0
+VAL_OUT=$(bash scripts/validate-toolkit.sh 2>&1) || VAL_EXIT=$?
 assert_exit "validate-toolkit passes (exit 0)" "$VAL_EXIT" 0
 assert_match "validation passed message" "$VAL_OUT" "Toolkit validation passed"
 
@@ -373,14 +556,6 @@ assert_match "validation passed message" "$VAL_OUT" "Toolkit validation passed"
 # Summary
 # ═══════════════════════════════════════════════════════════════════════════════
 
-printf '\n══════════════════════════════════════\n'
-if [ "$FAIL" -eq 0 ]; then
-  printf 'BENCHMARKS PASSED: %d/%d\n' "$PASS" "$TOTAL"
-else
-  printf 'BENCHMARKS: %d passed, %d FAILED (of %d)\n' "$PASS" "$FAIL" "$TOTAL"
-fi
-printf '══════════════════════════════════════\n'
-
-mtk_record_benchmark_run "${PASS}/${TOTAL}"
-
-exit "$FAIL"
+RUN_COMPLETED=1
+# The EXIT trap installed at the top of this script prints the summary and writes
+# benchmarks/results.json. Nothing else to do here.

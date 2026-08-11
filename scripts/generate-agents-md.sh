@@ -204,8 +204,15 @@ count_lines() {
 
 # --- Detect active tech stack ---
 
+# Resolve polyglot-aware (subproject `.claude/tech-stack` → root
+# `tech-stack.map` glob → root file), falling back to the root-only read when
+# the resolver is absent.
 stack=""
-if [ -f "$TECH_STACK_FILE" ]; then
+_RTS="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/resolve-tech-stack.sh"
+[ -f "$_RTS" ] || _RTS="${CLAUDE_PLUGIN_ROOT:-.}/scripts/resolve-tech-stack.sh"
+if [ -f "$_RTS" ]; then
+  stack="$(bash "$_RTS" "$PWD" 2>/dev/null || true)"
+elif [ -f "$TECH_STACK_FILE" ]; then
   stack="$(tr -d '[:space:]' < "$TECH_STACK_FILE")"
 fi
 

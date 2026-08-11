@@ -56,23 +56,31 @@ else
   record "2. Architecture principles tagged" "AI Context" "fail" "file missing — run /mtk-setup --audit"
 fi
 
-# 3. .claude/tech-stack file present and matches a known tech-stack-* skill
-if [[ -f .claude/tech-stack ]]; then
+# 3. Tech stack resolves and matches a known tech-stack-* skill.
+# Scored on whether the stack RESOLVES, not on whether the root file exists: a
+# polyglot repo may legitimately pin per-subtree (`<subtree>/.claude/tech-stack`)
+# or by glob (`.claude/tech-stack.map`) with no root scalar at all, and the old
+# root-file-only test scored that correct setup as "missing".
+_RTS="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/resolve-tech-stack.sh"
+[[ -f "$_RTS" ]] || _RTS="${CLAUDE_PLUGIN_ROOT:-.}/scripts/resolve-tech-stack.sh"
+STACK=""
+STACK_SRC="root .claude/tech-stack"
+if [[ -f "$_RTS" ]]; then
+  STACK=$(bash "$_RTS" "$PWD" 2>/dev/null || true)
+  STACK_SRC=$(bash "$_RTS" --explain "$PWD" 2>&1 >/dev/null | sed 's/.*(via //; s/)$//' || true)
+elif [[ -f .claude/tech-stack ]]; then
   STACK=$(head -1 .claude/tech-stack | tr -d '[:space:]')
-  if [[ -n "$STACK" ]] && [[ -d ".claude/skills/tech-stack-$STACK" ]]; then
-    record "3. Tech stack pinned" "AI Context" "pass" "stack=$STACK"
-  elif [[ -n "$STACK" ]]; then
-    record "3. Tech stack pinned" "AI Context" "partial" "stack=$STACK (no matching skill)"
-  else
-    record "3. Tech stack pinned" "AI Context" "fail" "file empty"
-  fi
-else
+fi
+
+if [[ -n "$STACK" ]] && [[ -d ".claude/skills/tech-stack-$STACK" ]]; then
+  record "3. Tech stack pinned" "AI Context" "pass" "stack=$STACK (via ${STACK_SRC:-unknown})"
+elif [[ -n "$STACK" ]]; then
+  record "3. Tech stack pinned" "AI Context" "partial" "stack=$STACK (no matching skill)"
+elif [[ -d .claude/skills ]]; then
   # Treat as n/a only when no .claude/skills directory at all (non-MTK repo).
-  if [[ -d .claude/skills ]]; then
-    record "3. Tech stack pinned" "AI Context" "fail" "missing .claude/tech-stack"
-  else
-    record "3. Tech stack pinned" "AI Context" "na" "non-MTK repo"
-  fi
+  record "3. Tech stack pinned" "AI Context" "fail" "no stack resolves (root, subproject, or tech-stack.map)"
+else
+  record "3. Tech stack pinned" "AI Context" "na" "non-MTK repo"
 fi
 
 # 4. tasks/lessons.md exists with >=1 entry (## heading)
@@ -97,10 +105,19 @@ recent_count() {
   find "$dir" -maxdepth 2 -name '*.md' -type f -mtime -90 2>/dev/null | wc -l | tr -d ' '
 }
 
-# 5. docs/specs/ with >=1 spec in last 90 days
-if [[ -d docs/specs ]]; then
-  RECENT=$(recent_count docs/specs)
-  TOTAL=$(find docs/specs -maxdepth 2 -name '*.md' -type f 2>/dev/null | wc -l | tr -d ' ')
+# 5. docs/specs/ with >=1 spec in last 90 days.
+# Scored against the RESOLVED artifact root: a repo whose subtree owns its specs
+# was previously scored "docs/specs/ missing" while holding dozens of them.
+_RAR="$(cd "$(dirname "$0")" 2>/dev/null && pwd -P)/resolve-artifact-root.sh"
+[[ -f "$_RAR" ]] || _RAR="${CLAUDE_PLUGIN_ROOT:-.}/scripts/resolve-artifact-root.sh"
+if [[ -f "$_RAR" ]]; then
+  SPEC_DIR="$(bash "$_RAR" "$PWD" 2>/dev/null || printf '.')/docs/specs"
+else
+  SPEC_DIR="docs/specs"
+fi
+if [[ -d "$SPEC_DIR" ]]; then
+  RECENT=$(recent_count "$SPEC_DIR")
+  TOTAL=$(find "$SPEC_DIR" -maxdepth 2 -name '*.md' -type f 2>/dev/null | wc -l | tr -d ' ')
   if [[ "$RECENT" -ge 1 ]]; then
     record "5. Recent specs" "Dev Workflow" "pass" "$RECENT recent (of $TOTAL total)"
   elif [[ "$TOTAL" -ge 1 ]]; then

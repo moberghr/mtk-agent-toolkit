@@ -50,7 +50,7 @@ This skill **does not edit code**. It produces a brief; another skill acts on it
 
 Before any web call, anchor the research in concrete project context. Identify and **name** the files that constrain the answer:
 
-- The active tech stack (read `.claude/tech-stack`) and the relevant `tech-stack-<stack>/SKILL.md`.
+- The active tech stack (`bash scripts/resolve-tech-stack.sh "<path the question is about>"` — polyglot-aware, so a question about a subtree resolves that subtree's stack) and the relevant `tech-stack-<stack>/SKILL.md`.
 - The **installed version** of the library in question — read it from the lockfile / project file (`*.csproj`, `Directory.Packages.props`, `requirements.txt`, `pyproject.toml`, `package.json`). A research answer for the wrong version is worse than no answer.
 - 1–3 existing files that show how the repo uses the relevant area today.
 

@@ -88,11 +88,36 @@ scan_regex() {
 }
 
 # Collect the runtime-loaded surface.
-mapfile -t SKILLS < <(find .claude/skills -name SKILL.md -type f 2>/dev/null | sort || true)
-mapfile -t AGENTS < <(find .claude/agents -name '*.md' -type f 2>/dev/null | sort || true)
+# NOTE: `mapfile` is a bash 4+ builtin and macOS ships bash 3.2, where it silently
+# failed the whole lint (S3.3 requires the toolkit to run on a stock macOS box).
+# read-loop append is the portable equivalent.
+collect_into() {
+  # collect_into <array-name> <find-args...>
+  local _arr="$1"; shift
+  local _line
+  eval "$_arr=()"
+  while IFS= read -r _line; do
+    [ -n "$_line" ] || continue
+    eval "$_arr+=(\"\$_line\")"
+  done < <(find "$@" -type f 2>/dev/null | sort || true)
+}
+
+collect_into SKILLS .claude/skills -name SKILL.md
+collect_into AGENTS .claude/agents -name '*.md'
+# Rule files became a runtime-loaded surface when hooks/rule-trigger.sh started
+# injecting them into context on a matched tool call. Before that they were only
+# read when the model chose to; now they arrive unprompted, which puts them in the
+# same trust tier as skills and agents. Scan them.
+collect_into RULES .claude/rules -name '*.md'
 HOOKCFG=()
 [ -f hooks/hooks.json ] && HOOKCFG=(hooks/hooks.json)
-BODY_FILES=("${SKILLS[@]}" "${AGENTS[@]}" "${HOOKCFG[@]}")
+# `${A[@]+"${A[@]}"}` keeps an empty array from tripping `set -u` on bash 3.2.
+BODY_FILES=(
+  ${SKILLS[@]+"${SKILLS[@]}"}
+  ${AGENTS[@]+"${AGENTS[@]}"}
+  ${RULES[@]+"${RULES[@]}"}
+  ${HOOKCFG[@]+"${HOOKCFG[@]}"}
+)
 
 # --- P-INJECT: instruction-override phrases -------------------------------------
 scan_regex P-INJECT FAIL \

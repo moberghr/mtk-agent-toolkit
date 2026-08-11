@@ -23,37 +23,103 @@ set -euo pipefail
 # `--explain` prints the resolution source to stderr.
 #
 # Usage:
-#   bash scripts/resolve-tech-stack.sh [--explain] [target-path]
+#   bash scripts/resolve-tech-stack.sh [--explain] [--check] [target-path...]
 #   target-path defaults to $PWD; a file path resolves from its directory.
+#
+# `--check` compares the resolved stack against the extensions of the given
+# paths and warns on stderr when they disagree (e.g. stack resolves `dotnet`
+# but the paths are .tsx) — the polyglot-repo case where a root-only pin
+# silently hands out the wrong build/test commands. Advisory only: it never
+# blocks, never changes the resolved value, and never changes the exit code.
+# Files with non-stack-bearing extensions (.md, .json, .sh) are ignored.
 #
 # No dependencies beyond coreutils + git (S3.3). git is used only to find the
 # repo root; absence degrades to a filesystem-root walk.
 
 explain=0
+check=0
 target=""
+check_paths=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --explain) explain=1; shift ;;
+    --check) check=1; shift ;;
     --) shift; target="${1:-}"; break ;;
     -*) echo "resolve-tech-stack: unknown flag: $1" >&2; exit 2 ;;
-    *) target="$1"; shift ;;
+    *) target="$1"; check_paths="$check_paths$1
+"; shift ;;
   esac
 done
 target="${target:-$PWD}"
 
+# Map a file extension to the stack that owns it. Empty = not stack-bearing
+# (.md, .json, .sh, .yml ...), which never triggers a mismatch warning.
+_family_of() {
+  case "$1" in
+    cs|csproj|sln|razor|cshtml|fs|fsproj|vb|xaml|axaml) printf 'dotnet' ;;
+    py|pyi|ipynb)                                       printf 'python' ;;
+    ts|tsx|js|jsx|mjs|cjs|vue|svelte)                   printf 'typescript' ;;
+    *)                                                  printf '' ;;
+  esac
+}
+
+# --check: compare the resolved stack against the extensions actually being
+# touched and warn on disagreement. ADVISORY ONLY — never blocks, never changes
+# the resolved value or the exit code. A repo pinned `dotnet` at the root that
+# is having its Vite subtree edited would otherwise silently hand out
+# `dotnet build` for .tsx files.
+_check_mismatch() { # $1=resolved stack
+  [ "$check" -eq 1 ] || return 0
+  [ -n "${1:-}" ] || return 0
+  resolved="$1"
+  mismatched=""; matched=0; mismatch_n=0
+  while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    base="${p##*/}"
+    case "$base" in *.*) ext="${base##*.}" ;; *) continue ;; esac
+    fam="$(_family_of "$(printf '%s' "$ext" | tr '[:upper:]' '[:lower:]')")"
+    [ -n "$fam" ] || continue
+    if [ "$fam" = "$resolved" ]; then
+      matched=$((matched + 1))
+    else
+      mismatch_n=$((mismatch_n + 1))
+      case " $mismatched " in *" $fam "*) : ;; *) mismatched="$mismatched $fam" ;; esac
+    fi
+  done <<EOF
+$check_paths
+EOF
+  [ "$mismatch_n" -gt 0 ] || return 0
+  printf 'resolve-tech-stack: WARNING — resolved stack is `%s`, but %d of the target file(s) look like%s.\n' \
+    "$resolved" "$mismatch_n" "$(printf '%s' "$mismatched" | sed 's/ / `/g; s/$/`/')" >&2
+  if [ "$matched" -eq 0 ]; then
+    printf '  No target file matches `%s`. This is likely a polyglot repo whose subtree stack is undeclared.\n' "$resolved" >&2
+  fi
+  printf '  Declare the subtree: add `<subtree>/.claude/tech-stack`, or a root `.claude/tech-stack.map` line `<glob> <stack>`.\n' >&2
+  printf '  Advisory only — resolution and exit code are unchanged.\n' >&2
+}
+
 _emit() { # $1=stack  $2=source
   [ "$explain" -eq 1 ] && printf 'resolve-tech-stack: %s (via %s)\n' "${1:-<none>}" "$2" >&2
+  _check_mismatch "${1:-}"
   printf '%s' "${1:-}"
 }
 
-# Normalize target to an absolute directory (a file resolves from its dir; a
-# non-existent path from its lexical parent, else $PWD).
+# Normalize target to an absolute PHYSICAL directory (a file resolves from its
+# dir; a non-existent path from its lexical parent, else $PWD).
+#
+# `pwd -P` is required, not cosmetic: `repo_root` below comes from
+# `git rev-parse --show-toplevel`, which always reports the physical path. With
+# a logical `pwd` the two disagree whenever the root is reached through a
+# symlink (/var -> /private/var on macOS, symlinked home or checkout dirs), the
+# `${target_dir#"$root"/}` strip below silently no-ops, and every
+# `.claude/tech-stack.map` glob then fails to match — the map degrades to "root
+# default" with no diagnostic.
 if [ -d "$target" ]; then
-  target_dir="$(cd "$target" && pwd)"
+  target_dir="$(cd "$target" && pwd -P)"
 elif [ -f "$target" ]; then
-  target_dir="$(cd "$(dirname "$target")" && pwd)"
+  target_dir="$(cd "$(dirname "$target")" && pwd -P)"
 else
-  target_dir="$(cd "$(dirname "$target")" 2>/dev/null && pwd || printf '%s' "$PWD")"
+  target_dir="$(cd "$(dirname "$target")" 2>/dev/null && pwd -P || printf '%s' "$PWD")"
 fi
 
 # 1. Explicit env override.

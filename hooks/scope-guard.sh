@@ -24,9 +24,12 @@ INPUT=$(cat)
 FILE_PATH=$(mtk_extract_file_path "$INPUT" 2>/dev/null || echo "")
 [ -z "$FILE_PATH" ] && exit 0
 
-# Make the path relative to the repo root for comparison
+# Make the path relative to the repo root for comparison. Spelling-robust: a
+# plain string strip no-ops when the payload spells the root differently than
+# git does (case-insensitive FS, symlinked root), which lands in the `/*` case
+# below and FAILS THE GUARD OPEN on every edit. See mtk_repo_relative_path.
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-REL_PATH="${FILE_PATH#"$REPO_ROOT"/}"
+REL_PATH="$(mtk_repo_relative_path "$FILE_PATH" "$REPO_ROOT" 2>/dev/null || printf '%s' "$FILE_PATH")"
 
 # Out-of-repo and workflow-state writes can never be scope violations, so they
 # must not trip the guard. A still-absolute REL_PATH means the prefix strip was
@@ -53,10 +56,15 @@ if [ -n "$(find "${MTK_STATE_ROOT}/.mtk" -maxdepth 1 -name scope-guard-skip -mmi
   exit 0
 fi
 
-# Find the active spec JSON sidecar (most recently modified, within 7 days)
+# Find the active spec JSON sidecar (most recently modified, within 7 days).
+# Anchored to the RESOLVED artifact root, not the CWD: in a polyglot repo the
+# edited file's subtree may own its own docs/specs, and a bare relative path
+# would guard against the wrong project's manifest (or none at all).
+ARTIFACT_ROOT="$(mtk_artifact_root "$FILE_PATH" 2>/dev/null || printf '%s' "$REPO_ROOT")"
+SPEC_DIR="$ARTIFACT_ROOT/docs/specs"
 SPEC_JSON=""
-if [ -d docs/specs ]; then
-  SPEC_JSON=$(find docs/specs -name '*.json' -type f -mtime -7 2>/dev/null | while read -r f; do
+if [ -d "$SPEC_DIR" ]; then
+  SPEC_JSON=$(find "$SPEC_DIR" -name '*.json' -type f -mtime -7 2>/dev/null | while read -r f; do
     echo "$(stat -c '%Y' "$f" 2>/dev/null || stat -f '%m' "$f" 2>/dev/null || echo 0) $f"
   done | sort -rn | head -1 | cut -d' ' -f2-)
 fi
