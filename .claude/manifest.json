@@ -1086,6 +1086,12 @@
       "action": "sync",
       "description": "Round-trip Ed25519 sign/verify test for generate-checksums.sh --sign and mtk-doctor.sh, including tamper and mismatched-key detection"
     },
+    "tests/hooks/test-security-gate.sh": {
+      "source": "tests/hooks/test-security-gate.sh",
+      "target": "tests/hooks/test-security-gate.sh",
+      "action": "sync",
+      "description": "Fixture-based tests for hooks/security-gate.sh covering inline destructive statements, scripts and .sql files the command executes, and the read-only allow path"
+    },
     "tests/pressure-tests/spec-drift-tags.md": {
       "source": "tests/pressure-tests/spec-drift-tags.md",
       "target": "tests/pressure-tests/spec-drift-tags.md",
