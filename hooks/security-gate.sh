@@ -37,11 +37,59 @@ if [ -z "$COMMAND" ]; then
   exit 2
 fi
 
+# The destructive-SQL pattern lives in one place so the command text and any file the
+# command executes are judged by identical rules.
+mtk_has_destructive_sql() {
+  printf '%s' "${1-}" \
+    | grep -qiE '(DROP\s+(TABLE|DATABASE|SCHEMA)|TRUNCATE\s+TABLE|DELETE\s+FROM\s+\S+\s*;?\s*$)'
+}
+
+# Files this command would execute or feed to a database client.
+#
+# Matching the command text alone is not enough: `bash rebuild.sh` and `psql -f drop.sql`
+# contain no SQL themselves, so a DROP SCHEMA sitting in the file sails straight through.
+# That is not hypothetical — it is how one got past this gate on 2026-08-10 minutes after
+# the same statements had been blocked when typed inline.
+# Only paths the command actually runs count. Matching every .sh/.sql path mentioned
+# anywhere would block `git add rebuild.sh` and `cat drop.sql`, which execute nothing —
+# reading and staging a file is not running it.
+mtk_referenced_files() {
+  local _cmd="${1-}"
+  {
+    # An interpreter runs it: bash x.sh, sh ./x.sh, source x.sh, . x.sh
+    printf '%s' "$_cmd" | grep -oiE '(^|[;&|(]|[[:space:]])(bash|sh|zsh|source|\.)[[:space:]]+[A-Za-z0-9_.:@~/+-]+' || true
+    # It is executed directly: ./x.sh, /opt/x.bash. Anchored to command position — after a
+    # separator, not after a space — because `git add /tmp/x.sh` passes an absolute path as an
+    # argument and that is not execution.
+    printf '%s' "$_cmd" | grep -oE '(^|[;&|(])[[:space:]]*\.?/[A-Za-z0-9_.:@~/+-]+\.(sh|bash|zsh)' || true
+    # A database client reads it: psql -f x.sql, mysql --file=x.sql
+    printf '%s' "$_cmd" | grep -oiE '(-f|--file)[=[:space:]]+[A-Za-z0-9_.:@~/+-]+' || true
+  } 2>/dev/null \
+    | grep -oE '[A-Za-z0-9_.:@~/+-]+$' \
+    | sort -u
+}
+
 # Block: database destructive operations
-if echo "$COMMAND" | grep -qiE '(DROP\s+(TABLE|DATABASE|SCHEMA)|TRUNCATE\s+TABLE|DELETE\s+FROM\s+\S+\s*;?\s*$)'; then
+if mtk_has_destructive_sql "$COMMAND"; then
   echo "BLOCKED: Destructive database operation detected. Use a migration instead." >&2
   exit 2
 fi
+
+# Block: the same, hidden one level down in a script or .sql file the command runs.
+# Only existing regular files are read, and only their first 200 KB, so this stays cheap
+# on every Bash call. This narrows the gap rather than closing it — a heredoc, a file
+# generated at run time, or `curl … | bash` still carries SQL this never sees. Defence in
+# depth, not a wall.
+while IFS= read -r _mtk_ref; do
+  [ -n "$_mtk_ref" ] || continue
+  [ -f "$_mtk_ref" ] || continue
+  if mtk_has_destructive_sql "$(head -c 200000 "$_mtk_ref" 2>/dev/null || true)"; then
+    echo "BLOCKED: Destructive database operation found in ${_mtk_ref}. Use a migration instead." >&2
+    exit 2
+  fi
+done <<MTK_REFS
+$(mtk_referenced_files "$COMMAND")
+MTK_REFS
 
 # Block: force push to main/master
 if echo "$COMMAND" | grep -qE 'git\s+push\s+.*--(force|force-with-lease)\s+.*\b(main|master)\b'; then
