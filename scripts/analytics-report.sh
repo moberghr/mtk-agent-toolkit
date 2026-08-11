@@ -4,7 +4,10 @@ set -euo pipefail
 # analytics-report.sh — Print a summary of MTK usage stats from .claude/analytics.json.
 # Usage: bash scripts/analytics-report.sh
 
-ANALYTICS=".claude/analytics.json"
+# Anchor to the project root so the report reads the same file the Stop hook
+# writes, regardless of the CWD it is invoked from (S3.3: git only).
+PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
+ANALYTICS="${PROJECT_ROOT}/.claude/analytics.json"
 
 if [ ! -f "$ANALYTICS" ]; then
   echo "No analytics data yet. Run a session with MTK first."

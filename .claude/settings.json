@@ -68,6 +68,16 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "Bash|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "hooks/rule-trigger.sh",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -120,6 +130,11 @@
             "type": "command",
             "command": "hooks/post-compact.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "hooks/rule-trigger.sh --rearm",
+            "timeout": 3
           }
         ]
       }

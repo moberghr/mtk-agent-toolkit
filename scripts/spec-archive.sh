@@ -51,7 +51,18 @@ DATE="$(jq -r '.date // empty' "$SPEC_JSON")"
 [ -n "$AREA" ] || { echo "ERROR: spec has no baseline_area — cannot archive. Add it to the sidecar." >&2; exit 1; }
 [ -n "$SLUG" ] || { echo "ERROR: spec has no slug." >&2; exit 1; }
 
-BASE_DIR="docs/specs/baseline"
+# Baseline lives under the artifact root that owns this spec — for a spec inside
+# a subtree that owns its docs/specs, the baseline belongs there too, not at the
+# repo root. Resolved from the spec's own path so archiving is location-correct
+# regardless of the CWD the command ran from.
+_RAR="$(cd "$(dirname "$0")" 2>/dev/null && pwd -P)/resolve-artifact-root.sh"
+[ -f "$_RAR" ] || _RAR="${CLAUDE_PLUGIN_ROOT:-.}/scripts/resolve-artifact-root.sh"
+if [ -f "$_RAR" ]; then
+  ARTIFACT_ROOT="$(bash "$_RAR" "$SPEC_JSON" 2>/dev/null || printf '%s' "$ROOT_DIR")"
+else
+  ARTIFACT_ROOT="$ROOT_DIR"
+fi
+BASE_DIR="${ARTIFACT_ROOT:-$ROOT_DIR}/docs/specs/baseline"
 BASE_JSON="$BASE_DIR/$AREA.json"
 BASE_MD="$BASE_DIR/$AREA.md"
 AUDIT="$BASE_DIR/$AREA.audit.jsonl"

@@ -12,7 +12,15 @@ trap _mtk_hook_diag EXIT
 BASE_BRANCH="${1:-main}"
 STACK=""
 
-if [ -f .claude/tech-stack ]; then
+# Resolve the active stack polyglot-aware: a subproject `.claude/tech-stack`,
+# then a root `tech-stack.map` glob, then the root file. A root-only read hands
+# the wrong linters/commands to a differently-stacked subtree. Falls back to the
+# old read when the resolver is absent (pre-resolver installs).
+_RTS="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)/scripts/resolve-tech-stack.sh"
+[ -f "$_RTS" ] || _RTS="${CLAUDE_PLUGIN_ROOT:-.}/scripts/resolve-tech-stack.sh"
+if [ -f "$_RTS" ]; then
+  STACK="$(bash "$_RTS" "$PWD" 2>/dev/null || true)"
+elif [ -f .claude/tech-stack ]; then
   STACK="$(tr -d '[:space:]' < .claude/tech-stack)"
 fi
 

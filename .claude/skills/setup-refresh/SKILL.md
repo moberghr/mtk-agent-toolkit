@@ -40,7 +40,7 @@ If either file is missing, STOP immediately and tell the engineer:
 
 Do not attempt a partial refresh, and do not fall back to generating these files yourself — that is bootstrap's job, not refresh's.
 
-Otherwise, resolve the active stack as usual: read `.claude/tech-stack`, then load `.claude/skills/tech-stack-{stack}/SKILL.md`. Its `## Scan Recipes` section is the input STEP 3 uses when a full re-audit is required.
+Otherwise, resolve the active stack as usual: `bash scripts/resolve-tech-stack.sh "$PWD"` (polyglot-aware — subproject `.claude/tech-stack` → root `.claude/tech-stack.map` glob → root file), then load `.claude/skills/tech-stack-{stack}/SKILL.md`. Its `## Scan Recipes` section is the input STEP 3 uses when a full re-audit is required. In a polyglot repo, run the scan recipes per declared subtree rather than once against the root stack.
 
 ## STEP 1: Staleness Plan
 

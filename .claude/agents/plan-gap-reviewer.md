@@ -199,6 +199,14 @@ request — e.g., the plan ignores an explicit user constraint — that is
 always `BLOCKING`, regardless of category. The planner cannot quietly
 override the engineer.
 
+**Emit the abstention in the JSON block, not only in prose.** Set `"verdict": "ABSTAINED"`
+with a populated `abstention.reason` naming the concrete blocker, and `abstention.checked`
+listing the axes you did complete. Do **not** emit an empty `findings[]` with a PASS-shaped
+result — downstream that is indistinguishable from "I looked and it is clean", and a missing
+reviewer must never read as a clean one. Omit `scores` for dimensions you could not evaluate
+rather than inventing a passing number. See `.claude/references/review-finding-schema.md`
+→ **ABSTAINED**.
+
 ## Verification (For The Orchestrator)
 
 The orchestrator should treat your output as evidence, not as a verdict to

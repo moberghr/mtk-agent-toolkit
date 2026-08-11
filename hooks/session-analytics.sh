@@ -23,13 +23,20 @@ trap _mtk_hook_diag EXIT
 #   "benchmark_last_score": "21/21"
 # }
 
-ANALYTICS=".claude/analytics.json"
-
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
 
 mtk_is_redundant_plugin_invocation "$0" && exit 0
+
+# Anchor every path to the project root, never the process CWD. A bare
+# ".claude/analytics.json" mints a SECOND analytics file in any subtree the
+# session happens to run commands from (e.g. a SPA subproject under a .NET
+# root), splitting adoption stats across two untracked files. The counted
+# inputs below are anchored for the same reason: a root-anchored analytics
+# file populated from subtree-relative counts is worse than either alone.
+PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(mtk_repo_root)}"
+ANALYTICS="${PROJECT_ROOT}/.claude/analytics.json"
 
 # Read session counters from context-budget temp file
 SESSION_FILE="$(mtk_session_file)"
@@ -113,15 +120,17 @@ fi
 total_bytes_read=$((total_bytes_read + session_bytes_read))
 total_estimated_tokens=$((total_bytes_read / 4))
 
-# Count specs created today
-if [ -d docs/specs ]; then
-  new_specs=$(find docs/specs -name '*.json' -newer "$ANALYTICS" 2>/dev/null | wc -l | tr -d ' ')
+# Count specs created today, under the resolved artifact root — a subtree that
+# owns its own docs/specs still gets its work counted.
+SPEC_COUNT_DIR="$(mtk_artifact_root "$PROJECT_ROOT" 2>/dev/null || printf '%s' "$PROJECT_ROOT")/docs/specs"
+if [ -d "$SPEC_COUNT_DIR" ]; then
+  new_specs=$(find "$SPEC_COUNT_DIR" -name '*.json' -newer "$ANALYTICS" 2>/dev/null | wc -l | tr -d ' ')
   specs=$((specs + new_specs))
 fi
 
 # Count lessons captured (compare line count)
-if [ -f tasks/lessons.md ]; then
-  current_lessons=$(grep -c '^## ' tasks/lessons.md 2>/dev/null || echo "0")
+if [ -f "${PROJECT_ROOT}/tasks/lessons.md" ]; then
+  current_lessons=$(grep -c '^## ' "${PROJECT_ROOT}/tasks/lessons.md" 2>/dev/null || echo "0")
   if [ "$current_lessons" -gt "$lessons" ]; then
     lessons=$current_lessons
   fi

@@ -1,6 +1,6 @@
 {
-  "version": "7.29.0",
-  "updated": "2026-07-21",
+  "version": "7.30.0",
+  "updated": "2026-08-11",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -771,6 +771,12 @@
       "action": "sync",
       "description": "Polyglot-aware tech-stack resolver \u2014 resolves the active stack for a path via MTK_STACK, a nested .claude/tech-stack, a root .claude/tech-stack.map glob, then the repo-root default"
     },
+    "scripts/resolve-artifact-root.sh": {
+      "source": "scripts/resolve-artifact-root.sh",
+      "target": "scripts/resolve-artifact-root.sh",
+      "action": "sync",
+      "description": "Polyglot-aware artifact-root resolver — resolves where docs/specs and docs/plans live for a path via MTK_ARTIFACT_ROOT, a .claude/artifact-root marker, the nearest subtree holding both CLAUDE.md and docs/specs, then the repo root"
+    },
     "scripts/query-code-index.sh": {
       "source": "scripts/query-code-index.sh",
       "target": "scripts/query-code-index.sh",
@@ -1074,6 +1080,24 @@
       "action": "sync",
       "description": "Fixture-based tests for hooks/lib/shrink-guard.sh"
     },
+    "tests/hooks/test-repo-relative-path.sh": {
+      "source": "tests/hooks/test-repo-relative-path.sh",
+      "target": "tests/hooks/test-repo-relative-path.sh",
+      "action": "sync",
+      "description": "Fixture-based tests for hook-io.sh mtk_repo_relative_path — repo-relative paths stay correct under case-variant and symlinked root spellings"
+    },
+    "tests/hooks/test-resolve-artifact-root.sh": {
+      "source": "tests/hooks/test-resolve-artifact-root.sh",
+      "target": "tests/hooks/test-resolve-artifact-root.sh",
+      "action": "sync",
+      "description": "Fixture-based tests for scripts/resolve-artifact-root.sh resolution order, backward compatibility, and override precedence"
+    },
+    "tests/hooks/test-resolve-tech-stack.sh": {
+      "source": "tests/hooks/test-resolve-tech-stack.sh",
+      "target": "tests/hooks/test-resolve-tech-stack.sh",
+      "action": "sync",
+      "description": "Fixture-based tests for scripts/resolve-tech-stack.sh polyglot resolution order and the --check stack/extension mismatch advisory"
+    },
     "tests/hooks/test-query-code-index.sh": {
       "source": "tests/hooks/test-query-code-index.sh",
       "target": "tests/hooks/test-query-code-index.sh",
@@ -1151,6 +1175,42 @@
       "target": "benchmarks/fixtures/known-good.diff",
       "action": "sync",
       "description": "Known-good code fixture for benchmark testing \u2014 clean code that should produce zero false positives"
+    },
+    "tests/pressure-tests/reviewer-abstention.md": {
+      "source": "tests/pressure-tests/reviewer-abstention.md",
+      "target": "tests/pressure-tests/reviewer-abstention.md",
+      "action": "sync",
+      "description": "Adversarial test for the ABSTAINED verdict and lane accounting — a review lane that did not run must never read as a clean pass"
+    },
+    "hooks/rule-trigger.sh": {
+      "source": "hooks/rule-trigger.sh",
+      "target": "hooks/rule-trigger.sh",
+      "action": "sync",
+      "description": "PreToolUse hook that delivers a .claude/rules/ rule at the moment a tool call matches its trigger, with SessionStart(compact) re-arm"
+    },
+    ".claude/references/rule-frontmatter.md": {
+      "source": ".claude/references/rule-frontmatter.md",
+      "target": ".claude/references/rule-frontmatter.md",
+      "action": "sync",
+      "description": "Contract for the trigger/strength frontmatter on rule files that hooks/rule-trigger.sh consumes"
+    },
+    ".claude/rules/triggers.index": {
+      "source": ".claude/rules/triggers.index",
+      "target": ".claude/rules/triggers.index",
+      "action": "sync",
+      "description": "Generated tab-separated rule-trigger index (name, tool, pattern, path, strength, source) read by hooks/rule-trigger.sh"
+    },
+    "benchmarks/README.md": {
+      "source": "benchmarks/README.md",
+      "target": "benchmarks/README.md",
+      "action": "sync",
+      "description": "Benchmark methodology — what the published numbers measure and, explicitly, what they exclude"
+    },
+    "benchmarks/results.json": {
+      "source": "benchmarks/results.json",
+      "target": "benchmarks/results.json",
+      "action": "sync",
+      "description": "Published measured benchmark results (schema mtk.benchmarks.v1) — per-section pass/fail counts, run_complete flag, and declared exclusions"
     },
     "scripts/generate-agents-md.sh": {
       "source": "scripts/generate-agents-md.sh",

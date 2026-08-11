@@ -97,7 +97,7 @@ The `evidence_channel` field on each success criterion names the surface where t
 ## Workflow
 
 1. **Load the active success criteria.** Read the spec JSON sidecar at `docs/specs/<date>-<slug>.json` (or use the sidecar named in the workflow artifact). Extract `success_criteria[]` — each entry has `id`, `description`, `evidence_channel`, and `observable`. These are the items you verify one by one. Trust the list over memory.
-2. Identify the verification command for the current claim — read the active tech stack skill (`.claude/skills/tech-stack-{stack}/SKILL.md`, where `{stack}` comes from `.claude/tech-stack`) and pick from its `## Build & Test Commands` section:
+2. Identify the verification command for the current claim — read the active tech stack skill (`.claude/skills/tech-stack-{stack}/SKILL.md`, where `{stack}` comes from `bash scripts/resolve-tech-stack.sh "<a changed file path>"`, not a bare root read; in a polyglot repo the root pin would hand you a build command that does not compile the subtree you changed) and pick from its `## Build & Test Commands` section:
    - Build claim -> the stack's compile/type-check command (dotnet: `dotnet build`, python: `mypy .`, typescript: `<pm> run build` or `tsc --noEmit`)
    - Test claim -> the stack's test command (dotnet: `dotnet test`, python: `pytest`, typescript: `<pm> test`)
    - Fix claim -> the specific test or reproduction step

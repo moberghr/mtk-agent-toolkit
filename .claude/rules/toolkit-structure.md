@@ -6,6 +6,10 @@ axes:
   decision: structure
   topic: manifest
   scope: global
+trigger:
+  tool: "Edit|Write"
+  path: "^\.claude/manifest\.json$|^\.claude-plugin/"
+strength: inject
 ---
 
 # Toolkit Structure (S1)
@@ -37,6 +41,11 @@ axes:
 ## Ignore Files
 
 - **S1.14** `.mtkignore` at the repo root is the single source of truth for paths that MTK scans should skip (`scripts/repomap.sh`, `setup-audit`). Same syntax as `.gitignore`. Precedence: `.mtkignore` > `.gitignore` > built-in defaults. Missing file is non-fatal. The file is committed (not gitignored) so the team shares one set of exclusions. Bash callers use `hooks/lib/mtkignore.sh`; the Python tree-sitter walker reads `.mtkignore` directly via `load_ignore_patterns()`.
+
+## Artifact Root (polyglot repos)
+
+- **S1.16** Workflow artifacts (`docs/specs/`, `docs/plans/`) resolve against an **artifact root**, not unconditionally the repo root. `scripts/resolve-artifact-root.sh` is the single source of truth for that resolution: `$MTK_ARTIFACT_ROOT` → nearest `<dir>/.claude/artifact-root` marker → nearest directory strictly below the repo root holding **both** `CLAUDE.md` and `docs/specs/` → repo root. Closest declaration wins, and both signals are required so neither a stray `docs/specs/` nor a stray nested `CLAUDE.md` can hijack resolution. A repo with no qualifying subtree resolves to the repo root, so single-project repos behave exactly as before. Bash callers inside hooks use `mtk_artifact_root` from `hooks/lib/hook-io.sh`; standalone scripts invoke the resolver directly. This is the sibling of `scripts/resolve-tech-stack.sh` (S1.x tech-stack resolution) and deliberately shares its shape.
+- **S1.17** Never derive a repo-relative path with a bare `"${path#"$root"/}"` string strip in a hook. A case-insensitive filesystem serves the same checkout as both `/Users/x/Dev/repo` and `/Users/x/dev/repo`, and `pwd -P` resolves symlinks but not case; the strip then silently no-ops, the caller keeps an absolute path, its `case ... in docs/specs/*)` match misses, and the guard **fails open**. Use `mtk_repo_relative_path` from `hooks/lib/hook-io.sh`, which compares by device+inode.
 
 ## Confidence Tagging
 

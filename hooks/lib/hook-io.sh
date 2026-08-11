@@ -56,6 +56,28 @@ mtk_emit_system_message() {
   printf '{"systemMessage":"%s"}\n' "$esc"
 }
 
+# Is `dir` at or below `root`? Compares by device+inode (`-ef`), so the answer
+# does not depend on how either path is *spelled*. A string-prefix test is not
+# safe here: `pwd -P` resolves symlinks but does NOT canonicalise case, so on a
+# case-insensitive filesystem the same directory can present as both
+# `/Users/x/Dev/repo` and `/Users/x/dev/repo` depending on the casing the parent
+# process was launched with. A prefix test then reports "outside the project",
+# which flips the redundancy guard below into skipping the project's own hook.
+# Fork-free: inputs are absolute normalised paths, so the parent is a suffix strip.
+mtk_path_is_within() {
+  local dir="${1:-}" root="${2:-}" parent depth=0
+  [ -n "$dir" ] && [ -n "$root" ] || return 1
+  while [ "$depth" -lt 64 ]; do
+    [ "$dir" -ef "$root" ] && return 0
+    parent="${dir%/*}"
+    [ -n "$parent" ] || parent="/"
+    [ "$parent" = "$dir" ] && return 1
+    dir="$parent"
+    depth=$((depth + 1))
+  done
+  return 1
+}
+
 # Promotion guard: when this hook is a plugin-install copy (its own directory is
 # outside the current project) AND the project also wires a hook of the same
 # basename in its .claude/settings.json, the plugin copy is redundant and must
@@ -67,10 +89,13 @@ mtk_is_redundant_plugin_invocation() {
   local self_dir project_root base settings
   self_dir="$(cd "$(dirname "$self")" 2>/dev/null && pwd -P)" || return 1
   project_root="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" 2>/dev/null && pwd -P)" || return 1
-  # Physically inside the project → this IS the project copy; never skip.
+  # Physically inside the project → this IS the project copy; never skip. The
+  # string-prefix test is only the fast path for the common exact-spelling case;
+  # `mtk_path_is_within` is authoritative when the spellings differ.
   case "$self_dir/" in
     "$project_root"/*) return 1 ;;
   esac
+  mtk_path_is_within "$self_dir" "$project_root" && return 1
   base="$(basename "$self")"
   settings="$project_root/.claude/settings.json"
   [ -f "$settings" ] || return 1
@@ -80,6 +105,59 @@ mtk_is_redundant_plugin_invocation() {
   # plugin copy too, or the hook fires from neither place.
   [ -f "$project_root/hooks/$base" ] && return 0
   return 1
+}
+
+# Repo-relative path for `file` under `root`, robust to how either is SPELLED.
+#
+# The naive `"${file#"$root"/}"` strip is a string operation, so it silently
+# no-ops whenever the two disagree in spelling even though they name the same
+# directory: a case-insensitive filesystem serves the same repo as both
+# `/Users/x/Dev/repo` and `/Users/x/dev/repo` depending on how the session was
+# launched, and `pwd -P` does not canonicalise case. When the strip no-ops the
+# caller keeps an ABSOLUTE path, its `case "$REL_PATH" in docs/specs/*)`-style
+# match misses, and the hook exits 0 — the guard is silently off rather than
+# loudly broken. Same failure for a symlinked root (/var -> /private/var).
+#
+# Walks up from the file comparing by device+inode (`-ef`), accumulating the
+# tail, so the answer never depends on spelling. Falls back to the fast string
+# strip first (the common exact-spelling case, no forks). Prints nothing and
+# returns 1 when `file` is genuinely not under `root`.
+mtk_repo_relative_path() { # $1=absolute file path  $2=repo root
+  local file="${1:-}" root="${2:-}" dir parent tail depth=0
+  [ -n "$file" ] && [ -n "$root" ] || return 1
+  case "$file" in
+    "$root"/*) printf '%s' "${file#"$root"/}"; return 0 ;;
+  esac
+  dir="${file%/*}"; tail="${file##*/}"
+  [ "$dir" = "$file" ] && return 1   # not an absolute/─slashed path
+  while [ "$depth" -lt 64 ]; do
+    if [ -d "$dir" ] && [ "$dir" -ef "$root" ]; then
+      printf '%s' "$tail"; return 0
+    fi
+    parent="${dir%/*}"
+    [ -n "$parent" ] || parent="/"
+    [ "$parent" = "$dir" ] && return 1
+    tail="${dir##*/}/$tail"
+    dir="$parent"
+    depth=$((depth + 1))
+  done
+  return 1
+}
+
+# Absolute artifact root (where docs/specs and docs/plans live) for `path`,
+# defaulting to $PWD. Delegates to scripts/resolve-artifact-root.sh so the
+# resolution order lives in exactly one place; degrades to the repo root when
+# the resolver is absent (pre-resolver installs), which is the old behavior.
+mtk_artifact_root() {
+  local target="${1:-$PWD}" script here out
+  here="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd -P)" || here=""
+  script="${here:-.}/scripts/resolve-artifact-root.sh"
+  [ -f "$script" ] || script="${CLAUDE_PLUGIN_ROOT:-.}/scripts/resolve-artifact-root.sh"
+  if [ -f "$script" ]; then
+    out="$(bash "$script" "$target" 2>/dev/null || true)"
+    if [ -n "$out" ]; then printf '%s' "$out"; return 0; fi
+  fi
+  mtk_repo_root
 }
 
 mtk_session_file() {

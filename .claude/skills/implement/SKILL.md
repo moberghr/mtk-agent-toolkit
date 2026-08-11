@@ -319,6 +319,25 @@ Size this from the **current** rigor level — the level recomputed in Phase 3.5
 
 Provide all reviewers with the same diff and behavioral diff.
 
+### Lane accounting (both stages)
+
+Every reviewer dispatched in Stage 1 or Stage 2 must be accounted for before Phase 5.
+Record one outcome per lane — `PASS`, `NEEDS_CHANGES`, `ABSTAINED`, or `NO_RESPONSE` — per
+**Lane Accounting** in `.claude/references/review-finding-schema.md`.
+
+- A subagent that returns null, errors out, times out, or emits unparseable output is
+  `NO_RESPONSE`, which counts as `ABSTAINED`. **Silence is not assent** — the `Agent` tool
+  returns null on terminal errors, and an unfiltered null must never be read as a clean pass.
+- **Phase 4 cannot be reported as passing while any lane is `ABSTAINED` or `NO_RESPONSE`.**
+  Either re-dispatch that lane (recording both attempts) or escalate to a human. A review
+  the toolkit could not complete is an open question, not an approval.
+- State the roster in the final report: reviewers dispatched, outcome of each, and the
+  reason for any abstention. A finding count alone hides a lane that never ran.
+- If ceremony was reduced for this run — reviewers skipped, or run inline instead of as
+  forked agents — that is itself an abstention-shaped event. Record the skipped lanes as
+  `ABSTAINED` with the reason, rather than reporting a clean two-stage review that did not
+  happen.
+
 ## Phase 5: Fix Review Findings
 
 Fix every critical issue and every warning unless you record a one-line waiver with a reason, then:

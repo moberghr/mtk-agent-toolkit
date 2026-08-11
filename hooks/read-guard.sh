@@ -98,9 +98,11 @@ IGNORE_FILE="${TMPDIR:-/tmp}/mtk-readguard-ignore.$$"
 _MTK_RG_TMP="$IGNORE_FILE"
 mtk_load_ignore_patterns "$IGNORE_FILE" 2>/dev/null || { exit 0; }
 
-# Normalise to a repo-relative path for matching.
+# Normalise to a repo-relative path for matching. Spelling-robust — a plain
+# string strip no-ops when the payload spells the root differently than git
+# does, leaving REL_PATH absolute so no ignore pattern ever matches.
 REPO_ROOT="$(mtk_repo_root 2>/dev/null || pwd)"
-REL_PATH="${FILE_PATH#"$REPO_ROOT"/}"
+REL_PATH="$(mtk_repo_relative_path "$FILE_PATH" "$REPO_ROOT" 2>/dev/null || printf '%s' "$FILE_PATH")"
 
 while IFS= read -r pat; do
   [ -z "$pat" ] && continue

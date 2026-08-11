@@ -110,7 +110,7 @@ digraph fix_flow {
 
 1. Follow `.claude/skills/context-engineering/SKILL.md`.
 2. Read `CLAUDE.md`. If missing, stop and tell the engineer to run `/mtk-setup`.
-3. Load the active tech stack: read `.claude/tech-stack` and `.claude/skills/tech-stack-{stack}/SKILL.md`. This provides build/test commands and stack-specific reference paths.
+3. Load the active tech stack: resolve it with `bash scripts/resolve-tech-stack.sh "$PWD"` — **polyglot-monorepo aware** (subproject `.claude/tech-stack` → root `.claude/tech-stack.map` glob → root file), so a differently-stacked subtree gets its own commands instead of the root's. When the fix targets a subtree, pass a representative file path instead of `$PWD`. Then read `.claude/skills/tech-stack-{stack}/SKILL.md` for build/test commands and stack-specific reference paths.
 4. Read only what the fix needs:
    - **Always:** the coding guidelines from the tech stack's `## Reference Files`
    - **If fix touches data layer/ORM:** the ORM checklist from the tech stack's `## Reference Files`
