@@ -62,6 +62,20 @@ expect "reading a destructive .sql"      0 "$(run_gate "\"wc -l $TMP/wipe.sql\""
 chmod +x "$TMP/rebuild.sh"
 expect "directly executed script" 2 "$(run_gate "\"$TMP/rebuild.sh\"")"
 
+# 5c. The gate must not block this very suite. This file has to contain the statements it
+# asserts on, so scanning it denied `bash tests/hooks/test-security-gate.sh` outright and
+# made the suite unrunnable through the Bash tool. Both spellings of the path, because the
+# gate resolves a relative reference against the caller's working directory.
+expect "this suite, absolute path" 0 "$(run_gate "\"bash $REPO_ROOT/tests/hooks/test-security-gate.sh\"")"
+expect "this suite, relative path" 0 "$(cd "$REPO_ROOT" && run_gate '"bash tests/hooks/test-security-gate.sh"')"
+
+# 5d. The carve-out is scoped to this repo's tests/ tree. A tests/-shaped path belonging to
+# some other checkout is still read and still blocked — otherwise the exemption would be a
+# hole any caller could walk through by naming its script tests/anything.sh.
+mkdir -p "$TMP/tests/hooks"
+cp "$TMP/rebuild.sh" "$TMP/tests/hooks/rebuild.sh"
+expect "tests/ path outside this repo" 2 "$(run_gate "\"bash $TMP/tests/hooks/rebuild.sh\"")"
+
 # 6. Non-Bash payloads are ignored.
 expect "non-Bash payload" 0 "$(printf '{"tool_name":"Read","tool_input":{"file_path":"x"}}' | "$GATE" >/dev/null 2>&1 && echo 0 || echo $?)"
 

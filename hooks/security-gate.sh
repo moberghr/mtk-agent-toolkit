@@ -75,6 +75,26 @@ if mtk_has_destructive_sql "$COMMAND"; then
   exit 2
 fi
 
+# A file under the repo's own tests/ tree carries destructive statements as fixtures, not
+# as work to run: tests/hooks/test-security-gate.sh asserts that `DROP SCHEMA` is blocked,
+# so it must contain the string to test for it. Scanning it makes the gate block its own
+# regression suite — `bash tests/hooks/test-security-gate.sh` was denied outright. Scoped
+# to tests/ inside this repo and resolved by device+inode (S1.17), so a destructive script
+# anywhere else, or a tests/ path in some other checkout, is still read and still caught.
+mtk_is_repo_test_file() {
+  local _f="${1-}" _abs _root _rel
+  _root="$(mtk_repo_root 2>/dev/null || true)"
+  [ -n "$_root" ] || return 1
+  case "$_f" in
+    /*) _abs="$_f" ;;
+    *)  _abs="$PWD/$_f" ;;
+  esac
+  _rel="$(mtk_repo_relative_path "$_abs" "$_root" 2>/dev/null || true)"
+  [ -n "$_rel" ] || return 1
+  case "$_rel" in tests/*) return 0 ;; esac
+  return 1
+}
+
 # Block: the same, hidden one level down in a script or .sql file the command runs.
 # Only existing regular files are read, and only their first 200 KB, so this stays cheap
 # on every Bash call. This narrows the gap rather than closing it — a heredoc, a file
@@ -83,6 +103,7 @@ fi
 while IFS= read -r _mtk_ref; do
   [ -n "$_mtk_ref" ] || continue
   [ -f "$_mtk_ref" ] || continue
+  mtk_is_repo_test_file "$_mtk_ref" && continue
   if mtk_has_destructive_sql "$(head -c 200000 "$_mtk_ref" 2>/dev/null || true)"; then
     echo "BLOCKED: Destructive database operation found in ${_mtk_ref}. Use a migration instead." >&2
     exit 2
