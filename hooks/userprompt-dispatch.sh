@@ -39,7 +39,7 @@ fi
 # Kill-switch short-circuits the whole dispatcher.
 mtk_queue_enabled || exit 0
 
-INPUT="$(cat)"
+INPUT="$(mtk_read_payload)"
 
 # Extract prompt text. Prefer hook-io's escape-aware extractor when available.
 PROMPT=""

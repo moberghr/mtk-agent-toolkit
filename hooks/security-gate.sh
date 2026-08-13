@@ -21,7 +21,7 @@ source "${SCRIPT_DIR}/lib/hook-io.sh"
 
 mtk_is_redundant_plugin_invocation "$0" && exit 0
 
-INPUT=$(cat)
+INPUT="$(mtk_read_payload)"
 
 TOOL_NAME=$(mtk_extract_tool_name "$INPUT" 2>/dev/null || echo "")
 COMMAND=$(mtk_extract_command "$INPUT" 2>/dev/null || echo "")

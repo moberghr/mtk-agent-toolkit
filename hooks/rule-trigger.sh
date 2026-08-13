@@ -65,7 +65,7 @@ fi
 # No index → nothing to match. Exit before reading stdin or parsing anything.
 [ -f "$INDEX_FILE" ] || exit 0
 
-INPUT="$(cat 2>/dev/null || true)"
+INPUT="$(mtk_read_payload)"
 [ -n "$INPUT" ] || exit 0
 
 TOOL_NAME="$(mtk_extract_tool_name "$INPUT" 2>/dev/null || echo "")"

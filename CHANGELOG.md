@@ -2,6 +2,18 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Fixed — a hook that never received its payload blocked the tool call indefinitely
+
+Every hook read its payload with a bare `INPUT=$(cat)`, which blocks until stdin closes. When Claude Code does not close it, the hook never exits and the tool call sits behind it. Measured on Windows, 2026-08-13: `context-budget.sh` alive 235s and `scope-guard.sh` alive 182s, both against `"timeout": 5` in `hooks.json`. The declared per-hook timeout did not kill either one, so it cannot be treated as the backstop. The two spellings that look defensive — `$(cat 2>/dev/null || true)` — are not: they handle a read that *fails*, not one that never returns.
+
+Nine hooks now read through `mtk_read_payload` (`hooks/lib/hook-io.sh`), which bounds the read at 4s so it fires before the 5s declared in `hooks.json`. S3.3 graceful degradation uses the same probe as `scripts/verify-commands.sh`: `timeout`, then `gtimeout`, then an unbounded read when neither exists — a machine with no timeout binary behaves exactly as it does today rather than failing.
+
+Measured with a FIFO held open and nothing written, `read-guard.sh` returned in 26s before the change (bounded only by the writer) and 4s after.
+
+Two things for a maintainer to weigh. `security-gate.sh` fails closed on an empty payload, so a timeout there converts a silent multi-minute hang into an immediate visible block — deliberate, but a behavior change. And `parse-build-diagnostics.sh` is left untouched: it is not registered in `hooks.json`, does not source `hook-io.sh`, and has its own `--file` input path.
+
 ## [7.31.0] - 2026-08-13
 
 Five tooling leaks found by a field run of `/mtk` in a target repo. The batch-fix loop itself held up — routing, per-finding scope guard, group checkpoints, and the gate's material-change carve-out all earned their keep. Everything below is the tooling *around* that loop: lesson retrieval, a stale doc path, a subagent assumption, plugin-root discovery, and hook noise.
