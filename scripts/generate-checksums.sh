@@ -55,13 +55,22 @@ done
 
 # Portable SHA-256: coreutils sha256sum (Linux) or shasum -a 256 (macOS base).
 if command -v sha256sum >/dev/null 2>&1; then
-  hash_file() { sha256sum "$1"; }
+  hash_tool() { sha256sum "$1"; }
 elif command -v shasum >/dev/null 2>&1; then
-  hash_file() { shasum -a 256 "$1"; }
+  hash_tool() { shasum -a 256 "$1"; }
 else
   echo "ERROR: neither sha256sum nor shasum found" >&2
   exit 2
 fi
+
+# Both tools print "<hash><space><marker><path>", where the marker is a space in text mode
+# and '*' in binary mode. Which one you get is a property of the build, not of this script:
+# the identical generator wrote '*'-marked lines on one machine and space-marked lines on
+# another. That cost real time twice — every regeneration on the other kind of machine
+# rewrote all ~350 lines, turning a one-file merge into a whole-file conflict, and --verify
+# below could not parse the '*' form at all. Pin the marker so the output is byte-identical
+# everywhere.
+hash_file() { hash_tool "$1" | sed 's/^\([0-9a-fA-F][0-9a-fA-F]*\) \*/\1  /'; }
 
 [ -f .claude/manifest.json ] || { echo "ERROR: .claude/manifest.json not found — run from a plugin clone" >&2; exit 2; }
 
@@ -121,7 +130,12 @@ else
   while IFS= read -r line; do
     case "$line" in ''|'#'*) continue ;; esac
     expected="${line%% *}"
-    file="$(printf '%s' "$line" | sed 's/^[0-9a-fA-F]* *//')"
+    # Strip hash, separator, and a binary-mode '*' marker if present. Manifests written
+    # before hash_file normalised the marker carry the '*' form; without this the star is
+    # read as part of the filename, every entry misses on disk, and the run reports
+    # "N checked, 0 mismatched, N missing" — a real exit 1, but for the wrong reason, and
+    # it never actually compares a hash.
+    file="$(printf '%s' "$line" | sed -e 's/^[0-9a-fA-F]*//' -e 's/^ *//' -e 's/^\*//')"
     TOTAL=$((TOTAL + 1))
     if [ ! -f "$file" ]; then
       GONE=$((GONE + 1))
