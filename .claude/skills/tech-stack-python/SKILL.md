@@ -28,7 +28,7 @@ Python is interpreted, so there's no separate compile step. Use type checking an
 - **Type check (compile-equivalent):** `mypy .` or `pyright` (whichever the project uses)
 - **Test (batch):** `pytest <path/to/module>` or `pytest -k <pattern>`
 - **Test (full):** `pytest`
-- **Format:** `ruff format <path>` (or `black <path>` if the project uses black). The PostToolUse hook is wired through `hooks/format-on-edit.sh`, which extracts `tool_input.file_path` from stdin JSON. Do NOT use `$CLAUDE_FILE` — it is not a Claude Code env var.
+- **Format:** `ruff format <path>` (or `black <path>` if the project uses black). Wired through `hooks/format-on-edit.sh`, which **queues** edited paths at PostToolUse and **formats** them at Stop — both halves must be wired or nothing is formatted. Do NOT use `$CLAUDE_FILE` — it is not a Claude Code env var.
 - **Lint:** `ruff check <path>` (or `flake8` / `pylint` per project)
 
 If the project uses `tox`, the full test command is `tox`. If Poetry: `poetry run pytest`. If a Makefile or `justfile` exists, prefer the project-defined targets (`make test`, `just test`).
@@ -165,18 +165,27 @@ Merge these into the project's `.claude/settings.json` during `setup-bootstrap`:
 - matcher: `Edit|Write`
 - command: `bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh`
 
+### hooks.Stop (merge: append)
+- command: `bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh --flush`
+
+### hooks.SubagentStop (merge: append)
+- command: `bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh --flush`
+
+Both halves are required. PostToolUse only **queues** the edited path; `--flush` at Stop is what actually formats. Wiring PostToolUse alone formats nothing; wiring a formatter to mutate at PostToolUse instead rewrites a file Claude has already read, and its next Edit fails with "File has been modified since read". This matters more for Python than for most stacks: `ruff check --fix` can rewrite imports and rename bindings, so a mid-turn run does not just reflow whitespace under the model — it can change what the file means between the read and the edit.
+
 The matcher field accepts a regex on **tool name** only — `Write(*.py)` is NOT valid Claude Code syntax and will silently never fire. File-extension dispatch happens inside `format-on-edit.sh`.
 
 ## Format Command
 
 ```bash
-# Wired via PostToolUse hook (see Settings Additions above):
+# Wired via PostToolUse (queue) + Stop (flush) hooks — see Settings Additions above:
 bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh
+bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh --flush
 # Manual invocation:
 ruff format <file> && ruff check --fix <file>   # or black <file>
 ```
 
-The wrapper picks `ruff` → `black` based on what's installed. Failures log to stderr but never block the edit.
+At flush the wrapper picks `ruff` → `black` based on what's installed, once per edited file (deduped, with files deleted during the turn dropped). Failures log to stderr but never block the edit.
 
 ## Pre-Commit Review Items
 
