@@ -13,9 +13,17 @@ set -euo pipefail
 #   - the bash command did NOT already include `mtk-compress`
 #   - the command is not a read-only inspection command (git diff/show/log/
 #     status/blame, grep/rg/ag, find, ls, tree) whose value is verbatim output
+#   - the per-session nag budget is not yet spent (see below)
 #
 # This is advisory only — it does not modify the tool result. The compression
 # itself happens in the shell pipe (`<command> | bash scripts/mtk-compress.sh`).
+#
+# Nag budget: the tip is worth exactly one read. Repeating it on every large
+# output for the rest of a session is noise, and a hook that fires constantly
+# trains the reader to tune out every hook. Default budget is 1 per session,
+# tracked in TMPDIR keyed by session_id — TMPDIR, not the repo, because a
+# PostToolUse hook's cwd is not guaranteed to be inside the project. Raise with
+# `MTK_COMPRESS_MAX_NAGS=N`; 0 silences without disabling the hook.
 #
 # Disable per machine via `MTK_COMPRESS_MONITOR_DISABLED=1`.
 
@@ -38,9 +46,17 @@ trap 'rm -f "$PAYLOAD_FILE"' EXIT
 cat > "$PAYLOAD_FILE"
 [ -s "$PAYLOAD_FILE" ] || exit 0
 
-python3 - "$WARN_CHARS" "$PAYLOAD_FILE" <<'PY'
-import json, sys
+MAX_NAGS="${MTK_COMPRESS_MAX_NAGS:-1}"
+
+python3 - "$WARN_CHARS" "$PAYLOAD_FILE" "$MAX_NAGS" <<'PY'
+import json, os, re, sys, tempfile
 warn_chars = int(sys.argv[1])
+try:
+    max_nags = int(sys.argv[3])
+except (IndexError, ValueError):
+    max_nags = 1
+if max_nags <= 0:
+    sys.exit(0)
 try:
     with open(sys.argv[2]) as f:
         payload = json.load(f)
@@ -95,11 +111,34 @@ elif "curl" in low and ("html" in low or ".html" in low):
 elif low.lstrip().startswith(("jq ", "cat ")) and ".json" in low:
     mode = "json"
 
+# Per-session nag budget. Advisory hook, so a concurrent-write race that grants
+# one extra nag is harmless — no locking. An unwritable state dir degrades to
+# "warn every time" rather than to silence: losing the tip is worse than noise.
+session = str(payload.get("session_id") or "nosession")
+session = re.sub(r"[^A-Za-z0-9_-]", "", session)[:64] or "nosession"
+state = os.path.join(tempfile.gettempdir(), f"mtk-compress-nag-{session}")
+seen = 0
+try:
+    with open(state) as f:
+        seen = int(f.read().strip() or 0)
+except (OSError, ValueError):
+    seen = 0
+if seen >= max_nags:
+    sys.exit(0)
+try:
+    with open(state, "w") as f:
+        f.write(str(seen + 1))
+except OSError:
+    pass
+
+last = (seen + 1) >= max_nags
 msg = (
     f"💡 mtk-compress: Bash output was {len(result):,} chars (warn ≥ {warn_chars:,}). "
     f"Pipe long output through `bash scripts/mtk-compress.sh {mode}` to reclaim ~70-95% of context tokens. "
     f"Set MTK_COMPRESS_MONITOR_DISABLED=1 in .claude/settings.local.json env to silence."
 )
+if last:
+    msg += " (Shown once per session — further large outputs will not re-nag.)"
 
 sys.stdout.write(json.dumps({
     "hookSpecificOutput": {

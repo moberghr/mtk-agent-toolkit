@@ -43,7 +43,7 @@ For every path in the change set (from the diff or the provided file list):
    - If `gh` is missing or unauthenticated, say so in one line and skip — do not
      fail the lane.
 3. **Prior lessons.**
-   - `bash "$([ -f scripts/learnings.sh ] && echo scripts/learnings.sh || echo "${CLAUDE_PLUGIN_ROOT:-.}/scripts/learnings.sh")" query --files "<comma-separated touched paths>" --max 8`
+   - `bash "$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/learnings.sh" || ([ -f scripts/learnings.sh ] && echo scripts/learnings.sh || echo "${CLAUDE_PLUGIN_ROOT:-.}/scripts/learnings.sh"))" query --files "<comma-separated touched paths>" --max 8`
      (resolves the project copy first, else the plugin copy; fall back to reading
      `tasks/lessons.md` if the script is absent from both).
    - Surface any lesson whose `applies_when` matches this change — especially

@@ -88,7 +88,12 @@ mtk_is_redundant_plugin_invocation() {
   [ -n "$self" ] || return 1
   local self_dir project_root base settings
   self_dir="$(cd "$(dirname "$self")" 2>/dev/null && pwd -P)" || return 1
-  project_root="$(cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" 2>/dev/null && pwd -P)" || return 1
+  # Prefer $CLAUDE_PROJECT_DIR over the git toplevel of cwd. A hook process is
+  # not guaranteed to run with cwd inside the repo; when it doesn't, the git
+  # probe falls back to `pwd`, the settings.json lookup below misses, the guard
+  # fails open, and BOTH the plugin and project copies fire — the hook runs
+  # twice. $CLAUDE_PROJECT_DIR is set by the harness and is cwd-independent.
+  project_root="$(cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}" 2>/dev/null && pwd -P)" || return 1
   # Physically inside the project → this IS the project copy; never skip. The
   # string-prefix test is only the fast path for the common exact-spelling case;
   # `mtk_path_is_within` is authoritative when the spellings differ.

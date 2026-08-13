@@ -11,9 +11,10 @@ user-invocable: false
 
 MTK skills and shared references live either in the project (local install) or the plugin cache (marketplace install). Resolve once:
 
-1. If `$CLAUDE_PLUGIN_ROOT` is set, prefix `.claude/skills/` and `.claude/references/` reads with it.
-2. Otherwise, if `.claude/skills/context-engineering/SKILL.md` exists locally → project-relative paths work as-is.
-3. Otherwise, fall back to `find ~/.claude/plugins -maxdepth 8 -name "SKILL.md" -path "*/mtk/*/context-engineering/*" -type f 2>/dev/null | sort -V | tail -1 | sed 's|/.claude/skills/context-engineering/SKILL.md||'`. If empty, MTK skills are unavailable — warn the engineer and proceed with `CLAUDE.md` only.
+1. If `$MTK_HELPER_ROOT` is set, prefix `.claude/skills/` and `.claude/references/` reads with it — a pinned checkout wins over every other source.
+2. Otherwise, if `$CLAUDE_PLUGIN_ROOT` is set, prefix them with that.
+3. Otherwise, if `.claude/skills/context-engineering/SKILL.md` exists locally → project-relative paths work as-is.
+4. Otherwise, fall back to `find ~/.claude/plugins -maxdepth 8 -name "SKILL.md" -path "*/mtk/*/context-engineering/*" -type f 2>/dev/null | sort -V | tail -1 | sed 's|/.claude/skills/context-engineering/SKILL.md||'`. If empty, MTK skills are unavailable — warn the engineer and proceed with `CLAUDE.md` only.
 
 Always project-relative (never prefixed): `CLAUDE.md`, `.claude/tech-stack`, `.claude/rules/`, `tasks/`, `docs/`, `.claude/references/architecture-principles.md`, `.claude/references/pre-commit-review-list.md`, `.mtk/` (workflow state). Resolve skills and scripts from the same root: a split (skills from a local dev checkout, scripts from the plugin cache) risks version drift — anchor both the same way.
 
@@ -136,7 +137,7 @@ If grouping shows the findings cannot be separated into independently-verifiable
 4. Read only what the batch needs — the coding guidelines always; the ORM checklist if a finding touches the data layer; `.claude/references/security-checklist.md` if a finding touches auth/secrets/financial; `.claude/references/testing-patterns.md` when adding tests; `.claude/references/pre-commit-review-list.md` before commit. Resolve each via the File Resolution block (project → `$CLAUDE_PLUGIN_ROOT` → plugin cache); if a needed reference resolves nowhere, announce degraded mode for that check rather than skipping it silently — in particular, if `pre-commit-review-list.md` is absent the pre-commit gate still runs, AI-review-only (degraded), and must say so.
 5. Resolve and scan relevant lessons. Prefer the structured query when present:
    ```bash
-   LS="scripts/learnings.sh"; [ -f "$LS" ] || LS="${CLAUDE_PLUGIN_ROOT:-.}/scripts/learnings.sh"
+   LS="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/learnings.sh" || ([ -f scripts/learnings.sh ] && echo scripts/learnings.sh || echo "${CLAUDE_PLUGIN_ROOT:-.}/scripts/learnings.sh"))"
    bash "$LS" query --phase implement --files "<all target file paths>" --max 8
    ```
    Falls back to scanning `tasks/lessons.md` when the script is absent.
@@ -200,11 +201,13 @@ Work the findings **inline** in the main context — no subagent-per-batch. batc
 Scale review to what the batch actually touched:
 
 - **Always:** run `.claude/skills/pre-commit-review/SKILL.md` (or the `.claude/references/pre-commit-review-list.md` gate) over the files this batch changed — the enumerated findings' files plus any touched during the run — not a blanket `git diff HEAD`.
-- **`test-reviewer`** — only if a finding introduced or changed public behavior.
-- **`architecture-reviewer`** — only if a finding crossed a boundary/slice (rare in a batch; a finding that genuinely needs one should already have escalated).
-- **`security-and-hardening`** — only if a finding touched auth, audited state, secrets, or infra.
+- **`test-reviewer`** (agent, `.claude/agents/test-reviewer.md`) — only if a finding introduced or changed public behavior.
+- **`architecture-reviewer`** (agent, `.claude/agents/architecture-reviewer.md`) — only if a finding crossed a boundary/slice (rare in a batch; a finding that genuinely needs one should already have escalated).
+- **`security-and-hardening`** (skill, not an agent — `.claude/skills/security-and-hardening/SKILL.md`) — only if a finding touched auth, audited state, secrets, or infra.
 
 A pure mechanical batch (renames/formatting) gets the pre-commit gate and nothing heavier.
+
+**When subagents are unavailable, run the pass inline — never drop it.** The Agent tool may be absent, disabled, or forbidden by a standing engineer instruction. A reviewer named above is a *pass to perform*, not a dispatch mechanism: read the agent's own `.md` (or the skill) and apply its checklist yourself against this batch's changed-file set. Inline costs context isolation, not coverage. Record which passes ran inline in the Final Report's "review performed" line.
 
 **Scope reviewers to this batch's changes.** Hand every reviewer the batch's own changed-file set (the findings' files + any edited during the run) and exclude the Phase 2 pre-existing-dirty baseline. When the tree started dirty, a reviewer given `git diff HEAD` will attribute pre-existing edits to this batch — e.g. a "missing test" finding for code you never wrote. State the in-scope files explicitly in each reviewer's prompt.
 
@@ -243,7 +246,7 @@ Report briefly:
 - the numbered findings and their disposition (fixed / escalated → implement)
 - files changed
 - tests added or updated
-- review performed (which reviewers ran and why)
+- review performed (which reviewers ran, why, and for each whether it ran as a subagent or inline)
 - build + test result
 
 ## Critical Rules

@@ -331,6 +331,10 @@ title_hash() {
 }
 
 cmd_query() {
+  # Record store presence BEFORE ensure_store creates it, so "never seeded" stays
+  # distinguishable from "seeded but empty" in the diagnostic below.
+  local store_existed=1
+  [ -f "$LEARNINGS_PATH" ] || store_existed=0
   ensure_store
   local files_csv="" phase="any" max=10 scope_filter="all"
   while [ $# -gt 0 ]; do
@@ -343,7 +347,25 @@ cmd_query() {
     esac
   done
 
-  [ -s "$LEARNINGS_PATH" ] || return 0
+  # A bare empty stdout is ambiguous: "no lessons stored" and "lessons stored,
+  # none matched" look identical to a caller, so a skill cannot tell whether it
+  # legitimately skipped the lessons pass or silently lost it. Diagnose on
+  # stderr — stdout stays a clean result list and the exit code stays 0, so
+  # existing callers are unaffected.
+  if [ "$store_existed" -eq 0 ]; then
+    if [ -f "$LESSONS_MD" ]; then
+      printf 'learnings query: no store at %s, but %s exists — run `learnings.sh migrate` to make those lessons queryable.\n' \
+        "$LEARNINGS_PATH" "$LESSONS_MD" >&2
+    else
+      printf 'learnings query: no store at %s and no %s — nothing captured yet.\n' \
+        "$LEARNINGS_PATH" "$LESSONS_MD" >&2
+    fi
+    return 0
+  fi
+  if [ ! -s "$LEARNINGS_PATH" ]; then
+    printf 'learnings query: store %s exists but holds 0 entries.\n' "$LEARNINGS_PATH" >&2
+    return 0
+  fi
 
   # Conflict-superseding: collect ids that a newer entry supersedes, then drop
   # them from results. Derived from the forward `supersedes` ref — no line rewrite.
@@ -357,8 +379,15 @@ cmd_query() {
   # Score each line; emit "score\tline"; sort -nr; head -max; print formatted.
   local now_epoch; now_epoch="$(date -u +%s)"
 
+  # Scored rows go to a temp file rather than straight down a pipe: a `while |
+  # sort` pipeline runs the loop in a subshell, and the scanned/matched counters
+  # the diagnostic needs would not survive it.
+  local scored_file; scored_file="$(mktemp)"
+  local scanned=0 matched=0
+
   while IFS= read -r line; do
     [ -z "$line" ] && continue
+    scanned=$((scanned + 1))
     local this_id; this_id="$(jl_field "$line" id)"
     case "$superseded_ids" in *",${this_id},"*) continue ;; esac
     local sev; sev="$(jl_field "$line" severity)"
@@ -417,13 +446,22 @@ cmd_query() {
       [ $hit -eq 1 ] && score=$((score + 30))
     fi
 
-    printf '%d\t%s\n' "$score" "$line"
-  done < "$LEARNINGS_PATH" \
-    | sort -t $'\t' -k1,1 -nr \
-    | head -n "$max" \
-    | while IFS=$'\t' read -r s l; do
-        printf '[%s] %s — %s\n' "$(jl_field "$l" id)" "$(jl_field "$l" severity)" "$(jl_field "$l" title)"
-      done
+    matched=$((matched + 1))
+    printf '%d\t%s\n' "$score" "$line" >> "$scored_file"
+  done < "$LEARNINGS_PATH"
+
+  if [ "$matched" -gt 0 ]; then
+    sort -t $'\t' -k1,1 -nr "$scored_file" \
+      | head -n "$max" \
+      | while IFS=$'\t' read -r s l; do
+          printf '[%s] %s — %s\n' "$(jl_field "$l" id)" "$(jl_field "$l" severity)" "$(jl_field "$l" title)"
+        done
+  else
+    printf 'learnings query: scanned %d stored entr%s, 0 matched (phase=%s, scope=%s, files=%s). No stored lesson applies here — this is a clean miss, not a lookup failure.\n' \
+      "$scanned" "$([ "$scanned" -eq 1 ] && printf 'y' || printf 'ies')" \
+      "$phase" "$scope_filter" "${files_csv:-<none>}" >&2
+  fi
+  rm -f "$scored_file"
 }
 
 cmd_regen_markdown() {

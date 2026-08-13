@@ -39,7 +39,7 @@ Personal lessons in `.claude/lessons/personal.md` are gitignored — they belong
    - **Structured (preferred when `scripts/learnings.sh` is present).** Add a JSONL entry with `--scope team --source promotion` and the reworded body, then `learnings.sh regen-markdown` to rebuild `tasks/lessons.md`:
      ```bash
      # Resolve the script: project copy first, else the plugin's copy.
-     LS="scripts/learnings.sh"; [ -f "$LS" ] || LS="${CLAUDE_PLUGIN_ROOT:-.}/scripts/learnings.sh"
+     LS="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/learnings.sh" || ([ -f scripts/learnings.sh ] && echo scripts/learnings.sh || echo "${CLAUDE_PLUGIN_ROOT:-.}/scripts/learnings.sh"))"
      bash "$LS" add --scope team --source promotion \
        --decision-origin "<inherit from the personal entry being promoted>" \
        --severity warn --phase any \
