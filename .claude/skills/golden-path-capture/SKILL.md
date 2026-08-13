@@ -71,7 +71,7 @@ The capture reuses `correction-capture`'s destinations and the same `scripts/lea
    ```bash
    # Resolve the script: project copy first, else the plugin's copy (plugin
    # installs never receive scripts/ into the target repo).
-   LS="scripts/learnings.sh"; [ -f "$LS" ] || LS="${CLAUDE_PLUGIN_ROOT:-.}/scripts/learnings.sh"
+   LS="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/learnings.sh" || ([ -f scripts/learnings.sh ] && echo scripts/learnings.sh || echo "${CLAUDE_PLUGIN_ROOT:-.}/scripts/learnings.sh"))"
    bash "$LS" add \
      --workflow "${MTK_WF_UUID:-manual}" \
      --scope "personal|team" \

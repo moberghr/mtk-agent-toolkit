@@ -31,13 +31,14 @@ The hook source lives in the **plugin checkout**, not the target repo. Install i
    fi
    ```
 2. **If it exists and is already a symlink to our hook** — skip (idempotent; check `readlink`).
-3. **If `.git/hooks/pre-commit` exists but is something else** — do NOT overwrite. Print a warning:
+3. **If `.git/hooks/pre-commit` exists but is something else** — do NOT overwrite. Print a warning that interpolates the **resolved absolute `$HOOK_SOURCE`** from step 1:
    ```
    ⚠️ Existing git pre-commit hook found at .git/hooks/pre-commit.
    MTK's deterministic linter was NOT installed as a git hook.
    To chain it manually, add this line to your existing hook:
-     exec hooks/git-hooks/pre-commit
+     exec "/absolute/path/to/plugin/hooks/git-hooks/pre-commit"
    ```
+   **Never print that path repo-relatively.** `hooks/git-hooks/pre-commit` and `hooks/pre-commit-linters.sh` exist only in the plugin checkout, never in the bootstrapped repo, so a relative `exec hooks/git-hooks/pre-commit` sends the engineer hunting for a file that isn't there. The same rule binds anything written into the generated `CLAUDE.md`: reference the linter by its resolved absolute path or by the resolver snippet — never as a bare repo-relative `hooks/…` path.
 
 The hook runs the plugin's `pre-commit-linters.sh --cached` (< 1 second) against **this repo's** staged changes — it loads pattern packs from the plugin checkout but diffs the repo being committed to — and blocks on critical findings. If the linter can't be found it warns to stderr and lets the commit through (never a silent pass, never a hard block for a tooling gap). Engineers bypass with `git commit --no-verify`. The full AI review (`/mtk review before commit`) remains a separate, manual step.
 
@@ -89,6 +90,21 @@ mkdir -p tasks
 Create `tasks/lessons.md` if it doesn't exist (header only).
 
 Add `tasks/todo.md` and `.claude.local.md` (personal, opt-in CLAUDE.md companion — `claude-md-capture` writes personal learnings here; never auto-created) to `.gitignore` if not already there. Do NOT gitignore `tasks/lessons.md`.
+
+### Learnings Store Seed
+
+Ten skills retrieve lessons through `scripts/learnings.sh query`, which reads the structured store at `.mtk/learnings.jsonl` — **not** `tasks/lessons.md`. A repo whose lessons live only in markdown therefore answers every lesson query with nothing, in every session, forever, and the skill proceeds believing no lesson applied. Seed the store whenever `tasks/lessons.md` has content:
+
+```bash
+LS="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/learnings.sh" || ([ -f scripts/learnings.sh ] && echo scripts/learnings.sh || echo "${CLAUDE_PLUGIN_ROOT:-.}/scripts/learnings.sh"))"
+if [ -f "$LS" ] && [ -s tasks/lessons.md ] && [ ! -s .mtk/learnings.jsonl ]; then
+  bash "$LS" migrate
+fi
+```
+
+`migrate` is idempotent (already-migrated guard plus title-hash dedup), so a re-run of bootstrap adds nothing. Skip silently when `tasks/lessons.md` is header-only — a fresh repo has nothing to migrate. Report the entry count in the STEP 5 report so the engineer can see lessons are actually reachable.
+
+Verify with `bash "$LS" query --phase any --max 3`. The script names its empty state on stderr — no store / empty store / N scanned, 0 matched — so "nothing came back" is diagnosable rather than silent.
 
 ### .mtkignore (S1.14)
 

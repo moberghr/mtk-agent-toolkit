@@ -2,6 +2,36 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.31.0] - 2026-08-13
+
+Five tooling leaks found by a field run of `/mtk` in a target repo. The batch-fix loop itself held up — routing, per-finding scope guard, group checkpoints, and the gate's material-change carve-out all earned their keep. Everything below is the tooling *around* that loop: lesson retrieval, a stale doc path, a subagent assumption, plugin-root discovery, and hook noise.
+
+### Fixed — lessons were unreachable in every bootstrapped repo
+
+`setup-bootstrap` created `tasks/lessons.md` but never seeded the structured store at `.mtk/learnings.jsonl`, and `scripts/learnings.sh query` reads only the store. Ten skills retrieve lessons through that query, so a repo whose lessons lived in markdown answered **every** lesson query with nothing, in every session, permanently — and each skill proceeded believing no lesson applied. Bootstrap now runs `learnings.sh migrate` when `tasks/lessons.md` has content and the store is absent (idempotent via the already-migrated guard plus title-hash dedup), and reports the entry count.
+
+### Fixed — `learnings.sh query` could not distinguish "no lessons" from "no match"
+
+Every empty result printed nothing and exited 0: missing store, empty store, phase mismatch, no proximity hit, all-expired, all-superseded. A caller could not tell a clean miss from a lookup failure. The four states are now named on stderr (`no store … run migrate`, `store exists but holds 0 entries`, `scanned N stored entries, 0 matched (phase=…, scope=…, files=…)`); stdout stays a clean result list and the exit code stays 0, so existing callers are unaffected. Scoring moved off the `while | sort` pipeline onto a temp file — the loop ran in a subshell and the scanned/matched counters did not survive it. Covered by `test-learnings.sh` cases F1–F5.
+
+### Fixed — bootstrap printed a chaining path that does not exist in the target repo
+
+When a repo already had `.git/hooks/pre-commit`, bootstrap told the engineer to add `exec hooks/git-hooks/pre-commit` — repo-relative, while the file only ever exists in the plugin checkout. The warning now interpolates the resolved absolute `$HOOK_SOURCE` computed three lines above, and the rule is stated explicitly: never reference `hooks/git-hooks/pre-commit` or `hooks/pre-commit-linters.sh` by a bare repo-relative path, including in the generated `CLAUDE.md`.
+
+### Fixed — `batch-fix` Phase 5 assumed subagents were available
+
+Phase 5 named `test-reviewer`, `architecture-reviewer` and `security-and-hardening` as reviewers with no fallback, and conflated two kinds (the first two are agents, the third a skill). Each is now labeled, and the skill states that a named reviewer is a *pass to perform*, not a dispatch mechanism: when the Agent tool is absent, disabled, or forbidden by a standing instruction, read the agent's own `.md` and apply its checklist inline against the batch's changed-file set. Inline costs context isolation, not coverage. The Final Report now records subagent-or-inline per reviewer.
+
+### Changed — `MTK_HELPER_ROOT` now covers skill and reference reads, not just scripts
+
+The env var was honored by three script resolvers (`implement`, `workflow-artifacts`, `spec-driven-development`) but not by the `## MTK File Resolution` block every entry-point skill opens with, nor by the six other inline `learnings.sh` resolvers. With `$CLAUDE_PLUGIN_ROOT` unset, every script call needed a hardcoded path. `MTK_HELPER_ROOT` is now tier 1 of the resolution chain in all 9 File Resolution blocks and all script resolvers, so setting it once pins skills, references, and scripts to one checkout. CLAUDE.md's row rewritten to match the real coverage.
+
+### Fixed — `compress-monitor` nagged on every large output, twice
+
+The "pipe this through mtk-compress" tip fired on every Bash output over 5,000 chars for a whole session. It is now budgeted per session (default 1, tracked in TMPDIR by `session_id`), and the final allowed nag says it will not repeat. `MTK_COMPRESS_MAX_NAGS=N` tunes the budget; `0` silences without unwiring the hook.
+
+The doubling was a separate defect in `mtk_is_redundant_plugin_invocation`, which derived the project root from `git rev-parse` of the hook process's cwd. A hook is not guaranteed to run with cwd inside the repo; when it does not, the git probe falls back to `pwd`, the `settings.json` lookup misses, the guard fails open, and both the plugin and project copies fire. It now prefers `$CLAUDE_PROJECT_DIR`, which is cwd-independent — this benefits every hook using the guard, not just this one.
+
 ## [7.30.0] - 2026-08-11
 
 Polyglot-monorepo support and a class of silent guard failures, both driven by field use of MTK in a mixed-stack repo (.NET root with a Vite/TypeScript subtree owning its own `docs/specs/` and `CLAUDE.md`).

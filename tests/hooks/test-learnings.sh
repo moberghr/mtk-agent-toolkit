@@ -137,4 +137,51 @@ entries3="$(wc -l < "$R/.mtk/learnings.jsonl" | tr -d ' ')"
 [ "$entries3" -eq "$entries" ] || fail "D: title-hash dedup failed ($entries -> $entries3)"
 ok "D: migrate idempotent via title hash even on a marker-less re-feed"
 
+# ---------------------------------------------------------------------------
+# F — query distinguishes its four empty-result states on stderr. A bare empty
+#     stdout with exit 0 cannot tell a caller whether the store was never
+#     seeded, is empty, or simply had no match — so a skill silently skips the
+#     lessons pass believing it ran. stdout and exit code must stay unchanged.
+# ---------------------------------------------------------------------------
+R="$(new_repo)"
+
+# F1: no store at all, and no tasks/lessons.md to migrate from.
+out="$( cd "$R" && bash "$LS" query --files "src/Foo.cs" 2>"$SBX/f1.err" )"
+[ -z "$out" ] || fail "F1: expected empty stdout, got: $out"
+grep -q 'nothing captured yet' "$SBX/f1.err" || fail "F1: no 'nothing captured yet' diagnostic on stderr"
+ok "F1: unseeded store with no lessons.md is diagnosed"
+
+# F2: no store, but tasks/lessons.md exists — the migrate gap that made every
+# query in a bootstrapped repo return empty forever. Must name `migrate`.
+mkdir -p "$R/tasks"
+printf '# Lessons\n\n## Legacy lesson\nbody\n' > "$R/tasks/lessons.md"
+rm -rf "$R/.mtk"
+out="$( cd "$R" && bash "$LS" query --files "src/Foo.cs" 2>"$SBX/f2.err" )"
+[ -z "$out" ] || fail "F2: expected empty stdout, got: $out"
+grep -q 'migrate' "$SBX/f2.err" || fail "F2: stderr does not point at learnings.sh migrate"
+ok "F2: unmigrated tasks/lessons.md is diagnosed with the migrate remedy"
+
+# F3: store seeded, but every entry filtered out — a clean miss, not a failure.
+( cd "$R" && bash "$LS" add --source manual --scope team --severity warn \
+    --phase review --title "Phase-filtered lesson" >/dev/null )
+out="$( cd "$R" && bash "$LS" query --phase implement --files "src/Foo.cs" 2>"$SBX/f3.err" )"
+[ -z "$out" ] || fail "F3: expected empty stdout, got: $out"
+grep -q '0 matched' "$SBX/f3.err" || fail "F3: stderr does not report 'N scanned, 0 matched'"
+grep -q 'scanned 1 stored entry' "$SBX/f3.err" || fail "F3: scanned count wrong or not singularized"
+ok "F3: filtered-out entries reported as a clean miss with a scanned count"
+
+# F4: a real match still prints only the result — no diagnostic noise on stderr.
+out="$( cd "$R" && bash "$LS" query --phase any --files "src/Foo.cs" 2>"$SBX/f4.err" )"
+case "$out" in *"Phase-filtered lesson"*) : ;; *) fail "F4: match not printed to stdout, got: $out" ;; esac
+[ ! -s "$SBX/f4.err" ] || fail "F4: stderr must stay silent on a hit, got: $(cat "$SBX/f4.err")"
+ok "F4: matching query prints results only, stderr silent"
+
+# F5: exit code stays 0 across every empty state (callers must not break).
+rm -rf "$R/.mtk"
+( cd "$R" && bash "$LS" query >/dev/null 2>&1 ) || fail "F5: query exited non-zero on missing store"
+( cd "$R" && bash "$LS" add --source manual --title "x" >/dev/null )
+: > "$R/.mtk/learnings.jsonl"
+( cd "$R" && bash "$LS" query >/dev/null 2>&1 ) || fail "F5: query exited non-zero on empty store"
+ok "F5: exit code stays 0 across all empty-result states"
+
 echo "ALL LEARNINGS TESTS PASSED"
