@@ -17,6 +17,39 @@ mtk_repo_root() {
   git rev-parse --show-toplevel 2>/dev/null || pwd
 }
 
+# --- Hook payload read ------------------------------------------------------
+# Read the hook payload from stdin under a wall-clock bound.
+#
+# WHY BOUNDED
+#   A bare `INPUT=$(cat)` blocks until stdin closes. When it does not close the
+#   hook never exits, and Claude Code holds the tool call behind it: two hooks
+#   were observed alive for 235s and 182s against `"timeout": 5` in hooks.json,
+#   so the declared per-hook timeout cannot be relied on to break the wait.
+#   `2>/dev/null || true` does not help here — that handles a read that fails,
+#   not a read that never returns.
+#
+# S3.3 GRACEFUL DEGRADATION
+#   Prefer GNU-style `timeout`, fall back to `gtimeout` (Homebrew coreutils
+#   without unprefixed shims), and read unbounded when neither exists. A missing
+#   `timeout` binary must never turn into a failed hook. Same probe as
+#   scripts/verify-commands.sh.
+#
+# CALLERS STILL HANDLE EMPTY INPUT
+#   On timeout the payload is empty, which is indistinguishable from "no
+#   payload". Fail-open hooks exit 0; security-gate.sh deliberately fails closed
+#   and blocks. That trade is intended — a visible block beats a silent
+#   multi-minute hang.
+mtk_read_payload() {
+  local secs="${1:-4}"
+  if command -v timeout >/dev/null 2>&1; then
+    timeout "$secs" cat 2>/dev/null || true
+  elif command -v gtimeout >/dev/null 2>&1; then
+    gtimeout "$secs" cat 2>/dev/null || true
+  else
+    cat 2>/dev/null || true
+  fi
+}
+
 # --- Hook output envelope helpers (Claude Code hooks contract) --------------
 # Model/user-visible output must use the documented JSON envelopes, not plain
 # stdout (which reaches neither on exit 0). See code.claude.com/docs/en/hooks.

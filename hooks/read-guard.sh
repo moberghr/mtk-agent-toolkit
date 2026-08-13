@@ -44,7 +44,7 @@ source "${SCRIPT_DIR}/lib/mtkignore.sh"
 
 mtk_is_redundant_plugin_invocation "$0" && exit 0
 
-INPUT=$(cat)
+INPUT="$(mtk_read_payload)"
 
 TOOL_NAME=$(mtk_extract_tool_name "$INPUT" 2>/dev/null || echo "")
 # Only guard read-shaped tools. Anything else is none of our business.

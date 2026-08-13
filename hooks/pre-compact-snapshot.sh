@@ -24,7 +24,7 @@ case "$SELF_DIR_P/" in
 esac
 
 # Read JSON payload (advisory; may be empty in some harnesses).
-INPUT="$(cat 2>/dev/null || true)"
+INPUT="$(mtk_read_payload)"
 
 # Only act on auto-compaction. Manual /compact is user-initiated; respect that.
 if [ -n "$INPUT" ]; then
