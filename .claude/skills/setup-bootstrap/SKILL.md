@@ -399,7 +399,7 @@ mkdir -p .claude/rules
 Read the active tech stack skill's `## Settings Additions` section.
 
 - **`.claude/settings.json` does not exist (fresh bootstrap):** create it from the tech-stack skill's Settings Additions layered over a minimal `{}` base. Never copy the toolkit's own `settings.json` — that's MTK's dev config, not a template. Every hook command path written into the target repo must be `$CLAUDE_PLUGIN_ROOT`-relative; bare `hooks/...` or `$CLAUDE_PROJECT_DIR/hooks/...` dangle in plugin-cache installs.
-- **`.claude/settings.json` exists:** merge — `allowedTools`/`deny` union with existing, `hooks.PostToolUse` appends the stack's format hook.
+- **`.claude/settings.json` exists:** merge — `allowedTools`/`deny` union with existing, and **every** `### hooks.<Event>` block in the stack's Settings Additions appends its entries to that event. Do not merge `hooks.PostToolUse` alone: `format-on-edit.sh` only **queues** the edited path at PostToolUse and only formats at `Stop`/`SubagentStop` (`--flush`), so appending the PostToolUse half by itself leaves the repo formatting nothing at all, silently. Re-bootstrapping an existing repo is the supported migration for that pairing, so this branch has to carry all three events.
 - **Write refused by the permission/session layer:** write the fully-merged content to `.claude/settings.json.mtk-proposed` instead and list it under **Needs review** in the STEP 5 report — one line: "review the diff, then `mv .claude/settings.json.mtk-proposed .claude/settings.json`". Never silently skip the merge; never retry the refused write verbatim.
 
 ### Reference File Customization

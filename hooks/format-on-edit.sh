@@ -139,8 +139,8 @@ flush_dotnet() {
   command -v dotnet >/dev/null 2>&1 || return 0
 
   # Group by workspace directory: "<dir>\t<file>" sorted, then one run per dir.
-  local ws rel line dir includes
-  local -a pairs=()
+  local ws rel line dir
+  local -a pairs=() includes=()
   for f in "${cs[@]}"; do
     ws="$(nearest_dir_with "$f" '*.csproj' || true)"
     [ -n "$ws" ] || ws="$(nearest_dir_with "$f" '*.sln' '*.slnx' || true)"
@@ -155,27 +155,33 @@ flush_dotnet() {
   [ "${#pairs[@]}" -gt 0 ] || return 0
 
   dir=""
-  includes=""
+  includes=()
   while IFS= read -r line; do
     local this_dir="${line%%$'\t'*}" this_rel="${line#*$'\t'}"
     if [ "$this_dir" != "$dir" ]; then
-      [ -n "$dir" ] && dotnet_format_in "$dir" "$includes"
+      [ -n "$dir" ] && dotnet_format_in "$dir" "${includes[@]}"
       dir="$this_dir"
-      includes=""
+      includes=()
     fi
-    includes="${includes}${includes:+ }${this_rel}"
+    includes+=("$this_rel")
   done < <(printf '%s\n' "${pairs[@]}" | sort -u)
-  [ -n "$dir" ] && dotnet_format_in "$dir" "$includes"
+  # `includes` is never empty when `dir` is set — the append below the branch
+  # above always runs for the group that set it — so the `set -u` expansion of
+  # an empty array (a hard error on bash < 4.4) is unreachable here.
+  [ -n "$dir" ] && dotnet_format_in "$dir" "${includes[@]}"
   return 0
 }
 
-# `--include` takes a space-separated list, and the paths must be relative to
-# the directory dotnet format is invoked from — hence the subshell cd.
+# `--include` takes a LIST of paths, each relative to the directory dotnet
+# format is invoked from — hence the subshell cd. They must be passed as
+# separate argv entries, not joined into one word: a path containing a space
+# ("My Folder/S.cs") that gets split becomes two include patterns, neither of
+# which matches, and dotnet format then formats nothing and exits 0 — the exact
+# silent no-op this function exists to fix. Verified on dotnet 10.0.100.
 dotnet_format_in() {
-  local dir="$1" includes="$2"
-  # shellcheck disable=SC2086
-  ( cd "$dir" && dotnet format --include $includes --verbosity quiet ) >/dev/null 2>&1 \
-    || log_warn "dotnet format failed in ${dir} (${includes})"
+  local dir="$1"; shift
+  ( cd "$dir" && dotnet format --include "$@" --verbosity quiet ) >/dev/null 2>&1 \
+    || log_warn "dotnet format failed in ${dir} ($*)"
 }
 
 format_one() {
