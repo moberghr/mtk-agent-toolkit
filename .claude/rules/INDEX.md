@@ -15,7 +15,7 @@ always relevant (machine-scoped auto-attach), independent of the axes.
 
 | Rule file | Title | decision | topic | scope | paths | Rules | Lines |
 |---|---|---|---|---|---|---|---|
-| `git-workflow.md` | Git & Workflow (S4) | process | git | global | .claude/manifest.json; .claude-plugin/plugin.json; .claude-plugin/marketplace.json; CHANGELOG.md; checksums.sha256 | S4: 11 | 43 |
+| `git-workflow.md` | Git & Workflow (S4) | process | git | global | .claude/manifest.json; .claude-plugin/plugin.json; .claude-plugin/marketplace.json; CHANGELOG.md; checksums.sha256 | S4: 12 | 55 |
 | `hooks-and-scripts.md` | Hooks & Scripts (S3) | process | hooks | global | hooks/**; scripts/** | S3: 16 | 48 |
 | `skill-authoring.md` | Skill Authoring (S2) | authoring | skills | global | .claude/skills/**; tests/pressure-tests/**; evals/**; docs/skill-anatomy.md | S2: 27 | 70 |
 | `toolkit-structure.md` | Toolkit Structure (S1) | structure | manifest | global | .claude/manifest.json; .claude-plugin/** | S1: 17 | 52 |

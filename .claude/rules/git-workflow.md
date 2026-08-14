@@ -11,7 +11,7 @@ axes:
   scope: global
 trigger:
   tool: "Bash"
-  pattern: "git[[:space:]]+(commit|push|tag)|gh[[:space:]]+(pr|release)[[:space:]]+create"
+  pattern: "git[[:space:]]+(commit|push|tag|rebase)|gh[[:space:]]+(pr|release)[[:space:]]+(create|merge)"
 strength: inject
 ---
 
@@ -28,6 +28,18 @@ strength: inject
 
 - **S4.3** Commit messages use conventional format: `type: description`. Types: `feat`, `fix`, `refactor`, `docs`, `chore`.
 - **S4.4** Keep commits focused — one logical change per commit. Don't bundle unrelated changes.
+
+## Non-Interactive Shell Discipline
+
+- **S4.12** Mutating `gh`/`git` commands must be prompt-proof and unpiped. Pass every flag needed to suppress the prompt (`gh pr merge` requires `--delete-branch` **or** `--no-delete-branch` in addition to `--squash`), redirect stdin with `< /dev/null` so any surviving prompt fails fast, and never pipe a mutating command through `tail`/`head` — those buffer until EOF and hide the prompt that is blocking. Canonical form:
+
+  ```bash
+  gh pr merge <n> --squash --delete-branch < /dev/null
+  ```
+
+  Pipe-to-`tail` stays fine for read-only chatty commands (`git log`, `gh pr view`). Recommended env for agent shells: `GH_PROMPT_DISABLED=1`, `GIT_TERMINAL_PROMPT=0`, `GH_PAGER=cat`, `GIT_PAGER=cat` — the pager is the same hang class, since `gh`/`git` page into `less` whenever they detect a TTY. Windows shells (Git Bash/ConPTY) misreport TTY status, so `gh`'s own non-interactive detection is not a substitute for the flags.
+
+  Enforced by `hooks/interactive-guard.sh` (PreToolUse, `Bash` matcher) as a hard deny — it blocks the missing-flag case and the piped case separately, allows read-only pipes, and is disabled with `MTK_INTERACTIVE_GUARD=0`. When a merge is blocked *after* it may already have landed, check `gh pr view <n> --json state` before retrying.
 
 ## Versioning
 

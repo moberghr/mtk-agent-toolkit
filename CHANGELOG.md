@@ -4,6 +4,20 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Added — a guard for shell commands that hang waiting for an answer nobody can give
+
+Field report, 2026-08-13: `gh pr merge 272 --squash 2>&1 | tail -5` ran to the full 3-minute Bash-tool timeout and returned `(No output)`. The merge had already **succeeded** — gh then blocked on its post-merge "Delete the branch?" prompt waiting on stdin, and `tail` buffers until EOF, so the prompt text never reached the transcript. With no output and a long stall, it read as a permission denial; debugging went to hooks and permissions rather than to the command.
+
+Two independent causes, either sufficient on its own, so `hooks/interactive-guard.sh` blocks them separately: a `gh pr merge` with no `--delete-branch`/`--no-delete-branch` decision, and a prompt-capable command (`gh pr merge|create`, `gh release create`, `git push`, `git rebase`) piped into `tail`/`head`. Both messages name the fix. The first also says to check `gh pr view <n> --json state` before retrying, because the mutation may already have landed — retrying a merge that "timed out" is how you act twice on state that changed once.
+
+Recorded as **S4.12** in `.claude/rules/git-workflow.md`, whose injection trigger now covers `gh pr merge` and `git rebase` (it previously fired only on `create`/`commit`/`push`/`tag`, so it never saw the command that caused this). The rule also carries the environment half — `GH_PROMPT_DISABLED=1`, `GIT_TERMINAL_PROMPT=0`, `GH_PAGER=cat`, `GIT_PAGER=cat` — since the pager is the same hang class: `gh`/`git` page into `less` whenever they detect a TTY, and Windows shells (Git Bash/ConPTY) misreport TTY status, so gh's own non-interactive detection is not a substitute for the flags.
+
+Deliberately narrow, because an over-firing hard deny is how hooks get switched off. Matching is anchored to command position, so `echo "gh pr merge later"` and `grep -rn "git push" docs/` pass through; read-only pipes (`gh pr view … | tail`, `git log | head`) are never blocked; unpiped `git push` is never blocked. Kill-switch `MTK_INTERACTIVE_GUARD=0`.
+
+Judgement is also scoped to a single **line**, which the hook's own PR forced: the first version matched the whole payload, so `gh pr create --body "$(cat <<BODY … )"` was blocked by the literal string `| tail -5` sitting in the PR prose three lines below the command. A shell pipe binds within one line, and documentation is not a pipe. Pinned by a regression case built from the payload that caused it.
+
+One trade to weigh: unlike `security-gate.sh`, this hook fails **open** on an unparseable payload. Double-blocking one malformed input doubles the error text for no gain — this guard prevents a hang, not a breach, and security-gate already holds the fail-closed line for Bash. It reads its payload through `mtk_read_payload`, so it inherits the bounded read below rather than reintroducing the same wedge it exists to prevent.
+
 ### Fixed — a hook that never received its payload blocked the tool call indefinitely
 
 Every hook read its payload with a bare `INPUT=$(cat)`, which blocks until stdin closes. When Claude Code does not close it, the hook never exits and the tool call sits behind it. Measured on Windows, 2026-08-13: `context-budget.sh` alive 235s and `scope-guard.sh` alive 182s, both against `"timeout": 5` in `hooks.json`. The declared per-hook timeout did not kill either one, so it cannot be treated as the backstop. The two spellings that look defensive — `$(cat 2>/dev/null || true)` — are not: they handle a read that *fails*, not one that never returns.
