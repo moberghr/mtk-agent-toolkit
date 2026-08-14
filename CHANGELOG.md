@@ -17,6 +17,22 @@ Deliberately narrow, because an over-firing hard deny is how hooks get switched 
 Judgement is also scoped to a single **line**, which the hook's own PR forced: the first version matched the whole payload, so `gh pr create --body "$(cat <<BODY … )"` was blocked by the literal string `| tail -5` sitting in the PR prose three lines below the command. A shell pipe binds within one line, and documentation is not a pipe. Pinned by a regression case built from the payload that caused it.
 
 One trade to weigh: unlike `security-gate.sh`, this hook fails **open** on an unparseable payload. Double-blocking one malformed input doubles the error text for no gain — this guard prevents a hang, not a breach, and security-gate already holds the fail-closed line for Bash. It reads its payload through `mtk_read_payload`, so it inherits the bounded read below rather than reintroducing the same wedge it exists to prevent.
+### Fixed — the formatter hook raced the model, and its .NET arm never formatted anything
+
+`hooks/format-on-edit.sh` ran as a bare PostToolUse mutation: Claude edits a file, the hook immediately rewrites it, and Claude's next Edit against that file fails with "File has been modified since read". The window is exactly the one a multi-edit turn lives in.
+
+Its `.cs` arm was also a no-op. `dotnet format --include` matches paths **relative to the workspace directory**; handed the absolute `tool_input.file_path` it matches nothing and still exits 0 (verified, dotnet 10.0.110). The hook reported success on every C# edit and formatted none of them. A comment in the file said "run from repo root" — there was no `cd`.
+
+The hook is now a pair, in the shape of the existing `rule-trigger.sh --rearm` convention:
+
+- **PostToolUse** (no argument) queues the edited path into a per-project, per-session file under `$TMPDIR`. No mutation, so nothing can race the model.
+- **Stop / SubagentStop** (`--flush`) formats everything queued, once, after Claude has stopped responding, then clears the queue.
+
+`--flush` dedupes, drops files deleted during the turn, and clears the queue *before* formatting so a hung formatter cannot leave entries to be reprocessed every turn. `.cs` files are grouped by their nearest `.csproj` (falling back to `.sln`/`.slnx`) and formatted with one `dotnet format --include <relative paths>` per workspace, invoked from that directory — correct *and* materially faster, since `dotnet format` loads the whole workspace before filtering. A `.cs` file with no project above it is skipped rather than triggering a repo-wide format.
+
+This matters most for Python, where the mid-turn mutation was not cosmetic: `ruff check --fix` rewrites imports and renames bindings, so it could change what a file means between the model's read and its edit.
+
+**Wiring change.** Both halves must be wired or nothing is formatted. The `## Settings Additions` block in all three tech-stack skills now emits the Stop and SubagentStop entries alongside PostToolUse; repos bootstrapped before this change have the PostToolUse half only and will queue without flushing until re-bootstrapped or hand-wired.
 
 ### Fixed — a hook that never received its payload blocked the tool call indefinitely
 

@@ -42,7 +42,7 @@ alwaysApply: false
 - **Active stack:** [from `.claude/tech-stack`]
 - **Build command:** [from tech stack skill `## Build & Test Commands`; append `[UNVERIFIED — <reason>]` if STEP 3.5a's verifier reported `failed`]
 - **Test command:** [from tech stack skill `## Build & Test Commands`, list/collect-only variant when one exists (STEP 3.5a); append `[UNVERIFIED — <reason>]` if `failed`]
-- **Format:** [human-readable form of the format command from tech stack skill `## Format Command` — show the manual project-wide form, e.g., `dotnet format --verbosity quiet`, `npx biome format --write <file>`, `ruff format <file>`. The PostToolUse hook (`hooks/format-on-edit.sh`) handles per-file targeting via stdin JSON; CLAUDE.md is for human readers. Append `[UNVERIFIED — <reason>]` if STEP 3.5a's check-mode verification reported `failed`.]
+- **Format:** [human-readable form of the format command from tech stack skill `## Format Command` — show the manual project-wide form, e.g., `dotnet format --verbosity quiet`, `npx biome format --write <file>`, `ruff format <file>`. The `hooks/format-on-edit.sh` hook pair (PostToolUse queues, Stop `--flush` formats) handles edited-file targeting via stdin JSON; CLAUDE.md is for human readers. Append `[UNVERIFIED — <reason>]` if STEP 3.5a's check-mode verification reported `failed`.]
 
 For framework-specific build/test commands and patterns, see the `tech-stack-{stack}` skill (provided by the MTK plugin, not a file in this repo).
 

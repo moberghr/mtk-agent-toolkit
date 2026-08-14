@@ -53,7 +53,7 @@ fi
 - **Build:** `<pm> run build` (verifies full toolchain — bundler, type check, assets)
 - **Test (batch):** `<pm> test <path/to/file>` or `<pm> run test -- <pattern>` (vitest/jest support filter flags; check `package.json` scripts)
 - **Test (full):** `<pm> test` or `<pm> run test`
-- **Format:** `<pm> run format` if defined, else `npx prettier --write <path>` or `npx biome format --write <path>` based on project config. The PostToolUse hook is wired through `hooks/format-on-edit.sh`, which extracts `tool_input.file_path` from stdin JSON and dispatches to biome → prettier by extension. Do NOT use `$CLAUDE_FILE` — it is not a Claude Code env var.
+- **Format:** `<pm> run format` if defined, else `npx prettier --write <path>` or `npx biome format --write <path>` based on project config. Wired through `hooks/format-on-edit.sh`, which **queues** edited paths at PostToolUse and **formats** them at Stop, dispatching biome → prettier by extension — both halves must be wired or nothing is formatted. Do NOT use `$CLAUDE_FILE` — it is not a Claude Code env var.
 - **Lint:** `<pm> run lint` if defined, else `npx eslint <path>` or `npx biome check <path>` based on project config
 
 **Tauri addendum (when `src-tauri/` exists):**
@@ -241,17 +241,28 @@ Merge these into the project's `.claude/settings.json` during `setup-bootstrap`:
 - matcher: `Edit|Write`
 - command: `bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh`
 
+### hooks.Stop (merge: append)
+- command: `bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh --flush`
+
+### hooks.SubagentStop (merge: append)
+- command: `bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh --flush`
+
+Both halves are required. PostToolUse only **queues** the edited path; `--flush` at Stop is what actually formats. Wiring PostToolUse alone formats nothing; wiring a formatter to mutate at PostToolUse instead rewrites a file Claude has already read, and its next Edit fails with "File has been modified since read".
+
 The matcher field accepts a regex on **tool name** only — `Write(*.ts)` is NOT valid Claude Code syntax and will silently never fire. File-extension dispatch happens inside `format-on-edit.sh`, which parses `tool_input.file_path` from stdin JSON.
 
 ## Format Command
 
 ```bash
-# Wired via PostToolUse hook (see Settings Additions above):
+# Wired via PostToolUse (queue) + Stop (flush) hooks — see Settings Additions above:
 bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh
+bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh --flush
 # Manual invocation (for the human-readable CLAUDE.md, drop the wrapper):
 npx biome format --write <file>   # or
 npx prettier --write <file>
 ```
+
+At flush the wrapper dispatches biome → prettier per edited file (deduped, with files deleted during the turn dropped).
 
 The wrapper picks biome → prettier based on what's installed and dispatches by extension (`.ts/.tsx/.js/.jsx/.mjs/.cjs`). Failures log to stderr (visible in Claude Code's hook log) but never block the edit.
 

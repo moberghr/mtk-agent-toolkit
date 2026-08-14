@@ -721,7 +721,7 @@
       "source": "hooks/format-on-edit.sh",
       "target": "hooks/format-on-edit.sh",
       "action": "sync",
-      "description": "PostToolUse wrapper that parses tool_input.file_path from stdin JSON and dispatches to the right formatter (biome/prettier/ruff/black/dotnet format) by file extension"
+      "description": "Formats the turn's edited files without racing the model: queues tool_input.file_path at PostToolUse, then with --flush at Stop dispatches each queued path to biome/prettier/ruff/black by extension and batches .cs per nearest .csproj for dotnet format"
     },
     "hooks/security-gate.sh": {
       "source": "hooks/security-gate.sh",

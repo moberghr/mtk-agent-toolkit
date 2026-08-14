@@ -29,7 +29,7 @@ Loaded automatically by commands and skills when the active tech stack is `dotne
 - **Test (list-only):** enumerates discovered tests without executing them — the F7/command-verification list variant used to verify `dotnet test` is runnable without paying for a full suite run. Conditional on the solution format:
   - `.sln`: `dotnet test <sln> --list-tests`
   - `.slnx` (or `global.json` sets `"test": {"runner": "Microsoft.Testing.Platform"}`): `dotnet test --solution <slnx> --list-tests` — a bare `dotnet test <slnx> --list-tests` fails with `"Specifying a solution for 'dotnet test' should be via '--solution'"` under Microsoft.Testing.Platform.
-- **Format:** `dotnet format --verbosity quiet` (project-wide). Per-file formatting in PostToolUse is wired via `hooks/format-on-edit.sh`, which extracts `tool_input.file_path` from stdin JSON and runs `dotnet format --include <file>`. Do NOT reference `$CLAUDE_FILE` — it is not a Claude Code env var; hook input arrives via stdin.
+- **Format:** `dotnet format --verbosity quiet` (project-wide). Edited-file formatting is wired via `hooks/format-on-edit.sh`, which **queues** paths at PostToolUse and **formats** them at Stop — both halves must be wired or nothing is formatted. `--include` takes paths relative to the workspace directory, so the flush pass groups files by their nearest `.csproj` and runs from that directory; an absolute `--include` silently matches nothing and still exits 0. Do NOT reference `$CLAUDE_FILE` — it is not a Claude Code env var; hook input arrives via stdin.
 
 ## File Extensions & Markers
 
@@ -159,18 +159,27 @@ Merge these into the project's `.claude/settings.json` during `setup-bootstrap`:
 - matcher: `Edit|Write`
 - command: `bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh`
 
+### hooks.Stop (merge: append)
+- command: `bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh --flush`
+
+### hooks.SubagentStop (merge: append)
+- command: `bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh --flush`
+
+Both halves are required. PostToolUse only **queues** the edited path; `--flush` at Stop is what actually formats. Wiring PostToolUse alone formats nothing; wiring a formatter to mutate at PostToolUse instead rewrites a file Claude has already read, and its next Edit fails with "File has been modified since read".
+
 The matcher field accepts a regex on **tool name** only — `Write(*.cs)` is NOT valid Claude Code syntax and will silently never fire. File-extension dispatch happens inside `format-on-edit.sh`, which parses `tool_input.file_path` from stdin JSON.
 
 ## Format Command
 
 ```bash
-# Wired via PostToolUse hook (see Settings Additions above):
+# Wired via PostToolUse (queue) + Stop (flush) hooks — see Settings Additions above:
 bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh
+bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh --flush
 # Manual invocation (project-wide):
 dotnet format --verbosity quiet
 ```
 
-The wrapper runs `dotnet format --include <file> --verbosity quiet` per edit. Failures log to stderr but never block.
+At flush the wrapper groups the turn's edited `.cs` files by their nearest `.csproj` (falling back to `.sln`/`.slnx`) and runs one `dotnet format --include <relative paths> --verbosity quiet` per workspace, from that workspace directory. Both details matter: `--include` matches only paths relative to the invocation directory — given an absolute path it matches nothing and still exits 0 — and `dotnet format` loads the whole workspace before filtering, so one run per file is pathological. A `.cs` file with no `.csproj`/`.sln` above it is skipped rather than triggering a repo-wide format. Failures log to stderr but never block.
 
 ## Pre-Commit Review Items
 
