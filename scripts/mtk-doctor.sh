@@ -108,16 +108,32 @@ MANIFEST_VERSION=""
 if [ -n "$DOCTOR_MANIFEST" ]; then
   MANIFEST_VERSION="$(grep -o '"version": *"[^"]*"' "$DOCTOR_MANIFEST" | head -1 | sed 's/.*"\([^"]*\)".*/\1/')"
 fi
-PLUGIN_VERSION="$(grep -o '"version": *"[^"]*"' .claude-plugin/plugin.json | head -1 | sed 's/.*"\([^"]*\)".*/\1/')"
-if [ "$MANIFEST_VERSION" = "$PLUGIN_VERSION" ] && [ -n "$MANIFEST_VERSION" ]; then
+# Read the plugin version only if the descriptor is there. Unguarded, this grep
+# exits 2 under `set -e` and takes the whole run with it, so a repo without
+# .claude-plugin/plugin.json got a raw `grep: ... No such file` and exit 2
+# instead of the "plugin.json missing" FAIL already recorded above — the doctor
+# could not diagnose the one thing it had just detected.
+PLUGIN_VERSION=""
+if [ -f .claude-plugin/plugin.json ]; then
+  PLUGIN_VERSION="$(grep -o '"version": *"[^"]*"' .claude-plugin/plugin.json | head -1 | sed 's/.*"\([^"]*\)".*/\1/')"
+fi
+if [ -z "$MANIFEST_VERSION" ] && [ -z "$PLUGIN_VERSION" ]; then
+  record WARN components "version sync unknown" "neither manifest.json nor .claude-plugin/plugin.json is readable here — nothing to compare"
+elif [ "$MANIFEST_VERSION" = "$PLUGIN_VERSION" ] && [ -n "$MANIFEST_VERSION" ]; then
   record PASS components "version sync" "$MANIFEST_VERSION"
 else
   record FAIL components "version mismatch" "manifest=${MANIFEST_VERSION:-?} plugin=${PLUGIN_VERSION:-?}"
 fi
 
-# Skill count vs disk
-SKILL_DIRS=$(find .claude/skills -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d '[:space:]')
-record PASS components "skills on disk" "${SKILL_DIRS} directories"
+# Skill count vs disk. `find` on a missing .claude/skills exits non-zero and
+# pipefail carries that out of the command substitution — the second way this
+# run died before reporting anything.
+if [ -d .claude/skills ]; then
+  SKILL_DIRS=$(find .claude/skills -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d '[:space:]')
+  record PASS components "skills on disk" "${SKILL_DIRS} directories"
+else
+  record WARN components "no .claude/skills directory" "skills resolve from the plugin root in a plugin install — set CLAUDE_PLUGIN_ROOT to check them"
+fi
 
 # Skill name matches directory (S1.12 / C0.3)
 SKILL_NAME_MISMATCHES=()
@@ -127,7 +143,7 @@ while IFS= read -r skill_md; do
   if [ -n "$fm_name" ] && [ "$fm_name" != "$dir_name" ]; then
     SKILL_NAME_MISMATCHES+=("$dir_name vs name: $fm_name")
   fi
-done < <(find .claude/skills -name SKILL.md -mindepth 2 -maxdepth 3)
+done < <(find .claude/skills -name SKILL.md -mindepth 2 -maxdepth 3 2>/dev/null)
 
 if [ "${#SKILL_NAME_MISMATCHES[@]}" -eq 0 ]; then
   record PASS components "skill name/dir match" "all skills consistent"
@@ -178,6 +194,14 @@ while IFS= read -r line; do
   # and +x checks below run against a real path.
   script="${script//\$CLAUDE_PROJECT_DIR/$ROOT_DIR}"
   script="${script//\$\{CLAUDE_PROJECT_DIR\}/$ROOT_DIR}"
+  # $CLAUDE_PLUGIN_ROOT is only authoritative when the environment supplies it.
+  # This checkout is a reasonable guess otherwise — but remember it was a guess,
+  # because "I guessed and missed" must not be reported as "the hook is missing".
+  plugin_guessed=0
+  case "$script" in
+    *'$CLAUDE_PLUGIN_ROOT'*|*'${CLAUDE_PLUGIN_ROOT}'*)
+      [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || plugin_guessed=1 ;;
+  esac
   DOCTOR_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$ROOT_DIR}"
   script="${script//\$CLAUDE_PLUGIN_ROOT/$DOCTOR_PLUGIN_ROOT}"
   script="${script//\$\{CLAUDE_PLUGIN_ROOT\}/$DOCTOR_PLUGIN_ROOT}"
@@ -188,7 +212,11 @@ while IFS= read -r line; do
   esac
   case "$script" in /*) ;; *) script="$ROOT_DIR/$script" ;; esac
   if [ ! -f "$script" ]; then
-    record FAIL hooks "registered hook missing" "$cmd"
+    if [ "$plugin_guessed" -eq 1 ]; then
+      record WARN hooks "hook path unresolvable" "$cmd — \$CLAUDE_PLUGIN_ROOT is unset and the hook is not under $ROOT_DIR either; set it to check plugin-installed hooks"
+    else
+      record FAIL hooks "registered hook missing" "$cmd"
+    fi
   elif [ ! -x "$script" ]; then
     if [ "$FIX" -eq 1 ]; then
       chmod +x "$script" && record PASS hooks "hook fixed (chmod +x)" "$cmd"
@@ -229,12 +257,26 @@ fi
 # ──────────────────────────────────────────────
 # Manifest paths exist on disk (sample check — full check is in validate-toolkit.sh)
 MISSING_PATHS=()
+SAMPLED_PATHS=0
+# `source` paths are relative to the tree the manifest describes, which is not
+# necessarily the cwd: when the manifest resolves to $CLAUDE_PLUGIN_ROOT, every
+# path belongs to the plugin, and checking it against the project reports the
+# whole toolkit as missing.
+DOCTOR_MANIFEST_ROOT="$ROOT_DIR"
+if [ -n "$DOCTOR_MANIFEST" ]; then
+  DOCTOR_MANIFEST_ROOT="$(cd "$(dirname "$DOCTOR_MANIFEST")/.." 2>/dev/null && pwd)" || DOCTOR_MANIFEST_ROOT="$ROOT_DIR"
+fi
 while IFS= read -r src; do
-  [ -e "$src" ] || MISSING_PATHS+=("$src")
-done < <(grep -oE '"source": *"[^"]+"' "${DOCTOR_MANIFEST:-/dev/null}" | sed 's/.*"\([^"]*\)".*/\1/' | sort -u | head -50)
+  SAMPLED_PATHS=$((SAMPLED_PATHS + 1))
+  [ -e "${DOCTOR_MANIFEST_ROOT}/${src}" ] || MISSING_PATHS+=("$src")
+done < <(grep -oE '"source": *"[^"]+"' "${DOCTOR_MANIFEST:-/dev/null}" 2>/dev/null | sed 's/.*"\([^"]*\)".*/\1/' | sort -u | head -50)
 
-if [ "${#MISSING_PATHS[@]}" -eq 0 ]; then
-  record PASS integrity "manifest paths present (sample of 50)"
+if [ "$SAMPLED_PATHS" -eq 0 ]; then
+  # Zero paths checked is not zero paths missing. Without a manifest this check
+  # has nothing to say, and saying "present" would be a green light nobody earned.
+  record WARN integrity "manifest paths unchecked" "no manifest resolved — 0 paths sampled"
+elif [ "${#MISSING_PATHS[@]}" -eq 0 ]; then
+  record PASS integrity "manifest paths present" "sampled ${SAMPLED_PATHS}"
 else
   for p in "${MISSING_PATHS[@]}"; do
     record FAIL integrity "manifest path missing" "$p"
