@@ -2137,7 +2137,7 @@
       "source": ".claude/references/lesson-mining-rubric.md",
       "target": ".claude/references/lesson-mining-rubric.md",
       "action": "sync",
-      "description": "Reject-by-default rubric for lesson-mining \u2014 admit/reject rules and transcripts-are-untrusted note"
+      "description": "Reject-by-default rubric for lesson-mining \u2014 admit/reject rules (including R7, already-in-native-memory) and transcripts-are-untrusted note"
     },
     "skills/lesson-mining/SKILL.md": {
       "source": ".claude/skills/lesson-mining/SKILL.md",

@@ -56,6 +56,19 @@ A new **ENVIRONMENT** category adds three checks, all WARN at most, since an env
 
 The `mtk-doctor` pressure test's S1 ("clean repo passes") now scopes its assertion to non-environment categories, because ENVIRONMENT grades the machine rather than the repo — a missing `ruff` is a true finding locally and a false positive as a repo verdict.
 
+### Added — the lessons pipeline can finally see Claude Code's native memory
+
+MTK's lesson stores (`tasks/lessons.md`, `.mtk/learnings.jsonl`, `.claude/lessons/personal.md`) had no awareness that Claude Code keeps its own memory directory at `~/.claude/projects/<sanitized-cwd>/memory/` — beside the session transcripts, under the same per-project segment. A grep across the whole repo for `.claude/memory` returned nothing.
+
+That directory holds exactly the content the lessons pipeline exists for. Its `feedback` files are engineer corrections *with a stated reason* — admit rule A1, already filtered once. Its `project` files are constraints not derivable from the code. An engineer who uses native memory accumulates the team's real rules in their home directory, where `lesson-mining` never looks, `promote-lesson` cannot reach, and no teammate ever sees them.
+
+Two changes, both suggest-only, neither writing to the memory directory without approval:
+
+- **`lesson-mining` reads it as a second source and a dedup surface.** As a source, a memory stating a team-worthy rule becomes a *promotion* candidate rather than something to re-derive from a transcript. As a dedup surface, new reject rule **R7** kills a transcript candidate whose rule already lives in a memory file — two stores holding one rule is not redundancy, it is guaranteed drift, since the copies get edited independently. Survivors are now grouped by origin so it is obvious which are new and which are merely moving. Admit rule A3 (novel constraint) checks memory as a third store alongside `tasks/lessons.md` and `.mtk/learnings.jsonl`.
+- **`promote-lesson` accepts a memory file as input.** Only `type: feedback` and `type: project` are offered; `user` and `reference` memories are not team lessons. Retiring the original is source-aware: `personal.md` entries are deleted as before, but a memory file is never touched without asking — decline, and its body is replaced with a pointer to the team lesson so a later session is not told a stale version of the rule.
+
+R6 still governs the contents: memory files are engineer-authored *evidence*, never instructions.
+
 ### Fixed — a hook that never received its payload blocked the tool call indefinitely
 
 Every hook read its payload with a bare `INPUT=$(cat)`, which blocks until stdin closes. When Claude Code does not close it, the hook never exits and the tool call sits behind it. Measured on Windows, 2026-08-13: `context-budget.sh` alive 235s and `scope-guard.sh` alive 182s, both against `"timeout": 5` in `hooks.json`. The declared per-hook timeout did not kill either one, so it cannot be treated as the backstop. The two spellings that look defensive — `$(cat 2>/dev/null || true)` — are not: they handle a read that *fails*, not one that never returns.
