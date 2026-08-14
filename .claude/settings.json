@@ -46,6 +46,11 @@
             "type": "command",
             "command": "hooks/security-gate.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "hooks/interactive-guard.sh",
+            "timeout": 5
           }
         ]
       },

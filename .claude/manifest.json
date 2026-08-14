@@ -729,6 +729,18 @@
       "action": "sync",
       "description": "PreToolUse hook that blocks destructive Bash commands (DB drops, force-push to main, broad rm)"
     },
+    "hooks/interactive-guard.sh": {
+      "source": "hooks/interactive-guard.sh",
+      "target": "hooks/interactive-guard.sh",
+      "action": "sync",
+      "description": "PreToolUse hook that blocks Bash commands able to hang on an interactive prompt (S4.12): gh pr merge with no delete-branch decision, and prompt-capable commands piped through tail/head"
+    },
+    "tests/hooks/test-interactive-guard.sh": {
+      "source": "tests/hooks/test-interactive-guard.sh",
+      "target": "tests/hooks/test-interactive-guard.sh",
+      "action": "sync",
+      "description": "Hook test for interactive-guard.sh covering both blocks, the read-only allow paths, command-position anchoring, fail-open payload handling, and the kill-switch"
+    },
     "hooks/post-compact.sh": {
       "source": "hooks/post-compact.sh",
       "target": "hooks/post-compact.sh",
