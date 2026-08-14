@@ -34,6 +34,16 @@ This matters most for Python, where the mid-turn mutation was not cosmetic: `ruf
 
 **Wiring change.** Both halves must be wired or nothing is formatted. The `## Settings Additions` block in all three tech-stack skills now emits the Stop and SubagentStop entries alongside PostToolUse; repos bootstrapped before this change have the PostToolUse half only and will queue without flushing until re-bootstrapped or hand-wired.
 
+### Fixed — eleven hooks in this checkout were wired on a path that only resolves by luck
+
+`.claude/settings.json` spelled its PreToolUse, PostToolUse, PreCompact, SessionStart and UserPromptSubmit commands as bare `hooks/<name>.sh`, while its four Stop hooks used `$CLAUDE_PROJECT_DIR/hooks/<name>`. Same file, two conventions, and only one of them is safe.
+
+A relative command resolves against the hook process's cwd, and a hook is not guaranteed to run with cwd inside the repo — `hooks/lib/hook-io.sh` states this directly in the comment above `mtk_is_redundant_plugin_invocation`, which exists precisely because that assumption does not hold. When the cwd is elsewhere the command is not found, the hook does not run, and the guard is silently *off* rather than loudly broken. That is the same failure shape S1.17 was written to prevent, one layer up: not a path computed wrong, a path never resolved at all.
+
+All eleven now anchor on `$CLAUDE_PROJECT_DIR`. `scripts/validate-toolkit.sh` gained a check for both sides of the convention — `settings.json` commands must carry `$CLAUDE_PROJECT_DIR`, `hooks/hooks.json` commands must carry `${CLAUDE_PLUGIN_ROOT}` — so the two spellings cannot drift apart again.
+
+Chasing the same split turned up a second silent gap. `mtk-doctor`'s "registered hook missing" check selected its input with `grep '"command": "hooks/'` — anchored on the *relative* spelling. It therefore inspected 11 of the 15 registered hooks and never checked the four that were already absolute: `verify-completion`, `capture-learnings.sh`, `session-analytics.sh`, `workflow-continuation.sh`. Deleting any of those four, or dropping their executable bit, produced a clean bill of health. The check now matches any `hooks/` command and expands `$CLAUDE_PROJECT_DIR` before testing the path, so it covers all 15 — and does not become a no-op for all of them once the paths above change spelling.
+
 ### Fixed — a hook that never received its payload blocked the tool call indefinitely
 
 Every hook read its payload with a bare `INPUT=$(cat)`, which blocks until stdin closes. When Claude Code does not close it, the hook never exits and the tool call sits behind it. Measured on Windows, 2026-08-13: `context-budget.sh` alive 235s and `scope-guard.sh` alive 182s, both against `"timeout": 5` in `hooks.json`. The declared per-hook timeout did not kill either one, so it cannot be treated as the backstop. The two spellings that look defensive — `$(cat 2>/dev/null || true)` — are not: they handle a read that *fails*, not one that never returns.

@@ -100,6 +100,38 @@ require_file ".claude/settings.json"
 grep -q '"deny"' .claude/settings.json || fail "settings.json missing permissions.deny — dangerous operations are not blocked"
 grep -q '"hooks"' .claude/settings.json || fail "settings.json missing hooks block — verify-completion / format hooks are not registered"
 
+# Hook commands must be root-anchored, never relative (S3.5/S3.6).
+#
+# A relative "hooks/x.sh" resolves against the hook process's cwd, and a hook is
+# NOT guaranteed to run with cwd inside the repo — hooks/lib/hook-io.sh says so
+# in the comment above mtk_is_redundant_plugin_invocation, which exists because
+# of that exact assumption. When the cwd is elsewhere the command is simply not
+# found and the hook does not run: the guard is silently OFF rather than loudly
+# broken, the same failure mode S1.17 exists to prevent. settings.json anchors
+# on $CLAUDE_PROJECT_DIR, hooks.json on ${CLAUDE_PLUGIN_ROOT}.
+#
+# The scan is spacing-tolerant and asserts it matched something. A check whose
+# input selector can silently return zero rows passes by inspecting nothing —
+# which is exactly the mtk-doctor bug fixed alongside this one, where the
+# selector was pinned to a spelling. Reformatting settings.json to
+# `"command":"…"` must not quietly switch the guard off.
+check_hook_anchor() { # $1=file  $2=required substring  $3=message
+  local file="$1" want="$2" msg="$3" line count=0
+  while IFS= read -r line; do
+    count=$((count + 1))
+    case "$line" in
+      *"$want"*) ;;
+      *) fail "${msg}: ${line}" ;;
+    esac
+  done < <(grep -oE '"command"[[:space:]]*:[[:space:]]*"[^"]*hooks/[^"]*"' "$file" || true)
+  [ "$count" -gt 0 ] || fail "$file: found 0 hook commands to check — the selector matched nothing, so this guard inspected nothing. Fix the selector, do not assume the file is clean."
+}
+
+check_hook_anchor .claude/settings.json '$CLAUDE_PROJECT_DIR' \
+  "settings.json hook command is not anchored on \$CLAUDE_PROJECT_DIR — a relative path resolves against the hook's cwd, which is not guaranteed to be the repo"
+check_hook_anchor hooks/hooks.json '${CLAUDE_PLUGIN_ROOT}' \
+  "hooks.json hook command is not anchored on \${CLAUDE_PLUGIN_ROOT} — plugin-installed repos have no repo-relative hooks/ directory"
+
 # All shell scripts in hooks/ and scripts/ must be executable and follow S3.1
 while IFS= read -r script; do
   [ -x "$script" ] || fail "$script is not executable (chmod +x) — violates S3.2"
