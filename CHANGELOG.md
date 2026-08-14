@@ -44,6 +44,18 @@ All eleven now anchor on `$CLAUDE_PROJECT_DIR`. `scripts/validate-toolkit.sh` ga
 
 Chasing the same split turned up a second silent gap. `mtk-doctor`'s "registered hook missing" check selected its input with `grep '"command": "hooks/'` — anchored on the *relative* spelling. It therefore inspected 11 of the 15 registered hooks and never checked the four that were already absolute: `verify-completion`, `capture-learnings.sh`, `session-analytics.sh`, `workflow-continuation.sh`. Deleting any of those four, or dropping their executable bit, produced a clean bill of health. The check now matches any `hooks/` command and expands `$CLAUDE_PROJECT_DIR` before testing the path, so it covers all 15 — and does not become a no-op for all of them once the paths above change spelling.
 
+### Added — `mtk-doctor` now grades environment fit, not just install structure
+
+Every existing doctor check answers "is MTK installed correctly": manifest paths, version sync, executable bits, checksums. None of them answer "does this install fit the machine it is running on" — the failure class where every file is present, every version matches, and the toolkit still misbehaves because a knob is calibrated for someone else's setup.
+
+A new **ENVIRONMENT** category adds three checks, all WARN at most, since an environment mismatch is never a broken install:
+
+- **Context-budget calibration.** `hooks/context-budget.sh` scales its file/mod/op nudges off `MTK_CONTEXT_WINDOW_TOKENS`, default 200000. On a large-context model the defaults fire several times too early, which trains the engineer to ignore the one hook whose whole job is telling them to checkpoint. WARN when the model looks large-context and the knob is unset; otherwise report the calibration in use.
+- **Hook basename collisions.** A hook in the user's global `~/.claude/settings.json` sharing a filename with one MTK ships — two different scripts, both firing, log lines you cannot tell apart. The double-run guard in `hook-io.sh` reads only *project* settings by design and correctly does not suppress this, so nothing else surfaces it.
+- **Formatter availability.** `format-on-edit.sh` logs to stderr and never blocks, so a missing `dotnet` / `ruff` / `npx` is invisible: edits look formatted and are not. Checked against the active `.claude/tech-stack`.
+
+The `mtk-doctor` pressure test's S1 ("clean repo passes") now scopes its assertion to non-environment categories, because ENVIRONMENT grades the machine rather than the repo — a missing `ruff` is a true finding locally and a false positive as a repo verdict.
+
 ### Fixed — a hook that never received its payload blocked the tool call indefinitely
 
 Every hook read its payload with a bare `INPUT=$(cat)`, which blocks until stdin closes. When Claude Code does not close it, the hook never exits and the tool call sits behind it. Measured on Windows, 2026-08-13: `context-budget.sh` alive 235s and `scope-guard.sh` alive 182s, both against `"timeout": 5` in `hooks.json`. The declared per-hook timeout did not kill either one, so it cannot be treated as the backstop. The two spellings that look defensive — `$(cat 2>/dev/null || true)` — are not: they handle a read that *fails*, not one that never returns.

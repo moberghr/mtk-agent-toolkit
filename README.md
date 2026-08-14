@@ -98,7 +98,7 @@ There are just **two commands to remember** — `/mtk` and `/mtk-setup`. Everyth
 | Review before committing | `/mtk review before commit` | Deterministic linters + AI judgment in one pass |
 | See what MTK has loaded | `/mtk status` | Active stack, references, hooks, domain packs |
 | Check toolkit usage trends | `/mtk health` | Usage-pulse report from `.claude/analytics.json` |
-| Health-check the install | `/mtk-doctor` | PASS/WARN/FAIL — deprecated models, version sync, hook integrity, always-on token cost |
+| Health-check the install | `/mtk-doctor` | PASS/WARN/FAIL — deprecated models, version sync, hook integrity, always-on token cost, environment fit |
 | Re-audit architecture | `/mtk-setup --audit` | Refreshes `architecture-principles.md` |
 | Reconcile docs ↔ code | `/mtk-setup --refresh` / `--converge` / `--check` | Keep docs honest about code, or code honest about docs — see [Setup that keeps proving itself](#setup-that-keeps-proving-itself) |
 | Promote a personal lesson | `/promote-lesson` | Move a lesson into the team-wide `tasks/lessons.md` (+ optional contribute-back PR) |

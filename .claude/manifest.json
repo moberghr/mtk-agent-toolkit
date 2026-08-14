@@ -769,7 +769,7 @@
       "source": "scripts/mtk-doctor.sh",
       "target": "scripts/mtk-doctor.sh",
       "action": "sync",
-      "description": "Health check across core files, components, hooks, and integrity. Supports --json/--fix/--strict."
+      "description": "Health check across core files, components, hooks, integrity, and environment fit (context-window calibration, hook basename collisions, formatter availability). Supports --json/--fix/--strict."
     },
     "scripts/generate-checksums.sh": {
       "source": "scripts/generate-checksums.sh",

@@ -519,6 +519,97 @@ else
 fi
 
 # ──────────────────────────────────────────────
+# ENVIRONMENT
+# ──────────────────────────────────────────────
+# Structural checks answer "is MTK installed correctly". These answer "does this
+# install fit the machine it is running on" — the class of problem where every
+# file is present, every version matches, and the toolkit still misbehaves
+# because a knob is calibrated for someone else's setup or a binary is absent.
+
+# Read an env value MTK would see: process env wins, then settings.local.json
+# (per-machine), then settings.json (shared). No jq (S3.3) — the env block is
+# flat "KEY": "VALUE" pairs.
+env_setting() {
+  local key="$1" v f
+  v="$(printenv "$key" 2>/dev/null || true)"
+  if [ -n "$v" ]; then printf '%s' "$v"; return 0; fi
+  for f in .claude/settings.local.json .claude/settings.json; do
+    [ -f "$f" ] || continue
+    v="$(grep -o "\"${key}\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" "$f" 2>/dev/null | head -1 |
+         sed -E 's/.*:[[:space:]]*"([^"]*)"/\1/' || true)"
+    if [ -n "$v" ]; then printf '%s' "$v"; return 0; fi
+  done
+  return 0
+}
+
+# 1. Context-budget calibration. hooks/context-budget.sh scales its file/mod/op
+#    nudges off MTK_CONTEXT_WINDOW_TOKENS, default 200000. On a large-context
+#    model the defaults fire several times too early, which trains the engineer
+#    to ignore the one hook that tells them to checkpoint.
+CTX_WINDOW="$(env_setting MTK_CONTEXT_WINDOW_TOKENS)"
+MODEL_HINT="$(env_setting ANTHROPIC_MODEL)"
+[ -n "$MODEL_HINT" ] || MODEL_HINT="$(env_setting model)"
+if [ -n "$CTX_WINDOW" ]; then
+  record PASS environment "context budget calibrated" \
+    "MTK_CONTEXT_WINDOW_TOKENS=${CTX_WINDOW} — context-budget.sh thresholds scale from this, not the 200000 default"
+elif printf '%s' "$MODEL_HINT" | grep -qiE '\[1m\]|-1m\b|1m\b'; then
+  record WARN environment "context budget miscalibrated for this model" \
+    "model '${MODEL_HINT}' looks large-context but MTK_CONTEXT_WINDOW_TOKENS is unset — context-budget.sh warns at 30 files / 40 mods / 120 ops, calibrated for a 200k window. Set it in .claude/settings.local.json env"
+else
+  record PASS environment "context budget at default calibration" \
+    "MTK_CONTEXT_WINDOW_TOKENS unset — assuming a 200000-token window (30 files / 40 mods / 120 ops). Set it if your model's window differs"
+fi
+
+# 2. Hook basename also wired in the user's global settings. Two different
+#    scripts sharing a basename both fire, and their log lines are
+#    indistinguishable — a real debugging trap, not a correctness bug. The
+#    double-run guard in hook-io.sh deliberately reads only the PROJECT settings,
+#    so it does not (and should not) suppress this case.
+USER_SETTINGS="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json"
+if [ -f "$USER_SETTINGS" ]; then
+  SHADOWED=""
+  for h in hooks/*.sh; do
+    [ -f "$h" ] || continue
+    b="$(basename "$h")"
+    if grep -qF "/$b" "$USER_SETTINGS" 2>/dev/null; then
+      SHADOWED="${SHADOWED}${SHADOWED:+, }${b}"
+    fi
+  done
+  if [ -n "$SHADOWED" ]; then
+    record WARN environment "hook basename also wired globally" \
+      "${SHADOWED} — ${USER_SETTINGS} wires a hook with the same filename. Both run, and their output is hard to tell apart; confirm that is intended"
+  else
+    record PASS environment "no hook basename collisions with user settings"
+  fi
+else
+  record PASS environment "no user-level settings.json to collide with"
+fi
+
+# 3. Formatter present for the active stack. format-on-edit.sh never blocks and
+#    logs only to stderr, so a missing binary is invisible: edits look formatted
+#    and are not.
+STACK=""
+[ -f ".claude/tech-stack" ] && STACK="$(tr -d '[:space:]' < .claude/tech-stack)"
+if [ -z "$STACK" ]; then
+  record PASS environment "no active tech stack" ".claude/tech-stack absent — formatter check skipped"
+else
+  case "$STACK" in
+    dotnet)   FMT_OK=0; command -v dotnet >/dev/null 2>&1 && FMT_OK=1; FMT_WANT="dotnet" ;;
+    python)   FMT_OK=0; { command -v ruff >/dev/null 2>&1 || command -v black >/dev/null 2>&1; } && FMT_OK=1; FMT_WANT="ruff or black" ;;
+    typescript) FMT_OK=0; command -v npx >/dev/null 2>&1 && FMT_OK=1; FMT_WANT="npx (biome/prettier)" ;;
+    *)        FMT_OK=1; FMT_WANT="" ;;
+  esac
+  if [ -z "$FMT_WANT" ]; then
+    record PASS environment "formatter check not defined for stack" "$STACK"
+  elif [ "$FMT_OK" -eq 1 ]; then
+    record PASS environment "formatter available for ${STACK}" "$FMT_WANT"
+  else
+    record WARN environment "formatter missing for ${STACK}" \
+      "${FMT_WANT} not on PATH — format-on-edit.sh logs to stderr and never blocks, so edits will silently go unformatted"
+  fi
+fi
+
+# ──────────────────────────────────────────────
 # OUTPUT
 # ──────────────────────────────────────────────
 if [ "$JSON" -eq 1 ]; then
