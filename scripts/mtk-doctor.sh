@@ -567,19 +567,40 @@ fi
 #    so it does not (and should not) suppress this case.
 USER_SETTINGS="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json"
 if [ -f "$USER_SETTINGS" ]; then
+  # Compare against the basenames of hook commands the user actually WIRES, not
+  # every occurrence of the string anywhere in the file. A `permissions.allow`
+  # entry naming an unrelated script is not a second hook, and a WARN claiming
+  # "both run" when nothing else runs is how a whole category gets ignored.
+  # Extract "command" values, split off flags, basename each token, keep scripts.
+  USER_HOOK_BASENAMES="$(
+    grep -oE '"command"[[:space:]]*:[[:space:]]*"[^"]*"' "$USER_SETTINGS" 2>/dev/null |
+      sed -E 's/.*:[[:space:]]*"([^"]*)"/\1/' |
+      tr ' ' '\n' | sed -e 's|.*/||' | grep -E '\.sh$' | sort -u || true
+  )"
+  # MTK's hooks live in the project in this checkout and in the plugin root in an
+  # install. Without either, there is nothing to compare — say so rather than
+  # reporting "no collisions" for a comparison that never happened.
+  MTK_HOOK_DIR="hooks"
+  [ -d "$MTK_HOOK_DIR" ] || MTK_HOOK_DIR="${CLAUDE_PLUGIN_ROOT:-}/hooks"
   SHADOWED=""
-  for h in hooks/*.sh; do
+  MTK_HOOKS_SEEN=0
+  for h in "$MTK_HOOK_DIR"/*.sh; do
     [ -f "$h" ] || continue
+    MTK_HOOKS_SEEN=$((MTK_HOOKS_SEEN + 1))
     b="$(basename "$h")"
-    if grep -qF "/$b" "$USER_SETTINGS" 2>/dev/null; then
+    if printf '%s\n' "$USER_HOOK_BASENAMES" | grep -qxF "$b"; then
       SHADOWED="${SHADOWED}${SHADOWED:+, }${b}"
     fi
   done
-  if [ -n "$SHADOWED" ]; then
+  if [ "$MTK_HOOKS_SEEN" -eq 0 ]; then
+    record WARN environment "hook collision check skipped" \
+      "no hooks/ directory here and \$CLAUDE_PLUGIN_ROOT is unset — 0 MTK hooks compared against ${USER_SETTINGS}"
+  elif [ -n "$SHADOWED" ]; then
     record WARN environment "hook basename also wired globally" \
-      "${SHADOWED} — ${USER_SETTINGS} wires a hook with the same filename. Both run, and their output is hard to tell apart; confirm that is intended"
+      "${SHADOWED} — ${USER_SETTINGS} wires a hook command with the same filename. Both run, and their output is hard to tell apart; confirm that is intended"
   else
-    record PASS environment "no hook basename collisions with user settings"
+    record PASS environment "no hook basename collisions with user settings" \
+      "compared ${MTK_HOOKS_SEEN} MTK hooks against wired commands in ${USER_SETTINGS}"
   fi
 else
   record PASS environment "no user-level settings.json to collide with"

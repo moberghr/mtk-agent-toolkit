@@ -51,6 +51,7 @@ user-invocable: true
    - "skill name mismatch" → rename the directory or update frontmatter `name:` to match
    - "context budget miscalibrated" → set `MTK_CONTEXT_WINDOW_TOKENS` in `.claude/settings.local.json` `env` to the model's real window
    - "hook basename also wired globally" → confirm the collision is intended; two scripts sharing a filename both run and log indistinguishably
+   - "hook collision check skipped" → set `CLAUDE_PLUGIN_ROOT` so the check can see MTK's hooks; it compared nothing, which is not the same as finding nothing
    - "formatter missing" → install the stack's formatter, or accept that edits go unformatted (the hook never blocks)
 
 ## Categories Checked
