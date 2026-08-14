@@ -46,6 +46,13 @@ hooks/linter-patterns/project/*.txt
 # Claude Code native worktrees (local dev only)
 .claude/worktrees/
 
+# Mis-located Codex port artifacts (local dev only). Codex reads skills from
+# ./skills/ and hooks from hooks/hooks.json — never .agents/skills/ or .codex/.
+# Scoped to .agents/skills/ rather than .agents/ because .agents/plugins/
+# marketplace.json is Codex's real marketplace manifest path.
+.agents/skills/
+.codex/
+
 mcp/node_modules
 
 # MCP: the prebuilt bundle and its lockfile ship tracked (S3.12). package-lock.json

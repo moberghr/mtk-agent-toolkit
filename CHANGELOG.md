@@ -4,6 +4,17 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Verified — Codex support is inherited from the Claude plugin format, not a separate port
+
+Codex CLI 0.147.0 loads MTK as-is. Verified 2026-08-14 against a local `moberghr` marketplace: `codex plugin list` resolves the marketplace through `.claude-plugin/marketplace.json` and reports `mtk@moberghr installed, enabled 7.31.0`; `~/.codex/config.toml` carries 17 `hooks.state."mtk@moberghr:hooks/hooks.json:…"` entries, so the full hook suite registers from the existing `hooks/hooks.json` and its `${CLAUDE_PLUGIN_ROOT}` paths; and `codex exec` lists all 44 skills, loaded from `"skills": "./.claude/skills"` in `.claude-plugin/plugin.json`.
+
+Two consequences worth recording, because both are non-obvious enough to be re-discovered the hard way:
+
+- **Do not port skills into `.agents/skills/` or hooks into `.codex/hooks.json`.** Codex reads neither. `.agents/` *is* a Codex convention, but for `plugins/marketplace.json` — not skills. Both paths are now gitignored.
+- **Codex's plugin validator requires `"skills"` to resolve to exactly `./skills/`**, which MTK's `./.claude/skills` does not satisfy. The runtime accepts it anyway (proven above), so MTK deliberately does not ship `.codex-plugin/plugin.json`: adding one would take precedence over `.claude-plugin/plugin.json` and put working skill resolution at risk to gain only Codex-native display metadata.
+
+Known gap: one Stop hook reports `Failed` under Codex. All four Stop hooks exit 0 when invoked directly with a synthetic payload, so the cause is payload- or environment-specific and is not yet diagnosed.
+
 ### Added — a guard for shell commands that hang waiting for an answer nobody can give
 
 Field report, 2026-08-13: `gh pr merge 272 --squash 2>&1 | tail -5` ran to the full 3-minute Bash-tool timeout and returned `(No output)`. The merge had already **succeeded** — gh then blocked on its post-merge "Delete the branch?" prompt waiting on stdin, and `tail` buffers until EOF, so the prompt text never reached the transcript. With no output and a long stall, it read as a permission denial; debugging went to hooks and permissions rather than to the command.
