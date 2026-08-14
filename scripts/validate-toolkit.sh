@@ -109,19 +109,28 @@ grep -q '"hooks"' .claude/settings.json || fail "settings.json missing hooks blo
 # found and the hook does not run: the guard is silently OFF rather than loudly
 # broken, the same failure mode S1.17 exists to prevent. settings.json anchors
 # on $CLAUDE_PROJECT_DIR, hooks.json on ${CLAUDE_PLUGIN_ROOT}.
-while IFS= read -r line; do
-  case "$line" in
-    *'$CLAUDE_PROJECT_DIR'*) ;;
-    *) fail "settings.json hook command is not anchored on \$CLAUDE_PROJECT_DIR: ${line} — a relative path resolves against the hook's cwd, which is not guaranteed to be the repo" ;;
-  esac
-done < <(grep -o '"command": "[^"]*hooks/[^"]*"' .claude/settings.json || true)
+#
+# The scan is spacing-tolerant and asserts it matched something. A check whose
+# input selector can silently return zero rows passes by inspecting nothing —
+# which is exactly the mtk-doctor bug fixed alongside this one, where the
+# selector was pinned to a spelling. Reformatting settings.json to
+# `"command":"…"` must not quietly switch the guard off.
+check_hook_anchor() { # $1=file  $2=required substring  $3=message
+  local file="$1" want="$2" msg="$3" line count=0
+  while IFS= read -r line; do
+    count=$((count + 1))
+    case "$line" in
+      *"$want"*) ;;
+      *) fail "${msg}: ${line}" ;;
+    esac
+  done < <(grep -oE '"command"[[:space:]]*:[[:space:]]*"[^"]*hooks/[^"]*"' "$file" || true)
+  [ "$count" -gt 0 ] || fail "$file: found 0 hook commands to check — the selector matched nothing, so this guard inspected nothing. Fix the selector, do not assume the file is clean."
+}
 
-while IFS= read -r line; do
-  case "$line" in
-    *'${CLAUDE_PLUGIN_ROOT}'*) ;;
-    *) fail "hooks.json hook command is not anchored on \${CLAUDE_PLUGIN_ROOT}: ${line} — plugin-installed repos have no repo-relative hooks/ directory" ;;
-  esac
-done < <(grep -o '"command": "[^"]*hooks/[^"]*"' hooks/hooks.json || true)
+check_hook_anchor .claude/settings.json '$CLAUDE_PROJECT_DIR' \
+  "settings.json hook command is not anchored on \$CLAUDE_PROJECT_DIR — a relative path resolves against the hook's cwd, which is not guaranteed to be the repo"
+check_hook_anchor hooks/hooks.json '${CLAUDE_PLUGIN_ROOT}' \
+  "hooks.json hook command is not anchored on \${CLAUDE_PLUGIN_ROOT} — plugin-installed repos have no repo-relative hooks/ directory"
 
 # All shell scripts in hooks/ and scripts/ must be executable and follow S3.1
 while IFS= read -r script; do

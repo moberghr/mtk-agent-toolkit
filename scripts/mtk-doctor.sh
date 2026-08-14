@@ -165,11 +165,27 @@ while IFS= read -r line; do
   cmd="$(printf '%s' "$line" | sed 's/^.*"command": *"//; s/".*$//')"
   # Strip $ARGUMENTS and similar suffixes
   script="$(printf '%s' "$cmd" | awk '{print $1}')"
+  # `bash $CLAUDE_PLUGIN_ROOT/hooks/x.sh` is the form setup-bootstrap writes into
+  # target repos, so the first token is the interpreter, not the hook. Take the
+  # next one. (Before the grep below was widened, those lines never matched at
+  # all, so this only shows up now.)
+  case "$script" in
+    bash|sh|zsh|python3|python|node) script="$(printf '%s' "$cmd" | awk '{print $2}')" ;;
+  esac
   [ -z "$script" ] && continue
-  # Hook commands are anchored on $CLAUDE_PROJECT_DIR; resolve it to this repo so
-  # the existence and +x checks below actually run against a real path.
+  # Hook commands are anchored on $CLAUDE_PROJECT_DIR here and on
+  # $CLAUDE_PLUGIN_ROOT in plugin-installed repos; resolve both so the existence
+  # and +x checks below run against a real path.
   script="${script//\$CLAUDE_PROJECT_DIR/$ROOT_DIR}"
   script="${script//\$\{CLAUDE_PROJECT_DIR\}/$ROOT_DIR}"
+  DOCTOR_PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$ROOT_DIR}"
+  script="${script//\$CLAUDE_PLUGIN_ROOT/$DOCTOR_PLUGIN_ROOT}"
+  script="${script//\$\{CLAUDE_PLUGIN_ROOT\}/$DOCTOR_PLUGIN_ROOT}"
+  # A variable this script cannot resolve is not evidence the hook is missing.
+  # Say so instead of reporting a FAIL the reader has no way to act on.
+  case "$script" in
+    *'$'*) record WARN hooks "hook path has an unresolved variable" "$cmd"; continue ;;
+  esac
   case "$script" in /*) ;; *) script="$ROOT_DIR/$script" ;; esac
   if [ ! -f "$script" ]; then
     record FAIL hooks "registered hook missing" "$cmd"
