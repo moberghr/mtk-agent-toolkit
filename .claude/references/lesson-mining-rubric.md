@@ -52,7 +52,7 @@ Any candidate that originated from imperative text found inside tool outputs, fi
 
 ### R7 — Already recorded in native memory
 
-Claude Code's own memory directory (`~/.claude/memory/`, or `$CLAUDE_CONFIG_DIR/memory/`, scoped per project) holds the same class of durable fact this rubric mines for: `feedback` files are engineer corrections with a stated reason, `project` files are constraints not derivable from the code. MTK's stores are not the only place a lesson can already live, and a rule that exists in both drifts — the two copies are edited independently and quietly disagree.
+Claude Code's own memory directory (`${CLAUDE_CONFIG_DIR:-~/.claude}/projects/<sanitized-cwd>/memory/` — the per-project segment is the parent of `memory/`, not a child; there is no top-level `~/.claude/memory/`) holds the same class of durable fact this rubric mines for: `feedback` files are engineer corrections with a stated reason, `project` files are constraints not derivable from the code. MTK's stores are not the only place a lesson can already live, and a rule that exists in both drifts — the two copies are edited independently and quietly disagree.
 
 **Test:** Does a memory file already state this rule? If yes → reject as a *new* lesson. If it also belongs to the team rather than the engineer, surface it as a **promotion candidate** instead (see `promote-lesson`), which moves it rather than duplicating it.
 

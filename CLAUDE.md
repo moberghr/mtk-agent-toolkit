@@ -18,7 +18,7 @@
 | Periodic readiness check | `/mtk repo-health` or `bash scripts/repo-health-score.sh` | 12-asset scorecard + PR review mining (last 10 merged PRs) |
 | Validate toolkit | `bash scripts/validate-toolkit.sh` | Before every commit — structural check of manifest, plugin.json, and skill anatomy |
 | Install health check | `/mtk-doctor` | PASS/WARN/FAIL diagnostics across core files, components, hooks, and environment fit; `--json` for CI, `--fix` for safe auto-repairs |
-| Promote a lesson | `/promote-lesson` | Promote a personal lesson from `.claude/lessons/personal.md` **or Claude Code native memory** (`~/.claude/memory/`) to team-wide `tasks/lessons.md`; optionally open a validated contribute-back PR to the toolkit |
+| Promote a lesson | `/promote-lesson` | Promote a personal lesson from `.claude/lessons/personal.md` **or Claude Code native memory** (`~/.claude/projects/<sanitized-cwd>/memory/`) to team-wide `tasks/lessons.md`; optionally open a validated contribute-back PR to the toolkit |
 | Mine lessons from past sessions | `/mtk mine lessons` | Sweep recent session transcripts for durable lesson/memory candidates (reject-by-default rubric, suggest-only) |
 | Disable tier-2 hooks | `MTK_HOOKS_TIER2=0` in `.claude/settings.local.json` env | Silences skill-invoking hooks (queue + drain) without touching shared settings |
 | Enforce spec scope (hard deny) | `MTK_SCOPE_GUARD_ENFORCE=1` in `.claude/settings.local.json` env | Upgrades `hooks/scope-guard.sh` from advisory to a hard PreToolUse deny (exit 2) when an Edit/Write targets a file outside the approved spec's `change_manifest`/`test_manifest`. Default (unset) stays advisory. See `docs/competitive-analysis-2026-07.md` P0#1 |

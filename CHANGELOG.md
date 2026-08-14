@@ -58,7 +58,7 @@ The `mtk-doctor` pressure test's S1 ("clean repo passes") now scopes its asserti
 
 ### Added — the lessons pipeline can finally see Claude Code's native memory
 
-MTK's lesson stores (`tasks/lessons.md`, `.mtk/learnings.jsonl`, `.claude/lessons/personal.md`) had no awareness that Claude Code keeps its own memory directory at `~/.claude/memory/`. A grep across the whole repo for `.claude/memory` returned nothing.
+MTK's lesson stores (`tasks/lessons.md`, `.mtk/learnings.jsonl`, `.claude/lessons/personal.md`) had no awareness that Claude Code keeps its own memory directory at `~/.claude/projects/<sanitized-cwd>/memory/` — beside the session transcripts, under the same per-project segment. A grep across the whole repo for `.claude/memory` returned nothing.
 
 That directory holds exactly the content the lessons pipeline exists for. Its `feedback` files are engineer corrections *with a stated reason* — admit rule A1, already filtered once. Its `project` files are constraints not derivable from the code. An engineer who uses native memory accumulates the team's real rules in their home directory, where `lesson-mining` never looks, `promote-lesson` cannot reach, and no teammate ever sees them.
 

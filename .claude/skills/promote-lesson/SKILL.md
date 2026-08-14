@@ -16,7 +16,7 @@ Personal lessons are gitignored or live outside the repo entirely — they belon
 Two personal stores feed it, and the second is easy to forget precisely because MTK does not own it:
 
 - `.claude/lessons/personal.md` — MTK's own personal store.
-- `${CLAUDE_CONFIG_DIR:-~/.claude}/memory/` — Claude Code's native memory. Its `feedback` files are engineer corrections with a stated reason and its `project` files are constraints not derivable from the code, which is the same content `tasks/lessons.md` exists to hold. A team that writes memories and never promotes them ends up with its real rules in one engineer's home directory.
+- `${CLAUDE_CONFIG_DIR:-~/.claude}/projects/<sanitized-cwd>/memory/` — Claude Code's native memory. Its `feedback` files are engineer corrections with a stated reason and its `project` files are constraints not derivable from the code, which is the same content `tasks/lessons.md` exists to hold. A team that writes memories and never promotes them ends up with its real rules in one engineer's home directory.
 
 ## When To Use
 
@@ -36,7 +36,7 @@ Two personal stores feed it, and the second is easy to forget precisely because 
 
 1. **Locate the candidate sources.** Resolve to main worktree if in a worktree. There are two, and both are personal-scoped stores holding team-worthy rules:
    - `.claude/lessons/personal.md` — MTK's own gitignored personal store.
-   - `${CLAUDE_CONFIG_DIR:-~/.claude}/memory/` — Claude Code's native memory, scoped per project. Files with `metadata.type: feedback` or `project` are the promotable ones; `user` and `reference` memories are about the engineer or point at external resources and are almost never team lessons.
+   - `${CLAUDE_CONFIG_DIR:-~/.claude}/projects/<sanitized-cwd>/memory/` — Claude Code's native memory, where `<sanitized-cwd>` is the project working directory with `/` replaced by `-` (the same segment the session transcripts live under). The project segment is the **parent** of `memory/`: there is no top-level `~/.claude/memory/`, and looking there returns "no memories" however many exist. Files with `metadata.type: feedback` or `project` are the promotable ones; `user` and `reference` memories are about the engineer or point at external resources and are almost never team lessons.
 
    If neither exists or both are empty, tell the engineer there is nothing to promote and stop. If only one exists, use it — a missing source is normal, not an error.
 

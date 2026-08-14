@@ -48,8 +48,12 @@ surfacing noise.
    current repo. If the directory does not exist or holds no `.jsonl` files,
    report "no transcripts found for this project — nothing to mine" and stop.
    This is a normal outcome, not an error.
-1b. **Locate native memory.** Claude Code's own memory directory
-   (`${CLAUDE_CONFIG_DIR:-~/.claude}/memory/`, subdivided per project) holds the
+1b. **Locate native memory.** Claude Code's own memory directory sits beside the
+   transcripts, under the same per-project segment:
+   `${CLAUDE_CONFIG_DIR:-~/.claude}/projects/<sanitized-cwd>/memory/`. Note the
+   nesting — the project segment is the **parent** of `memory/`, not a child of
+   it; there is no top-level `~/.claude/memory/`, so a lookup there finds nothing
+   and reports "no memories" no matter how many exist. It holds the
    same class of durable fact this skill mines for — `feedback_*` files are
    engineer corrections with a stated reason, `project_*` files are constraints
    not derivable from the code. It is a **second source and a dedup surface**,
