@@ -1,6 +1,6 @@
 ---
 name: mtk-doctor
-description: Run an MTK install health check (core files, components, hooks, integrity) with PASS/WARN/FAIL diagnostics, --json for CI, and --fix for safe auto-repairs.
+description: Run an MTK install health check (core files, components, hooks, integrity, environment fit) with PASS/WARN/FAIL diagnostics, --json for CI, and --fix for safe auto-repairs.
 type: skill
 allowed-tools: Read, Bash
 argument-hint: [--json] [--fix] [--strict]
@@ -49,6 +49,9 @@ user-invocable: true
    - "deprecated model" → update agent frontmatter to a current model ID
    - "hook missing" → either add the hook script or remove its registration from settings.json
    - "skill name mismatch" → rename the directory or update frontmatter `name:` to match
+   - "context budget miscalibrated" → set `MTK_CONTEXT_WINDOW_TOKENS` in `.claude/settings.local.json` `env` to the model's real window
+   - "hook basename also wired globally" → confirm the collision is intended; two scripts sharing a filename both run and log indistinguishably
+   - "formatter missing" → install the stack's formatter, or accept that edits go unformatted (the hook never blocks)
 
 ## Categories Checked
 
@@ -57,6 +60,7 @@ user-invocable: true
 - **HOOKS** — registered hooks exist and are executable, event names valid, all hooks use `set -euo pipefail`
 - **INTEGRITY** — manifest paths exist, gitignore coverage, analytics freshness, validate-toolkit passes
 - **CONTEXT** — always-on context baseline (CLAUDE.md + rules/INDEX.md + alwaysApply refs, in tokens/bytes), MCP schema count from `.mcp.json`, `ENABLE_TOOL_SEARCH` state (report-only, never WARN/FAIL)
+- **ENVIRONMENT** — fit between the install and the machine, which structural checks cannot see: `MTK_CONTEXT_WINDOW_TOKENS` calibration against the model in use, MTK hook basenames also wired in the user's global `settings.json`, and whether the active stack's formatter binary is actually on PATH. WARN at most — an environment mismatch is never a broken install
 
 ## Verification
 

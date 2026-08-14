@@ -17,6 +17,15 @@ echo "exit=$?"
 
 **Pass:** All checks PASS, exit 0, summary shows zero WARN/FAIL.
 
+The ENVIRONMENT category is the one exception, and deliberately so: it grades the machine, not the repo. A missing `ruff`, or a `~/.claude/settings.json` that wires a hook sharing a basename with one of MTK's, is a real finding on that machine and a false positive as a repo verdict. Assert on the repo alone with:
+
+```bash
+bash scripts/mtk-doctor.sh --json |
+  jq -e '[.checks[] | select(.category != "environment") | select(.status != "PASS")] | length == 0'
+```
+
+A WARN in ENVIRONMENT is never grounds for failing this scenario. A WARN in any other category is.
+
 ### S2 — JSON output is valid
 
 ```bash
