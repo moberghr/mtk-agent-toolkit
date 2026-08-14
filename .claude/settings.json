@@ -44,7 +44,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "hooks/security-gate.sh",
+            "command": "$CLAUDE_PROJECT_DIR/hooks/security-gate.sh",
             "timeout": 5
           },
           {
@@ -59,7 +59,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "hooks/scope-guard.sh",
+            "command": "$CLAUDE_PROJECT_DIR/hooks/scope-guard.sh",
             "timeout": 5
           }
         ]
@@ -69,7 +69,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "hooks/read-guard.sh",
+            "command": "$CLAUDE_PROJECT_DIR/hooks/read-guard.sh",
             "timeout": 5
           }
         ]
@@ -79,7 +79,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "hooks/rule-trigger.sh",
+            "command": "$CLAUDE_PROJECT_DIR/hooks/rule-trigger.sh",
             "timeout": 5
           }
         ]
@@ -90,7 +90,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "hooks/context-budget.sh",
+            "command": "$CLAUDE_PROJECT_DIR/hooks/context-budget.sh",
             "timeout": 3
           }
         ]
@@ -100,7 +100,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "hooks/spec-approval-trigger.sh",
+            "command": "$CLAUDE_PROJECT_DIR/hooks/spec-approval-trigger.sh",
             "timeout": 5
           }
         ]
@@ -110,7 +110,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "hooks/compress-monitor.sh",
+            "command": "$CLAUDE_PROJECT_DIR/hooks/compress-monitor.sh",
             "timeout": 3
           }
         ]
@@ -121,7 +121,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "hooks/pre-compact-snapshot.sh",
+            "command": "$CLAUDE_PROJECT_DIR/hooks/pre-compact-snapshot.sh",
             "timeout": 8
           }
         ]
@@ -133,12 +133,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "hooks/post-compact.sh",
+            "command": "$CLAUDE_PROJECT_DIR/hooks/post-compact.sh",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "hooks/rule-trigger.sh --rearm",
+            "command": "$CLAUDE_PROJECT_DIR/hooks/rule-trigger.sh --rearm",
             "timeout": 3
           }
         ]
@@ -149,7 +149,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "hooks/userprompt-dispatch.sh",
+            "command": "$CLAUDE_PROJECT_DIR/hooks/userprompt-dispatch.sh",
             "timeout": 5
           }
         ]

@@ -100,6 +100,29 @@ require_file ".claude/settings.json"
 grep -q '"deny"' .claude/settings.json || fail "settings.json missing permissions.deny — dangerous operations are not blocked"
 grep -q '"hooks"' .claude/settings.json || fail "settings.json missing hooks block — verify-completion / format hooks are not registered"
 
+# Hook commands must be root-anchored, never relative (S3.5/S3.6).
+#
+# A relative "hooks/x.sh" resolves against the hook process's cwd, and a hook is
+# NOT guaranteed to run with cwd inside the repo — hooks/lib/hook-io.sh says so
+# in the comment above mtk_is_redundant_plugin_invocation, which exists because
+# of that exact assumption. When the cwd is elsewhere the command is simply not
+# found and the hook does not run: the guard is silently OFF rather than loudly
+# broken, the same failure mode S1.17 exists to prevent. settings.json anchors
+# on $CLAUDE_PROJECT_DIR, hooks.json on ${CLAUDE_PLUGIN_ROOT}.
+while IFS= read -r line; do
+  case "$line" in
+    *'$CLAUDE_PROJECT_DIR'*) ;;
+    *) fail "settings.json hook command is not anchored on \$CLAUDE_PROJECT_DIR: ${line} — a relative path resolves against the hook's cwd, which is not guaranteed to be the repo" ;;
+  esac
+done < <(grep -o '"command": "[^"]*hooks/[^"]*"' .claude/settings.json || true)
+
+while IFS= read -r line; do
+  case "$line" in
+    *'${CLAUDE_PLUGIN_ROOT}'*) ;;
+    *) fail "hooks.json hook command is not anchored on \${CLAUDE_PLUGIN_ROOT}: ${line} — plugin-installed repos have no repo-relative hooks/ directory" ;;
+  esac
+done < <(grep -o '"command": "[^"]*hooks/[^"]*"' hooks/hooks.json || true)
+
 # All shell scripts in hooks/ and scripts/ must be executable and follow S3.1
 while IFS= read -r script; do
   [ -x "$script" ] || fail "$script is not executable (chmod +x) — violates S3.2"

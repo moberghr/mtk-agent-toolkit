@@ -166,6 +166,10 @@ while IFS= read -r line; do
   # Strip $ARGUMENTS and similar suffixes
   script="$(printf '%s' "$cmd" | awk '{print $1}')"
   [ -z "$script" ] && continue
+  # Hook commands are anchored on $CLAUDE_PROJECT_DIR; resolve it to this repo so
+  # the existence and +x checks below actually run against a real path.
+  script="${script//\$CLAUDE_PROJECT_DIR/$ROOT_DIR}"
+  script="${script//\$\{CLAUDE_PROJECT_DIR\}/$ROOT_DIR}"
   case "$script" in /*) ;; *) script="$ROOT_DIR/$script" ;; esac
   if [ ! -f "$script" ]; then
     record FAIL hooks "registered hook missing" "$cmd"
@@ -176,7 +180,7 @@ while IFS= read -r line; do
       record WARN hooks "hook not executable" "$cmd — run with --fix"
     fi
   fi
-done < <(grep -E '"command": *"hooks/' .claude/settings.json 2>/dev/null || true)
+done < <(grep -E '"command": *"[^"]*hooks/' .claude/settings.json 2>/dev/null || true)
 
 # Check that hook event names are valid
 while IFS= read -r event; do
