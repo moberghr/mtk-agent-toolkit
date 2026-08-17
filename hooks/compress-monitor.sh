@@ -41,9 +41,14 @@ WARN_CHARS="${MTK_COMPRESS_WARN_CHARS:-5000}"
 
 # Read the entire hook payload to a temp file (heredoc captures stdin so we
 # can't pipe payload directly into the python script).
+#
+# Bounded at 2s, under this hook's declared 3s in hooks.json, because that
+# declared timeout does not stop a `cat` blocked on a stdin that never closes:
+# this hook was measured running 303s against its 3s declaration. Line 47
+# already exits 0 on an empty payload, so a timeout degrades to "no nag".
 PAYLOAD_FILE="$(mktemp)"
 trap 'rm -f "$PAYLOAD_FILE"' EXIT
-cat > "$PAYLOAD_FILE"
+mtk_read_payload 2 > "$PAYLOAD_FILE"
 [ -s "$PAYLOAD_FILE" ] || exit 0
 
 MAX_NAGS="${MTK_COMPRESS_MAX_NAGS:-1}"
