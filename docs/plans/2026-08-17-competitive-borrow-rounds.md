@@ -193,9 +193,73 @@ sanitize/cap behavior. Also fixed test-interactive-guard case 17, which the
 longer message pushed into the S3.1 SIGPIPE flake (`printf | grep -q` under
 pipefail → case-match).
 
-## Round 5 (planned, decided after Round 5 research)
+## Round 5 — Measured savings attribution (from context-mode + ccusage honesty rules)
 
-Candidates: per-source bytes-saved attribution in analytics (context-mode),
-negative-ceremony fixtures (Aegis), stale-anchor citation check in mtk-doctor
-(hivelore), citationdiff hash-bound approval seals, ccusage cost honesty for
-toolkit-health.
+**Prior-work check that changed the plan:** the hash-bound-approval-seal
+candidate (citationdiff/hashgate) turned out to be **already covered** —
+`workflow-artifact.sh cmd_seal/verify-seal` sha256-binds the approved spec+plan
+bytes and `spec-approval-trigger.sh` re-queues on stale. MTK's byte-level seal
+is stricter than hashgate's canonicalized hash (whitespace edits invalidate —
+the accepted tradeoff). `scripts/mtk-savings.sh` also already existed (v7.23).
+
+**The real residual gap:** the savings report only saw `mtk-compress` runs, in
+aggregate. Round 2's evidence wrapper knows its *exact measured* savings (full
+log bytes on disk vs bytes emitted) and recorded nothing; the report had no
+per-source attribution ("which component earns its place" was a vibe, not a
+data question); and it printed silent zeros for empty sessions.
+
+**Borrow:**
+- `mtk-verify-run.sh` records one measured record per run to the shared
+  output-economy ledger (`compression.jsonl`, `mode: "verify-run"`, same schema
+  as mtk-compress). Telemetry is fail-open and can never alter the wrapper's
+  exit code or output — a broken ledger costs a data point, not a build
+  (disler's guard/telemetry split). The emission is composed to a temp file
+  first so the byte count is measured, not estimated.
+- `mtk-savings.sh` gains a per-source table sorted by measured impact
+  (context-mode's per-tool "sorted by impact" presentation) with ccusage's
+  never-silently-zero honesty: an unmeasured source is *named as unmeasured*
+  (with the command that would measure it), an empty session prints
+  "unmeasured", and the summary now states what MTK does NOT measure
+  (assistant output tokens, subagent context, prompt-cache effects).
+
+**Round 5 research (2026-08-17, fresh sweep — seals + measured savings):**
+Seppelllo/hashgate (versioned canon prefix, fail-closed-with-bounded-blast-
+radius hook — seal already covered, canon versioning noted for any future
+seal-format change), nradawg/approval-digest (domain-separated digests so a
+file hash can never replay as an approval — noted for seal v2),
+NORTHTEKDevs/lossless-context-mcp (ceiling/floor/real benchmark triple that
+publishes its own NEGATIVE real-world number; "a savings number without a
+reconstruction proof is a marketing number"), AbdulrahmanAmer/token-audit
+(WORTH_DOING=0.25 refusal-below-payoff; estimates labeled mechanically;
+message.id dedup because naive summing double-counts ~2.8x),
+bkuan001/halo-record (captured-vs-ingested evidence provenance tiers; fcntl
+append lock — not needed here: single-line O_APPEND printf is atomic),
+cocaxcode/token-optimizer-mcp (estimation_method tag on every event; sampled
+ground-truth calibration), AryanGonsalves/trl-token-reduction (net-of-cost
+accounting — charge the preprocessor's own cost against savings),
+makinggainz/claude-code-measure-efficiency (the denominator trap: cost/turn
+down 22.6% while cost/output-token UP 4.1% — run both denominators),
+mnemox-ai/tradememory-protocol (two-level hash chain, idempotent
+conflict-detecting append), 2alf/Heimdall (GPL — patterns only: tamper is an
+error, never a silent reset).
+
+**Deferred to future waves:** captured-vs-ingested provenance tiers on the
+outcome ledger (halo-record); net-of-cost savings accounting and the
+denominator-trap methodology note for toolkit-health (trl, makinggainz);
+ceiling/floor/negative benchmark fixtures for run-benchmarks (lossless-context);
+domain-separated seal digests (approval-digest); estimation_method tags on
+analytics events (token-optimizer-mcp).
+
+**Test:** `tests/hooks/test-mtk-verify-run.sh` extended — no ledger and no
+crash without `.claude/` (behavior untouched), measured verify-run record
+appended with in_chars > out_chars on a 200-line log vs 5-line tail.
+
+## Cycle summary
+
+Five stacked PRs: #78 outcome-aware verification ledger (correctness), #79
+verification evidence contract (tokens), #80 fail-safe spec-archive merge
+guards (correctness), #81 deny ergonomics (correctness), #82 measured savings
+attribution (tokens). Two live flake catches fixed along the way (both the
+S3.1 SIGPIPE class: validate-toolkit reference scan, test-interactive-guard
+case 17). ~38 repos researched across 5 fresh sweeps, all borrows backed by
+file-level evidence, prior-work-checked against the ledger before building.
