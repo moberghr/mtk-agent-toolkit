@@ -4,6 +4,15 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Added — measured savings attribution: which component earns its place is now a data question
+
+`mtk-savings.sh` reported output-compression savings in aggregate and saw only `mtk-compress` runs. The verification evidence wrapper knew its exact measured savings (full log bytes on disk vs bytes emitted into context) and recorded nothing.
+
+- `mtk-verify-run.sh` now appends one measured record per run to the shared output-economy ledger (`.claude/observability/compression.jsonl`, `mode: "verify-run"`, same schema as mtk-compress). The emission is composed to a temp file first, so the byte count is measured, not estimated. Telemetry is fail-open and can never alter the wrapper's exit code or output — a broken ledger costs a data point, not a build.
+- `mtk-savings.sh` renders a per-source table sorted by measured impact, with the honesty rules borrowed from the best measurement tools in the space: a source with no recorded runs is **named as unmeasured** (with the command that would measure it) rather than silently omitted or zeroed; an empty session prints "unmeasured" instead of `~0 tok over 0 runs`; and the summary states what MTK does *not* measure — assistant output tokens, subagent context, prompt-cache effects.
+
+Prior-work note recorded in the research trail: the hash-bound-approval-seal candidate for this round turned out to be already covered (`workflow-artifact.sh seal/verify-seal` byte-binds the approved spec+plan; `spec-approval-trigger` re-queues on stale) — the borrow ledger's own lesson, run the prior-work check before trusting a borrow backlog, paid for itself again.
+
 ### Added — deny ergonomics: every hard deny now recovers in one turn
 
 Field data from hook-heavy setups shows three failure modes after a hard deny: the agent treats the block as a stop signal and abandons the task, silently loses tool calls that were batched with the denied one, or treats one denial as a rule and refuses everything after. MTK's ten deny sites each hand-rolled their message; none warned about batched-sibling cancellation, and only scope-guard named its off-switch.

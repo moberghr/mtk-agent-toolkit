@@ -81,24 +81,45 @@ case "$LOG_FILE" in
 esac
 
 total_lines="$(wc -l < "$LOG_FILE" | tr -d ' ')"
-printf 'exit=%s\n' "$rc"
 
-# On failure, the first diagnostic often sits far ABOVE the tail (a long build
-# scrolls past its first error). Emit a deterministic error slice: the first
-# keyword hits with their line numbers, so the reader can widen from the
-# persisted log by coordinate instead of guessing. Lines are raw log content,
-# never rewritten — only selected (capped per line for context economy).
-if [ "$rc" -ne 0 ]; then
-  hits="$(grep -niE 'error|fatal|panic|traceback|failed|denied|exception|assert' "$LOG_FILE" 2>/dev/null \
-    | head -n "${MTK_VERIFY_ERROR_HITS:-8}" | cut -c1-200 || true)"
-  if [ -n "$hits" ]; then
-    printf -- '--- first error hits (line numbers refer to %s) ---\n' "$CITE_PATH"
-    printf '%s\n' "$hits"
+# Compose the bounded emission to a temp file first so its byte count can be
+# recorded as MEASURED savings (bytes kept on disk vs bytes shown) — not an
+# estimate.
+OUT_TMP="$(mktemp)"
+{
+  printf 'exit=%s\n' "$rc"
+
+  # On failure, the first diagnostic often sits far ABOVE the tail (a long
+  # build scrolls past its first error). Emit a deterministic error slice: the
+  # first keyword hits with their line numbers, so the reader can widen from
+  # the persisted log by coordinate instead of guessing. Lines are raw log
+  # content, never rewritten — only selected (capped per line for economy).
+  if [ "$rc" -ne 0 ]; then
+    hits="$(grep -niE 'error|fatal|panic|traceback|failed|denied|exception|assert' "$LOG_FILE" 2>/dev/null \
+      | head -n "${MTK_VERIFY_ERROR_HITS:-8}" | cut -c1-200 || true)"
+    if [ -n "$hits" ]; then
+      printf -- '--- first error hits (line numbers refer to %s) ---\n' "$CITE_PATH"
+      printf '%s\n' "$hits"
+    fi
   fi
-fi
 
-printf -- '--- tail -%s of %s (%s lines total, full output: %s) ---\n' \
-  "$TAIL_LINES" "'$CMD_DISPLAY'" "$total_lines" "$CITE_PATH"
-tail -n "$TAIL_LINES" "$LOG_FILE"
+  printf -- '--- tail -%s of %s (%s lines total, full output: %s) ---\n' \
+    "$TAIL_LINES" "'$CMD_DISPLAY'" "$total_lines" "$CITE_PATH"
+  tail -n "$TAIL_LINES" "$LOG_FILE"
+} > "$OUT_TMP"
+cat "$OUT_TMP"
+
+# Record measured savings to the shared output-economy ledger (same schema as
+# mtk-compress.sh). Telemetry is fail-open and must never alter the wrapper's
+# exit code or output — a broken ledger costs a data point, not a build.
+OBS_DIR="$REPO_ROOT/.claude/observability"
+if [ -d "$REPO_ROOT/.claude" ] && { [ -d "$OBS_DIR" ] || mkdir -p "$OBS_DIR" 2>/dev/null; }; then
+  full_bytes="$(wc -c < "$LOG_FILE" 2>/dev/null | tr -d ' ' || echo 0)"
+  shown_bytes="$(wc -c < "$OUT_TMP" 2>/dev/null | tr -d ' ' || echo 0)"
+  printf '{"ts":"%s","session":"%s","mode":"verify-run","in_chars":%d,"out_chars":%d}\n' \
+    "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${CLAUDE_CODE_SESSION_ID:-}" \
+    "$full_bytes" "$shown_bytes" >> "$OBS_DIR/compression.jsonl" 2>/dev/null || true
+fi
+rm -f "$OUT_TMP"
 
 exit "$rc"

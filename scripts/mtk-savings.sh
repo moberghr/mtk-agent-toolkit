@@ -89,30 +89,50 @@ printf '  %d agent bodies       %8d chars  ~%6d tok  (never enters the main thre
 printf '\nOn-demand skill bodies (one loads when its skill runs, not all at once):\n'
 printf '  %d SKILL.md bodies    %8d chars  ~%6d tok\n' "$skill_count" "$skillbody_chars" "$(TOK "$skillbody_chars")"
 
-# ---- output compression (real on-disk log) ----
+# ---- output economy (real on-disk ledger: mtk-compress + mtk-verify-run) ----
+# Every row is MEASURED (bytes in vs bytes out, recorded at the moment of the
+# run) — never estimated from telemetry MTK does not collect. A source with no
+# recorded runs is listed as unmeasured, not silently omitted or zeroed.
 COMP=".claude/observability/compression.jsonl"
-printf '\nOutput compression (scripts/mtk-compress.sh):\n'
+printf '\nOutput economy (mtk-compress modes + mtk-verify-run evidence wrapper):\n'
 if [ -f "$COMP" ] && command -v python3 >/dev/null 2>&1; then
   python3 - "$COMP" "${CLAUDE_CODE_SESSION_ID:-}" <<'PY'
 import json, sys
+from collections import defaultdict
 path, session = sys.argv[1], sys.argv[2]
 ti=to=tr=0; si=so=sr=0
+by_mode = defaultdict(lambda: [0, 0, 0])  # mode -> [in, out, runs]
 for line in open(path):
     line=line.strip()
     if not line: continue
     try: r=json.loads(line)
     except json.JSONDecodeError: continue
-    ti+=r.get("in_chars",0); to+=r.get("out_chars",0); tr+=1
+    i, o = r.get("in_chars",0), r.get("out_chars",0)
+    m = r.get("mode","?")
+    ti+=i; to+=o; tr+=1
+    by_mode[m][0]+=i; by_mode[m][1]+=o; by_mode[m][2]+=1
     if session and r.get("session")==session:
-        si+=r.get("in_chars",0); so+=r.get("out_chars",0); sr+=1
+        si+=i; so+=o; sr+=1
 def pct(o,i): return f"{(1-o/i)*100:.0f}%" if i else "0%"
+# Per-source attribution, sorted by measured impact — which component earns
+# its place is a data question, not a vibe.
+print(f"  {'source':<12} {'runs':>5} {'saved tok':>11} {'ratio':>6}")
+for m, (i, o, n) in sorted(by_mode.items(), key=lambda kv: kv[1][1]-kv[1][0]):
+    print(f"  {m:<12} {n:>5} {max(i-o,0)//4:>11,} {pct(o,i):>6}")
+if "verify-run" not in by_mode:
+    print("  verify-run       unmeasured — no wrapper runs recorded yet (bash scripts/mtk-verify-run.sh -- <cmd>)")
 print(f"  all-time   saved ~{(ti-to)//4:,} tok over {tr} runs (ratio {pct(to,ti)})")
 if session:
-    print(f"  session    saved ~{(si-so)//4:,} tok over {sr} runs (ratio {pct(so,si)})")
+    if sr:
+        print(f"  session    saved ~{(si-so)//4:,} tok over {sr} runs (ratio {pct(so,si)})")
+    else:
+        print("  session    unmeasured — no runs recorded this session")
 PY
 else
-  printf '  (no compression log yet at %s — pipe long output through mtk-compress to accrue)\n' "$COMP"
+  printf '  unmeasured — no ledger yet at %s\n' "$COMP"
+  printf '  (accrues from: long output piped through mtk-compress, and verification runs through mtk-verify-run)\n'
 fi
 
 printf '\nSummary: MTK keeps ~%d tok out of your always-on context (deferred + review offload),\n' "$(TOK $(( deferred_chars + agentbody_chars )))"
-printf 'compresses tool output on demand, and holds the always-on floor to ~%d tok/session.\n\n' "$(TOK "$alwayson_chars")"
+printf 'compresses tool output on demand, and holds the always-on floor to ~%d tok/session.\n' "$(TOK "$alwayson_chars")"
+printf 'Not measured, never claimed: assistant output tokens, subagent context, prompt-cache effects.\n\n'
