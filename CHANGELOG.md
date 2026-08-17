@@ -4,6 +4,19 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Added — fail-safe merge guards on spec-archive: the lossless promise is now checked, not assumed
+
+`spec-archive.sh` promised "archiving never deletes from the baseline by inference" — and never verified it. Three failure modes were live: a typo'd `delta.removes` entry matched nothing and removed nothing, forever, silently; the merged JSON replaced the baseline unvalidated through a non-atomic cross-device `mv`; and the JSON mutated before the MD and audit record, so a mid-run failure left the three files inconsistent. Borrowed from OpenSpec's archive design (scenario-loss refusal, unaccounted-content accounting, pre-write re-validation — "fails safe in every direction") with the growth advisory from deltaspec's C5 gate.
+
+- **Guard 1 — unmatched removes refuse** with case/whitespace-folded near-miss suggestions (`did you mean: IPay.Charge(int)?`).
+- **Guard 2 — merged JSON is re-validated** before anything is replaced.
+- **Guard 3 — loss accounting**: every key that disappeared from the baseline must be exactly accounted for by an explicit `delta.removes` entry; anything else refuses the merge naming the lost keys. Checked, not assumed-by-construction, so a future merge refactor or degenerate sidecar cannot silently break the promise.
+- **All-or-nothing commit point**: same-directory temp files, atomic renames, audit appended last; a refused archive leaves JSON, MD, and audit byte-identical.
+- **Baseline growth advisory** (never blocks): past 800 lines / ~40k est. tokens, suggest partitioning the area — a baseline too big to load cheaply stops being read (`MTK_BASELINE_MAX_LINES` / `MTK_BASELINE_MAX_TOKENS`).
+- Sidecar shape pre-validation: malformed `change_manifest`/`public_contracts`/`delta.removes` refuse with a clear message instead of degenerating inside jq.
+
+Regression test: `tests/hooks/test-spec-archive-guards.sh` (six scenarios, including byte-identical-after-refusal and advisory-never-blocks).
+
 ### Added — verification evidence contract: evidence on disk, exit code + bounded tail in context
 
 Verification output used to enter context twice — verbatim when the command ran, and again re-quoted in the completion report — thousands of tokens for output whose diagnostic value lives in its last 30 lines. `mtk-compress.sh` couldn't fill this hole: it is lossy (the full output is gone) and a pipe reports the compressor's exit code, not the command's.

@@ -98,12 +98,51 @@ non-zero), bounded tail on long output, full output preserved on disk, citation
 line format, error-hit slice on failure only, structured-field precedence, and
 ledger interop (wrapper invocations register as verification commands).
 
-## Rounds 3–5 (planned, revisited each round with fresh research)
+## Round 3 — Fail-safe merge guards on spec-archive (from Fission-AI/OpenSpec)
 
-- Round 3 (correctness): fail-safe merge guards on `spec-archive.sh` —
-  content-loss accounting + re-lint before atomic write (from Fission-AI/OpenSpec).
+**Gap:** `spec-archive.sh` promised "never deletes from the baseline by
+inference" but never checked it: a typo'd `delta.removes` entry silently removed
+nothing (forever), the merged JSON replaced the baseline unvalidated via a
+non-atomic cross-device `mv`, and the JSON mutated before the MD/audit so a
+mid-run failure left inconsistent state.
+
+**Borrow (all in `scripts/spec-archive.sh`):** sidecar shape pre-validation;
+Guard 1 — unmatched-remove refusal with case/whitespace-folded near-miss
+suggestions (OpenSpec's foldRequirementName); Guard 2 — re-validate merged JSON
+before any replace; Guard 3 — loss accounting (keys that disappeared must equal
+keys explicitly removed, else refuse naming the lost keys — OpenSpec's
+unaccounted-content rule, deltaspec's C4 "archive without loss"); all-or-nothing
+commit point (same-directory temp files, atomic renames, audit appended last);
+plus deltaspec's C5 baseline growth advisory (lines/token budget, never blocks).
+
+**Round 3 research (2026-08-17, fresh sweep — artifact integrity + safe writes):**
+iuripereira/deltaspec (C4 archive-without-loss CRITICAL gate, C5 token-cost gate
+— both folded in), jakubsuplicki/codument (per-symbol fingerprint drift with
+proven exemptions; invariant pointers that execute their cited tests;
+fingerprint-bound acks that auto-invalidate), claimset/claimset (falsifiability
+pre-gate for citations; divergence localization), gastownhall/beads (field-level
+three-way automerge naming every superseded cell; typed merge-refusal taxonomy),
+AlexZio00/sovereign-skills (validate_memory_claims.py path/provenance checks on
+handoff artifacts; handoff attestation receipts), intellectronica/ruler
+(provenance-guarded backups; containment/symlink asserts before managed writes),
+hyuga611/narai (pre-write "is this still what I last wrote" hash check),
+josephbsmith/citationdiff (verification bound to content hash — the
+seal-binds-content mechanism), DavidWells/markdown-magic (loss-safe sentinel
+block regeneration, write-only-if-changed). Deferred to rounds 4-5: citationdiff
+hash-bound approval seals, codument ack invalidation, sovereign-skills handoff
+claim validation, ruler containment asserts.
+
+**Test:** `tests/hooks/test-spec-archive-guards.sh` — seed archive, typo'd
+remove refused with near-miss, refusal leaves JSON/MD/audit byte-identical and
+no temp files, exact remove merges and audits, malformed sidecar refused,
+growth advisory fires without blocking. (Its grep assertion also re-learned the
+S3.1 lesson: `echo | grep -q` SIGPIPEs under pipefail — case-match instead.)
+
+## Rounds 4–5 (planned, revisited each round with fresh research)
+
 - Round 4 (correctness): deny-continuation suffix + disabling-toggle attribution
   on all deny-capable hooks (from Edmonds-Commerce hooks-daemon field data).
 - Round 5 (tokens): decided after Round 5 research — candidates: per-source
   bytes-saved attribution in analytics (context-mode), negative-ceremony fixtures
-  (Aegis), stale-anchor citation check in mtk-doctor (hivelore).
+  (Aegis), stale-anchor citation check in mtk-doctor (hivelore), citationdiff
+  hash-bound approval seals.
