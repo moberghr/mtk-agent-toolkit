@@ -90,6 +90,11 @@ if echo "$MSG" | grep -qiE "$STRONG_CLAIM"; then
     GAP="VERIFICATION GAP: completion claim without a fresh verification command. Run the verification command from your active tech stack (.claude/skills/tech-stack-{stack}/SKILL.md → ## Build & Test Commands) and cite exit code + pass/fail counts. For toolkit work: 'bash scripts/validate-toolkit.sh' and cite 'Toolkit validation passed.'"
   elif [ "${last_edit_seq:-0}" -gt "${last_verification_seq:-0}" ]; then
     GAP="VERIFICATION GAP: criteria re-armed — all success criteria have reverted to 're-armed' status because an edit landed after the last verification (last cmd: ${last_verification_command:-unknown}). Re-run verification after your latest change, confirm each criterion's observable result, then cite exit code + pass/fail counts before claiming completion."
+  elif [ "${last_verification_status:-unknown}" = "fail" ]; then
+    # Outcome-aware gate: a verification that ran is not a verification that
+    # passed. Only an unambiguous fail classification blocks — `unknown` falls
+    # through to the evidence check below (fail-open on ambiguity).
+    GAP="VERIFICATION GAP: the latest verification ('${last_verification_command:-unknown}') was observed FAILING. A verification that ran is not a verification that passed. Fix the failure and re-run to a passing result, or explicitly report the failure with its output — do not claim completion on a failing verification."
   else
     # Evidence of actual execution: exit codes, shell prompts, fenced blocks,
     # diagnostic counts, or output from common test/build tools. Keep this as a

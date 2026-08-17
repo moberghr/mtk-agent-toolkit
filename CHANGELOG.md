@@ -4,6 +4,18 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Added — outcome-aware verification ledger: a verification that ran is not a verification that passed
+
+The session ledger recorded that a verification command *ran* (`last_verification_seq`), never whether it *succeeded*. A `pytest` run with 12 failures stamped the session as verified, and `verify-completion` accepted it as fresh evidence for a completion claim — its EVIDENCE regex even matches `FAILED` output. Borrowed from probity's enforcement rubric ("observed failing for the right reason"): gate on the outcome observed in the tool response, not on the command having been typed.
+
+- `mtk_classify_verification_outcome()` (hook-io.sh) classifies a verification command's `tool_response` as `pass|fail|unknown` from unambiguous runner summary shapes — pytest/jest/vitest counts, dotnet `Build FAILED`/`Passed!`/`error CSnnnn`, unittest, ruff/mypy, validate-toolkit. Fail shapes win over pass shapes, so `2 failed, 10 passed` reads as fail.
+- `context-budget.sh` records `last_verification_status` alongside the existing seq/epoch/command fields. The payload is sliced at `"tool_response"` before classification, so outcome markers in the command text itself can't classify the run.
+- `verify-completion` blocks a strong completion claim when the latest verification was observed failing, with the fix-or-report-explicitly instruction. `unknown` never blocks — fail-open on ambiguity, because a gate that flakes on innocent output is a gate people learn to skip (see tasks/lessons.md).
+
+Regression test: `tests/hooks/test-verification-outcome.sh` (classifier shapes incl. the XFAIL word-boundary case, ledger recording through a real PostToolUse payload, and the Stop-hook block/no-block/fail-open triple).
+
+Research trail for this borrow round: `docs/plans/2026-08-17-competitive-borrow-rounds.md`.
+
 ### Fixed — the PostToolUse hook that was actually wedging tool calls
 
 `compress-monitor.sh` read its payload with `cat > "$PAYLOAD_FILE"`. Measured on Windows, 2026-08-14: this hook ran **303s** against its declared `"timeout": 3` in `hooks.json`, holding the next tool call behind it. In one session, 24 of 292 Bash calls stalled between 303.9s and 313.3s — roughly two hours of dead time — and that tight clustering is the ~300s cancellation of this hook, not the commands and not the permission classifier.

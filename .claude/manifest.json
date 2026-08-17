@@ -2205,6 +2205,12 @@
       "action": "sync",
       "description": "Test for verify-completion re-arm rule \u2014 edit-after-verification re-arms criteria"
     },
+    "tests/hooks/test-verification-outcome.sh": {
+      "source": "tests/hooks/test-verification-outcome.sh",
+      "target": "tests/hooks/test-verification-outcome.sh",
+      "action": "sync",
+      "description": "Test for outcome-aware verification ledger \u2014 failing verification blocks completion claims, unknown fails open"
+    },
     "tests/hooks/test-mtk-recover.sh": {
       "source": "tests/hooks/test-mtk-recover.sh",
       "target": "tests/hooks/test-mtk-recover.sh",
