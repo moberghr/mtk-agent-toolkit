@@ -89,8 +89,9 @@ if [ "$is_secret" = "1" ]; then
   # could run it itself and defeat the human-in-the-loop premise. The message
   # instructs the agent to STOP and ask; approval is granted by the HUMAN,
   # out-of-band, through a channel the agent does not drive.
-  echo "READ-GUARD: blocked read of secret-bearing file '${FILE_PATH}'. Reading credentials into context requires explicit human approval — do NOT attempt to work around this. STOP and ask the engineer whether to proceed. The engineer (not you) grants access out-of-band: by setting MTK_READ_GUARD=advisory for the session, or by approving the path in the read-guard approval list themselves. Until the engineer responds, treat this file as unreadable and continue without its contents." >&2
-  exit 2
+  # Deliberately no toggle hint: access here is granted by the HUMAN,
+  # out-of-band — teaching the agent the off-switch would defeat the gate.
+  mtk_deny "READ-GUARD: blocked read of secret-bearing file '${FILE_PATH}'. Reading credentials into context requires explicit human approval — do NOT attempt to work around this. STOP and ask the engineer whether to proceed. The engineer (not you) grants access out-of-band: by setting MTK_READ_GUARD=advisory for the session, or by approving the path in the read-guard approval list themselves. Until the engineer responds, treat this file as unreadable and continue without its contents."
 fi
 
 # --- Noise-directory advisory ----------------------------------------------

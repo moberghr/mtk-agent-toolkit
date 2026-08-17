@@ -138,8 +138,10 @@ done < "$INDEX_FILE"
 
 if [ "$BLOCK" -eq 1 ]; then
   # Ship the rule WITH the denial. A reason-less block is the failure mode.
-  printf 'MTK RULE GATE — this action matches a rule that must be honoured. The rule is below; re-issue the action in compliance with it.\n%s\n' "$DELIVER_BODY" >&2
-  exit 2
+  # Reason is composed via printf, never an unquoted heredoc — rule bodies are
+  # file content and must not go through shell expansion.
+  mtk_deny "$(printf 'MTK RULE GATE — this action matches a rule that must be honoured. The rule is below; re-issue the action in compliance with it.\n%s' "$DELIVER_BODY")" \
+    "lower the rule's 'strength:' frontmatter to inject"
 fi
 
 # Advisory injection: visible to the model, never blocks.

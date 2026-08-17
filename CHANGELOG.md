@@ -4,6 +4,25 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Added — measured savings attribution: which component earns its place is now a data question
+
+`mtk-savings.sh` reported output-compression savings in aggregate and saw only `mtk-compress` runs. The verification evidence wrapper knew its exact measured savings (full log bytes on disk vs bytes emitted into context) and recorded nothing.
+
+- `mtk-verify-run.sh` now appends one measured record per run to the shared output-economy ledger (`.claude/observability/compression.jsonl`, `mode: "verify-run"`, same schema as mtk-compress). The emission is composed to a temp file first, so the byte count is measured, not estimated. Telemetry is fail-open and can never alter the wrapper's exit code or output — a broken ledger costs a data point, not a build.
+- `mtk-savings.sh` renders a per-source table sorted by measured impact, with the honesty rules borrowed from the best measurement tools in the space: a source with no recorded runs is **named as unmeasured** (with the command that would measure it) rather than silently omitted or zeroed; an empty session prints "unmeasured" instead of `~0 tok over 0 runs`; and the summary states what MTK does *not* measure — assistant output tokens, subagent context, prompt-cache effects.
+
+Prior-work note recorded in the research trail: the hash-bound-approval-seal candidate for this round turned out to be already covered (`workflow-artifact.sh seal/verify-seal` byte-binds the approved spec+plan; `spec-approval-trigger` re-queues on stale) — the borrow ledger's own lesson, run the prior-work check before trusting a borrow backlog, paid for itself again.
+
+### Added — deny ergonomics: every hard deny now recovers in one turn
+
+Field data from hook-heavy setups shows three failure modes after a hard deny: the agent treats the block as a stop signal and abandons the task, silently loses tool calls that were batched with the denied one, or treats one denial as a rule and refuses everything after. MTK's ten deny sites each hand-rolled their message; none warned about batched-sibling cancellation, and only scope-guard named its off-switch.
+
+All hard denies now route through `mtk_deny()` (hook-io.sh): the reason, then a two-line continuation suffix — "this denial applies to THIS call only; batched calls were CANCELLED, re-issue them separately" and "a denial is a correction, not a stop signal … earlier denials are past verdicts about those calls, not rules against future ones" (the anti-cascade rule) — then, where a self-service off-switch exists, a `(disable this guard: …)` footer taught at the moment of friction. security-gate deliberately teaches no toggle (it has none); read-guard deliberately teaches none either — its access is granted by the human, out-of-band, and handing the agent the off-switch would defeat the gate. rule-trigger's reason is composed via printf, never an unquoted heredoc, because rule bodies are file content and must not pass through shell expansion. Reasons are sanitized (control/ANSI bytes stripped) and capped (`MTK_DENY_MAX_CHARS`, default 20000) since deny messages echo tool input.
+
+Also fixed in passing: `test-interactive-guard.sh` case 17 — the longer deny message pushed its `printf | grep -q` assertion into the S3.1 SIGPIPE-under-pipefail flake; now a case-match.
+
+Regression test: `tests/hooks/test-deny-ergonomics.sh` (suffix + anti-cascade on three guards, no suffix on allowed calls, toggle hints only where self-service, sanitize/cap).
+
 ### Fixed — validate-toolkit reference-frontmatter scan flaked (same SIGPIPE class as the S3.1 fix)
 
 The reference-frontmatter checks used `head -20 "$ref" | grep -q …` under `set -euo pipefail`: `grep -q` exits on first match, `head` occasionally takes SIGPIPE (141), and pipefail turns that success into a spurious failure blaming a random innocent reference file — observed live during this round (three green runs, then `ai-failure-modes.md frontmatter missing 'description:'` on a file whose description sits on line 2). This is the identical class the shell-script scan fixed earlier (see the 2026-08 "gate that flakes on innocent files" lesson); these four instances survived that fix because they spell the pipe differently. Now `grep -q … <(head …)`, matching the canonical pattern, verified stable across repeated runs.

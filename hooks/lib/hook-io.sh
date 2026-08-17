@@ -97,6 +97,38 @@ mtk_emit_system_message() {
 # process was launched with. A prefix test then reports "outside the project",
 # which flips the redundancy guard below into skipping the project's own hook.
 # Fork-free: inputs are absolute normalised paths, so the parent is a suffix strip.
+# --- Deny ergonomics --------------------------------------------------------
+# Field-observed failure modes after a hard deny (exit 2): the agent treats
+# the block as a stop signal and abandons the task, or silently loses tool
+# calls that were batched with the denied one, or treats one denial as a rule
+# and refuses everything after (cascade). Every deny therefore carries a
+# continuation suffix; an optional toggle hint teaches the off-switch at the
+# moment of friction. Pass an empty toggle when the guard has no self-service
+# off-switch by design (security-gate, read-guard's human-granted approval).
+#
+# Usage:  mtk_deny "reason text" ["toggle hint"]
+#         mtk_deny - ["toggle hint"] <<EOF   (reason on stdin, e.g. heredoc)
+mtk_deny() {
+  local reason="${1:-}" toggle="${2:-}"
+  if [ "$reason" = "-" ]; then
+    reason="$(cat 2>/dev/null || true)"
+  fi
+  # Cap + sanitize: deny reasons echo tool input (command text, paths, rule
+  # bodies), so a huge or ANSI-laced tool_input must not bloat or corrupt the
+  # message. Control bytes stripped (newline/tab kept); length bounded high
+  # enough that a full rule-file delivery is never truncated.
+  reason="$(printf '%s' "$reason" | tr -d '\000-\010\013\014\016-\037\177' | head -c "${MTK_DENY_MAX_CHARS:-20000}")"
+  printf '%s\n' "$reason" >&2
+  {
+    printf '⚠ This denial applies to THIS call only. Any tool calls batched with it were CANCELLED — re-issue them separately.\n'
+    printf 'A denial is a correction, not a stop signal: adapt this action and continue the task. Earlier denials this session are past verdicts about those calls, not rules against future ones.\n'
+    if [ -n "$toggle" ]; then
+      printf '(disable this guard: %s)\n' "$toggle"
+    fi
+  } >&2
+  exit 2
+}
+
 mtk_path_is_within() {
   local dir="${1:-}" root="${2:-}" parent depth=0
   [ -n "$dir" ] && [ -n "$root" ] || return 1

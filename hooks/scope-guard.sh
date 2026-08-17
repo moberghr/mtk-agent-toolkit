@@ -145,8 +145,7 @@ if [ "$MATCHED" -eq 0 ]; then
   # Off by default so existing installs and manifest-less flows are unaffected.
   case "${MTK_SCOPE_GUARD_ENFORCE:-0}" in
     1|true|TRUE|yes|YES|on|ON)
-      echo "MTK_SCOPE_GUARD: DENY ${REL_PATH} — not in approved manifest (${SPEC_NAME}). Add it to the spec's change_manifest, or unset MTK_SCOPE_GUARD_ENFORCE to fall back to advisory mode." >&2
-      exit 2
+      mtk_deny "MTK_SCOPE_GUARD: DENY ${REL_PATH} — not in approved manifest (${SPEC_NAME}). Add it to the spec's change_manifest first, then re-issue this edit." "unset MTK_SCOPE_GUARD_ENFORCE (falls back to advisory warnings)"
       ;;
   esac
   mtk_emit_additional_context "PreToolUse" "SCOPE GUARD: ${REL_PATH} is not in the approved spec (${SPEC_NAME}). If this change is necessary, update the spec's change_manifest first. Undeclared file modifications are the #1 source of spec drift."
