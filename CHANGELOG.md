@@ -4,6 +4,10 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Fixed — validate-toolkit reference-frontmatter scan flaked (same SIGPIPE class as the S3.1 fix)
+
+The reference-frontmatter checks used `head -20 "$ref" | grep -q …` under `set -euo pipefail`: `grep -q` exits on first match, `head` occasionally takes SIGPIPE (141), and pipefail turns that success into a spurious failure blaming a random innocent reference file — observed live during this round (three green runs, then `ai-failure-modes.md frontmatter missing 'description:'` on a file whose description sits on line 2). This is the identical class the shell-script scan fixed earlier (see the 2026-08 "gate that flakes on innocent files" lesson); these four instances survived that fix because they spell the pipe differently. Now `grep -q … <(head …)`, matching the canonical pattern, verified stable across repeated runs.
+
 ### Added — fail-safe merge guards on spec-archive: the lossless promise is now checked, not assumed
 
 `spec-archive.sh` promised "archiving never deletes from the baseline by inference" — and never verified it. Three failure modes were live: a typo'd `delta.removes` entry matched nothing and removed nothing, forever, silently; the merged JSON replaced the baseline unvalidated through a non-atomic cross-device `mv`; and the JSON mutated before the MD and audit record, so a mid-run failure left the three files inconsistent. Borrowed from OpenSpec's archive design (scenario-loss refusal, unaccounted-content accounting, pre-write re-validation — "fails safe in every direction") with the growth advisory from deltaspec's C5 gate.
