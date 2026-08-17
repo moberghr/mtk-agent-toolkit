@@ -59,6 +59,11 @@ Rules:
 
 VERIFY — before returning:
 - Run the build command and the relevant test command from the tech stack skill.
+  When output will exceed ~30 lines, run each through the evidence wrapper:
+    bash scripts/mtk-verify-run.sh --label <batch-id>-build -- <build cmd>
+  and put the `exit=N` line, the bounded tail, and the log path in
+  `build.evidence` / `tests.evidence` — never the full dump. The orchestrator
+  reads the full log from disk when the tail is not enough.
 - If build or tests fail, set `status: "blocked"`, return the error in `build.evidence` /
   `tests.evidence` with `ok: false` and a one-line analysis. Do not loop endlessly.
 - Returning without running the verify commands, or with a partial/ack-only reply, is

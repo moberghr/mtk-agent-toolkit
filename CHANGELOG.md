@@ -4,6 +4,54 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Added — measured savings attribution: which component earns its place is now a data question
+
+`mtk-savings.sh` reported output-compression savings in aggregate and saw only `mtk-compress` runs. The verification evidence wrapper knew its exact measured savings (full log bytes on disk vs bytes emitted into context) and recorded nothing.
+
+- `mtk-verify-run.sh` now appends one measured record per run to the shared output-economy ledger (`.claude/observability/compression.jsonl`, `mode: "verify-run"`, same schema as mtk-compress). The emission is composed to a temp file first, so the byte count is measured, not estimated. Telemetry is fail-open and can never alter the wrapper's exit code or output — a broken ledger costs a data point, not a build.
+- `mtk-savings.sh` renders a per-source table sorted by measured impact, with the honesty rules borrowed from the best measurement tools in the space: a source with no recorded runs is **named as unmeasured** (with the command that would measure it) rather than silently omitted or zeroed; an empty session prints "unmeasured" instead of `~0 tok over 0 runs`; and the summary states what MTK does *not* measure — assistant output tokens, subagent context, prompt-cache effects.
+
+Prior-work note recorded in the research trail: the hash-bound-approval-seal candidate for this round turned out to be already covered (`workflow-artifact.sh seal/verify-seal` byte-binds the approved spec+plan; `spec-approval-trigger` re-queues on stale) — the borrow ledger's own lesson, run the prior-work check before trusting a borrow backlog, paid for itself again.
+
+### Added — deny ergonomics: every hard deny now recovers in one turn
+
+Field data from hook-heavy setups shows three failure modes after a hard deny: the agent treats the block as a stop signal and abandons the task, silently loses tool calls that were batched with the denied one, or treats one denial as a rule and refuses everything after. MTK's ten deny sites each hand-rolled their message; none warned about batched-sibling cancellation, and only scope-guard named its off-switch.
+
+All hard denies now route through `mtk_deny()` (hook-io.sh): the reason, then a two-line continuation suffix — "this denial applies to THIS call only; batched calls were CANCELLED, re-issue them separately" and "a denial is a correction, not a stop signal … earlier denials are past verdicts about those calls, not rules against future ones" (the anti-cascade rule) — then, where a self-service off-switch exists, a `(disable this guard: …)` footer taught at the moment of friction. security-gate deliberately teaches no toggle (it has none); read-guard deliberately teaches none either — its access is granted by the human, out-of-band, and handing the agent the off-switch would defeat the gate. rule-trigger's reason is composed via printf, never an unquoted heredoc, because rule bodies are file content and must not pass through shell expansion. Reasons are sanitized (control/ANSI bytes stripped) and capped (`MTK_DENY_MAX_CHARS`, default 20000) since deny messages echo tool input.
+
+Also fixed in passing: `test-interactive-guard.sh` case 17 — the longer deny message pushed its `printf | grep -q` assertion into the S3.1 SIGPIPE-under-pipefail flake; now a case-match.
+
+Regression test: `tests/hooks/test-deny-ergonomics.sh` (suffix + anti-cascade on three guards, no suffix on allowed calls, toggle hints only where self-service, sanitize/cap).
+
+### Fixed — validate-toolkit reference-frontmatter scan flaked (same SIGPIPE class as the S3.1 fix)
+
+The reference-frontmatter checks used `head -20 "$ref" | grep -q …` under `set -euo pipefail`: `grep -q` exits on first match, `head` occasionally takes SIGPIPE (141), and pipefail turns that success into a spurious failure blaming a random innocent reference file — observed live during this round (three green runs, then `ai-failure-modes.md frontmatter missing 'description:'` on a file whose description sits on line 2). This is the identical class the shell-script scan fixed earlier (see the 2026-08 "gate that flakes on innocent files" lesson); these four instances survived that fix because they spell the pipe differently. Now `grep -q … <(head …)`, matching the canonical pattern, verified stable across repeated runs.
+
+### Added — fail-safe merge guards on spec-archive: the lossless promise is now checked, not assumed
+
+`spec-archive.sh` promised "archiving never deletes from the baseline by inference" — and never verified it. Three failure modes were live: a typo'd `delta.removes` entry matched nothing and removed nothing, forever, silently; the merged JSON replaced the baseline unvalidated through a non-atomic cross-device `mv`; and the JSON mutated before the MD and audit record, so a mid-run failure left the three files inconsistent. Borrowed from OpenSpec's archive design (scenario-loss refusal, unaccounted-content accounting, pre-write re-validation — "fails safe in every direction") with the growth advisory from deltaspec's C5 gate.
+
+- **Guard 1 — unmatched removes refuse** with case/whitespace-folded near-miss suggestions (`did you mean: IPay.Charge(int)?`).
+- **Guard 2 — merged JSON is re-validated** before anything is replaced.
+- **Guard 3 — loss accounting**: every key that disappeared from the baseline must be exactly accounted for by an explicit `delta.removes` entry; anything else refuses the merge naming the lost keys. Checked, not assumed-by-construction, so a future merge refactor or degenerate sidecar cannot silently break the promise.
+- **All-or-nothing commit point**: same-directory temp files, atomic renames, audit appended last; a refused archive leaves JSON, MD, and audit byte-identical.
+- **Baseline growth advisory** (never blocks): past 800 lines / ~40k est. tokens, suggest partitioning the area — a baseline too big to load cheaply stops being read (`MTK_BASELINE_MAX_LINES` / `MTK_BASELINE_MAX_TOKENS`).
+- Sidecar shape pre-validation: malformed `change_manifest`/`public_contracts`/`delta.removes` refuse with a clear message instead of degenerating inside jq.
+
+Regression test: `tests/hooks/test-spec-archive-guards.sh` (six scenarios, including byte-identical-after-refusal and advisory-never-blocks).
+
+### Added — verification evidence contract: evidence on disk, exit code + bounded tail in context
+
+Verification output used to enter context twice — verbatim when the command ran, and again re-quoted in the completion report — thousands of tokens for output whose diagnostic value lives in its last 30 lines. `mtk-compress.sh` couldn't fill this hole: it is lossy (the full output is gone) and a pipe reports the compressor's exit code, not the command's.
+
+`scripts/mtk-verify-run.sh` implements the contract as one command: full output persists to a citable `.mtk/evidence/<timestamp>-<label>.log`, context carries a machine-readable `exit=N` line plus a bounded tail (default 30 lines, `MTK_VERIFY_TAIL`; runner summaries print last, so the tail keeps them), and the command's exit code is preserved as the wrapper's own. The contract lives in `.claude/references/verification-evidence-contract.md`, wired into `verification-before-completion` (evidence-economy step) and the subagent implementer VERIFY contract (`build.evidence`/`tests.evidence` carry exit line + tail + log path, never the full dump).
+
+Stacks on the outcome-aware ledger below: the `exit=N` line is an authoritative signal for `mtk_classify_verification_outcome` — checked before any text-shape heuristic, so a suite that prints "12 passed" but exits non-zero classifies as fail. Wrapper invocations register as verification commands even when the inner command is unlisted (e.g. `./run-integration.sh`), and `verify-completion` accepts `exit=N` as cited evidence.
+
+Two refinements came from this round's fresh research sweep: the classifier reads structured harness fields (`"exit_code"`/`"returncode"`/`"success"` in the tool_response) ahead of the wrapper line and any text shape, and on failure the wrapper emits the first error-keyword hits *with their log line numbers* before the tail — a long build's first error scrolls far above the last 30 lines, and a coordinate into the persisted log beats guessing. Hit lines are raw log content, selected never rewritten.
+
+Regression test: `tests/hooks/test-mtk-verify-run.sh` (exit fidelity both ways, bounded tail, persisted citable log, classifier and ledger interop).
+
 ### Added — outcome-aware verification ledger: a verification that ran is not a verification that passed
 
 The session ledger recorded that a verification command *ran* (`last_verification_seq`), never whether it *succeeded*. A `pytest` run with 12 failures stamped the session as verified, and `verify-completion` accepted it as fresh evidence for a completion claim — its EVIDENCE regex even matches `FAILED` output. Borrowed from probity's enforcement rubric ("observed failing for the right reason"): gate on the outcome observed in the tool response, not on the command having been typed.
