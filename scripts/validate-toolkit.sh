@@ -330,11 +330,14 @@ if [ -f CLAUDE.md ]; then
 fi
 
 # Every .claude/references/**/*.md must have description/globs/alwaysApply frontmatter.
+# <(head …) not head|grep: grep -q exits on match, head takes SIGPIPE (141), and
+# pipefail turns that success into a spurious failure blaming a random file —
+# the same S3.1 flake class fixed in the shell-script scan above.
 while IFS= read -r ref; do
-  head -20 "$ref" | head -1 | grep -q '^---$' || fail "$ref missing YAML frontmatter"
-  head -20 "$ref" | grep -q '^description:' || fail "$ref frontmatter missing 'description:'"
-  head -20 "$ref" | grep -q '^globs:' || fail "$ref frontmatter missing 'globs:'"
-  head -20 "$ref" | grep -q '^alwaysApply:' || fail "$ref frontmatter missing 'alwaysApply:'"
+  grep -q '^---$' <(head -1 "$ref") || fail "$ref missing YAML frontmatter"
+  grep -q '^description:' <(head -20 "$ref") || fail "$ref frontmatter missing 'description:'"
+  grep -q '^globs:' <(head -20 "$ref") || fail "$ref frontmatter missing 'globs:'"
+  grep -q '^alwaysApply:' <(head -20 "$ref") || fail "$ref frontmatter missing 'alwaysApply:'"
 done < <(find .claude/references -name '*.md' -type f | sort)
 
 # References index must be in sync with frontmatter (only if it exists; gitignored).

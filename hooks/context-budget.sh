@@ -79,6 +79,15 @@ case "$TOOL_NAME" in
       last_verification_seq=$event_seq
       last_verification_command=$(mtk_trim_whitespace "$COMMAND")
       last_verification_summary="$last_verification_command"
+      # Outcome column: classify the tool_response so verify-completion can
+      # distinguish "verification ran" from "verification passed". Slice the
+      # payload at the tool_response key so outcome markers in the command
+      # text itself (tool_input) can't classify the run.
+      RESPONSE=""
+      case "$INPUT" in
+        *'"tool_response"'*) RESPONSE="${INPUT#*\"tool_response\"}" ;;
+      esac
+      last_verification_status=$(mtk_classify_verification_outcome "$RESPONSE")
     fi
     ;;
   Glob|Grep)

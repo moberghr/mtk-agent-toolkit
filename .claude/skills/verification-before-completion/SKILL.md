@@ -108,6 +108,8 @@ The `evidence_channel` field on each success criterion names the surface where t
    - error messages
    - warning count
    - test pass/fail counts
+
+   **Evidence economy.** When the output will exceed a bounded tail (~30 lines), run the command through `bash scripts/mtk-verify-run.sh -- <cmd>` instead of bare: the full output persists to a citable `.mtk/evidence/` log, context carries `exit=N` plus the tail (runner summaries print last, so the tail keeps them), and the log path goes in the evidence cell. Contract: `Read .claude/references/verification-evidence-contract.md`.
 5. **Criterion-by-criterion check.** For each success criterion in the list:
    a. Run (or re-run) the verification step appropriate to its `evidence_channel`.
    b. Confirm the result matches the criterion's `observable` (the binary pass/fail statement declared before execution).

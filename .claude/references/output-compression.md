@@ -23,6 +23,10 @@ Skip when:
 - Output is short by definition (`ls`, `git status`, `pwd`).
 - You need every line preserved (debugging an exact log sequence).
 - The output IS the deliverable (you're going to write it to a file unchanged).
+- **The command is a verification whose result backs a completion claim** — use
+  `bash scripts/mtk-verify-run.sh -- <cmd>` instead: it preserves the exit code
+  (a pipe reports the compressor's) and persists the full output to a citable
+  `.mtk/evidence/` log. See `verification-evidence-contract.md`.
 
 ## Never compress (safety carve-outs)
 

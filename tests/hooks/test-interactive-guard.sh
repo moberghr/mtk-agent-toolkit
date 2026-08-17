@@ -118,9 +118,11 @@ killed="$(printf '{"tool_name":"Bash","tool_input":{"command":"gh pr merge 272 -
 expect "MTK_INTERACTIVE_GUARD=0 disables guard" 0 "$killed"
 
 # 17. A block must explain the fix, not just refuse. Assert the remedy reaches stderr.
+# case-match, not `printf | grep -q`: grep's early exit SIGPIPEs the printf
+# under pipefail and fails the assertion despite the match (S3.1 flake class).
 msg="$(printf '{"tool_name":"Bash","tool_input":{"command":"gh pr merge 272 --squash"}}' \
   | "$GUARD" 2>&1 >/dev/null || true)"
-if ! printf '%s' "$msg" | grep -q -- '--delete-branch'; then
+if ! case "$msg" in *--delete-branch*) true ;; *) false ;; esac; then
   printf 'FAIL: block message does not name the fix (--delete-branch)\n' >&2
   fails=$((fails + 1))
 else

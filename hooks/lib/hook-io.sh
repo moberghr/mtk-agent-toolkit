@@ -97,6 +97,38 @@ mtk_emit_system_message() {
 # process was launched with. A prefix test then reports "outside the project",
 # which flips the redundancy guard below into skipping the project's own hook.
 # Fork-free: inputs are absolute normalised paths, so the parent is a suffix strip.
+# --- Deny ergonomics --------------------------------------------------------
+# Field-observed failure modes after a hard deny (exit 2): the agent treats
+# the block as a stop signal and abandons the task, or silently loses tool
+# calls that were batched with the denied one, or treats one denial as a rule
+# and refuses everything after (cascade). Every deny therefore carries a
+# continuation suffix; an optional toggle hint teaches the off-switch at the
+# moment of friction. Pass an empty toggle when the guard has no self-service
+# off-switch by design (security-gate, read-guard's human-granted approval).
+#
+# Usage:  mtk_deny "reason text" ["toggle hint"]
+#         mtk_deny - ["toggle hint"] <<EOF   (reason on stdin, e.g. heredoc)
+mtk_deny() {
+  local reason="${1:-}" toggle="${2:-}"
+  if [ "$reason" = "-" ]; then
+    reason="$(cat 2>/dev/null || true)"
+  fi
+  # Cap + sanitize: deny reasons echo tool input (command text, paths, rule
+  # bodies), so a huge or ANSI-laced tool_input must not bloat or corrupt the
+  # message. Control bytes stripped (newline/tab kept); length bounded high
+  # enough that a full rule-file delivery is never truncated.
+  reason="$(printf '%s' "$reason" | tr -d '\000-\010\013\014\016-\037\177' | head -c "${MTK_DENY_MAX_CHARS:-20000}")"
+  printf '%s\n' "$reason" >&2
+  {
+    printf '⚠ This denial applies to THIS call only. Any tool calls batched with it were CANCELLED — re-issue them separately.\n'
+    printf 'A denial is a correction, not a stop signal: adapt this action and continue the task. Earlier denials this session are past verdicts about those calls, not rules against future ones.\n'
+    if [ -n "$toggle" ]; then
+      printf '(disable this guard: %s)\n' "$toggle"
+    fi
+  } >&2
+  exit 2
+}
+
 mtk_path_is_within() {
   local dir="${1:-}" root="${2:-}" parent depth=0
   [ -n "$dir" ] && [ -n "$root" ] || return 1
@@ -338,6 +370,7 @@ last_verification_epoch=0
 last_verification_seq=0
 last_verification_command=''
 last_verification_summary=''
+last_verification_status='unknown'
 bytes_read=0
 warned_ctxpct=0
 EOF
@@ -366,6 +399,7 @@ mtk_load_session_state() {
   last_verification_seq=${last_verification_seq:-0}
   last_verification_command=${last_verification_command:-}
   last_verification_summary=${last_verification_summary:-}
+  last_verification_status=${last_verification_status:-unknown}
   bytes_read=${bytes_read:-0}
   warned_ctxpct=${warned_ctxpct:-0}
 }
@@ -400,6 +434,7 @@ mtk_save_session_state() {
     printf "last_verification_seq=%s\n" "${last_verification_seq:-0}"
     printf "last_verification_command='%s'\n" "$cmd_esc"
     printf "last_verification_summary='%s'\n" "$sum_esc"
+    printf "last_verification_status='%s'\n" "${last_verification_status:-unknown}"
     printf "bytes_read=%s\n" "${bytes_read:-0}"
     printf "warned_ctxpct=%s\n" "${warned_ctxpct:-0}"
   } > "$tmp"
@@ -436,9 +471,80 @@ mtk_command_is_verification() {
   pattern+='|go[[:space:]]+test'
   pattern+='|cargo[[:space:]]+(test|build|check)'
   pattern+='|bash[[:space:]]+scripts/(validate-toolkit|run-benchmarks)\.sh'
+  pattern+='|scripts/mtk-verify-run\.sh'
   pattern+=')'
 
   printf '%s' "$command" | grep -qE "$pattern"
+}
+
+# Classify a verification command's observed output as pass|fail|unknown.
+#
+# A verification that RAN is not a verification that PASSED: without this, a
+# pytest run with 12 failures still stamps the session ledger as "verified" and
+# verify-completion accepts it as fresh evidence for a completion claim.
+#
+# Deliberately conservative in both directions — only unambiguous runner
+# summary shapes classify; everything else is `unknown`, and `unknown` never
+# blocks (a gate that flakes on innocent output is a gate people learn to
+# skip). Fail shapes are checked first so "1 failed, 3 passed" reads as fail.
+# Patterns avoid \b and line anchors: BSD grep lacks \b, and hook payloads
+# carry JSON-escaped output where newlines are the two characters `\n`.
+mtk_classify_verification_outcome() {
+  local output="${1:-}"
+  [ -n "$output" ] || { printf 'unknown\n'; return 0; }
+
+  # Structured fields outrank everything: some harnesses embed the exit code
+  # in tool_response itself ("exit_code"/"returncode"/"success") — read the
+  # harness's own verdict before trusting any text. Fail is checked before
+  # pass at every tier.
+  if printf '%s' "$output" | grep -qE '"(exit_code|returncode)"[[:space:]]*:[[:space:]]*[1-9][0-9]*'; then
+    printf 'fail\n'; return 0
+  fi
+  if printf '%s' "$output" | grep -qE '"success"[[:space:]]*:[[:space:]]*false'; then
+    printf 'fail\n'; return 0
+  fi
+  if printf '%s' "$output" | grep -qE '"(exit_code|returncode)"[[:space:]]*:[[:space:]]*0([^0-9]|$)'; then
+    printf 'pass\n'; return 0
+  fi
+
+  # Next: the scripts/mtk-verify-run.sh wrapper emits a machine-readable
+  # `exit=N` line (verification-evidence-contract.md). An exit code outranks
+  # any text-shape heuristic — a suite that prints "12 passed" but exits
+  # non-zero still failed.
+  if printf '%s' "$output" | grep -qE '(^|[^A-Za-z0-9_])exit=[1-9][0-9]*([^0-9]|$)'; then
+    printf 'fail\n'; return 0
+  fi
+  if printf '%s' "$output" | grep -qE '(^|[^A-Za-z0-9_])exit=0([^0-9]|$)'; then
+    printf 'pass\n'; return 0
+  fi
+
+  local fail_pattern='(Build FAILED'
+  fail_pattern+='|Failed!'
+  fail_pattern+='|[1-9][0-9]* (failed|failing)'
+  fail_pattern+='|Failed:[[:space:]]*[1-9]'
+  fail_pattern+='|FAILED \(failures='
+  fail_pattern+='|error (CS|MSB)[0-9]+'
+  fail_pattern+='|npm ERR!'
+  fail_pattern+='|Traceback \(most recent call last\)'
+  fail_pattern+='|(^|[^A-Za-z_])FAIL([^A-Za-z_]|$)'
+  fail_pattern+=')'
+
+  local pass_pattern='(Build succeeded'
+  pass_pattern+='|Passed!'
+  pass_pattern+='|Toolkit validation passed'
+  pass_pattern+='|[1-9][0-9]* passed'
+  pass_pattern+='|OK \([0-9]+ test'
+  pass_pattern+='|All checks passed'
+  pass_pattern+='|Success: no issues found'
+  pass_pattern+=')'
+
+  if printf '%s' "$output" | grep -qE "$fail_pattern"; then
+    printf 'fail\n'
+  elif printf '%s' "$output" | grep -qE "$pass_pattern"; then
+    printf 'pass\n'
+  else
+    printf 'unknown\n'
+  fi
 }
 
 mtk_record_scope_guard_warning() {
