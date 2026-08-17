@@ -4,6 +4,16 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Fixed — the PostToolUse hook that was actually wedging tool calls
+
+`compress-monitor.sh` read its payload with `cat > "$PAYLOAD_FILE"`. Measured on Windows, 2026-08-14: this hook ran **303s** against its declared `"timeout": 3` in `hooks.json`, holding the next tool call behind it. In one session, 24 of 292 Bash calls stalled between 303.9s and 313.3s — roughly two hours of dead time — and that tight clustering is the ~300s cancellation of this hook, not the commands and not the permission classifier.
+
+The earlier bounded-read change covered nine hooks that read via `INPUT=$(cat)` and missed this one, because here the payload arrives through a redirect rather than an assignment. That gap is the real lesson: a fix scoped to one spelling reported success while the hook actually causing the stalls stayed unbounded, which hid it for two days. The read is now `mtk_read_payload 2 > "$PAYLOAD_FILE"` — 2s, under the declared 3s, so the bound fires first. The existing `[ -s "$PAYLOAD_FILE" ] || exit 0` on the next line already handles an empty payload, so a timeout degrades to "no nag" rather than an error.
+
+Measured with a FIFO held open and nothing written: **20s before** (bounded only by the writer), **2s after**. Output on a 9000-char payload is byte-identical to the previous version.
+
+Deliberately out of scope: the stdin fallback in `parse-build-diagnostics.sh` is still unbounded. It is not registered in `hooks.json` and does not source `hook-io.sh`, so it sits outside the tool-call path and fixing it means adding a `source` line.
+
 ### Verified — Codex support is inherited from the Claude plugin format, not a separate port
 
 Codex CLI 0.147.0 loads MTK as-is. Verified 2026-08-14 against a local `moberghr` marketplace: `codex plugin list` resolves the marketplace through `.claude-plugin/marketplace.json` and reports `mtk@moberghr installed, enabled 7.31.0`; `~/.codex/config.toml` carries 17 `hooks.state."mtk@moberghr:hooks/hooks.json:…"` entries, so the full hook suite registers from the existing `hooks/hooks.json` and its `${CLAUDE_PLUGIN_ROOT}` paths; and `codex exec` lists all 44 skills, loaded from `"skills": "./.claude/skills"` in `.claude-plugin/plugin.json`.
