@@ -64,6 +64,19 @@ PY
   printf '%s' "$payload" | TMPDIR="$TMPDIR_OVERRIDE" MTK_HOOKS_TIER2=1 bash "$HOOK" 2>&1 || true
 }
 
+run_codex_hook() {
+  local msg="$1"
+  local stop_active="${2:-false}"
+  local payload
+  payload="$(python3 - "$msg" "$stop_active" <<'PY'
+import json, sys
+print(json.dumps({"hook_event_name": "Stop", "last_assistant_message": sys.argv[1],
+                  "stop_hook_active": sys.argv[2] == "true"}))
+PY
+)"
+  printf '%s' "$payload" | TMPDIR="$TMPDIR_OVERRIDE" MTK_HOOKS_TIER2=1 bash "$HOOK" 2>&1 || true
+}
+
 fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 
 # --- Case 1: edit after verification → re-arm gap fires --------------------
@@ -101,5 +114,14 @@ out="$(run_hook 'All done. Task complete. ✅')"
 echo "$out" | grep -q '"decision"[[:space:]]*:[[:space:]]*"block"' \
   || fail "gap must be a decision:block Stop envelope. Got: $out"
 printf '  PASS  gap emitted as decision:block envelope\n'
+
+# --- Case 6: Codex payload uses last_assistant_message ----------------------
+write_state 5 3
+out="$(run_codex_hook 'All done. Task complete. ✅')"
+echo "$out" | grep -qi 'VERIFICATION GAP' \
+  || fail "Codex last_assistant_message did not trigger a verification gap. Got: $out"
+echo "$out" | grep -q '"decision"[[:space:]]*:[[:space:]]*"block"' \
+  || fail "Codex gap must be a decision:block Stop envelope. Got: $out"
+printf '  PASS  Codex last_assistant_message is verified\n'
 
 printf '\nAll verify-completion re-arm checks passed.\n'

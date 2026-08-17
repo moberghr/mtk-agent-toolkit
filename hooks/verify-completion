@@ -24,14 +24,16 @@ if printf '%s' "$INPUT" | grep -qE '"stop_hook_active"[[:space:]]*:[[:space:]]*t
   exit 0
 fi
 
-# The last assistant message text is the completion claim to inspect. Derive it
-# from the transcript JSONL; exit silently if the transcript is missing,
-# unreadable, or has no assistant text.
-TRANSCRIPT="$(mtk_extract_json_string "$INPUT" "transcript_path" 2>/dev/null || printf '')"
-[ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ] || exit 0
-command -v python3 >/dev/null 2>&1 || exit 0
+# Codex supplies the current response directly. Prefer it so the verifier does
+# not depend on Codex's intentionally unstable transcript format. Claude Code
+# does not supply this field, so retain the transcript fallback for it.
+MSG="$(mtk_extract_json_string "$INPUT" "last_assistant_message" 2>/dev/null || printf '')"
+if [ -z "$MSG" ]; then
+  TRANSCRIPT="$(mtk_extract_json_string "$INPUT" "transcript_path" 2>/dev/null || printf '')"
+  [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ] || exit 0
+  command -v python3 >/dev/null 2>&1 || exit 0
 
-MSG="$(python3 - "$TRANSCRIPT" <<'PY' 2>/dev/null || printf ''
+  MSG="$(python3 - "$TRANSCRIPT" <<'PY' 2>/dev/null || printf ''
 import json, sys
 last = ""
 try:
@@ -68,7 +70,8 @@ except Exception:
     sys.exit(0)
 sys.stdout.write(last)
 PY
-)"
+  )"
+fi
 
 [ -n "$MSG" ] || exit 0
 
