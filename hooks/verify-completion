@@ -100,7 +100,7 @@ if echo "$MSG" | grep -qiE "$STRONG_CLAIM"; then
     # diagnostic counts, or output from common test/build tools. Keep this as a
     # secondary signal so the final message still cites the command output, but
     # do not treat it as a substitute for fresh session evidence.
-    EVIDENCE='(exit code|Build succeeded|Build FAILED|Passed!|Failed!|PASSED|FAILED|\$ |```|Tests:|Test Files|tests? ran|[0-9]+ (passed|failed|errors?|warnings?)|Checked [0-9]+ file|[Ff]ound [0-9]+ (error|warning|issue)|Toolkit validation passed|No issues found)'
+    EVIDENCE='(exit code|exit=[0-9]+|Build succeeded|Build FAILED|Passed!|Failed!|PASSED|FAILED|\$ |```|Tests:|Test Files|tests? ran|[0-9]+ (passed|failed|errors?|warnings?)|Checked [0-9]+ file|[Ff]ound [0-9]+ (error|warning|issue)|Toolkit validation passed|No issues found)'
     if ! echo "$MSG" | grep -qE "$EVIDENCE"; then
       GAP="VERIFICATION GAP: completion claim is missing cited command output. Reuse the fresh verification result from '${last_verification_command:-the latest verification command}' and include exit code plus pass/fail counts in the final message."
     fi

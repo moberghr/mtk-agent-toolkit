@@ -69,10 +69,34 @@ implements the contract atomically: unique log per run, `exit=N` line, bounded t
 Validate-toolkit budget tripwire deferred (S2.6a covers descriptions; the
 always-loaded-surface estimate is a candidate for a later round).
 
+**Round 2 research (2026-08-17, fresh sweep — evidence handling + new entrants):**
+first-fluke/oh-my-agent (Stop-gate with bounded 2000-char tail, no-exec allowlist,
+JSONL gate-event trail), fivetaku/fablize (structured-first outcome extraction:
+`exit_code`/`returncode`/`success` fields before text regex; redacted evidence
+ledger), basilisk-labs/agentplane (evidence contract as schema — checks[] with
+sha256-pinned artifact citations, passed/failed/partial/not_run/waived status
+enum), sleeplesshan/token-router (lossless line-slicing: select coordinates,
+never rewrite; deterministic error-keyword prefilters), PCIRCLE-AI/toonify-mcp
+(`updatedToolOutput` replace-at-source; do-not-compress policy learned from
+measurement), u-ichi/compact-plus (semantic PreCompact state capture),
+chaseai-yt/crucible (persistent-session adversarial review, VERDICT line
+contract), Nanako0129/pilotfish re-verified, zeuikli/output-compress
+(deterministic fidelity gate protecting file paths through compression).
+
+Two findings folded into this round's implementation: (1) fablize's
+structured-first rule — the classifier now reads `"exit_code"/"returncode"/
+"success"` from the tool_response before any text shape; (2) token-router's
+lossless error slice — on failure the wrapper emits the first error-keyword
+hits with log line numbers ahead of the tail, so diagnostics above the tail
+are reachable by coordinate. Deferred to later rounds: agentplane's sha256-
+pinned citations + status enum, oh-my-agent's JSONL gate-event trail,
+crucible's persistent-session review convergence, toonify's replace-at-source
+hook mechanism.
+
 **Test:** `tests/hooks/test-mtk-verify-run.sh` — exit-code fidelity (0 and
 non-zero), bounded tail on long output, full output preserved on disk, citation
-line format, and ledger interop (wrapper invocation still classifies pass/fail
-via the runner summary in the tail).
+line format, error-hit slice on failure only, structured-field precedence, and
+ledger interop (wrapper invocations register as verification commands).
 
 ## Rounds 3–5 (planned, revisited each round with fresh research)
 

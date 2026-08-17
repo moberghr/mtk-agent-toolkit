@@ -4,6 +4,18 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Added — verification evidence contract: evidence on disk, exit code + bounded tail in context
+
+Verification output used to enter context twice — verbatim when the command ran, and again re-quoted in the completion report — thousands of tokens for output whose diagnostic value lives in its last 30 lines. `mtk-compress.sh` couldn't fill this hole: it is lossy (the full output is gone) and a pipe reports the compressor's exit code, not the command's.
+
+`scripts/mtk-verify-run.sh` implements the contract as one command: full output persists to a citable `.mtk/evidence/<timestamp>-<label>.log`, context carries a machine-readable `exit=N` line plus a bounded tail (default 30 lines, `MTK_VERIFY_TAIL`; runner summaries print last, so the tail keeps them), and the command's exit code is preserved as the wrapper's own. The contract lives in `.claude/references/verification-evidence-contract.md`, wired into `verification-before-completion` (evidence-economy step) and the subagent implementer VERIFY contract (`build.evidence`/`tests.evidence` carry exit line + tail + log path, never the full dump).
+
+Stacks on the outcome-aware ledger below: the `exit=N` line is an authoritative signal for `mtk_classify_verification_outcome` — checked before any text-shape heuristic, so a suite that prints "12 passed" but exits non-zero classifies as fail. Wrapper invocations register as verification commands even when the inner command is unlisted (e.g. `./run-integration.sh`), and `verify-completion` accepts `exit=N` as cited evidence.
+
+Two refinements came from this round's fresh research sweep: the classifier reads structured harness fields (`"exit_code"`/`"returncode"`/`"success"` in the tool_response) ahead of the wrapper line and any text shape, and on failure the wrapper emits the first error-keyword hits *with their log line numbers* before the tail — a long build's first error scrolls far above the last 30 lines, and a coordinate into the persisted log beats guessing. Hit lines are raw log content, selected never rewritten.
+
+Regression test: `tests/hooks/test-mtk-verify-run.sh` (exit fidelity both ways, bounded tail, persisted citable log, classifier and ledger interop).
+
 ### Added — outcome-aware verification ledger: a verification that ran is not a verification that passed
 
 The session ledger recorded that a verification command *ran* (`last_verification_seq`), never whether it *succeeded*. A `pytest` run with 12 failures stamped the session as verified, and `verify-completion` accepted it as fresh evidence for a completion claim — its EVIDENCE regex even matches `FAILED` output. Borrowed from probity's enforcement rubric ("observed failing for the right reason"): gate on the outcome observed in the tool response, not on the command having been typed.

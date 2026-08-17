@@ -439,6 +439,7 @@ mtk_command_is_verification() {
   pattern+='|go[[:space:]]+test'
   pattern+='|cargo[[:space:]]+(test|build|check)'
   pattern+='|bash[[:space:]]+scripts/(validate-toolkit|run-benchmarks)\.sh'
+  pattern+='|scripts/mtk-verify-run\.sh'
   pattern+=')'
 
   printf '%s' "$command" | grep -qE "$pattern"
@@ -459,6 +460,31 @@ mtk_command_is_verification() {
 mtk_classify_verification_outcome() {
   local output="${1:-}"
   [ -n "$output" ] || { printf 'unknown\n'; return 0; }
+
+  # Structured fields outrank everything: some harnesses embed the exit code
+  # in tool_response itself ("exit_code"/"returncode"/"success") — read the
+  # harness's own verdict before trusting any text. Fail is checked before
+  # pass at every tier.
+  if printf '%s' "$output" | grep -qE '"(exit_code|returncode)"[[:space:]]*:[[:space:]]*[1-9][0-9]*'; then
+    printf 'fail\n'; return 0
+  fi
+  if printf '%s' "$output" | grep -qE '"success"[[:space:]]*:[[:space:]]*false'; then
+    printf 'fail\n'; return 0
+  fi
+  if printf '%s' "$output" | grep -qE '"(exit_code|returncode)"[[:space:]]*:[[:space:]]*0([^0-9]|$)'; then
+    printf 'pass\n'; return 0
+  fi
+
+  # Next: the scripts/mtk-verify-run.sh wrapper emits a machine-readable
+  # `exit=N` line (verification-evidence-contract.md). An exit code outranks
+  # any text-shape heuristic — a suite that prints "12 passed" but exits
+  # non-zero still failed.
+  if printf '%s' "$output" | grep -qE '(^|[^A-Za-z0-9_])exit=[1-9][0-9]*([^0-9]|$)'; then
+    printf 'fail\n'; return 0
+  fi
+  if printf '%s' "$output" | grep -qE '(^|[^A-Za-z0-9_])exit=0([^0-9]|$)'; then
+    printf 'pass\n'; return 0
+  fi
 
   local fail_pattern='(Build FAILED'
   fail_pattern+='|Failed!'
