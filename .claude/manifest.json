@@ -2229,6 +2229,18 @@
       "action": "sync",
       "description": "Test for the verification evidence wrapper \u2014 exit fidelity, bounded tail, persisted citable log, classifier interop"
     },
+    "tests/hooks/test-spec-archive-guards.sh": {
+      "source": "tests/hooks/test-spec-archive-guards.sh",
+      "target": "tests/hooks/test-spec-archive-guards.sh",
+      "action": "sync",
+      "description": "Test for spec-archive merge guards \u2014 unmatched-remove refusal with near-miss, loss accounting, all-or-nothing writes, growth advisory"
+    },
+    "tests/hooks/test-deny-ergonomics.sh": {
+      "source": "tests/hooks/test-deny-ergonomics.sh",
+      "target": "tests/hooks/test-deny-ergonomics.sh",
+      "action": "sync",
+      "description": "Test for deny ergonomics \u2014 continuation suffix and anti-cascade on every hard deny, toggle hints only where self-service, reason sanitize/cap"
+    },
     "tests/hooks/test-mtk-recover.sh": {
       "source": "tests/hooks/test-mtk-recover.sh",
       "target": "tests/hooks/test-mtk-recover.sh",

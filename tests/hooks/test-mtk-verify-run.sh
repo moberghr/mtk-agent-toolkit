@@ -100,6 +100,29 @@ printf '  PASS  exit=N line authoritative for the outcome classifier\n'
   || fail 'structured "success": false must classify as fail'
 printf '  PASS  structured harness fields outrank text shapes\n'
 
+# --- 3b. measured savings ledger (fail-open, never alters behavior) -----------
+
+# No .claude dir → no ledger, no crash, exit code untouched.
+rm -rf "$WORK/.claude"
+out="$(bash "$WRAPPER" --label noledger 'seq 1 40')" \
+  || fail "wrapper must succeed when no .claude dir exists"
+[ ! -e "$WORK/.claude" ] || fail "wrapper must not create .claude on its own"
+printf '  PASS  no ledger without .claude, behavior untouched\n'
+
+# With .claude present → one verify-run record with measured byte counts.
+mkdir -p "$WORK/.claude"
+out="$(bash "$WRAPPER" --tail 5 --label ledgered 'seq 1 200')"
+LEDGER="$WORK/.claude/observability/compression.jsonl"
+[ -f "$LEDGER" ] || fail "wrapper must append to the output-economy ledger"
+python3 - "$LEDGER" <<'PY' || fail "ledger record must be measured (in>out, mode verify-run)"
+import json, sys
+r = json.loads(open(sys.argv[1]).readlines()[-1])
+assert r["mode"] == "verify-run", r
+assert r["in_chars"] > 0 and r["out_chars"] > 0, r
+assert r["in_chars"] > r["out_chars"], f"200-line log vs 5-line tail must save bytes: {r}"
+PY
+printf '  PASS  measured verify-run record appended to the ledger\n'
+
 # --- 4. wrapper invocation registers as a verification command ----------------
 
 is_verification() {

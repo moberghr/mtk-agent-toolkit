@@ -33,8 +33,7 @@ fi
 
 # Fail closed for Bash payloads we cannot parse.
 if [ -z "$COMMAND" ]; then
-  echo "BLOCKED: Unable to parse Bash command from hook payload. Re-run the command after fixing the hook payload shape." >&2
-  exit 2
+  mtk_deny "BLOCKED: Unable to parse Bash command from hook payload. Re-run the command after fixing the hook payload shape."
 fi
 
 # The destructive-SQL pattern lives in one place so the command text and any file the
@@ -71,8 +70,7 @@ mtk_referenced_files() {
 
 # Block: database destructive operations
 if mtk_has_destructive_sql "$COMMAND"; then
-  echo "BLOCKED: Destructive database operation detected. Use a migration instead." >&2
-  exit 2
+  mtk_deny "BLOCKED: Destructive database operation detected. Use a migration instead."
 fi
 
 # A file under the repo's own tests/ tree carries destructive statements as fixtures, not
@@ -105,8 +103,7 @@ while IFS= read -r _mtk_ref; do
   [ -f "$_mtk_ref" ] || continue
   mtk_is_repo_test_file "$_mtk_ref" && continue
   if mtk_has_destructive_sql "$(head -c 200000 "$_mtk_ref" 2>/dev/null || true)"; then
-    echo "BLOCKED: Destructive database operation found in ${_mtk_ref}. Use a migration instead." >&2
-    exit 2
+    mtk_deny "BLOCKED: Destructive database operation found in ${_mtk_ref}. Use a migration instead."
   fi
 done <<MTK_REFS
 $(mtk_referenced_files "$COMMAND")
@@ -114,14 +111,12 @@ MTK_REFS
 
 # Block: force push to main/master
 if echo "$COMMAND" | grep -qE 'git\s+push\s+.*--(force|force-with-lease)\s+.*\b(main|master)\b'; then
-  echo "BLOCKED: Force push to main/master is not allowed." >&2
-  exit 2
+  mtk_deny "BLOCKED: Force push to main/master is not allowed."
 fi
 
 # Block: rm -rf on project root or broad paths
 if echo "$COMMAND" | grep -qE 'rm\s+-[a-zA-Z]*r[a-zA-Z]*f[a-zA-Z]*\s+(\.|/|~|\$HOME)'; then
-  echo "BLOCKED: Recursive force-delete on broad path. Be more specific." >&2
-  exit 2
+  mtk_deny "BLOCKED: Recursive force-delete on broad path. Be more specific."
 fi
 
 # Allow everything else

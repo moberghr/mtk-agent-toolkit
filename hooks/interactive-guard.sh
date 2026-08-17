@@ -89,7 +89,7 @@ MTK_LINES
 # gh prompts after the merge API call has already landed. Passing either flag settles it.
 if [ -n "$MTK_MERGE_LINE" ]; then
   if ! printf '%s' "$MTK_MERGE_LINE" | grep -qE '(^|[[:space:]])--(no-)?delete-branch([[:space:]]|$)'; then
-    cat >&2 <<'MTK_BLOCK_A'
+    mtk_deny - 'MTK_INTERACTIVE_GUARD=0 in .claude/settings.local.json env' <<'MTK_BLOCK_A'
 BLOCKED (S4.12): `gh pr merge` without a delete-branch decision prompts after the merge
 has already landed, then hangs until the Bash timeout with no visible output.
 
@@ -100,7 +100,6 @@ Add --delete-branch (or --no-delete-branch) and redirect stdin:
 Note the merge itself may still succeed while the command appears to hang — check
 `gh pr view <n> --json state` before retrying, so you do not act on a merge that landed.
 MTK_BLOCK_A
-    exit 2
   fi
 fi
 
@@ -109,7 +108,7 @@ fi
 # The command looks like it produced nothing when it is actually waiting for an answer.
 # Scoped to the offending line for the reason given above.
 if printf '%s' "$MTK_HIT_LINE" | grep -qE '\|[[:space:]]*(tail|head)([[:space:]]|$)'; then
-  cat >&2 <<'MTK_BLOCK_B'
+  mtk_deny - 'MTK_INTERACTIVE_GUARD=0 in .claude/settings.local.json env' <<'MTK_BLOCK_B'
 BLOCKED (S4.12): piping a prompt-capable command through tail/head hides the prompt that
 blocks it — tail buffers until EOF, so a waiting command reads as "(No output)".
 
@@ -120,7 +119,6 @@ Drop the pipe and let the command stream:
 Pipe-to-tail is fine for read-only commands (`git log`, `gh pr view`), just not for ones
 that can stop and ask a question.
 MTK_BLOCK_B
-  exit 2
 fi
 
 # Prompt-capable but correctly formed.
