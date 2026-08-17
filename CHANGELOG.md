@@ -4,6 +4,16 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Added — deny ergonomics: every hard deny now recovers in one turn
+
+Field data from hook-heavy setups shows three failure modes after a hard deny: the agent treats the block as a stop signal and abandons the task, silently loses tool calls that were batched with the denied one, or treats one denial as a rule and refuses everything after. MTK's ten deny sites each hand-rolled their message; none warned about batched-sibling cancellation, and only scope-guard named its off-switch.
+
+All hard denies now route through `mtk_deny()` (hook-io.sh): the reason, then a two-line continuation suffix — "this denial applies to THIS call only; batched calls were CANCELLED, re-issue them separately" and "a denial is a correction, not a stop signal … earlier denials are past verdicts about those calls, not rules against future ones" (the anti-cascade rule) — then, where a self-service off-switch exists, a `(disable this guard: …)` footer taught at the moment of friction. security-gate deliberately teaches no toggle (it has none); read-guard deliberately teaches none either — its access is granted by the human, out-of-band, and handing the agent the off-switch would defeat the gate. rule-trigger's reason is composed via printf, never an unquoted heredoc, because rule bodies are file content and must not pass through shell expansion. Reasons are sanitized (control/ANSI bytes stripped) and capped (`MTK_DENY_MAX_CHARS`, default 20000) since deny messages echo tool input.
+
+Also fixed in passing: `test-interactive-guard.sh` case 17 — the longer deny message pushed its `printf | grep -q` assertion into the S3.1 SIGPIPE-under-pipefail flake; now a case-match.
+
+Regression test: `tests/hooks/test-deny-ergonomics.sh` (suffix + anti-cascade on three guards, no suffix on allowed calls, toggle hints only where self-service, sanitize/cap).
+
 ### Fixed — validate-toolkit reference-frontmatter scan flaked (same SIGPIPE class as the S3.1 fix)
 
 The reference-frontmatter checks used `head -20 "$ref" | grep -q …` under `set -euo pipefail`: `grep -q` exits on first match, `head` occasionally takes SIGPIPE (141), and pipefail turns that success into a spurious failure blaming a random innocent reference file — observed live during this round (three green runs, then `ai-failure-modes.md frontmatter missing 'description:'` on a file whose description sits on line 2). This is the identical class the shell-script scan fixed earlier (see the 2026-08 "gate that flakes on innocent files" lesson); these four instances survived that fix because they spell the pipe differently. Now `grep -q … <(head …)`, matching the canonical pattern, verified stable across repeated runs.

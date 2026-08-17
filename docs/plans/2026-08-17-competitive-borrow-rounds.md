@@ -138,11 +138,64 @@ no temp files, exact remove merges and audits, malformed sidecar refused,
 growth advisory fires without blocking. (Its grep assertion also re-learned the
 S3.1 lesson: `echo | grep -q` SIGPIPEs under pipefail — case-match instead.)
 
-## Rounds 4–5 (planned, revisited each round with fresh research)
+## Round 4 — Deny ergonomics: every hard deny recovers in one turn
 
-- Round 4 (correctness): deny-continuation suffix + disabling-toggle attribution
-  on all deny-capable hooks (from Edmonds-Commerce hooks-daemon field data).
-- Round 5 (tokens): decided after Round 5 research — candidates: per-source
-  bytes-saved attribution in analytics (context-mode), negative-ceremony fixtures
-  (Aegis), stale-anchor citation check in mtk-doctor (hivelore), citationdiff
-  hash-bound approval seals.
+**Gap (hooks-daemon field data):** after a hard deny agents (a) treat the block
+as a stop signal and abandon the task, (b) silently lose tool calls batched with
+the denied one, or (c) treat one denial as a rule and refuse everything after
+(cascade). MTK's ten deny sites each hand-rolled their message; none warned
+about batched-sibling cancellation, and only scope-guard named its off-switch.
+
+**Borrow:** `mtk_deny()` in `hooks/lib/hook-io.sh` — every hard deny now carries
+a two-line continuation suffix ("this denial applies to THIS call only; batched
+calls were CANCELLED — re-issue separately" + "a denial is a correction, not a
+stop signal ... earlier denials are past verdicts, not rules" — the anti-cascade
+line from probity) and an optional `(disable this guard: …)` footer taught at
+the moment of friction. Migrated: security-gate (5 sites, no toggle by design),
+interactive-guard (2 heredoc sites, names MTK_INTERACTIVE_GUARD=0), scope-guard
+(names the enforce fallback), read-guard (suffix but deliberately NO toggle —
+access is human-granted), rule-trigger (reason composed via printf, never an
+unquoted heredoc — rule bodies are file content and must not shell-expand).
+Reasons are sanitized (control bytes stripped) and capped
+(`MTK_DENY_MAX_CHARS`, default 20000) — claude-hud's cap+sanitize rule, since
+deny messages echo tool input.
+
+**Round 4 research (2026-08-17, fresh sweep — guard ergonomics + observability):**
+Prime-agentai/agent-approval-gate (windowed A-B-A-B loop detector; hook-liveness
+heartbeat + "absence of a subagent marker proves nothing"), osteele/
+agent-tool-policy (escape hatch as an in-command comment, auditable in the
+transcript; deny>ask>allow fixed precedence; per-harness adapters with written
+degradation rules), KyongSik-Yoon/baton (deny reasons that steer to delegation;
+`"agent_id"` presence as cheap main-vs-subagent discrimination),
+nizos/tdd-guard (three-part deny contract: violation + why + imperative next
+step; prompt-command guard toggle with attribution),
+anode-llc/claude-code-guardrail-hooks (new-violations-only diff guard so
+pre-existing debt never deadlocks edits; **claim to verify: under
+bypassPermissions an exit-2 deny may not reliably block — only
+hookSpecificOutput.permissionDecision "deny"**; one named toggle per guard +
+timeout doctrine), abellagonzalo/bash-guard (allow-or-defer-only auto-approver,
+structurally cascade-free; defer-reason audit log as tuning corpus),
+claude-hud (cap+sanitize transcript-derived display text — folded in),
+ccusage (never-silently-zero cost honesty; per-cache-tier attribution),
+disler/multi-agent-observability (guard/telemetry sibling-hook split so logging
+can never alter a guard's exit code), davila7/claude-code-templates (tiered TTL
+cache with dependency invalidation).
+
+**Follow-up items recorded, not implemented:** verify the bypassPermissions
+exit-2 claim against a live session before migrating guards to structured
+denies; consider baton's `agent_id` discrimination for scope-guard subagent
+policy; consider bash-guard's defer-log as tuning corpus for interactive-guard.
+
+**Test:** `tests/hooks/test-deny-ergonomics.sh` — suffix + anti-cascade on
+security-gate/interactive-guard/read-guard denies, allowed calls carry no
+suffix, toggle hints only where self-service (read-guard must NOT teach one),
+sanitize/cap behavior. Also fixed test-interactive-guard case 17, which the
+longer message pushed into the S3.1 SIGPIPE flake (`printf | grep -q` under
+pipefail → case-match).
+
+## Round 5 (planned, decided after Round 5 research)
+
+Candidates: per-source bytes-saved attribution in analytics (context-mode),
+negative-ceremony fixtures (Aegis), stale-anchor citation check in mtk-doctor
+(hivelore), citationdiff hash-bound approval seals, ccusage cost honesty for
+toolkit-health.
