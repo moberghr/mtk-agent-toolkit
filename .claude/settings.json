@@ -168,7 +168,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/hooks/capture-learnings.sh"
+            "command": "$CLAUDE_PROJECT_DIR/hooks/capture-learnings.sh",
+            "async": true,
+            "timeout": 5
           }
         ]
       },
@@ -176,7 +178,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/hooks/session-analytics.sh"
+            "command": "$CLAUDE_PROJECT_DIR/hooks/session-analytics.sh",
+            "async": true,
+            "timeout": 5
           }
         ]
       },
@@ -184,7 +188,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/hooks/workflow-continuation.sh"
+            "command": "$CLAUDE_PROJECT_DIR/hooks/workflow-continuation.sh",
+            "async": true,
+            "timeout": 5
           }
         ]
       }

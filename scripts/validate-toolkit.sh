@@ -135,8 +135,10 @@ check_hook_anchor hooks/hooks.json '${CLAUDE_PLUGIN_ROOT}' \
 # All shell scripts in hooks/ and scripts/ must be executable and follow S3.1
 while IFS= read -r script; do
   [ -x "$script" ] || fail "$script is not executable (chmod +x) — violates S3.2"
-  # Some scripts have multi-line comment headers before pipefail; scan first 15 lines
-  head -15 "$script" | grep -q 'set -euo pipefail' || fail "$script missing 'set -euo pipefail' — violates S3.1"
+  # Some scripts have multi-line comment headers before pipefail; scan first 15 lines.
+  # <(head …) not head|grep: grep -q exits on match, head takes SIGPIPE (141), and
+  # pipefail would turn that success into a spurious failure on a random file.
+  grep -q 'set -euo pipefail' <(head -15 "$script") || fail "$script missing 'set -euo pipefail' — violates S3.1"
 done < <(find hooks/ scripts/ -type f \( -name '*.sh' -o -name 'pre-commit' -o -name 'session-start' -o -name 'verify-completion' \) | sort)
 
 # The git pre-commit hook and linter script must agree on supported flags.
