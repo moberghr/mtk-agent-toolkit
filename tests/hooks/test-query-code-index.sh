@@ -136,7 +136,9 @@ fi
 # hash_file() is defined in scripts/generate-checksums.sh — a known symbol.
 echo ""; echo "--- callers: textual reference search ---"
 if out="$(cd "$REPO_ROOT" && bash "$QUERY" callers "hash_file" 2>/dev/null)"; then
-  if printf '%s' "$out" | grep -qE '^[^:]+:[0-9]+:'; then
+  # <(printf …) not printf|grep -q: grep's early exit SIGPIPEs the printf under
+  # pipefail and a different assertion fails per run (S3.1 flake class).
+  if grep -qE '^[^:]+:[0-9]+:' <(printf '%s' "$out"); then
     echo "  PASS  callers printed at least one file:line result"
   else
     FAILS+=("callers: output not in file:line form: $out")

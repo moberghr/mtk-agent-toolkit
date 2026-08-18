@@ -42,6 +42,10 @@ strength: inject
 
 - **S3.16** Protected artifacts that get regenerated (`architecture-principles.md`, `references.index`, in-place rewrites of `tasks/lessons.md`) must be written through `mtk_guarded_write` from `hooks/lib/shrink-guard.sh`. The helper refuses writes that shrink the target by > 50% bytes or > 20% lines. Override with `MTK_SHRINK_GUARD_OVERRIDE=1` for intentional rewrites. Pure appends are exempt — they cannot shrink.
 
+## SIGPIPE Under Pipefail
+
+- **S3.17** Never pipe into an early-exiting consumer (`grep -q`, `head`, `grep -m`) under `set -euo pipefail`: the consumer exits on its first match/line, the producer takes SIGPIPE (exit 141), and pipefail turns that *success* into a failure that blames a random innocent input per run — or, inside `$(…)` under `set -e`, kills the script exactly when the branch is needed. Five live instances were found and fixed in Aug 2026 (validate-toolkit reference scan, test-interactive-guard #17, generate-agents-md ×2, test-query-code-index). Use `grep -q PATTERN <(producer …)` (process-substitution exit is ignored), `awk 'NR<=n'` instead of `| head`, or a bash `case` match on a captured variable. Piping into a consumer that reads all input (`wc`, `sort`, `awk` without `exit`) is safe.
+
 ## Validation Script
 
 - **S3.9** `scripts/validate-toolkit.sh` is the gate. It checks: required files exist, versions match, frontmatter present, skill anatomy valid, manifest paths exist, README/CONTRIBUTING/AGENTS coverage.
