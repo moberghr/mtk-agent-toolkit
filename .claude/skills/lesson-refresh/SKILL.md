@@ -87,7 +87,9 @@ not decide.
    retirements add the STALE marking above the entry. Mirror accepted changes
    to `.mtk/learnings.jsonl` via `scripts/learnings.sh` where entries exist.
    Appends aside, in-place rewrites of `tasks/lessons.md` go through
-   `mtk_guarded_write` (S3.16).
+   `mtk_guarded_write` (S3.16), and the proposed rewrite must pass
+   `bash scripts/growth-gate.sh tasks/lessons.md <proposed>` — a refresh that
+   grows the store defeats its purpose; supersede content, don't append to it.
 
 ## Verification
 

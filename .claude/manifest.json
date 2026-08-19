@@ -1830,6 +1830,12 @@
       "action": "sync",
       "description": "Rule enforcement map \u2014 classifies every numbered rule WIRED/BROKEN/PROSE by whether a live enforcer backs it, plus undocumented-hook reverse check"
     },
+    "scripts/growth-gate.sh": {
+      "source": "scripts/growth-gate.sh",
+      "target": "scripts/growth-gate.sh",
+      "action": "sync",
+      "description": "Relative-growth gate for machine-proposed rewrites \u2014 refuses a proposal growing the artifact past --max-pct so always-loaded context stays flat"
+    },
     "hooks/compress-monitor.sh": {
       "source": "hooks/compress-monitor.sh",
       "target": "hooks/compress-monitor.sh",
