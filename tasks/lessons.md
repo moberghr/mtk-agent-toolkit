@@ -121,3 +121,13 @@
 - **Rule:** Never pipe a producer into an early-exiting consumer (`grep -q`, `grep -m1`, `head -1`) under `pipefail` — the consumer's success becomes the producer's SIGPIPE becomes a false failure. Reshape as `grep -q pattern <(head -N file)` (process substitution discards the producer's status) or use a consumer that reads to EOF (`grep -c`). And when a validation gate reports a failure that looks impossible, re-run it twice before believing it: a *moving* accusation is a race in the gate, not N broken files.
 - **Why it matters:** The repo's C0.8 makes this validator the gate for every change. A gate with a false-positive race erodes exactly the habit it exists to build — the second occurrence of the anchor breakage landed in a tree where the gate was already distrusted noise.
 - **When it applies:** Any `set -euo pipefail` script piping into `grep -q`/`head`; any CI or pre-commit gate whose failures are nondeterministic or name a different culprit per run.
+
+## 2026-08-19 — A gate's exit code must never travel through a pipe
+
+**What happened:** `bash scripts/validate-toolkit.sh 2>&1 | tail -2 && git commit …` committed on a RED validator: the pipeline's exit code is tail's (0), so the `&&` chain sailed past the failure. The validator had actually failed (a reference frontmatter error) and the commit landed anyway — caught only because the error text happened to scroll by.
+
+**Rule:** When a command's exit code gates the next step, never pipe its output. Run it bare with output to a temp file (`cmd > /tmp/out 2>&1; rc=$?`), then display the tail separately. `set -o pipefail` in scripts helps but does not exist in interactive one-liners.
+
+**Why:** A pipeline's status is the last command's. `| tail`/`| head` on a gate silently converts every failure into success — the same family as the S3.17 SIGPIPE class, from the opposite direction (there the pipe fabricates failure; here it fabricates success).
+
+**Applies to:** Any `validate && commit`, `test && push` chain — in scripts, CI steps, and especially ad-hoc terminal one-liners.

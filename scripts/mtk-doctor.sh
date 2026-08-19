@@ -308,6 +308,18 @@ else
   done
 fi
 
+# Lesson anchor staleness — a lesson citing a path/symbol that no longer
+# exists reads as authority while pointing at nothing. WARN-only; retirement
+# is the lesson-refresh skill's job and always a human decision.
+if [ -f tasks/lessons.md ] && [ -f scripts/lesson-anchors.sh ]; then
+  ANCHOR_SUMMARY="$(bash scripts/lesson-anchors.sh 2>/dev/null | tail -1 || true)"
+  case "$ANCHOR_SUMMARY" in
+    *' 0 stale'*) record PASS integrity "lesson anchors live" "$ANCHOR_SUMMARY" ;;
+    *stale*)      record WARN integrity "stale lesson anchors" "$ANCHOR_SUMMARY — run 'bash scripts/lesson-anchors.sh' for locations, then the lesson-refresh skill to triage" ;;
+    *)            record PASS integrity "lesson anchors unchecked" "no summary from lesson-anchors.sh" ;;
+  esac
+fi
+
 # Analytics freshness
 if [ -f .claude/analytics.json ]; then
   if find .claude/analytics.json -mtime +30 -print -quit 2>/dev/null | grep -q .; then

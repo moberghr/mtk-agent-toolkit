@@ -288,6 +288,55 @@ refuse to regenerate its own file; test-query-code-index blamed a different
 assertion per run. Third and fourth live catches of the class this cycle →
 promoted to rule S3.17 (trigger-delivered when editing hooks/ or scripts/).
 
+## Round 7 — Lesson lifecycle: stale anchors located, retirement human-ruled (2026-08-19)
+
+**Gap:** capture is solved four ways (correction-capture, golden-path-capture,
+lesson-mining, promote-lesson) but the stores are append-only and grow forever —
+no staleness audit, no consolidation, no retirement path. A lesson citing a file
+that no longer exists reads as authority while pointing at nothing.
+
+**Borrow (synthesis of hivelore verifyAnchor + ce-compound-refresh triage +
+refinery's prune discipline):**
+- `scripts/lesson-anchors.sh` — deterministic stale-anchor check: backtick
+  anchors with a live first path segment are existence-checked (path and
+  `path:symbol` forms); external example paths are skipped and disclosed, never
+  warned about; rename suggestions follow unique-match-or-unresolvable
+  (context-kernel's rule) — one candidate suggests, several are named
+  ambiguous. WARN-only; `--strict` for CI.
+- `lesson-refresh` skill — suggest-only triage Keep/Update/Consolidate/Retire;
+  retirement = `> STALE` marking, never deletion; **prune never decides alone**
+  (refinery's "56 ALL_DEAD, every one wrong" war story is quoted in the skill);
+  due-ness ordering from claude-memory-engine's reverify-after idea.
+- `mtk-doctor` integrity WARN when stale anchors exist, pointing at the skill.
+- Session lesson captured live in `tasks/lessons.md`: a gate's exit code must
+  never travel through a pipe (the round-3 `| tail` incident).
+
+**Round 7 research (fresh sweep — point-of-need recall + newest entrants):**
+Arnoldig/claude-memory-engine (mechanical staleness scan nearly identical to
+this round's checker — flag-never-delete, three-state field parsing, capped
+stale reports; validated the design), pskelton0330/persistent-context-harness
+(recall-precision JSONL log — is recall firing, which lessons never surface;
+index-health gate with honest DEGRADED), Aditya-Nagariya/harness-forge
+(error-signature normalization into a failure ledger; top-3 weighted lesson
+injection), vukkt/token-warden (context-rent economics: a lesson must save
+more than it costs to carry, SE-based refusal of noisy verdicts; zero-token
+contradiction flagging vs CLAUDE.md), Pinperepette/context-kernel (anchored
+citation refresh — unique match or unresolvable, folded in),
+technomensch/knowledge-graph (enforced point-of-need recall gates per skill
+type; recall-miss logging), b2bvic/pretool-memory (thinking-as-query recall
+keyed to current reasoning; 30s throttle + content-hash dedup),
+sarthakvk/pi-memory (staleness disclaimer injected at recall time),
+yiheinchai/rmc (usage-driven compression ladder; answered-vs-unanswered
+attribution), viethuynh243/ZeroMem (build-enforced zero-LLM invariant;
+abstention gate naming missing terms).
+
+**Round 8 candidate pool (deferred with evidence):** recall-precision logging
+on .mtk/learnings.jsonl (pskelton), error-signature failure ledger
+(harness-forge), context-rent eviction economics + contradiction flagging
+(token-warden), weighted top-N lesson injection (harness-forge), staleness
+disclaimer at recall time (pi-memory), thinking-as-query recall trigger
+(pretool-memory).
+
 ## Cycle summary
 
 Five stacked PRs: #78 outcome-aware verification ledger (correctness), #79
