@@ -4,6 +4,22 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Changed — hook invariants resolved once, not per spawn: PreToolUse wall-clock −25%
+
+Profiling the PreToolUse path showed the latency was dominated by re-deriving invariants, not by guard logic: `mtk_repo_root()` spawned `git rev-parse` (~20ms) on every call while ignoring `$CLAUDE_PROJECT_DIR` — the harness-set, cwd-independent answer the redundancy guard already prefers (and the X1 path-spelling lesson endorses); `mtk_session_file()` re-ran a `cksum|cut` + `date` pipeline on every call, including twice more inside lock acquire/release; and `rule-trigger` ran three escape-aware awk extractions (~14ms each) plus a device+inode repo-relative resolution even for Bash payloads that only need the command string.
+
+- `mtk_repo_root()` now prefers `$CLAUDE_PROJECT_DIR` (physicalized via `pwd -P`), memoized per process and keyed by `PWD`; the git spawn remains the fallback when the env var is absent, so scripts and tests outside a session are unchanged.
+- `mtk_session_file()` is memoized, and both lock helpers accept the already-computed path (`mtk_session_lock_acquire "$SESSION_FILE"`) since `$(…)` command substitution makes in-function memos invisible to the caller. No-arg calls keep the old behavior.
+- `rule-trigger` extracts only the field its tool shape needs — command for Bash, file path otherwise — and skips repo-relative resolution when there is no path. A path-gated rule never matched a Bash call before either; now it doesn't pay for not matching.
+
+Measured (10-run mean, this machine): rule-trigger on Bash payloads 51.8 → 38.3 ms (−26%); since Claude Code runs matching hooks in parallel, PreToolUse wall-clock = slowest hook, 52 → 39 ms (−25%) on every Bash tool call. Full 38-file hook test suite green.
+
+### Fixed — two more live SIGPIPE-under-pipefail defects, and the class is now a rule (S3.17)
+
+Running the full test suite surfaced the same class a third and fourth time — not flakes this time, hard failures: `generate-agents-md.sh` truncated the over-ceiling body via `printf | head`, so the hard-ceiling branch **died with 141 exactly when it was needed** (a repo with a big CLAUDE.md could not generate AGENTS.md at all), and its marker check (`head -10 | grep -q`) could mis-branch into "hand-written file — refusing to regenerate" on a file the script itself generated. `test-query-code-index.sh` had the assertion-shaped variant, blaming a different assertion per run. All three sites fixed with the canonical forms (`awk 'NR<=n'`, `grep -q … <(head …)`).
+
+Five instances in one month is a pattern, not a coincidence, so the class is now **S3.17** in `.claude/rules/hooks-and-scripts.md` — delivered just-in-time by the trigger-bound rule mechanism whenever hooks/ or scripts/ files are edited, instead of waiting to be rediscovered one flake at a time.
+
 ### Added — measured savings attribution: which component earns its place is now a data question
 
 `mtk-savings.sh` reported output-compression savings in aggregate and saw only `mtk-compress` runs. The verification evidence wrapper knew its exact measured savings (full log bytes on disk vs bytes emitted into context) and recorded nothing.
