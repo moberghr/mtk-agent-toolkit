@@ -93,6 +93,41 @@ if [ "$IN_CHARS" -lt "$MIN_CHARS" ]; then
   exit 0
 fi
 
+# Repetition-dominance pre-pass (Hermes repetition_guard, born from a real
+# 60,698-char single-line repetition loop): when one non-blank line repeats
+# >=5 times and covers >=50% of the input, collapse it to its first
+# occurrence plus a count before any mode processing. Conservative by design
+# — anything below both thresholds passes through untouched, so legitimate
+# output never trips it. IN_CHARS is NOT updated: the analytics record must
+# bill the true input size so the collapse shows up as measured savings.
+COLLAPSED="$(printf '%s' "$INPUT" | awk '
+  {
+    lines[NR] = $0
+    t = $0; gsub(/^[ \t]+|[ \t]+$/, "", t)
+    norm[NR] = t
+    if (t != "") { cnt[t]++; chars[t] += length($0) + 1 }
+    total += length($0) + 1
+  }
+  END {
+    best = ""; bc = 0
+    for (k in cnt) if (cnt[k] > bc) { best = k; bc = cnt[k] }
+    if (bc >= 5 && total > 0 && chars[best] * 2 >= total) {
+      emitted = 0
+      for (i = 1; i <= NR; i++) {
+        if (norm[i] == best) {
+          if (!emitted) {
+            print lines[i]
+            printf "[mtk-compress: previous line repeated %dx — collapsed]\n", bc
+            emitted = 1
+          }
+        } else print lines[i]
+      }
+    } else for (i = 1; i <= NR; i++) print lines[i]
+  }')"
+if [ "${#COLLAPSED}" -lt "$IN_CHARS" ]; then
+  INPUT="$COLLAPSED"
+fi
+
 # Auto-detect mode if requested.
 if [ "$MODE" = "auto" ]; then
   trimmed="$(printf '%s' "$INPUT" | head -c 256)"

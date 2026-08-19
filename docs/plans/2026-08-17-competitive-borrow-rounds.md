@@ -337,6 +337,60 @@ on .mtk/learnings.jsonl (pskelton), error-signature failure ledger
 disclaimer at recall time (pi-memory), thinking-as-query recall trigger
 (pretool-memory).
 
+## Round 8 — Full slate: Hermes hardening + the whole option board (2026-08-19)
+
+**Ritual change:** research first, then a decision artifact
+(https://claude.ai/code/artifact/c2e0a1f7-7e6a-46f7-af32-202bd986a8ca) with five
+options + effort/impact; the engineer chose **build all**. Hermes deep-dive was
+explicitly requested: NousResearch/hermes-agent (232k★) disambiguated from the
+name collisions, nine implementation files inspected.
+
+**A — Evidence you can't fake** (Hermes verification_evidence.py): exit-status
+attributability (`||` masks, `;` requires the verification as last segment,
+pipes/backgrounding mask, `&&` attributes exit 0 only, fd redirects clean) gates
+the classifier's structured/exit tiers — `pytest || true` no longer stamps the
+ledger PASS. Scope column (targeted|full, Hermes _looks_like_target with
+runner-path and `./...` exceptions); verify-completion blocks once when a claim
+says ALL/fully green over targeted evidence. Test: 8 checks.
+
+**B — Anti-resurrection** (Hermes context_compressor): post-compaction recovery
+is framed HISTORICAL SNAPSHOT — latest user message wins, cancel signals close
+items, nothing resumes unconfirmed; same preamble in the handoff template.
+
+**C — Read-path token diet** (terse 18k-call field data + Hermes
+repetition_guard): MTK_READ_DIET=deny blocks byte-identical re-reads (session-
+keyed store, offset/limit exempt, post-compact clears — compaction destroys the
+earlier read; measured savings recorded), =advise is envelope-only, default
+off. mtk-compress collapses one line repeated >=5x covering >=50% of input.
+
+**D — Rules that prove themselves** (claudemd-prove-it):
+scripts/rule-enforcement-map.sh — WIRED/BROKEN/PROSE per numbered rule +
+undocumented-hook reverse check, doctor-wired. First live run: 17 wired, 0
+broken, 64 prose, **15 undocumented hooks** (genuine drift finding). Building
+it re-fixed two of its own bugs live: grep -o token boundary (checksums.sha256
+≠ checksums.sh) and hooks/lib/ resolution.
+
+**E — Lesson recall economics** (token-warden + persistent-context-harness):
+learnings.sh query logs one JSONL record per query (ids/counts only) to
+.mtk/recall-log.jsonl; mtk-savings prints Lesson rent (measured: ~4,781
+tok/run total, heaviest lessons named) + recall stats with the
+markdown-coverage honesty note; lesson-refresh consults both — data informs,
+never decides.
+
+**Bonus — growth gate** (hermes-agent-self-evolution): relative-growth refusal
+for machine-proposed rewrites (default 15%), wired into lesson-refresh and
+claude-md-capture — suggest-only passes can no longer ratchet always-loaded
+context toward the absolute caps.
+
+**Round 8 research trail:** NousResearch/hermes-agent + hermes-agent-self-
+evolution (deep-dive with already-covered verdicts: skills_guard ≈ poison-lint,
+passive ledger shipped in R1, cache-prefix stability practiced ad hoc — the
+enforcement rule remains deferred), alex60217101990/terse (replay regression
+corpus + delta-reads deferred), yarrasys/yarramate (git line-range staleness
+for lesson anchors deferred), brefledev/claudemd-prove-it,
+akovalion/claude-code-test-gates (runner-artifact freshness deferred),
+illuwa/ctx-diet (turn-multiplier cost model deferred).
+
 ## Cycle summary
 
 Five stacked PRs: #78 outcome-aware verification ledger (correctness), #79

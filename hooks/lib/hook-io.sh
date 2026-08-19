@@ -404,6 +404,7 @@ last_verification_seq=0
 last_verification_command=''
 last_verification_summary=''
 last_verification_status='unknown'
+last_verification_scope='full'
 bytes_read=0
 warned_ctxpct=0
 EOF
@@ -433,6 +434,7 @@ mtk_load_session_state() {
   last_verification_command=${last_verification_command:-}
   last_verification_summary=${last_verification_summary:-}
   last_verification_status=${last_verification_status:-unknown}
+  last_verification_scope=${last_verification_scope:-full}
   bytes_read=${bytes_read:-0}
   warned_ctxpct=${warned_ctxpct:-0}
 }
@@ -468,6 +470,7 @@ mtk_save_session_state() {
     printf "last_verification_command='%s'\n" "$cmd_esc"
     printf "last_verification_summary='%s'\n" "$sum_esc"
     printf "last_verification_status='%s'\n" "${last_verification_status:-unknown}"
+    printf "last_verification_scope='%s'\n" "${last_verification_scope:-full}"
     printf "bytes_read=%s\n" "${bytes_read:-0}"
     printf "warned_ctxpct=%s\n" "${warned_ctxpct:-0}"
   } > "$tmp"
@@ -510,6 +513,89 @@ mtk_command_is_verification() {
   printf '%s' "$command" | grep -qE "$pattern"
 }
 
+# Can this command's exit status be attributed to the verification command
+# inside it? Shell operators can mask the exit: `pytest || true` always exits
+# 0, `pytest; echo done` exits with echo's status, `pytest | tee log` exits
+# with tee's, `pytest &` detaches. Echoes one of:
+#   yes        exit status is the verification command's
+#   pass-only  `&&` chain — exit 0 proves the verification passed, but a
+#              non-zero exit may belong to an earlier link, so only a pass
+#              is attributable
+#   no         operators mask the exit; trust output text only
+mtk_verification_exit_attributable() {
+  local cmd="${1:-}"
+  [ -n "$cmd" ] || { printf 'no\n'; return 0; }
+
+  # `||` masks the exit outright.
+  case "$cmd" in *'||'*) printf 'no\n'; return 0 ;; esac
+
+  # Pipes: the pipeline exits with the LAST segment's status, so a piped
+  # verification command's exit is not observable (matches the S4.12 rule
+  # that verification output must not be piped anyway).
+  local stripped="${cmd//||/}"
+  case "$stripped" in *'|'*) printf 'no\n'; return 0 ;; esac
+
+  # Backgrounding detaches the exit. Strip `&&` and fd-redirect forms
+  # (2>&1, >&2, &>, <&) first — those are redirects, not backgrounding.
+  local bg="${cmd//&&/}"
+  bg="$(printf '%s' "$bg" | sed -E 's/[0-9]*>&[0-9]*//g; s/&>>?//g; s/<&[0-9-]*//g')"
+  case "$bg" in *'&'*) printf 'no\n'; return 0 ;; esac
+
+  # `;` sequences: the line exits with the LAST segment's status, so the
+  # verification command must BE the last segment.
+  case "$cmd" in
+    *';'*)
+      local last="${cmd##*;}"
+      if mtk_command_is_verification "$last"; then
+        case "$cmd" in *'&&'*) printf 'pass-only\n' ;; *) printf 'yes\n' ;; esac
+      else
+        printf 'no\n'
+      fi
+      return 0
+      ;;
+  esac
+
+  # `&&` chain: exit 0 proves every link (incl. the verification) succeeded;
+  # a non-zero exit may be an earlier link's, so attribute passes only.
+  case "$cmd" in *'&&'*) printf 'pass-only\n'; return 0 ;; esac
+
+  printf 'yes\n'
+}
+
+# Classify the verification command's scope: did it exercise the whole repo
+# (full) or a named slice (targeted)? A targeted run must never satisfy a
+# repo-green claim ("all tests pass") — one test file is not the suite.
+# Heuristic per the trailing args AFTER the runner token: selector flags
+# (-k/--filter/--grep/--tests), `::` node ids, path-shaped args, and
+# test-file-shaped names mark the run targeted. `./...` (Go's all-packages)
+# stays full. Unknown shapes default to full — the nag must not flake.
+mtk_verification_scope() {
+  local cmd="${1:-}"
+  [ -n "$cmd" ] || { printf 'full\n'; return 0; }
+  local tok seen_runner=0
+  for tok in $cmd; do
+    if [ "$seen_runner" -eq 0 ]; then
+      case "$tok" in
+        *pytest*|*mypy*|*tsc*|*ruff*|*vitest*|*jest*|test|tests|check|*validate-toolkit.sh|*run-benchmarks.sh|*mtk-verify-run.sh)
+          seen_runner=1 ;;
+      esac
+      continue
+    fi
+    case "$tok" in
+      './...'|'...') continue ;;                       # Go all-packages: full
+      -k|--filter|--filter=*|--grep|--grep=*|--tests|--tests=*|-k=*)
+        printf 'targeted\n'; return 0 ;;
+      --) continue ;;
+      -*) continue ;;                                   # other flags: neutral
+      *::*) printf 'targeted\n'; return 0 ;;            # pytest/jest node id
+      */*) printf 'targeted\n'; return 0 ;;             # path argument
+      test_*|*_test.*|*.test.*|*.spec.*|*Tests.*|spec_*)
+        printf 'targeted\n'; return 0 ;;
+    esac
+  done
+  printf 'full\n'
+}
+
 # Classify a verification command's observed output as pass|fail|unknown.
 #
 # A verification that RAN is not a verification that PASSED: without this, a
@@ -524,31 +610,48 @@ mtk_command_is_verification() {
 # carry JSON-escaped output where newlines are the two characters `\n`.
 mtk_classify_verification_outcome() {
   local output="${1:-}"
+  # $2: exit attributability from mtk_verification_exit_attributable
+  # (yes|pass-only|no; default yes for back-compat). When shell operators
+  # mask the exit (`pytest || true`, `pytest; echo done`), the harness's
+  # structured exit fields describe the WHOLE line, not the verification
+  # command — trusting them stamps PASS on a failing suite. With
+  # attributability "no" the exit tiers are skipped and only the runner's
+  # own output text classifies; with "pass-only" (&& chains) a zero exit
+  # attributes but a non-zero exit may belong to an earlier link.
+  local attr="${2:-yes}"
   [ -n "$output" ] || { printf 'unknown\n'; return 0; }
 
   # Structured fields outrank everything: some harnesses embed the exit code
   # in tool_response itself ("exit_code"/"returncode"/"success") — read the
   # harness's own verdict before trusting any text. Fail is checked before
   # pass at every tier.
-  if printf '%s' "$output" | grep -qE '"(exit_code|returncode)"[[:space:]]*:[[:space:]]*[1-9][0-9]*'; then
-    printf 'fail\n'; return 0
+  if [ "$attr" = "yes" ]; then
+    if printf '%s' "$output" | grep -qE '"(exit_code|returncode)"[[:space:]]*:[[:space:]]*[1-9][0-9]*'; then
+      printf 'fail\n'; return 0
+    fi
+    if printf '%s' "$output" | grep -qE '"success"[[:space:]]*:[[:space:]]*false'; then
+      printf 'fail\n'; return 0
+    fi
   fi
-  if printf '%s' "$output" | grep -qE '"success"[[:space:]]*:[[:space:]]*false'; then
-    printf 'fail\n'; return 0
-  fi
-  if printf '%s' "$output" | grep -qE '"(exit_code|returncode)"[[:space:]]*:[[:space:]]*0([^0-9]|$)'; then
-    printf 'pass\n'; return 0
+  if [ "$attr" != "no" ]; then
+    if printf '%s' "$output" | grep -qE '"(exit_code|returncode)"[[:space:]]*:[[:space:]]*0([^0-9]|$)'; then
+      printf 'pass\n'; return 0
+    fi
   fi
 
   # Next: the scripts/mtk-verify-run.sh wrapper emits a machine-readable
-  # `exit=N` line (verification-evidence-contract.md). An exit code outranks
-  # any text-shape heuristic — a suite that prints "12 passed" but exits
-  # non-zero still failed.
-  if printf '%s' "$output" | grep -qE '(^|[^A-Za-z0-9_])exit=[1-9][0-9]*([^0-9]|$)'; then
-    printf 'fail\n'; return 0
+  # `exit=N` line (verification-evidence-contract.md). The wrapper composes
+  # the line itself, so it stays trustworthy regardless of surrounding
+  # operators — but a masked non-zero line exit still gates the fail side.
+  if [ "$attr" = "yes" ]; then
+    if printf '%s' "$output" | grep -qE '(^|[^A-Za-z0-9_])exit=[1-9][0-9]*([^0-9]|$)'; then
+      printf 'fail\n'; return 0
+    fi
   fi
-  if printf '%s' "$output" | grep -qE '(^|[^A-Za-z0-9_])exit=0([^0-9]|$)'; then
-    printf 'pass\n'; return 0
+  if [ "$attr" != "no" ]; then
+    if printf '%s' "$output" | grep -qE '(^|[^A-Za-z0-9_])exit=0([^0-9]|$)'; then
+      printf 'pass\n'; return 0
+    fi
   fi
 
   local fail_pattern='(Build FAILED'

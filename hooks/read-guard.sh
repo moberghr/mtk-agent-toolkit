@@ -94,6 +94,56 @@ if [ "$is_secret" = "1" ]; then
   mtk_deny "READ-GUARD: blocked read of secret-bearing file '${FILE_PATH}'. Reading credentials into context requires explicit human approval — do NOT attempt to work around this. STOP and ask the engineer whether to proceed. The engineer (not you) grants access out-of-band: by setting MTK_READ_GUARD=advisory for the session, or by approving the path in the read-guard approval list themselves. Until the engineer responds, treat this file as unreadable and continue without its contents."
 fi
 
+# --- Re-read diet (opt-in) ---------------------------------------------------
+# Field measurement (terse, 18k-call corpus): re-reads of unchanged files were
+# 92% of tool-output token waste — the single largest sink found. Opt-in via
+# MTK_READ_DIET=deny (block the re-read; content is already in context) or
+# =advise (advisory only). Guards full Reads only — offset/limit/pages reads
+# always pass. The seen-store is keyed by session id so a fresh session never
+# inherits "already read" from a context it does not have, and post-compact.sh
+# clears the store because compaction destroys the earlier read's content.
+READ_DIET="${MTK_READ_DIET:-0}"
+if [ "$TOOL_NAME" = "Read" ] && { [ "$READ_DIET" = "deny" ] || [ "$READ_DIET" = "advise" ]; } && [ -f "$FILE_PATH" ]; then
+  case "$INPUT" in
+    *'"offset"'*|*'"limit"'*|*'"pages"'*) : ;;
+    *)
+      DIET_SESSION="$(mtk_extract_json_string "$INPUT" "session_id" 2>/dev/null || printf '')"
+      [ -n "$DIET_SESSION" ] || DIET_SESSION="$(date +%Y%m%d)"
+      DIET_STORE="${TMPDIR:-/tmp}/mtk-read-diet-$(printf '%s%s' "$(mtk_repo_root 2>/dev/null || pwd)" "$DIET_SESSION" | cksum | cut -d' ' -f1)"
+      PATH_KEY="$(printf '%s' "$FILE_PATH" | cksum | cut -d' ' -f1)"
+      CONTENT_KEY="$(cksum < "$FILE_PATH" 2>/dev/null | tr ' \t' '--' || printf 'unreadable')"
+      PREV=""
+      if [ -f "$DIET_STORE" ]; then
+        PREV="$(grep -m1 "^${PATH_KEY} " "$DIET_STORE" 2>/dev/null | cut -d' ' -f2 || true)"
+      fi
+      if [ -n "$PREV" ] && [ "$PREV" = "$CONTENT_KEY" ]; then
+        if [ "$READ_DIET" = "deny" ]; then
+          # Measured savings: the re-read is actually avoided, so the file's
+          # size is real bytes kept out of context (round-5 attribution table).
+          OBS_DIR="$(mtk_repo_root 2>/dev/null || pwd)/.claude/observability"
+          if [ -d "$(mtk_repo_root 2>/dev/null || pwd)/.claude" ] && { [ -d "$OBS_DIR" ] || mkdir -p "$OBS_DIR" 2>/dev/null; }; then
+            printf '{"ts":"%s","session":"%s","mode":"read-diet","in_chars":%d,"out_chars":300}\n' \
+              "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${CLAUDE_CODE_SESSION_ID:-}" \
+              "$(wc -c < "$FILE_PATH" | tr -d ' ')" >> "$OBS_DIR/compression.jsonl" 2>/dev/null || true
+          fi
+          mtk_deny "READ-DIET: '${FILE_PATH}' is byte-identical to what you already read this session — its content is in your context; cite that instead of re-reading. If you need only part of it, re-issue the Read with offset/limit (always allowed)." \
+            "MTK_READ_DIET=advise (advisory) or =0 in .claude/settings.local.json env"
+        else
+          mtk_emit_additional_context "PreToolUse" "READ-DIET (advisory): '${FILE_PATH}' is unchanged since you last read it this session — the earlier content is still valid; prefer citing it over re-reading. (deny mode: MTK_READ_DIET=deny)"
+          exit 0
+        fi
+      else
+        {
+          if [ -f "$DIET_STORE" ]; then
+            grep -v "^${PATH_KEY} " "$DIET_STORE" 2>/dev/null || true
+          fi
+          printf '%s %s\n' "$PATH_KEY" "$CONTENT_KEY"
+        } > "${DIET_STORE}.tmp.$$" 2>/dev/null && mv "${DIET_STORE}.tmp.$$" "$DIET_STORE" 2>/dev/null || true
+      fi
+      ;;
+  esac
+fi
+
 # --- Noise-directory advisory ----------------------------------------------
 IGNORE_FILE="${TMPDIR:-/tmp}/mtk-readguard-ignore.$$"
 _MTK_RG_TMP="$IGNORE_FILE"

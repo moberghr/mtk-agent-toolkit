@@ -4,6 +4,19 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Added — round 8 full slate: Hermes hardening, read-path diet, enforcement map, lesson economics
+
+Borrow round 8 ran as a decision round — research synthesized into a five-option plan artifact, all options approved. Six focused changes:
+
+- **Evidence you can't fake** (Hermes `verification_evidence.py`): shell operators no longer mask verification outcomes. `pytest || true` and `pytest tests/x.py; echo done` used to stamp the session ledger PASS on a failing suite because the harness's `exit_code` describes the whole line; the classifier's structured/exit tiers are now gated on exit attributability (`||`/pipes/backgrounding mask; `;` requires the verification as the last segment; `&&` attributes exit 0 only; fd redirects like `2>&1` stay clean). The ledger also records `scope=targeted|full`, and `verify-completion` blocks once when a claim says ALL/fully green while the latest verification named a slice — an honest targeted claim is untouched.
+- **Compaction can't resurrect cancelled work** (Hermes `context_compressor`): post-compaction recovery context is framed as a HISTORICAL SNAPSHOT — the latest user message wins, cancel/supersede signals close items, and nothing recovered is acted on without confirming it is still wanted. Same preamble in the handoff artifact's Resume Instructions.
+- **Read-path token diet** (terse field data: re-reads of unchanged files were 92% of tool-output token waste across 18k calls; Hermes `repetition_guard`): opt-in `MTK_READ_DIET=deny` blocks a Read of a file byte-identical to what the session already read (session-keyed store; offset/limit reads always pass; post-compaction clears the store since the earlier read's content is gone; denied re-reads land in the measured-savings ledger). `=advise` emits an advisory envelope; default off. `mtk-compress` collapses output dominated by one repeated line (≥5×, ≥50% of input) to first occurrence + count.
+- **Rules that prove themselves** (claudemd-prove-it): `scripts/rule-enforcement-map.sh` classifies every numbered rule WIRED/BROKEN/PROSE by whether a live, wired enforcer backs it, plus the reverse check — hooks no rule documents. Doctor-wired, WARN-only, `--strict` for CI. First live run: 17 wired, 0 broken, 64 prose, and 15 undocumented hooks — a genuine governance finding.
+- **Lesson recall economics** (token-warden context-rent + recall-precision logging): `learnings.sh query` logs each query's surfaced ids to `.mtk/recall-log.jsonl` (ids and counts only, fail-open); `mtk-savings.sh` prints Lesson rent — `tasks/lessons.md` bills ~4,781 tok at the start of every `/mtk` run, heaviest lessons named — plus recall stats with an honest coverage note. `lesson-refresh` consults both; data informs the triage, never decides it.
+- **Growth gate** (hermes-agent-self-evolution): `scripts/growth-gate.sh` refuses a machine-proposed rewrite that grows the artifact past `--max-pct` (default 15%) — suggest-only passes can no longer ratchet always-loaded context a few percent at a time toward the absolute caps. Wired into lesson-refresh and claude-md-capture.
+
+Tests: `test-verification-attributability.sh` (8), `test-post-compact-framing.sh` (2), `test-token-diet.sh` (7), `test-rule-enforcement-map.sh` (4); full suite 43/43 files green.
+
 ### Added — lesson lifecycle: stale anchors located deterministically, retirement always human-ruled
 
 Capture was solved four ways (correction-capture, golden-path-capture, lesson-mining, promote-lesson) — but the lessons stores were append-only and grew forever: nothing audited whether a lesson still matched the code, consolidated overlap, or retired superseded entries. A lesson citing a file that no longer exists reads as authority while pointing at nothing.
