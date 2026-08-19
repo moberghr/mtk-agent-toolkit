@@ -1818,6 +1818,12 @@
       "action": "sync",
       "description": "Verification evidence wrapper \u2014 full output to a citable .mtk/evidence log, exit code + bounded tail in context, exit code preserved"
     },
+    "scripts/lesson-anchors.sh": {
+      "source": "scripts/lesson-anchors.sh",
+      "target": "scripts/lesson-anchors.sh",
+      "action": "sync",
+      "description": "Deterministic stale-anchor check for lesson stores \u2014 verifies cited paths/symbols exist, suggests renames, skips external examples, WARN-only"
+    },
     "hooks/compress-monitor.sh": {
       "source": "hooks/compress-monitor.sh",
       "target": "hooks/compress-monitor.sh",
@@ -2157,6 +2163,12 @@
       "action": "sync",
       "description": "Mine past session transcripts for durable lesson/memory candidates, suggest-only with a reject-by-default rubric"
     },
+    "skills/lesson-refresh/SKILL.md": {
+      "source": ".claude/skills/lesson-refresh/SKILL.md",
+      "target": ".claude/skills/lesson-refresh/SKILL.md",
+      "action": "sync",
+      "description": "Lesson lifecycle audit \u2014 stale-anchor pre-pass then Keep/Update/Consolidate/Retire triage, suggest-only, retirement always human-ruled"
+    },
     ".github/workflows/validate-lesson-pr.yml": {
       "source": ".github/workflows/validate-lesson-pr.yml",
       "target": ".github/workflows/validate-lesson-pr.yml",
@@ -2240,6 +2252,12 @@
       "target": "tests/hooks/test-deny-ergonomics.sh",
       "action": "sync",
       "description": "Test for deny ergonomics \u2014 continuation suffix and anti-cascade on every hard deny, toggle hints only where self-service, reason sanitize/cap"
+    },
+    "tests/hooks/test-lesson-anchors.sh": {
+      "source": "tests/hooks/test-lesson-anchors.sh",
+      "target": "tests/hooks/test-lesson-anchors.sh",
+      "action": "sync",
+      "description": "Test for lesson-anchors \u2014 stale path/symbol detection, rename suggestions, external examples skipped, strict-mode exit"
     },
     "tests/hooks/test-mtk-recover.sh": {
       "source": "tests/hooks/test-mtk-recover.sh",
