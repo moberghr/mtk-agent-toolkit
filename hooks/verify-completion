@@ -95,6 +95,12 @@ if echo "$MSG" | grep -qiE "$STRONG_CLAIM"; then
     # passed. Only an unambiguous fail classification blocks — `unknown` falls
     # through to the evidence check below (fail-open on ambiguity).
     GAP="VERIFICATION GAP: the latest verification ('${last_verification_command:-unknown}') was observed FAILING. A verification that ran is not a verification that passed. Fix the failure and re-run to a passing result, or explicitly report the failure with its output — do not claim completion on a failing verification."
+  elif [ "${last_verification_scope:-full}" = "targeted" ] \
+    && echo "$MSG" | grep -qiE '(all tests? (pass|passing|green)|everything (passes|is green)|fully verified|(entire|whole|full) (test )?suite (is )?(green|passes|passing)|all [0-9]+ tests? pass)'; then
+    # Scope gate: a targeted run never upgrades into repo green. Blocks ONLY
+    # when the claim says all/fully/entire while the latest verification named
+    # a slice — an honest "task complete, targeted test passes" is untouched.
+    GAP="VERIFICATION GAP: the claim says ALL/fully green, but the latest verification was TARGETED ('${last_verification_command:-unknown}') — one named slice is not the suite. Run the full suite and cite it, or scope the claim to what was actually verified."
   else
     # Evidence of actual execution: exit codes, shell prompts, fenced blocks,
     # diagnostic counts, or output from common test/build tools. Keep this as a

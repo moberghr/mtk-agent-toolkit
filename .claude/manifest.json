@@ -2259,6 +2259,12 @@
       "action": "sync",
       "description": "Test for lesson-anchors \u2014 stale path/symbol detection, rename suggestions, external examples skipped, strict-mode exit"
     },
+    "tests/hooks/test-verification-attributability.sh": {
+      "source": "tests/hooks/test-verification-attributability.sh",
+      "target": "tests/hooks/test-verification-attributability.sh",
+      "action": "sync",
+      "description": "Test for exit attributability and verification scope \u2014 masked exits never stamp PASS, targeted runs never satisfy repo-green claims"
+    },
     "tests/hooks/test-mtk-recover.sh": {
       "source": "tests/hooks/test-mtk-recover.sh",
       "target": "tests/hooks/test-mtk-recover.sh",

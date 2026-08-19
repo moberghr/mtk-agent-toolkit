@@ -87,7 +87,14 @@ case "$TOOL_NAME" in
       case "$INPUT" in
         *'"tool_response"'*) RESPONSE="${INPUT#*\"tool_response\"}" ;;
       esac
-      last_verification_status=$(mtk_classify_verification_outcome "$RESPONSE")
+      # Exit attributability gates the structured/exit tiers: shell operators
+      # (`|| true`, `; echo done`, pipes) mask the exit, and the harness's
+      # exit_code then describes the wrong command. Scope records whether the
+      # run exercised the repo or a named slice — a targeted run must never
+      # satisfy a repo-green claim.
+      ATTR=$(mtk_verification_exit_attributable "$COMMAND")
+      last_verification_status=$(mtk_classify_verification_outcome "$RESPONSE" "$ATTR")
+      last_verification_scope=$(mtk_verification_scope "$COMMAND")
     fi
     ;;
   Glob|Grep)
