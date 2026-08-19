@@ -61,7 +61,11 @@ not decide.
    lesson or an S-rule cover the same ground? Prioritize by due-ness: lessons
    whose dated heading is oldest and which no later entry re-confirms get the
    deepest checks — refresh is "check what is due", not "re-litigate everything
-   equally".
+   equally". Consult the economics when available: `bash scripts/mtk-savings.sh`
+   prints each lesson's context rent and `.mtk/recall-log.jsonl` shows which
+   entries actually surface in queries — a lesson with high rent and zero
+   recalls is a prime Consolidate/Retire candidate. Data informs the triage;
+   it never decides it.
 3. **Triage each lesson** into exactly one verdict, with cited evidence:
    - **Keep** — still true, still non-obvious, anchors live. The default; when
      unsure, Keep. Match docs to reality, not the reverse.

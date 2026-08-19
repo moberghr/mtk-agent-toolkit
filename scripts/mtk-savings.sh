@@ -133,6 +133,45 @@ else
   printf '  (accrues from: long output piped through mtk-compress, and verification runs through mtk-verify-run)\n'
 fi
 
+# ---- lesson rent (tasks/lessons.md is read at the start of every /mtk run) ----
+if [ -f tasks/lessons.md ]; then
+  lessons_chars=$(wc -c < tasks/lessons.md | tr -d ' ')
+  printf '\nLesson rent (tasks/lessons.md — billed at the start of every /mtk workflow run):\n'
+  printf '  total                %8d chars  ~%6d tok/run\n' "$lessons_chars" "$(TOK "$lessons_chars")"
+  printf '  heaviest lessons (chars ≈ what each costs per run):\n'
+  awk '
+    /^## / { if (h != "") printf "%d\t%s\n", c, h; h = $0; sub(/^## /, "", h); c = 0 }
+    { c += length($0) + 1 }
+    END { if (h != "") printf "%d\t%s\n", c, h }
+  ' tasks/lessons.md | sort -t "$(printf '\t')" -k1,1 -nr | head -5 \
+    | while IFS="$(printf '\t')" read -r c h; do
+        printf '    ~%5d tok  %s\n' "$((c / 4))" "$h"
+      done
+  RECALL_LOG=".mtk/recall-log.jsonl"
+  if [ -f "$RECALL_LOG" ] && command -v python3 >/dev/null 2>&1; then
+    python3 - "$RECALL_LOG" <<'PY'
+import json, sys
+from collections import Counter
+q = misses = 0
+c = Counter()
+for line in open(sys.argv[1]):
+    line = line.strip()
+    if not line: continue
+    try: r = json.loads(line)
+    except json.JSONDecodeError: continue
+    q += 1
+    ids = r.get("surfaced", [])
+    if not ids: misses += 1
+    c.update(ids)
+print(f"  recall: {q} logged quer{'y' if q==1 else 'ies'}, {misses} clean miss(es); most-surfaced: "
+      + (", ".join(f"{i}×{n}" for i, n in c.most_common(3)) or "none"))
+print("  (recall counts cover .mtk/learnings.jsonl entries; markdown-only lessons are unmeasured)")
+PY
+  else
+    printf '  recall: unmeasured — no queries logged yet (accrues from learnings.sh query)\n'
+  fi
+fi
+
 printf '\nSummary: MTK keeps ~%d tok out of your always-on context (deferred + review offload),\n' "$(TOK $(( deferred_chars + agentbody_chars )))"
 printf 'compresses tool output on demand, and holds the always-on floor to ~%d tok/session.\n' "$(TOK "$alwayson_chars")"
 printf 'Not measured, never claimed: assistant output tokens, subagent context, prompt-cache effects.\n\n'
