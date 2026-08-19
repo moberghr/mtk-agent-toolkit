@@ -1824,6 +1824,12 @@
       "action": "sync",
       "description": "Deterministic stale-anchor check for lesson stores \u2014 verifies cited paths/symbols exist, suggests renames, skips external examples, WARN-only"
     },
+    "scripts/rule-enforcement-map.sh": {
+      "source": "scripts/rule-enforcement-map.sh",
+      "target": "scripts/rule-enforcement-map.sh",
+      "action": "sync",
+      "description": "Rule enforcement map \u2014 classifies every numbered rule WIRED/BROKEN/PROSE by whether a live enforcer backs it, plus undocumented-hook reverse check"
+    },
     "hooks/compress-monitor.sh": {
       "source": "hooks/compress-monitor.sh",
       "target": "hooks/compress-monitor.sh",
@@ -2276,6 +2282,12 @@
       "target": "tests/hooks/test-token-diet.sh",
       "action": "sync",
       "description": "Test for the read-path token diet \u2014 opt-in re-read guard (deny/advise, partial reads exempt) and repetition-dominance collapse"
+    },
+    "tests/hooks/test-rule-enforcement-map.sh": {
+      "source": "tests/hooks/test-rule-enforcement-map.sh",
+      "target": "tests/hooks/test-rule-enforcement-map.sh",
+      "action": "sync",
+      "description": "Test for the rule enforcement map \u2014 WIRED/BROKEN/PROSE verdicts, token boundaries, prose mentions count, undocumented hooks surface"
     },
     "tests/hooks/test-mtk-recover.sh": {
       "source": "tests/hooks/test-mtk-recover.sh",
