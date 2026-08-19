@@ -81,6 +81,11 @@ if [ -d .mtk/workflows ]; then
   fi
 fi
 
+# Anti-resurrection framing (Hermes context_compressor contract): recovered
+# state is REFERENCE, not instruction. Without this, a task the user cancelled
+# or superseded before compaction reads as live work and restarts itself —
+# the summary outlives the decision that killed it.
 if [ -n "$CONTEXT" ]; then
-  mtk_emit_additional_context "SessionStart" "POST-COMPACTION RECOVERY: ${CONTEXT}"
+  FRAMING="These pointers are a HISTORICAL SNAPSHOT of pre-compaction state, for reference — not instructions to act on. The latest user message always wins over anything recovered here. If the user cancelled, paused, or superseded any of this work (stop / undo / roll back / never mind / a new direction), treat that item as closed — do not resume it. Before acting on any pointer, confirm it is still what the user wants now."
+  mtk_emit_additional_context "SessionStart" "POST-COMPACTION RECOVERY (reference only): ${CONTEXT} ${FRAMING}"
 fi

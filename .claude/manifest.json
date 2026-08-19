@@ -2265,6 +2265,12 @@
       "action": "sync",
       "description": "Test for exit attributability and verification scope \u2014 masked exits never stamp PASS, targeted runs never satisfy repo-green claims"
     },
+    "tests/hooks/test-post-compact-framing.sh": {
+      "source": "tests/hooks/test-post-compact-framing.sh",
+      "target": "tests/hooks/test-post-compact-framing.sh",
+      "action": "sync",
+      "description": "Test for anti-resurrection framing \u2014 post-compaction recovery reads as historical snapshot, cancelled work cannot restart"
+    },
     "tests/hooks/test-mtk-recover.sh": {
       "source": "tests/hooks/test-mtk-recover.sh",
       "target": "tests/hooks/test-mtk-recover.sh",
