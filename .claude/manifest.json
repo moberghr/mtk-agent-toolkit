@@ -2271,6 +2271,12 @@
       "action": "sync",
       "description": "Test for anti-resurrection framing \u2014 post-compaction recovery reads as historical snapshot, cancelled work cannot restart"
     },
+    "tests/hooks/test-token-diet.sh": {
+      "source": "tests/hooks/test-token-diet.sh",
+      "target": "tests/hooks/test-token-diet.sh",
+      "action": "sync",
+      "description": "Test for the read-path token diet \u2014 opt-in re-read guard (deny/advise, partial reads exempt) and repetition-dominance collapse"
+    },
     "tests/hooks/test-mtk-recover.sh": {
       "source": "tests/hooks/test-mtk-recover.sh",
       "target": "tests/hooks/test-mtk-recover.sh",

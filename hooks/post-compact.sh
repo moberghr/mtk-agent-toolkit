@@ -16,6 +16,15 @@ source "${SCRIPT_DIR}/lib/hook-io.sh"
 
 mtk_is_redundant_plugin_invocation "$0" && exit 0
 
+# Clear the read-diet seen-store for this session: compaction destroyed the
+# earlier reads' content, so "already read this session" is no longer true —
+# a stale store would deny re-reads the model genuinely needs.
+INPUT="$(mtk_read_payload 2 2>/dev/null || true)"
+DIET_SESSION="$(mtk_extract_json_string "$INPUT" "session_id" 2>/dev/null || printf '')"
+if [ -n "$DIET_SESSION" ]; then
+  rm -f "${TMPDIR:-/tmp}/mtk-read-diet-$(printf '%s%s' "$(mtk_repo_root 2>/dev/null || pwd)" "$DIET_SESSION" | cksum | cut -d' ' -f1)" 2>/dev/null || true
+fi
+
 CONTEXT=""
 
 # Tech stack context
