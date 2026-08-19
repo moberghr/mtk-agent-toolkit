@@ -13,8 +13,27 @@ set -euo pipefail
 # Parsing is escape-aware: JSON string escapes (\", \\, \n, etc.) are decoded
 # so downstream security checks see the real command, not a truncated prefix.
 
+# Resolve the repo/project root — memoized per process and keyed by PWD, so a
+# script that cd's between calls still resolves correctly while a hook (one
+# short-lived process) pays the cost once. Prefers $CLAUDE_PROJECT_DIR: the
+# harness sets it per session and it is cwd-independent — the same preference,
+# for the same reason, as mtk_is_redundant_plugin_invocation below. It is also
+# ~20ms cheaper per call than spawning `git rev-parse`, which multiplied across
+# every hook on every tool call was the single largest avoidable latency in
+# the PreToolUse path. Physicalized via pwd -P (symlink/case lessons, S1.17).
 mtk_repo_root() {
-  git rev-parse --show-toplevel 2>/dev/null || pwd
+  if [ -n "${_MTK_REPO_ROOT:-}" ] && [ "${_MTK_REPO_ROOT_PWD:-}" = "$PWD" ]; then
+    printf '%s\n' "$_MTK_REPO_ROOT"
+    return 0
+  fi
+  local root=""
+  if [ -n "${CLAUDE_PROJECT_DIR:-}" ] && [ -d "${CLAUDE_PROJECT_DIR}" ]; then
+    root="$(cd "$CLAUDE_PROJECT_DIR" 2>/dev/null && pwd -P)" || root=""
+  fi
+  [ -n "$root" ] || root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+  _MTK_REPO_ROOT="$root"
+  _MTK_REPO_ROOT_PWD="$PWD"
+  printf '%s\n' "$root"
 }
 
 # --- Hook payload read ------------------------------------------------------
@@ -230,10 +249,20 @@ mtk_artifact_root() {
   mtk_repo_root
 }
 
+# Memoized per process: hooks call this repeatedly (lock acquire/release each
+# recompute it) and every call used to spawn a cksum|cut pipeline plus date.
+# Keyed by TMPDIR so tests that re-point TMPDIR within one process stay correct.
 mtk_session_file() {
+  local tmpdir="${TMPDIR:-/tmp}"
+  if [ -n "${_MTK_SESSION_FILE:-}" ] && [ "${_MTK_SESSION_FILE_TMPDIR:-}" = "$tmpdir" ]; then
+    printf '%s\n' "$_MTK_SESSION_FILE"
+    return 0
+  fi
   local project_id
   project_id=$(mtk_repo_root | cksum | cut -d' ' -f1)
-  printf '%s/mtk-context-budget-%s-%s\n' "${TMPDIR:-/tmp}" "$project_id" "$(date +%Y%m%d)"
+  _MTK_SESSION_FILE="$(printf '%s/mtk-context-budget-%s-%s' "$tmpdir" "$project_id" "$(date +%Y%m%d)")"
+  _MTK_SESSION_FILE_TMPDIR="$tmpdir"
+  printf '%s\n' "$_MTK_SESSION_FILE"
 }
 
 # Extract the first string value for `key` from a JSON payload.
@@ -329,9 +358,13 @@ mtk_sq_escape() {
 # Best-effort: after ~5s of contention we continue anyway to avoid stalling
 # interactive hooks. Paired with atomic-rename writes in mtk_save_session_state
 # so a dropped lock never leaves a half-written state file visible to readers.
+# Both lock helpers accept the session-file path as $1 so callers that already
+# computed it don't pay the cksum|cut + date pipeline again (memoization inside
+# mtk_session_file cannot help here — `$(...)` runs it in a subshell, so the
+# memo never reaches the parent). No-arg calls keep the old behavior.
 mtk_session_lock_acquire() {
   local lock
-  lock="$(mtk_session_file).lock"
+  lock="${1:-$(mtk_session_file)}.lock"
   local tries=0
   while ! mkdir "$lock" 2>/dev/null; do
     tries=$((tries + 1))
@@ -344,7 +377,7 @@ mtk_session_lock_acquire() {
 
 mtk_session_lock_release() {
   local lock
-  lock="$(mtk_session_file).lock"
+  lock="${1:-$(mtk_session_file)}.lock"
   rmdir "$lock" 2>/dev/null || true
 }
 
@@ -550,21 +583,21 @@ mtk_classify_verification_outcome() {
 mtk_record_scope_guard_warning() {
   local session_file
   session_file="$(mtk_session_file)"
-  mtk_session_lock_acquire
+  mtk_session_lock_acquire "$session_file"
   mtk_load_session_state "$session_file"
   scope_guard_warnings=$((scope_guard_warnings + 1))
   mtk_save_session_state "$session_file"
-  mtk_session_lock_release
+  mtk_session_lock_release "$session_file"
 }
 
 mtk_record_benchmark_run() {
   local score="$1"
   local session_file
   session_file="$(mtk_session_file)"
-  mtk_session_lock_acquire
+  mtk_session_lock_acquire "$session_file"
   mtk_load_session_state "$session_file"
   benchmarks_run=$((benchmarks_run + 1))
   benchmark_last_score="$score"
   mtk_save_session_state "$session_file"
-  mtk_session_lock_release
+  mtk_session_lock_release "$session_file"
 }

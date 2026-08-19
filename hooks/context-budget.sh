@@ -40,7 +40,7 @@ TOOL_NAME=$(mtk_extract_tool_name "$INPUT" 2>/dev/null || echo "")
 # the full load→modify→save cycle so concurrent PreToolUse/PostToolUse firings
 # don't lose counter updates through last-writer-wins races.
 SESSION_FILE="$(mtk_session_file)"
-mtk_session_lock_acquire
+mtk_session_lock_acquire "$SESSION_FILE"
 mtk_load_session_state "$SESSION_FILE"
 
 # Update counters based on tool type
@@ -107,7 +107,7 @@ if [ -n "$files" ]; then
 fi
 
 mtk_save_session_state "$SESSION_FILE"
-mtk_session_lock_release
+mtk_session_lock_release "$SESSION_FILE"
 
 # Check thresholds (warn once per threshold). Advisories are accumulated and
 # emitted once as a PostToolUse additionalContext envelope — plain stdout on

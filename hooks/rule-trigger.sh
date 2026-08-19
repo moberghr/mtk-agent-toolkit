@@ -69,14 +69,24 @@ INPUT="$(mtk_read_payload)"
 [ -n "$INPUT" ] || exit 0
 
 TOOL_NAME="$(mtk_extract_tool_name "$INPUT" 2>/dev/null || echo "")"
-FILE_PATH="$(mtk_extract_file_path "$INPUT" 2>/dev/null || echo "")"
-COMMAND="$(mtk_extract_command "$INPUT" 2>/dev/null || echo "")"
 
 # The haystack a rule's `pattern` is matched against depends on the tool shape:
-# a command string for Bash, the target path for file-editing tools.
+# a command string for Bash, the target path for file-editing tools. Extract
+# ONLY the field this tool shape needs — each extractor is a full escape-aware
+# awk pass over the payload (~14ms), and this hook fires on every matching
+# tool call. For Bash there is no target path, so FILE_PATH/REL_PATH stay
+# empty exactly as they resolved before (a path-gated rule never matches a
+# Bash call); the repo-relative resolution below is skipped with them.
+FILE_PATH=""
+REL_PATH=""
 case "$TOOL_NAME" in
-  Bash) HAYSTACK="$COMMAND" ;;
-  *)    HAYSTACK="$FILE_PATH" ;;
+  Bash)
+    HAYSTACK="$(mtk_extract_command "$INPUT" 2>/dev/null || echo "")"
+    ;;
+  *)
+    FILE_PATH="$(mtk_extract_file_path "$INPUT" 2>/dev/null || echo "")"
+    HAYSTACK="$FILE_PATH"
+    ;;
 esac
 [ -n "$HAYSTACK" ] || exit 0
 
@@ -87,7 +97,9 @@ esac
 # matches: a fail-open so quiet it reads as "no rule applies" rather than "path
 # matching is broken". The shared helper compares by device+inode, so it also
 # covers symlinked roots that a lowercase retry would miss.
-REL_PATH="$(mtk_repo_relative_path "$FILE_PATH" "$REPO_ROOT" 2>/dev/null || printf '%s' "$FILE_PATH")"
+if [ -n "$FILE_PATH" ]; then
+  REL_PATH="$(mtk_repo_relative_path "$FILE_PATH" "$REPO_ROOT" 2>/dev/null || printf '%s' "$FILE_PATH")"
+fi
 
 DELIVER_BODY=""
 BLOCK=0

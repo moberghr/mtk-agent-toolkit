@@ -254,6 +254,40 @@ analytics events (token-optimizer-mcp).
 crash without `.claude/` (behavior untouched), measured verify-run record
 appended with in_chars > out_chars on a 200-line log vs 5-line tail.
 
+## Round 6 — Hook invariants resolved once, not per spawn (2026-08-18)
+
+**Performance — the one axis rounds 1-5 hadn't served.** Profiling (not the
+borrow list) located the cost: PreToolUse latency was dominated by re-derived
+invariants — `git rev-parse` per `mtk_repo_root()` call (~20ms, ignoring
+`$CLAUDE_PROJECT_DIR`), `cksum|cut`+`date` pipelines per `mtk_session_file()`
+call (recomputed again inside each lock helper), and rule-trigger's three awk
+extractions plus repo-relative resolution on Bash payloads that need only the
+command. Fixes: CLAUDE_PROJECT_DIR-first physicalized repo root (memoized,
+PWD-keyed; git fallback intact), lock helpers take the precomputed path
+(command substitution makes in-function memos invisible to callers),
+rule-trigger extracts per tool shape. Measured: rule-trigger 51.8→38.3ms,
+PreToolUse wall-clock (slowest parallel hook) 52→39ms (−25%).
+
+**Round 6 research (fresh sweep — performance + lessons lifecycle):**
+leeguooooo/claude-code-usage-bar (shared 5s-TTL git-status cache across
+consumers — our fix goes further by eliminating the git call; heavy-tick/
+light-tick daemon; atomic_write_text discipline), buger/probe (session-scoped
+result-dedup cache, content-hash-validated parse cache — candidates for
+repomap/setup-audit), RidderH/refinery (typed evidence outcomes where ONLY
+repeated_failure counts toward promotion; harness-validated dedup clustering;
+fail-closed prune with the "56 files ALL_DEAD, every one wrong — prune never
+decides alone" war story), wan-huiyan/memory-hygiene (promotion/demotion
+thresholds with a hard cap where promotion past cap requires a demotion;
+mechanism-claim integrity lint; feedback lifecycle states). The lessons-
+lifecycle material is the strongest deferred pool for a round 7.
+
+**Also fixed (found by running the full 38-file suite):** two more live
+SIGPIPE-under-pipefail defects — generate-agents-md's hard-ceiling truncation
+died with 141 exactly when the ceiling was needed, and its marker check could
+refuse to regenerate its own file; test-query-code-index blamed a different
+assertion per run. Third and fourth live catches of the class this cycle →
+promoted to rule S3.17 (trigger-delivered when editing hooks/ or scripts/).
+
 ## Cycle summary
 
 Five stacked PRs: #78 outcome-aware verification ledger (correctness), #79
