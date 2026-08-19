@@ -141,6 +141,7 @@ Match the user's input against these patterns. Check from top to bottom; first m
 | `capture claude.md`, `update claude.md`, `save what we learned`, `session learnings`, `remember this for next time`, `revise claude.md` | `.claude/skills/claude-md-capture/SKILL.md` | "save what we learned to CLAUDE.md", "update CLAUDE.md with this session" |
 | `promote lesson`, `share lesson` | `.claude/skills/promote-lesson/SKILL.md` | "promote this lesson to the team", "share that lesson" |
 | `mine lessons`, `what did we learn`, `harvest lessons`, `lesson sweep`, `mine transcripts` | `.claude/skills/lesson-mining/SKILL.md` | "mine lessons from last week", "what did we learn this sprint?" |
+| `refresh lessons`, `audit lessons`, `stale lessons`, `prune lessons`, `clean up lessons` | `.claude/skills/lesson-refresh/SKILL.md` | "are the lessons stale?", "clean up lessons.md" |
 | `hand off`, `handoff`, `save state`, `snapshot session` | `.claude/skills/handoff/SKILL.md` | "hand off to a teammate", "save state before I stop" |
 | `setup`, `bootstrap`, `init`, `initialize`, `first time`, `prepare repo`, `audit`, `architecture`, `principles` | `/mtk-setup` (direct the user) | "set up this repo", "audit this repo" |
 | `help`, `commands`, `what can you do` | (print help below) | "help", "what commands are there?" |
@@ -162,6 +163,7 @@ awesome-harness-engineering negative-example routing).
 | `context-report` | `toolkit-health` | the ask is "what's loaded right now"; usage/adoption/analytics over time is `toolkit-health` |
 | `claude-md-capture` | `handoff` | the target is CLAUDE.md content; capturing session state to resume later is `handoff` |
 | `promote-lesson` | `lesson-mining` | a specific known lesson goes personal→team; sweeping transcripts for candidates is `lesson-mining` |
+| `lesson-refresh` | `lesson-mining` | auditing/retiring EXISTING lessons is `lesson-refresh`; harvesting NEW candidates from transcripts is `lesson-mining` |
 | `/mtk-setup` | `implement`/`fix` | anything setup/bootstrap/audit/architecture-principles — always redirect to `/mtk-setup`, never absorb |
 
 ## Routing Rules

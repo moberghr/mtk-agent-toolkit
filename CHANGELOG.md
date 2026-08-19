@@ -4,6 +4,17 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Added — lesson lifecycle: stale anchors located deterministically, retirement always human-ruled
+
+Capture was solved four ways (correction-capture, golden-path-capture, lesson-mining, promote-lesson) — but the lessons stores were append-only and grew forever: nothing audited whether a lesson still matched the code, consolidated overlap, or retired superseded entries. A lesson citing a file that no longer exists reads as authority while pointing at nothing.
+
+- `scripts/lesson-anchors.sh` — deterministic stale-anchor check over `tasks/lessons.md` and `.claude/lessons/personal.md`: backtick-quoted anchors are existence-checked (`path` and `path:symbol` forms; `path:123` line anchors check only the file). Conservative by design: only tokens whose first path segment is a directory in this repo are checked — external example paths (borrow notes citing other repos) are *skipped and disclosed*, never warned about, because a checker that flags them trains people to ignore it. Rename suggestions follow unique-match-or-unresolvable: exactly one same-basename candidate suggests, several are named ambiguous, zero stays a plain miss — never guessed. WARN-only; `--strict` exits 1 for CI.
+- **`lesson-refresh` skill** — suggest-only triage of every lesson into Keep/Update/Consolidate/Retire with cited evidence; the engineer rules per lesson. Retirement is a `> STALE (<date>): <reason>` marking, never deletion. The posture is quoted from the sharpest field evidence found: a comparable tool's first automated prune scored 56 lessons dead and every verdict was wrong — prune never decides alone.
+- `mtk-doctor` gains an integrity check: stale lesson anchors WARN with a pointer to the checker and the skill.
+- Captured live in `tasks/lessons.md` along the way: a gate's exit code must never travel through a pipe (`validate | tail && commit` committed on a red validator during round 3 of this cycle — the pipeline's status is tail's).
+
+Regression test: `tests/hooks/test-lesson-anchors.sh` (stale path with heading context, moved-file rename suggestion, stale symbol, live anchors quiet, external examples skipped and disclosed, strict-mode exits).
+
 ### Changed — hook invariants resolved once, not per spawn: PreToolUse wall-clock −25%
 
 Profiling the PreToolUse path showed the latency was dominated by re-deriving invariants, not by guard logic: `mtk_repo_root()` spawned `git rev-parse` (~20ms) on every call while ignoring `$CLAUDE_PROJECT_DIR` — the harness-set, cwd-independent answer the redundancy guard already prefers (and the X1 path-spelling lesson endorses); `mtk_session_file()` re-ran a `cksum|cut` + `date` pipeline on every call, including twice more inside lock acquire/release; and `rule-trigger` ran three escape-aware awk extractions (~14ms each) plus a device+inode repo-relative resolution even for Bash payloads that only need the command string.
