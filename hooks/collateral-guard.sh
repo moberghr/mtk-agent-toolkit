@@ -18,6 +18,14 @@ set -euo pipefail
 #   CG001 whitespace/EOL-only churn      — raw diff large, `-w` diff ~empty
 #   CG002 generated artifact not declared — lockfile/snapshot/asset outside the manifest
 #   CG003 asset-set rewrite               — most of a binary asset directory rewritten
+#   CG004 structured-data reformat        — big JSON diff, tiny semantic change
+#
+# CG004 is the fourth face of the same shape, and the one CG001 cannot see: a
+# tool that re-serializes a JSON file (a different indent, sorted keys, or
+# ensure_ascii turning every em-dash into \u2014) produces genuinely different
+# LINES, so `git diff -w` agrees with `git diff` and the whitespace check stays
+# quiet. Comparing the two sides *parsed and canonicalised* is what separates a
+# 60-line real edit from 300 lines of re-serialization.
 #
 # Exit codes:
 #   0 — no collateral churn found
@@ -40,6 +48,8 @@ WS_RATIO="${MTK_COLLATERAL_WS_RATIO:-5}"          # -w lines as % of raw lines, 
 GEN_MIN_LINES="${MTK_COLLATERAL_GEN_MIN:-200}"    # generated-file churn below this is noise, not a finding
 ASSET_PCT="${MTK_COLLATERAL_ASSET_PCT:-50}"       # % of a binary asset dir rewritten before it is a finding
 ASSET_MIN_FILES="${MTK_COLLATERAL_ASSET_MIN:-5}"  # smallest asset dir worth measuring a fraction of
+FMT_MIN_LINES="${MTK_COLLATERAL_FMT_MIN:-100}"    # raw changed lines before a reformat is worth a word
+FMT_RATIO="${MTK_COLLATERAL_FMT_RATIO:-25}"       # semantic lines as % of raw, at or below which it is a reformat
 
 usage() {
   cat <<'EOF'
@@ -56,7 +66,8 @@ manifest, and asset directories rewritten wholesale.
 --human             Human-readable output instead of JSON
 
 Thresholds (env): MTK_COLLATERAL_WS_MIN, MTK_COLLATERAL_WS_RATIO,
-MTK_COLLATERAL_GEN_MIN, MTK_COLLATERAL_ASSET_PCT, MTK_COLLATERAL_ASSET_MIN.
+MTK_COLLATERAL_GEN_MIN, MTK_COLLATERAL_ASSET_PCT, MTK_COLLATERAL_ASSET_MIN,
+MTK_COLLATERAL_FMT_MIN, MTK_COLLATERAL_FMT_RATIO.
 
 Exit 0 = clean, 1 = collateral found, 2 = usage error.
 EOF
@@ -84,6 +95,18 @@ case "$DIFF_SOURCE" in
   cached) DIFF_ARGS=(--cached) ;;
   range)  DIFF_ARGS=("$DIFF_RANGE") ;;
   *)      DIFF_ARGS=(HEAD) ;;
+esac
+
+# The revision the diff is measured *from*, so CG004 can parse both sides.
+# `A...B` compares against the merge base, matching git's own semantics.
+case "$DIFF_SOURCE" in
+  range)
+    case "$DIFF_RANGE" in
+      *...*) BASE_REV="$(git merge-base "${DIFF_RANGE%%...*}" "${DIFF_RANGE##*...}" 2>/dev/null || printf '%s' "${DIFF_RANGE%%...*}")" ;;
+      *..*)  BASE_REV="${DIFF_RANGE%%..*}" ;;
+      *)     BASE_REV="$DIFF_RANGE" ;;
+    esac ;;
+  *) BASE_REV="HEAD" ;;
 esac
 
 RAW="$(mktemp)"; WS="$(mktemp)"; DECLARED="$(mktemp)"
@@ -149,6 +172,31 @@ ws_lines_for() {
   printf '0'
 }
 
+# Changed lines between the two sides *parsed and canonicalised* — the semantic
+# delta. Prints "skip" when either side is missing or unparseable, so a brand-new
+# or malformed file is never reported as a reformat.
+semantic_json_delta() {
+  local path="$1" old sem
+  old="$(mktemp)"
+  if ! git show "$BASE_REV:$path" > "$old" 2>/dev/null; then rm -f "$old"; printf 'skip'; return; fi
+  if [ ! -f "$path" ]; then rm -f "$old"; printf 'skip'; return; fi
+  sem="$(python3 - "$old" "$path" <<'PY'
+import json, sys, difflib
+try:
+    a = json.load(open(sys.argv[1]))
+    b = json.load(open(sys.argv[2]))
+except Exception:
+    print("skip"); sys.exit(0)
+def canon(d):
+    return json.dumps(d, indent=2, sort_keys=True, ensure_ascii=False).splitlines()
+print(sum(1 for l in difflib.unified_diff(canon(a), canon(b), n=0)
+          if l[:1] in "+-" and l[:3] not in ("+++", "---")))
+PY
+)" || sem="skip"
+  rm -f "$old"
+  printf '%s' "${sem:-skip}"
+}
+
 findings=(); idx=0; crit=0; warn=0
 total_lines=0; collateral_lines=0
 declare -a asset_dirs=(); declare -a asset_counts=()
@@ -204,6 +252,24 @@ while IFS=$'\t' read -r added deleted path; do
         "$raw changed lines, but only $wsl survive \`git diff -w\` (${ratio}%) — the rest is whitespace or line-ending churn, most likely a whole-file rewrite normalising CRLF" \
         "Re-apply the real edit without rewriting the file, or commit the normalisation on its own with a .gitattributes entry. Inspect with: git diff -w --stat -- $path"
     fi
+  fi
+
+  # CG004 — a structured file re-serialized around a small real change.
+  if [ "$raw" -ge "$FMT_MIN_LINES" ] && command -v python3 >/dev/null 2>&1; then
+    case "$path" in
+      *.json)
+        sem="$(semantic_json_delta "$path")"
+        if [ "$sem" != "skip" ] && printf '%s' "$sem" | grep -qE '^[0-9]+$'; then
+          sem_ratio=$(( sem * 100 / raw ))
+          if [ "$sem_ratio" -le "$FMT_RATIO" ]; then
+            collateral_lines=$(( collateral_lines + raw - sem ))
+            add_finding CG004 warning "$path" \
+              "$raw changed lines, but only $sem differ once both sides are parsed and canonicalised (${sem_ratio}%) — the file was re-serialized (indent, key order, or non-ASCII escaping) around a much smaller real edit" \
+              "Re-apply the edit as text rather than round-tripping the file through a serializer. See the real change with: git diff $BASE_REV -- $path"
+          fi
+        fi
+        ;;
+    esac
   fi
 
   # CG002 — a generated artifact riding along undeclared.

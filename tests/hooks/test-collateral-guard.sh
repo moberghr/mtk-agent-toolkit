@@ -95,10 +95,58 @@ set -e
 case "$out" in *'"rule":"CG003"'*) fail "4 of 84 assets must not trip CG003: $out" ;; esac
 git commit -qm few >/dev/null
 
-# --- 7. usage errors are exit 2 -----------------------------------------
+# --- 7. a re-serialized JSON file around a small real edit -> CG004 ------
+# The class CG001 cannot see: re-serialization changes genuine LINES, so
+# `git diff -w` agrees with `git diff` and the whitespace check stays quiet.
+python3 - <<'MKJSON'
+import json
+d = {"title": "S \u2014 spec", "properties": {}}
+for i in range(60):
+    d["properties"]["p%d" % i] = {"type": "string", "enum": ["a", "b", "c"],
+                                  "description": "field %d" % i}
+txt = json.dumps(d, indent=2, ensure_ascii=False)
+txt = txt.replace('[\n        "a",\n        "b",\n        "c"\n      ]', '["a", "b", "c"]')
+open("schema.json", "w").write(txt + "\n")
+MKJSON
+git add -A >/dev/null && git commit -qm schema >/dev/null
+python3 -c "
+import json
+d = json.load(open('schema.json'))
+d['properties']['brand_new'] = {'type': 'boolean'}
+open('schema.json','w').write(json.dumps(d, indent=4, sort_keys=True, ensure_ascii=True) + '\n')"
+git add -A >/dev/null
+set +e
+out="$(bash "$GUARD" --cached)"; rc=$?
+set -e
+[ "$rc" -eq 1 ] || fail "a re-serialized JSON file must exit 1 (got $rc): $out"
+case "$out" in *'"rule":"CG004"'*) : ;; *) fail "expected CG004 for re-serialized JSON: $out" ;; esac
+case "$out" in *'only 3 differ once both sides are parsed'*) : ;;
+  *) fail "CG004 must report the semantic delta, not just the raw count: $out" ;; esac
+# CG001 must NOT claim this one — it is not whitespace churn.
+case "$out" in *'"rule":"CG001"'*) fail "re-serialization is not whitespace churn; CG001 must stay quiet: $out" ;; esac
+git checkout -q -- . && git reset -q --hard >/dev/null
+
+# --- 8. a genuinely large JSON addition is honest work, not a reformat ----
+python3 - <<'GROW'
+txt = open("schema.json").read().rstrip()
+assert txt.endswith("}")
+add = "".join('  "extra%d": {\n    "type": "string",\n    "description": "real field %d"\n  },\n' % (i, i)
+              for i in range(90))
+open("schema.json", "w").write(txt[:-1].rstrip().rstrip(",") + ",\n" + add.rstrip().rstrip(",") + "\n}\n")
+GROW
+python3 -c "import json; json.load(open('schema.json'))"   # must stay valid JSON
+git add -A >/dev/null
+set +e
+out="$(bash "$GUARD" --cached)"; rc=$?
+set -e
+case "$out" in *'"rule":"CG004"'*) fail "an honest 360-line JSON addition must not trip CG004: $out" ;; esac
+[ "$rc" -eq 0 ] || fail "honest JSON growth must exit 0 (got $rc): $out"
+git checkout -q -- . && git reset -q --hard >/dev/null
+
+# --- 9. usage errors are exit 2 -----------------------------------------
 set +e
 bash "$GUARD" --range >/dev/null 2>&1; rc=$?
 set -e
 [ "$rc" -eq 2 ] || fail "--range with no expression must exit 2 (got $rc)"
 
-printf 'PASS: collateral-guard (7 checks)\n'
+printf 'PASS: collateral-guard (9 checks)\n'
