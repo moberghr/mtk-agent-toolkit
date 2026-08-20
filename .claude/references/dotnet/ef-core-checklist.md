@@ -14,6 +14,12 @@ Project-level reminders for reviewing and writing EF Core code.
 - Prefer `.Select()` projection to `Include()` for DTO reads.
 - Keep filtering in the database, not after materialization.
 - Use async query methods.
+- **Order and filter on the entity, not on a member of the projection.** Once
+  `.Select()` has produced a projected record, sorting or filtering by one of
+  *its* members is untranslatable — and EF does not quietly sort in memory, it
+  abandons the whole query. Put `OrderBy`/`Where` before the projection, or
+  order by the entity property the projected member came from. This fails at
+  runtime, not at compile time, so it reaches a test rather than the build.
 
 ## Write Rules
 

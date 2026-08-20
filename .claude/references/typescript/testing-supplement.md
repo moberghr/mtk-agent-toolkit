@@ -69,6 +69,32 @@ Don't mix styles within the same project.
 - **`vi.mock` / `jest.mock` hoisting.** These are hoisted to the top of the file. `vi.mock` factories must not reference outer variables (use `vi.hoisted` if needed).
 - **Spy, don't replace, when possible.** `vi.spyOn(obj, 'method')` preserves the original and is easier to assert against.
 
+### Request handlers: read cookies from the parsed argument, never the header
+
+In an MSW handler (and any intercepted `Request`), `request.headers.get('cookie')`
+returns `null`. `Cookie` is a [forbidden header name](https://developer.mozilla.org/en-US/docs/Glossary/Forbidden_header_name),
+so an intercepted request is not obliged to expose it — the header is simply not
+there to read. Use the parsed `cookies` argument MSW hands the resolver:
+
+```ts
+// Wrong — always null, so any flag derived from it is permanently false.
+http.get('/api/my/team', ({ request }) => {
+  const demo = request.headers.get('cookie')?.includes('demo=1')
+  ...
+})
+
+// Right — MSW parses cookies for you.
+http.get('/api/my/team', ({ cookies }) => {
+  const demo = cookies.demo === '1'
+  ...
+})
+```
+
+This fails **silently**: the flag is `false` forever, the branch behind it is
+unreachable, and its tests pass because they only ever exercise the other branch.
+When you find one instance, sweep the sibling handlers — passing tests are why
+nobody looked.
+
 ## Snapshot Tests
 
 - **Use sparingly.** Snapshot tests catch unintended changes but also accept wrong changes (just press `-u`). Useful for small, stable outputs (serializer output, API response shapes).

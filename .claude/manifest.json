@@ -1,6 +1,6 @@
 {
-  "version": "7.31.0",
-  "updated": "2026-08-13",
+  "version": "7.32.0",
+  "updated": "2026-08-20",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -2474,6 +2474,30 @@
       "target": "tests/hooks/test-generate-agents-md.sh",
       "action": "sync",
       "description": "Hook test for generate-agents-md.sh \u2014 120-line budget, 140 hard ceiling, marker and Custom-section preservation"
+    },
+    "scripts/manifest-preflight.sh": {
+      "source": "scripts/manifest-preflight.sh",
+      "target": "scripts/manifest-preflight.sh",
+      "action": "sync",
+      "description": "Pre-seal check that every change_manifest destination exists, sits where the codebase's conventions put it, and does not presume a pattern the repo never uses"
+    },
+    "hooks/collateral-guard.sh": {
+      "source": "hooks/collateral-guard.sh",
+      "target": "hooks/collateral-guard.sh",
+      "action": "sync",
+      "description": "Flags churn that is not the change you made: whitespace/EOL-only rewrites, undeclared generated artifacts, and wholesale asset regeneration"
+    },
+    "tests/hooks/test-manifest-preflight.sh": {
+      "source": "tests/hooks/test-manifest-preflight.sh",
+      "target": "tests/hooks/test-manifest-preflight.sh",
+      "action": "sync",
+      "description": "Hook test for manifest-preflight.sh \u2014 missing modify targets, relocated files, absent patterns, sibling naming and companion conventions"
+    },
+    "tests/hooks/test-collateral-guard.sh": {
+      "source": "tests/hooks/test-collateral-guard.sh",
+      "target": "tests/hooks/test-collateral-guard.sh",
+      "action": "sync",
+      "description": "Hook test for collateral-guard.sh \u2014 CRLF rewrites, undeclared lockfile churn, asset-set regeneration, and the declared and clean cases that must stay silent"
     }
   },
   "protected": [
