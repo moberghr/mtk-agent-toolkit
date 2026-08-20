@@ -450,17 +450,31 @@ cmd_query() {
     printf '%d\t%s\n' "$score" "$line" >> "$scored_file"
   done < "$LEARNINGS_PATH"
 
+  local surfaced_ids=""
   if [ "$matched" -gt 0 ]; then
     sort -t $'\t' -k1,1 -nr "$scored_file" \
       | head -n "$max" \
       | while IFS=$'\t' read -r s l; do
           printf '[%s] %s — %s\n' "$(jl_field "$l" id)" "$(jl_field "$l" severity)" "$(jl_field "$l" title)"
         done
+    surfaced_ids="$(sort -t $'\t' -k1,1 -nr "$scored_file" | head -n "$max" | while IFS=$'\t' read -r s l; do printf '"%s",' "$(jl_field "$l" id)"; done)"
+    surfaced_ids="${surfaced_ids%,}"
   else
     printf 'learnings query: scanned %d stored entr%s, 0 matched (phase=%s, scope=%s, files=%s). No stored lesson applies here — this is a clean miss, not a lookup failure.\n' \
       "$scanned" "$([ "$scanned" -eq 1 ] && printf 'y' || printf 'ies')" \
       "$phase" "$scope_filter" "${files_csv:-<none>}" >&2
   fi
+
+  # Recall log (ids and counts only, never lesson text): one JSONL record per
+  # query so recall precision becomes measurable — which lessons actually
+  # surface, which never do, how often a query comes up empty. Fail-open:
+  # a broken log costs a data point, never a query.
+  {
+    printf '{"ts":"%s","session":"%s","phase":"%s","scope":"%s","scanned":%d,"matched":%d,"surfaced":[%s]}\n' \
+      "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${CLAUDE_CODE_SESSION_ID:-}" \
+      "$phase" "$scope_filter" "$scanned" "$matched" "$surfaced_ids" \
+      >> "$(dirname "$LEARNINGS_PATH")/recall-log.jsonl"
+  } 2>/dev/null || true
   rm -f "$scored_file"
 }
 

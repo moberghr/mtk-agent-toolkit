@@ -308,6 +308,27 @@ else
   done
 fi
 
+# Rule enforcement map — which rules are load-bearing and which are hope.
+# WARN on broken refs (a rule naming an enforcer that does not exist reads as
+# enforced and is not) and on undocumented hooks (an enforcer nothing
+# documents is the same drift from the other side).
+if [ -f scripts/rule-enforcement-map.sh ] && [ -d .claude/rules ]; then
+  MAP_SUMMARY="$(bash scripts/rule-enforcement-map.sh --quiet 2>/dev/null | tail -1 || true)"
+  case "$MAP_SUMMARY" in
+    *' 0 broken ref(s)'*)
+      record PASS integrity "rule enforcement refs live" "$MAP_SUMMARY" ;;
+    *broken*)
+      record WARN integrity "broken rule-enforcement refs" "$MAP_SUMMARY — run 'bash scripts/rule-enforcement-map.sh' for the per-rule verdicts" ;;
+    *)
+      record PASS integrity "rule enforcement unchecked" "no summary from rule-enforcement-map.sh" ;;
+  esac
+  case "$MAP_SUMMARY" in
+    *' 0 undocumented'*) : ;;
+    *undocumented*)
+      record WARN integrity "undocumented enforcer hooks" "$MAP_SUMMARY — hooks no rule documents; document or justify in .claude/rules/" ;;
+  esac
+fi
+
 # Lesson anchor staleness — a lesson citing a path/symbol that no longer
 # exists reads as authority while pointing at nothing. WARN-only; retirement
 # is the lesson-refresh skill's job and always a human decision.

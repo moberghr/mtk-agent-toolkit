@@ -51,7 +51,13 @@ There are two ways to run the per-batch loop. Both share the **same implementer 
 - **Dynamic-workflow path (preferred when the `Workflow` tool is available).** The orchestrator generates a JavaScript orchestration script that runs the batches through Claude Code's native dynamic-workflow runtime in the background, with its built-in plan-approval gate. The runtime handles concurrency, retries, and structured-output validation. The orchestrator then does the drift micro-check and sidecar persistence **after** the run returns. See `.claude/references/subagent-dynamic-workflow.md`.
 - **Manual Agent-loop path (fallback).** When the `Workflow` tool is not exposed in this harness, dispatch one implementer subagent per batch by hand. See "Steps (manual Agent-loop path)" below.
 
-Pick the path once, at the top of Phase 3, based on tool availability. Do not mix them within one feature.
+- **Inline-MAX path (when dispatch is forbidden or unavailable).** Neither of the two paths above can run if the harness exposes no subagent tools, or if a standing instruction forbids subagents the engineer did not ask for. That is a property of the session, and `implement`'s Phase 2.9 probe records it as `dispatch_capability=forbidden|unavailable` **before** Phase 3 promises a path. In that case run the batches inline under the **inline-MAX profile** (`implement/SKILL.md` Phase 2.9): the same per-batch order, the same sealed manifest, the same drift micro-check and churn check — with C1-C3 replacing what dispatch would have bought. Two rules make it a substitute rather than an excuse:
+  - **Say it before the first batch, not in the report afterwards.** Record `results.phase3_path="inline-MAX (<reason>; C1-C3 applied)"`.
+  - **Do not lower the rigor level to fit the path.** The level reflects the change's blast radius; the path reflects the session's tooling. Recomputing MAX down to STANDARD because dispatch is unavailable is a scope reduction that never happened.
+
+  If this is the *second* run in the same repo to take this path for the same reason, Phase 7's repeat-reduction rule applies: propose `MTK_SUBAGENT_DISPATCH=0` (or a lesson naming the constraint) instead of recording the same reduction again.
+
+Pick the path once, at the top of Phase 3, based on tool availability **and** the Phase 2.9 dispatch probe. Do not mix them within one feature.
 
 When the `Workflow` tool is available the dynamic-workflow path MUST be used — read `.claude/references/subagent-dynamic-workflow.md` now and follow it; choosing the manual path to avoid the Read is a scope violation.
 

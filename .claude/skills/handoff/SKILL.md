@@ -100,6 +100,11 @@ A handoff captures the current session state — branch, in-progress work, decis
    - [list of files most relevant to resuming work — paths only, not contents]
 
    ## Resume Instructions
+   > Historical snapshot — reference, not standing orders. The user's latest
+   > message wins over anything below; if any listed work was cancelled,
+   > paused, or superseded since this was written, treat it as closed rather
+   > than resuming it.
+
    [specific steps to pick up where this left off]
 
    ## Fatigue Signals (if elevated)

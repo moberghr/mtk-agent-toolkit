@@ -113,7 +113,10 @@ practices, and one-off fixes unlikely to recur.
 
 Mind the budget: the root CLAUDE.md cap is 120 lines. If an addition would push
 it over, propose moving detail to the relevant `.claude/rules/` file instead, or
-drop the lowest-value candidate.
+drop the lowest-value candidate. The proposal must also pass the relative gate —
+`bash scripts/growth-gate.sh CLAUDE.md <proposed>` — because a capture pass that
+grows the file a few percent every session ratchets the always-loaded context
+until the absolute cap finally trips.
 
 ### Phase 5 — Show proposed changes (no edits yet)
 

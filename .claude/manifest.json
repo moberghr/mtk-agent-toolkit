@@ -1,6 +1,6 @@
 {
-  "version": "7.31.0",
-  "updated": "2026-08-13",
+  "version": "7.32.0",
+  "updated": "2026-08-20",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -1824,6 +1824,18 @@
       "action": "sync",
       "description": "Deterministic stale-anchor check for lesson stores \u2014 verifies cited paths/symbols exist, suggests renames, skips external examples, WARN-only"
     },
+    "scripts/rule-enforcement-map.sh": {
+      "source": "scripts/rule-enforcement-map.sh",
+      "target": "scripts/rule-enforcement-map.sh",
+      "action": "sync",
+      "description": "Rule enforcement map \u2014 classifies every numbered rule WIRED/BROKEN/PROSE by whether a live enforcer backs it, plus undocumented-hook reverse check"
+    },
+    "scripts/growth-gate.sh": {
+      "source": "scripts/growth-gate.sh",
+      "target": "scripts/growth-gate.sh",
+      "action": "sync",
+      "description": "Relative-growth gate for machine-proposed rewrites \u2014 refuses a proposal growing the artifact past --max-pct so always-loaded context stays flat"
+    },
     "hooks/compress-monitor.sh": {
       "source": "hooks/compress-monitor.sh",
       "target": "hooks/compress-monitor.sh",
@@ -2259,6 +2271,30 @@
       "action": "sync",
       "description": "Test for lesson-anchors \u2014 stale path/symbol detection, rename suggestions, external examples skipped, strict-mode exit"
     },
+    "tests/hooks/test-verification-attributability.sh": {
+      "source": "tests/hooks/test-verification-attributability.sh",
+      "target": "tests/hooks/test-verification-attributability.sh",
+      "action": "sync",
+      "description": "Test for exit attributability and verification scope \u2014 masked exits never stamp PASS, targeted runs never satisfy repo-green claims"
+    },
+    "tests/hooks/test-post-compact-framing.sh": {
+      "source": "tests/hooks/test-post-compact-framing.sh",
+      "target": "tests/hooks/test-post-compact-framing.sh",
+      "action": "sync",
+      "description": "Test for anti-resurrection framing \u2014 post-compaction recovery reads as historical snapshot, cancelled work cannot restart"
+    },
+    "tests/hooks/test-token-diet.sh": {
+      "source": "tests/hooks/test-token-diet.sh",
+      "target": "tests/hooks/test-token-diet.sh",
+      "action": "sync",
+      "description": "Test for the read-path token diet \u2014 opt-in re-read guard (deny/advise, partial reads exempt) and repetition-dominance collapse"
+    },
+    "tests/hooks/test-rule-enforcement-map.sh": {
+      "source": "tests/hooks/test-rule-enforcement-map.sh",
+      "target": "tests/hooks/test-rule-enforcement-map.sh",
+      "action": "sync",
+      "description": "Test for the rule enforcement map \u2014 WIRED/BROKEN/PROSE verdicts, token boundaries, prose mentions count, undocumented hooks surface"
+    },
     "tests/hooks/test-mtk-recover.sh": {
       "source": "tests/hooks/test-mtk-recover.sh",
       "target": "tests/hooks/test-mtk-recover.sh",
@@ -2438,6 +2474,30 @@
       "target": "tests/hooks/test-generate-agents-md.sh",
       "action": "sync",
       "description": "Hook test for generate-agents-md.sh \u2014 120-line budget, 140 hard ceiling, marker and Custom-section preservation"
+    },
+    "scripts/manifest-preflight.sh": {
+      "source": "scripts/manifest-preflight.sh",
+      "target": "scripts/manifest-preflight.sh",
+      "action": "sync",
+      "description": "Pre-seal check that every change_manifest destination exists, sits where the codebase's conventions put it, and does not presume a pattern the repo never uses"
+    },
+    "hooks/collateral-guard.sh": {
+      "source": "hooks/collateral-guard.sh",
+      "target": "hooks/collateral-guard.sh",
+      "action": "sync",
+      "description": "Flags churn that is not the change you made: whitespace/EOL-only rewrites, undeclared generated artifacts, and wholesale asset regeneration"
+    },
+    "tests/hooks/test-manifest-preflight.sh": {
+      "source": "tests/hooks/test-manifest-preflight.sh",
+      "target": "tests/hooks/test-manifest-preflight.sh",
+      "action": "sync",
+      "description": "Hook test for manifest-preflight.sh \u2014 missing modify targets, relocated files, absent patterns, sibling naming and companion conventions"
+    },
+    "tests/hooks/test-collateral-guard.sh": {
+      "source": "tests/hooks/test-collateral-guard.sh",
+      "target": "tests/hooks/test-collateral-guard.sh",
+      "action": "sync",
+      "description": "Hook test for collateral-guard.sh \u2014 CRLF rewrites, undeclared lockfile churn, asset-set regeneration, and the declared and clean cases that must stay silent"
     }
   },
   "protected": [

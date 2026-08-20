@@ -150,6 +150,26 @@ If reviewing a PR or branch with CI runs, check CI status before starting the nu
 9. If a workflow artifact is active (`MTK_WF_UUID` set), record scores:
     `scripts/workflow-artifact.sh set "$MTK_WF_UUID" results.review_scores.<dimension>=<n>` for each of the five dimensions, and `results.review_iteration=<n>` for the current cycle.
 
+### Defect-class sweep (after a finding is confirmed)
+
+A confirmed finding is a sample, not the population. When a finding is
+**confirmed** — not merely suspected — spend one grep asking whether the same
+mistake exists elsewhere, before moving on:
+
+1. Name the *pattern*, not the instance: not "this handler reads the cookie
+   header", but "handlers that read a forbidden header name from an intercepted
+   request".
+2. Grep the repo for it. Report each hit as **confirmed**, **not-applicable**
+   (with the reason it is safe here), or **needs-check** (could not settle it
+   from reading).
+3. Fix what is in scope; record the rest as follow-up findings with paths.
+
+A sweep that finds nothing is worth one line saying so. What this rule exists to
+prevent is the review that ends "worth a look at the sibling handlers" and then
+does not look — the sweep is owed at the moment the finding is confirmed, when
+the pattern is already in mind, and it costs one command. Sibling code whose
+tests pass is exactly where this pays: passing tests are why nobody looked.
+
 ## Rules
 
 - Real risks first, style second.

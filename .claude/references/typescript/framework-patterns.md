@@ -17,6 +17,31 @@ Shared conventions for React, React Native / Expo, Next.js, Tauri, and Node back
 - **SSR-safe browser access.** `window`, `document`, `localStorage` access must be inside `useEffect` or guarded by `typeof window !== 'undefined'`. Direct access at module scope breaks SSR and static generation.
 - **Keys on lists must be stable and unique.** Array indexes as keys cause rendering bugs on insertion/deletion.
 
+### Mutation callbacks: never set state after an `await`
+
+An `await` inside a mutation's `onSuccess` (or any post-mutation callback) hands
+control back to the event loop. Anything set *after* it is racing whatever the
+user did in the meantime:
+
+```ts
+// Wrong — the await yields, and the user may have moved on.
+onSuccess: async (saved) => {
+  await queryClient.invalidateQueries({ queryKey: ['templates'] })
+  setSelectedId(saved.id)          // may re-select a record the user just left
+}
+
+// Right — commit the selection first, then refetch.
+onSuccess: (saved) => {
+  setSelectedId(saved.id)
+  void queryClient.invalidateQueries({ queryKey: ['templates'] })
+}
+```
+
+The failure is worse than a stale selection: if the user pressed "New" during the
+await, they get a blank form whose next save **renames the record they thought
+they had left**. Component tests rarely catch it because it needs two operations
+in one session — this is a shape an e2e test finds and a unit test does not.
+
 ## React Native / Expo
 
 - **No DOM, no web APIs.** There is no `window`, `document`, `localStorage`, or `<div>`. Use `View`, `Text`, `Image`, `Pressable` from `react-native`; web-only libraries that touch the DOM will not work. Check a library targets RN before adding it.
