@@ -112,6 +112,68 @@
       }
     },
 
+    "coverage_claims": {
+      "type": "array",
+      "description": "Claims that one call site/hook/event covers several callers, with every write site enumerated. An entry with verified:false or an empty write_sites is an [ASSUMED] claim: it counts as an open decision and blocks MTK_AUTO_PROCEED. spec-drift-detection re-greps these against the implemented code.",
+      "items": {
+        "type": "object",
+        "required": ["claim", "write_sites"],
+        "properties": {
+          "claim": { "type": "string" },
+          "write_sites": {
+            "type": "array",
+            "description": "Every site that writes the entity or raises the event, as file:line.",
+            "items": { "type": "string" }
+          },
+          "verified": { "type": "boolean" }
+        }
+      }
+    },
+
+    "conditional_descopes": {
+      "type": "array",
+      "description": "Reductions the spec pre-authorises. A fired entry is a scope reduction: it re-scores rigor and does not re-open the approval gate. fired:true without evidence is silent drift and spec-drift-detection treats it as critical.",
+      "items": {
+        "type": "object",
+        "required": ["condition", "action"],
+        "properties": {
+          "condition": { "type": "string" },
+          "action": { "type": "string" },
+          "fired": { "type": "boolean" },
+          "evidence": { "type": "string", "description": "What made the condition true. Required in practice once fired is true." }
+        }
+      }
+    },
+
+    "baseline": {
+      "type": "object",
+      "description": "Suite state captured at implement Phase 2.9, before the first edit, so a later failure is attributable. Counts are verbatim runner output, never an intention.",
+      "required": ["commit"],
+      "properties": {
+        "commit": { "type": "string" },
+        "build": { "type": "string" },
+        "tests": { "type": "string" },
+        "typecheck": { "type": "string" },
+        "e2e": { "type": "string" },
+        "known_failures": {
+          "type": "array",
+          "description": "Tests already red at this commit. Inherited, not this run's regressions.",
+          "items": { "type": "string" }
+        }
+      }
+    },
+
+    "dispatch_capability": {
+      "description": "Whether this session can dispatch implementer subagents at all, probed at implement Phase 2.9 before Phase 3 promises a path. forbidden|unavailable at HIGH/MAX selects the inline-MAX profile; it never lowers the rigor level.",
+      "enum": ["available", "forbidden", "unavailable"]
+    },
+
+    "gate_scope": {
+      "type": "array",
+      "description": "Spec slugs a single Phase 2.5 answer covered. A standing approval expires when a later slice's rigor level or security_impact exceeds the gated slice's.",
+      "items": { "type": "string" }
+    },
+
     "implement": {
       "type": "object",
       "description": "Appended by incremental-implementation after all batches complete.",

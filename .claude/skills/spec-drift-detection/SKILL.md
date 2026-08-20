@@ -108,6 +108,31 @@ Phase 2.5 did not cover the final code. Detect divergence before review.
    grep the repo for remaining call-sites. Any unupdated call-site is a
    usage-drift critical finding.
 
+   **Coverage.** For every `coverage_claims[]` entry in the sidecar, re-grep the
+   write sites now that the code exists. A claim that one point covers several
+   callers is drift the moment a caller bypasses it — and this is the drift class
+   that leaves a feature passing every test while doing nothing for one of its
+   paths. An entry with `verified: false`, an empty `write_sites`, or a newly
+   added write site that does not route through the claimed point is a
+   **critical** finding. An unenumerated coverage claim in the spec body is the
+   same finding: the claim was never checkable.
+
+   **Pre-authorised descopes.** Read `conditional_descopes[]`. An entry with
+   `fired: true` is a legitimate scope *reduction* (item 4 below) — but only with
+   `evidence` naming what made the condition true. `fired: true` without
+   evidence is silent drift wearing the spec's authority, and is a critical
+   finding. Conversely, work that quietly stopped matching the manifest while a
+   matching descope sat unfired is an unrecorded reduction: flip it, evidence it,
+   and re-score rigor.
+
+   **Collateral churn.** Run `bash hooks/collateral-guard.sh --range <base>...HEAD
+   --manifest docs/specs/<date>-<slug>.json`. Whitespace/EOL-only rewrites,
+   undeclared generated files, and wholesale asset regeneration are not spec
+   drift in the contract sense, but they land in the same commit and they hide
+   the real diff from every reviewer downstream. Report the verdict; a finding
+   here is a warning unless the collateral is a lockfile carrying an undeclared
+   dependency, which the dependency axis already makes critical.
+
 5. **Emit the schema-conformant output** (markdown table + fenced JSON).
    Drift findings mix with any AI review findings downstream. `severity`
    mapping:
@@ -207,3 +232,9 @@ If the workflow artifact is active, drift findings flip the `phase_exit_gate` fo
       additions were flagged as critical
 - [ ] Usage axis: renamed/removed public contracts were grepped for
       remaining call-sites
+- [ ] Coverage axis: every `coverage_claims[]` entry was re-grepped against the
+      implemented code; unenumerated or bypassed claims were flagged critical
+- [ ] Descope axis: every `conditional_descopes[]` entry that fired carries
+      evidence, and no unrecorded reduction was left unflipped
+- [ ] Collateral axis: `hooks/collateral-guard.sh` was run and its verdict
+      reported

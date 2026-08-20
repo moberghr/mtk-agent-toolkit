@@ -350,6 +350,56 @@ from the `verify-claims.sh` family:
 | `[VERIFIED:path]` | Claim checked against a local file at `path` |
 | `[ASSUMED]` | Claim not verified against a local file or cited source — counts as an open decision; `MTK_AUTO_PROCEED` does not skip the gate while any `[ASSUMED]` claim is present |
 | `[CITED:url]` | Claim supported by an external URL |
+| `[COVERAGE:n]` | A **coverage claim**, verified against `n` enumerated write sites (see below) |
+
+**Coverage claims.** A sentence like "this hook covers both the manual and the
+generated path with no extra code" reads as design description, so it attracts
+neither `[VERIFIED]` nor `[ASSUMED]` — and it is the most expensive kind of
+claim a spec can get wrong, because a whole slice can pass every test while
+notifying nobody. It is also the cheapest to check: it is a claim about **write
+paths**, and a grep settles it.
+
+Whenever the spec asserts that one call site, hook, event, or handler covers
+more than one caller, enumerate the callers **before** the batch that depends on
+the claim:
+
+1. Grep for every site that writes the entity or raises the event — the entity
+   name against `.Add(`, `AddAsync`, `Attach`, `Update`, direct context/store
+   writes, and the event or command type against its dispatch call.
+2. List each site as `file:line` in the sidecar:
+   `coverage_claims: [{"claim":"TaskAssigned covers manual and generated tasks","write_sites":["Handlers/CreateEmployeeTask.cs:42","Jobs/LifecycleGenerator.cs:88"],"verified":true}]`
+3. If any site does not route through the claimed point, the claim is **false** —
+   amend the spec and the manifest before sealing, not after.
+
+Tag the claim `[COVERAGE:n]` once the sites are enumerated. An unenumerated
+coverage claim is an `[ASSUMED]` claim: it counts as an open decision and
+`MTK_AUTO_PROCEED` does not skip the gate while one is present. In a codebase
+where a handler and a background job both write the same entity, assume there is
+**no** shared point until a grep shows one.
+
+**Conditional descopes (pre-authorised reductions).** A spec may authorise its
+own reduction up front — "drop the public-holiday nuance if it costs a query per
+report", "move this event to a follow-up if its write site turns out to be more
+than one handler". This is good spec writing: it decides the trade-off while the
+author is thinking about it, instead of leaving the implementer to improvise
+under pressure. But as prose it is invisible to the gate logic and to the final
+report, so record it as a field:
+
+```json
+"conditional_descopes": [
+  {"condition": "AssetApprovalPending has more than one write site",
+   "action": "defer the event to a follow-up spec",
+   "fired": true,
+   "evidence": "four handlers write it — Handlers/Asset*.cs"}
+]
+```
+
+A descope that fires is a **scope reduction**: it re-scores rigor (see
+`implement/SKILL.md` Rigor Score → *Recompute on scope reduction*) and does not
+re-open the approval gate, because shipping less of an approved scope needs no
+new approval. Flip `fired` and fill `evidence` at the moment it fires, so
+Phase 3.5 reads a record rather than a narration — an unevidenced `fired: true`
+is silent drift wearing a spec's authority.
 
 **Rejected alternatives (trap-register carry-over).** After the elegance check
 (step 8), record any option that was considered and ruled out under a

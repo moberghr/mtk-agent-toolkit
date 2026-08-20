@@ -47,6 +47,17 @@ check engineers should run before every commit.
    `source: "analyzer"`, `confidence: 100`. This is fast (analyzes specific
    files, not full build) and catches EF Core, async, and disposal patterns
    that the regex linter misses. If the tool is not available, skip this step.
+4.6. **Collateral-churn check.** Run `bash hooks/collateral-guard.sh --cached`
+   (add `--manifest docs/specs/<date>-<slug>.json` when this commit belongs to a
+   spec). It answers a question no other check asks: is this churn *yours*? It
+   flags whitespace/EOL-only rewrites (a small edit to a CRLF file rewrites the
+   whole file), generated artifacts riding along undeclared (one `npm install`
+   drags a lockfile into a feature commit), and asset directories regenerated
+   wholesale. Findings are warnings, not blocks — but each carries a working
+   revert command, and a commit whose diff is mostly collateral hides the real
+   change from every reviewer downstream. The dependency gate below is the
+   separate, stricter question of what the lockfile churn *contains*.
+
 4.7. **Dependency-introduction gate (if a manifest changed).** Detect whether
    the staged diff touches any of these manifest files:
    `package.json`, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`,
