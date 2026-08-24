@@ -77,6 +77,7 @@
     ],
     "PostToolUse": [
       {
+        "matcher": "Read|Edit|Write|Bash|Grep|Glob",
         "hooks": [
           {
             "type": "command",
@@ -141,7 +142,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/capture-learnings.sh"
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/capture-learnings.sh",
+            "async": true,
+            "timeout": 5
           }
         ]
       },
@@ -149,7 +152,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-analytics.sh"
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-analytics.sh",
+            "async": true,
+            "timeout": 5
           }
         ]
       },
@@ -157,7 +162,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/workflow-continuation.sh"
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/workflow-continuation.sh",
+            "async": true,
+            "timeout": 5
           }
         ]
       }
