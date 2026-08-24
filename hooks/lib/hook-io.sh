@@ -366,10 +366,27 @@ mtk_session_lock_acquire() {
   local lock
   lock="${1:-$(mtk_session_file)}.lock"
   local tries=0
+  # A live holder keeps this lock for single-digit milliseconds (load state →
+  # update counters → save). So a lock older than a couple of seconds is not
+  # contention, it is a corpse: the harness SIGTERMs a hook that overruns its
+  # `timeout` (context-budget.sh runs under `timeout: 3`), and SIGTERM does not
+  # run the EXIT trap, so the directory outlives the process that made it.
+  # Without stealing it, every later hook pays the full spin below — 100 × 50ms
+  # of dead wall-clock on the next tool call, for a counter nobody blocks on.
+  local stale_secs="${MTK_SESSION_LOCK_STALE_SECS:-2}"
+  local mtime now
   while ! mkdir "$lock" 2>/dev/null; do
+    # Increment first: every path through this loop must advance the counter, or
+    # a lock we can see but cannot rmdir spins forever.
     tries=$((tries + 1))
     if [ "$tries" -ge 100 ]; then
       return 0
+    fi
+    mtime=$(stat -c '%Y' "$lock" 2>/dev/null || stat -f '%m' "$lock" 2>/dev/null || echo 0)
+    now=$(date +%s)
+    if [ "$mtime" -gt 0 ] && [ "$((now - mtime))" -ge "$stale_secs" ]; then
+      rmdir "$lock" 2>/dev/null || true
+      continue
     fi
     sleep 0.05 2>/dev/null || sleep 1
   done

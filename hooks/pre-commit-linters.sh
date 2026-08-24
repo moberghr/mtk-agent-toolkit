@@ -201,21 +201,43 @@ scan() {
 # --- Buffer added lines once (scanning multiple patterns would otherwise
 # re-run git diff). ---
 ADDED_LINES_CACHE="$(mktemp)"
-trap 'rm -f "$ADDED_LINES_CACHE"' EXIT
+CONTENT_CACHE="$(mktemp)"
+trap 'rm -f "$ADDED_LINES_CACHE" "$CONTENT_CACHE"' EXIT
 added_lines > "$ADDED_LINES_CACHE"
+
+# Project the diff once into (a) parallel record arrays and (b) a content-only
+# file, in the same order. This lets each rule run ONE grep over the whole diff
+# instead of one grep per added line, and lets a grep hit index map back to its
+# file/line without spawning anything. The projection deliberately reuses the
+# same `IFS=$'\t' read -r file line content` split as the old per-line loop, so
+# the string each regex sees is byte-for-byte what it saw before — a `cut -f3-`
+# here would keep leading tabs that `read` coalesces and could shift matches on
+# tab-indented code.
+REC_FILE=(); REC_LINE=(); REC_CONTENT=()
+while IFS=$'\t' read -r file line content; do
+  REC_FILE+=("$file"); REC_LINE+=("$line"); REC_CONTENT+=("$content")
+  printf '%s\n' "$content"
+done < "$ADDED_LINES_CACHE" > "$CONTENT_CACHE"
 
 scan_cached() {
   local rule_id="$1" severity="$2" regex="$3" rationale="$4" fix="$5"
-  while IFS=$'\t' read -r file line content; do
-    if printf '%s' "$content" | grep -qEi -- "$regex"; then
-      finding_index=$((finding_index + 1))
-      local fid
-      fid=$(printf 'L%03d' "$finding_index")
-      local preview
-      preview=$(printf '%s' "$content" | sed 's/\\/\\\\/g; s/"/\\"/g' | cut -c1-120)
-      findings+=("{\"id\":\"$fid\",\"severity\":\"$severity\",\"confidence\":100,\"source\":\"linter\",\"rule\":\"$rule_id\",\"file\":\"$file\",\"line\":$line,\"rationale\":\"$rationale\",\"suggested_fix\":\"$fix\",\"evidence\":\"$preview\"}")
-    fi
-  done < "$ADDED_LINES_CACHE"
+  local hits idx file line content fid preview
+  # One grep per rule over the whole diff. The old shape ran a `grep` plus a
+  # `sed` and a `cut` per added line per rule: at 30 active rules and a
+  # 1,200-line diff that is ~72,000 processes and ~50s of pre-commit wall time.
+  # grep -n numbers CONTENT_CACHE from 1, and that index is the record index.
+  hits="$(grep -niE -- "$regex" "$CONTENT_CACHE" 2>/dev/null | cut -d: -f1)" || true
+  [ -n "$hits" ] || return 0
+  while IFS= read -r idx; do
+    [ -n "$idx" ] || continue
+    file="${REC_FILE[idx-1]}"
+    line="${REC_LINE[idx-1]}"
+    content="${REC_CONTENT[idx-1]}"
+    finding_index=$((finding_index + 1))
+    fid=$(printf 'L%03d' "$finding_index")
+    preview=$(printf '%s' "$content" | sed 's/\\/\\\\/g; s/"/\\"/g' | cut -c1-120)
+    findings+=("{\"id\":\"$fid\",\"severity\":\"$severity\",\"confidence\":100,\"source\":\"linter\",\"rule\":\"$rule_id\",\"file\":\"$file\",\"line\":$line,\"rationale\":\"$rationale\",\"suggested_fix\":\"$fix\",\"evidence\":\"$preview\"}")
+  done <<< "$hits"
 }
 
 for pattern_file in "${PATTERN_FILES[@]}"; do

@@ -87,6 +87,7 @@
     ],
     "PostToolUse": [
       {
+        "matcher": "Read|Edit|Write|Bash|Grep|Glob",
         "hooks": [
           {
             "type": "command",
