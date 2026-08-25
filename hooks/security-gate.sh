@@ -36,6 +36,44 @@ if [ -z "$COMMAND" ]; then
   mtk_deny "BLOCKED: Unable to parse Bash command from hook payload. Re-run the command after fixing the hook payload shape."
 fi
 
+# Reduce a command to the parts that could actually EXECUTE something.
+#
+# A search or print command MENTIONS text, it does not run it: `grep -rn '<delete>'`
+# and `echo "never run <delete>"` are safe, and denying them is expensive — a
+# PreToolUse deny forces the model to re-plan and re-issue, costing a whole extra
+# turn. Split on the shell's own separators and drop segments whose command word is
+# a read-only tool; everything else is judged exactly as before.
+#
+# A segment containing a command substitution is NEVER exempt: `grep "$(<delete>)"`
+# reads as a grep but runs the inner command. Splitting on `|` can also cut a quoted
+# regex in half — that only ever produces extra fragments to judge, never fewer.
+mtk_executable_text() {
+  # `|| [ -n "$_mtk_seg" ]`: the input has no trailing newline, so the final (often
+  # only) segment leaves `read` at EOF with a non-zero status. Without this the loop
+  # body never runs and the function returns nothing — which reads as "no executable
+  # text", i.e. the gate silently allows everything.
+  printf '%s' "${1-}" | tr ';|&' '\n\n\n' | while IFS= read -r _mtk_seg || [ -n "$_mtk_seg" ]; do
+    case "$_mtk_seg" in
+      *'$('*|*'`'*) printf '%s\n' "$_mtk_seg"; continue ;;
+    esac
+    # First word, skipping any leading VAR=value assignments.
+    _mtk_rest="${_mtk_seg#"${_mtk_seg%%[![:space:]]*}"}"
+    _mtk_word="${_mtk_rest%%[[:space:]]*}"
+    while [ -n "$_mtk_word" ]; do
+      case "$_mtk_word" in
+        *=*) _mtk_rest="${_mtk_rest#"$_mtk_word"}"
+             _mtk_rest="${_mtk_rest#"${_mtk_rest%%[![:space:]]*}"}"
+             _mtk_word="${_mtk_rest%%[[:space:]]*}" ;;
+        *)   break ;;
+      esac
+    done
+    case "${_mtk_word##*/}" in
+      grep|egrep|fgrep|rg|ack|ag|echo|printf|cat|head|tail|less|more|strings|wc) ;;
+      *) printf '%s\n' "$_mtk_seg" ;;
+    esac
+  done
+}
+
 # The destructive-SQL pattern lives in one place so the command text and any file the
 # command executes are judged by identical rules.
 mtk_has_destructive_sql() {
@@ -69,7 +107,7 @@ mtk_referenced_files() {
 }
 
 # Block: database destructive operations
-if mtk_has_destructive_sql "$COMMAND"; then
+if mtk_has_destructive_sql "$(mtk_executable_text "$COMMAND")"; then
   mtk_deny "BLOCKED: Destructive database operation detected. Use a migration instead."
 fi
 
@@ -102,7 +140,15 @@ while IFS= read -r _mtk_ref; do
   [ -n "$_mtk_ref" ] || continue
   [ -f "$_mtk_ref" ] || continue
   mtk_is_repo_test_file "$_mtk_ref" && continue
-  if mtk_has_destructive_sql "$(head -c 200000 "$_mtk_ref" 2>/dev/null || true)"; then
+  # Strip `#` comment lines from anything that is not a .sql file: a comment executes
+  # nothing, and prose describing the blocked statements is exactly what this hook's
+  # own source (and any doc-commented migration wrapper) contains. sed, not the bash
+  # loop above, because this runs over up to 200 KB on every Bash call.
+  case "$_mtk_ref" in
+    *.sql|*.SQL) _mtk_body="$(head -c 200000 "$_mtk_ref" 2>/dev/null || true)" ;;
+    *)           _mtk_body="$(head -c 200000 "$_mtk_ref" 2>/dev/null | sed 's/[[:space:]]*#.*$//' || true)" ;;
+  esac
+  if mtk_has_destructive_sql "$_mtk_body"; then
     mtk_deny "BLOCKED: Destructive database operation found in ${_mtk_ref}. Use a migration instead."
   fi
 done <<MTK_REFS
@@ -110,12 +156,12 @@ $(mtk_referenced_files "$COMMAND")
 MTK_REFS
 
 # Block: force push to main/master
-if echo "$COMMAND" | grep -qE 'git\s+push\s+.*--(force|force-with-lease)\s+.*\b(main|master)\b'; then
+if mtk_executable_text "$COMMAND" | grep -qE 'git\s+push\s+.*--(force|force-with-lease)\s+.*\b(main|master)\b'; then
   mtk_deny "BLOCKED: Force push to main/master is not allowed."
 fi
 
 # Block: rm -rf on project root or broad paths
-if echo "$COMMAND" | grep -qE 'rm\s+-[a-zA-Z]*r[a-zA-Z]*f[a-zA-Z]*\s+(\.|/|~|\$HOME)'; then
+if mtk_executable_text "$COMMAND" | grep -qE 'rm\s+-[a-zA-Z]*r[a-zA-Z]*f[a-zA-Z]*\s+(\.|/|~|\$HOME)'; then
   mtk_deny "BLOCKED: Recursive force-delete on broad path. Be more specific."
 fi
 
