@@ -2379,6 +2379,12 @@
       "action": "sync",
       "description": "Verifies build-rule-index.sh writes INDEX.md into the project resolved from $CLAUDE_PROJECT_DIR/git rather than the script's own directory, so a plugin-cache invocation lands in the target repo"
     },
+    "tests/hooks/test-security-gate-falsepos.sh": {
+      "source": "tests/hooks/test-security-gate-falsepos.sh",
+      "target": "tests/hooks/test-security-gate-falsepos.sh",
+      "action": "sync",
+      "description": "Verifies security-gate.sh judges what a command executes rather than what it mentions - read-only segments, comments in an executed script, and fixture text are allowed while real destructive commands and SQL in executed scripts stay blocked"
+    },
     "tests/hooks/test-format-on-edit-wiring.sh": {
       "source": "tests/hooks/test-format-on-edit-wiring.sh",
       "target": "tests/hooks/test-format-on-edit-wiring.sh",
