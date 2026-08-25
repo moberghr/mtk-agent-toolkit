@@ -290,6 +290,34 @@ Generate each file below. **Only generate files for sections relevant to this pr
 
 Each rules file target: **30–80 lines**. Be concise.
 
+#### Every rule file MUST open with auto-attach frontmatter (S1.15)
+
+Without it, **every** rule file loads into **every** request, forever. That is the
+single largest always-on cost bootstrap can inflict on a repo: measured at 30KB
+(~7.5k tokens) in one repo with 7 unfrontmattered rule files, on every turn, in a
+session where throughput already halves between 200k and 500k tokens of context.
+The lazy-load machinery ships with MTK and is not optional to wire up.
+
+```yaml
+---
+paths:                      # globs; a rule whose glob matches a touched file is
+  - "src/Handlers/**"       # loaded, the rest stay on disk until they match
+  - "src/Services/**"
+axes:
+  decision: structure       # structure|process|authoring|security
+  topic: architecture       # manifest|skills|hooks|git|architecture|testing|…
+  scope: project            # global|project
+---
+```
+
+- `paths` is the load-bearing field — derive the globs from the directories the
+  rule's own §sections cite. A rule with no defensible glob is a rule with no
+  defensible scope: fold it into `CLAUDE.md` or drop it.
+- A repo-wide rule (`security.md` often is) may use `"**"` — but state why in a
+  comment, because it re-enters the always-on budget it was meant to escape.
+- Cross-check after generating: a rule whose globs match nothing in the repo is
+  dead weight and must be dropped, not shipped.
+
 The rule file templates are largely the same as before — adapt the content per tech stack:
 - `security.md` — generic, applies to all stacks
 - `architecture.md` — based on actual patterns found
@@ -393,6 +421,26 @@ Create `.claude/rules/` if it doesn't exist:
 mkdir -p .claude/rules
 ```
 (Reminder from STEP 0: never add `.claude/tech-stack` to a `mkdir -p` — it is a file.)
+
+**Then build the rule index — this step is not optional.** `INDEX.md` is the
+always-on wake-up layer that makes the rest of `.claude/rules/` loadable on
+demand; without it the frontmatter has nothing pointing at it and readers fall
+back to loading everything.
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT:-.}/scripts/build-rule-index.sh"
+```
+
+Verify before moving on — a silent skip here is exactly how a repo ends up with
+every rule file always-on:
+
+```bash
+test -f .claude/rules/INDEX.md || echo "BOOTSTRAP BUG: rule index missing"
+for f in .claude/rules/*.md; do
+  [ "$(basename "$f")" = "INDEX.md" ] && continue
+  head -1 "$f" | grep -q '^---$' || echo "BOOTSTRAP BUG: $f has no auto-attach frontmatter"
+done
+```
 
 ### Settings Merge
 
