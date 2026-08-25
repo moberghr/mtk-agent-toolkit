@@ -16,6 +16,12 @@ WORK="$(mktemp -d)"
 cleanup() { rm -rf "$WORK"; }
 trap cleanup EXIT
 git -C "$WORK" init -q
+# A CI runner has no global git identity, so `git commit` below aborts with
+# "empty ident name" and the whole test fails for a reason unrelated to lesson
+# anchors. Pin an identity (and disable signing) on the fixture repo itself.
+git -C "$WORK" config user.email "test@mtk.invalid"
+git -C "$WORK" config user.name "MTK Test"
+git -C "$WORK" config commit.gpgsign false
 cd "$WORK"
 
 mkdir -p hooks/lib scripts tasks
