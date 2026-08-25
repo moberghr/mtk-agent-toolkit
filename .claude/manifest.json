@@ -83,6 +83,36 @@
       "action": "sync",
       "description": "Canonical output schema for all review entry points (markdown table + fenced JSON with confidence scores)"
     },
+    "references/implement-rigor-scoring.md": {
+      "source": ".claude/references/implement-rigor-scoring.md",
+      "target": ".claude/references/implement-rigor-scoring.md",
+      "action": "sync",
+      "description": "Rigor Score detail for implement — signal/points table, contract-surface rule, mechanical definition, and scope-reduction recompute guardrails"
+    },
+    "references/implement-approval-gate.md": {
+      "source": ".claude/references/implement-approval-gate.md",
+      "target": ".claude/references/implement-approval-gate.md",
+      "action": "sync",
+      "description": "Phase 2.5 approval-gate detail for implement — inline rendering spec, full MTK_AUTO_PROCEED preconditions, gate_scope and seal semantics"
+    },
+    "references/implement-preflight.md": {
+      "source": ".claude/references/implement-preflight.md",
+      "target": ".claude/references/implement-preflight.md",
+      "action": "sync",
+      "description": "Phase 2.9 pre-flight detail for implement — collision check, dispatch-capability probe, inline-MAX compensations, and baseline evidence capture"
+    },
+    "references/implement-review-lanes.md": {
+      "source": ".claude/references/implement-review-lanes.md",
+      "target": ".claude/references/implement-review-lanes.md",
+      "action": "sync",
+      "description": "Phase 4 review detail for implement — two-stage procedure, reviewer lane selection, and lane accounting when subagents are unavailable"
+    },
+    "references/implement-archive-receipt.md": {
+      "source": ".claude/references/implement-archive-receipt.md",
+      "target": ".claude/references/implement-archive-receipt.md",
+      "action": "sync",
+      "description": "Phase 7.5 archive detail for implement — delta sync-back procedure and the opt-in tracked run receipt field list"
+    },
     "references/model-routing.md": {
       "source": ".claude/references/model-routing.md",
       "target": ".claude/references/model-routing.md",
