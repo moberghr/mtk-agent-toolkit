@@ -4,6 +4,36 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Fixed — always-on context: two generator bugs that shipped to every bootstrapped repo
+
+Profiling 16 sessions / 3,230 API requests found the dominant cost is not hook CPU
+but **always-on context**. Measured output throughput against context size, same
+machine, same day: 164 tok/s below 200k, 129 at 200–300k, 119 at 300–400k, **87 at
+400–500k**. Roughly half speed past 400k. Every token `setup-bootstrap` writes into
+a repo's always-on layer is paid on every request for the life of that repo.
+
+Two bootstrap bugs were inflating that layer, and one made a shipped script a no-op.
+
+- **`format-on-edit.sh` was wired where its variable does not exist** (`hooks/hooks.json`, `hooks/format-on-edit.sh`, all three `tech-stack-*` skills, `setup-bootstrap`). `$CLAUDE_PLUGIN_ROOT` is defined **only** for hooks a plugin declares in its own `hooks.json`. Bootstrap wrote the same command into each target's `.claude/settings.json`, where it expands to the empty string — so every Edit ran `bash /hooks/format-on-edit.sh` and failed. Measured **4,552 failures across 7 repos**, each costing a process spawn plus a failure attachment pushed into context, and formatting never ran once. Only the PostToolUse half was ever wired in those repos, so even a resolvable path would have queued edits and never flushed them. All three halves now live in the plugin's `hooks.json`, gated on the `.claude/tech-stack` marker so plugin scope does not mean formatting repos that never adopted MTK (`MTK_FORMAT_ON_EDIT` forces either way). `validate-toolkit.sh` now fails on `$CLAUDE_PLUGIN_ROOT/hooks/` appearing in any tech-stack skill, and on `format-on-edit.sh` disappearing from `hooks.json`.
+- **Generated rules never loaded lazily** (`setup-bootstrap`). Rule files were emitted with no `paths:`/`axes:` frontmatter, and the `build-rule-index.sh` the toolkit already ships was never run — so every rule file in every bootstrapped repo entered every request. Measured across four bootstrapped repos: 7 files / 30,356 B, 6 / 16,395 B, 8 / 13,061 B and 4 / 4,606 B, all with zero frontmatter and no `INDEX.md`. Frontmatter is now mandatory, `paths` is derived from the directories each rule's own sections cite, rules whose globs match nothing are dropped rather than shipped, and the index build is a step with a post-condition check.
+- **`build-rule-index.sh` wrote to the wrong repo** (`scripts/build-rule-index.sh`). It rooted itself on `dirname $0/..`. Invoked from the plugin cache — the only way a bootstrapped repo calls it — it regenerated the **plugin's** index and left the target with none, which is precisely the always-on cost the index removes. `CLAUDE.md` already stated the contract it broke: target-repo scripts root on `$CLAUDE_PROJECT_DIR`/git. Found because the fix above is inert without it.
+
+### Fixed — a Stop advisory with no budget
+
+- **`LEARNING CHECK` re-fired on every Stop** (`hooks/capture-learnings.sh`). Past the substantial-session threshold the hook had no per-session budget at all. Measured across the transcripts on disk: 805 injections over 275 sessions, median 1, but **up to 63 in a single session** — roughly 9k tokens of the same paragraph, which is how a reader learns to tune out every hook MTK emits. Now budgeted on the payload's `session_id` (not `mtk_session_file`, which is project+date and would collapse a day's sessions into one budget), default 1, `MTK_LEARNING_MAX_NAGS` overrides and `0` silences. A spent budget exits before the lessons scan, so it costs nothing.
+
+Checked and **not** changed: `compress-monitor.sh`'s budget was suspected of leaking (median 2 nags/session against a documented "shown once"). Direct test says it works — first call nags, second and third are silent, state file reads `1`. The spread is resumed sessions and TMPDIR reaping, not a leak.
+
+### Changed — implement/SKILL.md is a navigation layer again
+
+- `implement/SKILL.md` was 551 lines / 48,293 B and cost a measured **+17,160 tokens** on load, the largest single skill payload in the toolkit and a violation of the toolkit's own S2.26. The five heaviest blocks — rigor scoring, the Phase 2.5 gate, Phase 2.9 pre-flight, Phase 4 review lanes, Phase 7.5 archive/receipt — moved to `.claude/references/implement-*.md`, read only when that phase is reached. Each phase keeps its decision logic in the skill; only elaboration moved. **551 → 413 lines, 48,293 → 28,291 B**, nothing deleted.
+
+### Fixed — the test suite inherited ambient config
+
+- `MTK_COMPRESS_MAX_NAGS` is documented for `settings.local.json` `env`. Setting it there exports it into the shell running the tests, silencing the hook and failing the suite with "advisory did not fire" — a failure pointing at the hook rather than at the config. `test-compress-monitor.sh` now normalises it at the top; budget cases still override per invocation.
+
+Known and not fixed here: `security-gate.sh` false-positives on a literal string inside a **read-only** `grep` pattern — `grep -E 'rm -rf'` is blocked as a recursive force-delete. A grep pattern is not an execution.
+
 ### Fixed — latency: the pre-commit linter, an all-tools matcher, a leaked lock
 
 MTK made Claude Code measurably slower on the machine it was installed on. Profiling each hook in isolation (warm, 5–10 runs, macOS bash 3.2 / arm64) found one dominant defect and two structural ones. Every figure below is measured on this repo, not estimated.
