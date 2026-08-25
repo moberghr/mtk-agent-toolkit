@@ -1,5 +1,5 @@
 {
-  "description": "MTK guard, verification, and session hooks. Paths use ${CLAUDE_PLUGIN_ROOT} so enforcement runs in plugin-installed target repos, not just the toolkit's own dev checkout. Every hook self-skips (mtk_is_redundant_plugin_invocation) when the project's .claude/settings.json wires the same basename, so a dev-style install never double-fires.",
+  "description": "MTK guard, verification, session, and formatting hooks. Paths use ${CLAUDE_PLUGIN_ROOT} so enforcement runs in plugin-installed target repos, not just the toolkit's own dev checkout \u2014 and because that variable is ONLY defined for hooks a plugin declares here. A project .claude/settings.json that spells the same command expands it to the empty string and runs `bash /hooks/<name>`, which fails silently on every invocation. Every hook self-skips (mtk_is_redundant_plugin_invocation) when the project's .claude/settings.json wires the same basename, so a dev-style install never double-fires.",
   "hooks": {
     "SessionStart": [
       {
@@ -8,7 +8,8 @@
           {
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start",
-            "async": false
+            "async": false,
+            "timeout": 10
           }
         ]
       },
@@ -93,6 +94,11 @@
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/spec-approval-trigger.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/format-on-edit.sh",
+            "timeout": 5
           }
         ]
       },
@@ -134,7 +140,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/verify-completion"
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/verify-completion",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/format-on-edit.sh --flush",
+            "timeout": 30
           }
         ]
       },
@@ -165,6 +177,17 @@
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/workflow-continuation.sh",
             "async": true,
             "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/format-on-edit.sh --flush",
+            "timeout": 30
           }
         ]
       }

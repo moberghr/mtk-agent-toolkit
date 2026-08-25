@@ -14,7 +14,14 @@ set -euo pipefail
 # Budget target: keep the generated index under BUDGET_LINES lines so the
 # always-on layer stays cheap. The script warns (non-fatal) if exceeded.
 
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+# Root on the PROJECT, not on the script's own location. This script is invoked
+# from the plugin cache when bootstrapping a target repo; `dirname $0/..` would
+# regenerate the PLUGIN's index and leave the target with no INDEX.md — so every
+# rule file there loads eagerly on every request, forever, which is precisely the
+# cost this index exists to remove. Same contract as spec-archive.sh / lint-ears.sh
+# (CLAUDE.md: target-repo scripts resolve the project root from
+# $CLAUDE_PROJECT_DIR/git so output lands in the target wherever the script lives).
+ROOT_DIR="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 cd "$ROOT_DIR"
 
 RULES_DIR=".claude/rules"

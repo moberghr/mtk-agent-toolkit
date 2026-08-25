@@ -33,7 +33,7 @@ set -euo pipefail
 #   bash scripts/manifest-preflight.sh docs/specs/2026-08-20-foo.json
 #   bash scripts/manifest-preflight.sh --human docs/specs/2026-08-20-foo.json
 #
-# Spec: docs/plans/2026-08-20-inventhor-dogfooding-improvements.md (P1.1)
+# Spec: docs/plans/2026-08-20-field-run-dogfooding-improvements.md (P1.1)
 
 OUTPUT="json"
 SIDECAR=""

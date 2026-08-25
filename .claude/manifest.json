@@ -1,6 +1,6 @@
 {
-  "version": "7.32.0",
-  "updated": "2026-08-20",
+  "version": "7.33.0",
+  "updated": "2026-08-25",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -82,6 +82,36 @@
       "target": ".claude/references/review-finding-schema.md",
       "action": "sync",
       "description": "Canonical output schema for all review entry points (markdown table + fenced JSON with confidence scores)"
+    },
+    "references/implement-rigor-scoring.md": {
+      "source": ".claude/references/implement-rigor-scoring.md",
+      "target": ".claude/references/implement-rigor-scoring.md",
+      "action": "sync",
+      "description": "Rigor Score detail for implement — signal/points table, contract-surface rule, mechanical definition, and scope-reduction recompute guardrails"
+    },
+    "references/implement-approval-gate.md": {
+      "source": ".claude/references/implement-approval-gate.md",
+      "target": ".claude/references/implement-approval-gate.md",
+      "action": "sync",
+      "description": "Phase 2.5 approval-gate detail for implement — inline rendering spec, full MTK_AUTO_PROCEED preconditions, gate_scope and seal semantics"
+    },
+    "references/implement-preflight.md": {
+      "source": ".claude/references/implement-preflight.md",
+      "target": ".claude/references/implement-preflight.md",
+      "action": "sync",
+      "description": "Phase 2.9 pre-flight detail for implement — collision check, dispatch-capability probe, inline-MAX compensations, and baseline evidence capture"
+    },
+    "references/implement-review-lanes.md": {
+      "source": ".claude/references/implement-review-lanes.md",
+      "target": ".claude/references/implement-review-lanes.md",
+      "action": "sync",
+      "description": "Phase 4 review detail for implement — two-stage procedure, reviewer lane selection, and lane accounting when subagents are unavailable"
+    },
+    "references/implement-archive-receipt.md": {
+      "source": ".claude/references/implement-archive-receipt.md",
+      "target": ".claude/references/implement-archive-receipt.md",
+      "action": "sync",
+      "description": "Phase 7.5 archive detail for implement — delta sync-back procedure and the opt-in tracked run receipt field list"
     },
     "references/model-routing.md": {
       "source": ".claude/references/model-routing.md",
@@ -2336,6 +2366,30 @@
       "target": "tests/hooks/test-compress-monitor.sh",
       "action": "sync",
       "description": "Verifies compress-monitor.sh reads tool_response and emits a hookSpecificOutput.additionalContext envelope; silent on short output, non-Bash tools, and self-compressing commands"
+    },
+    "tests/hooks/test-capture-learnings-budget.sh": {
+      "source": "tests/hooks/test-capture-learnings-budget.sh",
+      "target": "tests/hooks/test-capture-learnings-budget.sh",
+      "action": "sync",
+      "description": "Verifies capture-learnings.sh emits its LEARNING CHECK advisory at most once per session, keyed on the payload session_id, with an MTK_LEARNING_MAX_NAGS override"
+    },
+    "tests/hooks/test-build-rule-index-root.sh": {
+      "source": "tests/hooks/test-build-rule-index-root.sh",
+      "target": "tests/hooks/test-build-rule-index-root.sh",
+      "action": "sync",
+      "description": "Verifies build-rule-index.sh writes INDEX.md into the project resolved from $CLAUDE_PROJECT_DIR/git rather than the script's own directory, so a plugin-cache invocation lands in the target repo"
+    },
+    "tests/hooks/test-security-gate-falsepos.sh": {
+      "source": "tests/hooks/test-security-gate-falsepos.sh",
+      "target": "tests/hooks/test-security-gate-falsepos.sh",
+      "action": "sync",
+      "description": "Verifies security-gate.sh judges what a command executes rather than what it mentions - read-only segments, comments in an executed script, and fixture text are allowed while real destructive commands and SQL in executed scripts stay blocked"
+    },
+    "tests/hooks/test-format-on-edit-wiring.sh": {
+      "source": "tests/hooks/test-format-on-edit-wiring.sh",
+      "target": "tests/hooks/test-format-on-edit-wiring.sh",
+      "action": "sync",
+      "description": "Verifies format-on-edit.sh is declared in the plugin hooks.json where $CLAUDE_PLUGIN_ROOT resolves, is absent from every tech-stack Settings Additions block, and no-ops in repos without the tech-stack opt-in marker"
     },
     "tests/hooks/test-pre-commit-target-repo.sh": {
       "source": "tests/hooks/test-pre-commit-target-repo.sh",
