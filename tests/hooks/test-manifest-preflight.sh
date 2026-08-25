@@ -3,7 +3,7 @@ set -euo pipefail
 
 # manifest-preflight.sh: change_manifest DESTINATIONS are validated against the
 # repo before the seal. The three shapes that shipped as Phase 3.5 drift in the
-# inventhor run are the three this must catch: a modify pointed at a file that
+# field run are the three this must catch: a modify pointed at a file that
 # does not exist, a create into a directory whose pattern the codebase never
 # uses, and a filename that breaks its siblings' convention. A correct entry
 # must stay silent — a checker that flags valid manifests gets ignored.

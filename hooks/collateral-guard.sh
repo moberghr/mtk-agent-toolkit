@@ -37,7 +37,7 @@ set -euo pipefail
 #   bash hooks/collateral-guard.sh --head --human
 #   bash hooks/collateral-guard.sh --range main...HEAD --manifest docs/specs/foo.json
 #
-# Spec: docs/plans/2026-08-20-inventhor-dogfooding-improvements.md (P1.3)
+# Spec: docs/plans/2026-08-20-field-run-dogfooding-improvements.md (P1.3)
 
 DIFF_SOURCE="cached"
 DIFF_RANGE=""

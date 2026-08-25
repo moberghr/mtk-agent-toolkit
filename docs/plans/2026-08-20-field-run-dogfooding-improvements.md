@@ -1,4 +1,4 @@
-# MTK Improvements from the Inventhor Three-Slice Run — 2026-08-20
+# MTK Improvements from a Client Three-Slice Field Run — 2026-08-20
 
 **Source:** artifact `881ffb55` "MTK on Three Slices" — three specs (19 Aug) built as three
 stacked branches in one session. 11 batches, 15 commits, 90 files, PRs #94 → #95 → #96.
@@ -222,7 +222,7 @@ it. Consider an opt-in run receipt on a tracked path via the existing
 `scripts/mtk-verify-run.sh` / `MTK_ARTIFACT_PUBLISH` machinery. Lowest priority here — but note
 that this run is also the **first natural test case for the round-8 lesson-rent machinery**
 (`lesson-refresh/SKILL.md:65`, `.mtk/recall-log.jsonl`): 10 fresh entries went in, so the next
-inventhor run is where recall precision can actually be measured rather than argued.
+that field run is where recall precision can actually be measured rather than argued.
 
 ---
 
