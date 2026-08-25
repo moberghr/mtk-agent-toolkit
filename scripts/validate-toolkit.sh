@@ -148,6 +148,23 @@ done
 
 # The hooks MTK used to hand to target repos must actually be declared here, or
 # removing them from the tech-stack templates silently drops the behaviour.
+# Every hook must declare a timeout. An unbounded hook has no ceiling on how long it
+# can wedge a tool call or a stop: the harness cancels a hook that overruns its
+# timeout, and with none set there is nothing to overrun. This bit MTK before — a
+# Stop hook with no timeout is the one place a hang costs the whole session. A
+# blocking hook that times out fails OPEN (its decision never arrives), which is the
+# right trade: a missed advisory beats a frozen session.
+python3 - <<'MTKPY' || fail "hooks/hooks.json has a hook with no timeout"
+import json, sys
+d = json.load(open("hooks/hooks.json")).get("hooks", {})
+bad = [(ev, h.get("command", "?").split("/")[-1])
+       for ev, blocks in d.items() for b in blocks for h in b.get("hooks", [])
+       if "timeout" not in h]
+for ev, name in bad:
+    print(f"ERROR: hooks.json {ev} hook {name} declares no timeout", file=sys.stderr)
+sys.exit(1 if bad else 0)
+MTKPY
+
 for required_cmd in format-on-edit.sh; do
   grep -q "$required_cmd" hooks/hooks.json \
     || fail "hooks/hooks.json does not declare $required_cmd — it was removed from the tech-stack Settings Additions, so nothing wires it any more"
