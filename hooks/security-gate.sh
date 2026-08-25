@@ -74,11 +74,16 @@ mtk_executable_text() {
   done
 }
 
+# S3.17: every match below feeds grep -q through process substitution, never a
+# pipe. grep -q exits on its first match, the producer takes SIGPIPE (141), and
+# pipefail turns that *success* into a non-zero pipeline — so `if <pipeline>` reads
+# FALSE and the guard FAILS OPEN on exactly the destructive commands it exists to
+# block. Process-substitution exit status is ignored, so the match stands on its own.
 # The destructive-SQL pattern lives in one place so the command text and any file the
 # command executes are judged by identical rules.
 mtk_has_destructive_sql() {
-  printf '%s' "${1-}" \
-    | grep -qiE '(DROP\s+(TABLE|DATABASE|SCHEMA)|TRUNCATE\s+TABLE|DELETE\s+FROM\s+\S+\s*;?\s*$)'
+  grep -qiE '(DROP\s+(TABLE|DATABASE|SCHEMA)|TRUNCATE\s+TABLE|DELETE\s+FROM\s+\S+\s*;?\s*$)' \
+    <(printf '%s' "${1-}")
 }
 
 # Files this command would execute or feed to a database client.
@@ -156,12 +161,12 @@ $(mtk_referenced_files "$COMMAND")
 MTK_REFS
 
 # Block: force push to main/master
-if mtk_executable_text "$COMMAND" | grep -qE 'git\s+push\s+.*--(force|force-with-lease)\s+.*\b(main|master)\b'; then
+if grep -qE 'git\s+push\s+.*--(force|force-with-lease)\s+.*\b(main|master)\b' <(mtk_executable_text "$COMMAND"); then
   mtk_deny "BLOCKED: Force push to main/master is not allowed."
 fi
 
 # Block: rm -rf on project root or broad paths
-if mtk_executable_text "$COMMAND" | grep -qE 'rm\s+-[a-zA-Z]*r[a-zA-Z]*f[a-zA-Z]*\s+(\.|/|~|\$HOME)'; then
+if grep -qE 'rm\s+-[a-zA-Z]*r[a-zA-Z]*f[a-zA-Z]*\s+(\.|/|~|\$HOME)' <(mtk_executable_text "$COMMAND"); then
   mtk_deny "BLOCKED: Recursive force-delete on broad path. Be more specific."
 fi
 
