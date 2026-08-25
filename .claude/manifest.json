@@ -2337,6 +2337,12 @@
       "action": "sync",
       "description": "Verifies compress-monitor.sh reads tool_response and emits a hookSpecificOutput.additionalContext envelope; silent on short output, non-Bash tools, and self-compressing commands"
     },
+    "tests/hooks/test-build-rule-index-root.sh": {
+      "source": "tests/hooks/test-build-rule-index-root.sh",
+      "target": "tests/hooks/test-build-rule-index-root.sh",
+      "action": "sync",
+      "description": "Verifies build-rule-index.sh writes INDEX.md into the project resolved from $CLAUDE_PROJECT_DIR/git rather than the script's own directory, so a plugin-cache invocation lands in the target repo"
+    },
     "tests/hooks/test-format-on-edit-wiring.sh": {
       "source": "tests/hooks/test-format-on-edit-wiring.sh",
       "target": "tests/hooks/test-format-on-edit-wiring.sh",
