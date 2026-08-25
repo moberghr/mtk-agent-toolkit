@@ -132,6 +132,27 @@ check_hook_anchor .claude/settings.json '$CLAUDE_PROJECT_DIR' \
 check_hook_anchor hooks/hooks.json '${CLAUDE_PLUGIN_ROOT}' \
   "hooks.json hook command is not anchored on \${CLAUDE_PLUGIN_ROOT} — plugin-installed repos have no repo-relative hooks/ directory"
 
+# A tech-stack skill's `## Settings Additions` is copied verbatim into the TARGET
+# repo's .claude/settings.json. ${CLAUDE_PLUGIN_ROOT} is defined only for hooks a
+# plugin declares in its own hooks/hooks.json — in a project settings file it
+# expands to the empty string and the hook runs as `bash /hooks/<name>`, failing
+# on every invocation. That shipped: 4,552 such failures across 7 bootstrapped
+# repos, with formatting never once running. MTK hooks belong in hooks/hooks.json;
+# a tech-stack skill must never hand bootstrap one to write.
+for stack_skill in .claude/skills/tech-stack-*/SKILL.md; do
+  [ -f "$stack_skill" ] || continue
+  if grep -nE '\$\{?CLAUDE_PLUGIN_ROOT\}?/hooks/' "$stack_skill" >/dev/null 2>&1; then
+    fail "$stack_skill references \$CLAUDE_PLUGIN_ROOT/hooks/ — that variable is empty in a project settings.json, so every generated hook invocation fails. Declare the hook in hooks/hooks.json instead."
+  fi
+done
+
+# The hooks MTK used to hand to target repos must actually be declared here, or
+# removing them from the tech-stack templates silently drops the behaviour.
+for required_cmd in format-on-edit.sh; do
+  grep -q "$required_cmd" hooks/hooks.json \
+    || fail "hooks/hooks.json does not declare $required_cmd — it was removed from the tech-stack Settings Additions, so nothing wires it any more"
+done
+
 # All shell scripts in hooks/ and scripts/ must be executable and follow S3.1
 while IFS= read -r script; do
   [ -x "$script" ] || fail "$script is not executable (chmod +x) — violates S3.2"

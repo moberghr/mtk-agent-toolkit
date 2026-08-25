@@ -237,26 +237,33 @@ Merge these into the project's `.claude/settings.json` during `setup-bootstrap`:
 - `Read(**/.env.local)`
 - `Bash(*publish*)` — npm publish requires explicit approval
 
-### hooks.PostToolUse (merge: append)
-- matcher: `Edit|Write`
-- command: `bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh`
+### hooks (do NOT add)
 
-### hooks.Stop (merge: append)
-- command: `bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh --flush`
+`format-on-edit.sh` is wired by the **plugin**, in MTK's own `hooks/hooks.json`
+(PostToolUse `Edit|Write` to queue, Stop + SubagentStop `--flush` to format).
+Bootstrap must NOT copy it into the target's `.claude/settings.json`.
 
-### hooks.SubagentStop (merge: append)
-- command: `bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh --flush`
+`$CLAUDE_PLUGIN_ROOT` is only defined for hooks a plugin declares itself. Written
+into a project settings file it expands to the empty string, so the command runs
+as `bash /hooks/format-on-edit.sh` and fails on *every* edit — 4,552 such failures
+were measured across 7 bootstrapped repos, with formatting never once running.
 
-Both halves are required. PostToolUse only **queues** the edited path; `--flush` at Stop is what actually formats. Wiring PostToolUse alone formats nothing; wiring a formatter to mutate at PostToolUse instead rewrites a file Claude has already read, and its next Edit fails with "File has been modified since read".
+The project's opt-in signal is the `.claude/tech-stack` marker bootstrap already
+writes; the hook checks it and no-ops in repos that never adopted MTK.
+`MTK_FORMAT_ON_EDIT=0` opts a bootstrapped repo back out.
 
-The matcher field accepts a regex on **tool name** only — `Write(*.ts)` is NOT valid Claude Code syntax and will silently never fire. File-extension dispatch happens inside `format-on-edit.sh`, which parses `tool_input.file_path` from stdin JSON.
+Both halves matter and the plugin wires both: PostToolUse only **queues** the
+edited path, `--flush` at Stop is what formats. Queue-only formats nothing;
+mutating at PostToolUse instead rewrites a file Claude has already read, and its
+next Edit fails with "File has been modified since read". Matchers are regexes on
+**tool name** only — `Write(*.cs)` is not valid syntax and silently never fires;
+file-extension dispatch happens inside the hook.
 
 ## Format Command
 
 ```bash
-# Wired via PostToolUse (queue) + Stop (flush) hooks — see Settings Additions above:
-bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh
-bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh --flush
+# Wired by the plugin's own hooks.json (queue at PostToolUse, flush at Stop) —
+# not by the project's settings.json. See '### hooks (do NOT add)' above.
 # Manual invocation (for the human-readable CLAUDE.md, drop the wrapper):
 npx biome format --write <file>   # or
 npx prettier --write <file>
