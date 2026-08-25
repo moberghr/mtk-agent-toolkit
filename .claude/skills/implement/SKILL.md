@@ -125,48 +125,30 @@ Create `docs/plans/` if missing. Then record both paths on the workflow artifact
 
 ## Rigor Score (Continuous Ceremony Scaling)
 
-Compute after Phase 2, from the JSON sidecar at `docs/specs/<date>-<slug>.json`, and **recompute when the approved scope shrinks** (see *Recompute on scope reduction* below). Ceremony scales with the change's blast radius — a small fix gets a light pass, a breaking multi-batch change gets the full apparatus, and everything in between gets *proportional* rigor rather than a binary jump.
+Compute after Phase 2 from the JSON sidecar at `docs/specs/<date>-<slug>.json`;
+recompute when the approved scope **shrinks**. Ceremony scales with blast radius.
 
-| Signal | Points |
-|---|---|
-| Implementation batches | +1 per batch |
-| Change manifest size | +1 per 3 non-mechanical files (rounded up) |
-| `security_impact != "none"` | +3 |
-| External public contracts added or modified (`surface: external`) | +1 each (cap +4) |
-| Internal-tooling contracts (`surface: internal-tooling`) | +1 total if any present |
-| `scope == "breaking-change"` | +3 |
-
-> **Contract surface matters (do not conflate the two).** A `public_contracts[]` entry scores by its `surface` field (schema default `external`). **External/wire contracts** — HTTP endpoints, published events, library methods callers depend on, persisted or wire schemas — score +1 each (cap +4). **Internal-tooling contracts** — repo-internal build/IaC/CLI knobs (CDK config props, an internal CLI flag, a build-script option) with no external consumer — score **+1 total regardless of count**, because an internal flag carries nowhere near the blast radius of a public endpoint. This stops a handful of CDK props or an internal CLI flag from swinging the score ±4 and flipping HIGH↔MAX. When genuinely unsure whether a surface is external, treat it as external (the safer, higher-ceremony choice).
-
-| Score | Rigor level |
-|---|---|
-| ≤ 3 | LIGHT |
-| 4–7 | STANDARD |
-| 8–11 | HIGH |
-| ≥ 12 | MAX |
-
-**Hard-trigger floor:** any of `plan.batches.length >= 3`, the count of non-mechanical `change_manifest` entries `>= 6`, or `security_impact != "none"` forces the level to at least HIGH regardless of score. An entry is **mechanical** only when it changes no logic and no public contract — rename-only, formatting-only, or otherwise no-behavioral-change (cf. the TDD `skip_when` categories `rename-only|formatting-only|no-behavioral-change`); an entry touching any public contract — including a serialized shape, persisted schema, or wire format — is never mechanical; mechanical entries are still implemented and verified, they just don't count toward the floor or the size score. These are the long-standing subagent-path triggers — the score scales ceremony continuously *between* them; it never relaxes them.
-
-What the level dials:
-
-| Dial | LIGHT | STANDARD | HIGH | MAX |
+| Score | Level | Phase 3 path | Stage 2 reviewers | `MTK_AUTO_PROCEED` |
 |---|---|---|---|---|
-| Phase 3 path | inline | inline | subagent | subagent |
-| Phase 4 Stage 2 reviewers | conditional (per Stage 2 rules) | conditional | `test-reviewer` always; `architecture-reviewer` if boundary/slice condition applies | both + `silent-failure-hunter` |
-| `MTK_AUTO_PROCEED` eligibility | yes | yes | no | no |
+| ≤ 3 | LIGHT | inline | conditional | eligible |
+| 4–7 | STANDARD | inline | conditional | eligible |
+| 8–11 | HIGH | subagent | `test-reviewer` always; `architecture-reviewer` on boundary/slice | no |
+| ≥ 12 | MAX | subagent | both + `silent-failure-hunter` | no |
 
-> **The Phase 3 dial names a path, not a guarantee.** `subagent` is what HIGH/MAX *prescribes*; whether the session can dispatch at all is probed at Phase 2.9 and recorded as `dispatch_capability`. When dispatch is forbidden or unavailable, HIGH/MAX runs the **inline-MAX profile** (Phase 2.9) with its compensations named — it does not silently become a STANDARD-shaped inline run, and it does not lower the level.
+**Hard-trigger floor — overrides the score:** `batches >= 3`, `>= 6` non-mechanical
+`change_manifest` entries, or `security_impact != "none"` forces **at least HIGH**.
 
-**Per-batch mechanical exception (Phase 3 path).** Even at HIGH/MAX, an individual batch whose `change_manifest` entries are *all* mechanical (per the mechanical definition above) runs **inline**, not through a fresh implementer subagent — context isolation buys nothing when a batch changes no logic and no contract. The subagent path governs the non-mechanical batches; a pure config/rename/formatting batch inside an otherwise-HIGH run is implemented inline, with the orchestrator's drift micro-check and verification still applied. See `subagent-implementation/SKILL.md`.
+**The Phase 3 dial names a path, not a guarantee.** Whether this session can
+dispatch is probed at Phase 2.9. When it cannot, HIGH/MAX runs the *inline-MAX
+profile* — it never silently becomes a STANDARD-shaped inline run, and the level
+does not drop.
 
-State the score and level in one line in the Phase 2.5 gate rendering (e.g. `Rigor: HIGH (score 9 — 3 batches, 8 files, security_impact=new-auth-path)`) so the engineer sees why the ceremony is sized the way it is. When any `change_manifest` entries are mechanical, surface the split in that line so the engineer can veto the discount (e.g. `Rigor: STANDARD (score 4 — 8 files, 6 mechanical)`).
+State the score and level in one line at the Phase 2.5 gate, e.g.
+`Rigor: HIGH (score 9 — 3 batches, 8 files, security_impact=new-auth-path)`.
 
-**Recompute on scope reduction.** The score is set at Phase 2, but the approved batch set can shrink mid-run — a batch is deferred, dropped, or split to a follow-up. When it does (detected at a **phase boundary** — a batch deferral during Phase 3, or the Phase 3.5 drift check — never mid-batch), **recompute the score and level from the batches that remain in scope** and their `change_manifest` entries, then adopt the recomputed level for the rest of the run (Phase 4 reviewer set and `MTK_AUTO_PROCEED` eligibility both follow it). Guardrails:
-
-- **Recompute only relaxes — it never drops below the hard-trigger floor of the *remaining* work.** If the deferred batch removed the only `security_impact` or the last public-contract change, that floor legitimately lifts; if the remaining batches still count `>= 3` or `>= 6` non-mechanical files, the floor holds at HIGH regardless of the lower score.
-- **A scope *increase* is never a silent recompute — it re-opens the Phase 2.5 gate** (unchanged; see Phase 3.5). Only a *reduction* auto-relaxes: the engineer already approved the larger scope, so shipping less of it needs no new approval.
-- **Log the transition.** Record it on the workflow artifact (`"$WFA" set "$MTK_WF_UUID" results.rigor_recomputed="HIGH->STANDARD (2 of 4 batches deferred; score 9->5)"`) and state it to the engineer in one line mirroring the rendering above, so the ceremony change is visible rather than silent.
-
+**Read `.claude/references/implement-rigor-scoring.md`** for the signal→points
+table, the external vs internal-tooling contract-surface rule, the mechanical
+definition and per-batch exception, and the scope-reduction recompute guardrails.
 ## Phase 2.4: Manifest Pre-Flight (Destinations)
 
 Phase 0.7's reconciliation checks *cited anchors* — existing code the change attaches to. This phase checks the other half: the **destinations** the manifest proposes. A manifest can name a directory that does not exist, a file that lives somewhere else, or a filename shape no sibling uses, and none of that surfaces until Phase 3.5 records it as drift — after an implementer has already built against the wrong path.
@@ -186,110 +168,56 @@ A manifest corrected here costs one edit. The same correction found in Phase 3.5
 
 ## Phase 2.5: Approval Gate (STOP HERE)
 
-Mandatory. Before starting Phase 3, ask via the `AskUserQuestion` tool.
+Mandatory. Before Phase 3, ask via `AskUserQuestion`.
 
-First, **render the plan and todo inline in the terminal** so the engineer can review them without opening files. Don't just cite the file paths — print the content:
+**Render the plan and todo inline in the terminal first** — print the content, do
+not just cite paths: a scope/batch-count/rigor header line, the full
+`tasks/todo.md`, a per-batch breakdown (title, files, acceptance criteria,
+boundary), a `Gate sequence:` line, then the spec/plan/todo paths as bare
+repo-relative paths.
 
-1. A one-line header: scope classification, batch count, total files in the change manifest, and the computed rigor level with its score breakdown (see Rigor Score above).
-2. The **full contents of `tasks/todo.md`** (the batch checklist with checkboxes and post-implementation review items). It is compact and is the primary thing the engineer approves.
-3. A **batch breakdown from the plan**: for each batch, its title, files in scope, acceptance criteria, and boundary. This is the structured plan, not the raw markdown dump.
-4. A **gate sequence** line — the full pipeline that will run against the approved batches, so the engineer sees what happens *between and after* them, not just the batch list. Derive it purely from facts already computed by this point (batch count from the plan; the Stage 2 reviewer set the Rigor Score table already dictates for this level — no new computation). Format: `Gate sequence: <N> batches → Phase 3.5 drift check → Stage 1 compliance-reviewer → Stage 2 [<reviewer set for this level>] → Phase 6 cleanup → Phase 7 compound`. The Stage 2 set follows the level: `test-reviewer` + `architecture-reviewer` at HIGH, both + `silent-failure-hunter` at MAX, and the conditional per-Stage-2-rules set at LIGHT/STANDARD (name the reviewers that apply).
-5. The spec/plan/todo file paths, cited at the end for reference and editing. Print them as **bare repo-relative paths** (e.g. `docs/plans/2026-06-03-foo.md`, not a markdown link or a path buried in prose) so the terminal auto-linkifies them as clickable. Append `:<line>` when pointing at a specific batch (e.g. `tasks/todo.md:42`) so the click jumps straight to that line.
+Options: `Approve & run until done` · `Approve (interactive)` · `Edit first` ·
+`Revise` · `Show full plan & spec in terminal`.
 
-Keep the rendering proportional — the todo and batch breakdown are bounded by batch count, so this stays readable. The complete plan and spec markdown remain available via the `Show full plan & spec in terminal` option below for engineers who want every detail.
+**Until the engineer answers: read-only Bash only — no Edit/Write on source, no
+Phase 3.** In autonomous mode, never re-ask for Phases 3–7 — stop and report.
 
-**`MTK_AUTO_PROCEED` opt-in.** If `MTK_AUTO_PROCEED=1` is set in the environment (typically via `.claude/settings.local.json` `env`), the orchestrator MAY default the recommended option on this gate (`Approve & run until done`) without an `AskUserQuestion` round-trip — but only when ALL of the following hold:
+On approval, record the gate and **seal the approved scope** so a later edit
+cannot silently keep the approval:
 
-- The spec has zero open decisions (`open_decisions` array empty in the JSON sidecar).
-- The spec has zero unresolved `[ASSUMED]` claims (no `[ASSUMED]`-tagged entry in the sidecar `assumptions` array, and none in the spec body). An assumption the model made on the engineer's behalf is an open decision in disguise — it gets a human at the gate. (`[VERIFIED:path]` and `[CITED:url]` claims do not block; only `[ASSUMED]` does.)
-- No plan-gap-reviewer `BLOCKING` findings are unresolved.
-- No unresolved package-legitimacy checkpoint (`checkpoint:human-verify` from planning for an externally-recommended package) remains open.
-- `skill_precedence_gate` is `pass`.
-- The scope classification is not "breaking change" or "high security_impact".
-- The rigor level is LIGHT or STANDARD (HIGH/MAX changes always get a human at the gate).
+```bash
+"$WFA" gate "$MTK_WF_UUID" plan_trust_gate pass --reason "<approve mode>"
+"$WFA" seal "$MTK_WF_UUID"
+```
 
-If any condition fails, AUTO_PROCEED MUST NOT be applied — fall back to `AskUserQuestion`. Auto-proceed never overrides explicit user standards, open plan decisions, or the failure-stop gate. When AUTO_PROCEED is applied, record the gate decision on the workflow artifact: `"$WFA" gate "$MTK_WF_UUID" plan_trust_gate pass --reason "AUTO_PROCEED — all preconditions met"`.
+`MTK_AUTO_PROCEED=1` may default the recommended option **only** when the spec has
+zero open decisions and zero `[ASSUMED]` claims, no BLOCKING plan-gap findings, no
+open package-legitimacy checkpoint, `skill_precedence_gate` is `pass`, the scope is
+neither breaking-change nor high `security_impact`, and the level is LIGHT or
+STANDARD. Any condition failing ⇒ fall back to `AskUserQuestion`.
 
-Then invoke `AskUserQuestion` with:
-
-- **Question:** "Plan and todo are written. How would you like to proceed?"
-- **Options:**
-  - `Approve & run until done` — autonomous mode. Proceed through Phases 3-7; stop only on blocking issues (build failures needing design input, unexpected security findings, or scope expansion beyond the manifest). Set internal flag `autonomous = true` for the rest of the session.
-  - `Approve (interactive)` — proceed, but ask focused follow-ups when decisions materially affect the implementation.
-  - `Edit first` — pause so the engineer can edit the spec/plan/todo files; wait for their next message. (Open questions should already be resolved in Phase 1's ambiguity gate — use this for fine-tuning, not for surfacing new ambiguity.)
-  - `Revise` — rewrite Phase 1/2 (overwriting the same file paths) and return to this gate.
-  - `Show full plan & spec in terminal` — print the complete plan and spec markdown (full files, beyond the batch breakdown already shown), then re-ask this gate.
-
-If `AskUserQuestion` is deferred in this session, call `ToolSearch` with `select:AskUserQuestion` first. If the harness does not expose it (e.g. Cursor, Copilot CLI, Gemini CLI), stop and print one line: "Approval gate requires AskUserQuestion (unavailable in this harness). Tell me: Approve & run until done / Approve (interactive) / Edit first / Revise." Wait for the engineer — do not proceed.
-
-Until the engineer answers: read-only Bash only, no Edit/Write on source code, no Phase 3. Proceed to Phase 3 only after `Approve & run until done` or `Approve (interactive)`. In autonomous mode, never call `AskUserQuestion` again for Phases 3-7 — stop and report instead.
-
-On approval, record the gate decision on the workflow artifact:
-`"$WFA" gate "$MTK_WF_UUID" plan_trust_gate pass --reason "<approve mode>"`
-
-**Declare the gate's scope when one session covers more than one spec.** A stacked session — several specs built as a chain of branches in one sitting — answers this gate once and then either re-asks per slice or carries the first answer forward. Carrying it forward is defensible; carrying it forward *silently* is not. Record what the answer covered, at answer time:
-
-`"$WFA" set "$MTK_WF_UUID" results.gate_scope='["<slug-1>","<slug-2>"]'`
-
-The standing approval **expires** if a later slice's rigor level exceeds the level that was gated (a MAX slice cannot inherit a HIGH slice's approval) or if its `security_impact` ranks higher than the gated slice's. On expiry, re-open this gate for that slice. A slice genuinely covered by the standing answer records `plan_trust_gate pass --reason "standing approval from <slug-1> (gate_scope)"` — a citation to a real answer, not a second gate that never happened.
-
-Then **seal the approved scope** — bind the exact spec + plan bytes the engineer just approved so a later edit cannot silently keep the approval:
-`"$WFA" seal "$MTK_WF_UUID"`
-With no explicit paths, `seal` binds the artifact's own recorded `results.spec_path` / `plan_path` (set in Phases 1–2) — the exact approved scope, not a re-typed list. **`results.todo_path` is deliberately excluded:** the todo is progress state that mutates as batches complete, so sealing it would flip the seal STALE on the first checkbox tick — a false tamper signal. Scope lives in spec + plan; progress lives in todo. (Explicit **repo-relative** paths may still be passed; the stale-seal hook matches sealed files by repo-relative path.) The seal is created **only** here, on the engineer's approval answer — never earlier by the agent editing state — and is derived from disk by the script, so it cannot be presented for a body other than the one on disk. `verification-before-completion` (Phase 4) re-checks it with `verify-seal` and refuses completion on a STALE seal, and `spec-approval-trigger.sh` re-queues this gate on any post-approval edit to a sealed spec or plan. On `Revise` or `Edit first`, leave the gate `pending`, do not seal, and emit a `field_updated` event. See `.claude/references/orchestration-gates.md` for full gate semantics.
-
-Note: this gate controls when *Claude* asks. Harness tool-permission prompts (file-write/Bash approvals) are a separate layer — autonomous mode does not bypass them.
-
+**Read `.claude/references/implement-approval-gate.md`** for the full rendering
+spec, the complete AUTO_PROCEED precondition list, harness fallbacks when
+`AskUserQuestion` is unavailable, multi-spec `gate_scope` and standing-approval
+expiry, and why `results.todo_path` is excluded from the seal.
 ## Phase 2.9: Pre-Flight (Collision, Dispatch, Baseline)
 
-**Before dispatching the first batch**, confirm no other work is already editing files this run is about to touch. A parallel session — or forgotten uncommitted local work — editing an in-scope file is the collision the per-batch drift check only catches *after* an implementer has already started. This gate catches it first, before any edit.
+Runs after approval, before the first edit. Three checks:
 
-1. Re-run `git status --porcelain` and collect the currently modified/untracked paths.
-2. Compute the **collision set**: paths that are (a) in the plan's `change_manifest[].path` or any batch's `files`, AND (b) currently modified/untracked, AND (c) present in the Phase 0 *pre-existing dirty set* (dirty *before* this workflow ran — so this workflow's own spec/plan/todo writes never self-trip the gate).
-3. **No collision** → emit the phase-3 marker (`"$WFA" event "$MTK_WF_UUID" phase_started --data '{"phase":"phase-3"}'`) and proceed.
-4. **Collision found** → almost always a parallel session or forgotten local edit on an in-scope file. Do **not** start editing.
-   - **Interactive mode:** halt and ask via `AskUserQuestion` — options: `Stop (let me resolve the other work first)` (recommended), `Proceed anyway (I understand these files are already modified)`, `Re-scope (drop the colliding files from this run)`. Act on the answer; on `Stop`, leave the workflow active and report.
-   - **Autonomous mode:** do not ask — stop and report the collision set (autonomous mode halts on scope/safety conditions, and a parallel editor on an in-scope file is one). Record `failure_stop_gate fail` only once the engineer confirms stopping; otherwise leave it pending for their decision.
-5. Record the check either way so the decision is auditable: `"$WFA" event "$MTK_WF_UUID" worktree_preflight --data '{"collisions":<n>}'`.
+1. **Collision** — is another run or a dirty tree already touching the manifest?
+2. **Dispatch capability** — probe whether this session can actually dispatch
+   implementer subagents; record the answer as `dispatch_capability`. HIGH/MAX with
+   no dispatch runs the **inline-MAX profile** (compensations C1–C3), which keeps
+   the rigor level and names what replaces isolation. `MTK_SUBAGENT_DISPATCH=0`
+   declares the capability absent up front.
+3. **Baseline evidence** — capture build/test/typecheck state at the base commit
+   *before* the first edit, so a failure found at batch 3 is attributable. On by
+   default at HIGH/MAX; `MTK_BASELINE_CAPTURE=1`/`=0` forces or skips. **If no
+   baseline exists, every later checkpoint must say so** rather than implying one.
 
-This gate does not replace the per-batch drift micro-check (which catches drift an implementer *introduces*); it catches drift that already exists *before* the first edit.
-
-### Dispatch capability — probe the path before promising it
-
-The Rigor Score table says HIGH/MAX runs Phase 3 through one fresh implementer subagent per batch. Whether that path *can* run is a property of the **session**, not of the change: the harness may not expose `Agent`/`Workflow`, or a standing instruction may forbid subagents that the engineer did not ask for. Probe once, here, and record the verdict:
-
-`"$WFA" set "$MTK_WF_UUID" results.dispatch_capability=available|forbidden|unavailable`
-
-- **`available`** — run the path the rigor level dictates.
-- **`unavailable`** — the harness exposes neither `Workflow` nor `Agent`.
-- **`forbidden`** — the tools exist, but a standing instruction or session policy forbids unrequested subagents. `MTK_SUBAGENT_DISPATCH=0` declares this up front so a repo that always runs this way stops rediscovering it once per run.
-
-On `forbidden` or `unavailable` at HIGH/MAX, do **not** drop quietly to a bare inline run. Adopt the inline-MAX profile below and state it in one line before the first batch. A path chosen at the pre-flight is a decision; the same path taken at Phase 3 without a word is a degradation.
-
-### The inline-MAX profile
-
-The subagent path buys exactly one thing: a fresh context per batch, so batch N's reasoning cannot contaminate batch N+1. When it is unavailable, MAX ceremony is still reachable — but only if what it bought is replaced explicitly rather than assumed away:
-
-| # | Compensation | Replaces |
-|---|---|---|
-| C1 | Re-read the sealed spec, the plan, and this batch's own manifest entries at the start of every batch, before any edit. | The dispatched implementer's fresh read of its bundle |
-| C2 | State the batch's file boundary before editing, and treat any file outside it as drift rather than convenience. | A subagent's inability to see out-of-scope files at all |
-| C3 | Run Phase 4's reviewer lanes as **sequential fresh passes**, each opened by re-reading the diff from `git diff` rather than from the memory of having written it, and each carrying the anti-anchoring instruction from its agent definition. | Reviewer context isolation |
-
-Record the profile and report it:
-`"$WFA" set "$MTK_WF_UUID" results.phase3_path="inline-MAX (dispatch forbidden; C1-C3 applied)"`
-
-### Baseline evidence — capture before the first edit
-
-At rigor HIGH or MAX, capture the suite's state *before* any edit, so a failure found later is attributable. Without it, a red test at batch 3 is indistinguishable from a test that was already red, and telling them apart costs a throwaway worktree and an archaeology detour at the worst possible moment.
-
-1. Run the active tech stack skill's build, test, and typecheck commands at the current base commit.
-2. Record the counts **verbatim from the runner** — never an intention — on the artifact:
-   `"$WFA" set "$MTK_WF_UUID" results.baseline='{"commit":"<sha>","build":"0 warnings 0 errors","tests":"702/702","e2e":"160 passed / 3 failed (export-csv)"}'`
-3. **A pre-existing failure is not this run's to fix.** Name it here, and later checkpoints compare against the baseline instead of asserting an absolute. A test red at the base commit and still red is not a regression; a test that was green and is now red is — and only the baseline separates them.
-4. Skip only when the artifact already holds a baseline for the same base commit, or when the level is LIGHT/STANDARD. `MTK_BASELINE_CAPTURE=1` forces capture at any level; `=0` opts out — and then every later checkpoint must say that no baseline exists rather than implying one.
-
-Delta claims in the final report ("+60 backend tests") are **derived from this record**, not counted by hand.
-
+**Read `.claude/references/implement-preflight.md`** for the dispatch probe
+procedure, the inline-MAX compensations in full, and the baseline capture and
+reporting rules.
 ## Phase 3: Implement In Batches
 
 **Fork — pick the implementation path from the JSON sidecar at `docs/specs/<date>-<slug>.json`:**
@@ -355,60 +283,24 @@ not re-open it.
 
 ## Phase 4: Review (Two-Stage)
 
-Follow `.claude/skills/code-review-and-quality/SKILL.md`.
-Follow `.claude/skills/verification-before-completion/SKILL.md` before starting review.
+**Stage 1 — Spec compliance.** `compliance-reviewer` against the sealed spec.
+Re-check the seal with `verify-seal`; a STALE seal **refuses completion**.
 
-Stage 1 runs first (spec compliance) because if the implementation doesn't match the spec, code quality review is wasted effort. Within Stage 2, reviewers run in parallel.
+**Stage 2 — Quality and coverage.** Reviewer set is dictated by the rigor level
+(see the Rigor Score table): conditional at LIGHT/STANDARD, `test-reviewer` always
+at HIGH (plus `architecture-reviewer` on a boundary/slice condition), both plus
+`silent-failure-hunter` at MAX.
 
-### Stage 1: Spec Compliance
+**A reviewer is a pass to perform, not a dispatch mechanism.** When the Agent tool
+is unavailable or forbidden, read the agent's own `.md` and apply its checklist
+inline. That costs context isolation, never coverage — and the Final Report must
+say which lanes ran inline.
 
-Run `compliance-reviewer` with:
+Scope every lane to this run's changed files, excluding the pre-existing dirty
+baseline, or reviewers attribute someone else's edits to this run.
 
-- `git diff HEAD`
-- the behavioral diff
-- the scope classification
-- the change manifest summary
-
-The compliance reviewer checks: does the implementation match the approved spec? Are security, architecture, and coding standards met? If **Critical** issues are found, fix them before proceeding to Stage 2.
-
-### Stage 2: Quality and Coverage
-
-Only after Stage 1 passes (no Critical issues). When both reviewers apply, run them **in parallel** — dispatch in a single message with multiple `Agent` tool calls so reviews run concurrently. See `docs/parallelism-patterns.md` for the canonical spawn pattern.
-
-- `test-reviewer` — when the change introduces or changes public behavior
-- `architecture-reviewer` — when the change introduces new slices, boundaries, handlers, or cross-project interactions
-
-Size this from the **current** rigor level — the level recomputed in Phase 3.5 if scope was reduced, not the original Phase 2 level. At rigor MAX, run **both** reviewers regardless of the conditions above, plus `silent-failure-hunter` (empty catches, swallowed errors, masking fallbacks). At rigor HIGH, always run `test-reviewer`, but run `architecture-reviewer` only when the boundary/slice condition above holds — a change that adds or moves no modules and crosses no boundary (e.g. a pure rename or frontmatter-only batch) skips it. At LIGHT/STANDARD, the conditions above decide.
-
-Provide all reviewers with the same diff and behavioral diff.
-
-### Lane accounting (both stages)
-
-Every reviewer dispatched in Stage 1 or Stage 2 must be accounted for before Phase 5.
-Record one outcome per lane — `PASS`, `NEEDS_CHANGES`, `ABSTAINED`, or `NO_RESPONSE` — per
-**Lane Accounting** in `.claude/references/review-finding-schema.md`.
-
-- A subagent that returns null, errors out, times out, or emits unparseable output is
-  `NO_RESPONSE`, which counts as `ABSTAINED`. **Silence is not assent** — the `Agent` tool
-  returns null on terminal errors, and an unfiltered null must never be read as a clean pass.
-- **Phase 4 cannot be reported as passing while any lane is `ABSTAINED` or `NO_RESPONSE`.**
-  Either re-dispatch that lane (recording both attempts) or escalate to a human. A review
-  the toolkit could not complete is an open question, not an approval.
-- State the roster in the final report: reviewers dispatched, outcome of each, and the
-  reason for any abstention. A finding count alone hides a lane that never ran.
-- If ceremony was reduced for this run — reviewers skipped, or run inline instead of as
-  forked agents — that is itself an abstention-shaped event. Record the skipped lanes as
-  `ABSTAINED` with the reason, rather than reporting a clean two-stage review that did not
-  happen.
-- **`ABSTAINED(by-policy)` — the one abstention that does not block Phase 4.** When the
-  Phase 2.9 probe recorded `dispatch_capability=forbidden|unavailable`, a lane that could not
-  be forked is not an open question about the code; it is a known property of the session. Such
-  a lane records `ABSTAINED (by-policy: <reason>; compensations C1-C3)` and Phase 4 may pass —
-  **but only if** the inline-MAX compensations were actually applied and named, and the final
-  report states which lanes ran inline. Without the compensations recorded, it is an ordinary
-  `ABSTAINED` and still blocks. This is the difference between a substitute and an excuse: a
-  lane whose isolation was replaced is accounted for, a lane that simply did not run is not.
-
+**Read `.claude/references/implement-review-lanes.md`** for each stage's full
+procedure and the lane-accounting rules.
 ## Phase 5: Fix Review Findings
 
 Fix every critical issue and every warning unless you record a one-line waiver with a reason, then:
@@ -459,49 +351,19 @@ This phase is not optional cleanup — it is how the toolkit gets smarter over t
 
 ## Phase 7.5: Archive (Delta Sync-Back)
 
-If the spec sidecar declares a `baseline_area`, sync the delta back into its
-baseline now — but **only** if Phase 3.5 drift returned a clean PASS and Phase 4
-review found no open Critical issues. This produces the auditable
-specified-vs-built trail (see `.claude/references/delta-spec-model.md`).
+Archive the run's spec/plan delta back to the durable store, then optionally write
+a **tracked** run receipt.
 
-```bash
-bash scripts/spec-archive.sh docs/specs/<date>-<slug>.json --verdict PASS
-```
+`MTK_RUN_RECEIPT=1` writes `docs/specs/<date>-<slug>.receipt.md` — a tracked
+sibling of the spec holding baseline vs final figures, gates and their reasons,
+dispatch path and compensations, ceremony reductions, drift/coverage/collateral
+verdicts, and reviewer lane outcomes. The `.mtk/` workflow artifact is gitignored,
+so without the receipt the only tracked residue of a run is `tasks/lessons.md` and
+the spec. **Fields never recorded are written as `not recorded` — never
+reconstructed.**
 
-- Merges the change manifest / public contracts (or explicit `delta`) into
-  `docs/specs/baseline/<area>.json`, regenerates `<area>.md`, and appends one
-  record to `<area>.audit.jsonl`.
-- If `CODE_INDEX.md` exists at the repo root, the archive also appends newly
-  shipped public contracts to its auto-generated "Recently Shipped" section —
-  the capability index stays current without a separate audit pass.
-- Idempotent — safe to re-run on resume.
-- Skip (with a one-line note) when the spec has no `baseline_area`, or when drift
-  did not pass. Never archive drifted work.
-
-### Run receipt (opt-in, tracked)
-
-The workflow artifact and its evidence logs live under `.mtk/`, which is
-gitignored: after the session, the only tracked residue of a run is whatever
-landed in `tasks/lessons.md` and the spec itself. That is fine for most runs and
-wrong for the ones someone will ask about later — an audited change, a release, a
-run whose numbers end up in a report.
-
-When `MTK_RUN_RECEIPT=1`, write `docs/specs/<date>-<slug>.receipt.md` — a tracked
-sibling of the spec — containing only facts already recorded on the artifact:
-
-- base commit and the Phase 2.9 `baseline` (with `known_failures` named as inherited)
-- the final evidence figures, **as a delta against that baseline**
-- every gate and its recorded reason, including any standing approval and its `gate_scope`
-- `dispatch_capability`, the Phase 3 path actually taken, and any compensations applied
-- ceremony reductions, each with its reason — and whether Phase 7 escalated a repeat
-- Phase 3.5 drift verdict, coverage-claim re-greps, fired `conditional_descopes`, collateral verdict
-- reviewer lanes with one outcome each (`PASS` / `NEEDS_CHANGES` / `ABSTAINED` / `NO_RESPONSE`)
-
-Copy figures from the recorded evidence; never re-derive a number by counting at
-write time. A receipt that quietly disagrees with the logs it summarises is worse
-than none, so if a field was never recorded, write `not recorded` rather than
-reconstructing it.
-
+**Read `.claude/references/implement-archive-receipt.md`** for the sync-back
+procedure and the receipt's full field list.
 ## Final Report
 
 Close the workflow artifact:
