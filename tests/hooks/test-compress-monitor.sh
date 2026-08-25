@@ -11,6 +11,14 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 HOOK="$REPO_ROOT/hooks/compress-monitor.sh"
 
+# Normalise the nag budget to its default before any case runs. This knob is
+# documented for .claude/settings.local.json `env`, and a developer who sets it
+# there has it exported into every shell — including this one, where it silences
+# the hook and makes the suite fail with "advisory did not fire", pointing at the
+# hook instead of at the ambient config. Cases that exercise the budget still
+# override it with their own env prefix.
+export MTK_COMPRESS_MAX_NAGS=1
+
 fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 
 # Build a payload with a big (~6000 char) result under the given key.
