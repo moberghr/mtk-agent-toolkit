@@ -21,14 +21,13 @@ trap _mtk_hook_diag EXIT
 # bare PostToolUse mutation, and it is why BOTH hooks below must be wired — with
 # only the PostToolUse half, files are queued and never formatted.
 #
-# Wired from .claude/settings.json (see each tech-stack skill's
-# `## Settings Additions` for the generated form):
-#   PostToolUse:  { "matcher": "Edit|Write",
-#                   "hooks": [{ "type": "command",
-#                     "command": "bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh" }] }
-#   Stop:         { "hooks": [{ "type": "command",
-#                     "command": "bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh --flush" }] }
-#   SubagentStop: same as Stop
+# Wired from the PLUGIN's hooks/hooks.json — PostToolUse (Edit|Write), Stop
+# (--flush) and SubagentStop (--flush). NOT from a project .claude/settings.json:
+# ${CLAUDE_PLUGIN_ROOT} is only defined for hooks a plugin declares itself, so the
+# same command in a project file expands to `bash /hooks/format-on-edit.sh` and
+# fails on every single edit (measured: 4,552 failures across 7 repos, with
+# formatting never actually running). Project-scope opt-in is the
+# `.claude/tech-stack` marker checked below, not a duplicated hook entry.
 #
 # Per-stack formatter is selected by file extension. Add new stacks by extending
 # the case block in format_one / flush_dotnet. Failures are reported on stderr
@@ -37,6 +36,23 @@ trap _mtk_hook_diag EXIT
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
+
+# This hook is wired from the plugin's own hooks/hooks.json, which is the only
+# scope where ${CLAUDE_PLUGIN_ROOT} is defined. A repo bootstrapped before that
+# change may still wire the same basename from its .claude/settings.json; the
+# redundancy guard keeps the two registrations from double-firing.
+mtk_is_redundant_plugin_invocation "$0" && exit 0
+
+# Project opt-in. Plugin-scope registration means this hook is reachable in every
+# repo the plugin is active in, including ones that never adopted MTK. Formatting
+# is a mutation, so it stays opt-in: the `.claude/tech-stack` marker that
+# setup-bootstrap writes is the opt-in signal. `MTK_FORMAT_ON_EDIT=1` forces it on
+# for a repo that formats but has no marker; `=0` opts a bootstrapped repo out.
+case "${MTK_FORMAT_ON_EDIT:-}" in
+  0) exit 0 ;;
+  1) ;;
+  *) [ -f "$(mtk_repo_root)/.claude/tech-stack" ] || exit 0 ;;
+esac
 
 MODE="collect"
 [ "${1:-}" = "--flush" ] && MODE="flush"
