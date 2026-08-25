@@ -16,6 +16,34 @@ source "${SCRIPT_DIR}/lib/hook-io.sh"
 
 mtk_is_redundant_plugin_invocation "$0" && exit 0
 
+# Per-session nag budget. This advisory is worth one read per session; re-firing
+# it on every Stop past the substantial-session threshold is how a session ends
+# up with 63 copies of the same paragraph (~9k tokens) and how a reader learns to
+# tune out every hook. Same shape as compress-monitor.sh: keyed on the payload's
+# session_id (NOT mtk_session_file, which is project+date and so would collapse
+# every session in a repo on one day into a single budget), stored in TMPDIR,
+# default 1, `MTK_LEARNING_MAX_NAGS=0` silences without unwiring the hook.
+MAX_NAGS="${MTK_LEARNING_MAX_NAGS:-1}"
+case "$MAX_NAGS" in
+  ''|*[!0-9]*) MAX_NAGS=1 ;;
+esac
+[ "$MAX_NAGS" -le 0 ] && exit 0
+
+PAYLOAD="$(mtk_read_payload 2>/dev/null || true)"
+NAG_SESSION="$(mtk_extract_json_string "$PAYLOAD" "session_id" 2>/dev/null || true)"
+[ -n "$NAG_SESSION" ] || NAG_SESSION="nosession"
+NAG_SESSION="$(printf '%s' "$NAG_SESSION" | tr -c 'A-Za-z0-9._-' '_' | cut -c1-64)"
+NAG_STATE="${TMPDIR:-/tmp}/mtk-learning-nag-${NAG_SESSION}"
+
+NAG_SEEN=0
+if [ -f "$NAG_STATE" ]; then
+  NAG_SEEN="$(tr -cd '0-9' < "$NAG_STATE" 2>/dev/null || echo 0)"
+  [ -n "$NAG_SEEN" ] || NAG_SEEN=0
+fi
+# Budget spent — exit before any filesystem work, so a spent budget costs
+# nothing rather than re-running the lessons scan on every Stop.
+[ "$NAG_SEEN" -ge "$MAX_NAGS" ] && exit 0
+
 # Check if the session was substantial (context-budget tracks this). Resolve the
 # session file via mtk_session_file so this hook keys off the same project root
 # (git toplevel) that context-budget.sh writes under — a bare `pwd` disagrees
@@ -87,6 +115,13 @@ if [ -f "$LESSONS_FILE" ] && [ -s "$LESSONS_FILE" ]; then
   fi
 fi
 
-[ -n "$ADVISORY" ] && mtk_emit_system_message "$ADVISORY"
+# Spend one unit of the budget only when something is actually emitted; a Stop
+# with nothing to say must not burn the session's single advisory. An unwritable
+# TMPDIR degrades to "advise every time" rather than to silence — losing the
+# reminder is worse than repeating it.
+if [ -n "$ADVISORY" ]; then
+  printf '%s' "$((NAG_SEEN + 1))" > "$NAG_STATE" 2>/dev/null || true
+  mtk_emit_system_message "$ADVISORY"
+fi
 
 exit 0
