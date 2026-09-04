@@ -46,7 +46,7 @@ These scenarios deliberately try to break the code-review-and-quality skill's di
 
 **Setup:** A reviewer finds 0 real issues in a 200-line change touching financial operations. They're about to approve with "minor style nits only."
 
-**Expected behavior:** The compliance-reviewer agent should ask itself: "Am I being lazy or is this code genuinely good?" For financial code, finding 0 issues in 200 lines should trigger extra scrutiny, not approval.
+**Expected behavior:** For financial code, finding 0 issues in 200 lines should trigger a second pass over the security and data-integrity axes, and a clean result must carry `below_threshold_rationale` — not an approval on style findings alone.
 
 **Failure mode:** Agent approves with only style findings on a change that modifies financial logic.
 

@@ -4,6 +4,38 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Changed — prompt audit: dated prompting patterns removed from the model-facing surface
+
+A `/claude-api prompt-audit` pass over every skill, agent, rule file, and hook that
+reaches the model, against the Claude 5 family. The surface was already clean of
+think-step-by-step scaffolds, progress-cadence choreography, and retired model IDs;
+what remained was register and one stale default:
+
+- `hooks/context-budget.sh` now defaults `MTK_CONTEXT_WINDOW_TOKENS` to **1,000,000**.
+  Every current Claude Code model except Haiku 4.5 has a 1M window, so the old 200k
+  default fired the "hand off before quality degrades" nudge five times too early —
+  the documented premature-wrap-up failure. Thresholds still scale linearly from the
+  200k calibration constants (150 files / 200 mods / 600 ops at 1M); set
+  `MTK_CONTEXT_WINDOW_TOKENS=200000` for Haiku. `mtk-doctor` now warns when a Haiku
+  model runs on the 1M default instead of the reverse.
+- `setup-bootstrap` no longer instructs the generator to prefer `NEVER Z` rules and
+  `IMPORTANT:` / `YOU MUST` markers in target repos' CLAUDE.md. Current models weight
+  the system prompt closely; the markers cause over-triggering, and a prohibition can
+  anchor toward the failure it names. Rules now carry the trigger, the action, and the
+  reason, and prohibitions are reserved for constraints the counter-example gate confirms.
+- `compliance-reviewer`: shouted `NEVER approve` / `ALWAYS Critical` rules restated at
+  normal volume (the verdict mapping already lives in the schema), and the "am I being
+  lazy" self-interrogation replaced with a concrete second pass over the security and
+  data-integrity axes plus the schema's `below_threshold_rationale`. The adversarial
+  persona is unchanged. The matching pressure test scenario was updated.
+- `setup-audit` / `setup-bootstrap`: seven consecutive `(MANDATORY)` markers dropped;
+  the rules and their recorded failure examples stay.
+- Migration-relative phrasing removed from the always-loaded rules ("formerly commands",
+  "ex-entry-points"); `C0.3` now defers to `S2.2` instead of stating a stricter anatomy
+  without S2.2's phase-structured exemption; toolkit-version labels (`v7.14`, `v7.25`)
+  dropped from lesson-capture instructions; the `subagent-implementation` dynamic-workflow
+  instruction and two `## IMPORTANT` section headings rewritten as plain conditionals.
+
 ### Fixed — always-on context: two generator bugs that shipped to every bootstrapped repo
 
 Profiling 16 sessions / 3,230 API requests found the dominant cost is not hook CPU

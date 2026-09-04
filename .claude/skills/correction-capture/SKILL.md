@@ -88,7 +88,7 @@ This skill is specifically for **engineer-driven** corrections. When *you* resol
      --supersedes "L-old-id"   # only when this lesson reverses an existing one
    bash "$LS" regen-markdown   # rebuilds tasks/lessons.md
 
-   # v7.14 enrichment (all optional — omit when not applicable):
+   # Enrichment fields (all optional — omit when not applicable):
    #   --wrong-turns      comma-separated dead ends tried, so the next session
    #                      doesn't repeat them (back-compat: absent on old entries)
    #   --time-cost        rough minutes lost to the absence of this rule

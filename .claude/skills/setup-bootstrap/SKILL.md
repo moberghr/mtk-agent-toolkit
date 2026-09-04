@@ -44,7 +44,7 @@ The content you generate is subject to an **instruction budget** — Claude's co
 **Therefore:**
 
 1. **Root CLAUDE.md target: 60–80 lines. Hard cap: 120 lines.** If you can't get under 120, something belongs in `.claude/rules/` or a hook, not CLAUDE.md.
-2. **Trigger-action, negative phrasing sticks better.** Prefer `WHEN X, DO NOT Y` and `NEVER Z` over `Always follow X`. Use `IMPORTANT:` / `YOU MUST` markers sparingly for the top 1–2 rules.
+2. **Trigger-action rules with the reason attached.** Prefer `When X, do Y — because Z` over bare `Always follow X`. Describe the wanted behavior rather than enumerating failures, and write prohibitions only for constraints the codebase actually enforces (the counter-example gate in STEP 3 decides which). Do not add `IMPORTANT:` / `YOU MUST` markers: current models weight the system prompt closely, so the markers cause over-triggering and rigid behavior instead of compliance.
 3. **Mechanize what you can.** If a rule can live in a hook or `settings.json` deny-list, put it there and do NOT duplicate in CLAUDE.md.
 4. **No aspirational rules.** Every rule must come from an actual pattern or actual failure mode in this codebase. If you're inventing it, drop it.
 5. **No list-of-everything.** Omit rules Claude can figure out from reading the code (e.g., "use async/await" in a JS project).
@@ -330,7 +330,7 @@ The rule file templates are largely the same as before — adapt the content per
 - `project-specific.md` — anything unique
 
 ### Rules for Generation
-- **Counter-example gate (MANDATORY — run before emitting ANY absolute rule).** A pattern seen *somewhere* is not a law. Before writing any rule containing `NEVER`, `ALWAYS`, `all`, `every`, or `must`, grep for counter-examples and count hits that contradict it. If ANY exist, do NOT state it as absolute — soften to `Prefer X`, note the exception count/location, and tag `[CONVENTION]` not `[ENFORCED]`. Reserve absolute language / `[ENFORCED]` for zero-counter-example, build-gated or tool-enforced rules.
+- **Counter-example gate — run before emitting any absolute rule.** A pattern seen *somewhere* is not a law. Before writing any rule containing `NEVER`, `ALWAYS`, `all`, `every`, or `must`, grep for counter-examples and count hits that contradict it. If ANY exist, do NOT state it as absolute — soften to `Prefer X`, note the exception count/location, and tag `[CONVENTION]` not `[ENFORCED]`. Reserve absolute language / `[ENFORCED]` for zero-counter-example, build-gated or tool-enforced rules.
 - Every rule in `.claude/rules/` must have a section number (§X.Y) for review agents to cite.
 - Include **code examples** from the actual codebase where possible.
 - Flag conflicts: "⚠️ Guideline says X, but codebase does Y. Standardize on: [recommendation]"
@@ -522,7 +522,7 @@ Seed a repo-root `CODE_INDEX.md` from `.claude/references/code-index-template.md
 
 The report template lives in **`.claude/references/bootstrap-report.md`**. Read it now and emit the report from it verbatim — do not paraphrase it from memory. (~15 earlier steps route their report lines into this template and `verify-claims.sh` consumes the output.)
 
-## IMPORTANT
+## Bootstrap invariants
 - Create `.claude/references/` and `.claude/rules/` directories if they don't exist
 - **Default to merge mode** when CLAUDE.md already exists — don't ask overwrite/merge/abort
 - If existing CLAUDE.md is monolithic (>200 lines), migrate to lean structure automatically

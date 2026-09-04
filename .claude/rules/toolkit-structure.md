@@ -26,7 +26,7 @@ strength: inject
 
 ## File Organization
 
-- **S1.6** All skills (both workflow and entry-point) go in `.claude/skills/<skill-name>/SKILL.md`. One skill per directory. Entry-point skills (formerly commands) use `allowed-tools` and `argument-hint` frontmatter to signal they are user-invocable.
+- **S1.6** All skills (both workflow and entry-point) go in `.claude/skills/<skill-name>/SKILL.md`. One skill per directory. Entry-point skills use `allowed-tools` and `argument-hint` frontmatter to signal they are user-invocable.
 - **S1.7** Agents go in `.claude/agents/`. They are reviewer personas with restricted tool access.
 - **S1.8** References go in `.claude/references/`. They are shared checklists/guides read on-demand.
 - **S1.9** Hooks go in `hooks/`. Config in `hooks/hooks.json`, executables alongside.
