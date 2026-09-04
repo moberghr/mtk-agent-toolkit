@@ -4,6 +4,8 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [7.34.0] - 2026-09-04
+
 ### Changed — prompt audit: dated prompting patterns removed from the model-facing surface
 
 A `/claude-api prompt-audit` pass over every skill, agent, rule file, and hook that
@@ -35,6 +37,8 @@ what remained was register and one stale default:
   without S2.2's phase-structured exemption; toolkit-version labels (`v7.14`, `v7.25`)
   dropped from lesson-capture instructions; the `subagent-implementation` dynamic-workflow
   instruction and two `## IMPORTANT` section headings rewritten as plain conditionals.
+
+## [7.33.0] - 2026-08-25
 
 ### Fixed — always-on context: two generator bugs that shipped to every bootstrapped repo
 
@@ -86,6 +90,8 @@ MTK made Claude Code measurably slower on the machine it was installed on. Profi
 - **A leaked session lock cost 5 s of dead wall-clock** (`mtk_session_lock_acquire`, `hooks/lib/hook-io.sh`). A live holder keeps the lock for single-digit milliseconds, but the harness SIGTERMs a hook that overruns its `timeout` (`context-budget.sh` runs under `timeout: 3`), and SIGTERM does not run the EXIT trap — so the directory outlived its owner and the next hook spun the full 100 × 50 ms before giving up. Acquire now steals a lock older than `MTK_SESSION_LOCK_STALE_SECS` (default 2). Measured: stale lock present **5,000 ms → 89 ms**; a genuinely fresh lock is still waited out (~1.6 s) rather than stolen; the uncontended path is unchanged at ~63 ms. The try counter increments on every path through the loop, so a lock that cannot be `rmdir`-ed still terminates instead of spinning forever. A trap-based release was considered and rejected: SIGTERM would not run it, and installing one in the library would clobber each hook's own `_mtk_hook_diag` EXIT trap.
 
 Deliberately not changed. Collapsing the per-event hooks into one dispatcher process (each hook pays a ~40–60 ms bash-start-plus-source floor, and `PreToolUse`/`Bash` spawns three) is the remaining structural win, but it is a refactor of 13 hooks and wants its own pressure tests. Narrowing `verify-completion`'s `STRONG_CLAIM` regex — the only true multiple-times multiplier, since a blocked stop costs an entire extra model turn — weakens the enforcement gate the toolkit is built around, and is a policy call rather than a latency fix.
+
+## [7.32.0] - 2026-08-20
 
 ### Added — field-run fixes: manifest destinations, collateral churn, a reachable MAX path
 
