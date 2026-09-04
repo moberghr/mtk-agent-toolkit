@@ -576,21 +576,22 @@ env_setting() {
 }
 
 # 1. Context-budget calibration. hooks/context-budget.sh scales its file/mod/op
-#    nudges off MTK_CONTEXT_WINDOW_TOKENS, default 200000. On a large-context
-#    model the defaults fire several times too early, which trains the engineer
-#    to ignore the one hook that tells them to checkpoint.
+#    nudges off MTK_CONTEXT_WINDOW_TOKENS, default 1000000. On a 200k model
+#    (Haiku 4.5) the defaults fire too late; on a 1M model an old 200000 pin
+#    fires several times too early, which trains the engineer to ignore the one
+#    hook that tells them to checkpoint.
 CTX_WINDOW="$(env_setting MTK_CONTEXT_WINDOW_TOKENS)"
 MODEL_HINT="$(env_setting ANTHROPIC_MODEL)"
 [ -n "$MODEL_HINT" ] || MODEL_HINT="$(env_setting model)"
 if [ -n "$CTX_WINDOW" ]; then
   record PASS environment "context budget calibrated" \
-    "MTK_CONTEXT_WINDOW_TOKENS=${CTX_WINDOW} — context-budget.sh thresholds scale from this, not the 200000 default"
-elif printf '%s' "$MODEL_HINT" | grep -qiE '\[1m\]|-1m\b|1m\b'; then
+    "MTK_CONTEXT_WINDOW_TOKENS=${CTX_WINDOW} — context-budget.sh thresholds scale from this, not the 1000000 default"
+elif printf '%s' "$MODEL_HINT" | grep -qiE 'haiku'; then
   record WARN environment "context budget miscalibrated for this model" \
-    "model '${MODEL_HINT}' looks large-context but MTK_CONTEXT_WINDOW_TOKENS is unset — context-budget.sh warns at 30 files / 40 mods / 120 ops, calibrated for a 200k window. Set it in .claude/settings.local.json env"
+    "model '${MODEL_HINT}' has a 200k window but MTK_CONTEXT_WINDOW_TOKENS is unset — context-budget.sh warns at 150 files / 200 mods / 600 ops, calibrated for a 1M window. Set MTK_CONTEXT_WINDOW_TOKENS=200000 in .claude/settings.local.json env"
 else
   record PASS environment "context budget at default calibration" \
-    "MTK_CONTEXT_WINDOW_TOKENS unset — assuming a 200000-token window (30 files / 40 mods / 120 ops). Set it if your model's window differs"
+    "MTK_CONTEXT_WINDOW_TOKENS unset — assuming a 1000000-token window (150 files / 200 mods / 600 ops). Set it if your model's window differs"
 fi
 
 # 2. Hook basename also wired in the user's global settings. Two different

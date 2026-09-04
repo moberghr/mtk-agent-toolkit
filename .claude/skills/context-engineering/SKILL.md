@@ -149,7 +149,7 @@ Track the cumulative context loaded in the session. Fewer, focused instructions 
 - 5+ skills loaded simultaneously — prune to the 2-3 most relevant
 - Full reference files loaded when only a section is needed
 - Same context loaded multiple times (after compaction recovery)
-- The `context-budget` hook nudges that estimated consumption passed `MTK_CONTEXT_BUDGET_PCT`% (default 60) of `MTK_CONTEXT_WINDOW_TOKENS` (default 200000) — treat it as a floor (it counts read bytes only) and reset/hand off deliberately rather than riding to compaction
+- The `context-budget` hook nudges that estimated consumption passed `MTK_CONTEXT_BUDGET_PCT`% (default 60) of `MTK_CONTEXT_WINDOW_TOKENS` (default 1000000) — treat it as a floor (it counts read bytes only) and reset/hand off deliberately rather than riding to compaction
 
 ## Proactive Reset (40% boundary + rot-symptom override)
 

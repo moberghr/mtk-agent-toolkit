@@ -59,7 +59,7 @@ There are two ways to run the per-batch loop. Both share the **same implementer 
 
 Pick the path once, at the top of Phase 3, based on tool availability **and** the Phase 2.9 dispatch probe. Do not mix them within one feature.
 
-When the `Workflow` tool is available the dynamic-workflow path MUST be used — read `.claude/references/subagent-dynamic-workflow.md` now and follow it; choosing the manual path to avoid the Read is a scope violation.
+When the `Workflow` tool is available, take the dynamic-workflow path: read `.claude/references/subagent-dynamic-workflow.md` now and follow it. The manual Agent-loop path below is for sessions where `Workflow` is not exposed.
 
 ### Steps (manual Agent-loop path)
 
