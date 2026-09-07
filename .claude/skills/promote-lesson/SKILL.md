@@ -62,7 +62,7 @@ Two personal stores feed it, and the second is easy to forget precisely because 
      ```
    - **Markdown fallback.** Append the reworded entry to `tasks/lessons.md` at the bottom (newest last). Keep the structure: `## [Date] — [Title]`, `**Correction:**`, `**Rule:**`, `**Why:**`, `**Applies to:**`. Add a `**Promoted from personal:**` note with the original date so provenance is auditable.
 
-5b. **Optional: attach an executable contract (v7.25).** Promotion is the natural point to make a lesson *checkable* rather than advisory. When the lesson has a verifiable outcome, add the contract fields so a future session can confirm it, not just read it:
+5b. **Optional: attach an executable contract.** Promotion is the natural point to make a lesson *checkable* rather than advisory. When the lesson has a verifiable outcome, add the contract fields so a future session can confirm it, not just read it:
    ```bash
    # $LS resolved in step 5 (project copy, else plugin copy).
    bash "$LS" add --scope team --source promotion ... \

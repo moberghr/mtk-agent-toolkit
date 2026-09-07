@@ -96,7 +96,7 @@ The capture reuses `correction-capture`'s destinations and the same `scripts/lea
 
    Schema: `.claude/references/learnings-schema.md`.
 
-   **Optional executable contract (v7.25).** If the golden path has a checkable outcome — specific files/fields that must exist, or a pre-final check that must pass — attach `--confidence`, `--output-contract`, `--prefinal-checklist`, and `--source-evidence-refs` so the lesson is *verifiable* next time, not just readable. Optional: most in-session golden-path captures stay prose and add the contract only at `promote-lesson` time. See the schema's *Executable lesson contract*.
+   **Optional executable contract.** If the golden path has a checkable outcome — specific files/fields that must exist, or a pre-final check that must pass — attach `--confidence`, `--output-contract`, `--prefinal-checklist`, and `--source-evidence-refs` so the lesson is *verifiable* next time, not just readable. Optional: most in-session golden-path captures stay prose and add the contract only at `promote-lesson` time. See the schema's *Executable lesson contract*.
 
    **b. Markdown fallback (older repos without `learnings.sh`).** Append to the chosen file (create `.claude/lessons/` if missing). Resolve path to main worktree if in a worktree.
    ```markdown

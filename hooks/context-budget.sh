@@ -10,17 +10,17 @@ trap _mtk_hook_diag EXIT
 #
 # Thresholds scale with the declared context window so a large-context model is
 # not nagged on a 200k-calibrated budget — following that advice (a mid-task
-# handoff on a 1M-context model) is actively harmful. At the default 200k window
-# they reproduce the historical values:
-#   30+ unique files read  → narrow your focus    (override: MTK_CTX_FILES_WARN)
-#   40+ modifications      → commit a checkpoint   (override: MTK_CTX_MODS_WARN)
-#   120+ total operations  → consider handoff      (override: MTK_CTX_OPS_WARN)
+# handoff on a 1M-context model) is actively harmful. The default window is 1M,
+# matching every current Claude Code model; at that window the thresholds are:
+#   150+ unique files read → narrow your focus    (override: MTK_CTX_FILES_WARN)
+#   200+ modifications     → commit a checkpoint   (override: MTK_CTX_MODS_WARN)
+#   600+ total operations  → consider handoff      (override: MTK_CTX_OPS_WARN)
 #   read bytes estimate ≥ MTK_CONTEXT_BUDGET_PCT% of window → reset before degradation
 #
 # One knob rescales all four: set MTK_CONTEXT_WINDOW_TOKENS to your real window
-# (e.g. 1000000 for a 1M-context model) and the count thresholds scale linearly
-# from the 200k baseline; a per-threshold MTK_CTX_*_WARN override wins outright.
-#   MTK_CONTEXT_WINDOW_TOKENS  usable context window in tokens (default 200000)
+# (e.g. 200000 for Haiku 4.5) and the count thresholds scale linearly from the
+# 200k calibration constants; a per-threshold MTK_CTX_*_WARN override wins outright.
+#   MTK_CONTEXT_WINDOW_TOKENS  usable context window in tokens (default 1000000)
 #   MTK_CONTEXT_BUDGET_PCT     consumed-% at which to nudge a handoff (default 60)
 # The bytes estimate is bytes_read/4 — a read-bytes FLOOR (it cannot see assistant
 # output or non-read tool results), so it under-counts. Advisory only; never blocks.
@@ -123,10 +123,10 @@ ADVISORY=""
 append_advisory() { ADVISORY="${ADVISORY:+$ADVISORY }$1"; }
 
 # Context-window-scaled thresholds. One knob (MTK_CONTEXT_WINDOW_TOKENS, default
-# 200000) governs the whole hook so large-context models don't get 200k-calibrated
-# nags whose advice (a mid-task handoff) would be harmful. Defaults reproduce the
-# historical 30/40/120 at a 200k window; per-threshold env overrides win outright.
-ctx_window="${MTK_CONTEXT_WINDOW_TOKENS:-200000}"
+# 1000000) governs the whole hook so the 200k-era calibration only applies when a
+# 200k model is declared. Count thresholds scale linearly with the window and
+# reproduce the historical 30/40/120 at a 200k window; per-threshold env overrides win outright.
+ctx_window="${MTK_CONTEXT_WINDOW_TOKENS:-1000000}"
 files_warn="${MTK_CTX_FILES_WARN:-$(( 30 * ctx_window / 200000 ))}"
 mods_warn="${MTK_CTX_MODS_WARN:-$(( 40 * ctx_window / 200000 ))}"
 ops_warn="${MTK_CTX_OPS_WARN:-$(( 120 * ctx_window / 200000 ))}"

@@ -4,6 +4,96 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Fixed — scripts that leaked their layout assumptions when run by hand from the plugin cache
+
+A 2026-09 field run drove the implement loop with the plugin disabled and every
+script invoked from the plugin cache. Four things that hooks normally paper over
+surfaced:
+
+- `scripts/constitution-digest.sh` anchored on its own parent directory and digested
+  the **plugin's** CLAUDE.md instead of the project's. Now resolves the project root
+  like `build-rule-index.sh` does (`$CLAUDE_PROJECT_DIR` → git top level → cwd).
+- `scripts/validate-handoff.sh` hard-coded `main` as the base ref, so a stacked
+  branch reported its parent's files as undeclared drift; it also saw only committed
+  files and compared manifest entries by exact string. Base ref now resolves
+  argument → `MTK_BASE_REF` → handoff `base_ref` → nearest ancestor local branch →
+  `origin/HEAD` → `main`. "Touched" is the union of committed, uncommitted, and
+  untracked-not-ignored files, minus workflow artifacts (`docs/specs/`, `docs/plans/`,
+  `tasks/`, `.mtk/`) which are never drift. Manifest entries ending in `/` cover
+  everything beneath them.
+- `hooks/format-on-edit.sh` ran bare `dotnet format`, which includes the `analyzers`
+  pass; a CA1001 auto-fix rewrote a test class and broke the build four times across
+  implementers. Now runs `whitespace` and `style` only. `tech-stack-dotnet` Format
+  Command updated to match.
+- The mid-run churn rule was a flat 300/500 lines counting every line, and fired
+  after every batch of a HIGH-rigor run, roughly doubling review time. It now counts
+  non-generated lines since the last review, is tunable via `MTK_CHURN_REVIEW_LINES`
+  / `MTK_CHURN_HALT_LINES`, and doubles its defaults at rigor HIGH/MAX where each
+  batch is already isolated and drift-checked.
+
+### Added — killed-mid-batch recovery, tier fallback, and a timing section in the run receipt
+
+A second 2026-09 field run (8 batches, 3 h 43 min active) had its first Opus
+implementer killed by the org's monthly spend limit. The session improvised the right
+recovery — checked the partial work compiled, respawned on Sonnet to finish — but the
+toolkit had no path for it: the only recovery rule was "no result → `inconclusive` →
+respawn with narrowed scope", which over partial work already on disk either redoes it
+or builds a duplicate beside it. Twenty-four minutes were lost and nothing recorded
+them.
+
+- `subagent-implementation` (both paths) now distinguishes **killed** from
+  `inconclusive`: inventory the partial state, build it, respawn to *finish* from it
+  (or revert only the batch's own files and restart), one attempt per batch, and record
+  the incident in the new `results.dispatch_incidents[]` on the workflow artifact
+  **before** dispatching the replacement. `completed_batches[]` entries now carry
+  `implementer_model`.
+- `model-routing.md` gains a **tier fallback** rule: `strong` unavailable → `default`
+  for the rest of the run, without a model re-ask and without re-probing the limit;
+  `default` unavailable → halt. Implementer code never drops to `fast`.
+- The opt-in run receipt (`MTK_RUN_RECEIPT=1`) gains a **timing** section — active
+  minutes per phase and their share, engineer-wait gaps, per-batch dispatch time, and
+  time lost to dispatch incidents — derived only from event timestamps already on the
+  artifact, with `not recorded` for anything the log does not bound. This is the figure
+  that says what the ceremony cost against what the review lanes caught; until now it
+  was reconstructed by hand after the run.
+- Pressure test scenario 16 covers the kill.
+
+## [7.34.0] - 2026-09-04
+
+### Changed — prompt audit: dated prompting patterns removed from the model-facing surface
+
+A `/claude-api prompt-audit` pass over every skill, agent, rule file, and hook that
+reaches the model, against the Claude 5 family. The surface was already clean of
+think-step-by-step scaffolds, progress-cadence choreography, and retired model IDs;
+what remained was register and one stale default:
+
+- `hooks/context-budget.sh` now defaults `MTK_CONTEXT_WINDOW_TOKENS` to **1,000,000**.
+  Every current Claude Code model except Haiku 4.5 has a 1M window, so the old 200k
+  default fired the "hand off before quality degrades" nudge five times too early —
+  the documented premature-wrap-up failure. Thresholds still scale linearly from the
+  200k calibration constants (150 files / 200 mods / 600 ops at 1M); set
+  `MTK_CONTEXT_WINDOW_TOKENS=200000` for Haiku. `mtk-doctor` now warns when a Haiku
+  model runs on the 1M default instead of the reverse.
+- `setup-bootstrap` no longer instructs the generator to prefer `NEVER Z` rules and
+  `IMPORTANT:` / `YOU MUST` markers in target repos' CLAUDE.md. Current models weight
+  the system prompt closely; the markers cause over-triggering, and a prohibition can
+  anchor toward the failure it names. Rules now carry the trigger, the action, and the
+  reason, and prohibitions are reserved for constraints the counter-example gate confirms.
+- `compliance-reviewer`: shouted `NEVER approve` / `ALWAYS Critical` rules restated at
+  normal volume (the verdict mapping already lives in the schema), and the "am I being
+  lazy" self-interrogation replaced with a concrete second pass over the security and
+  data-integrity axes plus the schema's `below_threshold_rationale`. The adversarial
+  persona is unchanged. The matching pressure test scenario was updated.
+- `setup-audit` / `setup-bootstrap`: seven consecutive `(MANDATORY)` markers dropped;
+  the rules and their recorded failure examples stay.
+- Migration-relative phrasing removed from the always-loaded rules ("formerly commands",
+  "ex-entry-points"); `C0.3` now defers to `S2.2` instead of stating a stricter anatomy
+  without S2.2's phase-structured exemption; toolkit-version labels (`v7.14`, `v7.25`)
+  dropped from lesson-capture instructions; the `subagent-implementation` dynamic-workflow
+  instruction and two `## IMPORTANT` section headings rewritten as plain conditionals.
+
+## [7.33.0] - 2026-08-25
+
 ### Fixed — always-on context: two generator bugs that shipped to every bootstrapped repo
 
 Profiling 16 sessions / 3,230 API requests found the dominant cost is not hook CPU
@@ -54,6 +144,8 @@ MTK made Claude Code measurably slower on the machine it was installed on. Profi
 - **A leaked session lock cost 5 s of dead wall-clock** (`mtk_session_lock_acquire`, `hooks/lib/hook-io.sh`). A live holder keeps the lock for single-digit milliseconds, but the harness SIGTERMs a hook that overruns its `timeout` (`context-budget.sh` runs under `timeout: 3`), and SIGTERM does not run the EXIT trap — so the directory outlived its owner and the next hook spun the full 100 × 50 ms before giving up. Acquire now steals a lock older than `MTK_SESSION_LOCK_STALE_SECS` (default 2). Measured: stale lock present **5,000 ms → 89 ms**; a genuinely fresh lock is still waited out (~1.6 s) rather than stolen; the uncontended path is unchanged at ~63 ms. The try counter increments on every path through the loop, so a lock that cannot be `rmdir`-ed still terminates instead of spinning forever. A trap-based release was considered and rejected: SIGTERM would not run it, and installing one in the library would clobber each hook's own `_mtk_hook_diag` EXIT trap.
 
 Deliberately not changed. Collapsing the per-event hooks into one dispatcher process (each hook pays a ~40–60 ms bash-start-plus-source floor, and `PreToolUse`/`Bash` spawns three) is the remaining structural win, but it is a refactor of 13 hooks and wants its own pressure tests. Narrowing `verify-completion`'s `STRONG_CLAIM` regex — the only true multiple-times multiplier, since a blocked stop costs an entire extra model turn — weakens the enforcement gate the toolkit is built around, and is a policy call rather than a latency fix.
+
+## [7.32.0] - 2026-08-20
 
 ### Added — field-run fixes: manifest destinations, collateral churn, a reachable MAX path
 

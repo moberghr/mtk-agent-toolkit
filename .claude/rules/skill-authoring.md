@@ -21,7 +21,7 @@ strength: inject
 ## Anatomy Requirements
 
 - **S2.1** Every SKILL.md must have YAML frontmatter with at minimum: `name`, `description`, `type: skill` (or `type: tech-stack` for tech stack skills).
-- **S2.2** Required sections for workflow skills in order: `## Overview`, `## When To Use`, `## Workflow`, `## Verification`. Two exemptions: (1) entry-point skills (with `allowed-tools` frontmatter) use phase-based structure instead; (2) **phase-structured skills** — those with at least one heading matching `^## (Phase [0-9]|STEP [0-9]|Process|Modes|Route Table)` (e.g. implement, pre-commit-review, mtk, setup-audit, setup-bootstrap) — are ex-entry-points dispatched via the `/mtk` router and only require at least one `## ` section. The validator enforces exactly these heading patterns.
+- **S2.2** Required sections for workflow skills in order: `## Overview`, `## When To Use`, `## Workflow`, `## Verification`. Two exemptions: (1) entry-point skills (with `allowed-tools` frontmatter) use phase-based structure instead; (2) **phase-structured skills** — those with at least one heading matching `^## (Phase [0-9]|STEP [0-9]|Process|Modes|Route Table)` (e.g. implement, pre-commit-review, mtk, setup-audit, setup-bootstrap) — are dispatched via the `/mtk` router and only require at least one `## ` section. The validator enforces exactly these heading patterns.
 - **S2.3** Skill name in frontmatter must match the containing directory name exactly.
 - **S2.4** Entry-point skills (user-invocable slash commands, e.g. `/mtk` and `/mtk-setup`) include `allowed-tools` and `argument-hint` in frontmatter. Workflow skills are reusable building blocks loaded by entry-point skills.
 

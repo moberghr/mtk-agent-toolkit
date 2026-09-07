@@ -70,6 +70,24 @@ batches. This is the resolution of the apparent conflict between
 subagent-implementation's "ask once" rule and autonomous mode's "never ask in
 Phases 3-7": the ask is interactive-only, so autonomous mode simply skips it.
 
+## Tier fallback (mid-run unavailability)
+
+A tier can disappear mid-run: an org monthly spend limit trips, a rate limit holds, a
+model ID errors. A field run lost 24 minutes when the `strong` implementer for the
+first batch was killed by a spend limit and the gap was noticed only by its silence.
+The rule:
+
+| Unavailable tier | Fallback | Notes |
+|---|---|---|
+| `strong` (opus) | `default` (sonnet) for the **rest of the run** | Not a re-ask; not a per-batch probe of whether the limit lifted. Record the switch on the workflow artifact and name it in the final report. |
+| `default` (sonnet) | **halt** | Implementer code and review agents never drop to `fast`. Report to the engineer; do not "just try haiku". |
+| `fast` (haiku) | `default` | Discovery/grep work is cheap enough to run one tier up. |
+
+Review agents pin their tier in frontmatter, so a `strong`-pinned lane
+(`compliance-reviewer`, security) that cannot run on `strong` runs on `default` and
+records `ABSTAINED` semantics for the parts of its rubric that needed the higher tier
+— never silently on the lower tier with a `PASS`.
+
 ## Override
 
 These are defaults, not handcuffs. An engineer may run any phase on a higher tier;

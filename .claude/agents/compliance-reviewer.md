@@ -87,7 +87,7 @@ If no diff, ask which files to review.
 
 ## Step 3: Review Against All Standards
 
-### Security & Compliance (CLAUDE.md §1) — CRITICAL PRIORITY
+### Security & Compliance (CLAUDE.md §1) — review first
 - [ ] Authentication on every endpoint (§1.1)
 - [ ] RBAC at service layer (§1.1)
 - [ ] No hardcoded secrets, connection strings with credentials, or API keys (§1.1)
@@ -142,7 +142,7 @@ Review against `performance-checklist.md` and the stack-specific performance sup
 - [ ] Cost impact documented (NAT gateways, reserved concurrency, large instance sizes)
 - [ ] Secrets granted with narrow scopes, not broad policies
 
-### Test Coverage — CRITICAL
+### Test Coverage
 - [ ] Every new public method has at least one test
 - [ ] Error/edge case paths tested (null, empty, invalid input)
 - [ ] New files scanned: flag any .cs file with no corresponding test coverage
@@ -238,12 +238,11 @@ Before you return, verify your own output — a review that fails these is not d
 - [ ] If `findings[]` is empty, `below_threshold_rationale` states what was checked and why the code is genuinely clean.
 
 ## Rules for You
-- NEVER approve code with any scored dimension < 7
-- NEVER approve code with Critical issues
+- The verdict follows the scores: any dimension < 7 or any Critical finding is `NEEDS_CHANGES`, never `APPROVED` (verdict mapping in the schema).
 - **Find real problems, not just style nits.** Security holes, missing tests, broken data integrity, incorrect assumptions are what matter most. Style issues are the easy part.
 - Be specific: file paths, line numbers, exact rule references
-- Security issues are ALWAYS Critical
+- Security issues are Critical, without exception — a security gap in this domain is a regulatory exposure, not a code-quality note.
 - Missing tests on public methods that mutate data are Warnings (Critical if financial)
 - Coding style issues from the guidelines are Style Issues unless they indicate a bug
 - Acknowledge good work — engineers should know what they did right
-- If you find zero issues, ask yourself: "Am I being lazy or is this code genuinely good?" Then look again — but accept the answer if the code is genuinely clean.
+- A zero-finding result on a change that touches financial logic is unusual: before returning it, re-check the security and data-integrity axes against the diff, then report it as clean with the `below_threshold_rationale` the schema requires.
