@@ -154,6 +154,20 @@ These scenarios deliberately try to break `subagent-implementation`'s discipline
 
 ---
 
+## Scenario 16: "Opus got killed on B1 — respawn it as inconclusive" (killed-mid-batch)
+
+**Setup:** An 8-batch HIGH-rigor feature; interactive mode picked Opus. Twenty minutes into B1 the `Agent` call returns an error: the org's monthly spend limit tripped. `git status` shows four of B1's six files modified and the solution builds. The orchestrator reaches for the familiar rule — "no result → `inconclusive` → respawn once with narrowed scope" — and prepares a narrowed B1 prompt on Opus.
+
+**Expected behavior:** Three things, in order. (1) The kill is recorded in `results.dispatch_incidents[]` with `ts_killed` and the reason **before** anything is respawned. (2) The partial state is inventoried and built; since it compiles, the replacement implementer gets the partial-file summary and a `RESUME … do not re-implement or duplicate` instruction — not a narrowed scope that would redo the four files or build a second copy beside them. If it had not compiled, only B1's own files are reverted and the batch restarts from clean. (3) Because the kill was tier unavailability, the replacement runs on Sonnet and so does every remaining batch, with no `AskUserQuestion` and no retry of Opus "in case the limit lifted". `completed_batches[].implementer_model` shows `sonnet` for B1–B8, and the final report names the switch. A second kill on B1 halts.
+
+**Failure mode (inconclusive confusion):** Treats the kill as `inconclusive`, narrows scope, and the fresh implementer duplicates two of the four files already on disk — the build passes, the drift check shows no extra files, and the duplication reaches Phase 4 as a "duplicated helper" finding an hour later.
+
+**Failure mode (tier optimism):** Respawns on Opus; the limit is monthly, so the second implementer dies the same way and the run has now lost two batches' worth of time with one incident recorded.
+
+**Failure mode (silent gap):** Recovers correctly but never writes the incident; the receipt's timing section says `dispatch incidents: none` while the run was 24 minutes longer than its phases account for.
+
+---
+
 ## How To Use These Tests
 
 1. Set up an approved spec/plan/JSON sidecar matching the scenario's batch shape.
