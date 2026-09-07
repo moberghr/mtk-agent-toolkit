@@ -4,6 +4,60 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Fixed — scripts that leaked their layout assumptions when run by hand from the plugin cache
+
+A 2026-09 field run drove the implement loop with the plugin disabled and every
+script invoked from the plugin cache. Four things that hooks normally paper over
+surfaced:
+
+- `scripts/constitution-digest.sh` anchored on its own parent directory and digested
+  the **plugin's** CLAUDE.md instead of the project's. Now resolves the project root
+  like `build-rule-index.sh` does (`$CLAUDE_PROJECT_DIR` → git top level → cwd).
+- `scripts/validate-handoff.sh` hard-coded `main` as the base ref, so a stacked
+  branch reported its parent's files as undeclared drift; it also saw only committed
+  files and compared manifest entries by exact string. Base ref now resolves
+  argument → `MTK_BASE_REF` → handoff `base_ref` → nearest ancestor local branch →
+  `origin/HEAD` → `main`. "Touched" is the union of committed, uncommitted, and
+  untracked-not-ignored files, minus workflow artifacts (`docs/specs/`, `docs/plans/`,
+  `tasks/`, `.mtk/`) which are never drift. Manifest entries ending in `/` cover
+  everything beneath them.
+- `hooks/format-on-edit.sh` ran bare `dotnet format`, which includes the `analyzers`
+  pass; a CA1001 auto-fix rewrote a test class and broke the build four times across
+  implementers. Now runs `whitespace` and `style` only. `tech-stack-dotnet` Format
+  Command updated to match.
+- The mid-run churn rule was a flat 300/500 lines counting every line, and fired
+  after every batch of a HIGH-rigor run, roughly doubling review time. It now counts
+  non-generated lines since the last review, is tunable via `MTK_CHURN_REVIEW_LINES`
+  / `MTK_CHURN_HALT_LINES`, and doubles its defaults at rigor HIGH/MAX where each
+  batch is already isolated and drift-checked.
+
+### Added — killed-mid-batch recovery, tier fallback, and a timing section in the run receipt
+
+A second 2026-09 field run (8 batches, 3 h 43 min active) had its first Opus
+implementer killed by the org's monthly spend limit. The session improvised the right
+recovery — checked the partial work compiled, respawned on Sonnet to finish — but the
+toolkit had no path for it: the only recovery rule was "no result → `inconclusive` →
+respawn with narrowed scope", which over partial work already on disk either redoes it
+or builds a duplicate beside it. Twenty-four minutes were lost and nothing recorded
+them.
+
+- `subagent-implementation` (both paths) now distinguishes **killed** from
+  `inconclusive`: inventory the partial state, build it, respawn to *finish* from it
+  (or revert only the batch's own files and restart), one attempt per batch, and record
+  the incident in the new `results.dispatch_incidents[]` on the workflow artifact
+  **before** dispatching the replacement. `completed_batches[]` entries now carry
+  `implementer_model`.
+- `model-routing.md` gains a **tier fallback** rule: `strong` unavailable → `default`
+  for the rest of the run, without a model re-ask and without re-probing the limit;
+  `default` unavailable → halt. Implementer code never drops to `fast`.
+- The opt-in run receipt (`MTK_RUN_RECEIPT=1`) gains a **timing** section — active
+  minutes per phase and their share, engineer-wait gaps, per-batch dispatch time, and
+  time lost to dispatch incidents — derived only from event timestamps already on the
+  artifact, with `not recorded` for anything the log does not bound. This is the figure
+  that says what the ceremony cost against what the review lanes caught; until now it
+  was reconstructed by hand after the run.
+- Pressure test scenario 16 covers the kill.
+
 ## [7.34.0] - 2026-09-04
 
 ### Changed — prompt audit: dated prompting patterns removed from the model-facing surface

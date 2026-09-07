@@ -51,6 +51,24 @@ sibling of the spec — containing only facts already recorded on the artifact:
 - ceremony reductions, each with its reason — and whether Phase 7 escalated a repeat
 - Phase 3.5 drift verdict, coverage-claim re-greps, fired `conditional_descopes`, collateral verdict
 - reviewer lanes with one outcome each (`PASS` / `NEEDS_CHANGES` / `ABSTAINED` / `NO_RESPONSE`)
+- **timing**, derived only from event `ts` pairs on the workflow artifact
+  (`.claude/references/workflow-artifact-schema.md` → Event types):
+  - per phase: active minutes from `phase_started` → `phase_completed`, and the
+    share of total active time — this is the figure that says what the ceremony
+    cost against what the review lanes found
+  - waiting on the engineer: gaps between a phase end and the next phase start, and
+    between a gate prompt and its `gate_decided`; reported separately, never folded
+    into active time
+  - per batch: `agent_dispatched` → `agent_returned` for each implementer, with the
+    tier from `completed_batches[].implementer_model`
+  - **time lost to dispatch incidents**: the sum of `ts_killed` → `ts_respawned`
+    across `results.dispatch_incidents[]`, listed per incident with its `reason`
+    and any `from_model` → `to_model` switch
+  A phase whose events are missing gets `not recorded` for that row; a run with
+  no incidents states `dispatch incidents: none`, which is itself a recorded fact.
+- `dispatch_incidents[]` verbatim (batch, kind, reason, tier switch, whether the
+  partial state compiled) — so a reader can tell a batch that ran clean from one
+  that was rescued
 
 Copy figures from the recorded evidence; never re-derive a number by counting at
 write time. A receipt that quietly disagrees with the logs it summarises is worse

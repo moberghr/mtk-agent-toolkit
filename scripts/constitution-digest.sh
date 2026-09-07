@@ -20,7 +20,13 @@ set -euo pipefail
 #   bash scripts/constitution-digest.sh            # human-readable digest
 #   bash scripts/constitution-digest.sh --quiet    # ids + one-line only (for prompts)
 
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+# Resolve the PROJECT root, not the script's own parent. This script ships in
+# the plugin cache as well as in target repos; anchoring on `dirname $0` made a
+# plugin-cache invocation digest the plugin's own CLAUDE.md instead of the
+# project's (observed in a 2026-09 field run). Same resolution as
+# build-rule-index.sh / lesson-anchors.sh: $CLAUDE_PROJECT_DIR, then the git
+# top level of the cwd, then the cwd itself.
+ROOT_DIR="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 cd "$ROOT_DIR"
 
 QUIET=0

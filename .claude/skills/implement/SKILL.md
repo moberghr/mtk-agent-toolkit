@@ -357,7 +357,9 @@ a **tracked** run receipt.
 `MTK_RUN_RECEIPT=1` writes `docs/specs/<date>-<slug>.receipt.md` — a tracked
 sibling of the spec holding baseline vs final figures, gates and their reasons,
 dispatch path and compensations, ceremony reductions, drift/coverage/collateral
-verdicts, and reviewer lane outcomes. The `.mtk/` workflow artifact is gitignored,
+verdicts, reviewer lane outcomes, and a timing section (active minutes per phase,
+engineer-wait gaps, time lost to killed dispatches) derived only from event
+timestamps on the workflow artifact. The `.mtk/` workflow artifact is gitignored,
 so without the receipt the only tracked residue of a run is `tasks/lessons.md` and
 the spec. **Fields never recorded are written as `not recorded` — never
 reconstructed.**

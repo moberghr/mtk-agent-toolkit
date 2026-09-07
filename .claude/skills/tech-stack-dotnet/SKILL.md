@@ -182,11 +182,11 @@ file-extension dispatch happens inside the hook.
 ```bash
 # Wired by the plugin's own hooks.json (queue at PostToolUse, flush at Stop) —
 # not by the project's settings.json. See '### hooks (do NOT add)' above.
-# Manual invocation (project-wide):
-dotnet format --verbosity quiet
+# Manual invocation (project-wide) — whitespace + style only, never `analyzers`:
+dotnet format whitespace --verbosity quiet && dotnet format style --verbosity quiet
 ```
 
-At flush the wrapper groups the turn's edited `.cs` files by their nearest `.csproj` (falling back to `.sln`/`.slnx`) and runs one `dotnet format --include <relative paths> --verbosity quiet` per workspace, from that workspace directory. Both details matter: `--include` matches only paths relative to the invocation directory — given an absolute path it matches nothing and still exits 0 — and `dotnet format` loads the whole workspace before filtering, so one run per file is pathological. A `.cs` file with no `.csproj`/`.sln` above it is skipped rather than triggering a repo-wide format. Failures log to stderr but never block.
+At flush the wrapper groups the turn's edited `.cs` files by their nearest `.csproj` (falling back to `.sln`/`.slnx`) and runs `dotnet format whitespace` then `dotnet format style`, each as one `--include <relative paths> --verbosity quiet` call per workspace, from that workspace directory. The `analyzers` pass is deliberately excluded: bare `dotnet format` applies CA/third-party code fixes (a CA1001 auto-fix broke a test class repeatedly in a field run), and those are a reviewed change, not a formatting side effect. Both details matter: `--include` matches only paths relative to the invocation directory — given an absolute path it matches nothing and still exits 0 — and `dotnet format` loads the whole workspace before filtering, so one run per file is pathological. A `.cs` file with no `.csproj`/`.sln` above it is skipped rather than triggering a repo-wide format. Failures log to stderr but never block.
 
 ## Pre-Commit Review Items
 
