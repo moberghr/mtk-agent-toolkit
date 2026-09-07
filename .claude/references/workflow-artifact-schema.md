@@ -55,7 +55,12 @@ Durable orchestration state lives under `.mtk/workflows/`, outside `.claude/` so
     "remediation": {
       "build_failure": { "iterations": 2, "scores": [5, 7], "plateau": false }
     },
-    "usage": { "tokens_total": 0, "error_codes": [] }
+    "usage": { "tokens_total": 0, "error_codes": [] },
+    "dispatch_incidents": [
+      { "batch_id": "B1", "kind": "killed", "reason": "org spend limit",
+        "from_model": "opus", "to_model": "sonnet", "partial_compiled": true,
+        "ts_killed": "2026-05-07T14:20:00Z", "ts_respawned": "2026-05-07T14:44:00Z" }
+    ]
   },
   "criteria_status": {
     "SC1": "pending",
@@ -71,6 +76,8 @@ Durable orchestration state lives under `.mtk/workflows/`, outside `.claude/` so
 Implementations may add fields under `results` and `intent` without breaking schema_version 1. Removing or changing an existing field requires a schema bump.
 
 `results.usage` is an optional roll-up of the per-subagent usage envelopes returned by `subagent-implementation` (`tokens_total` summed across batches, `error_codes` collecting any non-null batch `error_code`). It is a cost / loop-safety signal for post-run review — never a gate input.
+
+`results.dispatch_incidents[]` is an append-only list of per-batch dispatch failures that were **not** a returned result — a killed or aborted implementer (`kind: killed`), plus the tier fallback it forced (`from_model` → `to_model`, both absent when the tier did not change). `partial_compiled` records what the orchestrator found on disk before respawning. The pair `ts_killed` / `ts_respawned` is the only record of what the incident cost; the run receipt sums those gaps into its *time lost to dispatch incidents* figure and writes `not recorded` when either stamp is missing. Written by `subagent-implementation` **before** the replacement is dispatched, so a second kill cannot erase the first.
 
 `results.artifact_url` is the URL of the workflow's published Claude Artifact (the single browsable rollup of spec/plan/handoff/health, updated in place across phases). It is set only when artifact publishing is enabled and available — see `.claude/references/artifact-publishing.md`. The `*_path` fields (`spec_path`, `plan_path`, `todo_path`, `handoff_path`, `health_report_path`) are the on-disk source docs the assembler (`scripts/workflow-artifact-md.sh`) concatenates into `.mtk/workflows/{uuid}.artifact.md`. Disk remains the source of truth; the artifact is an additive rendered mirror.
 
@@ -113,7 +120,7 @@ Events are append-only. One line per event in `{uuid}.events.jsonl`.
 | `gate_decided` | A named gate is evaluated | `gate`, `result` (`pass` or `fail`), `reason` |
 | `field_updated` | `set` subcommand updates state | `keys` (array of dotted paths) |
 | `agent_dispatched` | A subagent is spawned | `agent`, `prompt_excerpt` |
-| `agent_returned` | A subagent finishes | `agent`, `verdict`, `findings_count` |
+| `agent_returned` | A subagent finishes — or is killed (`verdict: killed`, `findings_count: 0`) | `agent`, `verdict`, `findings_count` |
 | `remediation_started` | Loop entered to fix issues | `trigger` |
 | `remediation_resolved` | Loop exits successfully | `trigger`, `iterations` |
 | `remediation_escalated` | Circuit-breaker tripped (cap or plateau) | `trigger`, `iterations`, `plateau` |
@@ -121,6 +128,8 @@ Events are append-only. One line per event in `{uuid}.events.jsonl`.
 | `workflow_failed` | Failure-stop gate trips | `reason` |
 
 Every event line carries: `ts` (ISO-8601 UTC), `workflow_uuid`, `event`, `data`.
+
+The `ts` stamps are the run's only timing record. `phase_started` → `phase_completed` bounds each phase's active time; `agent_dispatched` → `agent_returned` bounds each implementer or reviewer; the gap between a `phase_completed` and the next `phase_started`, or between a gate's prompt and its `gate_decided`, is time spent waiting on the engineer. The run receipt derives its timing section from these pairs and never estimates a duration the log does not bound.
 
 ## Gate semantics
 

@@ -64,13 +64,32 @@ const BATCH_RESULT_SCHEMA = {
   },
 }
 
-const runBatch = (b) =>
-  agent(b.prompt, {
-    label: `batch:${b.id}`,
-    phase: 'Implement',
-    model: MODEL,
-    schema: BATCH_RESULT_SCHEMA,
-  })
+// A rejected agent() call (spend/rate limit, model unavailable, harness kill)
+// must not abort the script and lose the other batches' results. It comes back
+// as a `killed` marker — outside BATCH_RESULT_SCHEMA on purpose — so the
+// orchestrator runs killed-mid-batch recovery for that one batch and records
+// it in results.dispatch_incidents[]. `killed` is not `inconclusive`: the
+// implementer's partial work is already on disk.
+const runBatch = async (b) => {
+  const ts_dispatched = new Date().toISOString()
+  try {
+    return await agent(b.prompt, {
+      label: `batch:${b.id}`,
+      phase: 'Implement',
+      model: MODEL,
+      schema: BATCH_RESULT_SCHEMA,
+    })
+  } catch (err) {
+    return {
+      batch_id: b.id,
+      status: 'killed',
+      model: MODEL ?? 'inherit',
+      ts_dispatched,
+      ts_killed: new Date().toISOString(),
+      error: String(err?.message ?? err),
+    }
+  }
+}
 
 phase('Implement')
 

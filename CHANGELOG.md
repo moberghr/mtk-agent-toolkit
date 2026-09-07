@@ -31,6 +31,33 @@ surfaced:
   / `MTK_CHURN_HALT_LINES`, and doubles its defaults at rigor HIGH/MAX where each
   batch is already isolated and drift-checked.
 
+### Added — killed-mid-batch recovery, tier fallback, and a timing section in the run receipt
+
+A second 2026-09 field run (8 batches, 3 h 43 min active) had its first Opus
+implementer killed by the org's monthly spend limit. The session improvised the right
+recovery — checked the partial work compiled, respawned on Sonnet to finish — but the
+toolkit had no path for it: the only recovery rule was "no result → `inconclusive` →
+respawn with narrowed scope", which over partial work already on disk either redoes it
+or builds a duplicate beside it. Twenty-four minutes were lost and nothing recorded
+them.
+
+- `subagent-implementation` (both paths) now distinguishes **killed** from
+  `inconclusive`: inventory the partial state, build it, respawn to *finish* from it
+  (or revert only the batch's own files and restart), one attempt per batch, and record
+  the incident in the new `results.dispatch_incidents[]` on the workflow artifact
+  **before** dispatching the replacement. `completed_batches[]` entries now carry
+  `implementer_model`.
+- `model-routing.md` gains a **tier fallback** rule: `strong` unavailable → `default`
+  for the rest of the run, without a model re-ask and without re-probing the limit;
+  `default` unavailable → halt. Implementer code never drops to `fast`.
+- The opt-in run receipt (`MTK_RUN_RECEIPT=1`) gains a **timing** section — active
+  minutes per phase and their share, engineer-wait gaps, per-batch dispatch time, and
+  time lost to dispatch incidents — derived only from event timestamps already on the
+  artifact, with `not recorded` for anything the log does not bound. This is the figure
+  that says what the ceremony cost against what the review lanes caught; until now it
+  was reconstructed by hand after the run.
+- Pressure test scenario 16 covers the kill.
+
 ## [7.34.0] - 2026-09-04
 
 ### Changed — prompt audit: dated prompting patterns removed from the model-facing surface
