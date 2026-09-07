@@ -46,10 +46,10 @@ Implement in thin slices. Each slice must compile, test, and remain explainable 
    If `hooks/parse-build-diagnostics.sh` does not exist in the installed toolkit, skip this step.
 7. Read `.claude/references/pre-commit-review-list.md` if present and fix any violations immediately.
 8. Mark the batch complete in `tasks/todo.md`. Record the per-batch gate decision on the workflow artifact: `scripts/workflow-artifact.sh gate "$MTK_WF_UUID" phase_exit_gate pass --reason "batch <id> green"` (or `fail` to trigger remediation). See `.claude/references/orchestration-gates.md`.
-9. **Churn check:** After completing each batch, run `git diff --stat` and count net lines changed. If cumulative changes across batches exceed 300 lines, pause and trigger an early review checkpoint:
+9. **Churn check:** After completing each batch, run `git diff --stat` and count net lines changed **since the last review** (intermediate or Phase 4), **excluding generated and mechanical files** — lockfiles, `*.Designer.cs`, `*.g.cs`, `*.generated.*`, EF migration snapshots, `*.min.js`/`*.min.css`, built bundle output (e.g. `wwwroot/dist/**`). Generated churn is not review load. Thresholds are `MTK_CHURN_REVIEW_LINES` (default **300**) and `MTK_CHURN_HALT_LINES` (default **500**); at rigor HIGH/MAX — the subagent path or the inline-MAX profile — the defaults **double** to 600/1000, because every batch there is already isolated and drift-checked and a full two-stage review is guaranteed at Phase 4, so the mid-run review is a safety net, not the primary review. If the count exceeds the review threshold, pause and trigger an early review checkpoint:
    - Run the pre-commit review list if present
    - Assess whether the scope is still within the approved manifest
-   - If changes exceed 500 lines without a review, stop and run `compliance-reviewer` before continuing
+   - If the count exceeds the halt threshold without a review, stop and run `compliance-reviewer` before continuing; the count resets after that review
    - This catches large unplanned changes mid-implementation rather than at the end
 10. After all batches, run the full test command from the tech stack and write an explicit behavioral diff.
 11. **Append the `implement` section to the JSON handoff artifact** at
@@ -91,7 +91,7 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared table. Incremen
 - Behavioral diff no longer matches the original intent
 - Repeated build failures that suggest the design is wrong
 - New abstractions appearing before the third real use case
-- Cumulative churn exceeding 500 lines without an intermediate review
+- Cumulative non-generated churn exceeding the halt threshold (`MTK_CHURN_HALT_LINES`, default 500; 1000 at HIGH/MAX) without an intermediate review
 
 ## Verification
 

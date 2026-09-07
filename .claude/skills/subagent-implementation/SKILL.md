@@ -110,7 +110,7 @@ When the `Workflow` tool is available, take the dynamic-workflow path: read `.cl
       - Append `{batch_id, actual_files, build, tests, behavioral_diff, deviations}` to `sidecar.implement.completed_batches[]`.
       - Run `bash scripts/validate-handoff.sh docs/specs/<date>-<slug>.json` (if available) to surface schema drift early.
       - Tick the batch row in `tasks/todo.md`.
-   7. **Cumulative churn check.** After every batch, run `git diff --stat <base>...HEAD` and count net lines. Mirror `incremental-implementation` thresholds: ≥300 lines without an intermediate review → trigger an early `pre-commit-review-list` pass. ≥500 lines without a review → halt and run `compliance-reviewer` before continuing.
+   7. **Cumulative churn check.** After every batch, run `git diff --stat <base>...HEAD` and count net **non-generated** lines since the last review (same exclusion list as `incremental-implementation` step 9). This path always runs at rigor HIGH/MAX, so the thresholds are the doubled defaults: ≥ `MTK_CHURN_REVIEW_LINES` (**600** here) without an intermediate review → trigger an early `pre-commit-review-list` pass; ≥ `MTK_CHURN_HALT_LINES` (**1000** here) without a review → halt and run `compliance-reviewer` before continuing, then reset the count. A field run with the flat 500-line rule ran four mid-loop compliance reviews before the two-stage review — each found real items, but review time roughly doubled for a run whose batches were already isolated and drift-checked.
 4. **After all batches:**
    - Write a final aggregated `behavioral_diff` to `sidecar.implement.behavioral_diff`.
    - Hand control back to `implement/SKILL.md` Phase 3.5 (whole-feature spec-drift) → Phase 4 (two-stage review). Both run unchanged. Per-batch micro-checks are supplemental, not a replacement.
@@ -193,4 +193,4 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared table. Subagent
 - [ ] `sidecar.implement.completed_batches[]` reflects every batch with actual_files and behavioral_diff
 - [ ] `tasks/todo.md` ticks match completed batches
 - [ ] Phase 4 review still runs unchanged after the loop
-- [ ] Cumulative churn thresholds (300/500 lines) honored
+- [ ] Cumulative churn thresholds (600/1000 non-generated lines at HIGH/MAX, or `MTK_CHURN_*` overrides) honored

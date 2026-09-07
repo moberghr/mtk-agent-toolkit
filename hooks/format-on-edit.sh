@@ -194,10 +194,19 @@ flush_dotnet() {
 # ("My Folder/S.cs") that gets split becomes two include patterns, neither of
 # which matches, and dotnet format then formats nothing and exits 0 — the exact
 # silent no-op this function exists to fix. Verified on dotnet 10.0.100.
+#
+# Only the `whitespace` and `style` subcommands run. Bare `dotnet format` also
+# runs the `analyzers` pass, which applies third-party/CA code fixes — in a
+# 2026-09 field run a CA1001 auto-fix rewrote a test class and broke the build
+# four times across implementers. Analyzer fixes are a reviewed change, not a
+# formatting side effect of an edit.
 dotnet_format_in() {
   local dir="$1"; shift
-  ( cd "$dir" && dotnet format --include "$@" --verbosity quiet ) >/dev/null 2>&1 \
-    || log_warn "dotnet format failed in ${dir} ($*)"
+  local sub
+  for sub in whitespace style; do
+    ( cd "$dir" && dotnet format "$sub" --include "$@" --verbosity quiet ) >/dev/null 2>&1 \
+      || log_warn "dotnet format ${sub} failed in ${dir} ($*)"
+  done
 }
 
 format_one() {
