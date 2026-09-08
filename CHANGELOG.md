@@ -4,6 +4,89 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [7.35.0] - 2026-09-08
+
+### Changed — token and speed: bounded tool output, a per-run context pack, parallel batch waves, fewer bookkeeping turns, lighter instruction load
+
+A 2026-09-07 audit of v7.34.0 measured where an implement run spends tokens and
+minutes. Hooks were cheap (40–170 ms, parallel, silent on the common path). The cost
+was in the loop itself: unbounded build/test output, every subagent re-reading the
+whole standards library, batches serialized even when independent, ~65 standalone
+artifact-bookkeeping turns per run, and ~94k tokens of instruction text reachable
+from `implement` before any code was read. Six workstreams, plan at
+`docs/plans/2026-09-07-token-and-speed-optimization.md`:
+
+- **Bounded output by default (WS1).** The dotnet, python, and TypeScript stack skills
+  now prescribe quiet runners (`dotnet build --nologo -v q`, `dotnet test --nologo -v q
+  --no-build`, `pytest -q --tb=short`, `tsc --pretty false`, dot/silent reporters) and
+  the implementer prompt routes **every** VERIFY command through `mtk-verify-run.sh` —
+  the old "when output will exceed ~30 lines" judgment call is gone. Evidence is the
+  wrapper's `exit=N` line, bounded tail, and log path; raw output is never pasted.
+- **Per-run context pack (WS2).** New `scripts/build-context-pack.sh <uuid> <sidecar>`
+  writes `.mtk/workflows/<uuid>/context-pack.md` once the change manifest is known:
+  the stack's build/test/format commands, CLAUDE.md `## Critical Rules`, the
+  coding-guideline sections whose headings match the *kinds* of files in the manifest
+  (handler/entity/test/api keyword table) plus a TOC of every other heading with its
+  path, `[EXTRACTED]` architecture principles, and lessons that mention a manifest
+  path. `implement` Phase 2 builds it and records `results.context_pack`; the
+  implementer prompt and every reviewer agent read the pack **instead of** CLAUDE.md +
+  tech-stack skill + full guidelines (the old list survives only as a fallback for
+  standalone runs; `compliance-reviewer` still reads `.claude/rules/*.md` because it
+  cites rule IDs; `plan-gap-reviewer` deliberately does not get the pack — it carries
+  lessons, and that lane is anti-anchored). `review-finding-schema.md` is cut to the
+  contract (16k → 4.6k chars); the long-form rationale and examples moved to
+  `review-finding-examples.md`.
+- **Parallel batch waves (WS3).** `depends` is now **required** on every plan batch
+  (`depends_rationale` when empty), two batches that share a file must carry an edge,
+  and DI-registration / project / migration-snapshot files are serialize-if-touched.
+  The workflow template derives each batch's wave as its topological level and runs
+  same-level batches with `parallel()`, capped by `MTK_BATCH_WAVE_MAX` (default 3);
+  the manual Agent-loop dispatches a wave in one message. `plan-gap-reviewer` flags a
+  missing edge between file-sharing batches as `BLOCKING`. Drift micro-check runs
+  once per wave. New eval suite `evals/subagent-implementation/`.
+- **Bookkeeping never gets its own turn (WS5).** `workflow-artifact.sh` gains `batch
+  <uuid> <op> -- <op> …` (several set/event/gate/seal ops in one invocation) and
+  `event --ts <iso8601>` (replay a runtime-captured timestamp). Every prescribed
+  artifact write in the implement chain now rides in the same shell call as the
+  command it records, or in one `batch` call; only `init`, `list`, `read`, and
+  `verify-seal` run alone. `list` is one python3 pass instead of one per artifact.
+- **Timing on the dynamic-workflow path (WS6).** The workflow template stamps
+  `ts_dispatched` / `ts_returned` on every batch result; the orchestrator replays them
+  as `agent_dispatched` / `agent_returned --ts … --data '{"source":"workflow-replay"}'`
+  before any gate, so the run receipt's per-batch timing is populated on the path
+  WS3 makes the common one. Replayed rows are labelled `(replayed)` in the receipt.
+- **Lighter instruction load (WS4).** The nine copies of `## MTK File Resolution`
+  collapse to one reference (`mtk-file-resolution.md`) that the `/mtk` router
+  resolves once per session; oversized Common Rationalizations / Red Flags tables move
+  to `workflow-rationalizations.md` with ≤3 skill-specific rows kept inline;
+  Verification / Overview / When To Use sections in the implement chain are trimmed to
+  checklists; `context-engineering` drops its 200k-era budget text (60–120 lines per
+  skill, prune at 5+ skills, reset at 40%) for the 1M default and states the real cost
+  model — instruction text is prompt-cached, tool output is not; `model-routing.md`
+  binds the slots to the current generation and names Fable 5.1 as an optional
+  `strong` binding for compliance/security lanes only. `validate-toolkit.sh` adds
+  advisory WARNs (never `fail` this release) for skill char budgets (20k workflow /
+  35k phase-based), Verification > 8 lines, Overview > 3 lines, When To Use > 5
+  bullets.
+
+- **Reviewer agents are actually restricted now (S1.7).** The six agents declared
+  `allowed-tools: Read, Glob, Grep, Bash`, but Claude Code enforces the `tools:` key on
+  agent definitions and ignores `allowed-tools` there — so every MTK reviewer ran with
+  **all** tools (Edit and Write included, against its read-only contract) and every spawn
+  carried every tool schema, ~120 MCP/deferred tool names, and the whole ~150-entry skill
+  roster. Measured on a loaded machine: a zero-tool spawn of `test-reviewer` cost ~54k
+  tokens; a built-in agent with a real `tools:` restriction cost ~22k, with the skill
+  roster and MCP names gone entirely. All six agents now carry `tools:`;
+  `validate-toolkit.sh` **fails** on an agent without it or one granting
+  Edit/Write/Agent/Skill (the old advisory checked the wrong key).
+
+New knob: `MTK_BATCH_WAVE_MAX` (CLAUDE.md routing table). New references:
+`mtk-file-resolution.md`, `workflow-rationalizations.md`, `review-finding-examples.md`.
+`plan.batches[].depends` becomes required in `handoff.schema.json`; `parallel_safe` is
+deprecated in favour of `depends`/`wave`.
+
+**Measured (this checkout, same commands as the audit):** implement-chain skill text 213,933 → 206,414 chars (-4%) and all skills 561,243 → 547,655 chars, with WS2/WS3/WS5/WS6 adding new instructions inside the same files; implementer fixed preamble ~63k → 19,516 chars (context pack 13.4k on this repo's dotnet manifest + prompt template); compliance lane ~107k → 55,490 chars (pack + schema + rules + agent); review-finding-schema 16,017 → 4,601 chars; full `## MTK File Resolution` copies 9 → 0; standalone artifact-bookkeeping turns prescribed across the chain 47 → 28; `workflow-artifact.sh list` ~600 → 66 ms; wave scheduler unit-tested (`B1 → B2+B3+B4 → B5 → B6` for four independent middle batches under cap 3; a chain stays sequential). The plan's 40% chain-text target is **not** met this release — the char-budget/section-cap WARNs name the remaining offenders (setup-bootstrap 42.9k, batch-fix 25.3k, subagent-implementation 26.3k) for the follow-up.
+
 ### Fixed — scripts that leaked their layout assumptions when run by hand from the plugin cache
 
 A 2026-09 field run drove the implement loop with the plugin disabled and every

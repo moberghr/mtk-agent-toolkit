@@ -1,6 +1,6 @@
 {
-  "version": "7.34.0",
-  "updated": "2026-09-04",
+  "version": "7.35.0",
+  "updated": "2026-09-08",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -1732,7 +1732,7 @@
       "source": "scripts/workflow-artifact.sh",
       "target": "scripts/workflow-artifact.sh",
       "action": "sync",
-      "description": "Helper for init/event/set/read/list/gate operations against .mtk/workflows/{uuid}.json"
+      "description": "Helper for init/event/set/read/list/gate/seal operations against .mtk/workflows/{uuid}.json; batch applies several ops in one invocation and event --ts replays runtime-captured timestamps"
     },
     "scripts/workflow-dashboard.sh": {
       "source": "scripts/workflow-dashboard.sh",
@@ -2552,6 +2552,61 @@
       "target": "tests/hooks/test-collateral-guard.sh",
       "action": "sync",
       "description": "Hook test for collateral-guard.sh \u2014 CRLF rewrites, undeclared lockfile churn, asset-set regeneration, and the declared and clean cases that must stay silent"
+    },
+    "scripts/build-context-pack.sh": {
+      "source": "scripts/build-context-pack.sh",
+      "target": "scripts/build-context-pack.sh",
+      "action": "sync",
+      "description": "Writes the per-run context pack (.mtk/workflows/<uuid>/context-pack.md) — build/test/format commands, CLAUDE.md critical rules, manifest-selected coding-guideline sections, EXTRACTED principles, matching lessons — that implementer and reviewer subagents read instead of the full standards library"
+    },
+    "references/review-finding-examples.md": {
+      "source": ".claude/references/review-finding-examples.md",
+      "target": ".claude/references/review-finding-examples.md",
+      "action": "sync",
+      "applyTo": [
+        ".claude/agents/**",
+        ".claude/skills/writing-skills/**"
+      ],
+      "description": "Long-form rationale, worked examples, and edge-case rules behind review-finding-schema.md — read when authoring or tuning a reviewer, not when running one"
+    },
+    "references/mtk-file-resolution.md": {
+      "source": ".claude/references/mtk-file-resolution.md",
+      "target": ".claude/references/mtk-file-resolution.md",
+      "action": "sync",
+      "description": "Canonical MTK root resolution (MTK_HELPER_ROOT → CLAUDE_PLUGIN_ROOT → project → plugin-cache find) that entry-point skills point at instead of repeating the block"
+    },
+    "references/spec-sidecar-manifest.md": {
+      "source": ".claude/references/spec-sidecar-manifest.md",
+      "target": ".claude/references/spec-sidecar-manifest.md",
+      "action": "sync",
+      "applyTo": [
+        "docs/specs/**"
+      ],
+      "description": "Full field reference for the spec's JSON sidecar (docs/specs/<date>-<slug>.json) — allowed values, coverage claims, conditional descopes, downstream plan/implement sections — read by spec-driven-development when authoring or amending a sidecar"
+    },
+    "references/workflow-rationalizations.md": {
+      "source": ".claude/references/workflow-rationalizations.md",
+      "target": ".claude/references/workflow-rationalizations.md",
+      "action": "sync",
+      "description": "Shared rationalization table plus every skill's full Common Rationalizations / Red Flags content — loaded at rigor MAX or on a repeated ceremony reduction, not inline in each skill"
+    },
+    "evals/subagent-implementation/grader.md": {
+      "source": "evals/subagent-implementation/grader.md",
+      "target": "evals/subagent-implementation/grader.md",
+      "action": "sync",
+      "description": "Grader for the wave-scheduling eval: waves derived from depends, shared files force an edge, wave cap honoured, sequential fallback when every batch chains"
+    },
+    "evals/subagent-implementation/eval-01-independent-waves.md": {
+      "source": "evals/subagent-implementation/eval-01-independent-waves.md",
+      "target": "evals/subagent-implementation/eval-01-independent-waves.md",
+      "action": "sync",
+      "description": "Wave eval: six batches with four proven-independent middle batches must schedule as B1 → B2+B3+B4 → B5 → B6 under the default wave cap of 3"
+    },
+    "evals/subagent-implementation/eval-02-shared-file-serializes.md": {
+      "source": "evals/subagent-implementation/eval-02-shared-file-serializes.md",
+      "target": "evals/subagent-implementation/eval-02-shared-file-serializes.md",
+      "action": "sync",
+      "description": "Wave eval: two edge-free batches that touch the same DI registration file must be flagged BLOCKING by the plan-gap check and serialized, never run in one wave"
     }
   },
   "protected": [
