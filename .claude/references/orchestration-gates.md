@@ -81,12 +81,15 @@ On `ESCALATE`, stop the loop, record `failure_stop_gate fail`, and hand the trig
 ## How to record a gate
 
 ```bash
-scripts/workflow-artifact.sh gate "$MTK_WF_UUID" plan_trust_gate pass --reason "approve & run until done"
-scripts/workflow-artifact.sh gate "$MTK_WF_UUID" phase_exit_gate fail --reason "build red on batch 2"
-scripts/workflow-artifact.sh gate "$MTK_WF_UUID" failure_stop_gate fail --reason "3rd remediation iteration on same flake"
+# A gate decision rides in the same shell call as the command that decided it:
+dotnet test --nologo -v q && "$WFA" gate "$MTK_WF_UUID" phase_exit_gate pass --reason "batch 2 green"
+dotnet test --nologo -v q || "$WFA" gate "$MTK_WF_UUID" phase_exit_gate fail --reason "build red on batch 2"
+# Several writes at once — one invocation, ops separated by a bare `--`:
+"$WFA" batch "$MTK_WF_UUID" gate plan_trust_gate pass --reason "approve & run until done" -- seal
+"$WFA" gate "$MTK_WF_UUID" failure_stop_gate fail --reason "3rd remediation iteration on same flake"
 ```
 
-The helper writes the new value to `gates.{name}` in `{uuid}.json` AND appends a `gate_decided` event to the log. Reading either surface alone is incomplete — auditors should reconcile both.
+The helper writes the new value to `gates.{name}` in `{uuid}.json` AND appends a `gate_decided` event to the log. Reading either surface alone is incomplete — auditors should reconcile both. A gate write never gets its own model turn: append it to the deciding command or group it with `batch` (see `workflow-artifacts/SKILL.md` step 2).
 
 ## Skipping is a hard rule violation
 

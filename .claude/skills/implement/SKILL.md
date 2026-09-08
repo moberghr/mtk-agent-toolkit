@@ -9,14 +9,7 @@ user-invocable: false
 
 ## MTK File Resolution
 
-MTK skills and shared references live either in the project (local install) or the plugin cache (marketplace install). Resolve once:
-
-1. If `$MTK_HELPER_ROOT` is set, prefix `.claude/skills/` and `.claude/references/` reads with it — a pinned checkout wins over every other source.
-2. Otherwise, if `$CLAUDE_PLUGIN_ROOT` is set, prefix them with that.
-3. Otherwise, if `.claude/skills/context-engineering/SKILL.md` exists locally → project-relative paths work as-is.
-4. Otherwise, fall back to `find ~/.claude/plugins -maxdepth 8 -name "SKILL.md" -path "*/mtk/*/context-engineering/*" -type f 2>/dev/null | sort -V | tail -1 | sed 's|/.claude/skills/context-engineering/SKILL.md||'`. If empty, MTK skills are unavailable — warn the engineer and proceed with `CLAUDE.md` only.
-
-Always project-relative (never prefixed): `CLAUDE.md`, `.claude/tech-stack`, `.claude/rules/`, `tasks/`, `docs/`, `.claude/references/architecture-principles.md`, `.claude/references/pre-commit-review-list.md`, `.mtk/` (workflow state). Resolve skills and scripts from the same root: a split (skills from a local dev checkout, scripts from the plugin cache) risks version drift — anchor both the same way.
+Resolve MTK skill/reference/script paths per `.claude/references/mtk-file-resolution.md` unless the router already stated `MTK_ROOT=<path>` this session; `CLAUDE.md`, `.claude/tech-stack`, `.claude/rules/`, `tasks/`, `docs/`, `.mtk/` stay project-relative.
 
 ---
 
@@ -50,8 +43,8 @@ Before doing anything else:
      ```
    - Run `"$WFA" list`.
    - If a single active `BUILD` workflow exists for this feature, ask via `AskUserQuestion` whether to resume that uuid or start a new one.
-   - Otherwise: `MTK_WF_UUID=$("$WFA" init BUILD --goal "<one-line user goal>")` and remember the uuid for the rest of the session.
-   - Emit the phase-0 marker immediately after init/resume — the phase goes in `--data`, not as a positional: `"$WFA" event "$MTK_WF_UUID" phase_started --data '{"phase":"phase-0"}'`.
+   - Otherwise init and emit the phase-0 marker in **one** call — the phase goes in `--data`, not as a positional: `MTK_WF_UUID=$("$WFA" init BUILD --goal "<one-line user goal>") && "$WFA" event "$MTK_WF_UUID" phase_started --data '{"phase":"phase-0"}'`. Remember the uuid for the rest of the session.
+   - **Bookkeeping rides along, never alone.** Every later `"$WFA"` write in this skill is appended with `&&` to the command it records (the lint, the checkpoint, the sidecar write) or grouped into one `"$WFA" batch "$MTK_WF_UUID" <op> -- <op> …` call. A standalone artifact write is a full model turn spent on one line of JSON. Only `init`, `list`, `read`, and `verify-seal` run alone.
 1. Follow `.claude/skills/context-engineering/SKILL.md`.
 2. Read `CLAUDE.md`. If missing, stop and tell the engineer to run `/mtk-setup`.
 3. **Load the active tech stack:** resolve it with `bash scripts/resolve-tech-stack.sh "$PWD"` (a single word like `dotnet` or `python`). The resolver is **polyglot-monorepo aware** — for a subproject under a differently-stacked root it returns the subproject's stack via a nested `.claude/tech-stack` or a root `.claude/tech-stack.map` glob, falling back to the repo-root `.claude/tech-stack`. When the change targets a specific subtree, pass a representative path from the `change_manifest` (e.g. `bash scripts/resolve-tech-stack.sh "src/web/spa"`) rather than `$PWD`, so the workflow loads the right stack for the files it will touch. Then read `.claude/skills/tech-stack-{stack}/SKILL.md`. This provides build/test commands, ORM guidance, framework patterns, and reference file paths used throughout the workflow. If it resolves empty, do not halt: run `bash scripts/setup-detect.sh --json` (read-only) to infer the stack, and load the matching `tech-stack-{stack}` skill if one exists for the inferred primary. If inference is empty or no matching skill exists, warn the engineer that the tech stack is unconfigured (suggest `/mtk-setup`) and proceed with `CLAUDE.md`-only context.
@@ -108,8 +101,8 @@ The resulting plan must include:
 
 **Persist the spec to disk before continuing.** Save to `docs/specs/YYYY-MM-DD-<feature-slug>.md` using today's date and a kebab-case slug. Create `docs/specs/` if missing. This is mandatory — the engineer must be able to read and edit the spec outside of chat.
 
-After the spec lands, record its path on the workflow artifact:
-`"$WFA" set "$MTK_WF_UUID" results.spec_path=docs/specs/<file>`
+Record its path in the same call as the EARS lint the spec skill already runs:
+`bash scripts/lint-ears.sh docs/specs/<file> && "$WFA" set "$MTK_WF_UUID" results.spec_path=docs/specs/<file>`
 
 ## Phase 2: Write The Task Breakdown
 
@@ -120,8 +113,17 @@ Write **both** files (mandatory, not optional):
 1. `tasks/todo.md` — checkable batches and post-implementation review items
 2. `docs/plans/YYYY-MM-DD-<feature-slug>.md` — full plan alongside the spec, same date and slug as Phase 1
 
-Create `docs/plans/` if missing. Then record both paths on the workflow artifact:
-`"$WFA" set "$MTK_WF_UUID" results.plan_path=docs/plans/<file> results.todo_path=tasks/todo.md`
+Create `docs/plans/` if missing.
+
+**Build the context pack** — the one file every implementer and reviewer subagent reads instead of CLAUDE.md + the tech-stack skill + the full coding guidelines. Build it here, once the `change_manifest` is known, and record the plan/todo paths in the same call:
+
+```bash
+bash scripts/build-context-pack.sh "$MTK_WF_UUID" docs/specs/<date>-<slug>.json \
+  && "$WFA" set "$MTK_WF_UUID" results.plan_path=docs/plans/<file> results.todo_path=tasks/todo.md \
+       results.context_pack=.mtk/workflows/"$MTK_WF_UUID"/context-pack.md
+```
+
+The script selects coding-guideline sections by the kinds of files in the manifest and lists every other heading with its path, so a subagent pulls a section on demand rather than reading guideline files end to end. Pass `results.context_pack` to every subagent prompt (implementer template and reviewer agents read it first). Rebuild it whenever the manifest is amended in Phase 3.5.
 
 ## Rigor Score (Continuous Ceremony Scaling)
 
@@ -146,6 +148,11 @@ does not drop.
 State the score and level in one line at the Phase 2.5 gate, e.g.
 `Rigor: HIGH (score 9 — 3 batches, 8 files, security_impact=new-auth-path)`.
 
+**At MAX only**, also read `.claude/references/workflow-rationalizations.md` — the
+full rationalization and red-flag tables moved out of the chain skills. Below MAX the
+3-row excerpts each skill keeps inline are the whole budget; load the reference
+later only if Phase 7 records a ceremony reduction a previous run already recorded.
+
 **Read `.claude/references/implement-rigor-scoring.md`** for the signal→points
 table, the external vs internal-tooling contract-surface rule, the mechanical
 definition and per-batch exception, and the scope-reduction recompute guardrails.
@@ -161,8 +168,8 @@ bash scripts/manifest-preflight.sh --human docs/specs/<date>-<slug>.json
 
 - **Critical findings (MP001/MP002) block the gate.** A `modify` entry pointing at a path that does not exist is not a typo to fix later: the implementer will either create the file in the wrong place or invent a directory around it. Repoint the entry at the real path — MP002 names it when the file is tracked elsewhere — and re-run.
 - **Warnings (MP003-MP006) are answered, not waived.** MP004 in particular ("the pattern this path presumes may not be used in this codebase at all") means read how the codebase does this today before sealing. If the pattern really is absent and you still want it, that is a design decision that belongs in the spec, stated — not a directory that appears silently in Phase 3.
-- Record the outcome, so a later drift record can be told apart from an unchecked manifest:
-  `"$WFA" event "$MTK_WF_UUID" manifest_preflight --data '{"critical":<n>,"warning":<n>}'`
+- Record the outcome in the same call as the pre-flight script itself, so a later drift record can be told apart from an unchecked manifest:
+  `bash scripts/manifest-preflight.sh <sidecar> ; "$WFA" event "$MTK_WF_UUID" manifest_preflight --data '{"critical":<n>,"warning":<n>}'`
 
 A manifest corrected here costs one edit. The same correction found in Phase 3.5 costs a drift record, an amended sidecar, and a wasted batch.
 
@@ -186,8 +193,7 @@ On approval, record the gate and **seal the approved scope** so a later edit
 cannot silently keep the approval:
 
 ```bash
-"$WFA" gate "$MTK_WF_UUID" plan_trust_gate pass --reason "<approve mode>"
-"$WFA" seal "$MTK_WF_UUID"
+"$WFA" batch "$MTK_WF_UUID" gate plan_trust_gate pass --reason "<approve mode>" -- seal
 ```
 
 `MTK_AUTO_PROCEED=1` may default the recommended option **only** when the spec has
@@ -244,10 +250,7 @@ After all batches:
 
 - run the full test command from the active tech stack skill
 - write an explicit behavioral diff
-- emit the final `phase_exit_gate pass` (or `fail` and stop) on the workflow artifact (per-batch gate decisions are already recorded by the implementation skill)
-
-Record per-batch progress:
-`"$WFA" set "$MTK_WF_UUID" results.batches_completed=<n>`
+- emit the final `phase_exit_gate pass` (or `fail` and stop) in the same call as the full test run (`<full test cmd> && "$WFA" batch "$MTK_WF_UUID" gate phase_exit_gate pass --reason "all batches green" -- event phase_completed --data '{"phase":"phase-3"}'`); per-batch gate decisions and `results.batches_completed` are already recorded by the implementation skill, each riding on its batch checkpoint
 
 ## Phase 3.5: Spec-Drift Check
 
@@ -368,11 +371,10 @@ reconstructed.**
 procedure and the receipt's full field list.
 ## Final Report
 
-Close the workflow artifact:
+Close the workflow artifact in one call:
 ```bash
-"$WFA" gate "$MTK_WF_UUID" memory_sync_gate pass --reason "lessons captured"
-"$WFA" set "$MTK_WF_UUID" status=completed
-"$WFA" event "$MTK_WF_UUID" workflow_completed --data '{"summary":"<short>"}'
+"$WFA" batch "$MTK_WF_UUID" gate memory_sync_gate pass --reason "lessons captured" -- \
+  set status=completed -- event workflow_completed --data '{"summary":"<short>"}'
 ```
 
 Report:

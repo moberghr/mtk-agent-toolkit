@@ -45,7 +45,7 @@ Implement in thin slices. Each slice must compile, test, and remain explainable 
    build failures. Warning-level findings carry forward to the pre-commit review.
    If `hooks/parse-build-diagnostics.sh` does not exist in the installed toolkit, skip this step.
 7. Read `.claude/references/pre-commit-review-list.md` if present and fix any violations immediately.
-8. Mark the batch complete in `tasks/todo.md`. Record the per-batch gate decision on the workflow artifact: `scripts/workflow-artifact.sh gate "$MTK_WF_UUID" phase_exit_gate pass --reason "batch <id> green"` (or `fail` to trigger remediation). See `.claude/references/orchestration-gates.md`.
+8. Mark the batch complete in `tasks/todo.md`. Record the per-batch gate decision and progress on the workflow artifact **in the same shell call as the checkpoint test run** — `<test cmd> && "$WFA" batch "$MTK_WF_UUID" gate phase_exit_gate pass --reason "batch <id> green" -- set results.batches_completed=<n>` (on red: `|| "$WFA" gate … fail …` to trigger remediation). A standalone bookkeeping turn is a wasted turn. See `.claude/references/orchestration-gates.md`.
 9. **Churn check:** After completing each batch, run `git diff --stat` and count net lines changed **since the last review** (intermediate or Phase 4), **excluding generated and mechanical files** — lockfiles, `*.Designer.cs`, `*.g.cs`, `*.generated.*`, EF migration snapshots, `*.min.js`/`*.min.css`, built bundle output (e.g. `wwwroot/dist/**`). Generated churn is not review load. Thresholds are `MTK_CHURN_REVIEW_LINES` (default **300**) and `MTK_CHURN_HALT_LINES` (default **500**); at rigor HIGH/MAX — the subagent path or the inline-MAX profile — the defaults **double** to 600/1000, because every batch there is already isolated and drift-checked and a full two-stage review is guaranteed at Phase 4, so the mid-run review is a safety net, not the primary review. If the count exceeds the review threshold, pause and trigger an early review checkpoint:
    - Run the pre-commit review list if present
    - Assess whether the scope is still within the approved manifest
@@ -82,7 +82,7 @@ Implement in thin slices. Each slice must compile, test, and remain explainable 
 
 ## Common Rationalizations
 
-See `.claude/skills/context-engineering/SKILL.md` for the shared table. Incremental-implementation-specific traps: "since I'm in the file already, I'll clean this up too" (that is how slices become unreadable and impossible to review — stay scoped per batch), and "this abstraction will help future work" (future work is hypothetical, current complexity is real — earn abstractions from duplication, don't pre-build them).
+See `.claude/references/workflow-rationalizations.md` for the shared table. Incremental-implementation-specific traps: "since I'm in the file already, I'll clean this up too" (that is how slices become unreadable and impossible to review — stay scoped per batch), and "this abstraction will help future work" (future work is hypothetical, current complexity is real — earn abstractions from duplication, don't pre-build them).
 
 ## Red Flags
 

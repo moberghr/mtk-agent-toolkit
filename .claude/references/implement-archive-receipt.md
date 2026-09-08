@@ -60,7 +60,11 @@ sibling of the spec — containing only facts already recorded on the artifact:
     between a gate prompt and its `gate_decided`; reported separately, never folded
     into active time
   - per batch: `agent_dispatched` → `agent_returned` for each implementer, with the
-    tier from `completed_batches[].implementer_model`
+    tier from `completed_batches[].implementer_model`. Events carrying
+    `source: workflow-replay` were captured by the dynamic-workflow runtime and
+    replayed via `event --ts`; they are accepted as timing and the row is
+    labelled `(replayed)` so a reader knows the orchestrator did not observe
+    the boundary itself
   - **time lost to dispatch incidents**: the sum of `ts_killed` → `ts_respawned`
     across `results.dispatch_incidents[]`, listed per incident with its `reason`
     and any `from_model` → `to_model` switch

@@ -80,15 +80,15 @@ When the `Workflow` tool is available, take the dynamic-workflow path: read `.cl
       - Spec sections relevant to this batch (`Summary`, `Architecture and design`, `Security and compliance impact` if non-none)
       - The single batch object from `plan.batches[]` (id, files, acceptance, verification, boundary, depends)
       - **Prior-batch summary:** for every batch already in `sidecar.implement.completed_batches`, include `{id, actual_files, behavioral_diff}`. Do NOT include full prior diffs — just the summary. Emit it as a dense block (one batch per line: `id | n files | behavioral_diff`) and prefix it with the completed-batch count, e.g. `prior-batches: 3` — the implementer can checksum line count against that number and flag a truncated handoff rather than building on a silently-cut summary.
-      - Active tech stack name and the path to its skill (don't paste the skill body; the subagent will read it itself).
+      - The path of the run's **context pack** (`results.context_pack`, built in `implement` Phase 2 by `scripts/build-context-pack.sh`). It carries the build/test/format commands, CLAUDE.md critical rules, the manifest-selected coding-guideline sections, `[EXTRACTED]` principles, and matching lessons — the subagent reads it **instead of** CLAUDE.md, the tech-stack skill, and the guideline files. Do not paste the pack body; pass the path. If the manifest was amended since the pack was built, rebuild it first.
       - The full `change_manifest` and `out_of_scope` arrays — the subagent must know its boundary.
-      - The path to `CLAUDE.md`.
    2. **Dispatch the implementer subagent** via `Agent` tool with:
       - `subagent_type: general-purpose` (no MTK-specific implementer subagent type — keep tool surface generic)
       - `model: <chosen>` (Sonnet or Opus from step 2)
       - `description: Batch <id> — <one-line intent>`
       - `prompt`: see "Implementer prompt template" below
-      Emit `agent_dispatched` on the workflow artifact as you dispatch and `agent_returned` when the result lands (`"$WFA" event …`) — these two timestamps are the only record of per-batch active time and of what a kill cost; the receipt derives its timing section from them and writes `not recorded` wherever they are missing.
+      Emit `agent_dispatched` on the workflow artifact in the same shell call as any pre-dispatch command, and `agent_returned` in the same call as the post-return build check (`<build cmd> && "$WFA" batch "$MTK_WF_UUID" event agent_returned --data '{"agent":"batch:<id>"}' -- set results.batches_completed=<n>`) — these two timestamps are the only record of per-batch active time and of what a kill cost; the receipt derives its timing section from them and writes `not recorded` wherever they are missing. Bookkeeping never gets its own turn.
+      **Waves.** Batches whose `depends` arrays put them at the same topological level are dispatched together — one message, one `Agent` call per batch, at most `MTK_BATCH_WAVE_MAX` (default 3) at a time — and the next wave starts only after every result in the current one has passed the gate below. The plan guarantees that same-wave batches share no file.
    3. **Parse the structured result.** The implementer must return one fenced JSON block with `batch_id, status(completed|blocked|inconclusive), actual_files, build{ok,evidence}, tests{ok,evidence}, behavioral_diff, deviations[]` (`usage` optional). Inconclusive is never a pass. See `.claude/references/subagent-implementer-prompt.md` for the canonical schema and semantics.
    4. **Build/test/inconclusive gate.**
       - `status == inconclusive` (or unparseable / ack-only): respawn **once**
@@ -190,43 +190,27 @@ The implementer prompt template is shared by both execution paths and is organiz
 - Phase 4 review (compliance, test, architecture, silent-failure-hunter) runs unchanged after the loop — sized from the **current** rigor level, which may have been recomputed lower if scope was reduced mid-loop (see next rule).
 - **Mid-loop scope reduction re-scores rigor.** If the approved batch set shrinks during the loop (a batch is deferred, dropped, or split to a follow-up), recompute the rigor level from the remaining batches (see `implement/SKILL.md` Rigor Score → *Recompute on scope reduction*) and record the transition on the workflow artifact. Batches already dispatched are unaffected; if the recomputed level drops below HIGH, remaining not-yet-started batches return to `implement` Phase 3 for the inline path.
 - **Dynamic-workflow path:** the workflow replaces only the inner dispatch loop. Drift micro-check, sidecar persistence, churn check, and Phase 4 are orchestrator-side and run **after** the workflow returns — never inside it. The native runtime's plan-approval gate does not replace MTK's Phase 2.5; it is a transparency checkpoint on an already-approved scope.
-- **Dependency order is sequential by default.** Only parallelize a wave when batch `depends` arrays prove independence. A later batch reading an earlier batch's files must not run concurrently with it.
+- **Waves come from `depends`, and only from `depends`.** Batches at the same topological level run concurrently (width ≤ `MTK_BATCH_WAVE_MAX`, default 3); different levels run strictly in order. A later batch reading an earlier batch's files must carry an edge — if it does not, the plan is wrong: fix the edge, do not hand-serialize.
 
 ## Common Rationalizations
 
-See `.claude/skills/context-engineering/SKILL.md` for the shared table. Subagent-implementation-specific traps:
+See `.claude/references/workflow-rationalizations.md` for the shared table. Subagent-implementation-specific traps:
 
 | Rationalization | Reality |
 |---|---|
 | "I'll just edit it myself, faster than dispatching" | That defeats the entire point. Context contamination is the cost you pay invisibly. Dispatch. |
-| "Let me ask the engineer between batches whether to keep going" | Phase 2.5 already answered. Per-batch confirmation = approval fatigue. Only halt on structural conditions (build fail / non-auto drift). |
-| "The implementer touched one extra file, I'll quietly amend the manifest" | Auto-fix is allowed only inside the package, with no new public contract and no security_impact change. Anything else re-opens 2.5. |
-| "I'll let the implementer subagent do the spec-drift review too" | No. Drift is orchestrator-side. The subagent is too close to its own diff to judge it. |
-| "Let me reuse the same subagent across batches to save tokens" | Then it's not subagent-driven. Use `incremental-implementation` instead. |
-| "Build failed, I'll skip this batch and continue" | No. A failing batch poisons every later batch's assumptions. Retry, then halt. |
-| "The subagent said 'done' but returned no JSON — close enough, mark it passed" | No. Ack-only / unparseable / missing-evidence results are `inconclusive`, not `completed`. Respawn once with narrowed scope; a second inconclusive halts. |
 | "The implementer got killed by the rate limit — treat it as inconclusive and respawn with narrowed scope" | No. Its partial work is on disk; a narrowed respawn either redoes it or builds a second copy beside it. Inventory, build, and respawn to *finish* from the partial state (or revert the batch's own files and restart) on the fallback tier. Record the kill first. |
-| "Opus was rate-limited on B1, it's probably fine again for B2" | No. Once the tier is unavailable, the loop runs on `default` to the end. Probing the limit again costs another dead batch and another unrecorded gap. |
-| "The workflow runtime validated the structured output, so I can skip the drift check" | No. Schema validation ≠ scope/drift judgment. The runtime confirms the JSON shape; it does not know `batch.files` or `out_of_scope`. Run the orchestrator-side drift micro-check on every returned result. |
-| "The native plan-approval gate already approved it, so I can skip MTK Phase 2.5 / Phase 4" | No. The runtime gate approves running the *script*; it is not a spec approval or a code review. Phase 2.5 precedes the workflow; Phase 4 follows it. |
-| "pipeline()/parallel() is faster, I'll run all batches at once" | Only if their `depends` arrays prove independence. Dependent batches run sequentially — concurrency on a dependency edge produces a half-built, racy feature. |
+| "These two batches touch the same file but the edits don't overlap, they can share a wave" | No. Two implementers writing one file race on the Edit tool's read-before-write check; one of them stalls or clobbers. Same file ⇒ edge, always. |
+
+Full table: `.claude/references/workflow-rationalizations.md` → subagent-implementation.
 
 ## Red Flags
 
 - Orchestrator using `Edit` or `Write` on source files
-- Implementer subagent receiving the prior batch's full diff (should be summary only)
-- Implementer subagent calling `Agent` (recursion)
-- Drift detected but loop continued without sidecar amendment
-- `AskUserQuestion` called more than once per loop (model pick excluded)
-- Per-batch review agent dispatched (was deferred to v2; if you need this, talk to maintainers first)
-- Phase 4 skipped because "every batch was already reviewed"
-- Dynamic-workflow path: orchestrator-side drift check skipped because "the workflow validated the output"
-- Dynamic-workflow path: Phase 2.5 or Phase 4 skipped because the native plan-approval gate fired
-- Dependent batches run with `parallel()`/`pipeline()` despite an ordering edge in `depends`
-- Drift detection or sidecar amendment logic placed *inside* the generated workflow script
-- An `inconclusive` / ack-only / unparseable batch result counted as a pass or built upon by a later batch
+- Two batches in one wave whose `files` overlap (the plan is missing an edge)
 - A killed implementer handled as `inconclusive` (narrowed-scope respawn over partial work already on disk), or respawned on the same unavailable tier
-- A kill or tier switch that appears in the final report but not in `results.dispatch_incidents[]`
+
+Full table: `.claude/references/workflow-rationalizations.md` → subagent-implementation.
 
 ## Verification
 
@@ -235,7 +219,7 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared table. Subagent
 - [ ] Implementer model was asked once via `AskUserQuestion` (or defaulted with explicit notice)
 - [ ] One fresh subagent dispatched per batch (no reuse) — or one `agent()` call per batch in the generated script
 - [ ] Each batch returned a structured JSON result matching the schema (validated by the runtime on the workflow path)
-- [ ] Dependent batches ran sequentially; only proven-independent batches were parallelized
+- [ ] Waves were derived from `depends`; no same-wave batches shared a file; wave width never exceeded `MTK_BATCH_WAVE_MAX`
 - [ ] Drift micro-check ran orchestrator-side for every batch (also on the workflow path, after it returned), with auto-fix or 2.5 re-open as appropriate
 - [ ] `sidecar.implement.completed_batches[]` reflects every batch with actual_files, behavioral_diff, and `implementer_model`
 - [ ] Every killed dispatch is in `results.dispatch_incidents[]` with both timestamps, and any tier fallback was applied to all remaining batches
