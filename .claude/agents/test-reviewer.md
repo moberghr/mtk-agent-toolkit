@@ -2,6 +2,7 @@
 name: test-reviewer
 description: Focused reviewer for test coverage, assertion quality, and verification gaps.
 allowed-tools: Read, Glob, Grep, Bash
+tools: Read, Glob, Grep, Bash
 required-toolsets: [read-only]
 model: sonnet
 effort: high
@@ -40,14 +41,17 @@ low-confidence findings just to have output; instead produce an explicit
 
 Read these files — they are your review checklists:
 
-1. **`CLAUDE.md`** — Project overview, critical rules, and standards reference.
-2. **`.claude/tech-stack`** — Single word identifying the active stack (e.g., `dotnet`, `python`).
-3. **`.claude/skills/tech-stack-{stack}/SKILL.md`** — Stack-specific test guidance, ORM patterns, and reference paths.
-4. **`.claude/rules/*.md`** — Glob for all rule files and read each one.
-5. **`.claude/references/testing-patterns.md`** — Shared testing expectations.
-6. **The testing supplement from the tech stack's `## Reference Files`** — Stack-specific testing guidance (e.g., `testing-supplement.md` for dotnet or python).
-7. **`.claude/skills/test-driven-development/SKILL.md`** — TDD workflow and test quality standards.
-8. **The changed test files AND the production files they exercise** — Read both sides to understand what is being tested and what is missing.
+1. **The context pack** at the path the orchestrator passes (`results.context_pack`, normally `.mtk/workflows/<uuid>/context-pack.md`) — build/test/format commands, CLAUDE.md critical rules, the coding-guideline sections selected for this change, `[EXTRACTED]` architecture principles, and applicable lessons. Read it instead of the files it was built from. Fall back to the full list ONLY when no pack path was passed (a standalone run):
+   - `CLAUDE.md` — project overview, critical rules, standards reference
+   - `.claude/tech-stack` — the active stack word (e.g., `dotnet`, `python`)
+   - `.claude/skills/tech-stack-{stack}/SKILL.md` — test guidance, ORM patterns, reference paths
+   - `.claude/rules/*.md` — glob and read each
+   - `.claude/references/testing-patterns.md` — shared testing expectations
+   - the testing supplement from the tech stack's `## Reference Files` (e.g., `testing-supplement.md`)
+   - `.claude/skills/test-driven-development/SKILL.md` — TDD workflow and test quality standards
+2. **`.claude/references/review-finding-schema.md`** — the output contract.
+3. **The spec and its JSON sidecar** (`docs/specs/<date>-<slug>.md` / `.json`) when the orchestrator passes them — `verifiable_criteria` and `test_manifest` are what the tests must prove.
+4. **The changed test files AND the production files they exercise** — Read both sides to understand what is being tested and what is missing.
 
 ## Step 2: Get the Diff
 

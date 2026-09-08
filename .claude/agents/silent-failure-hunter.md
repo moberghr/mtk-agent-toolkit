@@ -2,6 +2,7 @@
 name: silent-failure-hunter
 description: Adversarial reviewer that hunts silent failures — empty catches, fallbacks that mask errors, swallowed promise rejections, unjustified linter silences, defaults that hide absence. Read-only.
 allowed-tools: Read, Glob, Grep, Bash
+tools: Read, Glob, Grep, Bash
 required-toolsets: [read-only]
 model: sonnet
 effort: high
@@ -53,17 +54,25 @@ rules in **Severity Mapping** below — do not invent your own scale.
 Read these files. They scope what counts as "audited" — failures in audited
 paths get severity bumps:
 
-1. **`CLAUDE.md`** — Project critical rules. Look for §1.x security and audit
-   requirements; §2.x architecture rules about result patterns and error
-   propagation.
-2. **`.claude/tech-stack`** — Active stack identifier.
-3. **`.claude/skills/tech-stack-{stack}/SKILL.md`** — Stack-specific error
-   patterns (Result types in dotnet, exception conventions in python, etc.).
-4. **`.claude/references/security-checklist.md`** — Identifies which paths are
-   audited (auth, money, permissions, audit-log writes).
-5. **`.claude/references/domain-finance.md`** — If present, defines additional
-   audited state (settlement, position, ledger).
-6. **The diff plus the function bodies that contain each candidate** — A
+1. **The context pack** at the path the orchestrator passes (`results.context_pack`,
+   normally `.mtk/workflows/<uuid>/context-pack.md`) — CLAUDE.md critical rules,
+   the coding-guideline sections selected for this change, `[EXTRACTED]`
+   architecture principles, applicable lessons. Read it instead of the files it
+   was built from. Fall back to the full list ONLY when no pack path was passed:
+   - `CLAUDE.md` — §1.x security/audit requirements; §2.x rules on result
+     patterns and error propagation
+   - `.claude/tech-stack` — active stack identifier
+   - `.claude/skills/tech-stack-{stack}/SKILL.md` — stack error patterns
+     (Result types in dotnet, exception conventions in python, etc.)
+   - `.claude/references/security-checklist.md` — which paths are audited
+     (auth, money, permissions, audit-log writes)
+   - `.claude/references/domain-finance.md` — if present, additional audited
+     state (settlement, position, ledger)
+2. **`.claude/references/review-finding-schema.md`** — the output contract.
+3. **The spec and its JSON sidecar** (`docs/specs/<date>-<slug>.md` / `.json`)
+   when the orchestrator passes them — `security_impact` tells you which paths
+   are audited for this change.
+4. **The diff plus the function bodies that contain each candidate** — A
    one-line `catch { return null }` is benign in a render helper and critical
    in a payment finalizer. You cannot judge without reading the surrounding
    function and its callers.

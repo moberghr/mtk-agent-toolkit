@@ -2,6 +2,7 @@
 name: architecture-reviewer
 description: Focused reviewer for slice boundaries, dependency direction, and architectural fit of code changes.
 allowed-tools: Read, Glob, Grep, Bash
+tools: Read, Glob, Grep, Bash
 required-toolsets: [read-only]
 model: sonnet
 effort: high
@@ -40,14 +41,17 @@ low-confidence findings just to have output; instead produce an explicit
 
 Read these files — they are your review checklists:
 
-1. **`CLAUDE.md`** — Project overview, critical rules, and standards reference.
-2. **`.claude/tech-stack`** — Single word identifying the active stack (e.g., `dotnet`, `python`).
-3. **`.claude/skills/tech-stack-{stack}/SKILL.md`** — Stack-specific framework patterns, ORM guidance, and reference paths.
-4. **`.claude/rules/*.md`** — Glob for all rule files and read each one (especially architecture rules).
-5. **`.claude/references/architecture-principles.md`** — Architecture rules (if present).
-6. **The framework patterns reference from the tech stack's `## Reference Files`** — Stack-specific patterns (e.g., `mediatr-slice-patterns.md` for dotnet, `fastapi-patterns.md` for python).
-7. **`.claude/skills/code-simplification/SKILL.md`** — Complexity reduction and structural improvement guidance.
-8. **2-3 neighboring files** representing the expected pattern for comparison against the changed files.
+1. **The context pack** at the path the orchestrator passes (`results.context_pack`, normally `.mtk/workflows/<uuid>/context-pack.md`) — build/test/format commands, CLAUDE.md critical rules, the coding-guideline sections selected for this change, `[EXTRACTED]` architecture principles, and applicable lessons. Read it instead of the files it was built from. Fall back to the full list ONLY when no pack path was passed (a standalone run):
+   - `CLAUDE.md` — project overview, critical rules, standards reference
+   - `.claude/tech-stack` — the active stack word (e.g., `dotnet`, `python`)
+   - `.claude/skills/tech-stack-{stack}/SKILL.md` — framework patterns, ORM guidance, reference paths
+   - `.claude/rules/*.md` — glob and read each (especially architecture rules)
+   - `.claude/references/architecture-principles.md` — if present
+   - the framework patterns reference from the tech stack's `## Reference Files` (e.g., `mediatr-slice-patterns.md`, `fastapi-patterns.md`)
+   - `.claude/skills/code-simplification/SKILL.md` — complexity reduction guidance
+2. **`.claude/references/review-finding-schema.md`** — the output contract.
+3. **The spec and its JSON sidecar** (`docs/specs/<date>-<slug>.md` / `.json`) when the orchestrator passes them — the declared change manifest and public contracts.
+4. **2-3 neighboring files** representing the expected pattern for comparison against the changed files.
 
 ## Step 2: Get the Diff
 

@@ -27,7 +27,7 @@ strength: inject
 ## File Organization
 
 - **S1.6** All skills (both workflow and entry-point) go in `.claude/skills/<skill-name>/SKILL.md`. One skill per directory. Entry-point skills use `allowed-tools` and `argument-hint` frontmatter to signal they are user-invocable.
-- **S1.7** Agents go in `.claude/agents/`. They are reviewer personas with restricted tool access.
+- **S1.7** Agents go in `.claude/agents/`. They are reviewer personas with restricted tool access, declared with the **`tools:`** frontmatter key — the key Claude Code enforces. `allowed-tools:` is a skill key (and MTK's router hint); on an agent it is ignored, so an agent with only `allowed-tools` runs with every tool and its every spawn carries every tool schema, every MCP tool name, and the whole skill roster. `tools:` never grants `Edit`/`Write`/`Agent`/`Skill`: reviewers read, they do not change code or re-dispatch. `validate-toolkit.sh` fails on a missing or over-granting `tools:`.
 - **S1.8** References go in `.claude/references/`. They are shared checklists/guides read on-demand.
 - **S1.9** Hooks go in `hooks/`. Config in `hooks/hooks.json`, executables alongside.
 - **S1.10** Pressure tests go in `tests/pressure-tests/`. One per skill being adversarially tested.
