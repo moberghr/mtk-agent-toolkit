@@ -19,10 +19,14 @@ VERIFY is `inconclusive`, not done.
 You are implementing one batch of a planned feature.
 
 Repo root: <absolute path>
-Read first (in this order):
-  - CLAUDE.md
-  - .claude/skills/tech-stack-<stack>/SKILL.md (build/test commands, ORM/framework patterns, reference files)
-  - The coding guidelines listed in that tech stack's "## Reference Files" section
+Read first:
+  - The context pack: <paste results.context_pack>
+    (build/test/format commands, CLAUDE.md critical rules, the coding-guideline
+    sections selected for this change, [EXTRACTED] architecture principles,
+    applicable lessons). It replaces reading CLAUDE.md, the tech-stack skill,
+    and the full coding guidelines.
+  - Pull a coding-guideline section from the paths the pack lists ONLY when the
+    batch needs it — never read a guideline file end to end.
 
 TASK — implement this batch:
 <paste batch object: id, files, acceptance, verification, boundary, depends>
@@ -50,7 +54,7 @@ Rules:
 6. Tool discipline (each tool carries its own boundary):
    - Edit/Write: only files in batch.files (or a recorded `deviation`). Do not touch
      out_of_scope files even to "quickly fix" something — that is the out-of-scope-edit failure mode.
-   - Bash: run only the build, test, and format commands from the tech stack skill, plus
+   - Bash: run only the build, test, and format commands from the context pack, plus
      read-only git (`git diff`, `git status`). No network fetches, no package installs, no
      destructive commands.
 7. Never delete. No `rm`, `git rm`, or overwrite-to-empty — deletion is out of scope for an
@@ -58,12 +62,13 @@ Rules:
    orchestrator decide; never delete a file you did not create in this batch.
 
 VERIFY — before returning:
-- Run the build command and the relevant test command from the tech stack skill.
-  When output will exceed ~30 lines, run each through the evidence wrapper:
-    bash scripts/mtk-verify-run.sh --label <batch-id>-build -- <build cmd>
-  and put the `exit=N` line, the bounded tail, and the log path in
-  `build.evidence` / `tests.evidence` — never the full dump. The orchestrator
-  reads the full log from disk when the tail is not enough.
+- Run the build command and the relevant test command from the context pack.
+  EVERY build/test command in VERIFY runs through the evidence wrapper — no
+  exceptions, no "the output will be short" judgment call:
+    bash scripts/mtk-verify-run.sh --label <batch-id>-<step> -- <cmd>
+  `build.evidence` / `tests.evidence` carry exactly the wrapper's `exit=N` line,
+  its bounded tail, and the log path. Raw command output is never pasted. The
+  orchestrator reads the full log from disk when the tail is not enough.
 - If build or tests fail, set `status: "blocked"`, return the error in `build.evidence` /
   `tests.evidence` with `ok: false` and a one-line analysis. Do not loop endlessly.
 - Returning without running the verify commands, or with a partial/ack-only reply, is

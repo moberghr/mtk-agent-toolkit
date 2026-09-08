@@ -23,9 +23,10 @@ Loaded automatically by commands and skills when the active tech stack is `dotne
 
 ## Build & Test Commands
 
-- **Compile:** `dotnet build`
-- **Test (batch):** `dotnet test` or `dotnet test --filter <project>`
-- **Test (full):** `dotnet test`
+- **Compile:** `dotnet build --nologo -v q`
+- **Test (batch):** `dotnet test --nologo -v q --no-build --filter <project>`
+- **Test (full):** `dotnet test --nologo -v q --no-build`
+- **Bounded output is the default.** `--no-build` assumes the build step ran in the same checkpoint; when running tests alone, drop it. Batch checkpoints run these through `bash scripts/mtk-verify-run.sh --label <batch-id>-<step> -- <cmd>` — the wrapper's bounded tail is the evidence, the log path is the receipt. `-v q` hides analyzer warnings — acceptable, because the review lanes read the diff, not the build log.
 - **Test (list-only):** enumerates discovered tests without executing them — the F7/command-verification list variant used to verify `dotnet test` is runnable without paying for a full suite run. Conditional on the solution format:
   - `.sln`: `dotnet test <sln> --list-tests`
   - `.slnx` (or `global.json` sets `"test": {"runner": "Microsoft.Testing.Platform"}`): `dotnet test --solution <slnx> --list-tests` — a bare `dotnet test <slnx> --list-tests` fails with `"Specifying a solution for 'dotnet test' should be via '--solution'"` under Microsoft.Testing.Platform.
