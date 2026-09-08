@@ -195,7 +195,7 @@ After applying edits:
 
 ## Common Rationalizations
 
-See `.claude/skills/context-engineering/SKILL.md` for the shared MTK
+See `.claude/references/workflow-rationalizations.md` for the shared MTK
 rationalization table. Audit-specific traps:
 
 - **"I should find at least one issue per criterion."** No. Empty findings

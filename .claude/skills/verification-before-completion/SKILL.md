@@ -63,11 +63,8 @@ The seal supersedes the git-diff tamper check because it binds the exact approve
 
 ## When To Use
 
-- Before reporting a batch as complete
-- Before reporting a fix as verified
+- Before reporting a batch, fix, build, or test run as complete or verified
 - Before handing off to review
-- Before claiming tests pass
-- Before claiming a build succeeds
 - Any time you are about to say "done"
 
 ### When NOT To Use
@@ -209,22 +206,15 @@ When the work being verified came from a prior agent — a builder subagent, a r
 
 ## Common Rationalizations
 
-See `.claude/skills/context-engineering/SKILL.md` — the shared MTK rationalization table covers the universal shortcuts. Skill-specific traps to watch for here: running tests a few minutes ago (stale once you touched code), treating build success as test success (different claims, different evidence), and assuming compilation proves behavior (it proves syntax only).
+See `.claude/references/workflow-rationalizations.md` — the shared MTK rationalization table covers the universal shortcuts. Skill-specific traps to watch for here: running tests a few minutes ago (stale once you touched code), treating build success as test success (different claims, different evidence), and assuming compilation proves behavior (it proves syntax only).
 
 ## Red Flags
 
-- "Should work" or "probably fixed" in a completion report
 - Completion reported without any command output cited
-- Partial test run used to claim full verification
-- Stale evidence from before the latest edit
-- Success claimed despite warnings or skipped tests in the output
-- New skill / hook / agent / reference authored but not wired (no manifest entry, hook not chmod +x or not referenced from settings, agent missing from plugin.json) — files exist on disk but nothing dispatches them
 - Claiming done while any criterion is `re-armed` (edit landed after verification)
-- Verifying at the batch level instead of criterion-by-criterion
-- Using `test-run` or `build-output` alone for a behavior-shaped change (missing real execution surface)
-- A `success_criteria` `observable` was edited mid-run to match the code (goalpost moved — tamper check skipped)
-- Completion claimed while the workflow's `approval_seal` is STALE (approved spec/plan edited after approval, gate not re-opened)
 - Completion stated as prose instead of the `criterion | verdict | evidence` table
+
+Full table: `.claude/references/workflow-rationalizations.md` → verification-before-completion.
 
 ## Signal-Based Enforcement
 
@@ -254,16 +244,11 @@ Forcing past a stuck state produces garbage output. Admitting difficulty is alwa
 
 ## Verification
 
-- [ ] A specific command was executed for the claim
-- [ ] The full output was read (not just the exit code)
-- [ ] The output directly supports the claim
-- [ ] The evidence is from after the most recent code change
-- [ ] No warnings or failures were silently ignored
-- [ ] Every success criterion was verified individually (criterion-by-criterion, citing the `observable` per criterion)
-- [ ] No criterion remains `re-armed` (no edit landed after the last verification)
-- [ ] Behavior-shaped changes cite a real execution surface (`smoke-boot`, `http-probe`, `db-state-diff`, `cli-stdout`, or `browser`), not only `test-run` / `build-output`
-- [ ] For a `browser` criterion, the `docs/specs/<slug>.evidence/<criterion-id>/` evidence directory path is cited alongside the criterion in the completion table (or an explicit no-MCP fallback note; see `.claude/references/evidence-capture.md`)
-- [ ] If verifying upstream agent work, every factual claim was extracted and reconciled (`VERIFIED`, `CONTRADICTED`, or `UNVERIFIABLE`) — none left `UNVERIFIED`
-- [ ] Frozen-criteria tamper check ran (no `success_criteria` `id`/`observable`/`evidence_channel` changed since Phase 2.5 approval)
-- [ ] When an `approval_seal` exists, `verify-seal` returned exit 0 (not STALE) before the completion claim
+- [ ] A specific command was executed for the claim and its full output was read (not just the exit code); the output directly supports the claim
+- [ ] The evidence is from after the most recent edit and no criterion remains `re-armed`
+- [ ] No warnings, failures, or skipped tests were silently ignored
+- [ ] Every success criterion was verified individually, citing its `observable`
+- [ ] Behavior-shaped changes cite a real execution surface (`smoke-boot`, `http-probe`, `db-state-diff`, `cli-stdout`, `browser`), not only `test-run` / `build-output`; a `browser` criterion cites its `docs/specs/<slug>.evidence/<criterion-id>/` path or a no-MCP fallback note (see `.claude/references/evidence-capture.md`)
+- [ ] Upstream agent claims were each reconciled to `VERIFIED` / `CONTRADICTED` / `UNVERIFIABLE` — none left `UNVERIFIED`
+- [ ] Frozen-criteria tamper check ran (no `success_criteria` `id`/`observable`/`evidence_channel` changed since Phase 2.5) and, when an `approval_seal` exists, `verify-seal` returned exit 0 (not STALE)
 - [ ] Completion stated as the `criterion | verdict | evidence` table, every verdict binary

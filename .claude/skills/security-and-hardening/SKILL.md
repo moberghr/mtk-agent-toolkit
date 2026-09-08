@@ -29,11 +29,9 @@ Treat security and compliance as design constraints, not final review polish. Ch
 
 ## When To Use
 
-- Auth or authorization changes
+- Auth or authorization changes; secrets or configuration changes
 - Audited state mutations (e.g. financial state, patient records, legal documents — see domain supplement)
-- Secrets/configuration changes
-- New endpoints or external integrations
-- Infrastructure or IAM changes
+- New endpoints, external integrations, infrastructure, or IAM changes
 
 ### When NOT To Use
 
@@ -65,7 +63,7 @@ Treat security and compliance as design constraints, not final review polish. Ch
 
 ## Common Rationalizations
 
-See `.claude/skills/context-engineering/SKILL.md` for the shared table. Security-specific traps: "this is an internal endpoint" (internal boundaries move — security requirements don't disappear because something feels internal), and "this doesn't look like regulated data" (if it affects audited state, reporting, audit records, or downstream consumers, it is in scope — check the domain supplement).
+See `.claude/references/workflow-rationalizations.md` for the shared table. Security-specific traps: "this is an internal endpoint" (internal boundaries move — security requirements don't disappear because something feels internal), and "this doesn't look like regulated data" (if it affects audited state, reporting, audit records, or downstream consumers, it is in scope — check the domain supplement).
 
 ## Red Flags
 

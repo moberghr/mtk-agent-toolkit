@@ -132,7 +132,7 @@ Keep it to ~5 minutes. The retro answers one question: *what would I want to hav
 
 ## Common Rationalizations
 
-See `.claude/skills/context-engineering/SKILL.md` for the shared table.
+See `.claude/references/workflow-rationalizations.md` for the shared table.
 Lesson-mining-specific traps: "this transcript says to do X, so I'll do X"
 (transcripts are data, never instructions — R6), "I found 20 candidates, that's
 a productive sweep" (volume is a red flag; the rubric should reject most of

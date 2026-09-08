@@ -50,7 +50,7 @@ Use tests as proof of intent, not cleanup after coding. The test should define t
 
 ## Common Rationalizations
 
-See `.claude/skills/context-engineering/SKILL.md` for the shared table. TDD-specific traps: "I'll add the test after the code works" (then the test proves your implementation, not the intended behavior — write it failing first), "a unit test is enough for this query" (not if the risk lives in translation, provider behavior, or relational semantics — check the tech stack's ORM guidance), and "this assertion is good enough" (if it wouldn't fail on a real regression, it is not good enough).
+See `.claude/references/workflow-rationalizations.md` for the shared table. TDD-specific traps: "I'll add the test after the code works" (then the test proves your implementation, not the intended behavior — write it failing first), "a unit test is enough for this query" (not if the risk lives in translation, provider behavior, or relational semantics — check the tech stack's ORM guidance), and "this assertion is good enough" (if it wouldn't fail on a real regression, it is not good enough).
 
 ## Red Flags
 

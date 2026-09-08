@@ -110,7 +110,7 @@ if [ -f tasks/lessons.md ]; then grep -c '^## ' tasks/lessons.md 2>/dev/null || 
 
 ## Common Rationalizations
 
-See `.claude/skills/context-engineering/SKILL.md` for the shared table. Toolkit-health specific traps: "we've been busy, the numbers don't matter" (if numbers don't match activity, the hooks are broken — investigate); "the anomaly thresholds are arbitrary" (they are — say so in the report, but still flag).
+See `.claude/references/workflow-rationalizations.md` for the shared table. Toolkit-health specific traps: "we've been busy, the numbers don't matter" (if numbers don't match activity, the hooks are broken — investigate); "the anomaly thresholds are arbitrary" (they are — say so in the report, but still flag).
 
 ## Red Flags
 

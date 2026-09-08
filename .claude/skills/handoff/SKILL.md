@@ -132,7 +132,7 @@ A handoff captures the current session state — branch, in-progress work, decis
 
 ## Common Rationalizations
 
-See `.claude/skills/context-engineering/SKILL.md` for the shared table. Handoff-specific traps: "the git log is enough" (git log shows what was committed, not in-progress work or the why behind decisions), "I'll just paste the whole conversation" (a 100-line pointer beats a 5,000-token transcript — the next session has tools), and "I'll write what should happen next" (handoffs describe state, not plans — next steps belong in `tasks/todo.md` or a spec).
+See `.claude/references/workflow-rationalizations.md` for the shared table. Handoff-specific traps: "the git log is enough" (git log shows what was committed, not in-progress work or the why behind decisions), "I'll just paste the whole conversation" (a 100-line pointer beats a 5,000-token transcript — the next session has tools), and "I'll write what should happen next" (handoffs describe state, not plans — next steps belong in `tasks/todo.md` or a spec).
 
 ## Red Flags
 

@@ -109,7 +109,7 @@ A guard in one of these categories is presumed load-bearing. If you believe one 
 
 ## Common Rationalizations
 
-See `.claude/skills/context-engineering/SKILL.md` for the shared table. Simplification-specific traps: "now that I'm here, I should refactor the whole module" (cleanup is not permission for a hidden rewrite — stay scoped), and "the dead code is probably still needed somewhere" (probably is a reason to verify or ask, not to leave clutter in place).
+See `.claude/references/workflow-rationalizations.md` for the shared table. Simplification-specific traps: "now that I'm here, I should refactor the whole module" (cleanup is not permission for a hidden rewrite — stay scoped), and "the dead code is probably still needed somewhere" (probably is a reason to verify or ask, not to leave clutter in place).
 
 ## Red Flags
 

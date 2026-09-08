@@ -21,17 +21,13 @@ Explore the design space before committing to a single approach. Brainstorming p
 
 ## When To Use
 
-- The engineer says "how should we..." or "what's the best way to..."
-- Multiple implementation approaches are plausible
-- The task involves architectural decisions with long-term consequences
-- The scope or requirements are ambiguous
+- The engineer asks "how should we..." / "what's the best way to...", or the scope and requirements are ambiguous
+- Multiple implementation approaches are plausible, or the decision has long-term architectural consequences
 - Before spec-driven-development when the design direction is not obvious
 
 ### When NOT To Use
 
-- The approach is already clear and agreed upon
-- The task is a bug fix, config change, or narrow refactor
-- The engineer explicitly says "just do it this way"
+- The approach is already clear and agreed (or the engineer says "just do it this way"), or the task is a bug fix, config change, or narrow refactor
 
 ## Workflow
 
@@ -138,7 +134,7 @@ chosen one.
 
 ## Common Rationalizations
 
-See `.claude/skills/context-engineering/SKILL.md` for the shared table. Brainstorming-specific traps: "there's really only one way to do this" (then present that one approach and explain why alternatives don't apply — the discipline still helps), and "let me prototype and then we'll decide" (prototyping creates sunk-cost bias — decide on the approach first, then build).
+See `.claude/references/workflow-rationalizations.md` for the shared table. Brainstorming-specific traps: "there's really only one way to do this" (then present that one approach and explain why alternatives don't apply — the discipline still helps), and "let me prototype and then we'll decide" (prototyping creates sunk-cost bias — decide on the approach first, then build).
 
 ## Red Flags
 

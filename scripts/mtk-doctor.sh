@@ -31,8 +31,9 @@ USAGE
 done
 
 # Deprecated model IDs — update when Anthropic deprecates more.
-# Note: agents pin aliases (model: opus|sonnet|haiku), not version IDs. On the
-# Anthropic API an alias resolves to the latest in its family (opus -> Opus 4.8).
+# Note: agents pin aliases (model: opus|sonnet|haiku|fable), not version IDs. On the
+# Anthropic API an alias resolves to the latest in its family (opus -> Opus 5, the
+# current generation; see .claude/references/model-routing.md "Provider tier slots").
 # On Bedrock/Vertex/Foundry the same alias may resolve to an OLDER version; pin
 # ANTHROPIC_DEFAULT_OPUS_MODEL / _SONNET_MODEL / _HAIKU_MODEL to a full ID there.
 DEPRECATED_MODELS=(

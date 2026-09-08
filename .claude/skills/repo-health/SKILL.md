@@ -111,7 +111,7 @@ Writes the combined report to `.claude/repo-health-latest.md` (always) and `.cla
 | Rationalization | Reality |
 |---|---|
 | "I'll auto-promote the mined phrases to principles since they're already cited." | Mining is always suggest-only. Promotion is a separate, manual step with `[MINED:feedback]` tagging. |
-| "The scorecard medal is 🥉 — I'll skip the report and just fix things." | The report IS the next action. Don't suppress the artifact. |
 | "`gh` failed, so I'll guess what reviewers usually say." | Mining is fail-soft — leave the section empty rather than fabricate. |
 | "I'll add new assets on the fly to make the score look better." | The 12 assets are canonical (see `repo-health-assets.md`). Don't extend without updating the reference. |
-| "Repo-health and toolkit-health are basically the same — I'll merge them." | They're different: repo-health = readiness of this repo as an AI work surface; toolkit-health = how the team uses MTK. Keep them separate. |
+
+Full table: `.claude/references/workflow-rationalizations.md` → repo-health.

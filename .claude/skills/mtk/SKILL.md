@@ -215,7 +215,7 @@ Log the resolved scope to analytics (via existing `hooks/session-analytics.sh` p
 
 ## Execution
 
-Once matched, read the target skill file and follow every step of that workflow. Do not summarize; do not skip verification. The target skill owns its own acceptance criteria.
+Once matched, resolve the MTK root once per `.claude/references/mtk-file-resolution.md` and state it as a single line — `MTK_ROOT=<path>` — so the dispatched skill does not re-resolve. Then read the target skill file and follow every step of that workflow. Do not summarize; do not skip verification. The target skill owns its own acceptance criteria.
 
 If the route is `/mtk-setup` (setup family), tell the user:
 
