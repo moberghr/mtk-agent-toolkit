@@ -52,17 +52,17 @@ If `AskUserQuestion` is deferred in this session, call `ToolSearch` with `select
 
 Until the engineer answers: read-only Bash only, no Edit/Write on source code, no Phase 3. Proceed to Phase 3 only after `Approve & run until done` or `Approve (interactive)`. In autonomous mode, never call `AskUserQuestion` again for Phases 3-7 — stop and report instead.
 
-On approval, record the gate decision on the workflow artifact:
-`"$WFA" gate "$MTK_WF_UUID" plan_trust_gate pass --reason "<approve mode>"`
+On approval, record the gate decision and the seal (below) in **one** call:
+`"$WFA" batch "$MTK_WF_UUID" gate plan_trust_gate pass --reason "<approve mode>" -- seal`
+(add `-- set results.gate_scope='["<slug-1>","<slug-2>"]'` to the same call for a multi-spec session — next paragraph.)
 
 **Declare the gate's scope when one session covers more than one spec.** A stacked session — several specs built as a chain of branches in one sitting — answers this gate once and then either re-asks per slice or carries the first answer forward. Carrying it forward is defensible; carrying it forward *silently* is not. Record what the answer covered, at answer time:
 
-`"$WFA" set "$MTK_WF_UUID" results.gate_scope='["<slug-1>","<slug-2>"]'`
+`results.gate_scope='["<slug-1>","<slug-2>"]'` — as a `set` op inside the approval `batch` call above.
 
 The standing approval **expires** if a later slice's rigor level exceeds the level that was gated (a MAX slice cannot inherit a HIGH slice's approval) or if its `security_impact` ranks higher than the gated slice's. On expiry, re-open this gate for that slice. A slice genuinely covered by the standing answer records `plan_trust_gate pass --reason "standing approval from <slug-1> (gate_scope)"` — a citation to a real answer, not a second gate that never happened.
 
-Then **seal the approved scope** — bind the exact spec + plan bytes the engineer just approved so a later edit cannot silently keep the approval:
-`"$WFA" seal "$MTK_WF_UUID"`
+The `seal` op in that call **seals the approved scope** — it binds the exact spec + plan bytes the engineer just approved so a later edit cannot silently keep the approval.
 With no explicit paths, `seal` binds the artifact's own recorded `results.spec_path` / `plan_path` (set in Phases 1–2) — the exact approved scope, not a re-typed list. **`results.todo_path` is deliberately excluded:** the todo is progress state that mutates as batches complete, so sealing it would flip the seal STALE on the first checkbox tick — a false tamper signal. Scope lives in spec + plan; progress lives in todo. (Explicit **repo-relative** paths may still be passed; the stale-seal hook matches sealed files by repo-relative path.) The seal is created **only** here, on the engineer's approval answer — never earlier by the agent editing state — and is derived from disk by the script, so it cannot be presented for a body other than the one on disk. `verification-before-completion` (Phase 4) re-checks it with `verify-seal` and refuses completion on a STALE seal, and `spec-approval-trigger.sh` re-queues this gate on any post-approval edit to a sealed spec or plan. On `Revise` or `Edit first`, leave the gate `pending`, do not seal, and emit a `field_updated` event. See `.claude/references/orchestration-gates.md` for full gate semantics.
 
 Note: this gate controls when *Claude* asks. Harness tool-permission prompts (file-write/Bash approvals) are a separate layer — autonomous mode does not bypass them.

@@ -2,6 +2,7 @@
 name: plan-gap-reviewer
 description: Fresh, anti-anchored review of a saved plan against the current codebase — does not load lessons, prior reviewer output, or planner rationale.
 allowed-tools: Read, Glob, Grep
+tools: Read, Glob, Grep
 required-toolsets: [read-only]
 model: sonnet
 effort: high
@@ -105,6 +106,12 @@ would force the engineer to say "compare the plan to the code again."
    - `tasks/todo.md` batches match the plan's batches (same count, same
      files) — the todo is what the engineer approves at the gate, so
      divergence between todo and plan is drift before implementation starts
+   - **dependency edges cover every shared file**: for each pair of batches
+     whose `files` intersect, one must list the other (transitively) in
+     `depends`. Edge-free batches are scheduled into the same wave and run
+     concurrently, so a missing edge is two implementers editing one file —
+     `BLOCKING`. Also `BLOCKING`: a batch with empty `depends` and no
+     `depends_rationale`, or an edge naming a batch id that does not exist.
    This is a list-against-list comparison, not judgment — findings here are
    high-confidence by construction.
 6. Build findings from evidence only. Do not speculate when the repo does
@@ -132,12 +139,15 @@ not fit is not a plan-gap finding — drop it.
 |---|---|
 | `repo_mismatches` | Plan names a file path / module / API that does not exist in the form claimed |
 | `missing_surfaces` | Plan changes a system but omits a required surface (migration, route index, DI registration, test directory, OpenAPI spec) |
-| `execution_order_issues` | Plan's batch / phase order assumes outputs from a later phase |
+| `execution_order_issues` | Plan's batch / phase order assumes outputs from a later phase, or two batches that share a file carry no `depends` edge (they would run in the same wave) |
 | `hidden_assumptions` | Plan assumes a tool, service, env var, or framework behavior the repo does not establish |
 | `under_scoped_integrations` | Plan adds a unit but does not wire it into the system that consumes it |
 | `open_decisions_presented_as_settled` | Plan states a decision as fact when the user request and spec leave it open |
 | `cross_artifact_inconsistencies` | Spec sidecar, plan, and todo disagree — a manifest entry with no batch, a batch file missing from the manifest, a success criterion with no batch/test mapping, an out-of-scope item in a batch, or todo diverging from plan |
 | `dirty_worktree_overlap` | A plan batch touches a path listed in the spec's `out_of_scope` dirty-worktree list |
+
+Severity for `execution_order_issues`: a missing edge between file-sharing
+batches is always `BLOCKING` — concurrency on a shared file is not a style nit.
 
 Severity for `cross_artifact_inconsistencies`: file-level mismatches,
 out-of-scope items in batches, and todo/plan divergence are `BLOCKING`

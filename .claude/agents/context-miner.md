@@ -2,6 +2,7 @@
 name: context-miner
 description: Read-only review lane that mines organizational memory — git history of the touched paths, linked GitHub issues and PR-thread discussions, and prior lessons — for context the implementation may have missed (prior reverts, related open issues, decisions recorded in threads, applicable lessons).
 allowed-tools: Read, Glob, Grep, Bash
+tools: Read, Glob, Grep, Bash
 required-toolsets: [read-only]
 model: sonnet
 effort: high

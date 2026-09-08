@@ -147,8 +147,7 @@ If reviewing a PR or branch with CI runs, check CI status before starting the nu
     - **Scores table** — 5 dimensions × {score, evidence file:line, one-line rationale}
     - Fenced JSON block with the full structured result (verdict, summary, findings, **scores object**, below_threshold_rationale)
 8. If `findings[]` has fewer than 2 entries, populate `below_threshold_rationale` explicitly stating what axes were checked and why the code is genuinely clean. Silent empty reviews are invalid.
-9. If a workflow artifact is active (`MTK_WF_UUID` set), record scores:
-    `scripts/workflow-artifact.sh set "$MTK_WF_UUID" results.review_scores.<dimension>=<n>` for each of the five dimensions, and `results.review_iteration=<n>` for the current cycle.
+9. If a workflow artifact is active (`MTK_WF_UUID` set), record all five scores and the iteration in **one** call — `"$WFA" set "$MTK_WF_UUID" results.review_scores.correctness=<n> results.review_scores.security=<n> results.review_scores.test_coverage=<n> results.review_scores.architecture_fit=<n> results.review_scores.simplicity=<n> results.review_iteration=<n>` — appended to the remediation call from step 6 when one runs.
 
 ### Defect-class sweep (after a finding is confirmed)
 
@@ -180,7 +179,7 @@ tests pass is exactly where this pays: passing tests are why nobody looked.
 
 ## Common Rationalizations
 
-See `.claude/skills/context-engineering/SKILL.md` for the shared MTK rationalization table. Review-specific traps: authors are blind to their own assumptions (self-review isn't review), "mostly style" is a dodge (real review starts with correctness and risk), and soft-pedaling a real production risk to avoid blocking progress is a review failure.
+See `.claude/references/workflow-rationalizations.md` for the shared MTK rationalization table. Review-specific traps: authors are blind to their own assumptions (self-review isn't review), "mostly style" is a dodge (real review starts with correctness and risk), and soft-pedaling a real production risk to avoid blocking progress is a review failure.
 
 ## Red Flags
 

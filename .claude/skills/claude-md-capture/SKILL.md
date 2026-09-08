@@ -155,7 +155,7 @@ listed in `.gitignore` before creating; add it if missing).
 
 ## Common Rationalizations
 
-See `.claude/skills/context-engineering/SKILL.md` for the shared MTK table.
+See `.claude/references/workflow-rationalizations.md` for the shared MTK table.
 Capture-specific traps:
 
 - **"I should add a few things so the session feels productive."** No. Capture

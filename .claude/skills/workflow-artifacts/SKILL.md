@@ -39,21 +39,31 @@ Orchestration state that lives only in chat is lost on compaction or restart. Th
    ```
    Set `MTK_HELPER_ROOT=<toolkit checkout>` to force the scripts from that clone — the reliable path when dogfooding MTK from a separate checkout with `$CLAUDE_PLUGIN_ROOT` unset, or to pin one version out of a multi-version plugin cache.
    **State is project-anchored:** the script writes `.mtk/workflows/` under `$CLAUDE_PROJECT_DIR` (falling back to the git top-level, then cwd), so when MTK skills live outside the target project (plugin/marketplace install), export `CLAUDE_PROJECT_DIR=<project root>` or run from the project root — otherwise state lands in the wrong tree.
-2. **Init at workflow start.** Capture the returned uuid into a session variable `MTK_WF_UUID`:
+2. **Init at workflow start.** Capture the returned uuid into a session variable `MTK_WF_UUID` and emit the first phase marker in the same call:
    ```bash
-   MTK_WF_UUID=$("$WFA" init BUILD --goal "<one-line user goal>")
+   MTK_WF_UUID=$("$WFA" init BUILD --goal "<one-line user goal>") && "$WFA" event "$MTK_WF_UUID" phase_started --data '{"phase":"phase-0"}'
    ```
-3. **Persist anchors as soon as they exist.** When the spec, plan, and todo files are written, record their paths:
+   **Bookkeeping rides along, never alone.** Every artifact write below goes in the *same* Bash call as the action it records — appended with `&&` to the checkpoint command, the lint, the sidecar write — or several writes go in one `"$WFA" batch` call. A standalone `"$WFA" set …` turn costs a full model round-trip for one line of JSON; a 65-call run spends a quarter of its turns on bookkeeping. The `batch` form takes ordinary subcommand argv without the uuid, separated by a bare `--`:
    ```bash
-   "$WFA" set "$MTK_WF_UUID" \
+   dotnet build --nologo -v q && "$WFA" batch "$MTK_WF_UUID" \
+     gate phase_exit_gate pass --reason "batch B2 green" -- \
+     set results.batches_completed=2 -- \
+     event agent_returned --data '{"agent":"batch:B2"}'
+   ```
+   `event … --ts <iso8601>` replays a timestamp captured elsewhere (a dynamic workflow's per-batch dispatch/return times); tag such events `"source":"workflow-replay"` in `--data`.
+3. **Persist anchors as soon as they exist.** When the spec, plan, and todo files are written, record their paths — in the same call as the next command that runs anyway (the EARS lint, the constitution digest, the context-pack build):
+   ```bash
+   bash scripts/lint-ears.sh docs/specs/2026-05-07-foo.md && "$WFA" set "$MTK_WF_UUID" \
      results.spec_path=docs/specs/2026-05-07-foo.md \
      results.plan_path=docs/plans/2026-05-07-foo.md \
      results.todo_path=tasks/todo.md
    ```
-4. **Emit phase events.** At the start and end of every phase:
+4. **Emit phase events.** At the start and end of every phase, in one call with the gate that closes it:
    ```bash
-   "$WFA" event "$MTK_WF_UUID" phase_started   --data '{"phase":"phase-3"}'
-   "$WFA" event "$MTK_WF_UUID" phase_completed --data '{"phase":"phase-3"}'
+   "$WFA" batch "$MTK_WF_UUID" \
+     gate phase_exit_gate pass --reason "all batch tests green" -- \
+     event phase_completed --data '{"phase":"phase-3"}' -- \
+     event phase_started   --data '{"phase":"phase-3.5"}'
    ```
    A `phase_started` event carrying a `phase` auto-advances the artifact's `phase_cursor` to that phase — no separate `set phase_cursor=` call is needed, and the resume protocol (step 6) can trust `phase_cursor` rather than replaying the event log.
 5. **Record gate decisions.** Every named gate (`plan_trust_gate`, `phase_exit_gate`, `failure_stop_gate`, `memory_sync_gate`, `skill_precedence_gate`) must be persisted via:
@@ -66,15 +76,14 @@ Orchestration state that lives only in chat is lost on compaction or restart. Th
    - If a single active workflow matches the requested type, offer resume.
    - If multiple, ask via `AskUserQuestion` which uuid to resume.
    - If none, init a new one.
-7. **Close the workflow.** At end of phase 7:
+7. **Close the workflow.** At end of phase 7, one call:
    ```bash
-   "$WFA" set "$MTK_WF_UUID" status=completed
-   "$WFA" event "$MTK_WF_UUID" workflow_completed --data '{"summary":"<short>"}'
+   "$WFA" batch "$MTK_WF_UUID" gate memory_sync_gate pass --reason "lessons captured" -- \
+     set status=completed -- event workflow_completed --data '{"summary":"<short>"}'
    ```
    On unrecoverable failure, close with the failure pair instead:
    ```bash
-   "$WFA" set "$MTK_WF_UUID" status=failed
-   "$WFA" event "$MTK_WF_UUID" workflow_failed --data '{"reason":"<short>"}'
+   "$WFA" batch "$MTK_WF_UUID" set status=failed -- event workflow_failed --data '{"reason":"<short>"}'
    ```
 
 ## Viewing Progress (Dashboard)
@@ -92,13 +101,14 @@ The dashboard reads the same `{uuid}.json` + `{uuid}.events.jsonl` files this sk
 ## Rules
 
 - All writes go through `workflow-artifact.sh`. Never `Edit` or `Write` `{uuid}.json` directly — the event log would desync.
+- Bookkeeping never gets its own turn: append `"$WFA"` calls to the command they record with `&&`, or group them with `batch`. The only standalone calls are `init`, `list`, `read`, and `verify-seal`.
 - Subagents do not write workflow artifacts. The orchestrator persists subagent results via `event agent_returned`.
 - `.mtk/` is gitignored by default. Treat artifacts as local diagnostic state, not committed history.
 - A `failure_stop_gate: fail` event terminates the workflow. Do not emit further events after `workflow_failed`.
 
 ## Common Rationalizations
 
-See `.claude/skills/context-engineering/SKILL.md` for the shared table. Workflow-artifact-specific traps:
+See `.claude/references/workflow-rationalizations.md` for the shared table. Workflow-artifact-specific traps:
 
 - *"This is a small task, the artifact is overkill."* — Init takes one line; the value is realized only when something fails. Skipping it is the same as not having it when you need it.
 - *"I'll just track state in the conversation."* — Compaction silently destroys conversation state. The artifact exists exactly because chat is unreliable.

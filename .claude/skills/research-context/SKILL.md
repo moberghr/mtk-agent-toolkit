@@ -20,29 +20,20 @@ user-invocable: false
 
 ## Overview
 
-`source-driven-development` answers "does this *known* API behave the way I think?" by checking authoritative docs for one call. `research-context` answers the broader, forward-looking question: "given what this repo already does, what is the *current* best way to do X?" — pulling fresh external information (release notes, current best-practices, migration paths, security advisories) and **grounding it against named files in this repo** so the answer fits the codebase, not a generic tutorial.
+`source-driven-development` answers "does this *known* API behave the way I think?" from authoritative docs; `research-context` answers "given what this repo already does, what is the *current* best way to do X?" — pulling fresh external information (release notes, current best-practices, migration paths, security advisories) and **grounding it against named files in this repo** so the answer fits the codebase, not a generic tutorial. Its output is a small, cited brief consumed by `spec-driven-development` (version-sensitive ambiguity gate, step 6) and `implement` (Phase 3) so decisions ride on current information rather than training-cutoff memory.
 
-It is the MTK analog of Taskmaster's research mode: research is a first-class workflow primitive, not an ad-hoc web search. Its output is a small, cited brief that downstream skills consume — `spec-driven-development` (version-sensitive ambiguity gate, step 6) and `implement` (Phase 3, version-sensitive choices) — so spec and implementation decisions ride on current information rather than training-cutoff memory.
-
-This skill **does not edit code**. It produces a brief; another skill acts on it.
-
-> **Tool discipline (phase-locked):** research is a read + web-fetch phase — use `Read`/`Grep`/`Glob` and the web tools only. Do **not** `Edit`/`Write` source or test code; the only artifact it may write is its own brief. (It is not locked to the `read-only` toolset because it legitimately needs `WebSearch`/`WebFetch`, which that toolset excludes.)
-> **Model tier:** runs on `sonnet` (synthesis of external sources into a cited brief) per `.claude/references/model-routing.md`.
+> **Tool discipline (phase-locked):** read + web-fetch only — `Read`/`Grep`/`Glob` and `WebSearch`/`WebFetch` (which is why it is not locked to the `read-only` toolset). Never `Edit`/`Write` source or test code; the only artifact it may write is its own brief. Runs on `sonnet` per `.claude/references/model-routing.md`.
 
 ## When To Use
 
-- A spec or plan hinges on a **version-sensitive** choice (which API/pattern is current in the installed package version, not the one from memory).
-- Choosing between competing libraries/approaches where the landscape moved recently.
-- A dependency upgrade or framework migration where the migration path matters.
-- A security-sensitive decision where current advisories or deprecations could change the answer.
-- The engineer literally asks to "research X" before building.
+- A spec or plan hinges on a **version-sensitive** choice (which API/pattern is current in the installed package version), or on competing libraries/approaches where the landscape moved recently
+- A dependency upgrade or framework migration where the migration path matters
+- A security-sensitive decision where current advisories or deprecations could change the answer, or the engineer literally asks to "research X" before building
 
 ### When NOT To Use
 
-- The behavior is verifiable from local repo patterns already in use → use `source-driven-development` (cheaper, no web).
-- A single known-API contract question → `source-driven-development`.
-- Stable, well-understood APIs with no version sensitivity → just implement.
-- The question is about *this codebase's* internals → read the code; this skill is for *external* information.
+- The behavior is verifiable from local repo patterns, or it is a single known-API contract question → `source-driven-development` (cheaper, no web)
+- Stable APIs with no version sensitivity (just implement), or questions about *this codebase's* internals (read the code — this skill is for *external* information)
 
 ## Workflow
 
@@ -134,16 +125,15 @@ scripts/workflow-artifact.sh event "$MTK_WF_UUID" research_brief --data '{"quest
 
 ## Common Rationalizations
 
-See `.claude/skills/context-engineering/SKILL.md` for the shared table. Research-context-specific traps:
+See `.claude/references/workflow-rationalizations.md` for the shared table. Research-context-specific traps:
 
 | Rationalization | Reality |
 |---|---|
-| "I already know the best practice for this library" | Your memory has a training cutoff; the library shipped versions since. If the decision is version-sensitive, verify it for the installed version. |
 | "I'll research the general approach, version doesn't matter" | Version is the whole point — a recommendation for v7 can be an anti-pattern in v9. Name the installed version first. |
 | "Web result says X, so I'll just code X" | A blog from two years ago about a different version is not grounding. Classify the finding and check it against the installed version + repo patterns. |
-| "Let me just implement while I research" | This skill produces a brief and stops. Implementing mid-research means acting on unverified findings. |
 | "The repo does it differently, I'll quietly switch to the modern way" | A conflict between repo and current best-practice is a decision for the spec/plan, surfaced explicitly — not a silent rewrite. |
-| "One quick web search is enough for this architecture call" | High-stakes, multi-answer questions go through `/deep-research` so claims get cross-checked and voted, not taken from a single page. |
+
+Full table: `.claude/references/workflow-rationalizations.md` → research-context.
 
 ## Red Flags
 

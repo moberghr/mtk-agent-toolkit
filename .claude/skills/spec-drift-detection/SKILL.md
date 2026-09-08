@@ -17,24 +17,18 @@ required-toolsets: [read-only]
 
 ## Overview
 
-Verify that the implementation actually delivered what the spec promised —
-nothing more, nothing less. Drift between spec and implementation is a
-compliance risk in regulated environments: it means the approval gate at
-Phase 2.5 did not cover the final code. Detect divergence before review.
+Verify that the implementation delivered what the spec promised — nothing more, nothing less.
+Drift between spec and implementation means the Phase 2.5 approval gate did not cover the final
+code, a compliance risk in regulated environments; detect divergence before review.
 
 ## When To Use
 
-- After implementation batches complete
-- Before handing to `compliance-reviewer` in Phase 4
-- When a spec manifest exists at `docs/specs/<date>-<slug>.json`
-- Whenever a change was supposed to follow a spec-driven flow and the reviewer
-  wants to confirm the scope was honored
+- After implementation batches complete, before handing to `compliance-reviewer` in Phase 4
+- A spec manifest exists at `docs/specs/<date>-<slug>.json` and the reviewer wants to confirm the declared scope was honored
 
 ### When NOT To Use
 
-- Quick fixes that ran through the fix workflow without a spec
-- Typo fixes and config updates
-- Sessions where no spec manifest was ever produced
+- Quick fixes, typo fixes, or config updates that ran without a spec, or sessions where no spec manifest was ever produced
 
 ## Workflow
 
@@ -199,7 +193,7 @@ note that principle drift was unavailable.
 
 ## Common Rationalizations
 
-See `.claude/skills/context-engineering/SKILL.md` for the shared table. Drift-specific traps: "the extra file was just a helper, it's basically in scope" (if it wasn't in the change_manifest, the approval gate did not cover it — flag it), "security_impact was 'none' but this auth change is tiny" (if the diff touches auth, payments, or audit — even tiny — the field was wrong), and "this drift is minor, I'll just fix it silently" (silent drift is the exact compliance failure this skill exists to prevent — emit the finding).
+See `.claude/references/workflow-rationalizations.md` for the shared table. Drift-specific traps: "the extra file was just a helper, it's basically in scope" (if it wasn't in the change_manifest, the approval gate did not cover it — flag it), "security_impact was 'none' but this auth change is tiny" (if the diff touches auth, payments, or audit — even tiny — the field was wrong), and "this drift is minor, I'll just fix it silently" (silent drift is the exact compliance failure this skill exists to prevent — emit the finding).
 
 ## Red Flags
 
@@ -217,24 +211,10 @@ If the workflow artifact is active, drift findings flip the `phase_exit_gate` fo
 ## Verification
 
 - [ ] Spec manifest was loaded from disk, not reconstructed from memory
-- [ ] Every touched file was compared against the manifest's change_manifest
-- [ ] Public contracts added in the diff were compared against the manifest
-- [ ] security_impact was verified against the actual files touched
-- [ ] Findings follow `.claude/references/review-finding-schema.md` with
-      `source: "drift"`
-- [ ] Verdict matches the severity of the drift (critical → NEEDS_CHANGES)
+- [ ] Touched files, public contracts added in the diff, and `security_impact` were each compared against the manifest
+- [ ] Ownership, dependency, and usage axes ran: cross-slice creep flagged; undeclared lockfile/project-file additions flagged critical; renamed/removed public contracts grepped for remaining call-sites
+- [ ] Coverage and descope axes ran: every `coverage_claims[]` entry re-grepped against the implemented code (unenumerated or bypassed claims critical); every fired `conditional_descopes[]` entry carries evidence and no unrecorded reduction was left unflipped
+- [ ] Collateral axis: `hooks/collateral-guard.sh` was run and its verdict reported
+- [ ] Findings follow `.claude/references/review-finding-schema.md` with `source: "drift"`; verdict matches the severity of the drift (critical → NEEDS_CHANGES)
 - [ ] No silent spec edits were made to suppress drift findings
-- [ ] `bash scripts/lint-ears.sh` was run against the spec markdown (or
-      explicitly skipped with a note when the script is unavailable)
-- [ ] Ownership axis: every touched slice was compared against the spec's
-      declared ownership; cross-slice creep was flagged
-- [ ] Dependency axis: lockfile/project-file diff was inspected; undeclared
-      additions were flagged as critical
-- [ ] Usage axis: renamed/removed public contracts were grepped for
-      remaining call-sites
-- [ ] Coverage axis: every `coverage_claims[]` entry was re-grepped against the
-      implemented code; unenumerated or bypassed claims were flagged critical
-- [ ] Descope axis: every `conditional_descopes[]` entry that fired carries
-      evidence, and no unrecorded reduction was left unflipped
-- [ ] Collateral axis: `hooks/collateral-guard.sh` was run and its verdict
-      reported
+- [ ] `bash scripts/lint-ears.sh` was run against the spec markdown (or explicitly skipped with a note when the script is unavailable)

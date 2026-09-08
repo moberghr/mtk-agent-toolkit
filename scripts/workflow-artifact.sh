@@ -6,7 +6,17 @@ set -euo pipefail
 #
 # Subcommands:
 #   init <type> [--goal "<text>"]    Create a new workflow artifact, print UUID
-#   event <uuid> <type> [--data '<json>']  Append event to .events.jsonl
+#   event <uuid> <type> [--data '<json>'] [--ts <iso8601>]
+#                                    Append event to .events.jsonl. --ts replays a
+#                                    timestamp captured elsewhere (e.g. a dynamic
+#                                    workflow's per-batch dispatch/return times);
+#                                    default is now.
+#   batch <uuid> <op...> [-- <op...>]... Run several set/event/gate/criteria ops in
+#                                    ONE invocation, separated by a bare `--`, so a
+#                                    checkpoint's bookkeeping rides in the same
+#                                    shell call as the checkpoint itself. With no
+#                                    ops on argv, reads one JSON array per line
+#                                    from stdin (["event","phase_started","--data","{}"]).
 #   set <uuid> <key=value>...        Update top-level fields in {uuid}.json
 #   read <uuid>                      Print {uuid}.json to stdout
 #   list                             List active workflows (id, type, status, updated)
@@ -119,15 +129,21 @@ cmd_event() {
   [ -f "${WF_DIR}/${uuid}.events.jsonl" ] || fail "no event log for $uuid (run init first)"
 
   local data="{}"
+  local now=""
   while [ $# -gt 0 ]; do
     case "$1" in
       --data) data="${2-}"; [ -n "$data" ] || data="{}"; shift 2 ;;
+      --ts)
+        now="${2-}"
+        # bash regex, not a pipe into grep -q (S3.17)
+        [[ "$now" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$ ]] \
+          || fail "event: --ts must be ISO-8601 (got: $now)"
+        shift 2 ;;
       *) fail "unknown flag: $1" ;;
     esac
   done
 
-  local now
-  now="$(iso_now)"
+  [ -n "$now" ] || now="$(iso_now)"
   python3 - "$uuid" "$etype" "$now" "$data" >> "${WF_DIR}/${uuid}.events.jsonl" <<'PY'
 import json, sys
 uuid, etype, now, data_raw = sys.argv[1:5]
@@ -214,14 +230,80 @@ cmd_list() {
     printf '(no workflows)\n'
     return 0
   fi
-  printf '%-44s %-7s %-10s %s\n' "UUID" "TYPE" "STATUS" "UPDATED"
-  for f in "${WF_DIR}"/*.json; do
-    python3 - "$f" <<'PY'
-import json, sys
-with open(sys.argv[1]) as f: d = json.load(f)
-print(f"{d.get('workflow_uuid',''):<44} {d.get('workflow_type',''):<7} {d.get('status',''):<10} {d.get('updated_at','')}")
+  # One python3 pass over every artifact (was one interpreter per file).
+  python3 - "${WF_DIR}" <<'PY'
+import glob, json, os, sys
+print(f"{'UUID':<44} {'TYPE':<7} {'STATUS':<10} UPDATED")
+for path in sorted(glob.glob(os.path.join(sys.argv[1], "*.json"))):
+    try:
+        with open(path) as f: d = json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"{os.path.basename(path):<44} (unreadable: {e})", file=sys.stderr); continue
+    print(f"{d.get('workflow_uuid',''):<44} {d.get('workflow_type',''):<7} {d.get('status',''):<10} {d.get('updated_at','')}")
 PY
+}
+
+# batch <uuid> <op...> [-- <op...>]...  — several ops, one invocation.
+# Each op is a normal subcommand argv WITHOUT the uuid: `set k=v`, `event t --data j`,
+# `gate g pass --reason r`, `criteria SC1=verified`, `remediation trig --score n`.
+# Ops run in order; the first failure stops the batch (earlier ops stay applied,
+# each already logged its own event). With no ops on argv, one JSON array per
+# stdin line is read instead — same argv shape.
+cmd_batch() {
+  local uuid="${1:-}"
+  shift || true
+  [ -n "$uuid" ] || fail "batch requires <uuid>"
+  [ -f "${WF_DIR}/${uuid}.json" ] || fail "no artifact for $uuid"
+
+  local -a ops_json=()
+  if [ $# -gt 0 ]; then
+    # Split argv on bare `--` into JSON arrays so both input shapes share one loop.
+    local -a cur=()
+    local tok
+    for tok in "$@" "--"; do
+      if [ "$tok" = "--" ]; then
+        if [ ${#cur[@]} -gt 0 ]; then
+          ops_json+=("$(printf '%s\0' "${cur[@]}" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().split("\0")[:-1]))')")
+          cur=()
+        fi
+      else
+        cur+=("$tok")
+      fi
+    done
+  else
+    local line
+    while IFS= read -r line || [ -n "$line" ]; do
+      case "$line" in ''|'#'*) continue ;; esac
+      ops_json+=("$line")
+    done
+  fi
+  [ ${#ops_json[@]} -gt 0 ] || fail "batch: no ops given (argv ops separated by --, or JSON arrays on stdin)"
+
+  local op_json n=0
+  for op_json in "${ops_json[@]}"; do
+    local -a argv=()
+    # Decode the JSON array back to argv, NUL-delimited so values may hold spaces/newlines.
+    while IFS= read -r -d '' tok; do argv+=("$tok"); done < <(
+      printf '%s' "$op_json" | python3 -c '
+import json, sys
+try:
+    items = json.loads(sys.stdin.read())
+except json.JSONDecodeError as e:
+    print(f"workflow-artifact: batch: bad op JSON: {e}", file=sys.stderr); sys.exit(1)
+if not isinstance(items, list) or not items or not all(isinstance(i, str) for i in items):
+    print("workflow-artifact: batch: each op must be a non-empty JSON array of strings", file=sys.stderr); sys.exit(1)
+sys.stdout.write("\0".join(items) + "\0")'
+    )
+    [ ${#argv[@]} -gt 0 ] || fail "batch: op $((n+1)) is empty or malformed"
+    local sub="${argv[0]}"
+    case "$sub" in
+      set|event|gate|criteria|remediation|seal) ;;
+      *) fail "batch: op $((n+1)): '$sub' is not batchable (allowed: set event gate criteria remediation seal)" ;;
+    esac
+    main "$sub" "$uuid" "${argv[@]:1}"
+    n=$((n+1))
   done
+  printf 'workflow-artifact: batch applied %d op(s) to %s\n' "$n" "$uuid"
 }
 
 cmd_criteria() {
@@ -527,7 +609,7 @@ PY
 }
 
 usage() {
-  sed -n '4,30p' "$0"
+  sed -n '4,44p' "$0"
 }
 
 main() {
@@ -539,6 +621,7 @@ main() {
     set)      cmd_set "$@" ;;
     read)     cmd_read "$@" ;;
     list)     cmd_list ;;
+    batch)    cmd_batch "$@" ;;
     gate)     cmd_gate "$@" ;;
     seal)     cmd_seal "$@" ;;
     verify-seal) cmd_verify_seal "$@" ;;

@@ -26,8 +26,9 @@ Loaded automatically by commands and skills when the active tech stack is `pytho
 Python is interpreted, so there's no separate compile step. Use type checking and tests as your verification gates.
 
 - **Type check (compile-equivalent):** `mypy .` or `pyright` (whichever the project uses)
-- **Test (batch):** `pytest <path/to/module>` or `pytest -k <pattern>`
-- **Test (full):** `pytest`
+- **Test (batch):** `pytest -q --tb=short <path/to/module>` or `pytest -q --tb=short -k <pattern>`
+- **Test (full):** `pytest -q --tb=short`
+- **Bounded output is the default.** Batch checkpoints run these through `bash scripts/mtk-verify-run.sh --label <batch-id>-<step> -- <cmd>` — the wrapper's bounded tail is the evidence, the log path is the receipt.
 - **Format:** `ruff format <path>` (or `black <path>` if the project uses black). Wired through `hooks/format-on-edit.sh`, which **queues** edited paths at PostToolUse and **formats** them at Stop — both halves must be wired or nothing is formatted. Do NOT use `$CLAUDE_FILE` — it is not a Claude Code env var.
 - **Lint:** `ruff check <path>` (or `flake8` / `pylint` per project)
 

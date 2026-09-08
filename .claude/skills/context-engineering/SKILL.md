@@ -132,28 +132,26 @@ these require tooling; estimate from session state.
 
 ## Context Budget Tracking
 
-Track the cumulative context loaded in the session. Fewer, focused instructions beat many, diluted ones — every extra rule competes with the ones that actually matter most for the current task.
-
-**Budget guidelines:**
-- CLAUDE.md: target 60-80 lines, hard cap 120
-- Rules files: each under 120 lines
-- Each skill loaded: 60-120 lines
-- Reference files: vary, load only relevant sections
+Track what is loaded, but against the real cost model, not a line count. Instruction text
+(CLAUDE.md, rules, skills, references) is prompt-cached and cheap on repeat turns; tool output
+(build/test logs, file dumps, grep floods) is not cached and is re-billed on every turn that
+follows it. So bound tool output first — pipe large output through `mtk-compress.sh`, read files
+by section, cap log tails — and prune instructions second. The implement loop legitimately
+loads ~15 skills on the 1M default window; skill count alone is not a warning signal.
 
 **When to check the budget:**
-- After loading 3+ skills in a single session, pause and assess: are all still relevant?
-- If output quality drops or instructions are being ignored, context may be over-budget
+- When the `context-budget` hook nudges (estimated consumption past `MTK_CONTEXT_BUDGET_PCT`%, default 60, of `MTK_CONTEXT_WINDOW_TOKENS`, default 1000000) — it counts read bytes only, so treat it as a floor and reset/hand off deliberately rather than riding to compaction
+- If output quality drops or instructions are being ignored, context may be over-budget regardless of the number
 - Before loading a new reference, check if an earlier one can be released
 
 **Warning signals:**
-- 5+ skills loaded simultaneously — prune to the 2-3 most relevant
+- A single tool result larger than the instruction set it sits beside (an uncompressed test log, a whole-file dump when a section would do)
 - Full reference files loaded when only a section is needed
 - Same context loaded multiple times (after compaction recovery)
-- The `context-budget` hook nudges that estimated consumption passed `MTK_CONTEXT_BUDGET_PCT`% (default 60) of `MTK_CONTEXT_WINDOW_TOKENS` (default 1000000) — treat it as a floor (it counts read bytes only) and reset/hand off deliberately rather than riding to compaction
 
-## Proactive Reset (40% boundary + rot-symptom override)
+## Proactive Reset (budget-hook boundary + rot-symptom override)
 
-Quality degrades long before the context window fills, and tool-forced compaction tends to fire at the worst possible moment (mid-phase, mid-edit). Do not ride the budget up to the limit. Reset **deliberately, at a clean boundary** — a phase exit, a finished batch, a green verification — once usage passes **~40%** of the window. A clean reset-and-reseed (re-anchor on the goal + the files now in scope) keeps later work sharp; the 60% `context-budget` nudge (above) is the hard floor, not the target.
+Quality degrades long before the context window fills, and tool-forced compaction tends to fire at the worst possible moment (mid-phase, mid-edit). Do not ride the budget up to the limit. Reset **deliberately, at a clean boundary** — a phase exit, a finished batch, a green verification — once the `context-budget` hook's nudge fires (`MTK_CONTEXT_BUDGET_PCT`, default 60) or the harness `/context` figure passes that mark. A clean reset-and-reseed (re-anchor on the goal + the files now in scope) keeps later work sharp.
 
 Read a real number, never a guess: prefer the harness's `/context` figure or the `context-budget` hook estimate. If neither is available, fall back to the fatigue signals above.
 
@@ -198,9 +196,12 @@ After completing reference loading at the end of Phase 0 (and after any subseque
   file, do NOT load it as a "just in case" measure. That defeats the budget.
 - When in doubt about which globs match, use `git diff --name-only HEAD` as
   the authoritative list of touched files.
-- Reset proactively at a clean boundary past ~40% usage; do not ride to
-  compaction. 2+ rot symptoms (re-reading, re-asking, contradicting a prior
-  decision) override the number — reset now even if usage is low.
+- Reset proactively at a clean boundary once the `context-budget` hook nudges
+  (or `/context` passes `MTK_CONTEXT_BUDGET_PCT`); do not ride to compaction.
+  2+ rot symptoms (re-reading, re-asking, contradicting a prior decision)
+  override the number — reset now even if usage is low.
+- Bound tool output before pruning instructions: instructions are prompt-cached,
+  tool output is not.
 
 ## Model Routing
 
@@ -210,22 +211,15 @@ Agent frontmatter `model:` sets the model for subagents. Entry-point skills run 
 
 ## Common Rationalizations
 
-**Shared table for all MTK skills.** Individual skills reference this section instead of repeating their own tables. If you catch yourself thinking one of these, stop and re-read what the current skill actually requires.
+**Shared table for all MTK skills.** If you catch yourself thinking one of these, stop and re-read what the current skill actually requires. Excerpt:
 
 | Rationalization | Reality |
 |---|---|
-| "I'll just start coding and adjust later" | Early wrong assumptions produce the most expensive rework. Read before writing. |
 | "More context is always better" | No. Irrelevant context crowds out the rules that actually matter. |
 | "I already read a similar file in another project" | Local codebase patterns win over generic memory. |
-| "This change is trivial, it obviously works" | Trivial changes cause production incidents. Verify anyway. |
-| "I'll verify / test / document it later" | Later rarely happens. Do it now or it won't happen. |
-| "I know where the bug / issue is without reproducing it" | You have a hunch, not evidence. Reproduce first. |
-| "It's only one more file" | Hidden scope creep is how quick fixes become feature work. Escalate instead. |
-| "Probably works / should work / the framework handles it" | Probably is not a control. Verify the actual behavior. |
 | "The tests pass, so this is fine" | Passing tests do not clear architecture, security, or performance risks. |
-| "I'll remember this for next time" | You won't — no persistent memory without explicit capture. Write it down. |
-| "The approach is obvious — skip planning / approval / alternatives" | Obvious to whom? Planning and approval exist to catch the mis-framings that feel obvious. |
-| "The spec is outdated; the implementation is right" | Then amend the spec and re-approve. Drift checks run against the current spec, not a hypothetical one. |
+
+Full table: `.claude/references/workflow-rationalizations.md` → context-engineering.
 
 ## Red Flags
 
@@ -238,8 +232,7 @@ Agent frontmatter `model:` sets the model for subagents. Entry-point skills run 
 - [ ] Governing standards were loaded first
 - [ ] Local pattern files were read before editing or reviewing
 - [ ] Context matches the current phase and task scope
-- [ ] No more than 3 skills loaded simultaneously unless justified
+- [ ] Large tool output was bounded (compressed, tailed, or read by section) before more instructions were loaded
 - [ ] Reference files loaded by section, not in full, when possible
-- [ ] Path-scoped references were matched against actual touched files,
-      not loaded speculatively
+- [ ] Path-scoped references were matched against actual touched files, not loaded speculatively
 - [ ] When scope changed mid-session, path-scoped matches were re-run

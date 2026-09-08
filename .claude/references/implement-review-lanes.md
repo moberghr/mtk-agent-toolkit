@@ -23,6 +23,8 @@ Stage 1 runs first (spec compliance) because if the implementation doesn't match
 
 Run `compliance-reviewer` with:
 
+- the path of the run's context pack (`results.context_pack`) — every lane in both stages reads it **instead of** CLAUDE.md, the tech-stack skill, and the guideline files; pass the path, never the body
+- the spec path and its JSON sidecar path
 - `git diff HEAD`
 - the behavioral diff
 - the scope classification
@@ -32,7 +34,7 @@ The compliance reviewer checks: does the implementation match the approved spec?
 
 ### Stage 2: Quality and Coverage
 
-Only after Stage 1 passes (no Critical issues). When both reviewers apply, run them **in parallel** — dispatch in a single message with multiple `Agent` tool calls so reviews run concurrently. See `docs/parallelism-patterns.md` for the canonical spawn pattern.
+Only after Stage 1 passes (no Critical issues). When both reviewers apply, run them **in parallel** — dispatch in a single message with multiple `Agent` tool calls so reviews run concurrently, each given the same context-pack path, spec/sidecar paths, and diff as Stage 1. See `docs/parallelism-patterns.md` for the canonical spawn pattern.
 
 - `test-reviewer` — when the change introduces or changes public behavior
 - `architecture-reviewer` — when the change introduces new slices, boundaries, handlers, or cross-project interactions

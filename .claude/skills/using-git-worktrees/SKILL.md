@@ -94,7 +94,7 @@ git branch -d <branch-name>  # only if merged
 
 ## Common Rationalizations
 
-See `.claude/skills/context-engineering/SKILL.md` for the shared table. Worktree-specific traps: "dependencies are already installed" (the worktree is a fresh checkout — it has no node_modules, no bin/obj, no venv), "the gitignore is probably fine" (committing a worktree directory wastes everyone's time — verify first), and "I'll skip baseline tests, I know the tests pass" (pre-existing failures get blamed on your changes — prove the starting state).
+See `.claude/references/workflow-rationalizations.md` for the shared table. Worktree-specific traps: "dependencies are already installed" (the worktree is a fresh checkout — it has no node_modules, no bin/obj, no venv), "the gitignore is probably fine" (committing a worktree directory wastes everyone's time — verify first), and "I'll skip baseline tests, I know the tests pass" (pre-existing failures get blamed on your changes — prove the starting state).
 
 ## Red Flags
 

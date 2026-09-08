@@ -50,9 +50,12 @@ The policy table names concrete Claude tiers (`haiku`/`sonnet`/`opus`) because t
 
 | Slot | Meaning | Current Claude binding |
 |---|---|---|
-| `fast` | Cheapest tier — discovery, grep, structured collection, no judgment | `haiku` |
-| `default` | Workhorse — bounded judgment, standard code generation, most reviews | `sonnet` |
-| `strong` | Highest capability — real logic, adversarial/security review, novel batches | `opus` |
+| `fast` | Cheapest tier — discovery, grep, structured collection, no judgment | **Haiku 4.5** (alias `haiku`) |
+| `default` | Workhorse — bounded judgment, standard code generation, most reviews | **Sonnet 5** (alias `sonnet`) |
+| `strong` | Highest capability — real logic, adversarial/security review, novel batches | **Opus 5** (alias `opus`) |
+| `strong` (optional, review-only) | Compliance and security review lanes **only** — never implementers, never discovery | **Fable 5.1** (alias `fable`) |
+
+**Fable 5.1 as an optional `strong` binding.** The `compliance-reviewer` and security lanes may pin `model: fable` instead of `opus`: their cost is justified where a missed finding is expensive (audited state, auth, secrets), and a reviewer runs once per change, not once per batch. It is not a binding for implementers (per-batch cost multiplies) or for discovery (no judgment to buy). The fallback table below treats `fable` exactly like `opus` — a `strong` lane that cannot run falls to `default` and records `ABSTAINED` semantics.
 
 The slot is the stable contract; the binding is one line to update when models change. Read the policy table as *roles*: "discovery → `fast`", "implementation → `default`", "compliance review / security → `strong`". When MTK runs on a non-Anthropic backend (or a future Claude generation), re-bind the three slots in this table once and every phase/agent rule follows — no per-row edits, no agent-frontmatter churn beyond swapping the slot's bound model. Frontmatter `model:` may name either the slot's current concrete model or, where the harness supports it, the slot name itself.
 
@@ -79,9 +82,9 @@ The rule:
 
 | Unavailable tier | Fallback | Notes |
 |---|---|---|
-| `strong` (opus) | `default` (sonnet) for the **rest of the run** | Not a re-ask; not a per-batch probe of whether the limit lifted. Record the switch on the workflow artifact and name it in the final report. |
-| `default` (sonnet) | **halt** | Implementer code and review agents never drop to `fast`. Report to the engineer; do not "just try haiku". |
-| `fast` (haiku) | `default` | Discovery/grep work is cheap enough to run one tier up. |
+| `strong` (Opus 5 / Fable 5.1) | `default` (Sonnet 5) for the **rest of the run** | Not a re-ask; not a per-batch probe of whether the limit lifted. Record the switch on the workflow artifact and name it in the final report. |
+| `default` (Sonnet 5) | **halt** | Implementer code and review agents never drop to `fast`. Report to the engineer; do not "just try haiku". |
+| `fast` (Haiku 4.5) | `default` | Discovery/grep work is cheap enough to run one tier up. |
 
 Review agents pin their tier in frontmatter, so a `strong`-pinned lane
 (`compliance-reviewer`, security) that cannot run on `strong` runs on `default` and

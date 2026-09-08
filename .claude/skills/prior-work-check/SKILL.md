@@ -17,30 +17,18 @@ required-toolsets: [read-only]
 
 ## Overview
 
-Before writing new code, confirm the codebase doesn't already do this. The
-single most common cause of waste in mature codebases is re-implementing a
-capability that already exists under a different name. Three deterministic
-pre-task queries run against MTK's file-based artifacts (lessons, specs,
-code index) before a spec is approved or a planner opens a batch.
-
-Three deterministic queries run against the repo. Each must complete before
-the spec is handed to the approval gate or the planner begins task breakdown.
+Before writing new code, confirm the codebase doesn't already do this — re-implementing a capability that exists under a different name is the most common waste in mature codebases.
+Three deterministic queries run against MTK's file-based artifacts (lessons, specs, code index); each must complete before the spec reaches the approval gate or the planner opens a batch.
 
 ## When To Use
 
-- During `spec-driven-development` step 8c, before the implement Phase 2.5 approval gate
-- Before `planning-and-task-breakdown` opens a batch
-- During `implement` Phase 0.7 when a **pre-written plan is supplied as input** —
-  run the *existing-plan reconciliation mode* below so already-implemented
-  batches are not re-run
-- When the engineer says "let's add an X" and X sounds generic (cache, retry,
-  validator, formatter, normalizer)
-- When the change manifest names files in an area you haven't touched recently
+- During `spec-driven-development` step 8c (before the implement Phase 2.5 approval gate) and before `planning-and-task-breakdown` opens a batch
+- During `implement` Phase 0.7 when a **pre-written plan is supplied as input** — run the *existing-plan reconciliation mode* below so already-implemented batches are not re-run
+- When the engineer says "let's add an X" and X sounds generic (cache, retry, validator, formatter, normalizer), or the change manifest names files in an area you haven't touched recently
 
 ### When NOT To Use
 
-- Typo fixes, single-line config tweaks
-- Bug fixes where the file in scope is already named
+- Typo fixes, single-line config tweaks, or bug fixes where the file in scope is already named
 - Changes inside a clearly-isolated feature module with no shared surface
 
 ## Workflow
@@ -184,7 +172,7 @@ Emit one fenced block summarizing all three queries:
 
 ## Common Rationalizations
 
-See `.claude/skills/context-engineering/SKILL.md` for the shared table.
+See `.claude/references/workflow-rationalizations.md` for the shared table.
 Prior-work-specific traps: "I already grepped during planning" (you grepped
 for the spec's chosen name — re-grep for the capability under other names),
 "there's nothing in lessons.md about this" (re-read with synonyms — lessons

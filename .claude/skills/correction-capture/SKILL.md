@@ -136,7 +136,7 @@ This skill is specifically for **engineer-driven** corrections. When *you* resol
 
 ## Common Rationalizations
 
-See `.claude/skills/context-engineering/SKILL.md` for the shared table. Correction-specific traps: "this correction is too specific to save" (extract the general principle — the specific instance becomes a reusable rule), "the engineer is being nitpicky" (if they took the time to correct you, it matters — capture it), and "this is already in the coding guidelines" (then you missed it — note which guideline and why, that's the real lesson).
+See `.claude/references/workflow-rationalizations.md` for the shared table. Correction-specific traps: "this correction is too specific to save" (extract the general principle — the specific instance becomes a reusable rule), "the engineer is being nitpicky" (if they took the time to correct you, it matters — capture it), and "this is already in the coding guidelines" (then you missed it — note which guideline and why, that's the real lesson).
 
 ## Red Flags
 

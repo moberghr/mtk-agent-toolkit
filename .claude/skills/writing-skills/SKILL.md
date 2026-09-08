@@ -138,7 +138,7 @@ Entry-point skills follow the same pattern — Phase 0 load instructions stay id
 
 ## Common Rationalizations
 
-See `.claude/skills/context-engineering/SKILL.md` for the shared table. Writing-skills specific traps: "the skill is obvious, I don't need to test it" (obvious skills get ignored — test to find the gaps), and "this description summarizes the skill well" (summarizing triggers the agent to follow the summary instead of reading the full content — use trigger conditions).
+See `.claude/references/workflow-rationalizations.md` for the shared table. Writing-skills specific traps: "the skill is obvious, I don't need to test it" (obvious skills get ignored — test to find the gaps), and "this description summarizes the skill well" (summarizing triggers the agent to follow the summary instead of reading the full content — use trigger conditions).
 
 ## Red Flags
 

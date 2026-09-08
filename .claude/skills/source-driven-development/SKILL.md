@@ -27,8 +27,7 @@ When framework behavior matters, memory is not enough. Verify unfamiliar APIs ag
 
 ### When NOT To Use
 
-- Well-understood local code patterns already validated in the repo and unchanged by version differences
-- Forward-looking "current best way" questions that need web research → use `research-context`
+- Well-understood local patterns already validated in the repo and unchanged by version differences; forward-looking "current best way" questions that need web research → `research-context`
 
 ## Workflow
 
@@ -49,7 +48,7 @@ When framework behavior matters, memory is not enough. Verify unfamiliar APIs ag
 
 ## Common Rationalizations
 
-See `.claude/skills/context-engineering/SKILL.md` for the shared table. Source-driven-specific traps: "this API probably behaves like the last one I used" (similar names cause production bugs — verify the actual contract for this version), and "I'll fix it if it breaks" (source checks are cheaper than post-failure recovery, especially for transaction or security behavior).
+See `.claude/references/workflow-rationalizations.md` for the shared table. Source-driven-specific traps: "this API probably behaves like the last one I used" (similar names cause production bugs — verify the actual contract for this version), and "I'll fix it if it breaks" (source checks are cheaper than post-failure recovery, especially for transaction or security behavior).
 
 ## Red Flags
 

@@ -130,7 +130,7 @@ The capture reuses `correction-capture`'s destinations and the same `scripts/lea
 
 ## Common Rationalizations
 
-See `.claude/skills/context-engineering/SKILL.md` for the shared table. Golden-path-specific traps: "I figured it out myself, so there's nothing to record" (self-figured-out is the *whole point* — the struggle you resolved is the highest-density lesson there is), "I'll let the lesson-mining sweep catch this later" (the sweep is the safety net for what live capture missed; do not offload live capture onto it), "it only failed a couple of times, not a real pattern" (2+ on the same signature is the bar — it already cleared it), and "the wrong turns are embarrassing, I'll just record the fix" (the wrong turns are what stop the next session repeating them — record them).
+See `.claude/references/workflow-rationalizations.md` for the shared table. Golden-path-specific traps: "I figured it out myself, so there's nothing to record" (self-figured-out is the *whole point* — the struggle you resolved is the highest-density lesson there is), "I'll let the lesson-mining sweep catch this later" (the sweep is the safety net for what live capture missed; do not offload live capture onto it), "it only failed a couple of times, not a real pattern" (2+ on the same signature is the bar — it already cleared it), and "the wrong turns are embarrassing, I'll just record the fix" (the wrong turns are what stop the next session repeating them — record them).
 
 ## Red Flags
 

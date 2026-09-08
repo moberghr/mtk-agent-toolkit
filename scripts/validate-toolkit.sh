@@ -334,6 +334,16 @@ for skill in "${manifest_skill_paths[@]+"${manifest_skill_paths[@]}"}"; do
   else
     [ "$skill_lines" -le 500 ] || fail "Skill $skill exceeds 500-line budget ($skill_lines lines). Split into core + reference files"
   fi
+  # Char budget (S2.26): line counts under-report dense skills (115+ chars/line). Workflow
+  # skills 20,000 chars; phase-structured / entry-point / tech-stack skills 35,000 chars.
+  # WARN only in this release — becomes `fail` one release later.
+  skill_chars="$(wc -c < "$skill" | tr -d ' ')"
+  if echo "$skill" | grep -q 'tech-stack-' || grep -q '^allowed-tools:' "$skill" || grep -qE '^## (Phase [0-9]|STEP [0-9]|Process|Modes|Route Table)' "$skill"; then
+    skill_char_cap=35000
+  else
+    skill_char_cap=20000
+  fi
+  [ "$skill_chars" -le "$skill_char_cap" ] || printf 'WARN: skill %s exceeds %d-char budget (%d chars) — move detail to a reference (S2.26)\n' "$(basename "$(dirname "$skill")")" "$skill_char_cap" "$skill_chars"
 done
 
 # Skill description budget (S2.5/S2.6): every skill `description` is injected into
@@ -427,18 +437,42 @@ for skill in .claude/skills/*/SKILL.md; do
   fi
 done
 
-# Advisory: least-privilege for agents (borrow — VoltAgent tool-matrix). Reviewer/
-# read-only agents must declare a toolset and must not grant mutating tools. Warn only.
+# Advisory: section caps on workflow skills (S2.26 — a SKILL.md is a navigation layer).
+# `## Verification` body > 8 non-blank lines; for `user-invocable: false` skills also
+# `## Overview` body > 3 non-blank lines and `## When To Use` body > 5 bullets (lines
+# starting with "- ", `### When NOT To Use` sub-bullets included). Warn only, never fail.
+section_body() { awk -v h="## $2" '$0==h{p=1;next} /^## /{p=0} p' "$1"; }
+for skill in .claude/skills/*/SKILL.md; do
+  [ -f "$skill" ] || continue
+  skill_name="$(basename "$(dirname "$skill")")"
+  ver_lines="$(section_body "$skill" 'Verification' | grep -c '[^[:space:]]' || true)"
+  [ "$ver_lines" -le 8 ] || printf 'WARN: skill %s ## Verification has %d non-blank lines (cap 8) — fold prose into the Workflow step it verifies\n' "$skill_name" "$ver_lines"
+  if grep -qE '^user-invocable:[[:space:]]*false' "$skill"; then
+    ov_lines="$(section_body "$skill" 'Overview' | grep -c '[^[:space:]]' || true)"
+    [ "$ov_lines" -le 3 ] || printf 'WARN: skill %s ## Overview has %d non-blank lines (cap 3 for user-invocable: false) — the frontmatter description already says what it is\n' "$skill_name" "$ov_lines"
+    wtu_bullets="$(section_body "$skill" 'When To Use' | grep -c '^- ' || true)"
+    [ "$wtu_bullets" -le 5 ] || printf 'WARN: skill %s ## When To Use has %d bullets (cap 5 for user-invocable: false) — keep routing-relevant conditions only\n' "$skill_name" "$wtu_bullets"
+  fi
+done
+
+# Least-privilege for agents (S1.7). Claude Code enforces the `tools:` frontmatter key on
+# agent definitions — `allowed-tools:` is a skill-frontmatter key and MTK's own toolset
+# hint; an agent that only declares `allowed-tools` runs with EVERY tool, and its spawn
+# carries every tool schema, every MCP tool name, and the whole skill roster (~35k extra
+# tokens measured on a loaded machine). So `tools:` is REQUIRED on every agent and must not
+# grant a mutating tool, `Agent`, or `Skill` — reviewers are read-only and never re-dispatch.
 for agent in .claude/agents/*.md; do
   [ -f "$agent" ] || continue
   agent_name="$(basename "$agent" .md)"
   fm="$(awk 'NR==1&&$0!="---"{exit} /^---[[:space:]]*$/{c++; if(c==2)exit; next} c==1{print}' "$agent")"
-  printf '%s\n' "$fm" | grep -qE '^(required-toolsets|allowed-tools):' \
-    || printf 'WARN: agent %s declares neither required-toolsets nor allowed-tools (least privilege)\n' "$agent_name"
-  allowed="$(printf '%s\n' "$fm" | awk -F: '/^allowed-tools:/{sub(/^[^:]*:[[:space:]]*/,"");print;exit}')"
-  if printf '%s' "$allowed" | grep -qE '\b(Edit|Write|MultiEdit|NotebookEdit)\b'; then
-    printf 'WARN: agent %s grants a mutating tool in allowed-tools — reviewers should be read-only\n' "$agent_name"
+  tools_line="$(printf '%s\n' "$fm" | awk -F: '/^tools:/{sub(/^[^:]*:[[:space:]]*/,"");print;exit}')"
+  [ -n "$tools_line" ] \
+    || fail "agent $agent_name has no 'tools:' frontmatter — Claude Code ignores allowed-tools on agents, so this agent would run with every tool and pay for every schema/MCP/skill in its spawn (S1.7)"
+  if printf '%s' "$tools_line" | grep -qE '\b(Edit|Write|MultiEdit|NotebookEdit|Agent|Skill|Workflow)\b'; then
+    fail "agent $agent_name grants a mutating or dispatching tool in tools: ($tools_line) — reviewers are read-only and never re-dispatch (S1.7)"
   fi
+  printf '%s\n' "$fm" | grep -qE '^(required-toolsets|allowed-tools):' \
+    || printf 'WARN: agent %s declares no required-toolsets/allowed-tools hint for the MTK router (S2.19)\n' "$agent_name"
 done
 
 # Advisory: frontmatter enum sanity on agents (borrow — schema-validated frontmatter).
@@ -448,7 +482,7 @@ for agent in .claude/agents/*.md; do
   agent_name="$(basename "$agent" .md)"
   model="$(awk -F: '/^model:/{gsub(/[[:space:]]/,"",$2);print $2;exit}' "$agent")"
   effort="$(awk -F: '/^effort:/{gsub(/[[:space:]]/,"",$2);print $2;exit}' "$agent")"
-  case "${model:-}" in ''|opus|sonnet|haiku|inherit) : ;; *) printf 'WARN: agent %s has unexpected model tier "%s" (expected opus|sonnet|haiku|inherit)\n' "$agent_name" "$model" ;; esac
+  case "${model:-}" in ''|opus|sonnet|haiku|fable|inherit) : ;; *) printf 'WARN: agent %s has unexpected model tier "%s" (expected opus|sonnet|haiku|fable|inherit)\n' "$agent_name" "$model" ;; esac
   case "${effort:-}" in ''|low|medium|high|max) : ;; *) printf 'WARN: agent %s has unexpected effort "%s" (expected low|medium|high|max)\n' "$agent_name" "$effort" ;; esac
 done
 

@@ -79,6 +79,8 @@ Implementations may add fields under `results` and `intent` without breaking sch
 
 `results.dispatch_incidents[]` is an append-only list of per-batch dispatch failures that were **not** a returned result — a killed or aborted implementer (`kind: killed`), plus the tier fallback it forced (`from_model` → `to_model`, both absent when the tier did not change). `partial_compiled` records what the orchestrator found on disk before respawning. The pair `ts_killed` / `ts_respawned` is the only record of what the incident cost; the run receipt sums those gaps into its *time lost to dispatch incidents* figure and writes `not recorded` when either stamp is missing. Written by `subagent-implementation` **before** the replacement is dispatched, so a second kill cannot erase the first.
 
+`results.context_pack` is the path of the per-run context pack written by `scripts/build-context-pack.sh` after Phase 2 (normally `.mtk/workflows/{uuid}/context-pack.md`): the build/test/format commands, CLAUDE.md critical rules, manifest-selected coding-guideline sections, `[EXTRACTED]` principles, and matching lessons that every implementer and reviewer subagent reads **instead of** the files it was built from. Rebuilt when the manifest is amended; passed by path in every subagent prompt.
+
 `results.artifact_url` is the URL of the workflow's published Claude Artifact (the single browsable rollup of spec/plan/handoff/health, updated in place across phases). It is set only when artifact publishing is enabled and available — see `.claude/references/artifact-publishing.md`. The `*_path` fields (`spec_path`, `plan_path`, `todo_path`, `handoff_path`, `health_report_path`) are the on-disk source docs the assembler (`scripts/workflow-artifact-md.sh`) concatenates into `.mtk/workflows/{uuid}.artifact.md`. Disk remains the source of truth; the artifact is an additive rendered mirror.
 
 ## criteria_status
@@ -119,8 +121,8 @@ Events are append-only. One line per event in `{uuid}.events.jsonl`.
 | `phase_completed` | Phase exits cleanly | `phase` |
 | `gate_decided` | A named gate is evaluated | `gate`, `result` (`pass` or `fail`), `reason` |
 | `field_updated` | `set` subcommand updates state | `keys` (array of dotted paths) |
-| `agent_dispatched` | A subagent is spawned | `agent`, `prompt_excerpt` |
-| `agent_returned` | A subagent finishes — or is killed (`verdict: killed`, `findings_count: 0`) | `agent`, `verdict`, `findings_count` |
+| `agent_dispatched` | A subagent is spawned | `agent`, `prompt_excerpt`, optional `source: workflow-replay` when the `ts` was captured by the dynamic-workflow runtime and replayed via `event --ts` |
+| `agent_returned` | A subagent finishes — or is killed (`verdict: killed`, `findings_count: 0`) | `agent`, `verdict`, `findings_count`, optional `source: workflow-replay` |
 | `remediation_started` | Loop entered to fix issues | `trigger` |
 | `remediation_resolved` | Loop exits successfully | `trigger`, `iterations` |
 | `remediation_escalated` | Circuit-breaker tripped (cap or plateau) | `trigger`, `iterations`, `plateau` |
