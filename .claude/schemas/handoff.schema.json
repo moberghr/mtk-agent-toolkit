@@ -97,16 +97,30 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["id", "files", "acceptance", "verification"],
+            "required": ["id", "files", "acceptance", "verification", "depends"],
             "properties": {
               "id": { "type": "string", "pattern": "^B[0-9]+$" },
               "files": { "type": "array", "items": { "type": "string" } },
               "acceptance": { "type": "string" },
               "verification": { "type": "string" },
               "boundary": { "type": "string" },
-              "depends": { "type": "array", "items": { "type": "string" } },
-              "parallel_safe": { "type": "boolean", "default": false }
-            }
+              "depends": {
+                "type": "array",
+                "items": { "type": "string", "pattern": "^B[0-9]+$" },
+                "description": "Batch ids this batch assumes complete. Required. Two batches sharing a file must carry an edge; edge-free batches are scheduled into the same wave and run concurrently."
+              },
+              "depends_rationale": {
+                "type": "string",
+                "description": "Required when depends is empty: why this batch is independent (no shared files, reads no type another batch creates)."
+              },
+              "wave": {
+                "type": "integer", "minimum": 0,
+                "description": "Derived: topological level from depends. Readback only; the scheduler recomputes it."
+              },
+              "parallel_safe": { "type": "boolean", "default": false, "description": "Deprecated: superseded by depends/wave." }
+            },
+            "if": { "properties": { "depends": { "maxItems": 0 } } },
+            "then": { "required": ["depends_rationale"] }
           }
         }
       }

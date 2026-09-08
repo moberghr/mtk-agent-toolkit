@@ -41,14 +41,14 @@ Convert the approved plan into small, executable tasks that can be verified one 
    current branch state. Risk profiles and lessons can shift between
    approval and planning. A BLOCK verdict here means planning stops until
    the spec is amended and re-approved.
-2. Break work into batches of 2-4 related files, dependency-ordered.
+2. Break work into batches of 2-4 related files, dependency-ordered. Two batches that list the same file in `files` **must** carry a dependency edge between them (later depends on earlier) — this is what lets the scheduler run edge-free batches concurrently without two implementers editing one file. Files that many batches touch by nature — DI registration (`Program.cs`, `*Startup*`, `DependencyInjection*`, `ServiceRegistration*`), project/solution files (`*.csproj`, `*.sln*`, `package.json`, `pyproject.toml`), and migration snapshots — are **serialize-if-touched**: every batch that touches one of them depends on the previous batch that did.
 3. For each task, write:
    - task description
    - acceptance criteria
    - verification step
    - files in scope
    - **Boundary:** what this task owns and must not leak into (e.g., "handler only — no controller changes")
-   - **Depends:** which prior tasks or existing code this task assumes is complete (e.g., "requires Batch 1 entity to exist")
+   - **Depends (mandatory):** the batch ids this batch assumes are complete (e.g., "B1 — needs the entity to exist"). An empty list is a claim of independence and must say why (`depends_rationale: "independent: no shared files, reads no type another batch creates"`). The scheduler runs edge-free batches in the same wave, so a missing edge is a concurrency bug, not a style nit.
    - **Governing constraints:** the Critical Rule / principle ids that constrain
      this batch, cited from the spec's Constitution Check (run
      `bash scripts/constitution-digest.sh` if absent).
@@ -62,7 +62,7 @@ Convert the approved plan into small, executable tasks that can be verified one 
    - Run the stack's registry-verification command (from `.claude/references/dependency-intake-checklist.md` criterion 0, also listed in the active tech-stack skill) to confirm the package exists and is the real one (not a typosquat / hallucination).
    - Tag the package `[ASSUMED]` in the plan until verified, and insert an explicit `checkpoint:human-verify` step **before** the install task. This checkpoint is one of the conditions that blocks `MTK_AUTO_PROCEED` at the `implement` Phase 2.5 gate, so an unverified package can never be installed autonomously.
    - A criterion-0 Poor (not found / dead repo / typosquat signal) blocks the dependency outright — re-plan without it.
-5. Mark tasks that can run in parallel and tasks that must stay sequential.
+5. State the resulting wave schedule in the plan (`W0: B1 · W1: B2 B3 B4 · W2: B5`) — derived from `depends` as topological levels, wave width capped at `MTK_BATCH_WAVE_MAX` (default 3). The schedule is a readback of the edges, not a second source of truth: if it looks wrong, fix `depends`.
 6. Write `tasks/todo.md` with:
    - task title
    - scope and branch
@@ -88,14 +88,21 @@ Convert the approved plan into small, executable tasks that can be verified one 
    "plan": {
      "batches": [
        { "id": "B1", "files": ["src/X.cs"], "acceptance": "...",
-         "verification": "...", "boundary": "...", "depends": [],
-         "governing_constraints": ["C0.2", "S1.15"],
-         "parallel_safe": false }
+         "verification": "...", "boundary": "...",
+         "depends": [], "depends_rationale": "independent: first batch, creates the entity",
+         "governing_constraints": ["C0.2", "S1.15"] },
+       { "id": "B2", "files": ["src/XHandler.cs"], "acceptance": "...",
+         "verification": "...", "boundary": "...",
+         "depends": ["B1"],
+         "governing_constraints": ["C0.2"] }
      ]
    }
    ```
    Every `files` entry must already exist in the top-level `change_manifest`.
-   If it does not, re-plan first — don't quietly widen scope here.
+   If it does not, re-plan first — don't quietly widen scope here. `depends` is
+   required on every batch; `depends_rationale` is required when it is empty.
+   Any two batches sharing a `files` entry without an edge between them fail
+   the sidecar check and the `plan-gap-reviewer` marks it `BLOCKING`.
 9. Keep the task list synchronized with reality. If a new file is needed, re-plan before continuing.
 10. Record the plan/todo paths on the workflow artifact and leave `plan_trust_gate` at `pending` — only the engineer's Phase 2.5 approval flips it to `pass`. See `.claude/references/orchestration-gates.md`.
 10.5. **Update the workflow artifact (additive, capability-gated).** With `plan_path`/`todo_path` recorded, follow `.claude/references/artifact-publishing.md` to add the Plan section to the workflow's Claude Artifact. Because the artifact is keyed to the workflow uuid, this **updates the existing URL in place** (passing the recorded `results.artifact_url`) — it does not mint a new link. Silent no-op when the tool is unavailable or `MTK_ARTIFACT_PUBLISH=0`.
@@ -111,7 +118,7 @@ Convert the approved plan into small, executable tasks that can be verified one 
 
 ## Common Rationalizations
 
-See `.claude/skills/context-engineering/SKILL.md` for the shared table. Planning-specific traps: "I'll just keep the tasks in my head" (hidden plans drift fastest — write the list so implementation and review can check reality against it), "this batch is a bit large, but it saves time" (oversized batches hide breakage and make checkpoints meaningless), and "I'll add verification steps later" (a task without verification is not a task, it's a wish).
+See `.claude/references/workflow-rationalizations.md` for the shared table. Planning-specific traps: "I'll just keep the tasks in my head" (hidden plans drift fastest — write the list so implementation and review can check reality against it), "this batch is a bit large, but it saves time" (oversized batches hide breakage and make checkpoints meaningless), and "I'll add verification steps later" (a task without verification is not a task, it's a wish).
 
 ## Red Flags
 
@@ -125,7 +132,7 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared table. Planning
 ## Verification
 
 - [ ] `tasks/todo.md` exists and is actionable
-- [ ] Batches are dependency-ordered
+- [ ] Batches are dependency-ordered; every batch has `depends`, every empty `depends` has a rationale, and no two edge-free batches share a file
 - [ ] Each task has acceptance and verification
 - [ ] Each batch ends with a concrete checkpoint
 - [ ] Each task has Boundary and Depends annotations
