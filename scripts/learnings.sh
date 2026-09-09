@@ -6,8 +6,13 @@ set -euo pipefail
 #   add [flags]                Append a structured entry. Flags below.
 #   query [flags]              Print ranked entries via 5-layer retrieval filter.
 #   regen-markdown             Regenerate tasks/lessons.md from .mtk/learnings.jsonl.
-#   migrate                    Seed .mtk/learnings.jsonl from existing tasks/lessons.md.
+#   migrate [--store-only]     Seed .mtk/learnings.jsonl from existing tasks/lessons.md
+#                              (then regenerate the markdown view unless --store-only).
 #   list                       Plain newline-delimited dump (id + title), for diagnostics.
+#
+# query auto-seeds an empty store from tasks/lessons.md (store-only, never rewrites
+# the markdown) so a repo bootstrapped before the seed step shipped still answers
+# lesson queries. MTK_LEARNINGS_AUTOSEED=0 turns that off (diagnose-only).
 #
 # Storage: JSON Lines (one entry per line) — chosen so pure-bash tooling can
 # append and grep without an external JSON parser, per rule S3.3.
@@ -347,6 +352,22 @@ cmd_query() {
     esac
   done
 
+  # Lazy seed. The bootstrap-time `migrate` only reaches repos bootstrapped after
+  # it shipped; every earlier repo answered "no lessons" on every query, forever
+  # (beacon 2026-09: 30 lessons in tasks/lessons.md, 0 reachable). Seed here,
+  # STORE-ONLY: a read path must never rewrite the engineer's markdown, so the
+  # regen half of `migrate` is deliberately not run. Title-hash dedup makes a
+  # repeat harmless; `.mtk/` is gitignored state. MTK_LEARNINGS_AUTOSEED=0 opts out.
+  if [ ! -s "$LEARNINGS_PATH" ] && [ "${MTK_LEARNINGS_AUTOSEED:-1}" != "0" ] \
+     && [ -f "$LESSONS_MD" ] && grep -q '^## ' "$LESSONS_MD"; then
+    migrate_ingest
+    if [ "$MIGRATED_COUNT" -gt 0 ]; then
+      printf 'learnings query: auto-seeded %d entr%s from %s into %s (store-only; run `learnings.sh migrate` to also regenerate the markdown view).\n' \
+        "$MIGRATED_COUNT" "$([ "$MIGRATED_COUNT" -eq 1 ] && echo y || echo ies)" "$LESSONS_MD" "$LEARNINGS_PATH" >&2
+      store_existed=1
+    fi
+  fi
+
   # A bare empty stdout is ambiguous: "no lessons stored" and "lessons stored,
   # none matched" look identical to a caller, so a skill cannot tell whether it
   # legitimately skipped the lessons pass or silently lost it. Diagnose on
@@ -567,15 +588,13 @@ cmd_regen_markdown() {
   printf 'Regenerated %s\n' "$LESSONS_MD"
 }
 
-cmd_migrate() {
+# Ingest tasks/lessons.md heading blocks into the store. Sets MIGRATED_COUNT.
+# Shared by `migrate` and by query's lazy seed; touches the store only.
+MIGRATED_COUNT=0
+migrate_ingest() {
   ensure_store
-  [ -f "$LESSONS_MD" ] || { printf 'No %s — nothing to migrate.\n' "$LESSONS_MD"; return 0; }
-
-  # Skip if already migrated (auto-generated header present and store non-empty)
-  if grep -q '<!-- Auto-generated below' "$LESSONS_MD" && [ -s "$LEARNINGS_PATH" ]; then
-    printf 'Already migrated. Use regen-markdown to refresh tasks/lessons.md.\n'
-    return 0
-  fi
+  MIGRATED_COUNT=0
+  [ -f "$LESSONS_MD" ] || return 0
 
   # Idempotency: collect title hashes already in the store so re-running migrate
   # over the same legacy content adds nothing (schema: matched by title hash).
@@ -625,9 +644,30 @@ cmd_migrate() {
     esac
   done < "$LESSONS_MD"
   _flush_block
+  MIGRATED_COUNT="$count"
+}
 
-  printf 'Migrated %d entries to %s\n' "$count" "$LEARNINGS_PATH"
-  cmd_regen_markdown --force
+cmd_migrate() {
+  local store_only=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --store-only) store_only=1; shift ;;
+      *) printf 'unknown flag: %s\n' "$1" >&2; exit 2 ;;
+    esac
+  done
+  ensure_store
+  [ -f "$LESSONS_MD" ] || { printf 'No %s — nothing to migrate.\n' "$LESSONS_MD"; return 0; }
+
+  # Skip if already migrated (auto-generated header present and store non-empty)
+  if grep -q '<!-- Auto-generated below' "$LESSONS_MD" && [ -s "$LEARNINGS_PATH" ]; then
+    printf 'Already migrated. Use regen-markdown to refresh tasks/lessons.md.\n'
+    return 0
+  fi
+
+  migrate_ingest
+  printf 'Migrated %d entries to %s\n' "$MIGRATED_COUNT" "$LEARNINGS_PATH"
+  # --store-only: seed without the prose→summary rewrite of tasks/lessons.md.
+  [ "$store_only" -eq 1 ] || cmd_regen_markdown --force
 }
 
 cmd_list() {
@@ -704,7 +744,7 @@ main() {
     query) cmd_query "$@" ;;
     metrics) cmd_metrics "$@" ;;
     regen-markdown) cmd_regen_markdown "$@" ;;
-    migrate) cmd_migrate ;;
+    migrate) cmd_migrate "$@" ;;
     list) cmd_list ;;
     -h|--help|help|"")
       sed -n '2,16p' "$0" | sed 's/^# //; s/^#$//'

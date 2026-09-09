@@ -4,6 +4,53 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Fixed — beacon field-run gaps: rule-id parsing, lesson seeding, file-resolution diagnostics, host-load routing, shared change map, security-gate false positives
+
+A 2026-09-09 implement run in a client repo confirmed the review lanes, plan-gap
+review, and killed-mid-batch RESUME as the parts that earn their cost, and surfaced
+six places where the toolkit assumed an environment it did not have:
+
+- **`constitution-digest.sh` recognises any rule-id scheme.** It matched only the
+  toolkit's own `- **C0.1**` shape; a repo numbering rules `- **§0.1**` got an empty
+  Critical Rules section and no hint. Now any short bold token containing a digit
+  counts (`C0.1`, `§0.1`, `S1.2`, `R-12`, `0.1`), `MTK_RULE_ID_PATTERN` overrides the
+  shape, and a Critical Rules section with zero matches prints a stderr hint.
+- **`learnings.sh query` seeds an empty store from `tasks/lessons.md`.** The seed
+  ran only in `setup-bootstrap`, so repos bootstrapped earlier answered every lesson
+  query with nothing, forever (30 lessons, 0 reachable). The lazy seed is store-only —
+  a read path never rewrites the markdown; `migrate --store-only` exposes the same
+  path; `MTK_LEARNINGS_AUTOSEED=0` restores diagnose-only.
+- **`mtk-doctor` checks that runtime-referenced files resolve.** Twelve files the
+  skills name by path mid-run (security checklist, testing patterns, review config,
+  handoff schema, the workflow scripts) are walked along the documented resolution
+  order. FAIL per file when one resolves nowhere; WARN when files are found only by
+  plugin-cache search, naming the exact `MTK_HELPER_ROOT` to pin, because the
+  skills' inline resolvers never look in the cache.
+- **Host load is part of the dispatch decision.** New `scripts/host-load-probe.sh`
+  reports 1-minute load per core against `MTK_HOST_LOAD_MAX` (default 2.0, exit 3
+  on overload; `MTK_HOST_LOAD_PROBE=0` skips). `implement` Phase 2.9 records it
+  beside `dispatch_capability` and routes to inline-MAX when overloaded;
+  killed-mid-batch recovery probes before respawning and, on overload, switches the
+  remaining batches to inline-MAX instead of respawning into the same kill. The field
+  run lost two implementers and their respawn to the harness's 10-minute no-output
+  watchdog while they waited on builds slowed 20× by a saturated host.
+- **Context pack section 7: a shared change map.** Declared symbols per manifest
+  file (types, public methods, defs, exports) and the tracked files referencing each
+  (`git grep -w`, generated/minified files excluded, new files marked). Reviewer lanes
+  start there instead of each re-deriving the call graph — roughly a third of reviewer
+  tokens in the field run. `MTK_CONTEXT_PACK_CHANGE_MAP=0` opts out.
+- **`security-gate.sh` judges the real command word.** A read-only `grep` behind a
+  control word (`for … do grep`, `if grep`, `! grep`), a wrapper (`xargs grep`,
+  `time grep`, `find … -exec grep`), a read-only `git` subcommand, `bash -c "grep …"`,
+  or inside `$(…)` was judged by its first token and denied — each denial costing a
+  full re-plan turn. Command substitutions are now judged by recursion (boundaries
+  become segments) rather than exempted or blanket-denied, so a destructive inner
+  command is still caught. `sed` counts as read-only unless `-i`; `awk`, `sort`,
+  `jq`, `ls`, `stat` and friends join the read-only list.
+
+Four new hook tests cover the scripts; the security-gate false-positive suite gained
+fifteen allow cases and eight block cases for the new shapes.
+
 ## [7.35.0] - 2026-09-08
 
 ### Changed — token and speed: bounded tool output, a per-run context pack, parallel batch waves, fewer bookkeeping turns, lighter instruction load

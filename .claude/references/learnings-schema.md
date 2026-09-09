@@ -159,7 +159,9 @@ tasks/lessons.md         ← markdown view; `## Auto-generated` (team-scope only
 - `phase: "any"`
 - `expires_at`: `captured_at + 12 months`
 
-Migration is idempotent two ways: (1) once the file carries the auto-generated marker it short-circuits with "Already migrated"; (2) even against a marker-less re-feed, each block's title is hashed (`cksum`) and a block whose hash already exists in the store is skipped — so re-running never duplicates. After ingesting, migrate regenerates the markdown view (`regen-markdown --force`), which is an intentional prose→summary rewrite (full bodies live in the store) and therefore bypasses the shrink-guard.
+Migration is idempotent two ways: (1) once the file carries the auto-generated marker it short-circuits with "Already migrated"; (2) even against a marker-less re-feed, each block's title is hashed (`cksum`) and a block whose hash already exists in the store is skipped — so re-running never duplicates. After ingesting, migrate regenerates the markdown view (`regen-markdown --force`), which is an intentional prose→summary rewrite (full bodies live in the store) and therefore bypasses the shrink-guard. `migrate --store-only` runs the ingest half only and leaves `tasks/lessons.md` byte-for-byte untouched.
+
+**Lazy seed on query.** The bootstrap-time seed only reaches repos bootstrapped after it shipped; a repo set up earlier answered every lesson query with nothing, forever (a 2026-09 field run had 30 lessons in `tasks/lessons.md` and 0 reachable). `learnings.sh query` therefore seeds an empty or missing store itself when `tasks/lessons.md` has `## ` heading blocks — **store-only**, exactly the `migrate --store-only` path, because a read command must never rewrite the engineer's markdown. It reports `auto-seeded N entries … (store-only; run learnings.sh migrate to also regenerate the markdown view)` on stderr once; title-hash dedup makes later queries silent. `MTK_LEARNINGS_AUTOSEED=0` restores the diagnose-only behaviour.
 
 ## Sycophancy Index (π)
 

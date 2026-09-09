@@ -9,7 +9,12 @@ set -euo pipefail
 # batch's `Governing constraints:` line cite ids from this digest.
 #
 # Sources (all project-relative, per MTK file resolution):
-#   - CLAUDE.md Critical Rules        (lines like "- **C0.1** ...")
+#   - CLAUDE.md Critical Rules        (bullet lines opening with a bold rule id:
+#                                      "- **C0.1** …", "- **§0.1** …", "- **S1.2** …",
+#                                      "- **R-12** …" — any short bold token that
+#                                      contains a digit. Override the shape with
+#                                      MTK_RULE_ID_PATTERN=<grep -E regex> when a
+#                                      project uses something else, e.g. "[RULE-7]")
 #   - .claude/references/architecture-principles.md tagged principles
 #                                     ([EXTRACTED] / [INFERRED:x] / [AMBIGUOUS])
 #
@@ -35,6 +40,17 @@ QUIET=0
 CLAUDE_MD="CLAUDE.md"
 PRINCIPLES=".claude/references/architecture-principles.md"
 
+# Rule-id shape. The toolkit's own rules look like `- **C0.1**`, but a target
+# repo owns its CLAUDE.md and may number rules any way it likes — a 2026-09 field
+# run used `- **§0.1**` and got an empty digest with no hint why. Default: a bullet
+# whose first token is a short bold id (≤16 chars, no spaces) containing a digit,
+# which admits C0.1 / §0.1 / S1.2 / R-12 / 0.1 / ARCH-3 and rejects bold prose
+# such as `**Never**` or `**Decision rule for /mtk:**`. `**2 files**` is rejected
+# by the no-space rule. Projects with a non-bold scheme set MTK_RULE_ID_PATTERN.
+# (Assigned in two steps: a `}` inside `${VAR:-default}` would end the expansion.)
+DEFAULT_RULE_ID_PATTERN='^[[:space:]]*-[[:space:]]*\*\*[^*[:space:]]{0,15}[0-9][^*[:space:]]{0,15}\*\*'
+RULE_ID_PATTERN="${MTK_RULE_ID_PATTERN:-$DEFAULT_RULE_ID_PATTERN}"
+
 crit_count=0
 prin_count=0
 
@@ -53,7 +69,12 @@ if [ -f "$CLAUDE_MD" ]; then
     crit_count=$((crit_count + 1))
     # Collapse to a single trimmed line.
     echo "$line" | sed -E 's/^[[:space:]]*-[[:space:]]*//; s/[[:space:]]+/ /g'
-  done < <(grep -E '^\s*-\s*\*\*C[0-9]' "$CLAUDE_MD" || true)
+  done < <(grep -E "$RULE_ID_PATTERN" "$CLAUDE_MD" || true)
+  # A present section with zero recognised ids is the silent-failure case: say so
+  # on stderr (stdout stays the digest) and name the knob that fixes it.
+  if [ "$crit_count" -eq 0 ] && grep -qiE '^##+[[:space:]]+Critical Rules' "$CLAUDE_MD"; then
+    printf 'constitution-digest: CLAUDE.md has a Critical Rules section but no line matched the rule-id pattern. Number rules with a bold id (`- **C0.1** …`, `- **§0.1** …`) or set MTK_RULE_ID_PATTERN to the grep -E shape this project uses.\n' >&2
+  fi
   emit_section ""
 fi
 

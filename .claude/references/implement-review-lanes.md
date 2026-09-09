@@ -24,6 +24,7 @@ Stage 1 runs first (spec compliance) because if the implementation doesn't match
 Run `compliance-reviewer` with:
 
 - the path of the run's context pack (`results.context_pack`) — every lane in both stages reads it **instead of** CLAUDE.md, the tech-stack skill, and the guideline files; pass the path, never the body
+- an instruction to start from the pack's **`## Change map`** section for callers/callees of the touched symbols, and to re-derive only where a symbol shows `+N more` or the map says the extractor was unavailable. The map is built once per run; in a 2026-09 field run three of four lanes each rebuilt the same cross-source call graph and roughly a third of all reviewer tokens went to that duplication
 - the spec path and its JSON sidecar path
 - `git diff HEAD`
 - the behavioral diff
