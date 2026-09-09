@@ -151,17 +151,50 @@ out="$( cd "$R" && bash "$LS" query --files "src/Foo.cs" 2>"$SBX/f1.err" )"
 grep -q 'nothing captured yet' "$SBX/f1.err" || fail "F1: no 'nothing captured yet' diagnostic on stderr"
 ok "F1: unseeded store with no lessons.md is diagnosed"
 
-# F2: no store, but tasks/lessons.md exists — the migrate gap that made every
-# query in a bootstrapped repo return empty forever. Must name `migrate`.
+# F2: no store, but tasks/lessons.md exists — the gap that made every query in a
+# bootstrapped repo return empty forever (seed only ran in setup-bootstrap, so a
+# repo bootstrapped before that shipped never got one; beacon 2026-09: 30 lessons,
+# 0 reachable). query now seeds the store itself, store-only: it must never
+# rewrite tasks/lessons.md from a read path. stderr names what happened and the
+# `migrate` command that also regenerates the markdown view.
 mkdir -p "$R/tasks"
 printf '# Lessons\n\n## Legacy lesson\nbody\n' > "$R/tasks/lessons.md"
 rm -rf "$R/.mtk"
+before_md="$(cksum < "$R/tasks/lessons.md")"
 out="$( cd "$R" && bash "$LS" query --files "src/Foo.cs" 2>"$SBX/f2.err" )"
-[ -z "$out" ] || fail "F2: expected empty stdout, got: $out"
+case "$out" in *"Legacy lesson"*) : ;; *) fail "F2: lazy seed did not make the legacy lesson queryable, got: $out" ;; esac
+grep -q 'auto-seeded 1 entry' "$SBX/f2.err" || fail "F2: stderr does not report the auto-seed, got: $(cat "$SBX/f2.err")"
 grep -q 'migrate' "$SBX/f2.err" || fail "F2: stderr does not point at learnings.sh migrate"
-ok "F2: unmigrated tasks/lessons.md is diagnosed with the migrate remedy"
+[ "$(cksum < "$R/tasks/lessons.md")" = "$before_md" ] || fail "F2: query rewrote tasks/lessons.md — a read path must never regenerate the markdown"
+[ "$(wc -l < "$R/.mtk/learnings.jsonl" | tr -d ' ')" -eq 1 ] || fail "F2: expected 1 seeded entry"
+# A second query must not seed again (title-hash dedup), and stays silent on a hit.
+out="$( cd "$R" && bash "$LS" query --files "src/Foo.cs" 2>"$SBX/f2-again.err" )"
+[ "$(wc -l < "$R/.mtk/learnings.jsonl" | tr -d ' ')" -eq 1 ] || fail "F2: second query re-seeded (dedup broken)"
+[ ! -s "$SBX/f2-again.err" ] || fail "F2: second query should be silent on stderr, got: $(cat "$SBX/f2-again.err")"
+ok "F2: unmigrated tasks/lessons.md is auto-seeded store-only; markdown untouched; idempotent"
+
+# F2b: MTK_LEARNINGS_AUTOSEED=0 restores the diagnose-only behaviour.
+rm -rf "$R/.mtk"
+out="$( cd "$R" && MTK_LEARNINGS_AUTOSEED=0 bash "$LS" query --files "src/Foo.cs" 2>"$SBX/f2b.err" )"
+[ -z "$out" ] || fail "F2b: expected empty stdout with autoseed off, got: $out"
+grep -q 'migrate' "$SBX/f2b.err" || fail "F2b: stderr does not point at learnings.sh migrate"
+[ ! -s "$R/.mtk/learnings.jsonl" ] || fail "F2b: store was seeded despite MTK_LEARNINGS_AUTOSEED=0"
+ok "F2b: MTK_LEARNINGS_AUTOSEED=0 keeps query diagnose-only"
+
+# F2c: `migrate --store-only` seeds without touching the markdown; a later plain
+# `migrate` then regenerates it (marker appears) and adds nothing (title hash).
+rm -rf "$R/.mtk"
+( cd "$R" && bash "$LS" migrate --store-only >/dev/null ) || fail "F2c: migrate --store-only exited non-zero"
+[ "$(cksum < "$R/tasks/lessons.md")" = "$before_md" ] || fail "F2c: --store-only rewrote tasks/lessons.md"
+[ "$(wc -l < "$R/.mtk/learnings.jsonl" | tr -d ' ')" -eq 1 ] || fail "F2c: expected 1 entry after --store-only"
+( cd "$R" && bash "$LS" migrate >/dev/null ) || fail "F2c: follow-up migrate exited non-zero"
+grep -q 'Auto-generated below' "$R/tasks/lessons.md" || fail "F2c: plain migrate did not regenerate the markdown view"
+[ "$(wc -l < "$R/.mtk/learnings.jsonl" | tr -d ' ')" -eq 1 ] || fail "F2c: plain migrate after --store-only duplicated entries"
+ok "F2c: migrate --store-only seeds only; plain migrate afterwards regenerates without duplicates"
 
 # F3: store seeded, but every entry filtered out — a clean miss, not a failure.
+# Fresh store and no tasks/lessons.md, so F2's auto-seed cannot leak in here.
+rm -rf "$R/.mtk" "$R/tasks"
 ( cd "$R" && bash "$LS" add --source manual --scope team --severity warn \
     --phase review --title "Phase-filtered lesson" >/dev/null )
 out="$( cd "$R" && bash "$LS" query --phase implement --files "src/Foo.cs" 2>"$SBX/f3.err" )"

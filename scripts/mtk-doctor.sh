@@ -4,6 +4,9 @@
 # or any FAIL otherwise.
 set -euo pipefail
 
+# The project being diagnosed is where the doctor was INVOKED, which in a plugin
+# install is not the script's own tree. Capture it before the cd below.
+DOCTOR_PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
@@ -282,6 +285,57 @@ else
   for p in "${MISSING_PATHS[@]}"; do
     record FAIL integrity "manifest path missing" "$p"
   done
+fi
+
+# ──────────────────────────────────────────────
+# Runtime-referenced MTK files resolve somewhere along the documented order
+# (.claude/references/mtk-file-resolution.md): MTK_HELPER_ROOT → CLAUDE_PLUGIN_ROOT
+# → this tree → the project → newest plugin-cache copy. Skills name these files
+# by path mid-run; a 2026-09 field run (beacon) discovered four of them missing
+# only when a phase tried to read them, and its scripts' inline resolvers
+# (`${CLAUDE_PLUGIN_ROOT:-.}/scripts/…`) never look in the plugin cache at all.
+# FAIL when a file resolves nowhere; WARN when it resolves ONLY by cache search,
+# because then every inline resolver in the skills still misses it.
+REFERENCED_FILES=(
+  .claude/references/security-checklist.md
+  .claude/references/testing-patterns.md
+  .claude/references/performance-checklist.md
+  .claude/references/mtk-file-resolution.md
+  .claude/review-config.json
+  .claude/schemas/handoff.schema.json
+  scripts/learnings.sh
+  scripts/constitution-digest.sh
+  scripts/workflow-artifact.sh
+  scripts/build-context-pack.sh
+  scripts/resolve-tech-stack.sh
+  scripts/mtk-verify-run.sh
+)
+CACHE_ROOT=""
+# `tail -1` consumes all input, so this pipe is SIGPIPE-safe under pipefail (S3.17).
+CACHE_PROBE="$(find "${HOME:-/nonexistent}/.claude/plugins" -maxdepth 8 -name "SKILL.md" -path "*/mtk/*/context-engineering/*" -type f 2>/dev/null | sort -V | tail -1 || true)"
+[ -n "$CACHE_PROBE" ] && CACHE_ROOT="${CACHE_PROBE%/.claude/skills/context-engineering/SKILL.md}"
+REF_UNRESOLVED=(); REF_CACHE_ONLY=0; REF_VIA=""
+for rf in "${REFERENCED_FILES[@]}"; do
+  via=""
+  for cand_label in "MTK_HELPER_ROOT:${MTK_HELPER_ROOT:-}" "CLAUDE_PLUGIN_ROOT:${CLAUDE_PLUGIN_ROOT:-}" "install:${ROOT_DIR}" "project:${DOCTOR_PROJECT_DIR}" "plugin-cache:${CACHE_ROOT}"; do
+    cand="${cand_label#*:}"; label="${cand_label%%:*}"
+    [ -n "$cand" ] && [ -f "$cand/$rf" ] && { via="$label"; break; }
+  done
+  if [ -z "$via" ]; then
+    REF_UNRESOLVED+=("$rf")
+  else
+    [ "$via" = "plugin-cache" ] && REF_CACHE_ONLY=$((REF_CACHE_ONLY + 1))
+    [ -n "$REF_VIA" ] || REF_VIA="$via"
+  fi
+done
+if [ "${#REF_UNRESOLVED[@]}" -gt 0 ]; then
+  for rf in "${REF_UNRESOLVED[@]}"; do
+    record FAIL integrity "referenced file unresolvable" "$rf — not under MTK_HELPER_ROOT, CLAUDE_PLUGIN_ROOT, $ROOT_DIR, $DOCTOR_PROJECT_DIR, or any plugin-cache copy; set MTK_HELPER_ROOT to a claude-helpers checkout or reinstall the mtk plugin"
+  done
+elif [ "$REF_CACHE_ONLY" -gt 0 ]; then
+  record WARN integrity "referenced files resolve only via plugin-cache search" "${REF_CACHE_ONLY} of ${#REFERENCED_FILES[@]} found under $CACHE_ROOT but neither MTK_HELPER_ROOT nor CLAUDE_PLUGIN_ROOT is set — inline script resolvers will miss them; set MTK_HELPER_ROOT=$CACHE_ROOT in .claude/settings.local.json env or the shell"
+else
+  record PASS integrity "runtime-referenced files resolve" "${#REFERENCED_FILES[@]} files via $REF_VIA"
 fi
 
 # .gitignore coverage

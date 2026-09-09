@@ -38,6 +38,12 @@ The Rigor Score table says HIGH/MAX runs Phase 3 through one fresh implementer s
 
 On `forbidden` or `unavailable` at HIGH/MAX, do **not** drop quietly to a bare inline run. Adopt the inline-MAX profile below and state it in one line before the first batch. A path chosen at the pre-flight is a decision; the same path taken at Phase 3 without a word is a degradation.
 
+**Host load is part of the same probe.** A dispatched implementer that waits on a build produces no output, and the harness kills a silent subagent after ten minutes. On an overloaded host a 20-second build takes that long, so the kill is caused by the machine, not the batch — a 2026-09 field run lost two Opus implementers and about 45 minutes this way, then lost the respawn identically. Run `bash scripts/host-load-probe.sh` (1-minute load per core against `MTK_HOST_LOAD_MAX`, default 2.0) and record its one-line output as `results.host_load` in the same `batch` call as `dispatch_capability`:
+
+- `ok` / `unknown` / `skipped` → dispatch as the rigor level dictates.
+- `overloaded` at HIGH/MAX → **interactive:** ask via `AskUserQuestion` — `Run inline-MAX now (recommended)`, `Wait and re-probe`, `Dispatch anyway (I accept watchdog kills)`. **Autonomous:** take inline-MAX and record `results.phase3_path="inline-MAX (host overloaded: <record>; C1-C3 applied)"`. Never dispatch silently onto a host the probe just flagged.
+- `MTK_HOST_LOAD_PROBE=0` disables the probe for hosts whose load figure is not meaningful (shared CI runners, VMs with steal time).
+
 ### The inline-MAX profile
 
 The subagent path buys exactly one thing: a fresh context per batch, so batch N's reasoning cannot contaminate batch N+1. When it is unavailable, MAX ceremony is still reachable — but only if what it bought is replaced explicitly rather than assumed away:

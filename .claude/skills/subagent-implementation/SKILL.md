@@ -80,7 +80,7 @@ When the `Workflow` tool is available, take the dynamic-workflow path: read `.cl
       - Spec sections relevant to this batch (`Summary`, `Architecture and design`, `Security and compliance impact` if non-none)
       - The single batch object from `plan.batches[]` (id, files, acceptance, verification, boundary, depends)
       - **Prior-batch summary:** for every batch already in `sidecar.implement.completed_batches`, include `{id, actual_files, behavioral_diff}`. Do NOT include full prior diffs — just the summary. Emit it as a dense block (one batch per line: `id | n files | behavioral_diff`) and prefix it with the completed-batch count, e.g. `prior-batches: 3` — the implementer can checksum line count against that number and flag a truncated handoff rather than building on a silently-cut summary.
-      - The path of the run's **context pack** (`results.context_pack`, built in `implement` Phase 2 by `scripts/build-context-pack.sh`). It carries the build/test/format commands, CLAUDE.md critical rules, the manifest-selected coding-guideline sections, `[EXTRACTED]` principles, and matching lessons — the subagent reads it **instead of** CLAUDE.md, the tech-stack skill, and the guideline files. Do not paste the pack body; pass the path. If the manifest was amended since the pack was built, rebuild it first.
+      - The path of the run's **context pack** (`results.context_pack`, built in `implement` Phase 2 by `scripts/build-context-pack.sh`). It carries the build/test/format commands, CLAUDE.md critical rules, the manifest-selected coding-guideline sections, `[EXTRACTED]` principles, matching lessons, and a **change map** (declared symbols per manifest file and their referrers) — the subagent reads it **instead of** CLAUDE.md, the tech-stack skill, and the guideline files, and starts any caller/callee question from the change map. Do not paste the pack body; pass the path. If the manifest was amended since the pack was built, rebuild it first.
       - The full `change_manifest` and `out_of_scope` arrays — the subagent must know its boundary.
    2. **Dispatch the implementer subagent** via `Agent` tool with:
       - `subagent_type: general-purpose` (no MTK-specific implementer subagent type — keep tool surface generic)
@@ -112,6 +112,17 @@ When the `Workflow` tool is available, take the dynamic-workflow path: read `.cl
          `git diff --stat` — list the files the dead implementer touched. Any
          touched file outside `batch.files` is drift and goes through sub-step 5
          like any other extra file; do not delete it.
+      1b. **Probe the host before deciding how to respawn.** Run
+         `bash scripts/host-load-probe.sh`. `overloaded` means the kill was the
+         machine, not the batch — a silent build on a saturated host is exactly
+         what the harness's 10-minute no-output watchdog kills, and a respawn
+         dies the same way (a 2026-09 field run lost the respawn identically).
+         On `overloaded`: do **not** respawn. Record the incident (step 4) with
+         `reason:"host-overload"`, switch this batch **and every remaining batch**
+         to the inline-MAX profile (`results.phase3_path="inline-MAX (host
+         overloaded: <probe record>; C1-C3 applied)"`), then continue at step 2
+         inline — finish from the compiled partial state, or revert the batch's
+         own files and redo it inline. `ok`/`unknown`/`skipped` → step 2 as written.
       2. **Build the partial state** with the tech stack's build command.
          - **Compiles** → respawn one implementer whose bundle adds the partial
            diff summary (files + one line each, not the diff) and an explicit
@@ -181,7 +192,7 @@ The implementer prompt template is shared by both execution paths and is organiz
 - One implementer subagent per batch. Never reuse a subagent across batches (the point is context isolation). **Exception: an all-mechanical batch is implemented inline with no subagent** — see the per-batch loop; there is no reasoning to isolate.
 - **Guardrails travel with the capability.** The implementer prompt states each granted tool's boundary and a no-delete fence inline (Rules 6–7), so a dispatched subagent inherits its constraints from the prompt rather than a rules file it may not load. Keep those clauses when editing the template.
 - **Inconclusive is never a pass.** A batch whose result is missing, unparseable, acknowledgment-only, or marked `inconclusive` is recorded as `inconclusive` in the sidecar and respawned **once** with the scope narrowed to the missing deliverable. A second inconclusive halts the loop and reports to the engineer. Never count an inconclusive batch toward completion, and never let a later batch build on one.
-- **Killed is not inconclusive.** `inconclusive` means the implementer *returned* without evidence; *killed* means it never returned because the dispatch was terminated from outside (spend/rate limit, model unavailable, harness kill). The two recover differently: inconclusive narrows scope and respawns from the current state; killed inventories the partial work on disk, builds it, and respawns to **finish** (or reverts the batch's own files and restarts) — with the tier dropped to `default` if the kill was tier unavailability. One recovery attempt per batch; a second kill halts. Every kill is recorded in `results.dispatch_incidents[]` **before** the replacement is dispatched.
+- **Killed is not inconclusive.** `inconclusive` means the implementer *returned* without evidence; *killed* means it never returned because the dispatch was terminated from outside (spend/rate limit, model unavailable, harness kill). The two recover differently: inconclusive narrows scope and respawns from the current state; killed inventories the partial work on disk, probes the host, builds the partial state, and respawns to **finish** (or reverts the batch's own files and restarts) — with the tier dropped to `default` if the kill was tier unavailability, and with **no respawn at all** if the host probe says `overloaded` (inline-MAX for the rest of the run instead). One recovery attempt per batch; a second kill halts. Every kill is recorded in `results.dispatch_incidents[]` **before** the replacement is dispatched.
 - **Tier fallback is not a model re-ask.** When the chosen tier becomes unavailable mid-loop, drop to `default` for the rest of the loop without an `AskUserQuestion`, record the switch on the artifact, and name it in the final report. Implementer code never falls back to `fast`.
 - Orchestrator never edits source **for a dispatched (non-mechanical) batch** — those edits happen inside the batch's subagent. The one carve-out is an **all-mechanical batch, which the orchestrator implements inline** (renames/formatting/generated edits carry no reasoning to contaminate later batches). Otherwise, if editing is needed (e.g. to amend the sidecar after auto-fix), only `docs/specs/*.json`, `tasks/todo.md`, and the sidecar are fair game.
 - The model selection is asked **once**, before the loop, and never per batch — **in interactive mode only.** In autonomous mode it is not asked at all; the Sonnet policy default applies (Opus for plan-flagged novel/tricky batches). See step 2.
@@ -223,6 +234,7 @@ Full table: `.claude/references/workflow-rationalizations.md` → subagent-imple
 - [ ] Drift micro-check ran orchestrator-side for every batch (also on the workflow path, after it returned), with auto-fix or 2.5 re-open as appropriate
 - [ ] `sidecar.implement.completed_batches[]` reflects every batch with actual_files, behavioral_diff, and `implementer_model`
 - [ ] Every killed dispatch is in `results.dispatch_incidents[]` with both timestamps, and any tier fallback was applied to all remaining batches
+- [ ] Every killed dispatch was followed by a host-load probe before the respawn decision; a `host-overload` incident switched the remaining batches to inline-MAX rather than respawning
 - [ ] `tasks/todo.md` ticks match completed batches
 - [ ] Phase 4 review still runs unchanged after the loop
 - [ ] Cumulative churn thresholds (600/1000 non-generated lines at HIGH/MAX, or `MTK_CHURN_*` overrides) honored

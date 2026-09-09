@@ -2115,6 +2115,12 @@
       "action": "sync",
       "description": "Emit the project constitution (Critical Rules + tagged principles) as a compact citable list for spec/plan Constitution Checks"
     },
+    "scripts/host-load-probe.sh": {
+      "source": "scripts/host-load-probe.sh",
+      "target": "scripts/host-load-probe.sh",
+      "action": "sync",
+      "description": "One-line host-load verdict (1-minute load per core vs MTK_HOST_LOAD_MAX) so implement pre-flight and killed-mid-batch recovery route to inline-MAX instead of dispatching implementers onto an overloaded host"
+    },
     "scripts/build-rule-index.sh": {
       "source": "scripts/build-rule-index.sh",
       "target": "scripts/build-rule-index.sh",
@@ -2342,6 +2348,30 @@
       "target": "tests/hooks/test-merge-settings.sh",
       "action": "sync",
       "description": "Verifies hooks/merge-settings.sh deep-merges settings.json into byte-valid JSON on bash 3.2 / BSD (union arrays, all hook events, matchers/timeouts, scalar target-wins)"
+    },
+    "tests/hooks/test-constitution-digest.sh": {
+      "source": "tests/hooks/test-constitution-digest.sh",
+      "target": "tests/hooks/test-constitution-digest.sh",
+      "action": "sync",
+      "description": "Verifies constitution-digest.sh recognises project rule-id schemes beyond C0.x (§0.x, S1.2, R-12), honours MTK_RULE_ID_PATTERN, and hints on a zero-match Critical Rules section"
+    },
+    "tests/hooks/test-build-context-pack.sh": {
+      "source": "tests/hooks/test-build-context-pack.sh",
+      "target": "tests/hooks/test-build-context-pack.sh",
+      "action": "sync",
+      "description": "Verifies build-context-pack.sh emits the shared Change map (declared symbols per manifest file and their referrers) with generated-file exclusions, new-file marking, and the MTK_CONTEXT_PACK_CHANGE_MAP=0 opt-out"
+    },
+    "tests/hooks/test-host-load-probe.sh": {
+      "source": "tests/hooks/test-host-load-probe.sh",
+      "target": "tests/hooks/test-host-load-probe.sh",
+      "action": "sync",
+      "description": "Verifies host-load-probe.sh verdicts, exit codes, MTK_HOST_LOAD_MAX threshold, MTK_HOST_LOAD_PROBE=0 skip, and --json shape"
+    },
+    "tests/hooks/test-mtk-doctor-referenced-files.sh": {
+      "source": "tests/hooks/test-mtk-doctor-referenced-files.sh",
+      "target": "tests/hooks/test-mtk-doctor-referenced-files.sh",
+      "action": "sync",
+      "description": "Verifies mtk-doctor FAILs on runtime-referenced MTK files that resolve nowhere, WARNs on plugin-cache-only resolution, and PASSes via MTK_HELPER_ROOT/CLAUDE_PLUGIN_ROOT/local"
     },
     "tests/hooks/test-learnings.sh": {
       "source": "tests/hooks/test-learnings.sh",
