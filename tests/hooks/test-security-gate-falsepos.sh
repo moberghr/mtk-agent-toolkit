@@ -58,7 +58,36 @@ printf '#!/usr/bin/env bash\n# careful: %s wipes it\necho hi\n' "$DROPT" > "$TMP
 allow "sql only in a comment"  "bash $TMP/commented.sh"
 allow "the guard runs itself"  "bash $REPO_ROOT/hooks/security-gate.sh"
 
+# --- class 4: read-only command reached through shell structure ---------------
+# The 2026-08 field case: a read-only grep behind a control word, wrapper,
+# substitution, git subcommand, find -exec, or bash -c was judged by its first
+# WORD (`do`, `if`, `!`, `xargs`, `out=$(`, `git`, `find`, `bash`) and blocked.
+allow "grep inside a for loop"      "for f in hooks/*.sh; do grep -H '$RMRF' \"\$f\"; done"
+allow "grep as an if condition"     "if grep -q '$RMRF' hooks/x.sh; then echo y; fi"
+allow "negated grep"                "! grep -q '$RMRF' hooks/x.sh"
+allow "grep in a while condition"   "while grep -q '$RMRF' f; do sleep 1; done"
+allow "grep in a substitution"      "out=\$(grep -c '$RMRF' hooks/x.sh); echo \$out"
+allow "grep in backticks"           "n=\`grep -c '$RMRF' hooks/x.sh\`"
+allow "git grep"                    "git grep -n '$RMRF' -- hooks"
+allow "git -C dir log -S"           "git -C hooks log -S'$RMRF' --oneline"
+allow "xargs grep"                  "ls | xargs grep -l '$RMRF'"
+allow "xargs -I grep"               "ls | xargs -I {} grep -l '$RMRF' {}"
+allow "find -exec grep"             "find . -name '*.sh' -exec grep -l '$RMRF' {} +"
+allow "bash -c grep"                "bash -c \"grep -E '$RMRF' hooks/*.sh\""
+allow "sed as a filter"             "sed -n '/$RMRF/p' hooks/x.sh"
+allow "awk pattern"                 "awk '/$RMRF/' hooks/x.sh"
+allow "time grep"                   "time grep -rn '$RMRF' hooks"
+
 # --- the real checks must still fire -----------------------------------------
+block "delete inside a for loop"    "for f in x; do $RMRF; done"
+block "delete as an if body"        "if true; then $RMRF; fi"
+block "delete via xargs"            "ls | xargs $RMRF"
+block "delete via bash -c"          "bash -c \"$RMRF\""
+block "delete via find -exec"       "find . -exec $RMRF \\;"
+block "delete in a substitution"    "x=\$($RMRF)"
+block "force push inside a loop"    "for b in main; do $FPUSH; done"
+block "sed -i then delete"          "sed -i 's/a/b/' f && $RMRF"
+block "sql via bash -c"             "bash -c \"psql -c '$DROPT'\""
 printf '#!/usr/bin/env bash\npsql -c "%s;"\n' "$DROPT" > "$TMP/live.sh"
 block "bare recursive delete"  "$RMRF"
 block "delete after a grep"    "grep -q x f && $RMRF"
