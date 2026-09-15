@@ -76,13 +76,14 @@ When the `Workflow` tool is available the dynamic-workflow path MUST be used —
       - **Prior-batch summary:** for every batch already in `sidecar.implement.completed_batches`, include `{id, actual_files, behavioral_diff}`. Do NOT include full prior diffs — just the summary. Emit it as a dense block (one batch per line: `id | n files | behavioral_diff`) and prefix it with the completed-batch count, e.g. `prior-batches: 3` — the implementer can checksum line count against that number and flag a truncated handoff rather than building on a silently-cut summary.
       - Active tech stack name and the path to its skill (don't paste the skill body; the subagent will read it itself).
       - The full `change_manifest` and `out_of_scope` arrays — the subagent must know its boundary.
+      - **Carried traps:** paste `workflow-artifact.sh trap list "$MTK_WF_UUID"` into the brief's "Known traps" block so this batch inherits every gotcha earlier phases learned the hard way (stale generated contract, `format`-only analyzer, mis-seeding fixture). A trap that stays in a prior phase's report never reaches the next implementer.
       - The path to `CLAUDE.md`.
    2. **Dispatch the implementer subagent** via `Agent` tool with:
       - `subagent_type: general-purpose` (no MTK-specific implementer subagent type — keep tool surface generic)
       - `model: <chosen>` (Sonnet or Opus from step 2)
       - `description: Batch <id> — <one-line intent>`
       - `prompt`: see "Implementer prompt template" below
-   3. **Parse the structured result.** The implementer must return one fenced JSON block with `batch_id, status(completed|blocked|inconclusive), actual_files, build{ok,evidence}, tests{ok,evidence}, behavioral_diff, deviations[]` (`usage` optional). Inconclusive is never a pass. See `.claude/references/subagent-implementer-prompt.md` for the canonical schema and semantics.
+   3. **Parse the structured result.** The implementer must return one fenced JSON block with `batch_id, status(completed|blocked|inconclusive), actual_files, build{ok,evidence}, tests{ok,evidence}, behavioral_diff, deviations[]` (`traps[]` and `usage` optional). Inconclusive is never a pass. See `.claude/references/subagent-implementer-prompt.md` for the canonical schema and semantics.
    4. **Build/test/inconclusive gate.**
       - `status == inconclusive` (or unparseable / ack-only): respawn **once**
         with the scope narrowed to the missing deliverable and an explicit
@@ -102,6 +103,7 @@ When the `Workflow` tool is available the dynamic-workflow path MUST be used —
       - **Drifted, not auto-fixable** (cross-package leak, new public contract, security_impact escalated, or `out_of_scope` violated) → re-open Phase 2.5 approval gate. Halt the loop until the engineer answers.
    6. **Persist the batch result.**
       - Append `{batch_id, actual_files, build, tests, behavioral_diff, deviations}` to `sidecar.implement.completed_batches[]`.
+      - **Record reported traps.** For each entry in the result's `traps[]`, run `workflow-artifact.sh trap add "$MTK_WF_UUID" --title "<title>" --body "<body>" --phase "<batch_id>" --severity <warn|high>`. This is the carry-forward the next batch's brief (step 1) reads back — the one mechanism a field run proved load-bearing.
       - Run `bash scripts/validate-handoff.sh docs/specs/<date>-<slug>.json` (if available) to surface schema drift early.
       - Tick the batch row in `tasks/todo.md`.
    7. **Cumulative churn check.** After every batch, run `git diff --stat <base>...HEAD` and count net lines. Mirror `incremental-implementation` thresholds: ≥300 lines without an intermediate review → trigger an early `pre-commit-review-list` pass. ≥500 lines without a review → halt and run `compliance-reviewer` before continuing.

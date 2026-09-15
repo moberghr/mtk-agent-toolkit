@@ -24,8 +24,15 @@ Loaded automatically by commands and skills when the active tech stack is `dotne
 ## Build & Test Commands
 
 - **Compile:** `dotnet build`
-- **Test (batch):** `dotnet test` or `dotnet test --filter <project>`
+- **Test (batch):** `dotnet test` or `dotnet test --filter <project>` — but under **Microsoft.Testing.Platform** (`.slnx` / `global.json` runner set to MTP) `--filter` is rejected; pass runner args after `--`, e.g. `dotnet test --solution <slnx> -- --filter-class <FullyQualifiedClassName>` (or `--filter-method`). A bare `--filter` under MTP fails the run, so a "filtered" test claim that was never actually scoped reads as green — verify the filter form matches the runner.
 - **Test (full):** `dotnet test`
+- **Migrations (`dotnet ef`):** scaffolding a migration needs more than the bare command in a multi-project solution — supply **both** `--project <DataProject>` and `--startup-project <MigratorProject>`, name the context with `--context <DbContextName>`, and set a dummy connection string so design-time construction succeeds even with no live database, e.g.:
+  ```bash
+  ConnectionStrings__<ContextName>="Host=localhost;Database=x;Username=x;Password=x" \
+    dotnet ef migrations add <Name> \
+    --project <DataProject> --startup-project <MigratorProject> --context <ContextName>
+  ```
+  Omitting the startup project or the connection string is the recurring failure — each phase otherwise re-discovers it.
 - **Test (list-only):** enumerates discovered tests without executing them — the F7/command-verification list variant used to verify `dotnet test` is runnable without paying for a full suite run. Conditional on the solution format:
   - `.sln`: `dotnet test <sln> --list-tests`
   - `.slnx` (or `global.json` sets `"test": {"runner": "Microsoft.Testing.Platform"}`): `dotnet test --solution <slnx> --list-tests` — a bare `dotnet test <slnx> --list-tests` fails with `"Specifying a solution for 'dotnet test' should be via '--solution'"` under Microsoft.Testing.Platform.

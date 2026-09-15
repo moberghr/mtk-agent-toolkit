@@ -371,6 +371,27 @@ else
   record PASS lessons "no local learnings store" ".mtk/learnings.jsonl absent — nothing to lint"
 fi
 
+# Cross-store lesson consistency. A field run found analytics.json claiming 25
+# lessons captured while .mtk/learnings.jsonl was 0 bytes — two stores of the
+# same fact disagreeing, which undermines both as evidence. WARN (never FAIL):
+# the stores legitimately count different things (analytics mirrors
+# tasks/lessons.md headers; learnings.jsonl is the structured store), so a small
+# gap is normal — but "N claimed, nothing stored anywhere" is real drift.
+if [ -f .claude/analytics.json ] && command -v python3 >/dev/null 2>&1; then
+  ANALYTICS_LESSONS="$(python3 -c 'import json;print(json.load(open(".claude/analytics.json")).get("lessons_captured",0))' 2>/dev/null || echo 0)"
+  JSONL_LESSONS="$(grep -c '[^[:space:]]' .mtk/learnings.jsonl 2>/dev/null || echo 0)"
+  MD_LESSONS="$(grep -c '^## ' tasks/lessons.md 2>/dev/null || echo 0)"
+  # Normalize to bare integers so `set -e` arithmetic never aborts on stray text.
+  ANALYTICS_LESSONS="${ANALYTICS_LESSONS//[!0-9]/}"; ANALYTICS_LESSONS="${ANALYTICS_LESSONS:-0}"
+  JSONL_LESSONS="${JSONL_LESSONS//[!0-9]/}"; JSONL_LESSONS="${JSONL_LESSONS:-0}"
+  MD_LESSONS="${MD_LESSONS//[!0-9]/}"; MD_LESSONS="${MD_LESSONS:-0}"
+  if [ "$ANALYTICS_LESSONS" -gt 0 ] && [ "$JSONL_LESSONS" -eq 0 ] && [ "$MD_LESSONS" -eq 0 ]; then
+    record WARN lessons "lesson stores disagree" "analytics.json reports ${ANALYTICS_LESSONS} lessons but .mtk/learnings.jsonl and tasks/lessons.md are both empty — one store is stale; both lose evidentiary value"
+  else
+    record PASS lessons "lesson stores consistent" "analytics=${ANALYTICS_LESSONS} jsonl=${JSONL_LESSONS} md=${MD_LESSONS}"
+  fi
+fi
+
 # ──────────────────────────────────────────────
 # SECURITY (poison-floor supply-chain lint)
 # ──────────────────────────────────────────────

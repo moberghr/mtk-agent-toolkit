@@ -33,6 +33,9 @@ Spec context for this batch:
 Prior batches already completed (you can rely on these existing; do NOT re-edit them):
 <paste prior actual_files + behavioral_diff summaries>
 
+Known traps (carried from prior phases — do NOT re-hit these; the orchestrator pastes `workflow-artifact.sh trap list` output here):
+<paste trap list — each is a specific gotcha an earlier phase learned the hard way>
+
 SCOPE — your hard boundary:
 - Whole-feature change_manifest (do NOT touch files outside this list without returning a "deviation"
   entry; do NOT add new public contracts not listed):
@@ -75,9 +78,16 @@ DELIVERABLE — return EXACTLY one fenced JSON block matching this schema, then 
   "tests":  { "ok": true|false, "evidence": "..." },
   "behavioral_diff": "...",
   "deviations": [ { "kind": "...", "detail": "...", "justification": "..." } ],
+  "traps": [ { "title": "...", "body": "...", "severity": "warn|high" } ],
   "usage": { "tokens": 0, "error_code": null }
 }
 ```
+
+(`traps` is optional — report any *new* gotcha this batch discovered that a later
+batch could re-hit (a stale generated artifact, an analyzer that only fires under
+`format`, a fixture that silently seeds the wrong state). The orchestrator records
+each via `workflow-artifact.sh trap add` and carries it into later briefs; do NOT
+write the workflow artifact yourself.)
 
 (`usage` is optional — include it only if the dispatch mechanism exposes token
 spend / an error code; it is a cost signal, never a pass/fail input.)
@@ -97,9 +107,17 @@ spend / an error code; it is a cost signal, never a pass/fail input.)
     { "kind": "extra-file|skipped-file|extra-contract|other",
       "detail": "...", "justification": "..." }
   ],
+  "traps": [
+    { "title": "short gotcha name", "body": "what to do instead", "severity": "warn|high" }
+  ],
   "usage": { "tokens": 0, "error_code": null }
 }
 ```
+
+`traps` is an **optional** carry-forward signal: gotchas this batch hit that a
+later batch or phase could re-hit. The orchestrator persists each with
+`workflow-artifact.sh trap add` and injects `trap list` into subsequent briefs
+(see `workflow-artifacts`). Omit when the batch surfaced no new trap.
 
 `usage` is an **optional** result envelope (borrowed from per-subagent JSON
 reporting): `tokens` is the batch's output-token spend if the dispatch

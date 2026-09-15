@@ -2,6 +2,33 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [7.29.0] - 2026-09-15
+
+Hardening from a six-phase field run that ported a financially-sensitive billing system with MTK driving. Every gate stayed green through phases that shipped uncallable API routes and never touched a real external system — the retro's finding was that *green-ness read as confidence*. These changes turn the one mechanism that demonstrably worked (a carried trap list) into a first-class artifact, document the analyzer wall that did the real catching, and make "proven" distinguishable from "green".
+
+### Added — carried trap list as a first-class workflow artifact
+
+- **`workflow-artifact.sh` gained `trap add` / `trap list`.** A *trap* is a written, specific gotcha a phase learned the hard way (a stale generated contract, an analyzer that fires only under `format`, a fixture that silently seeds the wrong state). Traps persist on the workflow artifact under `results.trap_list[]` (`trap_added` events, idempotent by title) so they survive compaction, crash, and session handoff instead of living only in a phase report that scrolls out of context. The single mechanism a field run proved load-bearing is now a maintained artifact, not a habit of whoever is driving.
+- **The subagent implementer contract carries traps both ways.** The brief template (`subagent-implementer-prompt.md`) injects a "Known traps" block, and the batch-result schema gained an optional `traps[]` field; `subagent-implementation` pastes `trap list` into every batch brief and records reported traps via `trap add`. `workflow-artifacts` documents the carry-forward protocol.
+
+### Added — Verification & Proof rules (S5) + the Not-Proved ledger
+
+- **New rule file `.claude/rules/verification-and-proof.md` (S5.1–S5.4)** encodes the retro's process invariants: green gates are not proof, carry a trap list, compose-then-verify, document the analyzer wall. Indexed in the wake-up layer with `topic: verification`, auto-attaching to the verification/batch-fix/workflow skills.
+- **`verification-before-completion` now requires a Not-Proved ledger for behavior-shaped changes.** Alongside the `criterion | verdict | evidence` table, the run must name every external system exercised only against a mock, every config/branch it supports but did not run, and the limits of a single-fixture parity match. An empty Not-Proved column is a red flag, not a clean bill — green is silent about what it never ran.
+
+### Added — the analyzer wall is documented
+
+- **`.claude/references/dotnet/analyzer-config.md`** now documents the StyleCop `SA*` / SonarAnalyzer `S*` / Meziantou `MA*` rules that account for most warnings-as-errors build failures, the unfixable `SA1512`/`SA1514` banner-above-doc-comment collision, and the fact that a green `dotnet build` does not imply a green `dotnet format --verify-no-changes`. In the field run, all 21 build repair cycles were these analyzers and none was written down, so each phase re-diagnosed the same handful.
+- **`tech-stack-dotnet`** documents two CLI gotchas rediscovered every phase: `dotnet test --filter` is rejected under Microsoft.Testing.Platform (use `-- --filter-class`), and `dotnet ef` scaffolding needs `--project` + `--startup-project` + `--context` + a dummy connection string.
+
+### Added — composition gate against stacked-fix integration risk
+
+- **`batch-fix` Phase 6 now runs a full-suite composition check.** Independent fixes that were each green in isolation can break when composed (a changed aggregate key or scope predicate breaks tests a *different* fix depended on). On a composed failure the guidance is to seed the stale **fixture** — never edit expected values to reach green, which in the field run pinned a double-billed invoice with a passing test.
+
+### Added — `mtk-doctor` cross-store lesson-consistency check
+
+- **`mtk-doctor` reconciles `analytics.json` against the lesson stores.** A field run found `analytics.json` reporting 25 lessons while `.mtk/learnings.jsonl` was 0 bytes — two stores of the same fact disagreeing, undermining both as evidence. The check WARNs when analytics claims lessons but both `.mtk/learnings.jsonl` and `tasks/lessons.md` are empty (never FAILs; the stores legitimately count different things).
+
 ## [7.28.1] - 2026-07-20
 
 Script-plumbing fixes from a field run of the full workflow against a repo where MTK ran from a *separate* checkout with `$CLAUDE_PLUGIN_ROOT` unset. The decision layer (routing, rigor scaling, gates, drift, review) behaved well; these fixes address the plumbing that assumed the toolkit runs from within the target repo.

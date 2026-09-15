@@ -55,18 +55,30 @@ Orchestration state that lives only in chat is lost on compaction or restart. Th
    "$WFA" event "$MTK_WF_UUID" phase_started   --data '{"phase":"phase-3"}'
    "$WFA" event "$MTK_WF_UUID" phase_completed --data '{"phase":"phase-3"}'
    ```
-   A `phase_started` event carrying a `phase` auto-advances the artifact's `phase_cursor` to that phase — no separate `set phase_cursor=` call is needed, and the resume protocol (step 6) can trust `phase_cursor` rather than replaying the event log.
+   A `phase_started` event carrying a `phase` auto-advances the artifact's `phase_cursor` to that phase — no separate `set phase_cursor=` call is needed, and the resume protocol (step 7) can trust `phase_cursor` rather than replaying the event log.
 5. **Record gate decisions.** Every named gate (`plan_trust_gate`, `phase_exit_gate`, `failure_stop_gate`, `memory_sync_gate`, `skill_precedence_gate`) must be persisted via:
    ```bash
    "$WFA" gate "$MTK_WF_UUID" phase_exit_gate pass --reason "all batch tests green"
    ```
    `fail` on any gate is a hard stop — see `failure_stop_gate` semantics.
-6. **Resume protocol.** On entry to a workflow with no explicit uuid:
+6. **Carry a trap list across phases.** A *trap* is a written, specific gotcha a phase discovered the hard way (a stale generated contract, an analyzer that only fires under `format`, a fixture that silently seeds the wrong state). The single mechanism a field run proved load-bearing was carrying such a list forward so a later phase never re-hits an earlier phase's landmine — but only if it survives as an artifact rather than as prose someone remembers to paste. Persist each one on the workflow artifact at the moment it is learned:
+   ```bash
+   "$WFA" trap add "$MTK_WF_UUID" \
+     --title "OpenAPI spec goes stale between phases" \
+     --body "Regenerate the contract from a running API each phase — build/tests miss uncallable routes." \
+     --phase phase-1 --severity high
+   ```
+   At the **start of every phase** (and in every subagent brief the orchestrator builds), inject the accumulated list so the phase inherits it:
+   ```bash
+   "$WFA" trap list "$MTK_WF_UUID"   # paste output into the phase brief's "Known traps" block
+   ```
+   Adding a trap with a title that already exists refreshes it in place (no duplicates on a re-run). Traps are orchestrator-owned like every other artifact write — a subagent *reports* candidate traps in its result and the orchestrator records them (see `.claude/references/subagent-implementer-prompt.md`).
+7. **Resume protocol.** On entry to a workflow with no explicit uuid:
    - Run `"$WFA" list`.
    - If a single active workflow matches the requested type, offer resume.
    - If multiple, ask via `AskUserQuestion` which uuid to resume.
    - If none, init a new one.
-7. **Close the workflow.** At end of phase 7:
+8. **Close the workflow.** At end of phase 7:
    ```bash
    "$WFA" set "$MTK_WF_UUID" status=completed
    "$WFA" event "$MTK_WF_UUID" workflow_completed --data '{"summary":"<short>"}'
@@ -95,6 +107,7 @@ The dashboard reads the same `{uuid}.json` + `{uuid}.events.jsonl` files this sk
 - Subagents do not write workflow artifacts. The orchestrator persists subagent results via `event agent_returned`.
 - `.mtk/` is gitignored by default. Treat artifacts as local diagnostic state, not committed history.
 - A `failure_stop_gate: fail` event terminates the workflow. Do not emit further events after `workflow_failed`.
+- Traps are carried, not re-derived. Record a trap the moment a phase learns it (`trap add`) and inject `trap list` into every subsequent phase brief — a trap that lives only in a phase report is lost the moment that report scrolls out of context.
 
 ## Common Rationalizations
 
@@ -117,3 +130,4 @@ See `.claude/skills/context-engineering/SKILL.md` for the shared table. Workflow
 - [ ] The event log ends with the most recent gate or phase event (no orphan state)
 - [ ] On a fresh session, `list` plus reading the artifact reproduces the workflow's current state without chat history
 - [ ] No direct `Edit`/`Write` calls were made against `.mtk/workflows/*.json`
+- [ ] Traps discovered in a phase were recorded via `trap add`, and `trap list` was injected into the next phase's brief (not left in a phase report)

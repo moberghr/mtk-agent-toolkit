@@ -124,6 +124,16 @@ The `evidence_channel` field on each success criterion names the surface where t
    `verdict` is binary (`verified` / `not-verified`) — there is no "mostly". A table with any `not-verified` row is not a completion. The table is less gameable than a prose summary: every claim is pinned to a re-runnable command and its observed output.
 
    **First-verified-output baseline.** When a criterion has no automated regression test (e.g. a `cli-stdout` or `db-state-diff` observable checked by hand), persist the first verified output as a golden baseline under `docs/specs/<slug>.baselines/<SCn>.txt` and cite it in the evidence cell. Later runs diff against the baseline instead of re-judging from scratch — a cheap durable regression artifact for criteria the test suite does not cover.
+
+   **Proved / Not-Proved ledger (behavior-shaped changes).** A green table proves the paths it exercised and is *silent* about every path it did not — and that silence reads as confidence. Green gates through six phases once coexisted with two uncallable API routes and a stack that had never touched a real Tempo, Jira, or Postgres; nothing distinguished "the tests pass" from "this has never run against the real thing." So when the change is behavior-shaped, pair the completion table with an explicit **Not Proved** list — the one artifact in that run that made the distinction opened with exactly this table:
+
+   | Proved (real surface, cited above) | Not proved (state it — do not imply it) |
+   |---|---|
+   | Cost path reproduces June run 18/18 exact | External integrations exercised only against mocks — never a live Tempo/Jira/Postgres |
+   | `POST /invoice-run` → 200, row written (db-state-diff) | Only the default config is pinned; both non-default settings unexercised |
+   |  | Parity fixture is single-config, single-salary — no mixed billable/non-billable aggregate row |
+
+   Rules for the ledger: every external system a `test-run` criterion *mocked* is a Not-Proved row (a mock is not the system); every configuration/branch the change supports but no criterion exercised is a Not-Proved row; an exact match on one fixture is evidence about that fixture, not the space around it. An empty Not-Proved column on a behavior-shaped change is itself a red flag — it almost always means the run did not look, not that nothing is unproven. This is disclosure, not a gate: naming a Not-Proved row does not block completion, but hiding one turns green into a false proof.
 8. Re-check freshness against the latest edit. MTK's hook state tracks the most
    recent file edit and the latest verification command in the session; a
    completion claim is stale when the verification event happened before the
@@ -190,6 +200,11 @@ When the work being verified came from a prior agent — a builder subagent, a r
   the observable result per criterion before the claim is accepted.
 - For behavior-shaped changes, tests alone never prove done. The evidence
   channel must include at least one real execution surface.
+- For behavior-shaped changes, pair the completion table with a **Not-Proved
+  ledger** that names every external system exercised only against a mock, every
+  config/branch the change supports but no criterion ran, and the fact that an
+  exact fixture match is evidence about that fixture only. An empty Not-Proved
+  column is a red flag, not a clean bill — green is silent about what it never ran.
 - Success criteria are frozen at approval. Run the tamper check before any
   completion claim; a changed `observable`/`evidence_channel`/`id` is fail-closed
   and re-opens Phase 2.5. Never verify against a goalpost the run moved.
@@ -220,6 +235,7 @@ See `.claude/skills/context-engineering/SKILL.md` — the shared MTK rationaliza
 - Claiming done while any criterion is `re-armed` (edit landed after verification)
 - Verifying at the batch level instead of criterion-by-criterion
 - Using `test-run` or `build-output` alone for a behavior-shaped change (missing real execution surface)
+- A behavior-shaped completion with no Not-Proved ledger, or one whose Not-Proved column is empty (green treated as proof of paths it never ran — mocked integrations, unpinned configs, single-fixture parity all belong there)
 - A `success_criteria` `observable` was edited mid-run to match the code (goalpost moved — tamper check skipped)
 - Completion claimed while the workflow's `approval_seal` is STALE (approved spec/plan edited after approval, gate not re-opened)
 - Completion stated as prose instead of the `criterion | verdict | evidence` table
@@ -260,6 +276,7 @@ Forcing past a stuck state produces garbage output. Admitting difficulty is alwa
 - [ ] Every success criterion was verified individually (criterion-by-criterion, citing the `observable` per criterion)
 - [ ] No criterion remains `re-armed` (no edit landed after the last verification)
 - [ ] Behavior-shaped changes cite a real execution surface (`smoke-boot`, `http-probe`, `db-state-diff`, `cli-stdout`, or `browser`), not only `test-run` / `build-output`
+- [ ] Behavior-shaped changes carry a Not-Proved ledger naming mocked-only integrations, unpinned configs/branches, and single-fixture parity limits (empty column challenged, not assumed clean)
 - [ ] For a `browser` criterion, the `docs/specs/<slug>.evidence/<criterion-id>/` evidence directory path is cited alongside the criterion in the completion table (or an explicit no-MCP fallback note; see `.claude/references/evidence-capture.md`)
 - [ ] If verifying upstream agent work, every factual claim was extracted and reconciled (`VERIFIED`, `CONTRADICTED`, or `UNVERIFIABLE`) — none left `UNVERIFIED`
 - [ ] Frozen-criteria tamper check ran (no `success_criteria` `id`/`observable`/`evidence_channel` changed since Phase 2.5 approval)
