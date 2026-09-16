@@ -124,13 +124,13 @@ The `evidence_channel` field on each success criterion names the surface where t
 
    **First-verified-output baseline.** When a criterion has no automated regression test (e.g. a `cli-stdout` or `db-state-diff` observable checked by hand), persist the first verified output as a golden baseline under `docs/specs/<slug>.baselines/<SCn>.txt` and cite it in the evidence cell. Later runs diff against the baseline instead of re-judging from scratch — a cheap durable regression artifact for criteria the test suite does not cover.
 
-   **Proved / Not-Proved ledger (behavior-shaped changes, S5.1).** A green table proves the paths it exercised and is *silent* about every path it did not. Pair it with an explicit second column:
+   **Proved / Not-Proved ledger (S5.1).** A green table proves the paths it exercised and is *silent* about every path it did not. Pair it with a second column:
 
    | Proved (real surface, cited above) | Not proved (state it — do not imply it) |
    |---|---|
    | Cost path reproduces the June run 18/18 exact | Tempo/Jira/Postgres exercised only against mocks; only the default config is pinned |
 
-   Mocked external systems, configs or branches no criterion ran, and single-fixture limits are Not-Proved rows. An empty column is a red flag, not a clean bill. Disclosure, not a gate: a named row never blocks completion; a hidden one turns green into a false proof.
+   Mocked external systems, configs or branches no criterion ran, and single-fixture limits are Not-Proved rows. An empty column is a red flag, not a clean bill. Disclosure, not a gate: a hidden row turns green into a false proof.
 8. Re-check freshness against the latest edit. MTK's hook state tracks the most
    recent file edit and the latest verification command in the session; a
    completion claim is stale when the verification event happened before the
