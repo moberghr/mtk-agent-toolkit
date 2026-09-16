@@ -65,18 +65,29 @@ Orchestration state that lives only in chat is lost on compaction or restart. Th
      event phase_completed --data '{"phase":"phase-3"}' -- \
      event phase_started   --data '{"phase":"phase-3.5"}'
    ```
-   A `phase_started` event carrying a `phase` auto-advances the artifact's `phase_cursor` to that phase — no separate `set phase_cursor=` call is needed, and the resume protocol (step 6) can trust `phase_cursor` rather than replaying the event log.
+   A `phase_started` event carrying a `phase` auto-advances the artifact's `phase_cursor` to that phase — no separate `set phase_cursor=` call is needed, and the resume protocol (step 7) can trust `phase_cursor` rather than replaying the event log.
 5. **Record gate decisions.** Every named gate (`plan_trust_gate`, `phase_exit_gate`, `failure_stop_gate`, `memory_sync_gate`, `skill_precedence_gate`) must be persisted via:
    ```bash
    "$WFA" gate "$MTK_WF_UUID" phase_exit_gate pass --reason "all batch tests green"
    ```
    `fail` on any gate is a hard stop — see `failure_stop_gate` semantics.
-6. **Resume protocol.** On entry to a workflow with no explicit uuid:
+6. **Carry a trap list across phases.** A *trap* is a written, specific gotcha a phase learned the hard way (a stale generated contract, an analyzer that fires only under `format`, a fixture that silently seeds the wrong state). A 2026-09 six-phase field run found this hand-carried list was the one mechanism that demonstrably worked — the final phase had zero repair cycles — and that it survived only because the driver remembered to paste it. Persist each trap the moment it is learned, riding along in the call that runs anyway (`trap` is batchable):
+   ```bash
+   "$WFA" batch "$MTK_WF_UUID" trap add --title "OpenAPI spec goes stale between phases" \
+     --body "Regenerate the contract from a running API each phase — build/tests miss uncallable routes." \
+     --phase phase-1 --severity high -- event phase_completed --data '{"phase":"phase-1"}'
+   ```
+   At the **start of every phase**, and in every implementer brief the orchestrator builds, inject the accumulated list:
+   ```bash
+   "$WFA" trap list "$MTK_WF_UUID"   # paste into the brief's "Known traps" block
+   ```
+   Adding a trap whose title already exists refreshes it in place. Traps are orchestrator-owned like every other artifact write: an implementer *reports* candidate traps in its result (`traps[]`, see `.claude/references/subagent-implementer-prompt.md`) and the orchestrator records them (S5.2).
+7. **Resume protocol.** On entry to a workflow with no explicit uuid:
    - Run `"$WFA" list`.
    - If a single active workflow matches the requested type, offer resume.
    - If multiple, ask via `AskUserQuestion` which uuid to resume.
    - If none, init a new one.
-7. **Close the workflow.** At end of phase 7, one call:
+8. **Close the workflow.** At end of phase 7, one call:
    ```bash
    "$WFA" batch "$MTK_WF_UUID" gate memory_sync_gate pass --reason "lessons captured" -- \
      set status=completed -- event workflow_completed --data '{"summary":"<short>"}'
@@ -103,6 +114,7 @@ The dashboard reads the same `{uuid}.json` + `{uuid}.events.jsonl` files this sk
 - All writes go through `workflow-artifact.sh`. Never `Edit` or `Write` `{uuid}.json` directly — the event log would desync.
 - Bookkeeping never gets its own turn: append `"$WFA"` calls to the command they record with `&&`, or group them with `batch`. The only standalone calls are `init`, `list`, `read`, and `verify-seal`.
 - Subagents do not write workflow artifacts. The orchestrator persists subagent results via `event agent_returned`.
+- Traps are carried, not re-derived. Record a trap the moment a phase learns it (`trap add`) and inject `trap list` into every subsequent phase brief — a trap that lives only in a phase report is lost the moment that report scrolls out of context.
 - `.mtk/` is gitignored by default. Treat artifacts as local diagnostic state, not committed history.
 - A `failure_stop_gate: fail` event terminates the workflow. Do not emit further events after `workflow_failed`.
 
@@ -127,3 +139,4 @@ See `.claude/references/workflow-rationalizations.md` for the shared table. Work
 - [ ] The event log ends with the most recent gate or phase event (no orphan state)
 - [ ] On a fresh session, `list` plus reading the artifact reproduces the workflow's current state without chat history
 - [ ] No direct `Edit`/`Write` calls were made against `.mtk/workflows/*.json`
+- [ ] Traps discovered in a phase were recorded via `trap add`, and `trap list` was injected into the next phase's brief (not left in a phase report)

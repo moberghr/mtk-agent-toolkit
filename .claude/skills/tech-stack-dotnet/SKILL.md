@@ -24,8 +24,9 @@ Loaded automatically by commands and skills when the active tech stack is `dotne
 ## Build & Test Commands
 
 - **Compile:** `dotnet build --nologo -v q`
-- **Test (batch):** `dotnet test --nologo -v q --no-build --filter <project>`
+- **Test (batch):** `dotnet test --nologo -v q --no-build --filter <project>` — under **Microsoft.Testing.Platform** (`.slnx`, or `global.json` runner set to MTP) `--filter` is rejected; pass runner args after `--`: `dotnet test --solution <slnx> -- --filter-class <FullyQualifiedClass>` (or `--filter-method`). A rejected filter fails the run, so a "filtered" test claim was never scoped — match the filter form to the runner.
 - **Test (full):** `dotnet test --nologo -v q --no-build`
+- **Migrations (`dotnet ef`):** in a multi-project solution supply **both** `--project <DataProject>` and `--startup-project <MigratorProject>`, name the context (`--context <DbContext>`), and export a dummy `ConnectionStrings__<Context>=Host=localhost;Database=x;Username=x;Password=x` so design-time construction succeeds without a live database. Omitting the startup project or the connection string is the recurring failure — three agents rediscovered it in one field run.
 - **Bounded output is the default.** `--no-build` assumes the build step ran in the same checkpoint; when running tests alone, drop it. Batch checkpoints run these through `bash scripts/mtk-verify-run.sh --label <batch-id>-<step> -- <cmd>` — the wrapper's bounded tail is the evidence, the log path is the receipt. `-v q` hides analyzer warnings — acceptable, because the review lanes read the diff, not the build log.
 - **Test (list-only):** enumerates discovered tests without executing them — the F7/command-verification list variant used to verify `dotnet test` is runnable without paying for a full suite run. Conditional on the solution format:
   - `.sln`: `dotnet test <sln> --list-tests`

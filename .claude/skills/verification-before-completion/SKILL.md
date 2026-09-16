@@ -123,6 +123,14 @@ The `evidence_channel` field on each success criterion names the surface where t
    `verdict` is binary (`verified` / `not-verified`) — there is no "mostly". A table with any `not-verified` row is not a completion. The table is less gameable than a prose summary: every claim is pinned to a re-runnable command and its observed output.
 
    **First-verified-output baseline.** When a criterion has no automated regression test (e.g. a `cli-stdout` or `db-state-diff` observable checked by hand), persist the first verified output as a golden baseline under `docs/specs/<slug>.baselines/<SCn>.txt` and cite it in the evidence cell. Later runs diff against the baseline instead of re-judging from scratch — a cheap durable regression artifact for criteria the test suite does not cover.
+
+   **Proved / Not-Proved ledger (behavior-shaped changes, S5.1).** A green table proves the paths it exercised and is *silent* about every path it did not. Pair it with an explicit second column:
+
+   | Proved (real surface, cited above) | Not proved (state it — do not imply it) |
+   |---|---|
+   | Cost path reproduces the June run 18/18 exact | Tempo/Jira/Postgres exercised only against mocks; only the default config is pinned |
+
+   Mocked external systems, configs or branches no criterion ran, and single-fixture limits are Not-Proved rows. An empty column is a red flag, not a clean bill. Disclosure, not a gate: a named row never blocks completion; a hidden one turns green into a false proof.
 8. Re-check freshness against the latest edit. MTK's hook state tracks the most
    recent file edit and the latest verification command in the session; a
    completion claim is stale when the verification event happened before the
@@ -189,6 +197,9 @@ When the work being verified came from a prior agent — a builder subagent, a r
   the observable result per criterion before the claim is accepted.
 - For behavior-shaped changes, tests alone never prove done. The evidence
   channel must include at least one real execution surface.
+- Behavior-shaped changes also carry a **Not-Proved ledger** (mocked-only
+  integrations, unpinned configs/branches, single-fixture limits); an empty
+  column is a red flag, not a clean bill (S5.1).
 - Success criteria are frozen at approval. Run the tamper check before any
   completion claim; a changed `observable`/`evidence_channel`/`id` is fail-closed
   and re-opens Phase 2.5. Never verify against a goalpost the run moved.
@@ -213,6 +224,7 @@ See `.claude/references/workflow-rationalizations.md` — the shared MTK rationa
 - Completion reported without any command output cited
 - Claiming done while any criterion is `re-armed` (edit landed after verification)
 - Completion stated as prose instead of the `criterion | verdict | evidence` table
+- A behavior-shaped completion with no Not-Proved ledger, or with an empty Not-Proved column
 
 Full table: `.claude/references/workflow-rationalizations.md` → verification-before-completion.
 
@@ -248,7 +260,7 @@ Forcing past a stuck state produces garbage output. Admitting difficulty is alwa
 - [ ] The evidence is from after the most recent edit and no criterion remains `re-armed`
 - [ ] No warnings, failures, or skipped tests were silently ignored
 - [ ] Every success criterion was verified individually, citing its `observable`
-- [ ] Behavior-shaped changes cite a real execution surface (`smoke-boot`, `http-probe`, `db-state-diff`, `cli-stdout`, `browser`), not only `test-run` / `build-output`; a `browser` criterion cites its `docs/specs/<slug>.evidence/<criterion-id>/` path or a no-MCP fallback note (see `.claude/references/evidence-capture.md`)
+- [ ] Behavior-shaped changes cite a real execution surface (`smoke-boot`, `http-probe`, `db-state-diff`, `cli-stdout`, `browser`), not only `test-run` / `build-output`; a `browser` criterion cites its `docs/specs/<slug>.evidence/<criterion-id>/` path or a no-MCP fallback note (see `.claude/references/evidence-capture.md`); and the completion carries a Not-Proved ledger (mocked-only integrations, unpinned configs/branches, single-fixture limits)
 - [ ] Upstream agent claims were each reconciled to `VERIFIED` / `CONTRADICTED` / `UNVERIFIABLE` — none left `UNVERIFIED`
 - [ ] Frozen-criteria tamper check ran (no `success_criteria` `id`/`observable`/`evidence_channel` changed since Phase 2.5) and, when an `approval_seal` exists, `verify-seal` returned exit 0 (not STALE)
 - [ ] Completion stated as the `criterion | verdict | evidence` table, every verdict binary

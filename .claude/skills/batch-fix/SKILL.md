@@ -230,6 +230,8 @@ Follow `.claude/skills/verification-before-completion/SKILL.md`. Using the activ
 
 - run the build command
 - run the tests for every changed area (fresh execution evidence, not a claim)
+- **Composition check — run the FULL suite once, not just the per-finding areas.** Independent fixes that were each green in isolation can still break when composed: a change to an aggregate key, a scope predicate, or a shared fixture alters rows a *different* finding's tests silently depend on. Per-area runs never see it; only the whole suite does. This is the single most-missed step when fixes are applied in parallel (separate branches/worktrees) and merged — parallel trades rebase cost for integration risk, so the composed tree gets its own full run before completion.
+- **When a composed failure appears, diagnose before touching numbers.** Most composition failures are stale **fixtures**, not wrong code and not stale **assertions**: a test helper seeds state that was valid under the old model (a person active with no employment record, a single-config salary) and is now insufficient. The fix is to correct the fixture to the state the code's own contract already assumes — after which the original expected numbers pass **unchanged**, which is itself the proof the change altered no total. Never edit expected values until a test goes green: that laundered a wrong result into a passing test in this exact scenario (a double-billed invoice pinned by a "passing" assertion). Distinguish the three: stale fixture (seed the missing state), stale assertion (a genuinely changed contract — update it and say so), real defect (the composition surfaced a bug — fix the code).
 - remove the scope-guard skip pointer now that edits are done: `rm -f "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}/.mtk/scope-guard-skip"`
 
 ### Final Report
@@ -250,6 +252,7 @@ Report briefly:
 4. Behavioral findings get a failing test first; only mechanical findings skip TDD.
 5. Read before editing; match the codebase pattern; do not gold-plate.
 6. No `docs/plans/` plan file and no subagent-per-batch — that ceremony belongs to `implement`.
+7. Independent fixes that were each green alone must pass one FULL-suite run composed together before completion — parallel application trades rebase cost for integration risk. On a composed failure, seed the stale fixture; never edit expected values to reach green.
 
 ## Verification
 
@@ -264,4 +267,5 @@ Report briefly:
 - [ ] Any new-slice/contract/re-planning finding was escalated with the `escalated from batch-fix` marker, not absorbed
 - [ ] Proportional review ran (pre-commit-review always; specialized reviewers only where a finding warranted), scoped to the batch's changed files — pre-existing dirty-tree changes were not attributed to the batch
 - [ ] Build is clean and tests pass with fresh execution evidence
+- [ ] A full-suite composition run passed over all findings together (not only per-finding areas); any composed failure was resolved by fixing the stale fixture/code, never by editing expected values to green
 - [ ] Final report lists findings + disposition, files, tests, review, and verification evidence

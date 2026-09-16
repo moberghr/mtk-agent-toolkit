@@ -4,3 +4,4 @@ git-workflow	Bash	git[[:space:]]+(commit|push|tag|rebase)|gh[[:space:]]+(pr|rele
 hooks-and-scripts	Edit|Write	-	^(hooks|scripts)/	inject	.claude/rules/hooks-and-scripts.md
 skill-authoring	Edit|Write	-	^\.claude/skills/.*SKILL\.md$|^tests/pressure-tests/|^evals/	inject	.claude/rules/skill-authoring.md
 toolkit-structure	Edit|Write	-	^\.claude/manifest\.json$|^\.claude-plugin/	inject	.claude/rules/toolkit-structure.md
+verification-and-proof	Edit|Write	-	^\.claude/skills/(verification-before-completion|batch-fix|workflow-artifacts|subagent-implementation)/	inject	.claude/rules/verification-and-proof.md

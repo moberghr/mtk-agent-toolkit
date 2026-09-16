@@ -37,6 +37,12 @@ set -euo pipefail
 #                                    1 stale (prints sealed=/current=), 2 uncheckable
 #                                    (unexpected error), 3 no seal
 #   abandon <uuid> [--reason "<text>"]  Mark workflow abandoned
+#   trap add <uuid> --title "<t>" [--body "<b>"] [--phase p] [--severity warn|high]
+#                                    Record a carried-forward trap (a written,
+#                                    specific gotcha) in results.trap_list —
+#                                    idempotent by title; batchable.
+#   trap list <uuid>                 Print recorded traps, ready to paste into the
+#                                    next phase's or implementer's brief.
 #
 # Storage: .mtk/workflows/{uuid}.json + .mtk/workflows/{uuid}.events.jsonl
 # Artifacts live OUTSIDE .claude/ to avoid Claude Code's sensitive-file gate.
@@ -297,10 +303,12 @@ sys.stdout.write("\0".join(items) + "\0")'
     [ ${#argv[@]} -gt 0 ] || fail "batch: op $((n+1)) is empty or malformed"
     local sub="${argv[0]}"
     case "$sub" in
-      set|event|gate|criteria|remediation|seal) ;;
-      *) fail "batch: op $((n+1)): '$sub' is not batchable (allowed: set event gate criteria remediation seal)" ;;
+      set|event|gate|criteria|remediation|seal) main "$sub" "$uuid" "${argv[@]:1}" ;;
+      # trap takes <add|list> before the uuid: `trap add --title …` in a batch op.
+      trap) [ ${#argv[@]} -ge 2 ] || fail "batch: op $((n+1)): trap needs <add|list>"
+            main trap "${argv[1]}" "$uuid" "${argv[@]:2}" ;;
+      *) fail "batch: op $((n+1)): '$sub' is not batchable (allowed: set event gate criteria remediation seal trap)" ;;
     esac
-    main "$sub" "$uuid" "${argv[@]:1}"
     n=$((n+1))
   done
   printf 'workflow-artifact: batch applied %d op(s) to %s\n' "$n" "$uuid"
@@ -608,8 +616,90 @@ PY
   return $rc
 }
 
+# Trap list — a written, specific gotcha a phase learned the hard way (a stale
+# generated contract, an analyzer that fires only under `format`, a fixture that
+# silently seeds the wrong state), carried into every later phase and implementer
+# brief. A 2026-09 six-phase field run found this hand-carried list was the one
+# mechanism that demonstrably worked (the final phase had zero repair cycles) —
+# and that it survived only because whoever drove remembered to paste it. Persisted
+# on the artifact it survives compaction, crash, and handoff. Orchestrator-owned:
+# implementers REPORT candidate traps in their result; the orchestrator records them.
+cmd_trap() {
+  local action="${1:-}"
+  shift || true
+  case "$action" in
+    add)  cmd_trap_add "$@" ;;
+    list) cmd_trap_list "$@" ;;
+    *)    fail "trap requires <add|list>" ;;
+  esac
+}
+
+cmd_trap_add() {
+  local uuid="${1:-}"
+  shift || true
+  [ -n "$uuid" ] || fail "trap add requires <uuid>"
+  [ -f "${WF_DIR}/${uuid}.json" ] || fail "no artifact for $uuid"
+
+  local title="" body="" phase="" severity="warn"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --title)    title="${2:-}"; shift 2 ;;
+      --body)     body="${2:-}"; shift 2 ;;
+      --phase)    phase="${2:-}"; shift 2 ;;
+      --severity) severity="${2:-}"; shift 2 ;;
+      *) fail "unknown flag: $1" ;;
+    esac
+  done
+  [ -n "$title" ] || fail "trap add requires --title"
+  case "$severity" in warn|high) ;; *) fail "trap severity must be 'warn' or 'high'" ;; esac
+
+  local tid
+  tid="$(python3 - "${WF_DIR}/${uuid}.json" "$(iso_now)" "$title" "$body" "$phase" "$severity" <<'PY'
+import json, sys
+path, now, title, body, phase, severity = sys.argv[1:7]
+with open(path) as f: doc = json.load(f)
+traps = doc.setdefault("results", {}).setdefault("trap_list", [])
+# Idempotent by title: a re-run of the same phase refreshes the entry, it does not stack.
+existing = next((t for t in traps if t.get("title") == title), None)
+if existing:
+    existing.update({"body": body, "phase": phase, "severity": severity, "added_at": now})
+    tid = existing["id"]
+else:
+    tid = "trap-%03d" % (len(traps) + 1)
+    traps.append({"id": tid, "title": title, "body": body, "phase": phase,
+                  "severity": severity, "added_at": now})
+doc["updated_at"] = now
+with open(path, "w") as f: json.dump(doc, f, indent=2)
+print(tid)
+PY
+)"
+  local title_json
+  title_json="$(printf '%s' "$title" | json_escape)"
+  cmd_event "$uuid" "trap_added" --data "{\"id\":\"${tid}\",\"title\":${title_json},\"severity\":\"${severity}\"}" >/dev/null
+  printf '%s\n' "$tid"
+}
+
+cmd_trap_list() {
+  local uuid="${1:-}"
+  [ -n "$uuid" ] || fail "trap list requires <uuid>"
+  [ -f "${WF_DIR}/${uuid}.json" ] || fail "no artifact for $uuid"
+  python3 - "${WF_DIR}/${uuid}.json" <<'PY'
+import json, sys
+traps = json.load(open(sys.argv[1])).get("results", {}).get("trap_list", [])
+if not traps:
+    print("(no traps recorded)"); sys.exit(0)
+for t in traps:
+    line = "- [%s] %s" % (t.get("severity", "warn").upper(), t.get("title", ""))
+    if t.get("phase"):
+        line += " (from %s)" % t["phase"]
+    print(line)
+    if t.get("body"):
+        print("  " + t["body"])
+PY
+}
+
 usage() {
-  sed -n '4,44p' "$0"
+  sed -n '4,50p' "$0"
 }
 
 main() {
@@ -627,6 +717,7 @@ main() {
     verify-seal) cmd_verify_seal "$@" ;;
     criteria) cmd_criteria "$@" ;;
     remediation) cmd_remediation "$@" ;;
+    trap)     cmd_trap "$@" ;;
     abandon)  cmd_abandon "$@" ;;
     ""|-h|--help) usage ;;
     *) fail "unknown subcommand: $sub" ;;

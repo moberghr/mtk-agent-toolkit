@@ -2373,6 +2373,18 @@
       "action": "sync",
       "description": "Verifies mtk-doctor FAILs on runtime-referenced MTK files that resolve nowhere, WARNs on plugin-cache-only resolution, and PASSes via MTK_HELPER_ROOT/CLAUDE_PLUGIN_ROOT/local"
     },
+    "tests/hooks/test-workflow-artifact-trap.sh": {
+      "source": "tests/hooks/test-workflow-artifact-trap.sh",
+      "target": "tests/hooks/test-workflow-artifact-trap.sh",
+      "action": "sync",
+      "description": "Verifies workflow-artifact.sh trap add/list: persistence in results.trap_list, trap_added event, title dedup, severity validation, and the batch ride-along form"
+    },
+    "tests/hooks/test-mtk-doctor-lesson-stores.sh": {
+      "source": "tests/hooks/test-mtk-doctor-lesson-stores.sh",
+      "target": "tests/hooks/test-mtk-doctor-lesson-stores.sh",
+      "action": "sync",
+      "description": "Verifies mtk-doctor WARNs when analytics.json claims lessons but .mtk/learnings.jsonl is empty (populated or empty tasks/lessons.md) and PASSes when the stores agree"
+    },
     "tests/hooks/test-learnings.sh": {
       "source": "tests/hooks/test-learnings.sh",
       "target": "tests/hooks/test-learnings.sh",
