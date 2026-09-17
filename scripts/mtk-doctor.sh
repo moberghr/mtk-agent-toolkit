@@ -720,6 +720,107 @@ else
   record PASS environment "no user-level settings.json to collide with"
 fi
 
+# 2b. Stop hooks registered twice: plugin hooks/hooks.json + project
+#    .claude/settings.json. "Ran 9 stop hooks" in the field (issue #60) was 5
+#    plugin entries plus 4 project entries — registration, not execution: every
+#    plugin copy of a basename the project also wires exits early through
+#    mtk_is_redundant_plugin_invocation. Show that arithmetic so the figure stops
+#    reading as a bug, and WARN for a doubly-wired Stop hook WITHOUT the guard,
+#    which really does run twice (and races itself on shared files).
+HOOKS_JSON="$ROOT_DIR/hooks/hooks.json"
+if [ -f "$HOOKS_JSON" ] && command -v python3 >/dev/null 2>&1; then
+  STOP_WIRING="$(python3 - "$HOOKS_JSON" ".claude/settings.json" <<'PY' 2>/dev/null || true
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
+import json, os
+def stop_basenames(path):
+    try:
+        doc = json.load(open(path))
+    except Exception:
+        return []
+    hooks = doc.get("hooks", doc) if isinstance(doc, dict) else {}
+    out = []
+    for entry in hooks.get("Stop", []) or []:
+        for h in entry.get("hooks", []) or []:
+            tok = str(h.get("command", "")).split()
+            if tok and tok[0] in ("bash", "sh", "zsh"):
+                tok = tok[1:]
+            if tok:
+                out.append(os.path.basename(tok[0]))
+    return out
+for b in stop_basenames(sys.argv[1]): print("plugin\t" + b)
+for b in stop_basenames(sys.argv[2]): print("project\t" + b)
+PY
+)"
+  PLUGIN_STOP=0; PROJECT_STOP=0; SHARED_STOP=0; UNGUARDED_STOP=""
+  while IFS=$'\t' read -r src base; do
+    [ -n "$base" ] || continue
+    case "$src" in
+      plugin)  PLUGIN_STOP=$((PLUGIN_STOP + 1)) ;;
+      project) PROJECT_STOP=$((PROJECT_STOP + 1)) ;;
+    esac
+  done <<< "$STOP_WIRING"
+  while IFS= read -r base; do
+    [ -n "$base" ] || continue
+    SHARED_STOP=$((SHARED_STOP + 1))
+    if ! grep -q 'mtk_is_redundant_plugin_invocation' "$ROOT_DIR/hooks/$base" 2>/dev/null; then
+      UNGUARDED_STOP="${UNGUARDED_STOP}${UNGUARDED_STOP:+, }${base}"
+    fi
+  done < <(printf '%s\n' "$STOP_WIRING" | awk -F'\t' '$1=="plugin"{p[$2]=1} $1=="project"{q[$2]=1} END{for (b in p) if (b in q) print b}')
+  STOP_TOTAL=$((PLUGIN_STOP + PROJECT_STOP))
+  # The arithmetic is always worth showing; the WARN rides alongside it.
+  record PASS environment "Stop hook registrations accounted for" \
+    "${STOP_TOTAL} = ${PLUGIN_STOP} plugin (hooks/hooks.json) + ${PROJECT_STOP} project (.claude/settings.json) — the harness reports this as 'Ran ${STOP_TOTAL} stop hooks'; ${SHARED_STOP} shared basename(s), and a guarded plugin copy exits before doing work"
+  if [ -n "$UNGUARDED_STOP" ]; then
+    record WARN environment "Stop hook wired twice without the double-run guard" \
+      "${UNGUARDED_STOP} — registered in hooks/hooks.json and .claude/settings.json but missing mtk_is_redundant_plugin_invocation, so both copies run on every Stop and race on shared files"
+  fi
+fi
+
+# 2c. Stale plugin-cache versions. installed_plugins.json records ONE installPath
+#    per plugin; older version directories beside it are upgrade leftovers. They
+#    cost disk, and any "newest cache copy" search (this doctor's own, or an
+#    engineer setting MTK_HELPER_ROOT by hand) can land on the wrong one. Name
+#    them with the exact removal command — never delete on the engineer's behalf.
+if [ -n "$CACHE_ROOT" ]; then
+  CACHE_VERSIONS_DIR="$(dirname "$CACHE_ROOT")"
+  INSTALLED_CACHE_PATH=""
+  IP_JSON="${HOME:-/nonexistent}/.claude/plugins/installed_plugins.json"
+  if [ -f "$IP_JSON" ] && command -v python3 >/dev/null 2>&1; then
+    INSTALLED_CACHE_PATH="$(python3 - "$IP_JSON" "$CACHE_VERSIONS_DIR" <<'PY' 2>/dev/null || true
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
+import json, os
+doc = json.load(open(sys.argv[1]))
+want = os.path.realpath(sys.argv[2])
+for entries in (doc.get("plugins") or {}).values():
+    for e in (entries if isinstance(entries, list) else [entries]):
+        p = e.get("installPath", "") if isinstance(e, dict) else ""
+        if p and os.path.realpath(os.path.dirname(p)) == want:
+            print(p)
+            raise SystemExit
+PY
+)"
+  fi
+  # No registry entry for this cache → the newest copy is the best guess.
+  [ -n "$INSTALLED_CACHE_PATH" ] && [ -d "$INSTALLED_CACHE_PATH" ] || INSTALLED_CACHE_PATH="$CACHE_ROOT"
+  INSTALLED_REAL="$(cd "$INSTALLED_CACHE_PATH" && pwd -P)"
+  STALE_VERSIONS=""
+  for vd in "$CACHE_VERSIONS_DIR"/*/; do
+    vd="${vd%/}"
+    [ -d "$vd" ] || continue
+    [ "$(cd "$vd" && pwd -P)" = "$INSTALLED_REAL" ] && continue
+    STALE_VERSIONS="${STALE_VERSIONS}${STALE_VERSIONS:+ }$(basename "$vd")"
+  done
+  if [ -n "$STALE_VERSIONS" ]; then
+    RM_CMD="rm -rf"
+    for v in $STALE_VERSIONS; do RM_CMD="$RM_CMD ${CACHE_VERSIONS_DIR}/${v}"; done
+    record WARN environment "stale plugin-cache versions" \
+      "${STALE_VERSIONS// /, } under ${CACHE_VERSIONS_DIR} — installed is $(basename "$INSTALLED_REAL") per installed_plugins.json; the rest are upgrade leftovers. Remove with: ${RM_CMD}"
+  else
+    record PASS environment "plugin cache holds only the installed version" \
+      "$(basename "$INSTALLED_REAL") under ${CACHE_VERSIONS_DIR}"
+  fi
+fi
+
 # 3. Formatter present for the active stack. format-on-edit.sh never blocks and
 #    logs only to stderr, so a missing binary is invisible: edits look formatted
 #    and are not.
