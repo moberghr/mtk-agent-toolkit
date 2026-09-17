@@ -4,6 +4,51 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Added — encode the six-phase field-run retro: carried trap list, Not-Proved ledger, the analyzer wall, composition gate, lesson-store drift check
+
+A 2026-09-14/15 six-phase port of a financially sensitive billing system, with MTK
+driving every phase, ended with every gate green — and with two uncallable API
+routes shipped in phase one, six phases that never touched a real external system,
+and an obsolete acceptance test nobody flagged. The one mechanism that demonstrably
+worked was a hand-carried trap list, which gave the final phase zero repair cycles.
+These changes make that mechanism a maintained artifact, document the analyzer wall
+that did the real catching, and make "proven" distinguishable from "green".
+(Re-landed from a stale branch; the original bumped the version and checksums, which
+belong to the release commit.)
+
+- **`workflow-artifact.sh trap add` / `trap list`.** Traps persist in
+  `results.trap_list[]` with a `trap_added` event, idempotent by title, and `trap`
+  is batchable so recording one rides along in the call that runs anyway. The
+  implementer brief injects a "Known traps" block; the batch-result schema gained an
+  optional `traps[]`; `subagent-implementation` pastes `trap list` into every bundle
+  and records reported traps; `workflow-artifacts` documents the protocol.
+- **New rule file `.claude/rules/verification-and-proof.md` (S5.1–S5.4)** — green is
+  not proof, carry a trap list, compose-then-verify, document the analyzer wall.
+  Indexed in the wake-up layer with `topic: verification` and an Edit/Write trigger on
+  the four skills it governs.
+- **`verification-before-completion` pairs behavior-shaped completions with a
+  Proved / Not-Proved ledger** naming every mocked-only integration, every unpinned
+  config or branch, and the limits of a single-fixture parity match. An empty
+  Not-Proved column is a red flag, not a clean bill.
+- **`.claude/references/dotnet/analyzer-config.md` documents the analyzer wall**:
+  the StyleCop / Sonar / Meziantou rules behind all 21 of the run's build repair
+  cycles, the `SA1512`/`SA1514` banner-above-doc-comment collision, and why a green
+  `dotnet build` does not imply a green `dotnet format --verify-no-changes`.
+- **`tech-stack-dotnet`** records two CLI gotchas rediscovered every phase:
+  `dotnet test --filter` is rejected under Microsoft.Testing.Platform (use
+  `-- --filter-class`), and `dotnet ef` scaffolding needs `--project`,
+  `--startup-project`, `--context`, and a dummy connection string.
+- **`batch-fix` Phase 6 runs a full-suite composition check.** Five individually
+  green fix rounds broke fourteen tests when composed; eleven were stale fixtures.
+  Seed the fixture, never edit expected values to reach green.
+- **`mtk-doctor` reconciles `analytics.json` against the lesson stores.** WARN when
+  analytics claims lessons but `.mtk/learnings.jsonl` is empty — the field run's
+  exact shape (25 claimed, 0 stored, `tasks/lessons.md` populated) now names the
+  `learnings.sh migrate` remedy instead of passing.
+
+Two new hook tests cover `trap add`/`trap list` (including the batch ride-along and
+title dedup) and the doctor's three store states.
+
 ### Fixed — beacon field-run gaps: rule-id parsing, lesson seeding, file-resolution diagnostics, host-load routing, shared change map, security-gate false positives
 
 A 2026-09-09 implement run in a client repo confirmed the review lanes, plan-gap
