@@ -64,9 +64,28 @@ ARTIFACT_ROOT="$(mtk_artifact_root "$FILE_PATH" 2>/dev/null || printf '%s' "$REP
 SPEC_DIR="$ARTIFACT_ROOT/docs/specs"
 SPEC_JSON=""
 if [ -d "$SPEC_DIR" ]; then
-  SPEC_JSON=$(find "$SPEC_DIR" -name '*.json' -type f -mtime -7 2>/dev/null | while read -r f; do
+  # Candidates newest-first, sidecars only: -maxdepth 1 keeps out
+  # docs/specs/baseline/*.json (spec-archive.sh snapshots) and anything under
+  # <slug>.baselines/ or <slug>.evidence/, none of which is a spec.
+  #
+  # A spec that shipped is archived into docs/specs/baseline/*.audit.jsonl by
+  # spec-archive.sh. In a repo that keeps shipped sidecars (this toolkit), the
+  # freshest sidecar is usually one of those, and anchoring to it tagged every
+  # unrelated edit "not in the approved spec (<shipped-slug>)" (issue #59). An
+  # archived slug is no longer active, so skip it and take the next-freshest.
+  # Same fixed-string slug probe spec-archive.sh uses for idempotency, minus jq
+  # (S3.3): the trail is compact JSON, so `"slug":"<slug>"` is exact.
+  while IFS= read -r cand; do
+    [ -n "$cand" ] && [ -f "$cand" ] || continue
+    slug="$(grep -m1 -o '"slug"[[:space:]]*:[[:space:]]*"[^"]*"' "$cand" 2>/dev/null | sed 's/.*"\([^"]*\)"$/\1/')"
+    if [ -n "$slug" ] && grep -qsF "\"slug\":\"$slug\"" "$SPEC_DIR"/baseline/*.audit.jsonl 2>/dev/null; then
+      continue
+    fi
+    SPEC_JSON="$cand"
+    break
+  done < <(find "$SPEC_DIR" -maxdepth 1 -name '*.json' -type f -mtime -7 2>/dev/null | while read -r f; do
     echo "$(stat -c '%Y' "$f" 2>/dev/null || stat -f '%m' "$f" 2>/dev/null || echo 0) $f"
-  done | sort -rn | head -1 | cut -d' ' -f2-)
+  done | sort -rn | cut -d' ' -f2-)
 fi
 
 # No active spec — nothing to guard
