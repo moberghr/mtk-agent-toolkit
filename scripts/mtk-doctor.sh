@@ -464,6 +464,7 @@ fi
 LEARN_FILE=".mtk/learnings.jsonl"
 if [ -f "$LEARN_FILE" ] && command -v python3 >/dev/null 2>&1; then
   LINT_OUT="$(python3 - "$LEARN_FILE" <<'PY'
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
 import json, sys
 checked = 0
 issues = []
@@ -529,7 +530,7 @@ fi
 # store is empty; the remedy depends on whether the markdown has content
 # (`learnings.sh migrate`, or any `query` — it auto-seeds — vs. nothing captured).
 if [ -f .claude/analytics.json ] && command -v python3 >/dev/null 2>&1; then
-  ANALYTICS_LESSONS="$(python3 -c 'import json;print(json.load(open(".claude/analytics.json")).get("lessons_captured",0))' 2>/dev/null || echo 0)"
+  ANALYTICS_LESSONS="$(python3 -c 'import json,sys; sys.stdout.reconfigure(newline="\n"); print(json.load(open(".claude/analytics.json")).get("lessons_captured",0))' 2>/dev/null || echo 0)"
   JSONL_LESSONS="$(grep -c '[^[:space:]]' .mtk/learnings.jsonl 2>/dev/null || echo 0)"
   MD_LESSONS="$(grep -c '^## ' tasks/lessons.md 2>/dev/null || echo 0)"
   # Normalize to bare integers so `set -e` arithmetic never aborts on stray text.

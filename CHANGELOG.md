@@ -96,6 +96,38 @@ six places where the toolkit assumed an environment it did not have:
 Four new hook tests cover the scripts; the security-gate false-positive suite gained
 fifteen allow cases and eight block cases for the new shapes.
 
+### Fixed — GitHub issues #95–#99: Windows python3 CRLF, tech-stack.map glob expansion, `smoke-boot` rejected
+
+Five issues filed 2026-09-07 from Windows (Git Bash + native Python) and macOS field
+use, each reproduced against `main` before fixing.
+
+- **One root cause behind #95, #96 and #98: a Windows-native python3 writes `\r\n` to
+  text-mode stdout, and every bash `$(python3 …)` capture kept the `\r`.**
+  `setup-refresh-plan.sh --json` crashed (`not enough values to unpack`) and its
+  table-mode summary miscounted; `workflow-artifact.sh seal <uuid>` with no paths failed
+  with `seal target not found` on a file that existed; `manifest-preflight.sh` flagged
+  every `modify` entry MP001. Fixed at the source: every python heredoc and `-c`
+  one-liner whose stdout bash parses now opens with
+  `sys.stdout.reconfigure(newline="\n")` (16 files across `scripts/` and `hooks/`),
+  so the fix does not depend on each consumer remembering to strip a CR. Python sites
+  whose output only reaches another JSON parser or the terminal are unchanged (a `\r`
+  is JSON whitespace). New `tests/hooks/test-python-crlf-stdout.sh` drives the three
+  reported scripts through a python3 shim that emulates the Windows text layer and
+  fails on the unpatched code.
+- **#99 `resolve-tech-stack.sh`: the `tech-stack.map` line was split with an unquoted
+  `set -- $line`, which also pathname-expands.** From a repo root that has `backend/`,
+  `backend/** dotnet` became `backend/Shop.Api backend/Shop.Api.Tests … dotnet`, so the
+  resolver emitted a directory entry as the stack and `--explain` cited it as the glob.
+  Now split with `read -r`. `tests/hooks/test-resolve-tech-stack.sh` populates the
+  mapped folder (the old empty fixture gave the glob nothing to expand to, which is why
+  the case passed) and adds `**` cases. The zero-arg `seal` derivation in
+  `workflow-artifact.sh` had the same unquoted `set --` and is now a `read` loop.
+- **#97 `smoke-boot` is documented as an `evidence_channel` but the schema and
+  validator rejected it.** The v7.15 change added it to the taxonomy in
+  `spec-sidecar-manifest.md` and `verification-before-completion` but not to
+  `handoff.schema.json` or `validate-handoff.sh`'s `VALID_CHANNELS`. Both now carry all
+  nine values; the accept-fixture `handoff-evidence-channels.json` gained an SC9 using it.
+
 ## [7.35.0] - 2026-09-08
 
 ### Changed — token and speed: bounded tool output, a per-run context pack, parallel batch waves, fewer bookkeeping turns, lighter instruction load

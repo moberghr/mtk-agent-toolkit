@@ -481,6 +481,7 @@ open(sys.argv[1], "w").write(json.dumps({"type": "assistant", "message": {"role"
     "content": [{"type": "text", "text": sys.argv[2]}]}}) + "\n")
 PY
   pl="$(python3 - "$tr" <<'PY'
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
 import json, sys
 print(json.dumps({"hook_event_name": "Stop", "transcript_path": sys.argv[1], "stop_hook_active": False}))
 PY

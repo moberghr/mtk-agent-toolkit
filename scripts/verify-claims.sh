@@ -226,10 +226,10 @@ PY
     for e in "${WEAK_ENTRIES[@]}"; do
       i=$((i + 1))
       [[ $i -gt 5 ]] && break
-      ln=$(printf '%s' "$e" | python3 -c 'import json,sys; print(json.load(sys.stdin)["line"])')
-      reason=$(printf '%s' "$e" | python3 -c 'import json,sys; print(json.load(sys.stdin)["reason"])')
-      anchor=$(printf '%s' "$e" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("anchor","—"))')
-      text=$(printf '%s' "$e" | python3 -c 'import json,sys; t=json.load(sys.stdin)["text"]; print(t[:120].replace("|","\\|"))')
+      ln=$(printf '%s' "$e" | python3 -c 'import json,sys; sys.stdout.reconfigure(newline="\n"); print(json.load(sys.stdin)["line"])')
+      reason=$(printf '%s' "$e" | python3 -c 'import json,sys; sys.stdout.reconfigure(newline="\n"); print(json.load(sys.stdin)["reason"])')
+      anchor=$(printf '%s' "$e" | python3 -c 'import json,sys; sys.stdout.reconfigure(newline="\n"); d=json.load(sys.stdin); print(d.get("anchor","—"))')
+      text=$(printf '%s' "$e" | python3 -c 'import json,sys; sys.stdout.reconfigure(newline="\n"); t=json.load(sys.stdin)["text"]; print(t[:120].replace("|","\\|"))')
       echo "| $i | $ln | \`$anchor\` | $reason | $text |"
     done
   fi

@@ -77,6 +77,7 @@ REPO_ROOT="$(git rev-parse --show-toplevel)"
 # --- Read the manifest as TSV: path <TAB> action -------------------------------
 # A malformed sidecar is an input error, not a silent pass.
 ENTRIES="$(python3 - "$SIDECAR" <<'PY'
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
 import json, sys
 try:
     with open(sys.argv[1]) as fh:

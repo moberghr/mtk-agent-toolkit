@@ -17,7 +17,7 @@ set -euo pipefail
 # PR checkout) while loading pattern packs from the toolkit checkout.
 mtk_realpath() {
   if command -v python3 >/dev/null 2>&1; then
-    python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$1"
+    python3 -c 'import os,sys; sys.stdout.reconfigure(newline="\n"); print(os.path.realpath(sys.argv[1]))' "$1"
     return
   fi
   local p="$1" target

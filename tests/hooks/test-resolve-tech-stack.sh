@@ -29,7 +29,11 @@ FIX="$(mktemp -d)"
 cleanup() { rm -rf "$FIX"; }
 trap cleanup EXIT
 
-mkdir -p "$FIX/.claude" "$FIX/web/.claude" "$FIX/svc"
+# svc/ is deliberately POPULATED: issue #99 showed the map case only passed while
+# the mapped folder was empty (an empty folder gives an unquoted glob nothing to
+# pathname-expand to).
+mkdir -p "$FIX/.claude" "$FIX/web/.claude" "$FIX/svc/Api" "$FIX/svc/Api.Tests"
+: > "$FIX/svc/svc.slnx"
 git -C "$FIX" init -q .
 printf 'dotnet\n'     > "$FIX/.claude/tech-stack"
 printf 'typescript\n' > "$FIX/web/.claude/tech-stack"
@@ -66,6 +70,22 @@ check "MTK_STACK overrides everything" "python" "$OUT"
 
 printf 'svc/*  python\n' > "$FIX/.claude/tech-stack.map"
 run "." "svc";        check "tech-stack.map glob wins over root"   "python"     "$OUT"
+rm -f "$FIX/.claude/tech-stack.map"
+
+# #99: `set -- $line` pathname-expanded the map glob against the cwd, so from a
+# repo root that has svc/, `svc/** python` became `svc/Api svc/Api.Tests svc/svc.slnx
+# python` — the resolver then emitted an ENTRY NAME as the stack and --explain
+# cited that entry instead of the glob written in the file.
+printf 'svc/**  python\n' > "$FIX/.claude/tech-stack.map"
+run "." --explain "svc/Api"
+check "map **: populated subtree resolves the mapped stack" "python" "$OUT"
+case "$ERR" in
+  *"tech-stack.map:svc/**"*) echo "  PASS  map **: --explain cites the glob, not a directory entry" ;;
+  *) echo "  FAIL  map **: --explain should cite tech-stack.map:svc/**, got [$ERR]" >&2
+     FAILS=$((FAILS + 1)) ;;
+esac
+run "." "svc";        check "map **: the mapped folder itself resolves" "python" "$OUT"
+run "." "svc/Api.Tests"; check "map **: sibling entry resolves the mapped stack" "python" "$OUT"
 rm -f "$FIX/.claude/tech-stack.map"
 
 # --- (b) --check silent on match --------------------------------------------

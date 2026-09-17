@@ -47,7 +47,7 @@
           "description": { "type": "string" },
           "verification": { "type": "string" },
           "evidence_channel": {
-            "enum": ["test-run", "build-output", "http-probe", "cli-stdout", "db-state-diff", "browser", "log-capture", "script-output"],
+            "enum": ["test-run", "build-output", "http-probe", "cli-stdout", "db-state-diff", "browser", "smoke-boot", "log-capture", "script-output"],
             "description": "Named evidence channel through which the criterion is verified. Required for new specs; optional for back-compat with existing artifacts."
           },
           "observable": {

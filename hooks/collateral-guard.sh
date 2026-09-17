@@ -119,6 +119,7 @@ git diff "${DIFF_ARGS[@]}" --numstat --no-color -w > "$WS"   2>/dev/null || true
 : > "$DECLARED"
 if [ -n "$MANIFEST" ] && [ -f "$MANIFEST" ] && command -v python3 >/dev/null 2>&1; then
   python3 - "$MANIFEST" > "$DECLARED" <<'PY' || true
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
 import json, sys
 try:
     doc = json.load(open(sys.argv[1]))
@@ -181,6 +182,7 @@ semantic_json_delta() {
   if ! git show "$BASE_REV:$path" > "$old" 2>/dev/null; then rm -f "$old"; printf 'skip'; return; fi
   if [ ! -f "$path" ]; then rm -f "$old"; printf 'skip'; return; fi
   sem="$(python3 - "$old" "$path" <<'PY'
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
 import json, sys, difflib
 try:
     a = json.load(open(sys.argv[1]))

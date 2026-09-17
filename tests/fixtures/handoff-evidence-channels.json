@@ -1,7 +1,7 @@
 {
   "id": "handoff-evidence-channels",
   "fixture_type": "handoff-validation",
-  "description": "SC1 fixture — success_criteria entries carry evidence_channel (all valid) and observable. validate-handoff.sh must accept this and exit 0 (no channel errors).",
+  "description": "SC1 fixture — success_criteria entries carry evidence_channel (all nine taxonomy values, including smoke-boot) and observable. validate-handoff.sh must accept this and exit 0 (no channel errors).",
   "expected_exit": 0,
   "slug": "evidence-channels-test",
   "date": "2026-06-12",
@@ -64,6 +64,13 @@
       "verification": "bash scripts/validate-handoff.sh <fixture>",
       "evidence_channel": "script-output",
       "observable": "stdout contains '## PASS'"
+    },
+    {
+      "id": "SC9",
+      "description": "the built service boots and answers a live request",
+      "verification": "dotnet run then curl :5080/health",
+      "evidence_channel": "smoke-boot",
+      "observable": "process stays up and /health returns 200 within 30s"
     }
   ]
 }

@@ -106,6 +106,7 @@ done <<< "$PR_NUMS"
 
 # Normalize + cluster. Python keeps clustering deterministic and readable.
 RESULT=$(python3 - "$TMPFILE" "$DENYLIST_REGEX" <<'PY'
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
 import json, re, sys
 from collections import defaultdict
 
@@ -195,7 +196,7 @@ echo ""
 echo "Scanned ${#SCANNED_PRS[@]} merged PRs on '${DEFAULT_BRANCH}'."
 echo ""
 
-PHRASE_COUNT=$(echo "$RESULT" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))')
+PHRASE_COUNT=$(echo "$RESULT" | python3 -c 'import json,sys; sys.stdout.reconfigure(newline="\n"); print(len(json.load(sys.stdin)))')
 
 if [[ "$PHRASE_COUNT" -eq 0 ]]; then
   echo "_No repeated reviewer-feedback patterns found (≥2 occurrences across ≥2 PRs)._"

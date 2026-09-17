@@ -133,6 +133,7 @@ check_drift_doc() {
   fi
   local parsed status reason
   parsed="$(python3 - "$rc" "$out" <<'PY'
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
 import json, sys
 rc = int(sys.argv[1])
 raw = sys.argv[2]
@@ -179,6 +180,7 @@ check_claude_md() {
   fi
   local parsed status reason
   parsed="$(python3 - <<'PY'
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
 import glob
 import json
 import os
