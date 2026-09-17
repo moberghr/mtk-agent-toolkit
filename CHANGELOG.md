@@ -127,6 +127,31 @@ use, each reproduced against `main` before fixing.
   `spec-sidecar-manifest.md` and `verification-before-completion` but not to
   `handoff.schema.json` or `validate-handoff.sh`'s `VALID_CHANNELS`. Both now carry all
   nine values; the accept-fixture `handoff-evidence-channels.json` gained an SC9 using it.
+### Fixed — GitHub issues #59 and #60: scope-guard anchored to shipped specs; the "Ran 9 stop hooks" figure explained and audited
+
+- **#59 `scope-guard.sh` anchored to shipped spec sidecars.** The guard picks the
+  freshest `docs/specs/*.json` within 7 days. In a repo that keeps shipped sidecars
+  (this toolkit), that was usually a spec already archived by `spec-archive.sh`, so every
+  unrelated edit was tagged "not in the approved spec (<shipped-slug>)" — and the
+  archive's own `docs/specs/baseline/*.json` snapshot could be picked as the "spec" too
+  (the field warning named `toolkit`, the baseline area, not a slug). Candidates are now
+  taken newest-first from `docs/specs/` only (`-maxdepth 1`), and any whose slug appears
+  in `docs/specs/baseline/*.audit.jsonl` is skipped — the same fixed-string probe
+  `spec-archive.sh` uses for idempotency, without jq (S3.3). New
+  `tests/hooks/test-scope-guard-archived.sh`.
+- **#60 "Stop hooks fire multiple times" — diagnosed, and `mtk-doctor` now shows the
+  arithmetic.** The observed "Ran 9 stop hooks" is 5 Stop entries in the plugin's
+  `hooks/hooks.json` plus 4 in the project's `.claude/settings.json`: registration, not
+  execution. All five plugin Stop hooks already exit early via
+  `mtk_is_redundant_plugin_invocation` when the project wires the same basename.
+  `installed_plugins.json` records one `installPath` per plugin, so the older version
+  directories in the cache are upgrade leftovers rather than extra registrations (Claude
+  Code does not document the loader; this is what the registry on disk shows). Two doctor
+  checks in the ENVIRONMENT section: a PASS line stating `N = P plugin + S project` and
+  that this is the figure the harness reports, with a WARN for any doubly-wired Stop hook
+  that lacks the guard (that one really runs twice); and a WARN naming stale
+  plugin-cache version directories with the installed one and the exact `rm -rf` — it
+  never deletes them itself. New `tests/hooks/test-mtk-doctor-stop-hooks.sh`.
 
 ## [7.35.0] - 2026-09-08
 
