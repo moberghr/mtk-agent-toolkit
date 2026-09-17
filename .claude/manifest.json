@@ -2589,6 +2589,18 @@
       "action": "sync",
       "description": "Hook test for bash consumers of python3 stdout under a Windows-emulating python3 shim (CRLF text layer) \u2014 manifest-preflight, workflow-artifact zero-arg seal, setup-refresh-plan --json (issues #95 #96 #98)"
     },
+    "tests/hooks/test-scope-guard-archived.sh": {
+      "source": "tests/hooks/test-scope-guard-archived.sh",
+      "target": "tests/hooks/test-scope-guard-archived.sh",
+      "action": "sync",
+      "description": "Hook test for scope-guard.sh spec selection \u2014 archived (shipped) sidecars and baseline snapshots never anchor the guard; the active spec is named instead (issue #59)"
+    },
+    "tests/hooks/test-mtk-doctor-stop-hooks.sh": {
+      "source": "tests/hooks/test-mtk-doctor-stop-hooks.sh",
+      "target": "tests/hooks/test-mtk-doctor-stop-hooks.sh",
+      "action": "sync",
+      "description": "Hook test for mtk-doctor Stop-hook registration accounting, the unguarded double-wiring WARN, and the stale plugin-cache-versions WARN (issue #60)"
+    },
     "tests/hooks/test-manifest-preflight.sh": {
       "source": "tests/hooks/test-manifest-preflight.sh",
       "target": "tests/hooks/test-manifest-preflight.sh",
