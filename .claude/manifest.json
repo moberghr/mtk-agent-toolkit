@@ -2583,6 +2583,12 @@
       "action": "sync",
       "description": "Flags churn that is not the change you made: whitespace/EOL-only rewrites, undeclared generated artifacts, and wholesale asset regeneration"
     },
+    "tests/hooks/test-python-crlf-stdout.sh": {
+      "source": "tests/hooks/test-python-crlf-stdout.sh",
+      "target": "tests/hooks/test-python-crlf-stdout.sh",
+      "action": "sync",
+      "description": "Hook test for bash consumers of python3 stdout under a Windows-emulating python3 shim (CRLF text layer) \u2014 manifest-preflight, workflow-artifact zero-arg seal, setup-refresh-plan --json (issues #95 #96 #98)"
+    },
     "tests/hooks/test-manifest-preflight.sh": {
       "source": "tests/hooks/test-manifest-preflight.sh",
       "target": "tests/hooks/test-manifest-preflight.sh",

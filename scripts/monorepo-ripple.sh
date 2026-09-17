@@ -45,6 +45,7 @@ elif [[ -f package.json ]] && grep -q '"workspaces"' package.json; then
   FLAVOR="npm"
   PATTERNS=$(python3 -c '
 import json, sys
+sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
 try:
     d = json.load(open("package.json"))
     ws = d.get("workspaces", [])

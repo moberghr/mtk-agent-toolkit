@@ -140,6 +140,7 @@ check_handoff() {
   local name; name="$(basename "$f")"
   local want
   want="$(python3 - "$f" <<'PY'
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
 import json, sys
 try:
     doc = json.load(open(sys.argv[1]))

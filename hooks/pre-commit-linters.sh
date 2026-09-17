@@ -13,7 +13,7 @@ set -euo pipefail
 # current working directory (the invoking repo) — we deliberately do NOT cd.
 mtk_realpath() {
   if command -v python3 >/dev/null 2>&1; then
-    python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$1"
+    python3 -c 'import os,sys; sys.stdout.reconfigure(newline="\n"); print(os.path.realpath(sys.argv[1]))' "$1"
     return
   fi
   # Fallback: resolve symlinks manually (no readlink -f on stock macOS).

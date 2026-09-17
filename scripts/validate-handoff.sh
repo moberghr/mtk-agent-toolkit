@@ -72,6 +72,7 @@ resolve_base_ref() {
 if [ "$FIELDS_ONLY" -eq 0 ]; then
   _fixture_type="$(python3 -c "
 import json, sys
+sys.stdout.reconfigure(newline='\n')  # LF even on Windows python3: bash parses this output
 try:
     doc = json.load(open(sys.argv[1]))
     ft = doc.get('fixture_type', '')
@@ -180,6 +181,7 @@ fi
 VALID_CHANNELS="test-run build-output http-probe cli-stdout db-state-diff browser smoke-boot log-capture script-output"
 bad_channels=""
 bad_channels="$(python3 - "$HANDOFF" "$VALID_CHANNELS" <<'PY'
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
 import json, sys
 path = sys.argv[1]
 valid = set(sys.argv[2].split())

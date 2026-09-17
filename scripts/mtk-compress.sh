@@ -152,6 +152,7 @@ trap 'rm -f "$DATA_FILE"' EXIT
 printf '%s' "$INPUT" > "$DATA_FILE"
 
 OUTPUT="$(python3 - "$MODE" "$MAX_LOG_LINES" "$MAX_ARRAY_ITEMS" "$DATA_FILE" <<'PY'
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
 import json, re, sys, os
 
 mode = sys.argv[1]

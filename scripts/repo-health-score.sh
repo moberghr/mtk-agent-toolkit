@@ -148,8 +148,8 @@ fi
 MANIFEST=.claude/manifest.json
 PLUGIN=.claude-plugin/plugin.json
 if [[ -f "$MANIFEST" ]] && [[ -f "$PLUGIN" ]]; then
-  MV=$(python3 -c "import json; print(json.load(open('$MANIFEST'))['version'])" 2>/dev/null || echo "?")
-  PV=$(python3 -c "import json; print(json.load(open('$PLUGIN'))['version'])" 2>/dev/null || echo "?")
+  MV=$(python3 -c "import json,sys; sys.stdout.reconfigure(newline='\n'); print(json.load(open('$MANIFEST'))['version'])" 2>/dev/null || echo "?")
+  PV=$(python3 -c "import json,sys; sys.stdout.reconfigure(newline='\n'); print(json.load(open('$PLUGIN'))['version'])" 2>/dev/null || echo "?")
   if [[ "$MV" == "$PV" ]] && [[ "$MV" != "?" ]]; then
     record "7. Manifest versions in sync" "Dev Workflow" "pass" "v$MV"
   else

@@ -450,6 +450,7 @@ cmd_remediation() {
   # score means automated remediation is no longer converging.
   local verdict
   verdict="$(python3 - "${WF_DIR}/${uuid}.json" "$(iso_now)" "$trigger" "$score" "$max_iters" <<'PY'
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
 import json, sys
 path, now, trigger, score, max_iters = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], int(sys.argv[5])
 with open(path) as f: doc = json.load(f)
@@ -507,6 +508,7 @@ cmd_seal() {
   if [ $# -eq 0 ]; then
     local derived
     derived="$(python3 - "${WF_DIR}/${uuid}.json" <<'PY'
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
 import json, sys
 r = json.load(open(sys.argv[1])).get("results", {})
 for k in ("spec_path", "plan_path"):
@@ -516,14 +518,22 @@ for k in ("spec_path", "plan_path"):
 PY
 )"
     if [ -n "$derived" ]; then
-      local _oldifs="$IFS"; IFS='
-'; set -- $derived; IFS="$_oldifs"
+      # Split with `read`, never `set -- $derived`: an unquoted expansion also
+      # pathname-expands (issue #99's class), and a stray CR from a Windows
+      # python3 (issue #96) must not survive into the path.
+      local _p; local -a _paths=()
+      while IFS= read -r _p || [ -n "$_p" ]; do
+        _p="${_p%$'\r'}"
+        [ -n "$_p" ] && _paths+=("$_p")
+      done <<< "$derived"
+      set -- "${_paths[@]}"
     fi
   fi
   [ $# -gt 0 ] || fail "seal requires <path>... or recorded results.spec_path/plan_path on the artifact"
 
   local hash
   hash="$(python3 - "${WF_DIR}/${uuid}.json" "$ROOT_DIR" "$(iso_now)" "$@" <<'PY'
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
 import json, sys, os, hashlib
 artifact, root, now = sys.argv[1], sys.argv[2], sys.argv[3]
 paths = sorted(set(sys.argv[4:]))
@@ -655,6 +665,7 @@ cmd_trap_add() {
 
   local tid
   tid="$(python3 - "${WF_DIR}/${uuid}.json" "$(iso_now)" "$title" "$body" "$phase" "$severity" <<'PY'
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
 import json, sys
 path, now, title, body, phase, severity = sys.argv[1:7]
 with open(path) as f: doc = json.load(f)

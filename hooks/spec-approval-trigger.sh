@@ -64,6 +64,7 @@ esac
 WF_DIR="${REPO_ROOT}/.mtk/workflows"
 if [ -d "$WF_DIR" ] && command -v python3 >/dev/null 2>&1; then
   sealed_uuids="$(python3 - "$WF_DIR" "$REL_PATH" <<'PY'
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
 import json, sys, glob, os
 wf_dir, rel = sys.argv[1], sys.argv[2]
 for jf in glob.glob(os.path.join(wf_dir, "*.json")):
