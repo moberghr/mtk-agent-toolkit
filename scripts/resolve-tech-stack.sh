@@ -157,10 +157,13 @@ if [ -f "$map" ]; then
   [ "$rel" = "$target_dir" ] && rel="."   # target_dir == root
   while IFS= read -r line || [ -n "$line" ]; do
     line="${line%%#*}"                     # strip trailing comment
-    # shellcheck disable=SC2086 # intentional word-split of "<glob> <stack>"
-    set -- $line
-    [ $# -ge 2 ] || continue
-    glob="$1"; st="$2"
+    # Split with `read`, never `set -- $line`: an unquoted expansion also
+    # pathname-expands, so from a repo root that has backend/ the line
+    # `backend/** dotnet` became `backend/Shop.Api backend/Shop.Api.Tests … dotnet`
+    # and an entry name was emitted as the stack (issue #99). `read` only splits.
+    glob=""; st=""
+    read -r glob st _ <<< "$line" || true
+    [ -n "$glob" ] && [ -n "$st" ] || continue
     case "$rel/" in
       $glob|$glob/*) _emit "$st" "tech-stack.map:$glob"; exit 0 ;;
     esac
