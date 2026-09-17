@@ -177,7 +177,7 @@ if [ "$FIELDS_ONLY" -eq 0 ]; then
 fi
 
 # evidence_channel validation: any evidence_channel value present must be from the approved taxonomy.
-VALID_CHANNELS="test-run build-output http-probe cli-stdout db-state-diff browser log-capture script-output"
+VALID_CHANNELS="test-run build-output http-probe cli-stdout db-state-diff browser smoke-boot log-capture script-output"
 bad_channels=""
 bad_channels="$(python3 - "$HANDOFF" "$VALID_CHANNELS" <<'PY'
 import json, sys
