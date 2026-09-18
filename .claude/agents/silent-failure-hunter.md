@@ -128,6 +128,30 @@ another reviewer).
 - **`Maybe.GetOrElse(default)` / `.unwrap_or(default)` / `.OrDefault()`** in
   audited paths — same rule.
 
+### Guards That Bind Only the Declared Caller
+
+A rule enforced for the configured, declared, opted-in caller and skipped for
+everyone else is not enforced — the undeclared caller is **100% of traffic on
+day one**, before any client has configured anything. Check the default path
+first, not last.
+
+- **A validation, clamp, or constraint inside `if (caller.HasX)` / `if
+  (config?.Y != null)` / `when declared` with no `else`** — finding. Ask what
+  an unconfigured, first-run, or anonymous caller gets, and say so in the
+  failure scenario. A 2026-09 field run shipped a "corrupt bound constrains
+  nothing" rule that held for a declared caller and no-opped for an undeclared
+  one; only this lens caught it.
+- **A conditional filter or delta computation whose "nothing matched" and
+  "nothing to send" results are the same value** — finding when the caller
+  cannot tell them apart. The field-run critical was exactly this: an item
+  that gained a requirement entered the delta, was filtered out silently, and
+  the endpoint answered `304 Not Modified` — so clients kept a resource they
+  should have lost, forever.
+- **A new requirement, gate, or permission applied only where the old code
+  already looked** — finding. Grep for the other entry points (the cache path,
+  the conditional-request path, the bulk/batch path, the background job) and
+  name the ones the diff did not touch.
+
 ### Silenced Diagnostics
 
 - **`// eslint-disable …` / `# noqa: …` / `#pragma warning disable …`** without
@@ -154,6 +178,7 @@ pattern shape. Apply in order:
 |------------|-----------|
 | `critical` | Audited path: auth, authorization, money, permissions, audit-log writes, or any path listed in `security-checklist.md` / `domain-finance.md`. |
 | `critical` | Diff turns a previously-loud failure (throw, return Result.Error) into a silent one in any path. |
+| `critical` | A guard, filter, or constraint that binds only the declared/configured caller and no-ops for the default one, where the no-op path grants access, hides a removal, or returns stale state. |
 | `warning`  | Non-audited mutation path (data writes, external API calls with side effects) where the caller cannot distinguish failure from success. |
 | `warning`  | Test-suite erosion (skipped tests, asserting-nothing tests) added in this diff. |
 | `suggestion` | Non-audited read path or render path where absence is plausibly benign but the silence still removes signal. |

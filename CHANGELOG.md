@@ -4,6 +4,51 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Added — encode the skills-since field run: briefs state invariants, commands are quoted, derived files are collateral, the undeclared caller is the default
+
+A 2026-09-18 seven-batch `implement` run landed one critical and nine warnings in a
+single review iteration. Manifest pre-flight (four bad paths rejected before any
+edit), the pre-edit baseline (both stalls proved inherited), and the four-lane
+reviewer fan-out (19 minutes wall-clock; the critical found independently by three
+lanes) all earned their cost. Neither real defect came from the toolkit — both came
+from the brief. These changes move the corrections into the artifacts that generate
+briefs, and take three smaller costs out of the run.
+
+- **A Boundary states an invariant, not a file.** "Don't touch `SkillsDataRepository`"
+  meant "don't add filtering there"; the implementer read it literally and loaded every
+  bundled file on every request to route around it, and the correct fix was two lines in
+  the forbidden file. `planning-and-task-breakdown` now requires the boundary to be
+  written as the behavior that must hold, naming a file only when the file itself is
+  frozen, and flags a bare prohibition as a red flag. The implementer brief gains the
+  matching rule: a boundary you cannot satisfy is `blocked` or a recorded `deviation` —
+  never a silent redesign.
+- **The context pack is the command authority.** A freehand `dotnet ef …
+  --startup-project` in a brief cost a batch a failed run while the correct invocation
+  sat in the stack's data-layer reference. Planning must now quote every verification
+  command from the tech-stack skill or the reference it cites, naming the source, or
+  mark it `[UNVERIFIED]`; the implementer runs the pack's form when a brief disagrees
+  and reports the discrepancy as a trap.
+- **Derived artifacts are collateral, not drift.** `validate-handoff.sh` now sorts
+  undeclared files into machine-written and hand-written — lockfiles, snapshots,
+  generated sources, minified bundles, and any file whose own first lines say it is
+  generated report under a `NOTE:` heading and score nothing, while a hand-written file
+  outside the manifest stays CRITICAL. `spec-drift-detection` and
+  `planning-and-task-breakdown` stop asking planners to enumerate machine output; they
+  name the regenerator instead. Covered by `tests/hooks/test-validate-handoff-derived.sh`.
+- **The undeclared caller is 100% of traffic on day one.** `silent-failure-hunter` gains
+  a "guards that bind only the declared caller" lens and a matching critical severity
+  row — a constraint inside `if (caller.HasX)` with no `else`, a filter whose "nothing
+  matched" and "nothing to send" are the same value, a new requirement applied only
+  where the old code already looked. This lens is what caught the run's critical: an
+  item that gained a requirement entered the delta, was filtered out silently, and the
+  endpoint answered `304`, so clients would have kept gated resources forever.
+- **A red baseline is an environment question first.** About 35 minutes went to an
+  x64-only `protoc` on an arm64 host and a Docker daemon that was not running. Phase 2.9
+  baseline capture now carries a signature table (`bad CPU type`, `Cannot connect to the
+  Docker daemon`, `connection refused`, feed `401`) to read before opening any source,
+  and records the blocker as both a result field and a carried trap so a later phase does
+  not re-diagnose the same machine.
+
 ### Added — encode the six-phase field-run retro: carried trap list, Not-Proved ledger, the analyzer wall, composition gate, lesson-store drift check
 
 A 2026-09-14/15 six-phase port of a financially sensitive billing system, with MTK

@@ -46,6 +46,9 @@ SCOPE — your hard boundary:
   <paste change_manifest>
 - Out of scope (must not be touched):
   <paste out_of_scope>
+- The batch `boundary` above is an INVARIANT — the thing that must stay true when you are done.
+  It is not a maze to route around. If it names a file, honor what the file stands for, not the
+  letter of the sentence.
 
 Rules:
 1. Read before editing. Match local patterns.
@@ -63,6 +66,18 @@ Rules:
 7. Never delete. No `rm`, `git rm`, or overwrite-to-empty — deletion is out of scope for an
    implementer. If a file genuinely must be removed, record it as a `deviation` and let the
    orchestrator decide; never delete a file you did not create in this batch.
+8. Never work around a boundary in silence. If the batch's acceptance cannot be met while
+   honoring the boundary or the scope list, return `status: "blocked"` with the conflict stated,
+   or make the smallest honest edit and record it as a `deviation` — whichever the boundary
+   allows. Do NOT redesign to avoid a named file: a brief that read "don't touch
+   SkillsDataRepository" was honored literally by loading every bundled file on every request,
+   turning a two-line fix into a performance defect (2026-09 field run). A boundary you cannot
+   satisfy is information the orchestrator needs, not a puzzle for you to solve alone.
+9. The context pack is the command authority. Run build/test/format/tooling commands as the pack
+   writes them. If a command pasted into this brief disagrees with the pack or the stack reference
+   it cites, the pack wins — run that one, and report the discrepancy in `traps`. A hand-written
+   `dotnet ef` line naming the wrong `--startup-project` cost a batch a failed run while the
+   correct invocation sat in the stack's data-layer reference (2026-09 field run).
 
 VERIFY — before returning:
 - Run the build command and the relevant test command from the context pack.
