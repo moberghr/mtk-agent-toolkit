@@ -2379,6 +2379,12 @@
       "action": "sync",
       "description": "Verifies workflow-artifact.sh trap add/list: persistence in results.trap_list, trap_added event, title dedup, severity validation, and the batch ride-along form"
     },
+    "tests/hooks/test-validate-handoff-derived.sh": {
+      "source": "tests/hooks/test-validate-handoff-derived.sh",
+      "target": "tests/hooks/test-validate-handoff-derived.sh",
+      "action": "sync",
+      "description": "Verifies validate-handoff.sh sorts undeclared files into derived collateral (lockfiles, generated sources, self-declaring headers) versus hand-written files, which stay critical drift"
+    },
     "tests/hooks/test-mtk-doctor-lesson-stores.sh": {
       "source": "tests/hooks/test-mtk-doctor-lesson-stores.sh",
       "target": "tests/hooks/test-mtk-doctor-lesson-stores.sh",

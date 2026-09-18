@@ -75,6 +75,7 @@ code, a compliance risk in regulated environments; detect divergence before revi
    | Axis | Finding criteria | Confidence band |
    |------|------------------|-----------------|
    | File-list match | File touched that is NOT in change_manifest | 95–100 (deterministic) |
+   | File-list match | Derived artifact touched that is NOT in change_manifest | **not a finding** — see below |
    | File-list match | File declared in change_manifest that was NOT touched | 95–100 |
    | Public contract | Signature added that is NOT in public_contracts | 85–95 |
    | Public contract | Contract declared but not implemented | 90–100 |
@@ -84,6 +85,19 @@ code, a compliance risk in regulated environments; detect divergence before revi
    | Ownership | Touched a slice/module not listed in the spec's declared ownership (cross-slice creep) | 80–90 |
    | Dependency shift | New package, SDK, or external service in the diff that was not declared in the spec's dependency intake | 90–100 |
    | Usage | Public contract removed/renamed but call-sites in other slices weren't updated | 85–95 |
+
+   **Derived artifacts are collateral, not drift.** `validate-handoff.sh` sorts
+   undeclared files into machine-written and hand-written before reporting:
+   lockfiles, snapshots, generated sources (`*.Designer.cs`, `*.g.cs`,
+   `*_pb2.py`, `*.generated.*`), minified bundles, and any file whose own first
+   lines say it is generated land in a `NOTE:` section rather than the CRITICAL
+   one. Do **not** ask the planner to enumerate machine output in the
+   change_manifest — that trains the manifest to list files no human writes, and
+   the one that gets forgotten then reports as drift for a file nobody typed
+   (a 2026-09 field run lost a drift slot to a regenerated `INDEX.md`). What is
+   worth checking is the *regenerator*: confirm the tool that produced them
+   belongs to this change. An undeclared lockfile stays critical via the
+   dependency axis, which reads its contents rather than its path.
 
    **Ownership.** Parse the spec's declared slice/module ownership (from the
    architecture-and-design section or `change_manifest[].path` prefixes) and
@@ -130,7 +144,8 @@ code, a compliance risk in regulated environments; detect divergence before revi
 5. **Emit the schema-conformant output** (markdown table + fenced JSON).
    Drift findings mix with any AI review findings downstream. `severity`
    mapping:
-   - Missing/extra file → `critical` (spec approval didn't cover this code)
+   - Missing/extra file → `critical` (spec approval didn't cover this code),
+     except a derived artifact, which is reported as a note and scores nothing
    - Contract divergence → `critical`
    - Security-impact understated → `critical`
    - Success criterion unmapped → `warning`

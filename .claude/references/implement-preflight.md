@@ -62,6 +62,19 @@ Record the profile (same call) and report it:
 At rigor HIGH or MAX, capture the suite's state *before* any edit, so a failure found later is attributable. Without it, a red test at batch 3 is indistinguishable from a test that was already red, and telling them apart costs a throwaway worktree and an archaeology detour at the worst possible moment.
 
 1. Run the active tech stack skill's build, test, and typecheck commands at the current base commit.
+1a. **A red baseline is an environment question before it is a code question.** The baseline runs at the base commit, so nothing it reports was caused by this change — the only useful next question is whether the machine can build this repo at all. Read the failure for the environment signatures first, and stop the moment one matches; do not start reading source. A 2026-09 field run spent about 35 minutes of a 5-hour run here, on an x64-only `protoc` under an arm64 host with no Rosetta and a Docker daemon that was not running:
+
+   | Signature in the failure | Blocker |
+   |---|---|
+   | `bad CPU type`, `Exec format error`, `cannot execute binary file`, `rosetta` | A toolchain binary built for another architecture. Compare `uname -m` against the binary (`file $(command -v <tool>)`). |
+   | `Cannot connect to the Docker daemon`, `docker: command not found`, testcontainers startup timeout | A required daemon is down. |
+   | `connection refused` / `no such host` on a fixed port or a service name | A dependency the suite expects to be running locally. |
+   | `401`/`403` from a package feed, `NU1301`, `ENOTFOUND registry.` | Credentials or network, not code. |
+
+   Report the blocker, the one command that fixes it, and the fact that it is inherited — then re-run the baseline. Record it in the same call as the baseline itself, both as a result field and as a carried trap so a later phase does not re-diagnose the same machine:
+   `"$WFA" batch "$MTK_WF_UUID" set results.baseline_environment='docker daemon down at first attempt; started, baseline re-run' -- trap add --title "protoc is x64-only on this arm64 host" --body "Install the arm64 build or run the proto step under Rosetta; a native run fails with 'bad CPU type'" --severity high`
+
+   A baseline that is red for **code** reasons is not an environment blocker — it is the pre-existing failure step 3 covers, and it gets named, not fixed.
 2. Record the counts **verbatim from the runner** — never an intention — on the artifact, appended to the test command itself so the figures and the write share one turn (this is the one `set` that also carries `dispatch_capability` and `phase3_path` from the probe above):
    `bash scripts/mtk-verify-run.sh --label baseline-tests -- <test cmd>; "$WFA" set "$MTK_WF_UUID" results.dispatch_capability=available results.baseline='{"commit":"<sha>","build":"0 warnings 0 errors","tests":"702/702","e2e":"160 passed / 3 failed (export-csv)"}'`
 3. **A pre-existing failure is not this run's to fix.** Name it here, and later checkpoints compare against the baseline instead of asserting an absolute. A test red at the base commit and still red is not a regression; a test that was green and is now red is — and only the baseline separates them.

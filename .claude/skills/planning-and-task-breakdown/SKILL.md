@@ -45,9 +45,24 @@ Convert the approved plan into small, executable tasks that can be verified one 
 3. For each task, write:
    - task description
    - acceptance criteria
-   - verification step
+   - **verification step — quoted, not composed.** Copy the build/test/format
+     command verbatim from the active tech-stack skill's `## Build & Test Commands`
+     or the reference section it points at, and cite that source in the batch
+     (`per dotnet/data-layer.md §5.5`). A command written from memory is
+     `[UNVERIFIED]` and must be marked so, because the implementer will run it: a
+     freehand `dotnet ef … --startup-project AIProxy` cost a batch a failed run
+     when the correct invocation was already written down in the stack reference
+     (2026-09 field run).
    - files in scope
-   - **Boundary:** what this task owns and must not leak into (e.g., "handler only — no controller changes")
+   - **Boundary — state the invariant, not the file.** Write what must remain true,
+     not which file must stay shut. A bare file prohibition is a bug generator: a
+     brief saying "don't touch `SkillsDataRepository`" meant "don't add filtering
+     there", but the implementer read it literally and loaded every bundled file on
+     every request to route around it — and the correct fix was two lines in the
+     file the brief had forbidden (2026-09 field run). Write "filtering stays out of
+     the repository layer — it remains a plain data accessor", not "no changes to
+     `Foo.cs`". Name a file only when the file itself is the constraint (a frozen
+     migration, a vendored artifact), and then say why it is frozen.
    - **Depends (mandatory):** the batch ids this batch assumes are complete (e.g., "B1 — needs the entity to exist"). An empty list is a claim of independence and must say why (`depends_rationale: "independent: no shared files, reads no type another batch creates"`). The scheduler runs edge-free batches in the same wave, so a missing edge is a concurrency bug, not a style nit.
    - **Governing constraints:** the Critical Rule / principle ids that constrain
      this batch, cited from the spec's Constitution Check (run
@@ -110,7 +125,7 @@ Convert the approved plan into small, executable tasks that can be verified one 
 
 ## Rules
 
-- Every touched file must already exist in the change manifest.
+- Every hand-written file touched must already exist in the change manifest. **Derived artifacts are the exception** — lockfiles, snapshots, generated sources, and files whose own header says they are generated stay out of it. Name the regenerator in the batch's verification step instead (`then run scripts/build-rule-index.sh`); `validate-handoff.sh` classifies the output as collateral, so an unlisted one is never drift.
 - Every batch must be buildable.
 - Every behavior change must have an associated test task.
 - No task should require changing more than a small handful of files without justification.
@@ -127,6 +142,8 @@ See `.claude/references/workflow-rationalizations.md` for the shared table. Plan
 - `tasks/todo.md` drifting from actual implementation
 - Tasks ordered by convenience rather than dependency
 - Missing Boundary or Depends annotations — without them, task scope is ambiguous
+- A Boundary written as a bare file prohibition with no invariant behind it — the implementer routes around the file instead of honoring the intent
+- A verification command composed from memory rather than quoted from the tech-stack skill or its references
 - Circular dependencies between tasks
 
 ## Verification
@@ -135,6 +152,7 @@ See `.claude/references/workflow-rationalizations.md` for the shared table. Plan
 - [ ] Batches are dependency-ordered; every batch has `depends`, every empty `depends` has a rationale, and no two edge-free batches share a file
 - [ ] Each task has acceptance and verification
 - [ ] Each batch ends with a concrete checkpoint
-- [ ] Each task has Boundary and Depends annotations
+- [ ] Each task has Boundary and Depends annotations, and every Boundary states an invariant (a file name appears only when the file itself is frozen, with the reason)
+- [ ] Every verification command is quoted from the tech-stack skill or a reference it cites, with the source named — or explicitly marked `[UNVERIFIED]`
 - [ ] No circular dependencies exist between tasks
 - [ ] Workflow artifact updated in place (same URL) or gate correctly closed, per `.claude/references/artifact-publishing.md` (step 10.5)
