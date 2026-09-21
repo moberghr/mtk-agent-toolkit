@@ -33,6 +33,40 @@ SCRIPT_ROOT="$(cd "$(dirname "$SELF")/.." && pwd)"
 
 PATTERNS_DIR="$SCRIPT_ROOT/hooks/linter-patterns"
 
+# --- File classification -------------------------------------------------
+# Code-shaped rules (raw-SQL interpolation, float money, console logging) are
+# about what the program DOES. A documentation page that quotes a vulnerable
+# line is describing it, not executing it — flagging that blocks a commit and
+# pressures the author into paraphrasing the doc into something less accurate.
+# Classify each changed file once, and let each pattern pack declare which
+# class it applies to (see mtk_pack_scope below).
+mtk_path_class() {
+  local ext="${1##*/}"
+  case "$ext" in
+    *.*) ext="$(printf '%s' "${ext##*.}" | tr '[:upper:]' '[:lower:]')" ;;
+    *)   ext="" ;;
+  esac
+  case "$ext" in
+    md|mdx|markdown|rst|adoc|asciidoc|txt) printf 'prose\n' ;;
+    *)                                     printf 'code\n' ;;
+  esac
+}
+
+# A pack declares its scope with a header directive:
+#   # scope: code   — skip prose files (default for stack/domain packs)
+#   # scope: prose  — skip code files
+#   # scope: all    — scan everything (secrets, docdrift)
+# Packs with no directive default to `all`, so pre-existing and project-local
+# packs keep their current behavior.
+mtk_pack_scope() {
+  local declared
+  declared="$(sed -n 's/^#[[:space:]]*scope:[[:space:]]*\([a-z]*\).*/\1/p' "$1" | head -1)"
+  case "$declared" in
+    code|prose|all) printf '%s\n' "$declared" ;;
+    *)              printf 'all\n' ;;
+  esac
+}
+
 # --- Options ---
 DIFF_SOURCE="cached"          # cached | head | range
 DIFF_RANGE=""                 # git range expression when DIFF_SOURCE=range
@@ -213,14 +247,24 @@ added_lines > "$ADDED_LINES_CACHE"
 # the string each regex sees is byte-for-byte what it saw before — a `cut -f3-`
 # here would keep leading tabs that `read` coalesces and could shift matches on
 # tab-indented code.
-REC_FILE=(); REC_LINE=(); REC_CONTENT=()
+# REC_CLASS holds each record's file class (code|prose) so a scoped pack can
+# drop its hits on files it does not apply to. Diff records are grouped by
+# file, so caching the last classification keeps this to one call per file
+# rather than one per added line.
+REC_FILE=(); REC_LINE=(); REC_CONTENT=(); REC_CLASS=()
+_last_file=""; _last_class=""
 while IFS=$'\t' read -r file line content; do
+  if [ "$file" != "$_last_file" ]; then
+    _last_file="$file"
+    _last_class="$(mtk_path_class "$file")"
+  fi
   REC_FILE+=("$file"); REC_LINE+=("$line"); REC_CONTENT+=("$content")
+  REC_CLASS+=("$_last_class")
   printf '%s\n' "$content"
 done < "$ADDED_LINES_CACHE" > "$CONTENT_CACHE"
 
 scan_cached() {
-  local rule_id="$1" severity="$2" regex="$3" rationale="$4" fix="$5"
+  local rule_id="$1" severity="$2" regex="$3" rationale="$4" fix="$5" scope="${6:-all}"
   local hits idx file line content fid preview
   # One grep per rule over the whole diff. The old shape ran a `grep` plus a
   # `sed` and a `cut` per added line per rule: at 30 active rules and a
@@ -230,6 +274,11 @@ scan_cached() {
   [ -n "$hits" ] || return 0
   while IFS= read -r idx; do
     [ -n "$idx" ] || continue
+    # Scope filter: a code-scoped pack ignores prose files and vice versa.
+    case "$scope" in
+      code)  [ "${REC_CLASS[idx-1]}" = "prose" ] && continue ;;
+      prose) [ "${REC_CLASS[idx-1]}" = "code" ] && continue ;;
+    esac
     file="${REC_FILE[idx-1]}"
     line="${REC_LINE[idx-1]}"
     content="${REC_CONTENT[idx-1]}"
@@ -241,11 +290,12 @@ scan_cached() {
 }
 
 for pattern_file in "${PATTERN_FILES[@]}"; do
+  pack_scope="$(mtk_pack_scope "$pattern_file")"
   while IFS=$'\t' read -r rule_id severity regex rationale fix; do
     case "$rule_id" in
       \#*|"") continue ;;
     esac
-    scan_cached "$rule_id" "$severity" "$regex" "$rationale" "$fix"
+    scan_cached "$rule_id" "$severity" "$regex" "$rationale" "$fix" "$pack_scope"
   done < "$pattern_file"
 done
 

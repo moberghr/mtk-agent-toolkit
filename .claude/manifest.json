@@ -1626,6 +1626,12 @@
       "action": "sync",
       "description": "F5 test \u2014 docdrift linter pack matches seeded smells and leaves clean docs untouched"
     },
+    "tests/hooks/test-linter-scope.sh": {
+      "source": "tests/hooks/test-linter-scope.sh",
+      "target": "tests/hooks/test-linter-scope.sh",
+      "action": "sync",
+      "description": "Test \u2014 linter pack scoping keeps code rules off prose files while secret rules still scan them"
+    },
     "tests/hooks/test-guard-packs.sh": {
       "source": "tests/hooks/test-guard-packs.sh",
       "target": "tests/hooks/test-guard-packs.sh",

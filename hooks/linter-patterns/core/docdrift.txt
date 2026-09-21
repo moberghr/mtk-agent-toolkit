@@ -1,4 +1,5 @@
 # Docdrift — comment/doc-as-falsifiable-claim smells (heuristic).
+# scope: all — Doc-comments live in code files; prose pages are the other half.
 # Treats documentation and doc-comments as falsifiable statements: absolute
 # reliability claims, empty/placeholder references, and shipped placeholders.
 # Heuristic by design — bash cannot verify a symbol exists or that prose matches

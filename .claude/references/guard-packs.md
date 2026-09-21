@@ -41,6 +41,30 @@ RULE_ID<TAB>SEVERITY<TAB>ERE_REGEX<TAB>RATIONALE<TAB>SUGGESTED_FIX
 - **RATIONALE** — one line: why the pattern is a smell.
 - **SUGGESTED_FIX** — one line: the concrete remedy.
 
+## Pack scope (which files a pack applies to)
+
+A pack may declare, as a header comment, which class of file its rules apply to:
+
+```
+# scope: code    — skip prose files (markdown, rst, adoc, txt)
+# scope: prose   — skip code files
+# scope: all     — scan everything (the default when no directive is present)
+```
+
+Code-shaped rules belong in a `code` pack. A documentation page that *quotes* a
+vulnerable line is describing it, not executing it — firing `RAW-SQL-INTERPOLATED`
+on a wiki page blocks the commit and pressures the author into paraphrasing the
+page into something less accurate, which is a worse outcome than the finding was
+ever worth. All shipped stack and domain packs, plus `slopwatch`, are `scope: code`.
+
+`secrets` and `docdrift` stay `scope: all`: a hardcoded key is a leak wherever it
+is written, and doc-drift smells live in prose and doc-comments alike.
+
+Classification is by extension (`.md`, `.mdx`, `.markdown`, `.rst`, `.adoc`,
+`.asciidoc`, `.txt` are prose; everything else is code), not by directory — so it
+holds regardless of where a repo keeps its wiki. A pack with no directive keeps
+the old scan-everything behavior, so project-local packs are unaffected.
+
 ## Choosing severity
 
 `critical` is reserved for things that are almost always wrong and cheap to confirm
@@ -52,10 +76,11 @@ whole pack disabled.
 ## Authoring & shipping a new pack
 
 1. Write the `.txt` under the right directory (`core/`, `stack-<name>/`, or `domain-<name>/`).
-2. Keep rules **conservative** — a false positive on every commit trains engineers to ignore the pack.
-3. Add a manifest entry (`source`/`target`/`action: sync`/`description`); stack/domain packs may carry a `stack:` field.
-4. Add a test under `tests/hooks/` asserting a seeded smell matches and a clean control line does not (see `test-docdrift-pack.sh`).
-5. Run `bash scripts/validate-toolkit.sh`.
+2. Declare `# scope:` in the header — `code` unless the rules genuinely apply to prose.
+3. Keep rules **conservative** — a false positive on every commit trains engineers to ignore the pack.
+4. Add a manifest entry (`source`/`target`/`action: sync`/`description`); stack/domain packs may carry a `stack:` field.
+5. Add a test under `tests/hooks/` asserting a seeded smell matches and a clean control line does not (see `test-docdrift-pack.sh`).
+6. Run `bash scripts/validate-toolkit.sh`.
 
 ## Relationship to review
 

@@ -1,4 +1,5 @@
 # Finance domain lint patterns. Tab-separated.
+# scope: code — Prose naming a currency or a rate is not a money-handling defect.
 # Active when .claude/domains contains "finance".
 # See .claude/references/domain-finance.md for context.
 FLOAT-MONEY-CS	critical	(float|double)[[:space:]]+(amount|balance|price|fee|cost|total|sum|payment|rate)	Float/double used for monetary value — precision loss risk	Use decimal (C#), Decimal (Python), or a Money value object
