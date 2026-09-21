@@ -108,16 +108,25 @@ done
 # --force is not an escape hatch here — regenerating over the canonical
 # constitution replaces hand-authored rules with a references summary.
 CONST_FILE="$(constitution_file)"
+# The output path is compared by FILE IDENTITY, not by spelling: `./AGENTS.md`,
+# an absolute path, or a symlink to the constitution is the same target as
+# `AGENTS.md`, and a guard that matched the literal string let `--force
+# ./AGENTS.md` overwrite the constitution (PR #108 review). `-ef` needs both
+# sides to exist; a path that does not exist yet cannot be the constitution.
+targets_agents_md() {
+  [ "$OUTPUT_FILE" = "AGENTS.md" ] && return 0
+  [ -e "$OUTPUT_FILE" ] && [ -e AGENTS.md ] && [ "$OUTPUT_FILE" -ef AGENTS.md ]
+}
 if [ "$CONST_FILE" = "AGENTS.md" ]; then
   # An explicit non-default output path is honoured in BOTH branches: the note
   # advertising it would otherwise be inert, and setup-refresh-plan.sh's row-5
   # regeneration-and-diff writes the summary to a temp target exactly this way.
   # Only a write that would land on AGENTS.md itself is declined/refused.
-  if [ "$FORCE" -ne 1 ] && [ "$OUTPUT_FILE" = "AGENTS.md" ]; then
+  if [ "$FORCE" -ne 1 ] && targets_agents_md; then
     echo "generate-agents-md.sh: AGENTS.md is already the canonical constitution (CLAUDE.md is absent or a shim importing it) — nothing to regenerate. To write a legacy-style summary elsewhere, pass an explicit output path."
     exit 0
   fi
-  if [ "$OUTPUT_FILE" = "AGENTS.md" ]; then
+  if targets_agents_md; then
     cat >&2 <<'EOF'
 generate-agents-md.sh: REFUSING --force — AGENTS.md is this repo's canonical constitution
   (CLAUDE.md is absent or a shim importing it). Overwriting it with a generated

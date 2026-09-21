@@ -361,6 +361,21 @@ else
   FAILS+=("(h) expected an explicit AGENTS.md target to keep the decline/refusal. rc2=$rc_h2 rc3=$rc_h3 out2=$out_h2 out3=$out_h3")
 fi
 
+# --- (i) --force ./AGENTS.md and an absolute path are the same protected target ---
+FIXTURE_I="$TMPDIR_FIXTURES/i-force-identity"
+mkdir -p "$FIXTURE_I"
+printf '# Project\n\n## Critical Rules\n\n- **C0.1** hand-authored rule\n\n## Build\n\nmake\n' > "$FIXTURE_I/AGENTS.md"
+printf '# Shim\n\n@AGENTS.md\n' > "$FIXTURE_I/CLAUDE.md"
+before_i="$(cat "$FIXTURE_I/AGENTS.md")"
+echo ""; echo "--- (i) --force with an equivalent output path is refused ---"
+rc_rel=0; (cd "$FIXTURE_I" && bash "$GEN" --force ./AGENTS.md >/dev/null 2>&1) || rc_rel=$?
+rc_abs=0; (cd "$FIXTURE_I" && bash "$GEN" --force "$FIXTURE_I/AGENTS.md" >/dev/null 2>&1) || rc_abs=$?
+if [ "$rc_rel" -eq 1 ] && [ "$rc_abs" -eq 1 ] && [ "$(cat "$FIXTURE_I/AGENTS.md")" = "$before_i" ]; then
+  echo "  PASS  ./AGENTS.md and the absolute path are refused (exit 1) and the constitution is byte-identical"
+else
+  FAILS+=("(i) expected exit 1 for both equivalent paths with AGENTS.md unchanged, got rel=$rc_rel abs=$rc_abs")
+fi
+
 echo ""
 if [ ${#FAILS[@]} -gt 0 ]; then
   printf '  FAIL  %s\n' "${FAILS[@]}" >&2
