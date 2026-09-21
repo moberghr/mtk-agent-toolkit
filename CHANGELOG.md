@@ -4,6 +4,19 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+
+### Verified — multi-harness spike (Codex CLI 0.153.4, OpenCode 1.18.20)
+
+WS0 of `docs/plans/2026-09-21-multi-harness-migration.md`; results in
+`docs/harness-support-matrix.md`. Codex maps its shell to `Bash` and `apply_patch` to
+`Edit|Write` hook matchers (proven by hook counts and by `security-gate.sh` blocking a forced
+push to `main` end to end), loads `"skills": "./.claude/skills"` with non-spec frontmatter keys
+intact, ignores a root `plugin.json`/`mcp.json` beside `.claude-plugin/`, leaves
+`${CLAUDE_PLUGIN_ROOT}` unexpanded in `.mcp.json` (the MTK MCP server is unreachable there),
+has no Read/Grep/Glob tools (so `read-guard.sh` never fires), and pins hook trust per hook at
+install — hooks added by a later update show `Failed` until re-trusted. OpenCode discovers
+`.claude/skills` and `.agents/skills` but not `.claude/agents`; its plugin API can host a hook shim.
+
 ### Fixed — the pre-commit linter no longer treats a documentation page as source
 
 A wiki page under `docs/wiki/` quoted a vulnerable SQL line to explain the injection
