@@ -141,3 +141,53 @@
 **Why:** The gate cannot tell a mention from an execution when the mention sits in a non-read-only segment (`gate "…"`, a heredoc body). That is by design — the fix for false positives is narrower exemptions, not a gate that trusts context it cannot see.
 
 **Applies to:** Any hook whose deny patterns you must reproduce verbatim in code, tests, docs, or commit text.
+
+## 2026-09-21 — Same-wave implementers share one working tree: a gate failure may be another batch's transient
+
+**What happened:** Three W0 implementers ran concurrently in one checkout. One saw `validate-toolkit.sh` fail on a stray fixture another batch had just created and deleted seconds later; another saw a colleague's half-edited files inside its own evidence tree.
+
+**Rule:** When a batch gate fails on a file the batch did not touch, re-run once before treating it as a regression, and confirm with `git stash` if still unclear. Never schedule two batches that touch one file in the same wave.
+
+**Why:** Without per-batch worktrees, verification evidence is computed on a tree that includes other in-flight edits; the plan's file-disjointness guarantee is what keeps that harmless.
+
+**Applies to:** `subagent-implementation` with `MTK_BATCH_WAVE_MAX > 1`.
+
+## 2026-09-21 — validate-handoff sees git renames as R, not D — do not declare rename sources as delete entries
+
+**What happened:** Declaring the five `git mv` source paths as `action: delete` in the sidecar made four of them report as "declared but NOT touched": git `-M` classified them as renames, and only the one below the similarity threshold appeared as a deletion.
+
+**Rule:** For a `git mv`, declare only the destination (`create`) in `change_manifest` and record the rename in its `purpose`; add a `delete` entry only for a source that `git diff --name-status -M` itself reports as `D`.
+
+**Why:** The drift tool's "touched" set is what git reports; declaring paths git does not list turns an accurate rename into a false drift finding.
+
+**Applies to:** Any spec whose plan renames files.
+
+## 2026-09-21 — The approval seal binds the spec markdown — post-approval notes belong in the sidecar, not the spec body
+
+**What happened:** Two clarifying notes appended to the spec `.md` after the gate flipped `verify-seal` to STALE; the run reverted them and kept the notes in the sidecar's `implement.drift_notes`.
+
+**Rule:** After Phase 2.5, treat `docs/specs/<slug>.md` and the plan as read-only. Record drift notes, waivers and review outcomes under the sidecar's `implement.*` fields, which the seal does not bind. Re-seal only on an engineer re-approval.
+
+**Why:** The seal exists so a post-approval edit cannot keep the approval; a note that changes bytes is indistinguishable from a moved goalpost.
+
+**Applies to:** Every `implement` run after `plan_trust_gate` has sealed.
+
+## 2026-09-21 — Never round-trip .claude/manifest.json through json.dump
+
+**What happened:** The manifest mixes literal and `\u`-escaped non-ASCII across entries and has no trailing newline; a `json.load`/`json.dump` edit rewrote ~40 unrelated lines and added a newline, hiding the real change and colliding with concurrent batches' edits.
+
+**Rule:** Edit the manifest as text (Edit tool or `sed` on the specific keys). If python is unavoidable, restore each untouched line's original bytes from `git show HEAD:.claude/manifest.json` and strip the trailing newline; verify with `git diff` showing only the intended keys.
+
+**Why:** A diff that touches 40 lines to change 4 defeats review and makes the concurrent-edit race in a shared tree far more likely.
+
+**Applies to:** Any batch that adds, renames or re-describes manifest entries.
+
+## 2026-09-21 — When a later batch renames what an earlier batch documents, the earlier batch writes the post-rename names
+
+**What happened:** B4 authored `AGENTS.md`'s routing tables a full wave before B5 renamed the two skills they list; nothing later re-touched `AGENTS.md`, so carrying the then-current names would have shipped two dead references. The plan-gap reviewer caught it before the gate.
+
+**Rule:** When batch N documents identifiers that batch N+k renames, state in batch N's acceptance that it writes the post-rename identifiers (or reorder so the documenting batch runs last), and make the stale-reference success criterion match bare mentions, not only paths.
+
+**Why:** Wave order is a dependency graph over files, not over the names inside them; a doc authored early is silently invalidated by a rename it does not depend on.
+
+**Applies to:** `planning-and-task-breakdown` for any change that renames skills, files or commands referenced by hand-written docs.

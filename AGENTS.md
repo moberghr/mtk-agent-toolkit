@@ -137,13 +137,7 @@ loaded automatically when its trigger fires. Both lists, with composition, are i
 
 ### Review Routing (Two-Stage)
 
-**Stage 1 — spec compliance.** `compliance-reviewer` always runs first. An error-handling diff
-(catch/except/`?.`/`??`/eslint-disable/Skip) additionally triggers `silent-failure-hunter` in
-parallel. Critical issues send the work back to be fixed and re-reviewed.
-
-**Stage 2 — quality and coverage.** Only after Stage 1 passes with no Critical issues:
-`test-reviewer` for coverage and assertion quality, `architecture-reviewer` for slice boundaries
-and dependency direction.
+Stage 1 (`compliance-reviewer`, plus `silent-failure-hunter` on error-handling diffs) gates Stage 2 (`test-reviewer`, `architecture-reviewer`); the full procedure, triggers and lane rules are in `.claude/references/agent-routing-guide.md` → *Review Routing (Two-Stage)*.
 
 ### Tech Stack Loading
 

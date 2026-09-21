@@ -18,3 +18,4 @@ alwaysApply: false
 - [ ] No hardcoded secrets, user-specific paths, or API keys in committed files
 - [ ] `bash scripts/validate-toolkit.sh` passes
 - [ ] AGENTS.md routes to any new skills or commands
+- [ ] A script that reads the constitution resolves it via `constitution_file()` (AGENTS.md first, generator-marker aware, shim-aware) and has fixture cases for all four shapes: AGENTS.md-only, shim+AGENTS.md, legacy CLAUDE.md-only, marked AGENTS.md + real CLAUDE.md
