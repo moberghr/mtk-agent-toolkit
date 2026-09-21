@@ -1,12 +1,16 @@
 ---
-description: Root CLAUDE.md generation template emitted by setup-bootstrap STEP 3 — skeleton with skill-routing table, tech-stack and project-profile fields, critical-rules and standards-reference sections
+description: Root AGENTS.md generation template emitted by setup-bootstrap STEP 3 — canonical-constitution skeleton plus the companion CLAUDE.md shim template that imports it
 globs: [".claude/skills/setup-bootstrap/**"]
 alwaysApply: false
 ---
 
-# Root CLAUDE.md Template
+# Root AGENTS.md Template
 
-<!-- Consumed by setup-bootstrap STEP 3. Reproduce the template below, filling the [bracketed] placeholders from the scan/interview. Target 60–80 lines, 120 hard cap; end with the mandatory footer defined in the skill. -->
+<!-- Consumed by setup-bootstrap STEP 3. Reproduce the first template below as AGENTS.md, filling the [bracketed] placeholders from the scan/interview. Target 60–80 lines, 120 hard cap; end with the mandatory footer defined in the skill. Then write the CLAUDE.md shim from the second template. -->
+
+AGENTS.md is the canonical constitution: every harness the team uses reads it, and Claude Code reads it natively. CLAUDE.md is a shim that imports it — no rule text of its own.
+
+## AGENTS.md (canonical constitution)
 
 ````markdown
 # [Project Name] — Engineering Standards
@@ -17,7 +21,8 @@ alwaysApply: false
 > - Architecture principles (`.claude/references/architecture-principles.md`) [or "not found"]
 > - Codebase scan of this repository
 >
-> This file + `.claude/rules/` are the source of truth for AI agents.
+> This file + `.claude/rules/` are the source of truth for AI agents, whichever harness they run in.
+> `CLAUDE.md` is a shim that imports this file.
 > Detailed standards live in `.claude/rules/`. Reference docs live in `.claude/references/`.
 
 ---
@@ -42,7 +47,7 @@ alwaysApply: false
 - **Active stack:** [from `.claude/tech-stack`]
 - **Build command:** [from tech stack skill `## Build & Test Commands`; append `[UNVERIFIED — <reason>]` if STEP 3.5a's verifier reported `failed`]
 - **Test command:** [from tech stack skill `## Build & Test Commands`, list/collect-only variant when one exists (STEP 3.5a); append `[UNVERIFIED — <reason>]` if `failed`]
-- **Format:** [human-readable form of the format command from tech stack skill `## Format Command` — show the manual project-wide form, e.g., `dotnet format --verbosity quiet`, `npx biome format --write <file>`, `ruff format <file>`. The `hooks/format-on-edit.sh` hook pair (PostToolUse queues, Stop `--flush` formats) handles edited-file targeting via stdin JSON; CLAUDE.md is for human readers. Append `[UNVERIFIED — <reason>]` if STEP 3.5a's check-mode verification reported `failed`.]
+- **Format:** [human-readable form of the format command from tech stack skill `## Format Command` — show the manual project-wide form, e.g., `dotnet format --verbosity quiet`, `npx biome format --write <file>`, `ruff format <file>`. The `hooks/format-on-edit.sh` hook pair (PostToolUse queues, Stop `--flush` formats) handles edited-file targeting via stdin JSON; AGENTS.md is for human readers. Append `[UNVERIFIED — <reason>]` if STEP 3.5a's check-mode verification reported `failed`.]
 
 For framework-specific build/test commands and patterns, see the `tech-stack-{stack}` skill (provided by the MTK plugin, not a file in this repo).
 
@@ -127,4 +132,24 @@ How AI agents should write here (prose, code comments, PR text):
 - No per-paragraph summary sentence that restates the paragraph.
 - Back claims with a `file:line` or a command, not "it's worth noting" hedging.
 - Match the surrounding code's naming and comment density; do not over-comment.
+````
+
+## CLAUDE.md (shim)
+
+Write this alongside AGENTS.md whenever no `CLAUDE.md` exists, or when the engineer approves the inversion of an existing one. Keep it to ~20 lines: a heading, the import, one plain-text pointer, and the Claude-Code-only notes. No rule text lives here — a harness reading `AGENTS.md` directly must not miss anything.
+
+**The `@AGENTS.md` import is emitted as a bare line of its own** — not inside backticks, not inside a fenced block. Wrapped in backticks it is inert, and the constitution becomes unreachable from `CLAUDE.md`. The fence below is template syntax only; what lands on disk is the bare line.
+
+````markdown
+# [Project Name] — Engineering Standards
+
+@AGENTS.md
+
+The project constitution lives in AGENTS.md — read that file. This one only imports it.
+
+## Claude Code only
+
+- `.claude/rules/*.md` are auto-loaded by Claude Code; other harnesses must read them explicitly.
+- Keep every rule in AGENTS.md, never here: the default `claude-md-or-agents-md` mode reads this file and ignores AGENTS.md entirely — the bare `@AGENTS.md` import above is what makes it reachable — while `claude-md-and-agents-md` loads both and de-duplicates the imported file. Rule text placed in this shim is therefore duplicated in one mode and lost in the other.
+- MTK ships as a Claude Code plugin — upgrade through the plugin manager, not from this repo.
 ````

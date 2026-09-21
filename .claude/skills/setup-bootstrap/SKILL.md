@@ -1,6 +1,6 @@
 ---
 name: setup-bootstrap
-description: One-time repo setup that detects tech stack, audits the codebase, pulls coding guidelines, and generates a project-specific CLAUDE.md
+description: One-time repo setup that detects tech stack, audits the codebase, pulls coding guidelines, and generates a project-specific AGENTS.md plus a CLAUDE.md shim
 type: skill
 user-invocable: false
 ---
@@ -9,14 +9,14 @@ user-invocable: false
 
 ## MTK File Resolution
 
-Resolve MTK skill/reference/script paths per `.claude/references/mtk-file-resolution.md` unless the router already stated `MTK_ROOT=<path>` this session; `CLAUDE.md`, `.claude/tech-stack`, `.claude/rules/`, `tasks/`, `docs/`, `.mtk/` stay project-relative.
+Resolve MTK skill/reference/script paths per `.claude/references/mtk-file-resolution.md` unless the router already stated `MTK_ROOT=<path>` this session; `AGENTS.md`, `CLAUDE.md`, `.claude/tech-stack`, `.claude/rules/`, `tasks/`, `docs/`, `.mtk/` stay project-relative.
 
 **Companion files:** several steps below defer detail to `.claude/references/*.md` companions, resolved via the block above. If a companion cannot be resolved at read time, stop the affected step and report the missing file path — do not reconstruct its content from memory.
 
 ---
 
 You are setting up a repository for the `/mtk` workflows.
-Your job is to detect the tech stack, audit the codebase, and generate a tailored `CLAUDE.md` that the implementation and review agents will use as their source of truth.
+Your job is to detect the tech stack, audit the codebase, and generate a tailored `AGENTS.md` — the canonical constitution every harness reads — plus the `CLAUDE.md` shim that imports it, which the implementation and review agents will use as their source of truth.
 
 This bootstrap also prepares the repo for the shared skill layer and OpenCode routing.
 
@@ -24,21 +24,21 @@ This bootstrap also prepares the repo for the shared skill layer and OpenCode ro
 
 Parse arguments before starting:
 
-- **`--preview`** — run detection, scan, and interview, then **show the proposed CLAUDE.md + rules files diff** and ask for confirmation via `AskUserQuestion` before writing anything. Use this when the engineer wants to review before commit. Without `--preview`, the bootstrap writes files directly (merge mode is still the default for existing CLAUDE.md).
+- **`--preview`** — run detection, scan, and interview, then **show the proposed AGENTS.md + CLAUDE.md shim + rules files diff** and ask for confirmation via `AskUserQuestion` before writing anything. Use this when the engineer wants to review before commit. Without `--preview`, the bootstrap writes files directly (merge mode is still the default for an existing constitution).
 - **`--non-interactive`** — skip the post-scan interview (STEP 2.5). Use when scripting the bootstrap or when the engineer has no time for questions. Defaults to interactive.
-- **`--no-verify-commands`** — skip STEP 3.5a's "Command verification" subsection entirely: no build/test/format commands are executed, and CLAUDE.md's Tech Stack section is written with no `<!-- verified: ... -->` stamp and no `[UNVERIFIED]` annotations. Use on a slow or sandboxed runner where executing the repo's build is undesirable. Noted in the STEP 5 report (`Command verification: skipped via --no-verify-commands`).
+- **`--no-verify-commands`** — skip STEP 3.5a's "Command verification" subsection entirely: no build/test/format commands are executed, and AGENTS.md's Tech Stack section is written with no `<!-- verified: ... -->` stamp and no `[UNVERIFIED]` annotations. Use on a slow or sandboxed runner where executing the repo's build is undesirable. Noted in the STEP 5 report (`Command verification: skipped via --no-verify-commands`).
 
 All three flags can combine, e.g. `--preview --non-interactive --no-verify-commands` runs silently, skips command verification, and still asks to confirm writes.
 
 ## Research-backed constraints (read this first)
 
-The content you generate is subject to an **instruction budget** — Claude's compliance with CLAUDE.md rules degrades uniformly past ~150 total instructions (Anthropic's system prompt already consumes ~50). The ETH Zurich benchmark across 1,188 runs showed LLM-generated CLAUDE.md files performed *worst*. Anthropic's own cookbook CLAUDE.md is ~80 lines. HumanLayer's production file is <60 lines. Boris Cherny (Claude Code creator) uses ~100.
+The content you generate is subject to an **instruction budget** — compliance with constitution rules degrades uniformly past ~150 total instructions (Anthropic's system prompt already consumes ~50). The ETH Zurich benchmark across 1,188 runs showed LLM-generated CLAUDE.md files performed *worst*. Anthropic's own cookbook CLAUDE.md is ~80 lines. HumanLayer's production file is <60 lines. Boris Cherny (Claude Code creator) uses ~100.
 
 **Therefore:**
 
-1. **Root CLAUDE.md target: 60–80 lines. Hard cap: 120 lines.** If you can't get under 120, something belongs in `.claude/rules/` or a hook, not CLAUDE.md.
+1. **Root AGENTS.md target: 60–80 lines. Hard cap: 120 lines.** If you can't get under 120, something belongs in `.claude/rules/` or a hook, not AGENTS.md. The `CLAUDE.md` shim gets its own cap: ~20 lines, and no rule text at all.
 2. **Trigger-action rules with the reason attached.** Prefer `When X, do Y — because Z` over bare `Always follow X`. Describe the wanted behavior rather than enumerating failures, and write prohibitions only for constraints the codebase actually enforces (the counter-example gate in STEP 3 decides which). Do not add `IMPORTANT:` / `YOU MUST` markers: current models weight the system prompt closely, so the markers cause over-triggering and rigid behavior instead of compliance.
-3. **Mechanize what you can.** If a rule can live in a hook or `settings.json` deny-list, put it there and do NOT duplicate in CLAUDE.md.
+3. **Mechanize what you can.** If a rule can live in a hook or `settings.json` deny-list, put it there and do NOT duplicate in AGENTS.md.
 4. **No aspirational rules.** Every rule must come from an actual pattern or actual failure mode in this codebase. If you're inventing it, drop it.
 5. **No list-of-everything.** Omit rules Claude can figure out from reading the code (e.g., "use async/await" in a JS project).
 
@@ -232,7 +232,7 @@ The question set, adaptive-ambiguity protocol, answer routing, and `setup-answer
 - **`--non-interactive` + file exists:** reuse the persisted answers silently — skip asking, and print a notice: `ℹ️ Reusing persisted interview answers from .claude/setup-answers.json (--non-interactive).`
 - **`--non-interactive` + no file:** skip this entire step and print the existing notice:
   ```
-  ⚠️ Interview skipped. CLAUDE.md will be auto-detected only — consider running without --non-interactive for better team-specific rules.
+  ⚠️ Interview skipped. AGENTS.md will be auto-detected only — consider running without --non-interactive for better team-specific rules.
   ```
 
 ## STEP 2.7: Ingest Existing AI-Assistant Configs
@@ -241,31 +241,40 @@ Repos migrating to MTK often already carry AI-assistant configuration from other
 
 The detection list, evidence-anchor convention, and dedup/conflict rules live in **`.claude/references/config-ingestion.md`**. Read it now and follow it. Report `Ingested AI configs: [list of source paths, or "none found"]` in STEP 5.
 
-## STEP 3: Generate CLAUDE.md + Rules Files
+## STEP 3: Generate AGENTS.md + CLAUDE.md shim + Rules Files
+
+`AGENTS.md` is the canonical constitution — Claude Code reads it natively and every other harness the team uses (Codex, Cursor, Copilot, Windsurf, OpenCode) reads it too. `CLAUDE.md` is a shim that imports it. Rule text lives in exactly one file, so there is no per-tool copy to drift.
 
 The generated output follows Claude Code best practices:
-- **Root `CLAUDE.md`** target **60–80 lines**, hard cap **120 lines** (see Research-backed constraints above for the why) — every line must earn its place.
+- **Root `AGENTS.md`** target **60–80 lines**, hard cap **120 lines** (see Research-backed constraints above for the why) — every line must earn its place.
+- **Root `CLAUDE.md`** is the shim: ~20 lines, no rule text of its own.
 - **`.claude/rules/*.md`** files hold detailed, topic-specific rules (auto-loaded by Claude Code)
 - **`.claude/references/`** files are read on-demand by skills and agents (not duplicated)
-- **Hooks / `settings.json` deny-list** handle anything mechanically enforceable (formatting, secret scanning, banned commands) — do NOT duplicate those rules in CLAUDE.md.
+- **Hooks / `settings.json` deny-list** handle anything mechanically enforceable (formatting, secret scanning, banned commands) — do NOT duplicate those rules in AGENTS.md.
 
-### If CLAUDE.md does NOT exist → Generate from scratch
+### If neither AGENTS.md nor CLAUDE.md exists → Generate from scratch
 
-Create `CLAUDE.md` and `.claude/rules/` files following the templates below.
+Write `AGENTS.md` from the template, write the `CLAUDE.md` shim from the same reference's second block, and generate the `.claude/rules/` files.
 
-### If CLAUDE.md ALREADY exists → Merge mode (default)
+### If AGENTS.md already exists → preserve it
 
-1. Read the existing CLAUDE.md and check if `.claude/rules/` exists
-2. **If monolithic CLAUDE.md (>200 lines, contains full rule sections):**
+A hand-curated `AGENTS.md` (one with no `<!-- mtk-setup` stamp) is **preserved untouched** — report it under "Preserved hand-authored files". Write the `CLAUDE.md` shim only if `CLAUDE.md` is absent; if a `CLAUDE.md` already exists beside it, leave both alone and name the pair in the STEP 5 report so the engineer decides which is canonical. An `AGENTS.md` carrying the `<!-- mtk-setup` stamp is MTK-owned and goes through merge mode below.
+
+### If an MTK-owned constitution already exists (a `<!-- mtk-setup`-stamped AGENTS.md, or any existing CLAUDE.md) → Merge mode (default)
+
+0. **Stamped `AGENTS.md` and no `CLAUDE.md`.** The repo is already inverted and MTK-owned: write the `CLAUDE.md` shim (below), leave `AGENTS.md` alone, and propose nothing else in this step. Report it as `shim written; AGENTS.md preserved` in STEP 5. Merge-diff handling of the stamped `AGENTS.md` itself belongs to item 4.
+1. Read the existing constitution (`AGENTS.md` when it is the stamped one, otherwise `CLAUDE.md`) and check if `.claude/rules/` exists
+2. **Inversion migration.** If the existing `CLAUDE.md` is constitution-shaped (it holds a `## Critical Rules` section) and has **no** line matching `^@AGENTS\.md`, and no hand-curated `AGENTS.md` exists, the repo predates the inversion. **Propose** the migration — move the `CLAUDE.md` body to `AGENTS.md`, replace `CLAUDE.md` with the shim — as a regen-diff proposal per **`.claude/references/regen-diff-contract.md`**, and do not rewrite either file without approval. Under `--non-interactive` the proposal is deferred to NEEDS REVIEW, never auto-applied. Silently rewriting a repo's constitution is never an outcome of this step.
+3. **If monolithic constitution (>200 lines, contains full rule sections):**
    - Extract each section into the corresponding `.claude/rules/` file
-   - Replace CLAUDE.md with the lean template, preserving project-specific content
-3. **If lean CLAUDE.md + `.claude/rules/` already exists:** classify and resolve each regenerated file (`CLAUDE.md`, each `.claude/rules/*.md`) per **`.claude/references/regen-diff-contract.md`** — read it now and follow §2 (classification against the `.claude/.mtk-cache/` ancestor), §3/§3a (per-hunk proposals; no-ancestor → additive-only), §4 (cache rule), and §6 (invariants: gate not skippable, non-interactive defers to NEEDS REVIEW, deletion never an outcome). Do not restate the contract's rules here; report per-file RESULT values and Needs review items in the STEP 5 report.
+   - Replace the constitution body with the lean template, preserving project-specific content (through the inversion proposal above when the body still lives in `CLAUDE.md`)
+4. **If lean constitution + `.claude/rules/` already exists:** classify and resolve each regenerated file (`AGENTS.md`, the `CLAUDE.md` shim, each `.claude/rules/*.md`) per **`.claude/references/regen-diff-contract.md`** — read it now and follow §2 (classification against the `.claude/.mtk-cache/` ancestor), §3/§3a (per-hunk proposals; no-ancestor → additive-only), §4 (cache rule), and §6 (invariants: gate not skippable, non-interactive defers to NEEDS REVIEW, deletion never an outcome). Do not restate the contract's rules here; report per-file RESULT values and Needs review items in the STEP 5 report.
 
-### Root CLAUDE.md Template
+### Root AGENTS.md Template
 
 **Target: 60–80 lines. Hard cap: 120 lines.** If it's longer, move detail to `.claude/rules/` or delete speculative rules entirely. Count before finishing.
 
-**Mandatory footer** at end of CLAUDE.md (HTML comment — invisible to humans reading markdown, but required for `--audit` re-runs and compliance audits):
+**Mandatory footer** at end of AGENTS.md (HTML comment — invisible to humans reading markdown, but required for `--audit` re-runs and compliance audits):
 
 ```html
 <!-- mtk-setup: v{MANIFEST_VERSION}
@@ -275,7 +284,11 @@ Create `CLAUDE.md` and `.claude/rules/` files following the templates below.
 
 Resolve `{MANIFEST_VERSION}` and `{MANIFEST_SHA}` from `.claude/manifest.json`. `{ISO8601_UTC_NOW}` is `date -u +%Y-%m-%dT%H:%M:%SZ`.
 
-The literal CLAUDE.md template lives in **`.claude/references/root-claude-md-template.md`** — read it now, then reproduce it filling the [bracketed] placeholders from the scan/interview. It targets 60–80 lines (120 hard cap) and ends with the mandatory footer shown above.
+The literal AGENTS.md template lives in **`.claude/references/root-agents-md-template.md`** — read it now, then reproduce its first block filling the [bracketed] placeholders from the scan/interview. It targets 60–80 lines (120 hard cap) and ends with the mandatory footer shown above.
+
+### CLAUDE.md shim
+
+The same reference's second block is the shim. Reproduce it as `CLAUDE.md`: ~20 lines — heading, the import, one plain-text pointer line for a harness that reads the file literally, and the `## Claude Code only` notes. **Emit the `@AGENTS.md` import as a bare line of its own**, never inside backticks or a fence: wrapped, the import is inert and the constitution is unreachable from `CLAUDE.md`. Put no rule text in the shim. Claude Code's default `instructionFiles` mode, `claude-md-or-agents-md`, reads `CLAUDE.md` and ignores `AGENTS.md` whenever a `CLAUDE.md` exists in cwd or above — the bare `@AGENTS.md` import is the only thing that makes the constitution reachable — while `claude-md-and-agents-md` loads both and de-duplicates the imported file. Rule text written into the shim is therefore duplicated under one mode and lost under the other.
 
 ### .claude/rules/ File Templates
 
@@ -305,7 +318,7 @@ axes:
 
 - `paths` is the load-bearing field — derive the globs from the directories the
   rule's own §sections cite. A rule with no defensible glob is a rule with no
-  defensible scope: fold it into `CLAUDE.md` or drop it.
+  defensible scope: fold it into `AGENTS.md` or drop it.
 - A repo-wide rule (`security.md` often is) may use `"**"` — but state why in a
   comment, because it re-enters the always-on budget it was meant to escape.
 - Cross-check after generating: a rule whose globs match nothing in the repo is
@@ -337,12 +350,12 @@ The rule file templates are largely the same as before — adapt the content per
 
 Before writing files (or presenting preview), validate every concrete directory, project, and file claim in ALL generated content. This prevents stale references from appearing when bootstrap runs alongside cleanup or when solution files reference deleted projects.
 
-**Scope:** Verify claims in ALL generated files — `CLAUDE.md`, `.claude/references/architecture-principles.md`, every `.claude/rules/*.md`, and (if monorepo) every per-package `CLAUDE.md`.
+**Scope:** Verify claims in ALL generated files — `AGENTS.md`, `.claude/references/architecture-principles.md`, every `.claude/rules/*.md`, and (if monorepo) every per-package `CLAUDE.md`. The `CLAUDE.md` shim carries no claims of its own, so it needs no pass.
 
 **Verification procedure:** run `scripts/verify-references.sh` over every generated doc. It performs four mechanical checks — path/directory claims (only backtick-spanned path tokens, resolved against root, `src/`, and the git index to avoid prose false positives), `.csproj` project-file existence, an informational framework/version dump for cross-checking, and solution-membership vs disk reality — and prints `STALE …` lines (exit 3 if any found, 0 if clean). Rules files are passed in, which also covers their project/dir proper-noun references.
 
 ```bash
-bash scripts/verify-references.sh CLAUDE.md \
+bash scripts/verify-references.sh AGENTS.md \
   .claude/references/architecture-principles.md .claude/rules/*.md
 # (if monorepo) also pass each per-package CLAUDE.md
 ```
@@ -355,11 +368,11 @@ bash scripts/verify-references.sh CLAUDE.md \
 - If a solution references a project that doesn't exist on disk → note the stale solution entry but do NOT modify the `.sln` file.
 - Re-run this check after any file deletions or renames in the same session.
 
-**Rule:** Never infer disk presence from solution membership, package manifests, or lock files alone. The `test -d` / `test -f` check is the source of truth. The generated content must reflect the repository state AT THE TIME OF WRITING, not at the time of scanning. **Claim-level grounding (MANDATORY):** after writing each generated doc, run `bash scripts/verify-claims.sh <file>` and apply `.claude/references/audit-grounding.md` (rule tags `[ENFORCED]/[CONVENTION]/[ASPIRATIONAL]`, `<!-- mtk-stamp -->` footer on CLAUDE.md, zero-hit downgrades, transient-state and terminology flags, paste-ready weak-claims report).
+**Rule:** Never infer disk presence from solution membership, package manifests, or lock files alone. The `test -d` / `test -f` check is the source of truth. The generated content must reflect the repository state AT THE TIME OF WRITING, not at the time of scanning. **Claim-level grounding (MANDATORY):** after writing each generated doc, run `bash scripts/verify-claims.sh <file>` and apply `.claude/references/audit-grounding.md` (rule tags `[ENFORCED]/[CONVENTION]/[ASPIRATIONAL]`, `<!-- mtk-stamp -->` footer on AGENTS.md, zero-hit downgrades, transient-state and terminology flags, paste-ready weak-claims report).
 
 ### Command verification (F7)
 
-Unless `--no-verify-commands` was passed (see `## Modes`), verify the exact commands you are about to publish in the Tech Stack section **before** writing CLAUDE.md. Command assembly (build/test/format), the `verify-commands.sh` invocation, and outcome handling — including the fourth branch for when the verifier itself is missing or returns non-JSON — live in **`.claude/references/command-verification.md`**. Read it now and follow it before writing the Tech Stack section.
+Unless `--no-verify-commands` was passed (see `## Modes`), verify the exact commands you are about to publish in the Tech Stack section **before** writing AGENTS.md. Command assembly (build/test/format), the `verify-commands.sh` invocation, and outcome handling — including the fourth branch for when the verifier itself is missing or returns non-JSON — live in **`.claude/references/command-verification.md`**. Read it now and follow it before writing the Tech Stack section.
 
 Report line reminder: note the outcome (`N verified, N unverified, N skipped`, or `skipped via --no-verify-commands` / `skipped — verify-commands.sh not found`) in the STEP 5 report.
 
@@ -367,7 +380,7 @@ Report line reminder: note the outcome (`N verified, N unverified, N skipped`, o
 
 If the engineer passed `--preview`, **do not write any files yet**. The plan-summary table, the ASCII example, and the `AskUserQuestion` confirmation flow live in **`.claude/references/preview-gate.md`**. Read it now and follow it.
 
-**Unconditional (fires even without `--preview`):** compute the lines/tokens table and enforce the 120-line CLAUDE.md ceiling regardless of mode. If CLAUDE.md exceeds 120 lines, refuse to proceed — print "Generated CLAUDE.md exceeds 120 lines — move <section> to .claude/rules/<name>.md" and abort. Without `--preview`, only the confirmation prompt is skipped; the ceiling check always runs.
+**Unconditional (fires even without `--preview`):** compute the lines/tokens table and enforce the 120-line AGENTS.md ceiling regardless of mode. If AGENTS.md exceeds 120 lines, refuse to proceed — print "Generated AGENTS.md exceeds 120 lines — move <section> to .claude/rules/<name>.md" and abort. Check the shim too: a `CLAUDE.md` over ~20 lines, or one holding rule text instead of the bare `@AGENTS.md` import plus the Claude-Code-only notes, is the same failure and aborts the same way. Without `--preview`, only the confirmation prompt is skipped; the ceiling check always runs.
 
 ## STEP 3.5c: Secret Scan Gate (always)
 
@@ -517,11 +530,11 @@ The report template lives in **`.claude/references/bootstrap-report.md`**. Read 
 
 ## Bootstrap invariants
 - Create `.claude/references/` and `.claude/rules/` directories if they don't exist
-- **Default to merge mode** when CLAUDE.md already exists — don't ask overwrite/merge/abort
-- If existing CLAUDE.md is monolithic (>200 lines), migrate to lean structure automatically
-- If CLAUDE.md doesn't exist, generate from scratch without asking
+- **Default to merge mode** when a constitution already exists — don't ask overwrite/merge/abort
+- If the existing constitution is monolithic (>200 lines), migrate to lean structure automatically — through the STEP 3 inversion proposal when the body still lives in `CLAUDE.md`
+- If neither `AGENTS.md` nor `CLAUDE.md` exists, generate both from scratch without asking; a hand-curated `AGENTS.md` is preserved untouched
 - The generated files should be committed to the repo
-- **Count CLAUDE.md lines before finishing.** Target 60–80. If over 120, move content to rules files or delete speculative rules.
+- **Count AGENTS.md lines before finishing.** Target 60–80. If over 120, move content to rules files or delete speculative rules. The `CLAUDE.md` shim stays at ~20 lines and holds no rules of its own.
 - **Per-package / nested CLAUDE.md files are never overwritten OR deleted** — at any path other than root, monorepo or not. If one already exists, skip it and report it as preserved. These may be hand-authored. See the File Preservation Policy: bootstrap never `git rm`s a file it did not generate.
 - **Per-package files must be small (15–30 lines) and contain only the local delta.** If a package has no notable delta, generate the 5-line stub pointing to root.
 - The `.claude/tech-stack` file is critical — every skill reads it. Make sure it's written before reporting completion.

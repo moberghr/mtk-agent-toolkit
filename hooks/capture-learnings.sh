@@ -110,7 +110,7 @@ if [ -f "$LESSONS_FILE" ] && [ -s "$LESSONS_FILE" ]; then
 
     if [ -n "$REPEATED" ]; then
       KEYWORDS=$(echo "$REPEATED" | tr '\n' ', ' | sed 's/, $//')
-      append_advisory "PROMOTION CANDIDATE: ${LESSON_COUNT} lessons in tasks/lessons.md with recurring themes: ${KEYWORDS}. Consider promoting the pattern to a permanent rule in CLAUDE.md or .claude/rules/. Repeated corrections that stay in lessons.md don't compound — they just accumulate."
+      append_advisory "PROMOTION CANDIDATE: ${LESSON_COUNT} lessons in tasks/lessons.md with recurring themes: ${KEYWORDS}. Consider promoting the pattern to a permanent rule in AGENTS.md (or CLAUDE.md) or .claude/rules/. Repeated corrections that stay in lessons.md don't compound — they just accumulate."
     fi
   fi
 fi

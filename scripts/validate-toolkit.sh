@@ -314,7 +314,15 @@ grep -q 'docs/skill-anatomy.md' CONTRIBUTING.md || fail "CONTRIBUTING does not p
 grep -q 'tech-stack' README.md || fail "README does not mention the tech stack architecture"
 grep -q 'context-engineering' AGENTS.md || fail "AGENTS.md does not route context-engineering"
 
+# AGENTS.md is the canonical constitution; CLAUDE.md is only the shim that imports it.
+if [ -f "CLAUDE.md" ]; then
+  grep -q '^@AGENTS\.md' CLAUDE.md || fail "CLAUDE.md does not import AGENTS.md — the shim needs a bare '@AGENTS.md' line (not in backticks or a fence), since AGENTS.md is the canonical constitution."
+fi
+
 # Token budget enforcement: prevent context bloat
+agents_lines="$(wc -l < AGENTS.md)"
+[ "$agents_lines" -le 200 ] || fail "AGENTS.md exceeds 200-line budget ($agents_lines lines). Move detail to .claude/rules/ or .claude/references/agent-routing-guide.md"
+
 if [ -f "CLAUDE.md" ]; then
   claude_lines="$(wc -l < CLAUDE.md)"
   [ "$claude_lines" -le 200 ] || fail "CLAUDE.md exceeds 200-line budget ($claude_lines lines). Move detail to .claude/rules/"

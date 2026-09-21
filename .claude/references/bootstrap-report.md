@@ -25,7 +25,8 @@ Standards sources:
 
 Generated/Updated:
   ✓ .claude/tech-stack: [stack]
-  ✓ CLAUDE.md ([N] lines — under 120 ✓)
+  ✓ AGENTS.md ([N] lines — under 120 ✓)
+  ✓ CLAUDE.md — shim present (@AGENTS.md import, [N] lines) [or ⚠️ inversion proposed — see Needs review]
   ✓ .claude/rules/ — [N] rule files generated
   ✓ .claude/references/pre-commit-review-list.md — [generated with N items | already exists, skipped]
   ✓ .claude/references/product.md — [generated | preserved (existing)]
@@ -59,7 +60,7 @@ Skills available:
   /mtk fix <description> — Quick fix (1-3 files)
   /mtk review before commit — Fast security-focused review of staged changes
   /mtk-setup --audit     — Re-run architecture audit
-Keep CLAUDE.md fresh: press # mid-session to append a learning instantly; run claude-md-capture at session end to propose session learnings as diffs (personal notes → .claude.local.md).
+Keep AGENTS.md fresh: press # mid-session to append a learning instantly; run instructions-capture at session end to propose session learnings as diffs (personal notes → .claude.local.md).
 Next: Try it with:
   /mtk Add [your feature description here]
 ```

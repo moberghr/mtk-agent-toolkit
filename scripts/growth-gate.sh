@@ -5,7 +5,7 @@ set -euo pipefail
 #
 # Absolute budgets (line caps, description budgets) catch a file that got too
 # big; nothing catches a file that gets 5% bigger on every suggest-only pass
-# (lesson-refresh, claude-md-capture, promote-lesson) until the absolute cap
+# (lesson-refresh, instructions-capture, promote-lesson) until the absolute cap
 # finally trips. This gate refuses a proposed rewrite that grows the artifact
 # by more than --max-pct relative to the current version — always-loaded
 # context should stay flat, not ratchet.

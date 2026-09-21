@@ -51,7 +51,29 @@ fi
 claude_chars=0;  [ -f CLAUDE.md ] && claude_chars=$(wc -c < CLAUDE.md | tr -d ' ')
 index_chars=0;   [ -f .claude/rules/INDEX.md ] && index_chars=$(wc -c < .claude/rules/INDEX.md | tr -d ' ')
 
-alwayson_chars=$(( desc_chars + agent_desc_chars + claude_chars + index_chars ))
+# AGENTS.md counts toward the always-on floor only when it is actually loaded.
+# Claude Code's default `claude-md-or-agents-md` mode reads CLAUDE.md alone and
+# ignores AGENTS.md whenever a CLAUDE.md exists — the bare `@AGENTS.md` import
+# in the shim is what pulls it in. So AGENTS.md is counted when CLAUDE.md is
+# absent, or when CLAUDE.md imports it; a legacy repo with a real CLAUDE.md
+# constitution beside a generator-summary AGENTS.md pays nothing for the
+# latter, and reports exactly what it reported before the inversion.
+#
+# This is the LOADED rule, deliberately NOT constitution_file()'s CANONICAL rule:
+# the generator-marker clause there answers "which file holds the rules", while
+# this answers "which bytes enter every session". A generator-marked AGENTS.md
+# that CLAUDE.md imports is still read by the model, so it is still counted —
+# the marker must not subtract real context cost from the report.
+agents_chars=0
+agents_loaded=0
+if [ -f AGENTS.md ]; then
+  if [ ! -f CLAUDE.md ] || grep -qE '^@AGENTS\.md' CLAUDE.md; then
+    agents_loaded=1
+    agents_chars=$(wc -c < AGENTS.md | tr -d ' ')
+  fi
+fi
+
+alwayson_chars=$(( desc_chars + agent_desc_chars + agents_chars + claude_chars + index_chars ))
 
 # ---- deferred: kept OUT of always-on by progressive disclosure ----
 ref_chars=$(find .claude/references -name '*.md' -type f 2>/dev/null | sum_bytes)
@@ -72,6 +94,7 @@ printf '════════════════════════
 
 printf '\nAlways-on — loaded into EVERY session:\n'
 printf '  skill descriptions   %8d chars  ~%6d tok  (%d skills)\n' "$desc_chars" "$(TOK "$desc_chars")" "$skill_count"
+[ "$agents_loaded" -eq 1 ] && printf '  AGENTS.md            %8d chars  ~%6d tok\n' "$agents_chars" "$(TOK "$agents_chars")"
 printf '  CLAUDE.md            %8d chars  ~%6d tok\n' "$claude_chars" "$(TOK "$claude_chars")"
 printf '  rules/INDEX.md       %8d chars  ~%6d tok\n' "$index_chars" "$(TOK "$index_chars")"
 printf '  agent descriptions   %8d chars  ~%6d tok  (%d agents)\n' "$agent_desc_chars" "$(TOK "$agent_desc_chars")" "$agent_count"

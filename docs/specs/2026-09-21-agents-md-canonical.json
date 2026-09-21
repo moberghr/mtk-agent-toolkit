@@ -1,0 +1,910 @@
+{
+  "slug": "agents-md-canonical",
+  "date": "2026-09-21",
+  "scope": "breaking-change",
+  "baseline_area": "toolkit-instructions",
+  "change_manifest": [
+    {
+      "path": "scripts/constitution-digest.sh",
+      "action": "modify",
+      "purpose": "constitution_file() resolution (AGENTS.md first); heading names the source",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-constitution-digest.sh",
+      "action": "modify",
+      "purpose": "cases: AGENTS.md-only, shim+AGENTS.md, legacy CLAUDE.md-only",
+      "mechanical": false
+    },
+    {
+      "path": "scripts/build-context-pack.sh",
+      "action": "modify",
+      "purpose": "Critical Rules + TOC from the resolved constitution file",
+      "mechanical": false
+    },
+    {
+      "path": "scripts/rule-enforcement-map.sh",
+      "action": "modify",
+      "purpose": "scan AGENTS.md alongside CLAUDE.md",
+      "mechanical": false
+    },
+    {
+      "path": "scripts/repo-health-score.sh",
+      "action": "modify",
+      "purpose": "asset 1 accepts AGENTS.md or CLAUDE.md as the instructions file",
+      "mechanical": false
+    },
+    {
+      "path": "scripts/mtk-doctor.sh",
+      "action": "modify",
+      "purpose": "always-on estimate includes AGENTS.md; WARN when CLAUDE.md lacks @AGENTS.md beside an AGENTS.md",
+      "mechanical": false
+    },
+    {
+      "path": "scripts/setup-refresh-plan.sh",
+      "action": "modify",
+      "purpose": "row 5: stamped AGENTS.md -> footer drift check; row 6 verifies AGENTS.md",
+      "mechanical": false
+    },
+    {
+      "path": "scripts/mtk-savings.sh",
+      "action": "modify",
+      "purpose": "always-on floor sums AGENTS.md + CLAUDE.md (shim) instead of CLAUDE.md alone",
+      "mechanical": false
+    },
+    {
+      "path": "scripts/generate-agents-md.sh",
+      "action": "modify",
+      "purpose": "shim detection -> note + exit 0 (no write); heading names source",
+      "mechanical": false
+    },
+    {
+      "path": "scripts/generate-tool-configs.sh",
+      "action": "modify",
+      "purpose": "constitution_file(); pointer mode for copilot/windsurf/cline",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-generate-agents-md.sh",
+      "action": "modify",
+      "purpose": "case (f): shim present -> nothing written, exit 0",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-generate-tool-configs.sh",
+      "action": "create",
+      "purpose": "pointer mode; gemini unchanged; overwrite guard intact",
+      "mechanical": false
+    },
+    {
+      "path": "AGENTS.md",
+      "action": "modify",
+      "purpose": "canonical constitution + compact agent routing",
+      "mechanical": false
+    },
+    {
+      "path": "CLAUDE.md",
+      "action": "modify",
+      "purpose": "@AGENTS.md shim + Claude Code only section",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/references/agent-routing-guide.md",
+      "action": "create",
+      "purpose": "detailed routing content moved out of AGENTS.md",
+      "mechanical": false
+    },
+    {
+      "path": "scripts/validate-toolkit.sh",
+      "action": "modify",
+      "purpose": "CLAUDE.md must import AGENTS.md; AGENTS.md <= 200 lines",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/skills/instructions-audit/SKILL.md",
+      "action": "create",
+      "purpose": "git mv from claude-md-audit; retarget to AGENTS.md-first",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/skills/instructions-capture/SKILL.md",
+      "action": "create",
+      "purpose": "git mv from claude-md-capture; retarget",
+      "mechanical": false
+    },
+    {
+      "path": "tests/pressure-tests/instructions-audit-pressure.md",
+      "action": "create",
+      "purpose": "git mv + renamed references",
+      "mechanical": true
+    },
+    {
+      "path": "tests/pressure-tests/instructions-capture-pressure.md",
+      "action": "create",
+      "purpose": "git mv + renamed references",
+      "mechanical": true
+    },
+    {
+      "path": "scripts/growth-gate.sh",
+      "action": "modify",
+      "purpose": "comment names the renamed skill",
+      "mechanical": true
+    },
+    {
+      "path": ".claude/skills/mtk/SKILL.md",
+      "action": "modify",
+      "purpose": "route-table and disambiguation rows -> new skill paths; synonyms kept",
+      "mechanical": false
+    },
+    {
+      "path": "docs/how-it-works.data.json",
+      "action": "modify",
+      "purpose": "two entries renamed",
+      "mechanical": true
+    },
+    {
+      "path": "hooks/capture-learnings.sh",
+      "action": "modify",
+      "purpose": "promotion nudge names AGENTS.md",
+      "mechanical": true
+    },
+    {
+      "path": ".claude/skills/setup-bootstrap/SKILL.md",
+      "action": "modify",
+      "purpose": "STEP 3 authors AGENTS.md + shim; inversion migration rule; budgets/invariants/verify lists",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/references/root-agents-md-template.md",
+      "action": "create",
+      "purpose": "git mv from root-claude-md-template.md; AGENTS.md skeleton + shim template",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/references/bootstrap-supporting-files.md",
+      "action": "modify",
+      "purpose": "Cross-Agent section: authored AGENTS.md, legacy generator, pointer-mode mirrors",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/references/bootstrap-report.md",
+      "action": "modify",
+      "purpose": "report lines for AGENTS.md/shim; instructions-capture",
+      "mechanical": true
+    },
+    {
+      "path": ".claude/manifest.json",
+      "action": "modify",
+      "purpose": "renamed keys, new reference, descriptions",
+      "mechanical": true
+    },
+    {
+      "path": "CHANGELOG.md",
+      "action": "modify",
+      "purpose": "Unreleased entry for WS1",
+      "mechanical": true
+    },
+    {
+      "path": ".claude/skills/claude-md-capture/SKILL.md",
+      "action": "delete",
+      "purpose": "source path of a declared git mv (rename)",
+      "mechanical": true
+    },
+    {
+      "path": "docs/how-it-works.html",
+      "action": "modify",
+      "purpose": "derived — regenerated by python3 docs/build-how-it-works.py (no generated-by banner, so listed explicitly)",
+      "mechanical": true
+    },
+    {
+      "path": ".claude/skills/setup-refresh/SKILL.md",
+      "action": "modify",
+      "purpose": "STEP 3: footer-stale mtk-stamped AGENTS.md is routed through the regen-diff proposal, never generate-agents-md.sh (review: silent-failure F001)",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-setup-refresh-plan.sh",
+      "action": "modify",
+      "purpose": "AGENTS.md-only / shim / legacy cases for the B2/B1 resolution (review: compliance F005)",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-rule-enforcement-map.sh",
+      "action": "modify",
+      "purpose": "AGENTS.md-only / shim / legacy cases for the B2/B1 resolution (review: compliance F005)",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-build-context-pack.sh",
+      "action": "modify",
+      "purpose": "AGENTS.md-only / shim / legacy cases for the B2/B1 resolution (review: compliance F005)",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-mtk-doctor-lesson-stores.sh",
+      "action": "modify",
+      "purpose": "AGENTS.md-only / shim / legacy cases for the B2/B1 resolution (review: compliance F005)",
+      "mechanical": false
+    }
+  ],
+  "public_contracts": [
+    {
+      "kind": "cli-flag",
+      "signature": "generate-tool-configs.sh --format copilot|windsurf|cline output shape",
+      "change": "modified",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "method",
+      "signature": "constitution-digest.sh source resolution (AGENTS.md first)",
+      "change": "modified",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "method",
+      "signature": "generate-agents-md.sh behaviour when CLAUDE.md is a shim",
+      "change": "modified",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "method",
+      "signature": "setup-bootstrap STEP 3 output: AGENTS.md constitution + CLAUDE.md shim",
+      "change": "modified",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "method",
+      "signature": "skill names instructions-audit / instructions-capture (were claude-md-*)",
+      "change": "modified",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "method",
+      "signature": "validate-toolkit.sh checks: CLAUDE.md shim import, AGENTS.md line cap",
+      "change": "modified",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "method",
+      "signature": "repo-health-score.sh asset 1 label/logic",
+      "change": "modified",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "method",
+      "signature": ".claude/references/root-agents-md-template.md (was root-claude-md-template.md)",
+      "change": "modified",
+      "surface": "internal-tooling"
+    }
+  ],
+  "success_criteria": [
+    {
+      "id": "SC1",
+      "description": "Toolkit validates with the new checks live",
+      "verification": "bash scripts/validate-toolkit.sh",
+      "evidence_channel": "script-output",
+      "observable": "last line is 'Toolkit validation passed'; a fixture CLAUDE.md without @AGENTS.md fails the check"
+    },
+    {
+      "id": "SC2",
+      "description": "Digest reads the constitution from AGENTS.md in this repo",
+      "verification": "bash scripts/constitution-digest.sh",
+      "evidence_channel": "cli-stdout",
+      "observable": "output contains '## Critical Rules (AGENTS.md)' and 'Totals: 8 Critical Rules'"
+    },
+    {
+      "id": "SC3",
+      "description": "Digest resolution covered by tests",
+      "verification": "bash tests/hooks/test-constitution-digest.sh",
+      "evidence_channel": "test-run",
+      "observable": "exit 0; PASS lines for AGENTS.md-only, shim+AGENTS.md, legacy CLAUDE.md-only"
+    },
+    {
+      "id": "SC4",
+      "description": "Generator honours the shim",
+      "verification": "bash tests/hooks/test-generate-agents-md.sh",
+      "evidence_channel": "test-run",
+      "observable": "exit 0; case (f) PASS: no AGENTS.generated.md written, exit 0, note printed"
+    },
+    {
+      "id": "SC5",
+      "description": "Pointer-mode mirrors",
+      "verification": "bash tests/hooks/test-generate-tool-configs.sh",
+      "evidence_channel": "test-run",
+      "observable": "exit 0; copilot/windsurf/cline <= 40 lines with marker + AGENTS.md pointer + C0.1; GEMINI.md contains '## Security Requirements'; hand-curated refusal PASS"
+    },
+    {
+      "id": "SC6",
+      "description": "Router parses and precedence holds after the rename",
+      "verification": "bash scripts/run-fixtures.sh",
+      "evidence_channel": "test-run",
+      "observable": "exit 0"
+    },
+    {
+      "id": "SC7",
+      "description": "No stale references to the old skill paths",
+      "verification": "grep -rnE 'claude-md-(audit|capture)' --exclude-dir=.git --exclude-dir=docs --exclude=CHANGELOG.md --exclude=checksums.sha256 .",
+      "evidence_channel": "cli-stdout",
+      "observable": "zero lines (bare skill-name mentions included, not only skills/… paths)"
+    },
+    {
+      "id": "SC8",
+      "description": "Repo-health accepts AGENTS.md as the instructions file",
+      "verification": "bash scripts/repo-health-score.sh",
+      "evidence_channel": "cli-stdout",
+      "observable": "asset 1 row reads pass in this repo"
+    },
+    {
+      "id": "SC9",
+      "description": "Doctor is clean and counts AGENTS.md",
+      "verification": "bash scripts/mtk-doctor.sh",
+      "evidence_channel": "cli-stdout",
+      "observable": "no FAIL row; always-on line mentions AGENTS.md"
+    },
+    {
+      "id": "SC10",
+      "description": "Refresh plan does not flag the hand-curated AGENTS.md",
+      "verification": "bash scripts/setup-refresh-plan.sh --json",
+      "evidence_channel": "cli-stdout",
+      "observable": "AGENTS.md row status is not 'stale'"
+    },
+    {
+      "id": "SC11",
+      "description": "Docs page regenerates with the new ids",
+      "verification": "python3 docs/build-how-it-works.py && grep -c instructions-audit docs/how-it-works.html",
+      "evidence_channel": "script-output",
+      "observable": "exit 0 and count >= 1"
+    },
+    {
+      "id": "SC12",
+      "description": "New reference indexes",
+      "verification": "bash scripts/build-references-index.sh && grep -c agent-routing-guide .claude/references.index",
+      "evidence_channel": "script-output",
+      "observable": "exit 0 and count >= 1"
+    },
+    {
+      "id": "SC13",
+      "description": "Claude Code loads the constitution through the shim",
+      "verification": "claude -p 'List the ids of the Critical Rules in this repo instructions, nothing else'",
+      "evidence_channel": "smoke-boot",
+      "observable": "output contains C0.8"
+    },
+    {
+      "id": "SC14",
+      "description": "Codex loads the constitution from AGENTS.md",
+      "verification": "codex exec -s read-only 'List the ids of the Critical Rules in this repo instructions, nothing else' </dev/null",
+      "evidence_channel": "smoke-boot",
+      "observable": "output contains C0.8"
+    }
+  ],
+  "test_manifest": [
+    {
+      "path": "tests/hooks/test-constitution-digest.sh",
+      "covers": [
+        "SC2",
+        "SC3"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-generate-agents-md.sh",
+      "covers": [
+        "SC4"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-generate-tool-configs.sh",
+      "covers": [
+        "SC5"
+      ]
+    },
+    {
+      "path": "scripts/run-fixtures.sh",
+      "covers": [
+        "SC6"
+      ]
+    },
+    {
+      "path": "scripts/validate-toolkit.sh",
+      "covers": [
+        "SC1",
+        "SC7"
+      ]
+    }
+  ],
+  "out_of_scope": [
+    "WS2-WS8 of the migration plan (env abstraction, hook adapters, frontmatter metadata move, agent generators, manifests, harness-aware setup/doctor, README/rules rewrite)",
+    "Rewriting the ~40 'Read CLAUDE.md' instructions inside skill bodies (WS4 harness-primitives pass) — the shim's plain-text pointer line is the interim",
+    "Monorepo per-package path (setup-bootstrap STEP 4.5, .claude/references/monorepo-bootstrap.md, command-verification.md): per-package CLAUDE.md files keep pointing at the root, which is now the shim importing AGENTS.md — wording sweep deferred to WS4/WS7",
+    "GEMINI.md pointer mode (WS0 #4 unverified) — Gemini and Cursor outputs unchanged",
+    "Version bump / release (8.0.0 belongs to the train's last release)",
+    "README positioning and FAQ (WS8)",
+    "Deleting the stale gitignored .agents/skills and .codex leftovers in this checkout",
+    "dirty-worktree: docs/harness-support-matrix.md (untracked WS0 output, committed as docs before Phase 3)",
+    "dirty-worktree: docs/plans/2026-09-21-multi-harness-migration.md (untracked supplied plan, committed as docs before Phase 3)"
+  ],
+  "security_impact": "none",
+  "assumptions": [
+    "[VERIFIED:scripts/generate-agents-md.sh:14-70] generate-agents-md.sh is a marker-guarded references summarizer; the constitution is authored by setup-bootstrap STEP 3 from a template",
+    "[CITED:https://code.claude.com/docs/en/memory#agents-md] default mode ignores AGENTS.md when a CLAUDE.md/CLAUDE.local.md is in cwd or above; @AGENTS.md import is honoured in every mode; .claude/rules/ load alongside",
+    "[VERIFIED:docs/harness-support-matrix.md] Codex reads AGENTS.md (project per docs, ~/.codex/AGENTS.md observed); OpenCode reads AGENTS.md (docs)",
+    "[VERIFIED:scripts/run-fixtures.sh:194] fixture precedence runs against the live route table",
+    "[VERIFIED:.gitignore] docs/plans is tracked; .mtk/ is gitignored"
+  ],
+  "risks": [
+    "dirty-worktree: CHANGELOG.md is in-manifest and already modified by this session's WS0 entry — commit the WS0 docs before Phase 3 so the collision set is empty",
+    "Skills that say 'Read CLAUDE.md' read the shim on non-Claude harnesses — mitigated by the shim's pointer line; wording sweep is WS4",
+    "AGENTS.md grows toward the ~150-instruction compliance knee — routing detail moved to a reference; validator cap 200; Critical Rules stay at 8",
+    "run-fixtures.sh may pin route-table text — SC6 in B6's checkpoint",
+    "Rollback: single branch, no version bump — git revert restores both files and the old skill names; target repos change only on their next /mtk-setup",
+    "Per-package CLAUDE.md files generated by STEP 4.5 say 'root CLAUDE.md' — correct for Claude Code (shim imports AGENTS.md), misleading prose for other harnesses until WS4"
+  ],
+  "plan": {
+    "batches": [
+      {
+        "id": "B1",
+        "title": "Digest + context pack resolve the constitution AGENTS.md-first",
+        "files": [
+          "scripts/constitution-digest.sh",
+          "tests/hooks/test-constitution-digest.sh",
+          "scripts/build-context-pack.sh"
+        ],
+        "acceptance": "Digest heading names the source file; AGENTS.md-only, shim+AGENTS.md and legacy CLAUDE.md-only repos all produce the right Critical Rules; context pack takes rules/TOC from the same file; legacy output byte-identical",
+        "verification": "bash tests/hooks/test-constitution-digest.sh && bash scripts/constitution-digest.sh | grep -q 'Totals: 8 Critical Rules' && bash scripts/validate-toolkit.sh (per CLAUDE.md Build & Test)",
+        "boundary": "Resolution logic is a single function per script with identical semantics; no script gains a new external dependency (S3.3) and no early-exit pipe consumer (S3.17)",
+        "depends": [],
+        "depends_rationale": "independent: first batch, no shared files, reads nothing another batch creates",
+        "governing_constraints": [
+          "C0.8",
+          "S3.1",
+          "S3.3",
+          "S3.17"
+        ]
+      },
+      {
+        "id": "B2",
+        "title": "Rule map, repo-health, doctor, refresh-plan accept AGENTS.md",
+        "files": [
+          "scripts/rule-enforcement-map.sh",
+          "scripts/repo-health-score.sh",
+          "scripts/mtk-doctor.sh",
+          "scripts/setup-refresh-plan.sh",
+          "scripts/mtk-savings.sh"
+        ],
+        "acceptance": "rule-map scans AGENTS.md; repo-health asset 1 passes with AGENTS.md alone; doctor counts AGENTS.md in the always-on estimate and WARNs on CLAUDE.md-without-import beside AGENTS.md; refresh-plan row 5 treats a stamped AGENTS.md by footer drift and never regenerates a hand-curated one; row 6 verifies AGENTS.md; mtk-savings.sh always-on floor sums AGENTS.md + CLAUDE.md",
+        "verification": "bash scripts/mtk-doctor.sh (no FAIL) && bash scripts/repo-health-score.sh | grep -q '1\\. Instructions file present.*pass' && bash scripts/setup-refresh-plan.sh --json && bash scripts/validate-toolkit.sh (per CLAUDE.md Build & Test)",
+        "boundary": "Legacy behaviour is preserved: with only a CLAUDE.md constitution every row/asset reads exactly as today",
+        "depends": [],
+        "depends_rationale": "independent: no shared files with B1/B3; touches only its four scripts",
+        "governing_constraints": [
+          "C0.8",
+          "S3.1",
+          "S3.3",
+          "S3.17"
+        ]
+      },
+      {
+        "id": "B3",
+        "title": "Generators: shim-aware AGENTS.md generator, pointer-mode tool configs",
+        "files": [
+          "scripts/generate-agents-md.sh",
+          "scripts/generate-tool-configs.sh",
+          "tests/hooks/test-generate-agents-md.sh",
+          "tests/hooks/test-generate-tool-configs.sh"
+        ],
+        "acceptance": "generate-agents-md.sh prints a note and writes nothing when CLAUDE.md is a shim (no --force); heading names the source; copilot/windsurf/cline outputs are <= 40 lines with marker, AGENTS.md pointer and Critical Rules from the resolved constitution; gemini and cursor-rules unchanged; overwrite guard unchanged",
+        "verification": "bash tests/hooks/test-generate-agents-md.sh && bash tests/hooks/test-generate-tool-configs.sh && bash scripts/validate-toolkit.sh (per CLAUDE.md Build & Test)",
+        "boundary": "The marker-guard contract stays exactly as documented in each script's header; pointer mode never inlines a reference body",
+        "depends": [],
+        "depends_rationale": "independent: no shared files with B1/B2; the new test file is created here",
+        "governing_constraints": [
+          "C0.2",
+          "C0.8",
+          "S3.1",
+          "S3.17"
+        ]
+      },
+      {
+        "id": "B4",
+        "title": "Toolkit inversion: AGENTS.md canonical, CLAUDE.md shim, routing guide, validator checks",
+        "files": [
+          "AGENTS.md",
+          "CLAUDE.md",
+          ".claude/references/agent-routing-guide.md",
+          "scripts/validate-toolkit.sh",
+          ".claude/manifest.json"
+        ],
+        "acceptance": "AGENTS.md carries the full constitution + compact routing (<= 200 lines) and still routes context-engineering; CLAUDE.md is <= 20 lines with a bare @AGENTS.md line, a pointer line and a Claude Code only section; the guide holds the moved detail with reference frontmatter; validator fails a CLAUDE.md without @AGENTS.md and an AGENTS.md over 200 lines; manifest lists the new reference; the Entry-Point/Routed-workflow tables name the POST-RENAME skill ids (instructions-audit / instructions-capture), never the current claude-md-* directory names, because no later batch re-touches AGENTS.md",
+        "verification": "bash scripts/validate-toolkit.sh && bash scripts/constitution-digest.sh | grep -q 'Critical Rules (AGENTS.md)' && bash scripts/build-references-index.sh (per CLAUDE.md Build & Test)",
+        "boundary": "The eight Critical Rules keep their ids and text (only C0.7's wording names AGENTS.md as bootstrap output); no routing target is dropped — every skill named in the old AGENTS.md is named in the new one or the guide",
+        "depends": [
+          "B1",
+          "B2"
+        ],
+        "depends_rationale": "",
+        "governing_constraints": [
+          "C0.2",
+          "C0.7",
+          "C0.8",
+          "S4.10"
+        ]
+      },
+      {
+        "id": "B5",
+        "title": "Rename claude-md-audit/capture to instructions-audit/capture",
+        "files": [
+          ".claude/skills/instructions-audit/SKILL.md",
+          ".claude/skills/instructions-capture/SKILL.md",
+          "tests/pressure-tests/instructions-audit-pressure.md",
+          "tests/pressure-tests/instructions-capture-pressure.md",
+          "scripts/growth-gate.sh",
+          ".claude/manifest.json"
+        ],
+        "acceptance": "git mv preserves history; name: matches directory; descriptions <= 200 chars; bodies target AGENTS.md first then shims and nested files; pressure tests reference the new names; manifest keys renamed",
+        "verification": "bash scripts/validate-toolkit.sh && test ! -d .claude/skills/claude-md-audit && test ! -d .claude/skills/claude-md-capture (per CLAUDE.md Build & Test)",
+        "boundary": "The two skills keep their phase structure and their append-only, Edit-never-Write rules; only the target file set and the names change",
+        "depends": [
+          "B4"
+        ],
+        "depends_rationale": "",
+        "governing_constraints": [
+          "C0.2",
+          "C0.3",
+          "C0.4",
+          "S2.3",
+          "S2.6a"
+        ]
+      },
+      {
+        "id": "B6",
+        "title": "Router rows, docs page, learning nudge follow the rename",
+        "files": [
+          ".claude/skills/mtk/SKILL.md",
+          "docs/how-it-works.data.json",
+          "hooks/capture-learnings.sh"
+        ],
+        "acceptance": "Route table, disambiguation rows AND the Routing Decision Graph (dot digraph node labels `cma`/`cmcap` and diamonds `cmd`/`cmc`) point at the new skill names/paths with the old keywords kept and agents.md/instructions synonyms added, in the same row positions; how-it-works entries renamed and html regenerated; capture-learnings nudge names AGENTS.md",
+        "verification": "bash scripts/run-fixtures.sh && python3 docs/build-how-it-works.py && ! grep -nE 'claude-md-(audit|capture)' .claude/skills/mtk/SKILL.md && bash scripts/validate-toolkit.sh (per CLAUDE.md Build & Test)",
+        "boundary": "Route-table row order is an invariant (first-match precedence); the html is a derived file regenerated by its script, never hand-edited",
+        "depends": [
+          "B5"
+        ],
+        "depends_rationale": "",
+        "governing_constraints": [
+          "C0.8",
+          "S4.10"
+        ]
+      },
+      {
+        "id": "B7",
+        "title": "Bootstrap authors AGENTS.md + shim; supporting references; changelog",
+        "files": [
+          ".claude/skills/setup-bootstrap/SKILL.md",
+          ".claude/references/root-agents-md-template.md",
+          ".claude/references/bootstrap-supporting-files.md",
+          ".claude/references/bootstrap-report.md",
+          ".claude/manifest.json",
+          "CHANGELOG.md"
+        ],
+        "acceptance": "STEP 3 writes AGENTS.md from the renamed template and a CLAUDE.md shim; merge mode proposes the inversion through the regen-diff contract and never rewrites silently; budgets/invariants/verify lists name AGENTS.md; Cross-Agent section describes authored AGENTS.md, legacy generator and pointer-mode mirrors; report lines updated; manifest key/applyTo renamed; CHANGELOG entry present",
+        "verification": "bash scripts/validate-toolkit.sh && bash scripts/build-references-index.sh && grep -q 'root-agents-md-template' .claude/manifest.json (per CLAUDE.md Build & Test)",
+        "boundary": "The File Preservation Policy is unchanged in force: nothing in STEP 3 deletes or overwrites a hand-curated AGENTS.md or a nested CLAUDE.md",
+        "depends": [
+          "B3",
+          "B5"
+        ],
+        "depends_rationale": "",
+        "governing_constraints": [
+          "C0.2",
+          "C0.7",
+          "C0.8",
+          "S1.5"
+        ]
+      },
+      {
+        "id": "R2",
+        "title": "Review scope additions: setup-refresh remediation + harness cases",
+        "files": [
+          ".claude/skills/setup-refresh/SKILL.md",
+          "tests/hooks/test-setup-refresh-plan.sh",
+          "tests/hooks/test-rule-enforcement-map.sh",
+          "tests/hooks/test-build-context-pack.sh",
+          "tests/hooks/test-mtk-doctor-lesson-stores.sh"
+        ],
+        "acceptance": "setup-refresh STEP 3 branches on the plan row's reason: footer-drift on an mtk-stamped AGENTS.md goes through the regen-diff-contract proposal (like CLAUDE.md/rules) and never invokes generate-agents-md.sh; STEP 5 reporting distinguishes 'generator declined' from 'regenerated'. Each harness gains cases proving AGENTS.md-only, shim+AGENTS.md and legacy CLAUDE.md-only resolution (and, for setup-refresh-plan, footer-match / footer-drift / footer-without-version on row 5); legacy cases assert unchanged output",
+        "verification": "bash tests/hooks/test-setup-refresh-plan.sh && bash tests/hooks/test-rule-enforcement-map.sh && bash tests/hooks/test-build-context-pack.sh && bash tests/hooks/test-mtk-doctor-lesson-stores.sh && bash scripts/validate-toolkit.sh (per CLAUDE.md Build & Test)",
+        "boundary": "Scripts under test are not edited in this batch — a failing new case is a finding to report, not a script to patch; skill prose stays a proposal contract, never a rewrite",
+        "depends": [
+          "B2",
+          "B7"
+        ],
+        "depends_rationale": "",
+        "governing_constraints": [
+          "C0.8",
+          "S1.5",
+          "S3.17"
+        ]
+      }
+    ]
+  },
+  "implement": {
+    "completed_batches": [
+      {
+        "batch_id": "B1",
+        "actual_files": [
+          "scripts/constitution-digest.sh",
+          "tests/hooks/test-constitution-digest.sh",
+          "scripts/build-context-pack.sh"
+        ],
+        "build": {
+          "ok": true,
+          "evidence": "exit=0 .mtk/evidence/20260921-130337-B1-build-13718.log"
+        },
+        "tests": {
+          "ok": true,
+          "evidence": "exit=0 .mtk/evidence/20260921-130349-B1-verify-20853.log — 9/9 digest cases incl. 4 new resolution cases"
+        },
+        "behavioral_diff": "constitution-digest.sh and build-context-pack.sh resolve the constitution via constitution_file() (AGENTS.md when CLAUDE.md absent or a ^@AGENTS.md shim, else CLAUDE.md); headings/hints name the resolved file; legacy output byte-identical",
+        "deviations": [],
+        "implementer_model": "sonnet"
+      },
+      {
+        "batch_id": "B3",
+        "actual_files": [
+          "scripts/generate-agents-md.sh",
+          "scripts/generate-tool-configs.sh",
+          "tests/hooks/test-generate-agents-md.sh",
+          "tests/hooks/test-generate-tool-configs.sh",
+          ".claude/manifest.json"
+        ],
+        "build": {
+          "ok": true,
+          "evidence": "exit=0 .mtk/evidence/20260921-130920-B3-build-47584.log"
+        },
+        "tests": {
+          "ok": true,
+          "evidence": "exit=0 .mtk/evidence/20260921-130932-B3-verify-64389.log — both generator tests all-pass"
+        },
+        "behavioral_diff": "generate-agents-md.sh: constitution_file(); shim + no --force -> one-line note, exit 0, nothing written; heading names source. generate-tool-configs.sh: copilot/windsurf/cline pointer mode (title, marker, 'Canonical instructions: read AGENTS.md', Critical Rules from resolved constitution, <=40 lines); gemini/cursor-rules unchanged; overwrite guard reused",
+        "deviations": [
+          {
+            "kind": "extra-file",
+            "detail": ".claude/manifest.json: one entry for tests/hooks/test-generate-tool-configs.sh",
+            "justification": "C0.2 disk->manifest check makes the batch gate red without it; file is in the whole-feature change_manifest (B4/B5/B7); auto-fixable, no new contract"
+          }
+        ],
+        "implementer_model": "sonnet"
+      },
+      {
+        "batch_id": "B2",
+        "actual_files": [
+          "scripts/rule-enforcement-map.sh",
+          "scripts/repo-health-score.sh",
+          "scripts/mtk-doctor.sh",
+          "scripts/setup-refresh-plan.sh",
+          "scripts/mtk-savings.sh"
+        ],
+        "build": {
+          "ok": true,
+          "evidence": "exit=0 .mtk/evidence/20260921-130941-B2-build-75912.log"
+        },
+        "tests": {
+          "ok": true,
+          "evidence": "exit=0 .mtk/evidence/20260921-130954-B2-verify-84224.log — doctor no FAIL, repo-health asset 1 pass, refresh-plan --json ok"
+        },
+        "behavioral_diff": "rule-enforcement-map, repo-health (asset 1 'Instructions file present'; status word printed beside icon), mtk-doctor (AGENTS.md in always-on estimate; WARN when CLAUDE.md lacks @AGENTS.md beside AGENTS.md), setup-refresh-plan (row 5 mtk-setup-stamped AGENTS.md -> footer drift; row 6 verifies AGENTS.md), mtk-savings (sums AGENTS.md) all resolve the constitution AGENTS.md-first; legacy unchanged",
+        "deviations": [
+          {
+            "kind": "other",
+            "detail": "repo-health-score.sh markdown render prints ($STATUS) next to the icon",
+            "justification": "batch verification grep needs the literal status word; display-only, no status logic changed"
+          }
+        ],
+        "implementer_model": "sonnet"
+      },
+      {
+        "batch_id": "B4",
+        "actual_files": [
+          "AGENTS.md",
+          "CLAUDE.md",
+          ".claude/references/agent-routing-guide.md",
+          "scripts/validate-toolkit.sh",
+          ".claude/manifest.json"
+        ],
+        "build": {
+          "ok": true,
+          "evidence": "exit=0 .mtk/evidence/20260921-131521-B4-build-42315.log"
+        },
+        "tests": {
+          "ok": true,
+          "evidence": "exit=0 .mtk/evidence/20260921-131540-B4-verify-49539.log — digest heading names AGENTS.md; references index rebuilt; verify-references AGENTS.md clean"
+        },
+        "behavioral_diff": "AGENTS.md (180 lines) is the canonical constitution incl. compact Agent Routing with post-rename skill ids; CLAUDE.md is an 11-line shim with a bare @AGENTS.md import; agent-routing-guide.md holds the moved detail; validate-toolkit fails a shim-less CLAUDE.md and an AGENTS.md > 200 lines",
+        "deviations": [
+          {
+            "kind": "other",
+            "detail": "references.index regenerated (gitignored)",
+            "justification": "batch verification step"
+          },
+          {
+            "kind": "other",
+            "detail": "stale path claims in prose reworded to unbracketed artifact names; hooks/lib/learnings.sh -> scripts/learnings.sh",
+            "justification": "verify-references.sh must be clean on the new body"
+          }
+        ],
+        "review_notes": [
+          "CLAUDE.md shim bullet 2 misdescribes the mode: instructionFiles is the setting; under claude-md-and-agents-md both files load with the import de-duplicated — reword in Phase 5"
+        ],
+        "implementer_model": "opus"
+      },
+      {
+        "batch_id": "B5",
+        "actual_files": [
+          ".claude/skills/instructions-audit/SKILL.md",
+          ".claude/skills/instructions-capture/SKILL.md",
+          "tests/pressure-tests/instructions-audit-pressure.md",
+          "tests/pressure-tests/instructions-capture-pressure.md",
+          "scripts/growth-gate.sh",
+          ".claude/manifest.json"
+        ],
+        "build": {
+          "ok": true,
+          "evidence": "exit=0 .mtk/evidence/20260921-132144-B5-build-82257.log"
+        },
+        "tests": {
+          "ok": true,
+          "evidence": "exit=0 .mtk/evidence/20260921-132212-B5-verify-96502.log — old dirs absent"
+        },
+        "behavioral_diff": "claude-md-audit/capture renamed (git mv) to instructions-audit/capture; target precedence AGENTS.md -> shims (integrity check only) -> nested; pressure tests renamed with new AGENTS.md-first scenarios; manifest keys renamed; growth-gate comment updated",
+        "deviations": [],
+        "implementer_model": "sonnet"
+      },
+      {
+        "batch_id": "B6",
+        "actual_files": [
+          ".claude/skills/mtk/SKILL.md",
+          "docs/how-it-works.data.json",
+          "hooks/capture-learnings.sh"
+        ],
+        "build": {
+          "ok": true,
+          "evidence": "exit=0 .mtk/evidence/20260921-132524-B6-build-26124.log"
+        },
+        "tests": {
+          "ok": true,
+          "evidence": "exit=0 .mtk/evidence/20260921-132557-B6-verify-40730.log — run-fixtures pass; html regenerated; zero old ids in mtk/SKILL.md"
+        },
+        "behavioral_diff": "/mtk router route table, disambiguation rows and dot digraph point at instructions-audit/capture with old keywords kept and agents.md/instructions synonyms added, same row order; how-it-works entries renamed and html regenerated; capture-learnings nudge names AGENTS.md (or CLAUDE.md)",
+        "deviations": [
+          {
+            "kind": "other",
+            "detail": "references.index regenerated (gitignored derived)",
+            "justification": "carried trap; not source"
+          }
+        ],
+        "implementer_model": "sonnet"
+      },
+      {
+        "batch_id": "B7",
+        "actual_files": [
+          ".claude/skills/setup-bootstrap/SKILL.md",
+          ".claude/references/root-agents-md-template.md",
+          ".claude/references/bootstrap-supporting-files.md",
+          ".claude/references/bootstrap-report.md",
+          ".claude/manifest.json",
+          "CHANGELOG.md"
+        ],
+        "build": {
+          "ok": true,
+          "evidence": "exit=0 .mtk/evidence/20260921-132736-B7-build-64829.log"
+        },
+        "tests": {
+          "ok": true,
+          "evidence": "exit=0 .mtk/evidence/20260921-132748-B7-verify-72074.log"
+        },
+        "behavioral_diff": "bootstrap STEP 3 authors AGENTS.md from root-agents-md-template.md and a CLAUDE.md shim with a bare @AGENTS.md; merge mode proposes inversion via regen-diff contract, never silently; budgets/verify lists/invariants name AGENTS.md; Cross-Agent section rewritten (authored AGENTS.md, legacy generator, pointer-mode mirrors); report rows; CHANGELOG WS1 entry",
+        "deviations": [],
+        "implementer_model": "opus"
+      },
+      {
+        "batch_id": "R1",
+        "actual_files": [
+          "scripts/generate-tool-configs.sh",
+          "tests/hooks/test-generate-tool-configs.sh",
+          "scripts/mtk-savings.sh",
+          "scripts/mtk-doctor.sh",
+          "CLAUDE.md",
+          ".claude/references/root-agents-md-template.md",
+          ".claude/skills/setup-bootstrap/SKILL.md",
+          "CHANGELOG.md",
+          "scripts/generate-agents-md.sh",
+          "tests/hooks/test-generate-agents-md.sh",
+          ".claude/references/bootstrap-supporting-files.md"
+        ],
+        "build": {
+          "ok": true,
+          "evidence": "exit=0 .mtk/evidence/20260921-135050-R1-build-32900.log"
+        },
+        "tests": {
+          "ok": true,
+          "evidence": "exit=0 .mtk/evidence/20260921-135022-R1-verify-16157.log"
+        },
+        "behavioral_diff": "review iteration 1 fixes F001-F004,F006-F009: gemini/cursor rules from constitution_file(); tests inverted; savings/doctor count AGENTS.md only when loaded; shim sentence corrected in 4 sites; --force refuses canonical AGENTS.md; doctor WARN wording; pointer-mode truncation marker; bootstrap merge-mode entry conditions",
+        "deviations": [],
+        "implementer_model": "opus"
+      },
+      {
+        "batch_id": "R2",
+        "actual_files": [
+          ".claude/skills/setup-refresh/SKILL.md",
+          "tests/hooks/test-setup-refresh-plan.sh",
+          "tests/hooks/test-rule-enforcement-map.sh",
+          "tests/hooks/test-build-context-pack.sh",
+          "tests/hooks/test-mtk-doctor-lesson-stores.sh"
+        ],
+        "build": {
+          "ok": true,
+          "evidence": "exit=0 R2-build"
+        },
+        "tests": {
+          "ok": true,
+          "evidence": "exit=0 .mtk/evidence/20260921-140734-R2-verify-6100.log"
+        },
+        "behavioral_diff": "setup-refresh STEP 3 branches on row-5 reason (footer-drift -> regen-diff proposal, never generate-agents-md.sh; legacy marker -> generator; hand-curated -> Preserved); report step forbids inferring Updated from exit 0. Four harnesses gained AGENTS.md-only/shim/legacy cases incl. row-5 footer cases and row-6 AGENTS.md coverage",
+        "deviations": [],
+        "implementer_model": "opus"
+      },
+      {
+        "batch_id": "R3",
+        "actual_files": [
+          "scripts/constitution-digest.sh",
+          "scripts/build-context-pack.sh",
+          "scripts/rule-enforcement-map.sh",
+          "scripts/repo-health-score.sh",
+          "scripts/mtk-doctor.sh",
+          "scripts/setup-refresh-plan.sh",
+          "scripts/mtk-savings.sh",
+          "scripts/generate-agents-md.sh",
+          "scripts/generate-tool-configs.sh",
+          "tests/hooks/test-constitution-digest.sh",
+          "tests/hooks/test-generate-agents-md.sh",
+          "tests/hooks/test-generate-tool-configs.sh",
+          "tests/hooks/test-mtk-doctor-lesson-stores.sh",
+          "tests/hooks/test-rule-enforcement-map.sh",
+          "tests/hooks/test-build-context-pack.sh",
+          "tests/hooks/test-setup-refresh-plan.sh",
+          ".claude/skills/instructions-capture/SKILL.md",
+          ".claude/references/bootstrap-supporting-files.md",
+          ".claude/skills/setup-bootstrap/SKILL.md"
+        ],
+        "build": {
+          "ok": true,
+          "evidence": "exit=0 R3-build (resume)"
+        },
+        "tests": {
+          "ok": true,
+          "evidence": "exit=0 R3-verify — 7 harnesses incl. new marked-AGENTS.md and row-3 cases"
+        },
+        "behavioral_diff": "review iteration 2 fixes: constitution_file() is marker-aware in all 9 copies (generator-marked AGENTS.md is never canonical; doctor WARN suppressed for that shape; generator regenerates its own marked output; mtk-savings counts loaded bytes, not canonical); instructions-capture cites the 120-line target-repo cap; refresh-plan row 3 rescans the resolved constitution (test added); decline note honours an explicit output path",
+        "deviations": [],
+        "implementer_model": "opus (killed 429) -> sonnet (resume)"
+      }
+    ],
+    "drift_notes": [
+      "validate-handoff sensitive-path heuristic matches the substring 'audit' in .claude/skills/instructions-audit/SKILL.md and tests/pressure-tests/instructions-audit-pressure.md; these are documentation skills about instruction-file audits, not an audit-trail or auth surface — security_impact stays none (false positive, recorded)",
+      "SC7: the advisory trigger: synonym token claude-md-audit was removed from instructions-audit so the frozen zero-lines criterion holds; the router's 'audit claude.md' phrases keep the old wording routable",
+      "rename accounting: git reports the moved skill/template/pressure-test sources as renames (R) except .claude/skills/claude-md-capture/SKILL.md (D); validate-handoff counts only the D as touched, so only that source carries a delete entry; renamed-from paths: .claude/skills/claude-md-audit/SKILL.md, tests/pressure-tests/claude-md-audit-pressure.md, tests/pressure-tests/claude-md-capture-pressure.md, .claude/references/root-claude-md-template.md"
+    ],
+    "behavioral_diff": "Constitution inverted: AGENTS.md (180 lines) is canonical; CLAUDE.md is an 11-line shim with a bare @AGENTS.md import; every constitution-mining script (digest, context pack, rule-map, repo-health, doctor, refresh-plan, savings, both generators) resolves AGENTS.md-first and is byte-identical on legacy CLAUDE.md-only repos; copilot/windsurf/cline mirrors are pointer-mode; claude-md-audit/capture are instructions-audit/capture with AGENTS.md-first targeting and router synonyms; setup-bootstrap authors AGENTS.md + shim and proposes (never performs) inversion on legacy repos; validator enforces the shim import and a 200-line AGENTS.md cap. Verified live: claude -p and codex exec both list C0.1-C0.8.",
+    "review": {
+      "iteration_1": {
+        "compliance": "NEEDS_CHANGES (F001 critical)",
+        "silent_failure_hunter": "PASS (2 warnings)",
+        "fix_batch": "R1 completed — F001-F004,F006-F009 addressed; F010 waived; F005 + hunter-F001 -> R2 (scope re-approved by engineer)"
+      },
+      "iteration_2": {
+        "compliance": "PASS (4 warning, 1 suggestion)",
+        "fix_batch": "R3 completed (killed on Opus session limit mid-batch; resumed on Sonnet from compiled partial state)"
+      }
+    }
+  }
+}
