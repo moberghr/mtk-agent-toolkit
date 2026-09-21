@@ -4,6 +4,31 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Fixed — the pre-commit linter no longer treats a documentation page as source
+
+A wiki page under `docs/wiki/` quoted a vulnerable SQL line to explain the injection
+it had removed. `RAW-SQL-INTERPOLATED` (a `stack-dotnet` code rule) fired on the
+quotation, the commit was blocked as `NEEDS_CHANGES`, and the author — correctly
+declining to reach for `--no-verify` — paraphrased the page into something less
+accurate. The linter had no path filtering at all: every added line in every staged
+file was scanned by every active rule.
+
+- **Pattern packs now declare a scope.** A `# scope: code|prose|all` header directive
+  says which class of file a pack applies to. `hooks/pre-commit-linters.sh` classifies
+  each changed file by extension (`.md`, `.mdx`, `.markdown`, `.rst`, `.adoc`,
+  `.asciidoc`, `.txt` are prose) and drops a pack's hits on files outside its scope.
+- **Shipped packs are scoped.** All `stack-*` and `domain-*` packs plus `slopwatch`
+  are `scope: code` — they describe what a program does, and a page quoting a bad
+  line is not running it. `secrets` and `docdrift` stay `scope: all`: a hardcoded key
+  is a leak wherever it is written, and drift smells live in prose too.
+- **Classification is by extension, not directory**, so it holds wherever a repo keeps
+  its wiki, and a pack with no directive keeps the old scan-everything behavior — so
+  gitignored project-local packs are unaffected.
+
+`tests/hooks/test-linter-scope.sh` pins all four halves: the code rule silent on the
+page, the same rule still critical in the `.cs` file, the AWS key in the page still
+caught, and a doc-only commit passing.
+
 ### Added — encode the skills-since field run: briefs state invariants, commands are quoted, derived files are collateral, the undeclared caller is the default
 
 A 2026-09-18 seven-batch `implement` run landed one critical and nine warnings in a

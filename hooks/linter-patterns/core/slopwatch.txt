@@ -1,4 +1,5 @@
 # Slopwatch — LLM reward hacking patterns.
+# scope: code — These are things the program does, not things a page describes.
 # Detects code that games quality metrics: disabled tests, suppressed warnings,
 # empty implementations, and assertions that always pass.
 # Tab-separated: RULE_ID<TAB>SEVERITY<TAB>ERE_REGEX<TAB>RATIONALE<TAB>SUGGESTED_FIX
