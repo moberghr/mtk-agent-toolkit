@@ -128,6 +128,27 @@ Ship-path skills (`security-and-hardening`, `pre-commit-review`,
 evals under `evals/`. Run via `bash scripts/run-evals.sh` — manual
 mode by default; set `EVAL_EXECUTOR` / `EVAL_GRADER` for automation.
 
+## Tech Stack Loading
+
+The toolkit uses pluggable tech stacks. The active stack is recorded in `.claude/tech-stack` (a
+single word like `dotnet`, `python`, or `typescript`). Every entry-point skill and agent reads
+this file in Phase 0 and loads the matching `tech-stack-{stack}` skill, which provides build and
+test commands, ORM and framework patterns, stack-specific reference paths, scan recipes for
+`setup-bootstrap` and `setup-audit`, and settings to merge during setup. For the `typescript`
+stack, `.claude/tech-stack-pm` additionally stores the auto-detected package manager (bun /
+pnpm / yarn / npm). If a repo has no `.claude/tech-stack` file, run `/mtk-setup` first.
+
+## Progressive Reference Loading
+
+Load shared references **progressively** — only what the current phase needs:
+
+| Phase | References |
+|:---|:---|
+| **Always** | The coding guidelines from the active tech stack's `## Reference Files` |
+| **Planning** | `security-checklist.md` *(if scope touches security)*, `testing-patterns.md` |
+| **Implementation** | `performance-checklist.md`, plus stack-specific ORM checklist and framework patterns |
+| **Review** | the repo's quick-check list *(if present)* |
+
 ## Path-Scoped Reference Loading
 
 Reference entries in `.claude/manifest.json` may declare an `applyTo`

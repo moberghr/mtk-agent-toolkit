@@ -376,6 +376,29 @@ else
   FAILS+=("(i) expected exit 1 for both equivalent paths with AGENTS.md unchanged, got rel=$rc_rel abs=$rc_abs")
 fi
 
+# --- (j) CLAUDE.md as a SYMLINK to AGENTS.md is not a constitution-in-CLAUDE.md ---
+# `ln -s AGENTS.md CLAUDE.md` is an obvious migration shortcut. Reading CLAUDE.md
+# then yields the constitution BODY, which matches neither "absent" nor the
+# `^@AGENTS\.md` shim pattern, so the file resolved as CLAUDE.md, the whole
+# canonical-constitution branch was skipped, and `--force` silently overwrote the
+# hand-authored constitution with a 9-line generated summary. Same file on both
+# sides ⇒ CLAUDE.md cannot be a shim *for* AGENTS.md.
+FIXTURE_J="$TMPDIR_FIXTURES/j-symlink-shim"
+mkdir -p "$FIXTURE_J"
+printf '# Project\n\n## Critical Rules\n\n- **C0.1** hand-authored rule\n\n## Build\n\nmake\n' > "$FIXTURE_J/AGENTS.md"
+ln -s AGENTS.md "$FIXTURE_J/CLAUDE.md"
+before_j="$(cat "$FIXTURE_J/AGENTS.md")"
+echo ""; echo "--- (j) CLAUDE.md symlinked to AGENTS.md still protects the constitution ---"
+rc_j=0; out_j="$(cd "$FIXTURE_J" && bash "$GEN" --force 2>&1)" || rc_j=$?
+rc_j2=0; out_j2="$(cd "$FIXTURE_J" && bash "$GEN" 2>&1)" || rc_j2=$?
+if [ "$rc_j" -eq 1 ] && grep -qF "REFUSING --force" <<<"$out_j" \
+   && [ "$rc_j2" -eq 0 ] && grep -qF "canonical constitution" <<<"$out_j2" \
+   && [ "$(cat "$FIXTURE_J/AGENTS.md")" = "$before_j" ]; then
+  echo "  PASS  symlinked CLAUDE.md refuses --force (exit 1); constitution byte-identical"
+else
+  FAILS+=("(j) expected --force refused (exit 1) and AGENTS.md unchanged for a symlinked CLAUDE.md. rc=$rc_j rc2=$rc_j2 out=$out_j")
+fi
+
 echo ""
 if [ ${#FAILS[@]} -gt 0 ]; then
   printf '  FAIL  %s\n' "${FAILS[@]}" >&2

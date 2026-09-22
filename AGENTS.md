@@ -24,22 +24,7 @@
 | Install health check | `/mtk-doctor` | PASS/WARN/FAIL diagnostics across core files, components, hooks, and environment fit; `--json` for CI, `--fix` for safe auto-repairs |
 | Promote a lesson | `/promote-lesson` | Promote a personal lesson from the personal lessons store **or Claude Code native memory** to team-wide `tasks/lessons.md`; optionally open a validated contribute-back PR to the toolkit |
 | Mine lessons from past sessions | `/mtk mine lessons` | Sweep recent session transcripts for durable lesson/memory candidates (reject-by-default rubric, suggest-only) |
-| Disable tier-2 hooks | `MTK_HOOKS_TIER2=0` in the local settings override | Silences skill-invoking hooks (queue + drain) without touching shared settings |
-| Enforce spec scope (hard deny) | `MTK_SCOPE_GUARD_ENFORCE=1` | Upgrades `hooks/scope-guard.sh` from advisory to a hard PreToolUse deny (exit 2) when an Edit/Write targets a file outside the approved spec's `change_manifest`/`test_manifest`. Default (unset) stays advisory |
-| Auto-approve safe plans | `MTK_AUTO_PROCEED=1` | Skips Phase 2.5 prompt only when spec has no open decisions and no plan-gap BLOCKING findings |
-| Disable artifact publishing | `MTK_ARTIFACT_PUBLISH=0` | Stops workflow skills publishing spec/plan/handoff/health to a claude.ai Artifact (data-egress opt-out for regulated repos); disk output is unaffected. See `.claude/references/artifact-publishing.md` |
-| Enable compaction snapshots (plugin installs) | `MTK_COMPACT_SNAPSHOT=1` | Opts a plugin-installed repo into pre-compaction git-stash snapshots; always on in this dev checkout |
-| Pin MTK to a checkout | `MTK_HELPER_ROOT=/path/to/claude-helpers` | Makes MTK resolve from that checkout **first**, before the project copy and the plugin cache — covering both the `## MTK File Resolution` block every entry-point skill opens with and the inline script resolvers (`scripts/workflow-artifact.sh`, `scripts/learnings.sh`). Target-repo scripts resolve the *project* root from `$CLAUDE_PROJECT_DIR`/git, so their output always lands in the target |
-| Tune the mtk-compress nag | `MTK_COMPRESS_MAX_NAGS=N` | Per-session budget for `hooks/compress-monitor.sh`'s "pipe this through mtk-compress" tip (default `1`). `0` silences it while leaving the hook wired; `MTK_COMPRESS_MONITOR_DISABLED=1` disables it outright, and `MTK_COMPRESS_WARN_CHARS` moves the 5,000-char trigger |
-| Allow interactive-prone shell commands | `MTK_INTERACTIVE_GUARD=0` | Disables `hooks/interactive-guard.sh`, the PreToolUse hard deny on Bash commands that can block on a prompt (S4.12) — `gh pr merge` with no `--delete-branch`/`--no-delete-branch` decision, and prompt-capable commands piped through `tail`/`head`. Read-only pipes are never blocked |
-| Declare that subagent dispatch is unavailable | `MTK_SUBAGENT_DISPATCH=0` | Tells `implement`'s Phase 2.9 pre-flight that this session cannot dispatch implementer subagents. HIGH/MAX then runs the **inline-MAX profile** (compensations C1–C3). It does **not** lower the rigor level. Default (unset) probes per run |
-| Force or skip the pre-flight baseline | `MTK_BASELINE_CAPTURE=1` / `=0` | `implement` Phase 2.9 captures build/test/typecheck state at the base commit before the first edit. On by default at rigor HIGH/MAX; `=1` forces it at any level, `=0` opts out — and then every later checkpoint must state that no baseline exists |
-| Tune or disable the host-load probe | `MTK_HOST_LOAD_MAX=N` / `MTK_HOST_LOAD_PROBE=0` | `scripts/host-load-probe.sh` reports the 1-minute load per core and says `overloaded` above `MTK_HOST_LOAD_MAX` (default `2.0`). An overloaded host routes the run to inline-MAX instead of dispatching implementers the harness watchdog will kill. `=0` skips the probe on shared CI runners |
-| Cap parallel implementer waves | `MTK_BATCH_WAVE_MAX=N` | Phase 3 on the subagent path runs batches at the same `depends` level concurrently; this caps how many implementers one wave dispatches (default `3`). `1` restores fully sequential batches |
-| Tune the mid-run churn review thresholds | `MTK_CHURN_REVIEW_LINES` / `MTK_CHURN_HALT_LINES` | Net non-generated lines changed since the last review before an early review (default 300) or a halt for `compliance-reviewer` (default 500). Defaults double at rigor HIGH/MAX. Generated files never count |
-| Tune the collateral-churn thresholds | `MTK_COLLATERAL_*` (see `hooks/collateral-guard.sh`) | Thresholds for the guard that flags churn that is not the change you made: whitespace/EOL-only rewrites, generated artifacts riding along undeclared, asset directories regenerated wholesale, and structured files re-serialized around a small real edit |
-| Write a tracked run receipt | `MTK_RUN_RECEIPT=1` | `implement` Phase 7.5 writes a **tracked** receipt beside the spec in `docs/specs/` holding the run's evidence (baseline vs final figures, gates, dispatch path, drift/coverage/collateral verdicts, reviewer lane outcomes). Fields never recorded are written as `not recorded` |
-| Calibrate context-budget nags to your window | `MTK_CONTEXT_WINDOW_TOKENS=200000` | Rescales `hooks/context-budget.sh`'s file/mod/op nudges from the 1M default to your model's real context window. Per-threshold overrides: `MTK_CTX_FILES_WARN` / `MTK_CTX_MODS_WARN` / `MTK_CTX_OPS_WARN`; `MTK_CONTEXT_BUDGET_PCT` sets the read-bytes reset percentage |
+| Tune MTK behaviour (hooks, rigor, budgets, thresholds) | `MTK_*` environment variables | Full table of every knob, its default and effect: `.claude/references/env-knobs.md` |
 
 **Decision rule for `/mtk`:** Say what you want in plain English. The router picks the right workflow skill — fix / implement / pre-commit-review / repo-health / context-report / research-context / instructions-audit / instructions-capture / toolkit-health / mtk-doctor.
 
@@ -50,15 +35,13 @@
 ## Build & Test
 
 ```bash
-# Validate toolkit structure and manifest integrity
-bash scripts/validate-toolkit.sh
-
-# No dotnet build — this is a markdown/bash/JSON toolkit, not a .NET app
-# Pressure tests are manual: read tests/pressure-tests/*.md and verify skill behavior
-
-# Router fixtures + evals: bash scripts/run-fixtures.sh && bash scripts/run-evals.sh
-# Install health check: bash scripts/mtk-doctor.sh (--json, --fix)
+bash scripts/validate-toolkit.sh                            # structure + manifest (before every commit)
+bash scripts/run-fixtures.sh && bash scripts/run-evals.sh   # router fixtures + evals
+bash scripts/mtk-doctor.sh                                  # install health check (--json, --fix)
 ```
+
+No `dotnet build` — this is a markdown/bash/JSON toolkit. Pressure tests are manual: read
+`tests/pressure-tests/*.md` and verify skill behaviour.
 
 Releases regenerate `checksums.sha256` via `bash scripts/generate-checksums.sh` as the last change in the release commit (S4.11).
 
@@ -91,79 +74,41 @@ Releases regenerate `checksums.sha256` via `bash scripts/generate-checksums.sh` 
 
 ## Standards Reference
 
-Detailed rules in `.claude/rules/` (auto-loaded by Claude Code):
+Detailed rules live in `.claude/rules/` (auto-loaded by Claude Code): `toolkit-structure.md` (S1.x,
+manifest/organization/naming), `skill-authoring.md` (S2.x), `hooks-and-scripts.md` (S3.x),
+`git-workflow.md` (S4.x), `verification-and-proof.md` (S5.x). `.claude/rules/INDEX.md` is the
+wake-up layer — read it first and pull a full rule file only when its axes match the task.
 
-| File | Covers | Rules |
-|---|---|---|
-| `toolkit-structure.md` | Manifest, file organization, naming | S1.x |
-| `skill-authoring.md` | Skill anatomy, CSO principle, pressure tests | S2.x |
-| `hooks-and-scripts.md` | Bash hooks, validation scripts | S3.x |
-| `git-workflow.md` | Branches, commits, versioning | S4.x |
-
-Full reference docs (distributed to target repos, read on-demand):
-
-**Shared (any stack):**
-- `.claude/references/security-checklist.md` — Security checklist for serious software
-- `.claude/references/domain-finance.md` — Finance domain supplement (regulated state, sensitive data, audit requirements)
-- `.claude/references/testing-patterns.md` — Generic testing guidance
-- `.claude/references/performance-checklist.md` — Generic performance checklist
-
-**Per stack (loaded via the active tech stack skill's `## Reference Files`):**
-- `.claude/references/dotnet/` — coding-guidelines, ef-core-checklist, mediatr-slice-patterns, testing-supplement, performance-supplement
-- `.claude/references/python/` — coding-guidelines (placeholder), sqlalchemy-checklist, fastapi-patterns, testing-supplement, performance-supplement
+Reference docs are read on demand: shared ones in `.claude/references/` (`security-checklist.md`,
+`testing-patterns.md`, `performance-checklist.md`, `domain-finance.md`, `env-knobs.md`), and
+per-stack ones under `.claude/references/{stack}/`, listed canonically in the active tech stack
+skill's `## Reference Files`.
 
 ---
 
 ## Agent Routing
 
 This repository uses **skills** as both user-facing entry points and reusable workflow blocks, and
-**agents** as specialist reviewers. Full detail — decision tree, per-workflow composition, the
-model-invoked skill list, the two-stage review graph, the review-output schema, the eval pipeline
-and path-scoped reference loading — lives in `.claude/references/agent-routing-guide.md`.
+**agents** as specialist reviewers. The routing decision tree, per-workflow composition, the
+model-invoked skill list, the two-stage review graph, the review-output schema, the eval pipeline,
+tech-stack loading and progressive/path-scoped reference loading all live in
+`.claude/references/agent-routing-guide.md` — read it whenever routing is not obvious.
 
-### Entry-Point Skills
+Two skills are user-invocable: `/mtk-setup` (first-time setup; `--audit`, `--merge`, `--refresh`,
+`--check`, `--converge`) and `/mtk <description>` (the natural-language router). Everything else is
+a **routed workflow skill** reached through `/mtk`, or a **model-invoked skill** loaded
+automatically when its trigger fires. The canonical route list is the `/mtk` decision rule above.
 
-There are just two user-invocable skills:
+The active tech stack is recorded in `.claude/tech-stack`; every entry-point skill and agent reads
+it in Phase 0 and loads the matching `tech-stack-{stack}` skill. No such file ⇒ run `/mtk-setup`.
 
-| Skill | Purpose |
-|:---|:---|
-| `/mtk-setup` | First-time setup (bootstrap + audit), `--audit` to re-audit, `--merge` to unify multi-repo audits, `--refresh` to drift-refresh all generated docs (`--dry-run` to preview), `--check` as read-only CI staleness gate, `--converge` to judge code against agreed principles as graded work items |
-| `/mtk <description>` | Natural-language router — dispatches to fix / batch-fix / implement / pre-commit-review / context-report / repo-health / research-context / instructions-audit / instructions-capture / toolkit-health / mtk-doctor / pr-review-mining / promote-lesson / lesson-mining / lesson-refresh / setup-refresh / setup-converge |
-
-Everything else is either a **routed workflow skill** (reached through `/mtk`) or a
-**model-invoked skill** (`handoff`, `correction-capture`, `golden-path-capture`,
-`prior-work-check`, `subagent-implementation`, `code-simplification`, `workflow-artifacts`),
-loaded automatically when its trigger fires. Both lists, with composition, are in the guide.
-
-### Review Routing (Two-Stage)
-
-Stage 1 (`compliance-reviewer`, plus `silent-failure-hunter` on error-handling diffs) gates Stage 2 (`test-reviewer`, `architecture-reviewer`); the full procedure, triggers and lane rules are in `.claude/references/agent-routing-guide.md` → *Review Routing (Two-Stage)*.
-
-### Tech Stack Loading
-
-The toolkit uses pluggable tech stacks. The active stack is recorded in `.claude/tech-stack` (a
-single word like `dotnet`, `python`, or `typescript`). Every entry-point skill and agent reads
-this file in Phase 0 and loads the matching `tech-stack-{stack}` skill, which provides build and
-test commands, ORM and framework patterns, stack-specific reference paths, scan recipes for
-`setup-bootstrap` and `setup-audit`, and settings to merge during setup. For the `typescript`
-stack, `.claude/tech-stack-pm` additionally stores the auto-detected package manager (bun /
-pnpm / yarn / npm). If a repo has no `.claude/tech-stack` file, run `/mtk-setup` first.
-
-### Reference Loading
-
-Load shared references **progressively** — only what the current phase needs:
-
-| Phase | References |
-|:---|:---|
-| **Always** | The coding guidelines from the active tech stack's `## Reference Files` |
-| **Planning** | `security-checklist.md` *(if scope touches security)*, `testing-patterns.md` |
-| **Implementation** | `performance-checklist.md`, plus stack-specific ORM checklist and framework patterns |
-| **Review** | the repo's quick-check list *(if present)* |
+Review is two-stage: Stage 1 (`compliance-reviewer`, plus `silent-failure-hunter` on
+error-handling diffs) gates Stage 2 (`test-reviewer`, `architecture-reviewer`).
 
 ### Routing Rules
 
 1. Read this file first — it is the project-specific source of truth. `CLAUDE.md` only imports it.
-2. Start a task with `context-engineering`; it loads the phase-appropriate references above.
+2. Start a task with `context-engineering`; it loads the phase-appropriate references.
 3. If an entry-point skill exists for the task, prefer it — it orchestrates the underlying workflow skills.
 4. Do not skip planning, testing, review, or verification when the chosen skill requires them.
 5. For toolkit structural health (toolkit maintainers only), run `bash scripts/validate-toolkit.sh`. For onboarding a new repo, install the MTK plugin from the marketplace then run `/mtk-setup`.

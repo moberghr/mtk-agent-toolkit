@@ -21,7 +21,7 @@ echo "--- Constitution (AGENTS.md, then CLAUDE.md shim) ---"
 test -f AGENTS.md && echo "AGENTS.md ($(wc -l < AGENTS.md) lines)" || echo "AGENTS.md (absent)"
 test -f CLAUDE.md && echo "CLAUDE.md ($(wc -l < CLAUDE.md) lines)$(grep -q '^@AGENTS\.md' CLAUDE.md 2>/dev/null && echo ' — shim' || echo '')" || echo "CLAUDE.md (absent)"
 echo "--- Other shims / mirrors ---"
-{ find . -maxdepth 6 \( -name GEMINI.md -o -name ".github/copilot-instructions.md" -o -name ".windsurfrules" -o -name ".clinerules" \) -not -path "./.git/*" -not -path "*/node_modules/*" 2>/dev/null; \
+{ find . -maxdepth 6 \( -name GEMINI.md -o -path "*/.github/copilot-instructions.md" -o -name ".windsurfrules" -o -name ".clinerules" \) -not -path "./.git/*" -not -path "*/node_modules/*" 2>/dev/null; \
   find . -maxdepth 4 -name ".claude.local.md" 2>/dev/null; } | sort -u
 echo "--- Nested per-package constitutions ---"
 find . -maxdepth 6 \( -name AGENTS.md -o -name CLAUDE.md \) -not -path "./AGENTS.md" -not -path "./CLAUDE.md" -not -path "./.git/*" -not -path "*/node_modules/*" 2>/dev/null | sort -u

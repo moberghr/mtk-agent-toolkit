@@ -131,6 +131,12 @@
       "action": "sync",
       "description": "Review threshold and verdict configuration. Per-engineer overrides go in .claude/review-config.local.json (gitignored)."
     },
+    "references/env-knobs.md": {
+      "source": ".claude/references/env-knobs.md",
+      "target": ".claude/references/env-knobs.md",
+      "action": "sync",
+      "description": "Full table of every MTK_* environment knob, its default and effect, split out of AGENTS.md so the always-loaded constitution carries routing decisions rather than a reference table."
+    },
     "references/testing-patterns.md": {
       "source": ".claude/references/testing-patterns.md",
       "target": ".claude/references/testing-patterns.md",
@@ -813,11 +819,17 @@
       "action": "sync",
       "description": "Polyglot-aware tech-stack resolver \u2014 resolves the active stack for a path via MTK_STACK, a nested .claude/tech-stack, a root .claude/tech-stack.map glob, then the repo-root default"
     },
+    "scripts/resolve-constitution.sh": {
+      "source": "scripts/resolve-constitution.sh",
+      "target": "scripts/resolve-constitution.sh",
+      "action": "sync",
+      "description": "Single source of truth for which file is the repo's agent constitution — AGENTS.md when it exists, is not generator-marked, and CLAUDE.md is absent, the same file, or an @AGENTS.md shim; --loaded answers the separate context-accounting question"
+    },
     "scripts/resolve-artifact-root.sh": {
       "source": "scripts/resolve-artifact-root.sh",
       "target": "scripts/resolve-artifact-root.sh",
       "action": "sync",
-      "description": "Polyglot-aware artifact-root resolver — resolves where docs/specs and docs/plans live for a path via MTK_ARTIFACT_ROOT, a .claude/artifact-root marker, the nearest subtree holding both CLAUDE.md and docs/specs, then the repo root"
+      "description": "Polyglot-aware artifact-root resolver — resolves where docs/specs and docs/plans live for a path via MTK_ARTIFACT_ROOT, a .claude/artifact-root marker, the nearest subtree holding both a constitution (AGENTS.md or CLAUDE.md) and docs/specs, then the repo root"
     },
     "scripts/query-code-index.sh": {
       "source": "scripts/query-code-index.sh",
@@ -1127,6 +1139,12 @@
       "target": "tests/hooks/test-repo-relative-path.sh",
       "action": "sync",
       "description": "Fixture-based tests for hook-io.sh mtk_repo_relative_path — repo-relative paths stay correct under case-variant and symlinked root spellings"
+    },
+    "tests/hooks/test-resolve-constitution.sh": {
+      "source": "tests/hooks/test-resolve-constitution.sh",
+      "target": "tests/hooks/test-resolve-constitution.sh",
+      "action": "sync",
+      "description": "Owns the constitution-resolution matrix for scripts/resolve-constitution.sh — legacy, shim, generator-marked, symlinked, absent and both-real repos across canonical and --loaded modes"
     },
     "tests/hooks/test-resolve-artifact-root.sh": {
       "source": "tests/hooks/test-resolve-artifact-root.sh",

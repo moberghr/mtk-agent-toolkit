@@ -40,7 +40,12 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
 if [ "$#" -gt 0 ]; then
   FILES=("$@")
 else
-  FILES=(CLAUDE.md .claude/references/architecture-principles.md)
+  # Both constitution spellings: AGENTS.md is canonical post-inversion, CLAUDE.md
+  # is either a legacy constitution or a shim. Non-existent entries are filtered
+  # below, so listing both is safe in either repo shape. Verifying only CLAUDE.md
+  # here would scan an 11-line shim and silently skip every path claim in the
+  # real constitution.
+  FILES=(AGENTS.md CLAUDE.md .claude/references/architecture-principles.md)
   # Expand rules glob if present.
   for f in .claude/rules/*.md; do
     [ -f "$f" ] && FILES+=("$f")

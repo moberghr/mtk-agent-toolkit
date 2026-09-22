@@ -93,14 +93,34 @@ if [ -f ".claude/mtk-version.json" ]; then
   record PASS core ".claude/mtk-version.json present"
 fi
 
-# CLAUDE.md may not exist in the source repo (it's a target-repo artifact),
-# but if it exists, check the line budget.
-if [ -f CLAUDE.md ]; then
-  CLAUDE_LINES="$(wc -l < CLAUDE.md | tr -d '[:space:]')"
-  if [ "$CLAUDE_LINES" -le 200 ]; then
-    record PASS core "CLAUDE.md within 200-line budget" "${CLAUDE_LINES} lines"
+# Budget the RESOLVED constitution, not a fixed filename. Post-inversion the
+# constitution is AGENTS.md and CLAUDE.md is an ~11-line shim, so checking
+# CLAUDE.md unconditionally passes vacuously and the file that actually costs
+# always-on context is never measured. Resolution matches constitution_file()
+# in constitution-digest.sh: AGENTS.md wins when it exists, is not
+# generator-marked, and CLAUDE.md is absent, the same file, or a shim.
+_RC_BUD="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/resolve-constitution.sh"
+[ -f "$_RC_BUD" ] || _RC_BUD="${CLAUDE_PLUGIN_ROOT:-.}/scripts/resolve-constitution.sh"
+DOCTOR_CONST=""
+if [ -f "$_RC_BUD" ]; then
+  DOCTOR_CONST="$(bash "$_RC_BUD" 2>/dev/null || true)"
+elif [ -f AGENTS.md ] && { [ ! -f CLAUDE.md ] || [ CLAUDE.md -ef AGENTS.md ] || grep -q '^@AGENTS\.md' CLAUDE.md 2>/dev/null; }; then
+  DOCTOR_CONST="AGENTS.md"
+elif [ -f CLAUDE.md ]; then
+  DOCTOR_CONST="CLAUDE.md"
+fi
+# The resolver answers "which file", not "is there one".
+[ -n "$DOCTOR_CONST" ] && [ -f "$DOCTOR_CONST" ] || DOCTOR_CONST=""
+
+if [ -n "$DOCTOR_CONST" ] && [ -f "$DOCTOR_CONST" ]; then
+  # 120 is the hard cap the template, setup-bootstrap and validate-toolkit.sh all
+  # state (target 60-80). Doctor WARNs rather than FAILs: a target repo may carry
+  # a large legacy constitution it has not split yet.
+  CONST_LINES="$(wc -l < "$DOCTOR_CONST" | tr -d '[:space:]')"
+  if [ "$CONST_LINES" -le 120 ]; then
+    record PASS core "$DOCTOR_CONST within 120-line budget" "${CONST_LINES} lines"
   else
-    record WARN core "CLAUDE.md exceeds 200-line budget" "${CLAUDE_LINES} lines — consider splitting into .claude/rules/"
+    record WARN core "$DOCTOR_CONST exceeds 120-line budget" "${CONST_LINES} lines (target 60-80) — consider splitting into .claude/rules/ or .claude/references/"
   fi
 fi
 
@@ -609,19 +629,23 @@ add_ctx_file() {
 }
 
 add_ctx_file "CLAUDE.md"
-# AGENTS.md is always-on only when it is actually loaded: the default
-# `claude-md-or-agents-md` mode ignores AGENTS.md whenever a CLAUDE.md exists,
-# so it costs context only when CLAUDE.md is absent or imports it (`@AGENTS.md`).
-# The LOADED rule, deliberately without constitution_file()'s generator-marker
-# clause (see the WARN above): a marked AGENTS.md that CLAUDE.md imports is still
-# read by the model, so it still costs context and is still counted here. The
-# marker decides which file is CANONICAL, not which bytes are loaded.
+# AGENTS.md is always-on only when it is actually loaded — resolve-constitution.sh
+# --loaded. Deliberately NOT the canonical rule (see the WARN above): a
+# generator-marked AGENTS.md that CLAUDE.md imports is still read by the model, so
+# it still costs context and is still counted here. The marker decides which file
+# is CANONICAL, not which bytes are loaded.
+_RC_DOC="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/resolve-constitution.sh"
+[ -f "$_RC_DOC" ] || _RC_DOC="${CLAUDE_PLUGIN_ROOT:-.}/scripts/resolve-constitution.sh"
 CTX_AGENTS=""
-if [ -f AGENTS.md ]; then
-  if [ ! -f CLAUDE.md ] || grep -q '^@AGENTS\.md' CLAUDE.md 2>/dev/null; then
-    add_ctx_file "AGENTS.md"
-    CTX_AGENTS="AGENTS.md + "
-  fi
+CTX_LOADED=""
+if [ -f "$_RC_DOC" ]; then
+  CTX_LOADED="$(bash "$_RC_DOC" --loaded 2>/dev/null || true)"
+elif [ -f AGENTS.md ] && { [ ! -f CLAUDE.md ] || [ CLAUDE.md -ef AGENTS.md ] || grep -q '^@AGENTS\.md' CLAUDE.md 2>/dev/null; }; then
+  CTX_LOADED="AGENTS.md"
+fi
+if [ "$CTX_LOADED" = "AGENTS.md" ] && [ -f AGENTS.md ]; then
+  add_ctx_file "AGENTS.md"
+  CTX_AGENTS="AGENTS.md + "
 fi
 add_ctx_file ".claude/rules/INDEX.md"
 
