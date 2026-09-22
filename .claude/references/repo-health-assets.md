@@ -16,7 +16,7 @@ type: reference
 
 | # | Asset | Bucket |
 |---|---|---|
-| 1 | CLAUDE.md present and non-empty | AI Context |
+| 1 | Instructions file present and non-empty | AI Context |
 | 2 | Architecture principles file with ≥5 tagged principles | AI Context |
 | 3 | `.claude/tech-stack` pinned to a known tech-stack-* skill | AI Context |
 | 4 | `tasks/lessons.md` with ≥1 `## ` lesson entry | AI Context |
@@ -31,7 +31,7 @@ type: reference
 
 ## Rubric
 
-### 1. CLAUDE.md present
+### 1. Instructions file present
 
 - **pass** — file exists and has any content.
 - **partial** — file exists but is empty.

@@ -78,15 +78,26 @@ Re-run `setup-bootstrap` STEP 3.6 (prune stack reference files against detected 
 
 ### `AGENTS.md` + tool configs + indexes
 
-When `AGENTS.md` or `path-references` is `stale`/`missing`, regenerate deterministically:
+**Branch on the row's `reason`, not just its status.** Row 5 of `setup-refresh-plan.sh` reports three distinct `AGENTS.md` provenances, and only one of them is a generator's to reconcile. Read the reason string and pick exactly one branch:
+
+**(1) Footer-version drift on an mtk-stamped AGENTS.md** — reason names the footer and the installed version (e.g. `AGENTS.md footer stamped v7.29.0, installed v7.30.0`). This AGENTS.md is the canonical constitution written by `setup-bootstrap` from `.claude/references/root-agents-md-template.md`: it is **authored, never regenerated**. Do **not** run `generate-agents-md.sh` for this row — against a canonical AGENTS.md it exits 0 *without writing*, so a 0 here means "declined", not "regenerated". Instead, treat AGENTS.md exactly as `CLAUDE.md` and `.claude/rules/*.md` are treated below: compute the fresh template content as `setup-bootstrap` would, write it to a temp path, and hand it to STEP 4 so `.claude/references/regen-diff-contract.md` classifies it against the cached ancestor and proposes the MTK delta hunk-by-hunk. Under `--non-interactive`, unresolved hunks land under **Needs review** — never auto-applied, never force-merged.
+
+**(2) Legacy generator-marked AGENTS.md** — reason mentions the auto-generated marker or `regenerated content differs from on-disk AGENTS.md`. This file really is generator output, so keep the deterministic path (no `--force`):
 
 ```bash
 bash scripts/generate-agents-md.sh
+```
+
+**(3) Hand-curated AGENTS.md (`unknown`)** — no footer stamp and no auto-generated marker. Leave it untouched, list it under "Preserved hand-authored files", and report it as a Needs review item if the plan flagged it. The generator is never invoked against it.
+
+Tool configs and derived indexes are unaffected by the branch above and run whenever `AGENTS.md` or `path-references` is `stale`/`missing`:
+
+```bash
 bash scripts/generate-tool-configs.sh --all
 bash scripts/refresh-derived.sh references triggers
 ```
 
-These generators carry their own preservation guards, which is why they may write in place: `generate-agents-md.sh` refuses to overwrite an AGENTS.md that lacks its auto-generated marker and preserves `## Custom:` sections when regenerating its own output; `generate-tool-configs.sh` applies the same marker-refusal rule per output file. **A marker-less config (AGENTS.md, GEMINI.md, `.windsurfrules`, …) is hand-curated — leave it alone, list it under "Preserved hand-authored files", and note it as a Needs review item if the plan flagged it.** Never pass `--force` to reconcile a staleness row; a row that cannot be reconciled without `--force` means the file is not MTK's to regenerate. `refresh-derived.sh` is idempotent and silent on no-op, so running it at the end of this step regardless of the trigger is safe and keeps `.claude/references.index` / `.claude/triggers.index` in sync with whatever STEP 3 just touched.
+`generate-tool-configs.sh` may write in place because it carries its own preservation guard: it refuses to overwrite any output file that lacks its auto-generated marker. **A marker-less config (GEMINI.md, `.windsurfrules`, …) is hand-curated — leave it alone, list it under "Preserved hand-authored files", and note it as a Needs review item if the plan flagged it.** Never pass `--force` to reconcile a staleness row; a row that cannot be reconciled without `--force` means the file is not MTK's to regenerate. `refresh-derived.sh` is idempotent and silent on no-op, so running it at the end of this step regardless of the trigger is safe and keeps `.claude/references.index` / `.claude/triggers.index` in sync with whatever STEP 3 just touched.
 
 ### `CLAUDE.md` and `.claude/rules/*`
 
@@ -94,7 +105,7 @@ Never rewritten in place, regardless of staleness reason (version-drift footer o
 
 ## STEP 4: Engineer-Edited Files
 
-For every file STEP 3 regenerated or would regenerate (`architecture-principles.md`, `conventions.md`, `CLAUDE.md`, each `.claude/rules/*.md`, `.claude/detected-tools.json`), resolve `ancestor` / `current` / `fresh` and apply `.claude/references/regen-diff-contract.md` exactly as written there — do not re-derive or restate its classification, diff-proposal, or cache-update rules here. In short: files unchanged since the last generation overwrite cleanly; files an engineer edited get their MTK delta proposed hunk-by-hunk via `AskUserQuestion`, never force-merged; hunks that no longer apply cleanly land under **Needs review** with the conflicting region quoted; protected files (`manifest.protected`) that this run has no business touching are reported `SKIP`.
+For every file STEP 3 regenerated or would regenerate (`architecture-principles.md`, `conventions.md`, `CLAUDE.md`, each `.claude/rules/*.md`, `.claude/detected-tools.json`, and `AGENTS.md` when STEP 3 routed it here via the footer-drift branch), resolve `ancestor` / `current` / `fresh` and apply `.claude/references/regen-diff-contract.md` exactly as written there — do not re-derive or restate its classification, diff-proposal, or cache-update rules here. In short: files unchanged since the last generation overwrite cleanly; files an engineer edited get their MTK delta proposed hunk-by-hunk via `AskUserQuestion`, never force-merged; hunks that no longer apply cleanly land under **Needs review** with the conflicting region quoted; protected files (`manifest.protected`) that this run has no business touching are reported `SKIP`.
 
 Run this step for every candidate file even if STEP 3 judged the underlying content unchanged — the contract's own `current == ancestor` check is what decides "safe to overwrite," and that decision belongs to the contract, not to this step.
 
@@ -125,7 +136,11 @@ For every doc whose on-disk copy STEP 4 actually changed (wholesale stock overwr
 
 ## STEP 6: Report
 
-Print a summary with four counts — `Updated`, `Created`, `Preserved (untouched)`, `Needs review` — followed by an itemized list of every needs-review item. Apply the same preservation reporting rules as `setup-bootstrap` STEP 5: list every preserved hand-authored file (or "none found"), and if any MTK-owned file was retired this run, list it explicitly under a "Retired prior MTK files" heading — never let a retirement pass silently.
+Print a summary with four counts — `Updated`, `Created`, `Preserved (untouched)`, `Needs review` — followed by an itemized list of every needs-review item.
+
+**A count of `Updated` is a claim that a file on disk changed — never infer it from a generator's exit code.** A generator that exits 0 may have declined to write: `generate-agents-md.sh` prints `AGENTS.md is already the canonical constitution (CLAUDE.md is absent or a shim importing it) — nothing to regenerate.` and exits 0 without touching the file. That stdout note is the signal — when you see it, report the file under **Preserved (untouched)** as "generator declined — AGENTS.md is the canonical constitution", never under `Updated`. The same applies to any run whose diff is empty: a file whose bytes did not change belongs under `Preserved (untouched)` with the reason "no change", not under `Updated`. Confirm a change before counting it (e.g. `git status --porcelain <file>`); an exit-0 no-op reported as a regeneration is a false completion claim.
+
+Apply the same preservation reporting rules as `setup-bootstrap` STEP 5: list every preserved hand-authored file (or "none found"), and if any MTK-owned file was retired this run, list it explicitly under a "Retired prior MTK files" heading — never let a retirement pass silently.
 
 ```
 ✅ MTK SETUP REFRESH COMPLETE
@@ -138,6 +153,7 @@ Created:            [N]
   [file — e.g. "conventions.md — was missing"]
 Preserved (untouched): [N]
   [file — reason, e.g. "CLAUDE.md — PROPOSED (2 hunks: 2 applied, 0 skipped)" or "conventions.md — fresh, no drift"]
+  [file — e.g. "AGENTS.md — generator declined (canonical constitution), nothing written"]
 Needs review:       [N]
   [file — hunk description and quoted conflicting region, per regen-diff-contract]
 
@@ -158,4 +174,5 @@ Next steps:
 - Every doc rewritten in STEP 3/4 carries a refreshed `<!-- mtk-stamp -->` with `previous-stamp` / `sections-changed` / `claims-delta` populated.
 - `scripts/verify-claims.sh` ran per refreshed doc, including the one-retry loop where downgrades occurred.
 - Every engineer-edited file went through `.claude/references/regen-diff-contract.md` — no direct `Write` to `CLAUDE.md` or any `.claude/rules/*.md`, and no `git merge-file --union` anywhere in this run.
+- An `AGENTS.md` row flagged for footer-version drift went through the regen-diff-contract, not `generate-agents-md.sh`; no run reported an exit-0 generator no-op as `Updated`.
 - The STEP 6 report was printed with all four counts and an itemized needs-review list (or explicit "none").

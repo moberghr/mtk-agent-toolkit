@@ -131,6 +131,12 @@
       "action": "sync",
       "description": "Review threshold and verdict configuration. Per-engineer overrides go in .claude/review-config.local.json (gitignored)."
     },
+    "references/env-knobs.md": {
+      "source": ".claude/references/env-knobs.md",
+      "target": ".claude/references/env-knobs.md",
+      "action": "sync",
+      "description": "Full table of every MTK_* environment knob, its default and effect, split out of AGENTS.md so the always-loaded constitution carries routing decisions rather than a reference table."
+    },
     "references/testing-patterns.md": {
       "source": ".claude/references/testing-patterns.md",
       "target": ".claude/references/testing-patterns.md",
@@ -510,17 +516,17 @@
       "action": "sync",
       "description": "Reusable behavior-preserving cleanup and simplification skill"
     },
-    "skills/claude-md-audit/SKILL.md": {
-      "source": ".claude/skills/claude-md-audit/SKILL.md",
-      "target": ".claude/skills/claude-md-audit/SKILL.md",
+    "skills/instructions-audit/SKILL.md": {
+      "source": ".claude/skills/instructions-audit/SKILL.md",
+      "target": ".claude/skills/instructions-audit/SKILL.md",
       "action": "sync",
-      "description": "Re-grade loop for existing CLAUDE.md files \u2014 six-criterion rubric, currency cross-checks, append-only diffs"
+      "description": "Re-grade loop for the constitution (AGENTS.md, then CLAUDE.md shims) \u2014 six-criterion rubric, currency cross-checks, append-only diffs"
     },
-    "tests/pressure-tests/claude-md-audit-pressure.md": {
-      "source": "tests/pressure-tests/claude-md-audit-pressure.md",
-      "target": "tests/pressure-tests/claude-md-audit-pressure.md",
+    "tests/pressure-tests/instructions-audit-pressure.md": {
+      "source": "tests/pressure-tests/instructions-audit-pressure.md",
+      "target": "tests/pressure-tests/instructions-audit-pressure.md",
       "action": "sync",
-      "description": "Adversarial pressure test for claude-md-audit (stale commands, anti-sandbagging, refuse-rewrite, partial-approval)"
+      "description": "Adversarial pressure test for instructions-audit (stale commands, anti-sandbagging, refuse-rewrite, partial-approval, shim handling)"
     },
     "tests/pressure-tests/batch-fix.md": {
       "source": "tests/pressure-tests/batch-fix.md",
@@ -546,17 +552,17 @@
       "action": "sync",
       "description": "Adversarial pressure test for executable lesson contracts (malformed checklist/confidence → WARN, prose lessons stay quiet)"
     },
-    "skills/claude-md-capture/SKILL.md": {
-      "source": ".claude/skills/claude-md-capture/SKILL.md",
-      "target": ".claude/skills/claude-md-capture/SKILL.md",
+    "skills/instructions-capture/SKILL.md": {
+      "source": ".claude/skills/instructions-capture/SKILL.md",
+      "target": ".claude/skills/instructions-capture/SKILL.md",
       "action": "sync",
-      "description": "Capture session learnings into CLAUDE.md \u2014 reflect at session end, propose minimal append-only additions, apply only with approval"
+      "description": "Capture session learnings into AGENTS.md \u2014 reflect at session end, propose minimal append-only additions, apply only with approval"
     },
-    "tests/pressure-tests/claude-md-capture-pressure.md": {
-      "source": "tests/pressure-tests/claude-md-capture-pressure.md",
-      "target": "tests/pressure-tests/claude-md-capture-pressure.md",
+    "tests/pressure-tests/instructions-capture-pressure.md": {
+      "source": "tests/pressure-tests/instructions-capture-pressure.md",
+      "target": "tests/pressure-tests/instructions-capture-pressure.md",
       "action": "sync",
-      "description": "Adversarial pressure test for claude-md-capture (anti-manufacture, approval gate, personal-vs-team routing, append-not-rewrite)"
+      "description": "Adversarial pressure test for instructions-capture (anti-manufacture, approval gate, personal-vs-canonical-vs-shim routing, append-not-rewrite)"
     },
     "scripts/skill-eval/run-eval.sh": {
       "source": "scripts/skill-eval/run-eval.sh",
@@ -813,11 +819,17 @@
       "action": "sync",
       "description": "Polyglot-aware tech-stack resolver \u2014 resolves the active stack for a path via MTK_STACK, a nested .claude/tech-stack, a root .claude/tech-stack.map glob, then the repo-root default"
     },
+    "scripts/resolve-constitution.sh": {
+      "source": "scripts/resolve-constitution.sh",
+      "target": "scripts/resolve-constitution.sh",
+      "action": "sync",
+      "description": "Single source of truth for which file is the repo's agent constitution — AGENTS.md when it exists, is not generator-marked, and CLAUDE.md is absent, the same file, or an @AGENTS.md shim; --loaded answers the separate context-accounting question"
+    },
     "scripts/resolve-artifact-root.sh": {
       "source": "scripts/resolve-artifact-root.sh",
       "target": "scripts/resolve-artifact-root.sh",
       "action": "sync",
-      "description": "Polyglot-aware artifact-root resolver — resolves where docs/specs and docs/plans live for a path via MTK_ARTIFACT_ROOT, a .claude/artifact-root marker, the nearest subtree holding both CLAUDE.md and docs/specs, then the repo root"
+      "description": "Polyglot-aware artifact-root resolver — resolves where docs/specs and docs/plans live for a path via MTK_ARTIFACT_ROOT, a .claude/artifact-root marker, the nearest subtree holding both a constitution (AGENTS.md or CLAUDE.md) and docs/specs, then the repo root"
     },
     "scripts/query-code-index.sh": {
       "source": "scripts/query-code-index.sh",
@@ -886,7 +898,7 @@
       "source": "AGENTS.md",
       "target": "AGENTS.md",
       "action": "sync",
-      "description": "Cross-agent conventions file \u2014 generated by scripts/generate-agents-md.sh, protected during update"
+      "description": "Canonical constitution read by every harness (Claude Code, Codex, Cursor, Copilot, Windsurf) \u2014 authored by setup-bootstrap, imported by the CLAUDE.md shim, protected during update"
     },
     "docs/skill-anatomy.md": {
       "source": "docs/skill-anatomy.md",
@@ -1127,6 +1139,12 @@
       "target": "tests/hooks/test-repo-relative-path.sh",
       "action": "sync",
       "description": "Fixture-based tests for hook-io.sh mtk_repo_relative_path — repo-relative paths stay correct under case-variant and symlinked root spellings"
+    },
+    "tests/hooks/test-resolve-constitution.sh": {
+      "source": "tests/hooks/test-resolve-constitution.sh",
+      "target": "tests/hooks/test-resolve-constitution.sh",
+      "action": "sync",
+      "description": "Owns the constitution-resolution matrix for scripts/resolve-constitution.sh — legacy, shim, generator-marked, symlinked, absent and both-real repos across canonical and --loaded modes"
     },
     "tests/hooks/test-resolve-artifact-root.sh": {
       "source": "tests/hooks/test-resolve-artifact-root.sh",
@@ -1986,14 +2004,14 @@
       "action": "sync",
       "description": "Per-stack reference-file customization tables for setup-bootstrap \u2014 generic placeholder to concrete replacement, per category"
     },
-    "references/root-claude-md-template.md": {
-      "source": ".claude/references/root-claude-md-template.md",
-      "target": ".claude/references/root-claude-md-template.md",
+    "references/root-agents-md-template.md": {
+      "source": ".claude/references/root-agents-md-template.md",
+      "target": ".claude/references/root-agents-md-template.md",
       "action": "sync",
       "applyTo": [
         ".claude/skills/setup-bootstrap/**"
       ],
-      "description": "Root CLAUDE.md generation template emitted by setup-bootstrap STEP 3 \u2014 skeleton with skill-routing table, tech-stack and project-profile fields, critical-rules and standards-reference sections"
+      "description": "Root AGENTS.md generation template emitted by setup-bootstrap STEP 3 \u2014 canonical-constitution skeleton plus the companion CLAUDE.md shim template that imports it"
     },
     "references/config-ingestion.md": {
       "source": ".claude/references/config-ingestion.md",
@@ -2583,6 +2601,12 @@
       "action": "sync",
       "description": "Hook test for generate-agents-md.sh \u2014 120-line budget, 140 hard ceiling, marker and Custom-section preservation"
     },
+    "tests/hooks/test-generate-tool-configs.sh": {
+      "source": "tests/hooks/test-generate-tool-configs.sh",
+      "target": "tests/hooks/test-generate-tool-configs.sh",
+      "action": "sync",
+      "description": "Hook test for generate-tool-configs.sh \u2014 pointer-mode copilot/windsurf/cline sourced from the resolved constitution, gemini/cursor-rules unchanged, overwrite guard intact"
+    },
     "scripts/manifest-preflight.sh": {
       "source": "scripts/manifest-preflight.sh",
       "target": "scripts/manifest-preflight.sh",
@@ -2640,6 +2664,12 @@
         ".claude/skills/writing-skills/**"
       ],
       "description": "Long-form rationale, worked examples, and edge-case rules behind review-finding-schema.md — read when authoring or tuning a reviewer, not when running one"
+    },
+    "references/agent-routing-guide.md": {
+      "source": ".claude/references/agent-routing-guide.md",
+      "target": ".claude/references/agent-routing-guide.md",
+      "action": "sync",
+      "description": "Detailed agent routing behind AGENTS.md \u2014 decision tree, routed-workflow composition table, model-invoked skills, two-stage review graph, review-output schema, eval pipeline, path-scoped reference loading"
     },
     "references/mtk-file-resolution.md": {
       "source": ".claude/references/mtk-file-resolution.md",

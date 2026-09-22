@@ -4,6 +4,59 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Changed — AGENTS.md is the canonical constitution; CLAUDE.md is a shim
+
+Every harness the team uses reads `AGENTS.md`, and Claude Code now reads it natively. The
+rules therefore live in one file instead of a Claude-shaped original plus a summary that
+drifts from it.
+
+- **`AGENTS.md` holds the constitution** — skill routing, build and test commands, project
+  profile, critical rules, standards reference, and a compact agent-routing section. The
+  detailed routing material (decision tree, workflow-composition table, review-output schema,
+  eval pipeline, path-scoped loading) moved to `.claude/references/agent-routing-guide.md`.
+- **`CLAUDE.md` is an 11-line shim** — a bare `@AGENTS.md` import, a plain-text pointer for a
+  harness that reads the file literally, and a short *Claude Code only* section. No rule text:
+  the default `instructionFiles` mode `claude-md-or-agents-md` reads `CLAUDE.md` and ignores
+  `AGENTS.md` whenever a `CLAUDE.md` exists (the bare import is what makes the constitution
+  reachable), while `claude-md-and-agents-md` loads both and de-duplicates the imported file —
+  so a rule written into the shim is duplicated under one mode and lost under the other.
+- **Every script that mines the constitution resolves `AGENTS.md` first** — digest, context
+  pack, rule-enforcement map, repo-health, doctor, refresh plan, savings, and both generators
+  share one rule: `AGENTS.md` when it exists and `CLAUDE.md` is absent or a shim, else
+  `CLAUDE.md`. A repo with only a legacy `CLAUDE.md` produces exactly the output it did before.
+- **Bootstrap authors `AGENTS.md`** from `.claude/references/root-agents-md-template.md` (same
+  60–80 line target, 120 hard cap, same `<!-- mtk-setup` footer) and writes the shim from a
+  second template block in the same reference. A repo whose constitution still sits in
+  `CLAUDE.md` gets the inversion *proposed* through the regen-diff contract, never applied
+  silently; a hand-curated `AGENTS.md` is preserved untouched.
+- **Copilot, Windsurf and Cline mirrors shrink to pointer mode** — marker, a line naming
+  `AGENTS.md` as canonical, and the `## Critical Rules` body, capped at 40 lines; an
+  over-length body ends in a visible truncation marker and warns on stderr with the dropped
+  line count. Gemini and the glob-scoped Cursor `.mdc` rules keep their full-content shape but
+  take their critical rules from the same resolved constitution, so a shim repo no longer
+  emits mirrors with no rules at all.
+- **`generate-agents-md.sh --force` refuses to overwrite a canonical `AGENTS.md`** (exit 1,
+  file untouched) — that summarizer would replace hand-authored rules with a references
+  summary. Pass an explicit output path for a legacy-style summary.
+- **`claude-md-audit` / `claude-md-capture` are now `instructions-audit` / `instructions-capture`**,
+  targeting `AGENTS.md` first and then shims. The `/mtk` router keeps the `claude.md` phrasings
+  as synonyms and adds `agents.md` / `instructions` ones.
+- **`validate-toolkit.sh` gains two checks:** a `CLAUDE.md` without an `@AGENTS.md` import fails,
+  and an `AGENTS.md` over 200 lines fails with its line count.
+
+
+### Verified — multi-harness spike (Codex CLI 0.153.4, OpenCode 1.18.20)
+
+WS0 of `docs/plans/2026-09-21-multi-harness-migration.md`; results in
+`docs/harness-support-matrix.md`. Codex maps its shell to `Bash` and `apply_patch` to
+`Edit|Write` hook matchers (proven by hook counts and by `security-gate.sh` blocking a forced
+push to `main` end to end), loads `"skills": "./.claude/skills"` with non-spec frontmatter keys
+intact, ignores a root `plugin.json`/`mcp.json` beside `.claude-plugin/`, leaves
+`${CLAUDE_PLUGIN_ROOT}` unexpanded in `.mcp.json` (the MTK MCP server is unreachable there),
+has no Read/Grep/Glob tools (so `read-guard.sh` never fires), and pins hook trust per hook at
+install — hooks added by a later update show `Failed` until re-trusted. OpenCode discovers
+`.claude/skills` and `.agents/skills` but not `.claude/agents`; its plugin API can host a hook shim.
+
 ### Fixed — the pre-commit linter no longer treats a documentation page as source
 
 A wiki page under `docs/wiki/` quoted a vulnerable SQL line to explain the injection

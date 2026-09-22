@@ -32,13 +32,29 @@ record() {
 
 # --- AI Context bucket (4 assets) -------------------------------------------
 
-# 1. CLAUDE.md present and non-empty
-if [[ -s CLAUDE.md ]]; then
-  record "1. CLAUDE.md present" "AI Context" "pass" "$(wc -l < CLAUDE.md | tr -d ' ') lines"
+# 1. Instructions file present and non-empty. Which file is the constitution is
+# resolved by scripts/resolve-constitution.sh (AGENTS.md when it exists, is not
+# generator-marked, and CLAUDE.md is absent/the same file/a shim). The resolver
+# answers "which file", not "is there one", so an answer that does not exist on
+# disk becomes the empty string — this asset scores `fail` for that repo.
+_RC="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)/resolve-constitution.sh"
+[[ -f "$_RC" ]] || _RC="${CLAUDE_PLUGIN_ROOT:-.}/scripts/resolve-constitution.sh"
+INSTR_FILE=""
+if [[ -f "$_RC" ]]; then
+  INSTR_FILE="$(bash "$_RC" 2>/dev/null || true)"
+elif [[ -f AGENTS.md ]]; then
+  INSTR_FILE="AGENTS.md"
 elif [[ -f CLAUDE.md ]]; then
-  record "1. CLAUDE.md present" "AI Context" "partial" "file exists but is empty"
+  INSTR_FILE="CLAUDE.md"
+fi
+[[ -n "$INSTR_FILE" ]] && [[ -f "$INSTR_FILE" ]] || INSTR_FILE=""
+
+if [[ -n "$INSTR_FILE" ]] && [[ -s "$INSTR_FILE" ]]; then
+  record "1. Instructions file present" "AI Context" "pass" "$(wc -l < "$INSTR_FILE" | tr -d ' ') lines"
+elif [[ -n "$INSTR_FILE" ]]; then
+  record "1. Instructions file present" "AI Context" "partial" "file exists but is empty"
 else
-  record "1. CLAUDE.md present" "AI Context" "fail" "missing"
+  record "1. Instructions file present" "AI Context" "fail" "missing"
 fi
 
 # 2. architecture-principles.md exists with >=5 tagged principles
@@ -308,7 +324,10 @@ for r in "${RESULTS[@]}"; do
     LAST_BUCKET="$BUCKET"
   fi
   ICON=$(icon_for "$STATUS")
-  echo "- $ICON **$NAME** — $NOTE"
+  # Status word alongside the icon (not icon-only): a machine reader greeping
+  # the markdown for "<asset name>.*pass" needs the literal word on the same
+  # line, which the icon alone never provides.
+  echo "- $ICON **$NAME** ($STATUS) — $NOTE"
 done
 
 echo ""

@@ -1,0 +1,248 @@
+{
+  "area": "toolkit-instructions",
+  "contracts": {
+    "generate-tool-configs.sh --format copilot|windsurf|cline output shape": {
+      "kind": "cli-flag",
+      "change": "modified",
+      "source_slug": "agents-md-canonical",
+      "date": "2026-09-21"
+    },
+    "constitution-digest.sh source resolution (AGENTS.md first)": {
+      "kind": "method",
+      "change": "modified",
+      "source_slug": "agents-md-canonical",
+      "date": "2026-09-21"
+    },
+    "generate-agents-md.sh behaviour when CLAUDE.md is a shim": {
+      "kind": "method",
+      "change": "modified",
+      "source_slug": "agents-md-canonical",
+      "date": "2026-09-21"
+    },
+    "setup-bootstrap STEP 3 output: AGENTS.md constitution + CLAUDE.md shim": {
+      "kind": "method",
+      "change": "modified",
+      "source_slug": "agents-md-canonical",
+      "date": "2026-09-21"
+    },
+    "skill names instructions-audit / instructions-capture (were claude-md-*)": {
+      "kind": "method",
+      "change": "modified",
+      "source_slug": "agents-md-canonical",
+      "date": "2026-09-21"
+    },
+    "validate-toolkit.sh checks: CLAUDE.md shim import, AGENTS.md line cap": {
+      "kind": "method",
+      "change": "modified",
+      "source_slug": "agents-md-canonical",
+      "date": "2026-09-21"
+    },
+    "repo-health-score.sh asset 1 label/logic": {
+      "kind": "method",
+      "change": "modified",
+      "source_slug": "agents-md-canonical",
+      "date": "2026-09-21"
+    },
+    ".claude/references/root-agents-md-template.md (was root-claude-md-template.md)": {
+      "kind": "method",
+      "change": "modified",
+      "source_slug": "agents-md-canonical",
+      "date": "2026-09-21"
+    }
+  },
+  "files": {
+    "scripts/constitution-digest.sh": {
+      "action": "modify",
+      "purpose": "constitution_file() resolution (AGENTS.md first); heading names the source",
+      "source_slug": "agents-md-canonical"
+    },
+    "tests/hooks/test-constitution-digest.sh": {
+      "action": "modify",
+      "purpose": "cases: AGENTS.md-only, shim+AGENTS.md, legacy CLAUDE.md-only",
+      "source_slug": "agents-md-canonical"
+    },
+    "scripts/build-context-pack.sh": {
+      "action": "modify",
+      "purpose": "Critical Rules + TOC from the resolved constitution file",
+      "source_slug": "agents-md-canonical"
+    },
+    "scripts/rule-enforcement-map.sh": {
+      "action": "modify",
+      "purpose": "scan AGENTS.md alongside CLAUDE.md",
+      "source_slug": "agents-md-canonical"
+    },
+    "scripts/repo-health-score.sh": {
+      "action": "modify",
+      "purpose": "asset 1 accepts AGENTS.md or CLAUDE.md as the instructions file",
+      "source_slug": "agents-md-canonical"
+    },
+    "scripts/mtk-doctor.sh": {
+      "action": "modify",
+      "purpose": "always-on estimate includes AGENTS.md; WARN when CLAUDE.md lacks @AGENTS.md beside an AGENTS.md",
+      "source_slug": "agents-md-canonical"
+    },
+    "scripts/setup-refresh-plan.sh": {
+      "action": "modify",
+      "purpose": "row 5: stamped AGENTS.md -> footer drift check; row 6 verifies AGENTS.md",
+      "source_slug": "agents-md-canonical"
+    },
+    "scripts/mtk-savings.sh": {
+      "action": "modify",
+      "purpose": "always-on floor sums AGENTS.md + CLAUDE.md (shim) instead of CLAUDE.md alone",
+      "source_slug": "agents-md-canonical"
+    },
+    "scripts/generate-agents-md.sh": {
+      "action": "modify",
+      "purpose": "shim detection -> note + exit 0 (no write); heading names source",
+      "source_slug": "agents-md-canonical"
+    },
+    "scripts/generate-tool-configs.sh": {
+      "action": "modify",
+      "purpose": "constitution_file(); pointer mode for copilot/windsurf/cline",
+      "source_slug": "agents-md-canonical"
+    },
+    "tests/hooks/test-generate-agents-md.sh": {
+      "action": "modify",
+      "purpose": "case (f): shim present -> nothing written, exit 0",
+      "source_slug": "agents-md-canonical"
+    },
+    "tests/hooks/test-generate-tool-configs.sh": {
+      "action": "create",
+      "purpose": "pointer mode; gemini unchanged; overwrite guard intact",
+      "source_slug": "agents-md-canonical"
+    },
+    "AGENTS.md": {
+      "action": "modify",
+      "purpose": "canonical constitution + compact agent routing",
+      "source_slug": "agents-md-canonical"
+    },
+    "CLAUDE.md": {
+      "action": "modify",
+      "purpose": "@AGENTS.md shim + Claude Code only section",
+      "source_slug": "agents-md-canonical"
+    },
+    ".claude/references/agent-routing-guide.md": {
+      "action": "create",
+      "purpose": "detailed routing content moved out of AGENTS.md",
+      "source_slug": "agents-md-canonical"
+    },
+    "scripts/validate-toolkit.sh": {
+      "action": "modify",
+      "purpose": "CLAUDE.md must import AGENTS.md; AGENTS.md <= 200 lines",
+      "source_slug": "agents-md-canonical"
+    },
+    ".claude/skills/instructions-audit/SKILL.md": {
+      "action": "create",
+      "purpose": "git mv from claude-md-audit; retarget to AGENTS.md-first",
+      "source_slug": "agents-md-canonical"
+    },
+    ".claude/skills/instructions-capture/SKILL.md": {
+      "action": "create",
+      "purpose": "git mv from claude-md-capture; retarget",
+      "source_slug": "agents-md-canonical"
+    },
+    "tests/pressure-tests/instructions-audit-pressure.md": {
+      "action": "create",
+      "purpose": "git mv + renamed references",
+      "source_slug": "agents-md-canonical"
+    },
+    "tests/pressure-tests/instructions-capture-pressure.md": {
+      "action": "create",
+      "purpose": "git mv + renamed references",
+      "source_slug": "agents-md-canonical"
+    },
+    "scripts/growth-gate.sh": {
+      "action": "modify",
+      "purpose": "comment names the renamed skill",
+      "source_slug": "agents-md-canonical"
+    },
+    ".claude/skills/mtk/SKILL.md": {
+      "action": "modify",
+      "purpose": "route-table and disambiguation rows -> new skill paths; synonyms kept",
+      "source_slug": "agents-md-canonical"
+    },
+    "docs/how-it-works.data.json": {
+      "action": "modify",
+      "purpose": "two entries renamed",
+      "source_slug": "agents-md-canonical"
+    },
+    "hooks/capture-learnings.sh": {
+      "action": "modify",
+      "purpose": "promotion nudge names AGENTS.md",
+      "source_slug": "agents-md-canonical"
+    },
+    ".claude/skills/setup-bootstrap/SKILL.md": {
+      "action": "modify",
+      "purpose": "STEP 3 authors AGENTS.md + shim; inversion migration rule; budgets/invariants/verify lists",
+      "source_slug": "agents-md-canonical"
+    },
+    ".claude/references/root-agents-md-template.md": {
+      "action": "create",
+      "purpose": "git mv from root-claude-md-template.md; AGENTS.md skeleton + shim template",
+      "source_slug": "agents-md-canonical"
+    },
+    ".claude/references/bootstrap-supporting-files.md": {
+      "action": "modify",
+      "purpose": "Cross-Agent section: authored AGENTS.md, legacy generator, pointer-mode mirrors",
+      "source_slug": "agents-md-canonical"
+    },
+    ".claude/references/bootstrap-report.md": {
+      "action": "modify",
+      "purpose": "report lines for AGENTS.md/shim; instructions-capture",
+      "source_slug": "agents-md-canonical"
+    },
+    ".claude/manifest.json": {
+      "action": "modify",
+      "purpose": "renamed keys, new reference, descriptions",
+      "source_slug": "agents-md-canonical"
+    },
+    "CHANGELOG.md": {
+      "action": "modify",
+      "purpose": "Unreleased entry for WS1",
+      "source_slug": "agents-md-canonical"
+    },
+    ".claude/skills/claude-md-capture/SKILL.md": {
+      "action": "delete",
+      "purpose": "source path of a declared git mv (rename)",
+      "source_slug": "agents-md-canonical"
+    },
+    "docs/how-it-works.html": {
+      "action": "modify",
+      "purpose": "derived — regenerated by python3 docs/build-how-it-works.py (no generated-by banner, so listed explicitly)",
+      "source_slug": "agents-md-canonical"
+    },
+    ".claude/skills/setup-refresh/SKILL.md": {
+      "action": "modify",
+      "purpose": "STEP 3: footer-stale mtk-stamped AGENTS.md is routed through the regen-diff proposal, never generate-agents-md.sh (review: silent-failure F001)",
+      "source_slug": "agents-md-canonical"
+    },
+    "tests/hooks/test-setup-refresh-plan.sh": {
+      "action": "modify",
+      "purpose": "AGENTS.md-only / shim / legacy cases for the B2/B1 resolution (review: compliance F005)",
+      "source_slug": "agents-md-canonical"
+    },
+    "tests/hooks/test-rule-enforcement-map.sh": {
+      "action": "modify",
+      "purpose": "AGENTS.md-only / shim / legacy cases for the B2/B1 resolution (review: compliance F005)",
+      "source_slug": "agents-md-canonical"
+    },
+    "tests/hooks/test-build-context-pack.sh": {
+      "action": "modify",
+      "purpose": "AGENTS.md-only / shim / legacy cases for the B2/B1 resolution (review: compliance F005)",
+      "source_slug": "agents-md-canonical"
+    },
+    "tests/hooks/test-mtk-doctor-lesson-stores.sh": {
+      "action": "modify",
+      "purpose": "AGENTS.md-only / shim / legacy cases for the B2/B1 resolution (review: compliance F005)",
+      "source_slug": "agents-md-canonical"
+    }
+  },
+  "history": [
+    {
+      "slug": "agents-md-canonical",
+      "date": "2026-09-21",
+      "verdict": "PASS",
+      "archived_at": "2026-09-21T15:34:10Z"
+    }
+  ]
+}

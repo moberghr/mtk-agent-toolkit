@@ -6,20 +6,21 @@ set -euo pipefail
 #
 # Polyglot-monorepo aware, and the sibling of resolve-tech-stack.sh: the two use
 # the same "closest declaration wins" idea so they are learnable as one thing.
-# A subtree that owns its own specs (its own docs/specs/ plus a CLAUDE.md
-# declaring it authoritative) keeps them, instead of having MTK write to the
-# repo root alongside a different project's artifacts.
+# A subtree that owns its own specs (its own docs/specs/ plus a constitution —
+# AGENTS.md or CLAUDE.md — declaring it authoritative) keeps them, instead of
+# having MTK write to the repo root alongside a different project's artifacts.
 #
 # Resolution order (first hit wins):
 #   1. $MTK_ARTIFACT_ROOT env var — explicit session override, always wins.
 #   2. Nearest ancestor carrying `<dir>/.claude/artifact-root` — an explicit
 #      opt-in marker. Contents are ignored; presence is the declaration. This
-#      also lets a subtree opt IN before it has a CLAUDE.md, and lets the repo
+#      also lets a subtree opt IN before it has a constitution, and lets the repo
 #      root opt out of rule 3 by claiming itself.
-#   3. Nearest ancestor STRICTLY BELOW the repo root holding BOTH `CLAUDE.md`
-#      and a `docs/specs/` directory. Two independent signals are required so
-#      that neither a stray docs/specs/ nor a stray CLAUDE.md alone can hijack
-#      resolution.
+#   3. Nearest ancestor STRICTLY BELOW the repo root holding BOTH a constitution
+#      (`AGENTS.md` or `CLAUDE.md` — either spelling declares the subtree a
+#      project) and a `docs/specs/` directory. Two independent signals are
+#      required so that neither a stray docs/specs/ nor a stray constitution
+#      alone can hijack resolution.
 #   4. The repo root — the long-standing default.
 #
 # Backward compatible by construction: a repo with no qualifying subtree falls
@@ -86,12 +87,21 @@ while :; do
   fi
   # The two-signal rule applies only STRICTLY below the repo root — at the root
   # itself it would be trivially true for any MTK repo and would just restate
-  # the default. Requires BOTH signals: docs/specs/ (it has artifacts) and
-  # CLAUDE.md (it declares itself a project). Either alone is too weak — plenty
-  # of repos have a docs/ tree or a nested CLAUDE.md without a spec workflow.
-  if [ -n "$repo_root" ] && [ "$dir" != "$repo_root" ] &&
-     [ -d "$dir/docs/specs" ] && [ -f "$dir/CLAUDE.md" ]; then
-    _emit "$dir" "subproject $dir (CLAUDE.md + docs/specs)"
+  # the default. Requires BOTH signals: docs/specs/ (it has artifacts) and a
+  # constitution (it declares itself a project). Either alone is too weak —
+  # plenty of repos have a docs/ tree or a nested constitution without a spec
+  # workflow. EITHER spelling counts as the declaration: post-inversion a
+  # subproject may carry only AGENTS.md (Codex/Cursor teams, or after the
+  # CLAUDE.md shim is dropped), and requiring CLAUDE.md silently resolved such
+  # a subtree to the repo root — sending its specs and plans to the wrong tree
+  # and taking scope-guard's docs/specs/* matching with them.
+  if [ -n "$repo_root" ] && [ "$dir" != "$repo_root" ] && [ -d "$dir/docs/specs" ] &&
+     { [ -f "$dir/CLAUDE.md" ] || [ -f "$dir/AGENTS.md" ]; }; then
+    if [ -f "$dir/CLAUDE.md" ]; then
+      _emit "$dir" "subproject $dir (CLAUDE.md + docs/specs)"
+    else
+      _emit "$dir" "subproject $dir (AGENTS.md + docs/specs)"
+    fi
   fi
   [ -n "$repo_root" ] && [ "$dir" = "$repo_root" ] && break
   parent="$(dirname "$dir")"

@@ -1,0 +1,31 @@
+---
+description: Every MTK_* environment knob, its default and its effect — hook tiers, scope-guard enforcement, rigor and dispatch, churn and collateral thresholds, context-budget calibration
+globs: ["**/*"]
+alwaysApply: false
+---
+
+# MTK Environment Knobs
+
+> Every `MTK_*` environment variable that changes MTK's behaviour, with its default and effect.
+> Split out of `AGENTS.md` so the always-loaded constitution carries routing decisions, not a
+> reference table (S2.26). Set these in the gitignored local settings override, never in shared
+> settings.
+
+| What you need | Variable | Effect |
+|---|---|---|
+| Disable tier-2 hooks | `MTK_HOOKS_TIER2=0` in the local settings override | Silences skill-invoking hooks (queue + drain) without touching shared settings |
+| Enforce spec scope (hard deny) | `MTK_SCOPE_GUARD_ENFORCE=1` | Upgrades `hooks/scope-guard.sh` from advisory to a hard PreToolUse deny (exit 2) when an Edit/Write targets a file outside the approved spec's `change_manifest`/`test_manifest`. Default (unset) stays advisory |
+| Auto-approve safe plans | `MTK_AUTO_PROCEED=1` | Skips Phase 2.5 prompt only when spec has no open decisions and no plan-gap BLOCKING findings |
+| Disable artifact publishing | `MTK_ARTIFACT_PUBLISH=0` | Stops workflow skills publishing spec/plan/handoff/health to a claude.ai Artifact (data-egress opt-out for regulated repos); disk output is unaffected. See `.claude/references/artifact-publishing.md` |
+| Enable compaction snapshots (plugin installs) | `MTK_COMPACT_SNAPSHOT=1` | Opts a plugin-installed repo into pre-compaction git-stash snapshots; always on in this dev checkout |
+| Pin MTK to a checkout | `MTK_HELPER_ROOT=/path/to/claude-helpers` | Makes MTK resolve from that checkout **first**, before the project copy and the plugin cache — covering both the `## MTK File Resolution` block every entry-point skill opens with and the inline script resolvers (`scripts/workflow-artifact.sh`, `scripts/learnings.sh`). Target-repo scripts resolve the *project* root from `$CLAUDE_PROJECT_DIR`/git, so their output always lands in the target |
+| Tune the mtk-compress nag | `MTK_COMPRESS_MAX_NAGS=N` | Per-session budget for `hooks/compress-monitor.sh`'s "pipe this through mtk-compress" tip (default `1`). `0` silences it while leaving the hook wired; `MTK_COMPRESS_MONITOR_DISABLED=1` disables it outright, and `MTK_COMPRESS_WARN_CHARS` moves the 5,000-char trigger |
+| Allow interactive-prone shell commands | `MTK_INTERACTIVE_GUARD=0` | Disables `hooks/interactive-guard.sh`, the PreToolUse hard deny on Bash commands that can block on a prompt (S4.12) — `gh pr merge` with no `--delete-branch`/`--no-delete-branch` decision, and prompt-capable commands piped through `tail`/`head`. Read-only pipes are never blocked |
+| Declare that subagent dispatch is unavailable | `MTK_SUBAGENT_DISPATCH=0` | Tells `implement`'s Phase 2.9 pre-flight that this session cannot dispatch implementer subagents. HIGH/MAX then runs the **inline-MAX profile** (compensations C1–C3). It does **not** lower the rigor level. Default (unset) probes per run |
+| Force or skip the pre-flight baseline | `MTK_BASELINE_CAPTURE=1` / `=0` | `implement` Phase 2.9 captures build/test/typecheck state at the base commit before the first edit. On by default at rigor HIGH/MAX; `=1` forces it at any level, `=0` opts out — and then every later checkpoint must state that no baseline exists |
+| Tune or disable the host-load probe | `MTK_HOST_LOAD_MAX=N` / `MTK_HOST_LOAD_PROBE=0` | `scripts/host-load-probe.sh` reports the 1-minute load per core and says `overloaded` above `MTK_HOST_LOAD_MAX` (default `2.0`). An overloaded host routes the run to inline-MAX instead of dispatching implementers the harness watchdog will kill. `=0` skips the probe on shared CI runners |
+| Cap parallel implementer waves | `MTK_BATCH_WAVE_MAX=N` | Phase 3 on the subagent path runs batches at the same `depends` level concurrently; this caps how many implementers one wave dispatches (default `3`). `1` restores fully sequential batches |
+| Tune the mid-run churn review thresholds | `MTK_CHURN_REVIEW_LINES` / `MTK_CHURN_HALT_LINES` | Net non-generated lines changed since the last review before an early review (default 300) or a halt for `compliance-reviewer` (default 500). Defaults double at rigor HIGH/MAX. Generated files never count |
+| Tune the collateral-churn thresholds | `MTK_COLLATERAL_*` (see `hooks/collateral-guard.sh`) | Thresholds for the guard that flags churn that is not the change you made: whitespace/EOL-only rewrites, generated artifacts riding along undeclared, asset directories regenerated wholesale, and structured files re-serialized around a small real edit |
+| Write a tracked run receipt | `MTK_RUN_RECEIPT=1` | `implement` Phase 7.5 writes a **tracked** receipt beside the spec in `docs/specs/` holding the run's evidence (baseline vs final figures, gates, dispatch path, drift/coverage/collateral verdicts, reviewer lane outcomes). Fields never recorded are written as `not recorded` |
+| Calibrate context-budget nags to your window | `MTK_CONTEXT_WINDOW_TOKENS=200000` | Rescales `hooks/context-budget.sh`'s file/mod/op nudges from the 1M default to your model's real context window. Per-threshold overrides: `MTK_CTX_FILES_WARN` / `MTK_CTX_MODS_WARN` / `MTK_CTX_OPS_WARN`; `MTK_CONTEXT_BUDGET_PCT` sets the read-bytes reset percentage |

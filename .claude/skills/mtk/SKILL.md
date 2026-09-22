@@ -51,10 +51,10 @@ digraph mtk_routing {
   impl     [label="implement", style="rounded,filled", fillcolor="#e0f0e0"];
   stat     [label="status / report /\nwhat's loaded / diagnostic?", shape=diamond];
   cr       [label="context-report", style="rounded,filled", fillcolor="#e0f0e0"];
-  cmd      [label="audit claude.md /\nclaude.md stale?", shape=diamond];
-  cma      [label="claude-md-audit", style="rounded,filled", fillcolor="#e0f0e0"];
-  cmc      [label="capture session\nlearnings to claude.md?", shape=diamond];
-  cmcap    [label="claude-md-capture", style="rounded,filled", fillcolor="#e0f0e0"];
+  cmd      [label="audit agents.md /\nclaude.md stale?", shape=diamond];
+  cma      [label="instructions-audit", style="rounded,filled", fillcolor="#e0f0e0"];
+  cmc      [label="capture session\nlearnings to agents.md?", shape=diamond];
+  cmcap    [label="instructions-capture", style="rounded,filled", fillcolor="#e0f0e0"];
   prom     [label="promote / share\na lesson?", shape=diamond];
   plsn     [label="promote-lesson", style="rounded,filled", fillcolor="#e0f0e0"];
   ho       [label="hand off / save state /\nsnapshot session?", shape=diamond];
@@ -137,8 +137,8 @@ Match the user's input against these patterns. Check from top to bottom; first m
 | `fix`, `bug`, `broken`, `error`, `typo`, `patch`, `wrong`, `failing` | `.claude/skills/fix/SKILL.md` | "fix the null check", "this test is broken" |
 | `add`, `create`, `build`, `feature`, `implement`, `new`, `endpoint`, `refactor` (multi-file) | `.claude/skills/implement/SKILL.md` | "add user auth", "create a payment endpoint" |
 | `status`, `report`, `what's loaded`, `diagnostic`, `context` | `.claude/skills/context-report/SKILL.md` | "what's loaded?", "show toolkit status" |
-| `audit claude.md`, `claude.md audit`, `is claude.md still good`, `claude.md stale`, `memory rot`, `claude.md quality` | `.claude/skills/claude-md-audit/SKILL.md` | "audit CLAUDE.md", "is CLAUDE.md still good?" |
-| `capture claude.md`, `update claude.md`, `save what we learned`, `session learnings`, `remember this for next time`, `revise claude.md` | `.claude/skills/claude-md-capture/SKILL.md` | "save what we learned to CLAUDE.md", "update CLAUDE.md with this session" |
+| `audit claude.md`, `claude.md audit`, `is claude.md still good`, `claude.md stale`, `memory rot`, `claude.md quality`, `audit agents.md`, `instructions audit` | `.claude/skills/instructions-audit/SKILL.md` | "audit AGENTS.md", "is CLAUDE.md still good?" |
+| `capture claude.md`, `update claude.md`, `save what we learned`, `session learnings`, `remember this for next time`, `revise claude.md`, `capture instructions`, `update agents.md` | `.claude/skills/instructions-capture/SKILL.md` | "save what we learned to AGENTS.md", "update CLAUDE.md with this session" |
 | `promote lesson`, `share lesson` | `.claude/skills/promote-lesson/SKILL.md` | "promote this lesson to the team", "share that lesson" |
 | `mine lessons`, `what did we learn`, `harvest lessons`, `lesson sweep`, `mine transcripts` | `.claude/skills/lesson-mining/SKILL.md` | "mine lessons from last week", "what did we learn this sprint?" |
 | `refresh lessons`, `audit lessons`, `stale lessons`, `prune lessons`, `clean up lessons` | `.claude/skills/lesson-refresh/SKILL.md` | "are the lessons stale?", "clean up lessons.md" |
@@ -161,7 +161,7 @@ awesome-harness-engineering negative-example routing).
 | `research-context` | `implement`/`fix` | the ask is an external/best-practice/version question ("what's the current way to…"), not a change to this repo |
 | `pre-commit-review` | `code-review-and-quality` | the trigger is staged/about-to-commit; full PR/branch review is the workflow skill, not the pre-commit gate |
 | `context-report` | `toolkit-health` | the ask is "what's loaded right now"; usage/adoption/analytics over time is `toolkit-health` |
-| `claude-md-capture` | `handoff` | the target is CLAUDE.md content; capturing session state to resume later is `handoff` |
+| `instructions-capture` | `handoff` | the target is AGENTS.md/CLAUDE.md content; capturing session state to resume later is `handoff` |
 | `promote-lesson` | `lesson-mining` | a specific known lesson goes personal→team; sweeping transcripts for candidates is `lesson-mining` |
 | `lesson-refresh` | `lesson-mining` | auditing/retiring EXISTING lessons is `lesson-refresh`; harvesting NEW candidates from transcripts is `lesson-mining` |
 | `/mtk-setup` | `implement`/`fix` | anything setup/bootstrap/audit/architecture-principles — always redirect to `/mtk-setup`, never absorb |

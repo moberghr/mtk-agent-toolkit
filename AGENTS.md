@@ -1,167 +1,119 @@
-# MTK Agent Routing
+# claude-helpers — MTK Standards
 
-> Compatible with: Claude Code, Codex CLI, Cursor, Copilot, Windsurf, and other AI coding tools that read AGENTS.md.
-
-This repository uses **skills** as both user-facing entry points and reusable workflow blocks, and **agents** as specialist reviewers. There are two user-invocable slash commands — `/mtk-setup` (first-time setup + re-audit) and `/mtk <description>` (router for everything else). Workflow skills are composed by these entry points.
+> Canonical instructions for every AI coding agent working in this repo — Claude Code, Codex CLI,
+> Cursor, Copilot, Windsurf, OpenCode and anything else that reads `AGENTS.md`. `CLAUDE.md` is a
+> shim that imports this file; the tool-specific mirrors under `.github/` and `.windsurf/` point here.
+>
+> Version history and per-release notes: see CHANGELOG.md. (Kept out of this file so the always-loaded prefix stays prompt-cache-stable across releases.)
+>
+> This file + `.claude/rules/` are the source of truth for AI agents.
+> Detailed standards live in `.claude/rules/`. Reference docs live in `.claude/references/` (shared) and per-stack subdirectories of it.
 
 ---
 
-## Routing Decision Tree
+## Skill Routing
 
-```mermaid
-flowchart TD
-    START["New task"] --> Q1{"What kind<br/>of task?"}
+| What you need | Command | When |
+|---|---|---|
+| First-time repo setup | `/mtk-setup` | Bootstrap — detects tech stack, pulls guidelines, generates AGENTS.md (plus the CLAUDE.md shim) and the architecture-principles reference |
+| Re-run audit | `/mtk-setup --audit` | Refresh the generated architecture-principles reference after architectural change |
+| Merge multi-repo audits | `/mtk-setup --merge` | Unify per-repo audits in `.claude/references/audits/` into a team-wide doc |
+| Everything else | `/mtk <description>` | Natural language — routes to fix / implement / pre-commit-review / repo-health / context-report |
+| Periodic readiness check | `/mtk repo-health` or `bash scripts/repo-health-score.sh` | 12-asset scorecard + PR review mining (last 10 merged PRs) |
+| Validate toolkit | `bash scripts/validate-toolkit.sh` | Before every commit — structural check of manifest, plugin.json, and skill anatomy |
+| Install health check | `/mtk-doctor` | PASS/WARN/FAIL diagnostics across core files, components, hooks, and environment fit; `--json` for CI, `--fix` for safe auto-repairs |
+| Promote a lesson | `/promote-lesson` | Promote a personal lesson from the personal lessons store **or Claude Code native memory** to team-wide `tasks/lessons.md`; optionally open a validated contribute-back PR to the toolkit |
+| Mine lessons from past sessions | `/mtk mine lessons` | Sweep recent session transcripts for durable lesson/memory candidates (reject-by-default rubric, suggest-only) |
+| Tune MTK behaviour (hooks, rigor, budgets, thresholds) | `MTK_*` environment variables | Full table of every knob, its default and effect: `.claude/references/env-knobs.md` |
 
-    Q1 -- "New feature /<br/>breaking change /<br/>> 3 files" --> FEAT["Load skills:"]
-    Q1 -- "Bug / regression /<br/>failing test" --> BUG["Load skills:"]
-    Q1 -- "Code review /<br/>PR review /<br/>quality audit" --> REV["Load skills:"]
-    Q1 -- "Creating or<br/>modifying a skill" --> SKILL["Load skills:"]
-    Q1 -- "Engineer corrects<br/>your approach" --> CORR["correction-capture"]
-    Q1 -- "You struggled 2+ times,<br/>then found what works" --> GOLD["golden-path-capture"]
+**Decision rule for `/mtk`:** Say what you want in plain English. The router picks the right workflow skill — fix / implement / pre-commit-review / repo-health / context-report / research-context / instructions-audit / instructions-capture / toolkit-health / mtk-doctor.
 
-    FEAT --> F1["context-engineering"]
-    F1 --> F1b["brainstorming<br/><i>if approach unclear</i>"]
-    F1b --> F2["spec-driven-development"]
-    F2 --> F3["planning-and-task-breakdown"]
-    F3 --> F4["incremental-implementation"]
-    F4 --> F5["test-driven-development"]
-    F5 --> F6["source-driven-development<br/><i>if framework uncertain</i>"]
-    F6 --> F7["verification-before-completion"]
-    F7 --> F8["using-git-worktrees<br/><i>if isolation needed</i>"]
+**Updates:** MTK is a Claude Code plugin — use the plugin manager to upgrade. There is no in-repo update command.
 
-    BUG --> B1["context-engineering"]
-    B1 --> B2["debugging-and-error-recovery"]
-    B2 --> B3["test-driven-development<br/><i>if behavior changes</i>"]
-    B3 --> B4["verification-before-completion"]
+---
 
-    REV --> R1["context-engineering"]
-    R1 --> R2["code-review-and-quality"]
-    R2 --> R3["security-and-hardening<br/><i>if auth/secrets/audited state</i>"]
+## Build & Test
 
-    SKILL --> S1["writing-skills"]
-    S1 --> S2["Create pressure tests<br/>in tests/pressure-tests/"]
+```bash
+bash scripts/validate-toolkit.sh                            # structure + manifest (before every commit)
+bash scripts/run-fixtures.sh && bash scripts/run-evals.sh   # router fixtures + evals
+bash scripts/mtk-doctor.sh                                  # install health check (--json, --fix)
 ```
 
----
+No `dotnet build` — this is a markdown/bash/JSON toolkit. Pressure tests are manual: read
+`tests/pressure-tests/*.md` and verify skill behaviour.
 
-## Entry-Point Skills
-
-There are just two user-invocable skills:
-
-| Skill | Purpose |
-|:---|:---|
-| `/mtk-setup` | First-time setup (bootstrap + audit), `--audit` to re-audit, `--merge` to unify multi-repo audits, `--refresh` to drift-refresh all generated docs (`--dry-run` to preview), `--check` as read-only CI staleness gate, `--converge` to judge code against agreed principles as graded work items |
-| `/mtk <description>` | Natural-language router — dispatches to fix / batch-fix / implement / pre-commit-review / context-report workflow skills |
-
-**Routed workflow skills** (not directly invocable; reached via `/mtk <description>`):
-
-| Workflow | Composition |
-|:---|:---|
-| fix | debugging/error recovery → focused verification |
-| batch-fix | corrective batch of multiple small independent fixes (>3 files, no new contract) → findings list + spec stub + one gate → per-finding TDD → inline impl → proportional review; between `fix` and `implement` |
-| implement | brainstorm *(optional)* → context → spec *(+ JSON sidecar)* → task breakdown → TDD → source-driven impl → **spec-drift-detection** → two-stage review → simplification |
-| pre-commit-review | static linter pass *(confidence 100)* → AI review *(confidence-scored)*, merged via `.claude/references/review-finding-schema.md` |
-| context-report | diagnostic snapshot of active MTK configuration |
-| setup-refresh | drift-scoped refresh of all generated setup artifacts (reached via `/mtk-setup --refresh`) — staleness plan → scoped regen → diff proposals for engineer-edited files |
-| setup-converge | judges the codebase against agreed `architecture-principles.md`/`conventions.md` and reports drift as graded, read-only work items (reached via `/mtk-setup --converge`) — never auto-fixes |
-| repo-health | 12-asset AI-readiness scorecard → PR review mining (last N merged PRs) |
-| mtk-doctor | install health check across core files, components, hooks, integrity — PASS/WARN/FAIL, `--json`, `--fix` |
-| toolkit-health | usage stats and adoption signals from analytics.json, with anomaly diagnostics |
-| research-context | cited external research brief (library best-practices, version-specific behavior) grounded in named project files |
-| claude-md-audit | CLAUDE.md quality-rubric audit → minimal append-only diffs |
-| claude-md-capture | end-of-session capture of discovered commands/gotchas into CLAUDE.md, apply only with approval |
-| pr-review-mining | mine recurring reviewer-feedback phrases from merged PRs as suggest-only [MINED:feedback] candidates |
-| promote-lesson | promote a personal lesson from `.claude/lessons/personal.md` to team-wide `tasks/lessons.md`; optionally open a validated contribute-back PR |
-| lesson-mining | sweep recent session transcripts for durable lesson/memory candidates (reject-by-default rubric, suggest-only) |
-
-**Updates:** MTK ships as a Claude Code plugin — use the plugin manager to upgrade. No in-repo update command.
-
-### Review Output Schema (v5.5+)
-
-All review entry points emit a markdown table plus a fenced JSON block per
-`.claude/references/review-finding-schema.md`. Findings carry
-`source: "linter" | "ai" | "drift"`, a severity, and a confidence (0–100).
-Default threshold 80 (configured in `.claude/review-config.json`; override
-via `.claude/review-config.local.json`).
-
-### Eval Pipeline
-
-Ship-path skills (`security-and-hardening`, `pre-commit-review`,
-`verification-before-completion`) have positive / negative / adversarial
-evals under `evals/<skill>/`. Run via `bash scripts/run-evals.sh` — manual
-mode by default; set `EVAL_EXECUTOR` / `EVAL_GRADER` for automation.
-
-### Path-Scoped Reference Loading
-
-Reference entries in `.claude/manifest.json` may declare an `applyTo`
-glob array. `context-engineering` matches touched files against these
-globs and loads only the matching references, avoiding session-wide
-context bloat.
-
-**Model-invoked skills** (not user-invocable — loaded automatically when triggered):
-- `handoff` — capture session state when context is tight or work is paused mid-stream
-- `correction-capture` — capture engineer corrections as reusable lessons
-- `golden-path-capture` — capture a working approach you found after struggling 2+ times with the same sub-problem in-session (no engineer correction required)
-- `prior-work-check` — before approving a spec or multi-file work, confirm no existing skill/helper/handler/lesson already covers it
-- `subagent-implementation` — replaces incremental-implementation for 3+ batches, 6+ non-mechanical files, or non-none security_impact; one fresh implementer subagent per batch
-- `code-simplification` — after a verified fix/feature, reduce complexity and remove dead code without changing behavior
-- `workflow-artifacts` — durable workflow state under `.mtk/workflows/` so orchestration survives compaction, crash, and handoff
+Releases regenerate `checksums.sha256` via `bash scripts/generate-checksums.sh` as the last change in the release commit (S4.11).
 
 ---
 
-## Review Routing (Two-Stage)
+## Project Profile
 
-```mermaid
-flowchart LR
-    S1["Stage 1<br/><b>compliance-reviewer</b><br/><i>Always runs first</i>"]
-    S1 -- "No critical issues" --> S2["Stage 2<br/><b>test-reviewer</b><br/><b>architecture-reviewer</b>"]
-    S1 -- "Critical issues" --> FIX["Fix → Re-review"]
-    FIX --> S1
-```
-
-**Stage 1 (spec compliance):** Always runs first.
-- Security/compliance-sensitive work → `compliance-reviewer`
-
-**Stage 2 (quality and coverage):** Only after Stage 1 passes with no Critical issues.
-- Test completeness or missing coverage → `test-reviewer`
-- Architecture or slice boundary concerns → `architecture-reviewer`
-- Error-handling diff (catch/except/`?.`/`??`/eslint-disable/Skip) → `silent-failure-hunter` (runs in parallel with `compliance-reviewer` in Stage 1 when triggered)
+- **Type:** Claude Code plugin / shared toolkit
+- **Languages:** Markdown (skills, agents, references), Bash (hooks, scripts), JSON (manifest, settings, plugin)
+- **Distribution:** Claude Code plugin marketplace via `.claude-plugin/plugin.json`
+- **Version tracking:** `.claude/manifest.json` + `.claude-plugin/plugin.json` (must stay in sync)
+- **Test approach:** `scripts/validate-toolkit.sh` (structural) + `tests/pressure-tests/` (adversarial behavioral)
+- **Target audience:** Engineering teams building serious software (.NET first-class, Python supported, more stacks pluggable; finance domain supplement included)
+- **Tech stack architecture:** Workflow skills are language-agnostic; per-stack context lives in `tech-stack-{name}` skills loaded via `.claude/tech-stack`
 
 ---
 
-## Tech Stack Loading
+## Critical Rules (Always Apply)
 
-The toolkit uses pluggable tech stacks. The active stack is recorded in `.claude/tech-stack` (a single word like `dotnet`, `python`, or `typescript`). Every entry-point skill and agent reads this file in Phase 0 and loads the corresponding `.claude/skills/tech-stack-{stack}/SKILL.md`. For the `typescript` stack, `.claude/tech-stack-pm` additionally stores the auto-detected package manager (bun / pnpm / yarn / npm). That skill provides:
-
-- Build and test commands
-- ORM and framework patterns
-- Stack-specific reference file paths
-- Scan recipes for `setup-bootstrap` and `setup-audit` (invoked by `/mtk-setup`)
-- Settings to merge during setup
-
-If a repo has no `.claude/tech-stack` file, run `/mtk-setup` first.
-
-## Reference Loading
-
-Load shared references **progressively** — only what the current phase needs:
-
-| Phase | References |
-|:---|:---|
-| **Always** | The coding guidelines from the active tech stack's `## Reference Files` |
-| **Planning** | `security-checklist.md` *(if scope touches security)*, `testing-patterns.md` |
-| **Implementation** | `performance-checklist.md`, plus stack-specific ORM checklist and framework patterns from the tech stack's `## Reference Files` |
-| **Review** | `quick-check-list.md` *(if present)* |
+- **C0.1** Manifest versions must match: `.claude/manifest.json` version == `.claude-plugin/plugin.json` version == `.claude-plugin/marketplace.json` plugin entry version. Bump all three when releasing.
+- **C0.2** Every file in the repo must be listed in manifest.json `files` section. Every manifest path must exist on disk.
+- **C0.3** Skills follow the anatomy in `.claude/rules/skill-authoring.md` S2.2 (Overview / When To Use / Workflow / Verification for workflow skills; phase-structured and entry-point skills are exempt as listed there). Entry-point skills use `allowed-tools` and `argument-hint` in frontmatter. Skill directory name must match frontmatter `name:`.
+- **C0.4** Agents and skills must have `---` frontmatter blocks.
+- **C0.5** Hooks must be executable (`chmod +x`) and use `set -euo pipefail`.
+- **C0.6** Never hardcode secrets, API keys, or user-specific paths in committed files. The local settings override file is gitignored.
+- **C0.7** `AGENTS.md` is protected — `setup-bootstrap` generates it (together with the `CLAUDE.md` shim that imports it), but subsequent edits are project-specific. Don't overwrite during update.
+- **C0.8** Run `bash scripts/validate-toolkit.sh` and confirm "Toolkit validation passed" before reporting any change as complete.
 
 ---
 
-## Routing Rules
+## Standards Reference
 
-1. Always read `CLAUDE.md` first when present — it is the project-specific source of truth
-2. If an entry-point skill exists for the task, prefer it — it orchestrates the underlying workflow skills
-3. Do not skip planning, testing, review, or verification when the chosen skill requires them
-4. For toolkit structural health (toolkit maintainers only), run `bash scripts/validate-toolkit.sh`. For onboarding a new repo, install the MTK plugin from the marketplace (`/plugin install mtk@moberghr`) then run `/mtk-setup`.
+Detailed rules live in `.claude/rules/` (auto-loaded by Claude Code): `toolkit-structure.md` (S1.x,
+manifest/organization/naming), `skill-authoring.md` (S2.x), `hooks-and-scripts.md` (S3.x),
+`git-workflow.md` (S4.x), `verification-and-proof.md` (S5.x). `.claude/rules/INDEX.md` is the
+wake-up layer — read it first and pull a full rule file only when its axes match the task.
 
-## Agent Self-Escalation
+Reference docs are read on demand: shared ones in `.claude/references/` (`security-checklist.md`,
+`testing-patterns.md`, `performance-checklist.md`, `domain-finance.md`, `env-knobs.md`), and
+per-stack ones under `.claude/references/{stack}/`, listed canonically in the active tech stack
+skill's `## Reference Files`.
 
-All agents may report `BLOCKED` or `NEEDS_CONTEXT` instead of producing uncertain output. A clear escalation is always more valuable than a low-confidence review.
+---
 
+## Agent Routing
+
+This repository uses **skills** as both user-facing entry points and reusable workflow blocks, and
+**agents** as specialist reviewers. The routing decision tree, per-workflow composition, the
+model-invoked skill list, the two-stage review graph, the review-output schema, the eval pipeline,
+tech-stack loading and progressive/path-scoped reference loading all live in
+`.claude/references/agent-routing-guide.md` — read it whenever routing is not obvious.
+
+Two skills are user-invocable: `/mtk-setup` (first-time setup; `--audit`, `--merge`, `--refresh`,
+`--check`, `--converge`) and `/mtk <description>` (the natural-language router). Everything else is
+a **routed workflow skill** reached through `/mtk`, or a **model-invoked skill** loaded
+automatically when its trigger fires. The canonical route list is the `/mtk` decision rule above.
+
+The active tech stack is recorded in `.claude/tech-stack`; every entry-point skill and agent reads
+it in Phase 0 and loads the matching `tech-stack-{stack}` skill. No such file ⇒ run `/mtk-setup`.
+
+Review is two-stage: Stage 1 (`compliance-reviewer`, plus `silent-failure-hunter` on
+error-handling diffs) gates Stage 2 (`test-reviewer`, `architecture-reviewer`).
+
+### Routing Rules
+
+1. Read this file first — it is the project-specific source of truth. `CLAUDE.md` only imports it.
+2. Start a task with `context-engineering`; it loads the phase-appropriate references.
+3. If an entry-point skill exists for the task, prefer it — it orchestrates the underlying workflow skills.
+4. Do not skip planning, testing, review, or verification when the chosen skill requires them.
+5. For toolkit structural health (toolkit maintainers only), run `bash scripts/validate-toolkit.sh`. For onboarding a new repo, install the MTK plugin from the marketplace then run `/mtk-setup`.
+
+### Agent Self-Escalation
+
+All agents may report `BLOCKED` or `NEEDS_CONTEXT` instead of producing uncertain output. A clear
+escalation is always more valuable than a low-confidence review.

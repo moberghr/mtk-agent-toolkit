@@ -314,10 +314,26 @@ grep -q 'docs/skill-anatomy.md' CONTRIBUTING.md || fail "CONTRIBUTING does not p
 grep -q 'tech-stack' README.md || fail "README does not mention the tech stack architecture"
 grep -q 'context-engineering' AGENTS.md || fail "AGENTS.md does not route context-engineering"
 
-# Token budget enforcement: prevent context bloat
+# AGENTS.md is the canonical constitution; CLAUDE.md is only the shim that imports it.
 if [ -f "CLAUDE.md" ]; then
-  claude_lines="$(wc -l < CLAUDE.md)"
-  [ "$claude_lines" -le 200 ] || fail "CLAUDE.md exceeds 200-line budget ($claude_lines lines). Move detail to .claude/rules/"
+  grep -q '^@AGENTS\.md' CLAUDE.md || fail "CLAUDE.md does not import AGENTS.md — the shim needs a bare '@AGENTS.md' line (not in backticks or a fence), since AGENTS.md is the canonical constitution."
+fi
+
+# Token budget enforcement: prevent context bloat.
+# AGENTS.md is the always-loaded constitution, so it carries the 120-line hard cap
+# the template and setup-bootstrap document (target 60-80). The cap is enforced in
+# BOTH lines and bytes: a 120-line file of wide markdown table rows can still reach
+# tens of KB, so a line count alone does not bound what this costs every session.
+agents_lines="$(wc -l < AGENTS.md | tr -d '[:space:]')"
+[ "$agents_lines" -le 120 ] || fail "AGENTS.md exceeds 120-line hard cap ($agents_lines lines, target 60-80). Move detail to .claude/rules/ or .claude/references/"
+agents_bytes="$(wc -c < AGENTS.md | tr -d '[:space:]')"
+[ "$agents_bytes" -le 16000 ] || fail "AGENTS.md exceeds 16000-byte budget ($agents_bytes bytes). Wide table rows cost context even when the line count passes — move reference tables to .claude/references/"
+
+# The shim is a handful of lines by construction; a large CLAUDE.md beside a
+# canonical AGENTS.md means content leaked back into it.
+if [ -f "CLAUDE.md" ]; then
+  claude_lines="$(wc -l < CLAUDE.md | tr -d '[:space:]')"
+  [ "$claude_lines" -le 30 ] || fail "CLAUDE.md exceeds the 30-line shim budget ($claude_lines lines). It must import AGENTS.md and carry only Claude-Code-specific notes."
 fi
 
 for skill in "${manifest_skill_paths[@]+"${manifest_skill_paths[@]}"}"; do
@@ -371,11 +387,10 @@ if [ -d ".claude/rules" ]; then
   done < <(find .claude/rules -name '*.md' | sort)
 fi
 
-# Root CLAUDE.md ceiling (S1-related — compliance degrades past ~150 lines)
-if [ -f CLAUDE.md ]; then
-  claude_lines="$(wc -l < CLAUDE.md)"
-  [ "$claude_lines" -le 120 ] || fail "CLAUDE.md exceeds 120-line hard cap ($claude_lines lines). Move sections to .claude/rules/ or references."
-fi
+# The root-constitution ceiling now lives on AGENTS.md (see the budget block
+# above). Checking CLAUDE.md here was vacuous post-inversion: it measures an
+# ~11-line shim and can never fail, while the file that actually costs always-on
+# context went unbounded.
 
 # Every .claude/references/**/*.md must have description/globs/alwaysApply frontmatter.
 # <(head …) not head|grep: grep -q exits on match, head takes SIGPIPE (141), and
