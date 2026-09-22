@@ -4,6 +4,62 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [8.0.0] - 2026-09-22
+
+### Fixed — three-lane review round over the inversion
+
+A performance, a simplification and an adversarial review lane over the inversion diff. Every
+defect below was reproduced before it was fixed.
+
+- **Data loss: `generate-agents-md.sh --force` destroyed a hand-authored constitution** when
+  `CLAUDE.md` was a symlink to `AGENTS.md`. The symlink reads as a constitution *body*, so it
+  matched neither "absent" nor the `^@AGENTS\.md` shim pattern, the file resolved as
+  `CLAUDE.md`, and the whole canonical-constitution guard was skipped — replacing the rules
+  with a nine-line generated summary. Same file on both sides now counts as canonical.
+- **`resolve-artifact-root.sh` required `CLAUDE.md`**, so an `AGENTS.md`-only subproject
+  resolved to the repo root: specs, plans and `scope-guard`'s `docs/specs/*` matching all
+  followed it into the wrong tree. Either spelling now declares a subtree (S1.16 updated).
+- **`mtk-doctor`'s constitution budget was vacuous** — it measured the ~11-line shim, so it
+  could never fail, while the file that actually costs always-on context went unmeasured.
+- **`setup-refresh-plan` row 3 reported a false `fresh`** — it read the version footer from
+  `CLAUDE.md` though bootstrap stamps it on the resolved constitution, so a genuinely
+  version-stale repo read as `fresh — check skipped`.
+- **`instructions-audit` could never see the Copilot mirror** — `find -name` was given a path
+  containing a slash, and `-name` matches basenames only.
+- **`verify-references.sh` defaulted to the shim**, scanning eleven lines instead of the file
+  holding the path claims.
+- **Pointer configs named a non-existent `CLAUDE.md`** in a repo with no constitution at all.
+- `repo-health` asset 1 was renamed in code but not in its contract reference; `how-it-works`
+  documented a trigger token removed for SC7.
+
+### Changed — one constitution resolver instead of nine copies
+
+`scripts/resolve-constitution.sh` joins `resolve-tech-stack.sh` and `resolve-artifact-root.sh`
+as the third standalone resolver. The predicate it owns had been copy-pasted into nine callers
+and had already diverged — marker variable vs. literal string, differing stderr redirection,
+differing empty-repo answers — and the symlink defect above had to be patched into all nine by
+hand. `--loaded` answers the separate context-accounting question ("which bytes enter every
+session", where the generator-marker clause does *not* apply), so that distinction is now code
+with a test rather than two prose comments in two scripts. Callers keep the same short inline
+fallback the `resolve-tech-stack.sh` callers already use, so a partial or older install still
+resolves correctly. `tests/hooks/test-resolve-constitution.sh` owns the 20-case matrix.
+
+### Changed — the AGENTS.md budget is enforced in bytes as well as lines
+
+The validator said 200 lines, the template and two skills said "target 60-80, hard cap 120",
+and the repo's own `AGENTS.md` was 174 — passing one gate while blowing the other. Resolved in
+favour of the documented cap.
+
+- `AGENTS.md` trimmed **174 → 119 lines, 15.1KB → 8.3KB**. The `## Agent Routing` section
+  duplicated the routing guide introduced in this same release and wrote the `/mtk` route list
+  three times at three different lengths; the `MTK_*` knob table moved to the new
+  `.claude/references/env-knobs.md`.
+- `validate-toolkit.sh` enforces the 120-line hard cap **plus a 16,000-byte cap** — a passing
+  line count does not bound a file built of wide markdown table rows. The 120-line `CLAUDE.md`
+  cap, vacuous since the inversion, is retired in favour of a 30-line shim cap.
+- Always-on constitution cost is **~2,251 tok against a ~3,498 tok pre-inversion baseline** —
+  net below where the constitution started, not merely below its peak.
+
 ### Changed — AGENTS.md is the canonical constitution; CLAUDE.md is a shim
 
 Every harness the team uses reads `AGENTS.md`, and Claude Code now reads it natively. The
