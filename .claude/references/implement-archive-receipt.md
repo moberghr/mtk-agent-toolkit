@@ -70,6 +70,16 @@ sibling of the spec — containing only facts already recorded on the artifact:
     and any `from_model` → `to_model` switch
   A phase whose events are missing gets `not recorded` for that row; a run with
   no incidents states `dispatch incidents: none`, which is itself a recorded fact.
+- **cost**: the output of
+  `bash scripts/session-cost.sh window --since <first event ts> --until <last event ts>`
+  over the workflow artifact's first and last event timestamps, copied verbatim
+  and labelled "API-equivalent estimate (Stop-granular)". The rows come from the
+  `cost-tracker` Stop hook, so attribution granularity is one Stop, and `est_usd`
+  is `null` for models absent from `hooks/lib/model-pricing.tsv` (its `as_of`
+  travels on every row as `pricing_as_of`). Write `not recorded` when the tracker
+  was off (`MTK_COST_TRACKER=0`) or no rows fell in the window. If `window` prints a
+  leading `warning: cost tracking failed at …` line (from `.mtk/metrics/.last-error`),
+  copy it too — it says rows after that point may be missing.
 - `dispatch_incidents[]` verbatim (batch, kind, reason, tier switch, whether the
   partial state compiled) — so a reader can tell a batch that ran clean from one
   that was rescued
