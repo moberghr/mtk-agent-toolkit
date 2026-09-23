@@ -221,3 +221,13 @@
 **Why:** A plan document that claims an artifact exists steers later work streams to skip building it.
 
 **Applies to:** Reviewing docs, research notes or plans written by an implementer subagent.
+
+## 2026-09-23 — Check for an open release PR before cutting `[Unreleased]` into a version
+
+**What happened:** The 7.36.0 release (#110) folded every pending `[Unreleased]` entry into a minor bump, including the breaking change that made `AGENTS.md` the canonical constitution. PR #109 was open at the time to release exactly those entries as 8.0.0. `v7.36.0` was auto-tagged and published on merge, so a breaking change shipped under a minor version, and #109 had to be reworked into a forward correction (8.0.0 plus a note on the 7.36.0 section).
+
+**Rule:** Before bumping the version files or moving `[Unreleased]` entries into a release section, run `gh pr list --state open --search 'release in:title'` and read any open release PR. If one exists, release on top of it or coordinate with its author. Never fold another PR's pending entries into your bump without checking their semver class: a breaking entry makes the release a major.
+
+**Why:** Merging to `main` tags and publishes automatically, so a wrong version cannot be quietly taken back. It can only be corrected forward.
+
+**Applies to:** Any batch or release commit that bumps `manifest.json`/`plugin.json`/`marketplace.json` or edits `CHANGELOG.md` section headers.
