@@ -79,6 +79,30 @@ case "$err" in *"$SUFFIX_MARK"*) : ;; *) fail "read-guard deny missing suffix. G
 case "$err" in *"disable this guard"*) fail "read-guard must not teach a self-service toggle. Got: $err" ;; esac
 printf '  PASS  read-guard: suffix present, off-switch not taught\n'
 
+# --- config-guard: deny carries suffix but must NOT teach a toggle ------------
+# Approval is the engineer's (a fresh .mtk/config-guard-allow entry), so the deny
+# must not hand the guarded agent its off-switch or the approval recipe. Runs in a
+# mktemp sandbox project so no real config file is read.
+
+cg_sandbox="$(mktemp -d)"
+cg_payload="$(python3 - "$cg_sandbox/Directory.Build.props" <<'PY'
+import json, sys
+print(json.dumps({"hook_event_name": "PreToolUse", "tool_name": "Edit",
+                  "tool_input": {"file_path": sys.argv[1],
+                                 "old_string": "<NoWarn>CS1591</NoWarn>",
+                                 "new_string": "<NoWarn>CS1591;CA2007</NoWarn>"}}))
+PY
+)"
+rc=0
+err="$(CLAUDE_PROJECT_DIR="$cg_sandbox" TMPDIR="$cg_sandbox" bash hooks/config-guard.sh 2>&1 >/dev/null <<<"$cg_payload")" || rc=$?
+rm -rf "$cg_sandbox"
+[ "$rc" -eq 2 ] || fail "config-guard must deny a NoWarn addition (got $rc). Stderr: $err"
+case "$err" in *"$SUFFIX_MARK"*) : ;; *) fail "config-guard deny missing suffix. Got: $err" ;; esac
+case "$err" in *"STOP and ask"*) : ;; *) fail "config-guard deny must tell the model to stop and ask. Got: $err" ;; esac
+case "$err" in *"disable this guard"*) fail "config-guard must not teach a self-service toggle. Got: $err" ;; esac
+case "$err" in *"MTK_CONFIG_GUARD"*) fail "config-guard must not name its kill-switch. Got: $err" ;; esac
+printf '  PASS  config-guard: suffix present, off-switch not taught\n'
+
 # --- mtk_deny sanitizes and caps reasons that echo tool input ------------------
 
 rc=0
