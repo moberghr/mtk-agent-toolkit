@@ -1,0 +1,17 @@
+# Claude model pricing for scripts/session-cost.sh — USD per million tokens (MTok).
+# as_of: 2026-09-23 (source table cached 2026-06-24)
+# source: claude-api skill bundled model table (cached 2026-06-24) and its prompt-caching multipliers — cache writes 1.25x (5m) / 2x (1h) input; cache reads ~0.1x input except where the source states an explicit rate (fable-5-1 $0.25, opus-5-5 $0.20).
+# columns: model_id<TAB>input<TAB>output<TAB>cache_write_5m<TAB>cache_write_1h<TAB>cache_read
+# Lookup is an EXACT match on model_id after stripping a trailing "[...]" context suffix and a trailing -YYYYMMDD date suffix.
+# Models absent from this table get est_usd null — no other model's price is ever borrowed.
+claude-fable-5-1	10	50	12.5	20	0.25
+claude-fable-5	10	50	12.5	20	1.00
+claude-mythos-5	10	50	12.5	20	1.00
+claude-opus-5-5	4	20	5	8	0.20
+claude-opus-5	5	25	6.25	10	0.50
+claude-opus-4-8	5	25	6.25	10	0.50
+claude-opus-4-7	5	25	6.25	10	0.50
+claude-opus-4-6	5	25	6.25	10	0.50
+claude-sonnet-5	2	10	2.5	4	0.20
+claude-sonnet-4-6	3	15	3.75	6	0.30
+claude-haiku-4-5	1	5	1.25	2	0.10

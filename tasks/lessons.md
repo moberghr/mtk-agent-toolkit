@@ -191,3 +191,33 @@
 **Why:** Wave order is a dependency graph over files, not over the names inside them; a doc authored early is silently invalidated by a rename it does not depend on.
 
 **Applies to:** `planning-and-task-breakdown` for any change that renames skills, files or commands referenced by hand-written docs.
+
+## 2026-09-23 — Run a spec's scoring threshold against the repo's real data before sealing
+
+**What happened:** `scripts/lesson-score.sh` implemented the approved formula exactly and passed every fixture test, but on this repo's own `.mtk/learnings.jsonl` it flagged 24 of 32 lessons `due` — all brand-new (a one-off lesson starts at 0.30, below the 0.40 line) — and turned `lesson-refresh` into newest-first triage. Only the Stage 1 reviewer running it on real data caught it; it cost a spec amendment and a re-seal.
+
+**Rule:** When a spec introduces a score, threshold or ranking, compute it over the repo's real inputs during plan-gap review and state the resulting distribution (how many items it flags) in the spec before the approval gate.
+
+**Why:** Fixtures are built to match the formula, so they cannot show that the formula itself is wrong for the data it will actually see.
+
+**Applies to:** `spec-driven-development` and plan-gap review for any change that adds a score, threshold, ranking or classifier.
+
+## 2026-09-23 — `>>file 2>/dev/null` does not silence a failed open; wrap it in braces
+
+**What happened:** In `hooks/fact-force-guard.sh`, `printf … >>"$f" 2>/dev/null || exit 0` both leaked `Permission denied` (redirections apply left to right, so the `>>` open error prints before stderr is redirected) and, worse, exited before the advisory/deny — an unwritable `TMPDIR` silently disabled the guard, including `MTK_FACT_FORCE_ENFORCE=1`.
+
+**Rule:** Write best-effort hook state as `{ printf '%s\n' "$x" >>"$f"; } 2>/dev/null || <handle>`, and never let a failed state write skip the guard's own advisory or deny — emit first, degrade the one-time-deny to advisory if the mark cannot be recorded.
+
+**Why:** A guard that turns itself off when its scratch file is unwritable fails open in exactly the sandboxed environments where nobody is watching.
+
+**Applies to:** Any hook or script appending to a state or log file under `set -euo pipefail`.
+
+## 2026-09-23 — Doc-writing subagents describe planned MTK artifacts as existing
+
+**What happened:** The research-note implementer wrote that MTK "already has" a .claude/harnesses record in both `docs/ecc-harness-adapters-2026-09.md` and a reference line in the migration plan. The file is only planned in WS7 and does not exist; the subagent read the plan's future-tense design as current state.
+
+**Rule:** Before accepting a doc sentence of the form "MTK already has/does X", check it with `ls`/`grep` against the tree, and phrase planned artifacts as "WS<n> plans X".
+
+**Why:** A plan document that claims an artifact exists steers later work streams to skip building it.
+
+**Applies to:** Reviewing docs, research notes or plans written by an implementer subagent.
