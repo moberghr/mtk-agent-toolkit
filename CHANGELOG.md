@@ -4,6 +4,62 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [7.36.0] - 2026-09-23
+
+### Added — lint-config weakening guard, search-before-edit nudge, MCP server backoff, session cost tracking, lesson scoring
+
+Four new hooks and two scripts, each aimed at a failure seen in real sessions: silencing
+an analyzer to get a green build, editing a file without checking its callers, retrying a
+dead MCP server in a loop, and not knowing what a run cost. Every knob is in
+`.claude/references/env-knobs.md`.
+
+- **`hooks/config-guard.sh` (PreToolUse `Edit|Write`, hard deny).** Blocks only edits that
+  *weaken* a linter, analyzer or formatter config: rule-ID suppression codes added to a
+  suppression key (`NoWarn`, `ignore`, `extend-ignore`, `disable`, …), rules or strictness
+  switched off (`severity = none|silent|suggestion`, `"off"`, `TreatWarningsAsErrors=false`,
+  `<Nullable>disable`, …), and new lines in `.eslintignore`-style ignore files. Covers .NET
+  (`.editorconfig`, `Directory.Build.props`, project files, rulesets), JS/TS (ESLint, Biome,
+  tsconfig) and Python (ruff, pyproject, mypy, pylint, flake8) configs. Stricter edits,
+  version bumps and `error` → `warning` pass. The deny tells the agent to fix the code and,
+  if the engineer asked for the suppression, to stop and ask; it names no bypass. The
+  engineer approves a path in `.mtk/config-guard-allow` (honoured for 24h after the file
+  was modified; the agent cannot Edit/Write it). Kill-switch `MTK_CONFIG_GUARD=0`.
+- **`hooks/fact-force-guard.sh` (PostToolUse `Grep|Glob|Bash` + PreToolUse `Edit|Write`,
+  advisory).** Records the session's searches, and when the agent edits an existing in-repo
+  code file whose name no search mentioned, adds one note asking it to find the file's
+  dependents first. Once per file per session, capped at `MTK_FACT_FORCE_MAX_NUDGES`
+  (default 5); tests, docs, `.mtk/` and `tasks/` are exempt. `MTK_FACT_FORCE_ENFORCE=1`
+  makes the note a one-time deny (the retry passes); `MTK_FACT_FORCE=0` turns it off.
+- **`hooks/mcp-health.sh` (PreToolUse, PostToolUse and the new `PostToolUseFailure`
+  event on `mcp__.*`).** Classifies MCP failures (auth, forbidden, rate limit, unavailable,
+  transport; tool-level errors are ignored) and puts the failing server into exponential
+  backoff, `min(base × 2^(failures−1), max)` with `MTK_MCP_HEALTH_BACKOFF_BASE_SECS` (30)
+  and `MTK_MCP_HEALTH_BACKOFF_MAX_SECS` (600). Calls during backoff get an advisory to use
+  non-MCP fallbacks, or a deny with `MTK_MCP_HEALTH_ENFORCE=1`; a successful call clears the
+  record. It never probes or reconnects, and stores only the failure class, never the raw
+  error text. Kill-switch `MTK_MCP_HEALTH=0`.
+- **`hooks/cost-tracker.sh` (async Stop) + `scripts/session-cost.sh` +
+  `hooks/lib/model-pricing.tsv`.** After each Stop, records the token usage since the last
+  Stop (main thread and each subagent, deduplicated by message id) with an API-equivalent
+  USD estimate to `.mtk/metrics/costs.jsonl`. Only counts, model ids, session id and
+  timestamps are stored. `session-cost.sh window --since … --until …` sums a span, and the
+  implement run receipt now carries a **cost** field from it
+  (`.claude/references/implement-archive-receipt.md`). Transcripts are an internal format,
+  so a parse failure records nothing rather than a zero row; the failure is kept in
+  `.mtk/metrics/.last-error` and `window` prints a `warning:` line while it stands. Kill-switch
+  `MTK_COST_TRACKER=0`.
+- **`scripts/lesson-score.sh` + lesson-refresh ranking.** Scores each lesson in
+  `.mtk/learnings.jsonl` from recurrence, recent recalls, reconfirmation, time since last
+  signal, expiry and stale anchors (`lesson-anchors.sh`), clamped to [0.05, 0.95], and marks
+  lessons under 0.40 `due`. Suggest-only: `lesson-refresh` step 2 uses the order to decide
+  which lessons get the deepest checks first, and retirement stays a human decision.
+- **Harness-adapter research note.** `docs/ecc-harness-adapters-2026-09.md` records how
+  other agent toolkits adapt one hook and instruction set across harnesses, and is linked
+  from the multi-harness migration plan (`docs/plans/2026-09-21-multi-harness-migration.md`).
+- **Feature catalog** (`docs/how-it-works.data.json`) gains entries for the four hooks, the
+  two scripts, and the previously undocumented `batch-fix` skill, so
+  `build-how-it-works.py --check` passes again.
+
 ### Changed — AGENTS.md is the canonical constitution; CLAUDE.md is a shim
 
 Every harness the team uses reads `AGENTS.md`, and Claude Code now reads it natively. The

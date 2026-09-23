@@ -61,6 +61,16 @@
             "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/hooks/scope-guard.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/hooks/config-guard.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/hooks/fact-force-guard.sh",
+            "timeout": 5
           }
         ]
       },
@@ -80,6 +90,16 @@
           {
             "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/hooks/rule-trigger.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/hooks/mcp-health.sh",
             "timeout": 5
           }
         ]
@@ -113,6 +133,38 @@
             "type": "command",
             "command": "$CLAUDE_PROJECT_DIR/hooks/compress-monitor.sh",
             "timeout": 3
+          }
+        ]
+      },
+      {
+        "matcher": "Grep|Glob|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/hooks/fact-force-guard.sh",
+            "timeout": 3
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/hooks/mcp-health.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/hooks/mcp-health.sh",
+            "timeout": 5
           }
         ]
       }
@@ -192,6 +244,16 @@
             "command": "$CLAUDE_PROJECT_DIR/hooks/workflow-continuation.sh",
             "async": true,
             "timeout": 5
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/hooks/cost-tracker.sh",
+            "async": true,
+            "timeout": 30
           }
         ]
       }
