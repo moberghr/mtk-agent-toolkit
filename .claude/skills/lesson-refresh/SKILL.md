@@ -58,9 +58,9 @@ not decide.
    `.claude/lessons/personal.md`. For each lesson, check its claims against the
    current repo: does the failure mode still exist? Is it now caught by tooling
    (a validator check, a hook, a rule) that postdates the lesson? Does another
-   lesson or an S-rule cover the same ground? Prioritize by due-ness: lessons
-   whose dated heading is oldest and which no later entry re-confirms get the
-   deepest checks — refresh is "check what is due", not "re-litigate everything
+   lesson or an S-rule cover the same ground? Run `bash scripts/lesson-score.sh`
+   and triage from the top of its output (lessons flagged `due` first, then
+   ascending score) — `due` entries get the deepest checks — refresh is "check what is due", not "re-litigate everything
    equally". Consult the economics when available: `bash scripts/mtk-savings.sh`
    prints each lesson's context rent and `.mtk/recall-log.jsonl` shows which
    entries actually surface in queries — a lesson with high rent and zero

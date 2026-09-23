@@ -177,6 +177,7 @@ never-overwrite marker guard in both generators.
 
 ## WS2 — Path & environment abstraction (M, prerequisite for WS3/WS6/WS7)
 
+Reference: [ECC harness adapters](../ecc-harness-adapters-2026-09.md) — confirms env-then-payload harness detection and per-harness state-root overrides as a shape, not a new idea.
 - `hooks/lib/hook-io.sh`: add `mtk_harness()` → `claude|codex|cursor|gemini|copilot|opencode|unknown`,
   detected from env (`CLAUDE_PLUGIN_ROOT`/`CLAUDE_CODE_SESSION_ID`, `PLUGIN_ROOT`+`CODEX_*`,
   `CURSOR_PROJECT_DIR`/`CURSOR_VERSION`, `GEMINI_EXTENSION_ROOT`, `COPILOT_CLI`) then from
@@ -211,6 +212,7 @@ read; fail-closed behaviour of `security-gate.sh`.
 
 ## WS3 — Hooks: one logic, four protocols (L, depends on WS0 #1, WS2)
 
+Reference: [ECC harness adapters](../ecc-harness-adapters-2026-09.md) — a shipped translate-then-delegate hook adapter and capability-class dispatch validate this WS's design; keep hook logic in bash per S3.3 rather than porting the JS runtime. Note `hooks/mcp-health.sh` depends on Claude-only `PostToolUseFailure`: this WS needs a `tool-failure` event class or a Claude-only marking for it.
 **Input adapter** (`hook-io.sh`): `mtk_extract_command` / `mtk_extract_file_path` learn Cursor's
 flat `command`/`file_path`; `mtk_extract_tool_name` returns a **capability class**
 (`shell | file-write | file-read | search | other`) via a per-harness table in
@@ -310,6 +312,7 @@ read-only against a seeded defect in the spike repo.
 
 ## WS6 — Packaging: one version, four manifests (M, depends on WS2/WS3/WS5)
 
+Reference: [ECC harness adapters](../ecc-harness-adapters-2026-09.md) — one source tree with generated per-target manifests is a validated pattern; skip its global `~/.codex` sync script and npm-published runtime, which don't fit this plugin's per-repo install model.
 | Harness | Manifest | Notes |
 |---|---|---|
 | Claude Code | `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json` | exists |
@@ -334,6 +337,7 @@ the new manifests.
 
 ## WS7 — Setup, refresh and doctor become harness-aware (M, depends on WS1/WS3/WS5/WS6)
 
+Reference: [ECC harness adapters](../ecc-harness-adapters-2026-09.md) — named install profiles as harness-appropriate default bundles are worth folding into the non-interactive default; skip a second per-target install-state file, since the `.claude/harnesses` record this WS introduces covers it.
 - `/mtk-setup` STEP 4 replaces the "Generate cross-agent configs?" question with a
   multi-select **"Which harnesses does the team use?"** (Claude Code / Codex / Cursor /
   Gemini / Copilot / OpenCode / other). Records the answer in `.claude/harnesses` (protected,

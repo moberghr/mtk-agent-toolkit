@@ -1,6 +1,6 @@
 {
   "version": "8.0.0",
-  "updated": "2026-09-08",
+  "updated": "2026-09-23",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -776,6 +776,54 @@
       "target": "tests/hooks/test-interactive-guard.sh",
       "action": "sync",
       "description": "Hook test for interactive-guard.sh covering both blocks, the read-only allow paths, command-position anchoring, fail-open payload handling, and the kill-switch"
+    },
+    "hooks/config-guard.sh": {
+      "source": "hooks/config-guard.sh",
+      "target": "hooks/config-guard.sh",
+      "action": "sync",
+      "description": "PreToolUse hook that hard-denies Edit/Write changes weakening a linter, analyzer or formatter config (added suppression codes, rules switched off, new ignore-file lines) unless the engineer listed the path in .mtk/config-guard-allow within 24h"
+    },
+    "tests/hooks/test-config-guard.sh": {
+      "source": "tests/hooks/test-config-guard.sh",
+      "target": "tests/hooks/test-config-guard.sh",
+      "action": "sync",
+      "description": "Hook test for config-guard.sh covering each weakening signal across .NET, JS/TS and Python configs, stricter and unrelated edits that must pass, the allow list and its 24h expiry, and the kill-switch"
+    },
+    "hooks/fact-force-guard.sh": {
+      "source": "hooks/fact-force-guard.sh",
+      "target": "hooks/fact-force-guard.sh",
+      "action": "sync",
+      "description": "PostToolUse/PreToolUse hook pair that records the session's searches and nudges once per existing code file edited without any search mentioning its name, with an opt-in one-time deny"
+    },
+    "tests/hooks/test-fact-force-guard.sh": {
+      "source": "tests/hooks/test-fact-force-guard.sh",
+      "target": "tests/hooks/test-fact-force-guard.sh",
+      "action": "sync",
+      "description": "Hook test for fact-force-guard.sh covering search recording from Grep, Glob and search-shaped Bash, the once-per-file nudge, exempt paths, the nudge cap, enforce mode, and fail-open payloads"
+    },
+    "hooks/mcp-health.sh": {
+      "source": "hooks/mcp-health.sh",
+      "target": "hooks/mcp-health.sh",
+      "action": "sync",
+      "description": "PreToolUse/PostToolUse/PostToolUseFailure hook on mcp__ tools that tracks failing MCP servers with per-server exponential backoff, warns (or with enforce, denies) calls during backoff, and clears on success"
+    },
+    "tests/hooks/test-mcp-health.sh": {
+      "source": "tests/hooks/test-mcp-health.sh",
+      "target": "tests/hooks/test-mcp-health.sh",
+      "action": "sync",
+      "description": "Hook test for mcp-health.sh covering failure classification, backoff doubling, advisory versus enforce mode, backoff expiry, clear-on-success, and malformed server names"
+    },
+    "hooks/cost-tracker.sh": {
+      "source": "hooks/cost-tracker.sh",
+      "target": "hooks/cost-tracker.sh",
+      "action": "sync",
+      "description": "Async Stop hook that records per-session token usage deltas with an API-equivalent cost estimate to .mtk/metrics/costs.jsonl via scripts/session-cost.sh, failing silent when the transcript cannot be parsed"
+    },
+    "tests/hooks/test-cost-tracker.sh": {
+      "source": "tests/hooks/test-cost-tracker.sh",
+      "target": "tests/hooks/test-cost-tracker.sh",
+      "action": "sync",
+      "description": "Test for cost-tracker.sh and session-cost.sh covering delta recording for main and subagent transcripts, message deduplication, pricing and unpriced models, window sums, and silent failure on bad input"
     },
     "hooks/post-compact.sh": {
       "source": "hooks/post-compact.sh",
@@ -1704,6 +1752,12 @@
       "action": "sync",
       "description": "Keyword-triggered skill hint emitter \u2014 sourced by userprompt-dispatch.sh (OpenHands microagents pattern)"
     },
+    "hooks/lib/model-pricing.tsv": {
+      "source": "hooks/lib/model-pricing.tsv",
+      "target": "hooks/lib/model-pricing.tsv",
+      "action": "sync",
+      "description": "Per-model token price table (USD per million tokens by token class, with an as-of date) that scripts/session-cost.sh uses to estimate API-equivalent session cost"
+    },
     ".claude/triggers.index": {
       "source": ".claude/triggers.index",
       "target": ".claude/triggers.index",
@@ -1877,6 +1931,24 @@
       "target": "scripts/lesson-anchors.sh",
       "action": "sync",
       "description": "Deterministic stale-anchor check for lesson stores \u2014 verifies cited paths/symbols exist, suggests renames, skips external examples, WARN-only"
+    },
+    "scripts/lesson-score.sh": {
+      "source": "scripts/lesson-score.sh",
+      "target": "scripts/lesson-score.sh",
+      "action": "sync",
+      "description": "Suggest-only staleness and confidence score per lesson in .mtk/learnings.jsonl from recurrence, reconfirmation, recall history and stale anchors, used by lesson-refresh to order its triage"
+    },
+    "tests/hooks/test-lesson-score.sh": {
+      "source": "tests/hooks/test-lesson-score.sh",
+      "target": "tests/hooks/test-lesson-score.sh",
+      "action": "sync",
+      "description": "Test for lesson-score.sh covering the recurrence base, recall and reconfirmation boosts, time decay, expiry and stale-anchor penalties, the score floor, the due flag, a missing learnings file, and never writing to the store"
+    },
+    "scripts/session-cost.sh": {
+      "source": "scripts/session-cost.sh",
+      "target": "scripts/session-cost.sh",
+      "action": "sync",
+      "description": "Records per-session token deltas with API-equivalent cost estimates from Claude Code transcripts (record) and sums them over a time window for the implement run receipt (window)"
     },
     "scripts/rule-enforcement-map.sh": {
       "source": "scripts/rule-enforcement-map.sh",
