@@ -90,11 +90,11 @@ These are the highest-impact rules — the ones most commonly violated or most d
 
 [Generate the top **3–5** most critical rules (not 10 — every extra rule dilutes adherence). Prefer interview "hard nevers" first, then scan-derived failure modes. Number them §0.1–§0.N.
 
-**Phrasing rules (non-negotiable):**
-- Use trigger-action form: `WHEN X, DO NOT Y` or `NEVER Z WITHOUT W`.
-- Negatives beat positives. `NEVER commit secrets` > `Always keep secrets safe`.
-- Prefix the top 1–2 most damaging rules with `IMPORTANT:` or `YOU MUST` (research shows measurable compliance improvement — but only works if used sparingly).
-- If a rule can be enforced by a hook, `settings.json` deny-list, or pre-commit-review-list, put it there and DO NOT list it here.
+**Phrasing rules:**
+- Use trigger-action form with the reason attached: `When X, do Y — because Z`. State a prohibition (`Never Z without W — because …`) only for a constraint the codebase actually enforces.
+- Describe the wanted behavior rather than enumerating failures.
+- Do not add `IMPORTANT:` / `YOU MUST` markers: current models weight the constitution closely, so markers cause over-triggering and rigid behavior instead of compliance.
+- If a rule can be enforced by a hook, `settings.json` deny-list, or pre-commit-review-list, put it there and leave it out of this list.
 - Every rule must point to a concrete failure mode in this codebase — no aspirational rules.]
 
 ---

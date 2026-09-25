@@ -4,6 +4,20 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Fixed — prompt-audit cleanup
+
+- `setup-bootstrap` gave itself contradictory phrasing rules: its SKILL.md says never to add
+  `IMPORTANT:` / `YOU MUST` markers, while `root-agents-md-template.md` and
+  `bootstrap-interview.md` told it to prefix critical rules with them and to prefer negative
+  phrasing. The references now match the skill: trigger-action rules with the reason attached,
+  prohibitions only for enforced constraints, no emphasis markers.
+- `compliance-reviewer`: replaced the unscoped "You get no credit for approvals" incentive line
+  with "an approval has to be earned by the code, never granted by default", so the persona stays
+  adversarial without nudging toward manufactured findings.
+- Dialled back shouted headings in `pre-commit-review` (`## Common Rationalizations`, matching the
+  other skills) and `audit-merge-mode` (`## Merge Mode Constraints`).
+- `docs/parallelism-patterns.md` no longer pins model versions ("Current Claude models").
+
 ## [8.0.0] - 2026-09-23
 
 **Major version for the constitution move.** `AGENTS.md` became the canonical constitution and
