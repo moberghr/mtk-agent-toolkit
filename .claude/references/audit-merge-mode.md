@@ -85,7 +85,7 @@ Generate `.claude/references/architecture-principles.md` (overwriting if it alre
 
 Present the unified doc and highlight the key decisions the team needs to make. Do not make standardization decisions for the team — flag them clearly so engineers can debate and decide.
 
-## MERGE MODE — IMPORTANT
+## Merge Mode Constraints
 - This mode is READ-ONLY except for writing the unified output document
 - If `.claude/references/architecture-principles.md` already exists, use AskUserQuestion before overwriting
 - Do not modify the input audit files in `.claude/references/audits/`

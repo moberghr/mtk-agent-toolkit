@@ -42,7 +42,7 @@ Phrasing pattern: "The codebase splits on `<claim>`: `<form A>` (N/M) vs `<form 
 - **Re-run rule:** anchors already present in `resolved_ambiguities` are never re-asked. If a fresh scan contradicts a recorded resolution, emit a Needs review item instead of silently picking a side — same interview-conflict contract as setup-audit's "Interview answers are authoritative" rule (cited, not restated).
 
 **What to do with answers:**
-- Each `hard never` → top of Critical Rules, with `IMPORTANT:` prefix.
+- Each `hard never` → top of Critical Rules, stated with its reason (no `IMPORTANT:` prefix — see the phrasing rules in `root-agents-md-template.md`).
 - Each `top failure mode` → rule in the relevant `.claude/rules/` file (e.g., failure about EF queries → `data-layer.md`).
 - Each `invisible convention` → `project-specific.md`.
 - Compliance answers → fold into `security.md` with `§1.x` numbering.

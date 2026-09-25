@@ -93,7 +93,7 @@ check engineers should run before every commit.
 - **IAM Blast Radius**: Any new IAM grants with `*` resource that should be scoped? [AWS example]
 - **Dependency Intake**: New third-party dep added — does it pass the 5-criteria gate in `.claude/references/dependency-intake-checklist.md`? (Two `Poor` ratings block.)
 
-## COMMON RATIONALIZATIONS — Do Not Fall For These
+## Common Rationalizations
 
 | Rationalization | Reality |
 |---|---|
