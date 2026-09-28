@@ -4,6 +4,31 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [8.0.1] - 2026-09-28
+
+Prepares MTK for Anthropic's Claude plugin directory (#112) and folds in the prompt-audit cleanup.
+
+### Fixed — directory submission prep
+
+- **Hooks broke under an install path containing a space.** All 27 `hooks/hooks.json` commands
+  now wrap `${CLAUDE_PLUGIN_ROOT}` in double quotes. `mtk-doctor`'s Stop-hook basename parser
+  strips the quotes (new test case), `validate-toolkit.sh`'s hook-anchor selector accepts escaped
+  quotes, and the hook-wiring test assertions compare the unquoted path.
+- `plugin.json` no longer carries a `settings.json` key. Claude Code ignored it at load time (plugin
+  settings honor only `agent` and `subagentStatusLine`), so it never applied anything to plugin
+  users; with it gone `claude plugin validate . --strict` passes.
+
+### Changed
+
+- The GitHub Pages site (`index.html`, `how-it-works.*`, its build script and site-only assets)
+  moved to the `gh-pages` branch; Pages now serves from there. `build-how-it-works.py --check`
+  takes `MTK_REPO_ROOT=<toolkit checkout>`.
+- 51 completed specs and plans moved off `main` to the `archive/design-history` branch. `main`
+  keeps `docs/specs/baseline/`, every spec or plan another file links to, and September 2026 work.
+  The plugin folder is now 475 files, inside the directory's 512-file limit.
+- README: new **What MTK runs** section listing every hook, the files MTK writes, the bundled MCP
+  server, and the one network fetch (`/mtk-setup`'s pinned coding guidelines).
+
 ### Fixed — prompt-audit cleanup
 
 - `setup-bootstrap` gave itself contradictory phrasing rules: its SKILL.md says never to add
