@@ -329,7 +329,7 @@ for m in hooks.get(event, []) or []:
     if (m.get("matcher") or "") != matcher:
         continue
     for h in m.get("hooks", []) or []:
-        if h.get("command", "").rstrip().endswith("/hooks/" + base):
+        if h.get("command", "").rstrip().rstrip('"').endswith("/hooks/" + base):
             if need_async == "1" and h.get("async") is not True:
                 print("wired-not-async"); sys.exit(0)
             print("wired"); sys.exit(0)

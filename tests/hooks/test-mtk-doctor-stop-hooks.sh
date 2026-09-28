@@ -85,4 +85,18 @@ grep -q 'plugin cache holds only the installed version' <<<"$out" || fail "expec
 ! grep -q 'stale plugin-cache versions' <<<"$out" || fail "stale WARN must clear"
 ok "clean configuration reports PASS for both checks"
 
+# (e) quoted plugin paths — hooks.json wraps ${CLAUDE_PLUGIN_ROOT} in double quotes so an
+# install path with a space survives word-splitting; basenames must still match.
+printf '#!/usr/bin/env bash\nset -euo pipefail\nexit 0\n' > "$PROJ/hooks/naked.sh"
+cat > "$PROJ/hooks/hooks.json" <<'JSON'
+{"hooks":{"Stop":[{"hooks":[
+  {"type":"command","command":"\"${CLAUDE_PLUGIN_ROOT}/hooks/guarded.sh\"","timeout":5},
+  {"type":"command","command":"\"${CLAUDE_PLUGIN_ROOT}/hooks/naked.sh\" --flush","timeout":5}
+]}]}}
+JSON
+out="$(run_doctor HOME="$HOMEDIR")"
+grep -q 'Stop hook wired twice without the double-run guard' <<<"$out" || fail "quoted plugin path hid the naked.sh double wiring. Output: $out"
+grep -qE 'naked\.sh([^"]|$)' <<<"$out" || fail "WARN should name naked.sh without a trailing quote"
+ok "quoted \${CLAUDE_PLUGIN_ROOT} commands still match by basename"
+
 printf '\nAll mtk-doctor Stop-hook / cache checks passed.\n'
