@@ -32,6 +32,5 @@
     "./.claude/agents/silent-failure-hunter.md",
     "./.claude/agents/plan-gap-reviewer.md",
     "./.claude/agents/context-miner.md"
-  ],
-  "settings.json": "./.claude/settings.json"
+  ]
 }
