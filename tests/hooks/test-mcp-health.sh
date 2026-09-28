@@ -345,7 +345,7 @@ except (OSError, ValueError) as exc:
     print("unparseable: %s" % exc); sys.exit(0)
 for m in hooks.get(event, []) or []:
     if (m.get("matcher") or "") == matcher and any(
-            h.get("command", "").rstrip().endswith("/hooks/" + base) for h in m.get("hooks", []) or []):
+            h.get("command", "").rstrip().rstrip('"').endswith("/hooks/" + base) for h in m.get("hooks", []) or []):
         print("wired"); sys.exit(0)
 print("missing")
 PY

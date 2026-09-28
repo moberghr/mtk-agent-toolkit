@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/session-start\"",
             "async": false,
             "timeout": 10
           }
@@ -18,12 +18,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/post-compact.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/post-compact.sh\"",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/rule-trigger.sh --rearm",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/rule-trigger.sh\" --rearm",
             "timeout": 3
           }
         ]
@@ -35,12 +35,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/security-gate.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/security-gate.sh\"",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/interactive-guard.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/interactive-guard.sh\"",
             "timeout": 5
           }
         ]
@@ -50,17 +50,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scope-guard.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/scope-guard.sh\"",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/config-guard.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/config-guard.sh\"",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/fact-force-guard.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/fact-force-guard.sh\"",
             "timeout": 5
           }
         ]
@@ -70,7 +70,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/read-guard.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/read-guard.sh\"",
             "timeout": 5
           }
         ]
@@ -80,7 +80,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/rule-trigger.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/rule-trigger.sh\"",
             "timeout": 5
           }
         ]
@@ -90,7 +90,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/mcp-health.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/mcp-health.sh\"",
             "timeout": 5
           }
         ]
@@ -102,7 +102,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/context-budget.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/context-budget.sh\"",
             "timeout": 3
           }
         ]
@@ -112,12 +112,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/spec-approval-trigger.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/spec-approval-trigger.sh\"",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/format-on-edit.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/format-on-edit.sh\"",
             "timeout": 5
           }
         ]
@@ -127,7 +127,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/compress-monitor.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/compress-monitor.sh\"",
             "timeout": 3
           }
         ]
@@ -137,7 +137,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/fact-force-guard.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/fact-force-guard.sh\"",
             "timeout": 3
           }
         ]
@@ -147,7 +147,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/mcp-health.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/mcp-health.sh\"",
             "timeout": 5
           }
         ]
@@ -159,7 +159,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/mcp-health.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/mcp-health.sh\"",
             "timeout": 5
           }
         ]
@@ -170,7 +170,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pre-compact-snapshot.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/pre-compact-snapshot.sh\"",
             "timeout": 8
           }
         ]
@@ -181,7 +181,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/userprompt-dispatch.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/userprompt-dispatch.sh\"",
             "timeout": 5
           }
         ]
@@ -192,12 +192,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/verify-completion",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/verify-completion\"",
             "timeout": 10
           },
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/format-on-edit.sh --flush",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/format-on-edit.sh\" --flush",
             "timeout": 30
           }
         ]
@@ -206,7 +206,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/capture-learnings.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/capture-learnings.sh\"",
             "async": true,
             "timeout": 5
           }
@@ -216,7 +216,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-analytics.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/session-analytics.sh\"",
             "async": true,
             "timeout": 5
           }
@@ -226,7 +226,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/workflow-continuation.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/workflow-continuation.sh\"",
             "async": true,
             "timeout": 5
           }
@@ -236,7 +236,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/cost-tracker.sh",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/cost-tracker.sh\"",
             "async": true,
             "timeout": 30
           }
@@ -248,7 +248,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/format-on-edit.sh --flush",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/format-on-edit.sh\" --flush",
             "timeout": 30
           }
         ]

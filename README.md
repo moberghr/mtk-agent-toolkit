@@ -650,6 +650,31 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). The short version:
 
 ---
 
+## What MTK runs
+
+Everything the plugin executes on your machine, what it writes, and what it contacts. Hooks and the MCP server run locally as you, outside Claude Code's sandbox.
+
+**Hooks** (`hooks/hooks.json`, plain bash — needs bash, coreutils, git, python3):
+
+| Event | Hooks | What they do |
+|---|---|---|
+| SessionStart | `session-start`, `post-compact.sh`, `rule-trigger.sh --rearm` | Inject MTK context, re-inject on-disk task state after compaction |
+| PreToolUse | `security-gate.sh`, `interactive-guard.sh`, `scope-guard.sh`, `config-guard.sh`, `fact-force-guard.sh`, `read-guard.sh`, `rule-trigger.sh`, `mcp-health.sh` | Advise on or block tool calls: destructive/secret-leaking commands, prompt-hanging `gh`/`git` calls, edits outside an approved spec, edits that weaken linter config, reads of secret files; warn on reads of generated/vendored dirs and on MCP servers that keep failing |
+| PostToolUse / PostToolUseFailure | `context-budget.sh`, `spec-approval-trigger.sh`, `format-on-edit.sh`, `compress-monitor.sh`, `fact-force-guard.sh`, `mcp-health.sh` | Context-size nudges; queue spec-approval reminders; queue edited files for formatting |
+| PreCompact | `pre-compact-snapshot.sh` | Snapshot task state before compaction |
+| UserPromptSubmit | `userprompt-dispatch.sh` | Surface queued skill suggestions and keyword hints |
+| Stop / SubagentStop | `verify-completion`, `format-on-edit.sh --flush`, `capture-learnings.sh`, `session-analytics.sh`, `workflow-continuation.sh`, `cost-tracker.sh` | Check completion claims for evidence; run your project's own formatter (`dotnet format`, `ruff`/`black`, or `npx --no-install biome`/`prettier` — never installs anything) on edited files; prompt lesson capture; record local usage and token-cost estimates |
+
+Hooks read the session transcript locally (completion evidence, cost estimates). They never change Claude Code's permission settings.
+
+**Files written in your repo:** `.claude/analytics.json` (usage counts), `.claude/observability/`, `.claude/queue/`, `.mtk/workflows/`, `.mtk/metrics/costs.jsonl`, and `.mtk/config-guard-allow` (only when you allow a config edit). Short-lived state goes to `$TMPDIR/mtk-*`. `/mtk-setup` writes `AGENTS.md`, the `CLAUDE.md` shim, `.claude/rules/`, `.claude/references/`, and merges recommended `allowedTools`/`deny` entries into `.claude/settings.json` — only when you run it.
+
+**MCP server** (`mtk-context`, stdio): `node ${CLAUDE_PLUGIN_ROOT}/dist/mtk-mcp-server.cjs`. It reads repo files (tech stack, manifest, references, solution structure) and makes no network calls. The bundle is unminified and includes the MCP SDK, which is why it is ~600 KiB; its source is in [`mcp/src/`](mcp/src/) and it is rebuilt with `bash scripts/build-mcp.sh`.
+
+**Network:** no hook and no MCP tool makes a network request. `/mtk-setup` fetches the coding guidelines from `raw.githubusercontent.com/moberghr/coding-guidelines` at a pinned commit and verifies their sha256. Skills that need GitHub or the web (PR-review mining, CI status, `research-context`) ask Claude to run `gh` or web tools through its normal, permission-checked tools. MTK collects no telemetry.
+
+---
+
 ## Security
 
 **What the toolkit enforces:** no hardcoded secrets; parameterized queries only; no PII in logs; audit trails for state mutations; auth on every endpoint; least-privilege IAM; input validation at boundaries.

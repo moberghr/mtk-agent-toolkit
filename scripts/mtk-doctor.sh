@@ -807,7 +807,7 @@ def stop_basenames(path):
             if tok and tok[0] in ("bash", "sh", "zsh"):
                 tok = tok[1:]
             if tok:
-                out.append(os.path.basename(tok[0]))
+                out.append(os.path.basename(tok[0].strip("\"'")))
     return out
 for b in stop_basenames(sys.argv[1]): print("plugin\t" + b)
 for b in stop_basenames(sys.argv[2]): print("project\t" + b)

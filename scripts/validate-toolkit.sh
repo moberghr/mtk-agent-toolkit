@@ -123,7 +123,7 @@ check_hook_anchor() { # $1=file  $2=required substring  $3=message
       *"$want"*) ;;
       *) fail "${msg}: ${line}" ;;
     esac
-  done < <(grep -oE '"command"[[:space:]]*:[[:space:]]*"[^"]*hooks/[^"]*"' "$file" || true)
+  done < <(grep -oE '"command"[[:space:]]*:[[:space:]]*"([^"\\]|\\.)*hooks/([^"\\]|\\.)*"' "$file" || true)
   [ "$count" -gt 0 ] || fail "$file: found 0 hook commands to check — the selector matched nothing, so this guard inspected nothing. Fix the selector, do not assume the file is clean."
 }
 
