@@ -1606,25 +1606,13 @@
       "source": "docs/assets/foundations.png",
       "target": "docs/assets/foundations.png",
       "action": "sync",
-      "description": "Foundations diagram used in README (Architecture section) and docs/index.html"
+      "description": "Foundations diagram used in the README Architecture section (the site copy lives on gh-pages)"
     },
     "docs/assets/pipeline-diagram.png": {
       "source": "docs/assets/pipeline-diagram.png",
       "target": "docs/assets/pipeline-diagram.png",
       "action": "sync",
-      "description": "Pipeline hero diagram used at top of README and in docs/index.html"
-    },
-    "docs/assets/pipeline-section.png": {
-      "source": "docs/assets/pipeline-section.png",
-      "target": "docs/assets/pipeline-section.png",
-      "action": "sync",
-      "description": "Install-in-one-command screenshot used in docs/index.html"
-    },
-    "docs/assets/mobile-diagram.png": {
-      "source": "docs/assets/mobile-diagram.png",
-      "target": "docs/assets/mobile-diagram.png",
-      "action": "sync",
-      "description": "Mobile-viewport crop of the pipeline diagram used in docs/index.html"
+      "description": "Pipeline hero diagram used at the top of the README (the site copy lives on gh-pages)"
     },
     "hooks/lib/skill-queue.sh": {
       "source": "hooks/lib/skill-queue.sh",
