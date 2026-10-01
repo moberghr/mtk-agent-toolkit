@@ -3,7 +3,7 @@ name: mtk-doctor
 description: Run an MTK install health check (core files, components, hooks, integrity, environment fit) with PASS/WARN/FAIL diagnostics, --json for CI, and --fix for safe auto-repairs.
 type: skill
 allowed-tools: Read, Bash
-argument-hint: [--json] [--fix] [--strict]
+argument-hint: "[--json] [--fix] [--strict]"
 user-invocable: true
 ---
 

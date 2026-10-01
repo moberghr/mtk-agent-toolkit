@@ -221,3 +221,23 @@
 **Why:** A plan document that claims an artifact exists steers later work streams to skip building it.
 
 **Applies to:** Reviewing docs, research notes or plans written by an implementer subagent.
+
+## 2026-10-01 — The Claude directory portal times out on a large plugin folder; bisect it with throwaway branches
+
+**What happened:** Validate in the directory portal (claude.ai/directory/manage) answered "The request took too long" on every attempt for 2 hours for `mtk-agent-toolkit@main` (plugin folder = repo root, ~475 files), while `gh-pages` and a third-party plugin returned in seconds. Every size limit in the pre-submission checklist was met. Bisecting with `dirtest/*` branches (validated via the portal's Branch field) showed each half of the repo and a 277-file runtime-only tree validating fine, while main minus any one component still timed out — the cost was the total payload.
+
+**Rule:** Point the directory at a slim branch holding only the runtime payload (`scripts/build-plugin-branch.sh`, published by `release.yml`), never at a dev branch. When the portal fails without a named finding, bisect the tree on throwaway branches in the portal before guessing at causes.
+
+**Why:** The portal's timeout carries no diagnostic, and its documented limits (50 MiB, 10,000 files) are not the binding constraint; only experiment finds the real one.
+
+**Applies to:** Submitting or updating MTK (or any large plugin) in the Claude plugin directory; adding dev-only content to `main` that the slim-branch filter may need to exclude.
+
+## 2026-10-01 — A dry run that creates refs belongs in a scratch clone, not the real repo
+
+**What happened:** An implementer brief asked for a real-repo dry run into `plugin-dryrun-b2` followed by `git branch -D`. The permission system blocked the delete, stranding the ref; the orchestrator could not run it either without laundering the denial, so it went back to the engineer.
+
+**Rule:** In implementer and reviewer briefs, put any step that creates refs into a scratch clone (`git clone -q <repo> <scratch>`) or a fixture repo, and say so explicitly; never plan a create-then-delete of a ref in the engineer's repo.
+
+**Why:** Ref deletion is commonly permission-gated, so a create step that succeeds and a cleanup step that is denied leaves residue only a human can clear.
+
+**Applies to:** Briefing subagents for dry runs, release rehearsals or ref-mutating tests.

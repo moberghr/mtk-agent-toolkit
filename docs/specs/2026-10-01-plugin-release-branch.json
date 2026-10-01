@@ -1,0 +1,210 @@
+{
+  "slug": "plugin-release-branch",
+  "date": "2026-10-01",
+  "scope": "new-feature",
+  "baseline_area": null,
+  "security_impact": "none",
+  "change_manifest": [
+    {
+      "path": ".claude/skills/mtk-doctor/SKILL.md",
+      "action": "modify",
+      "purpose": "quote argument-hint (portal blocking finding)",
+      "mechanical": true
+    },
+    {
+      "path": ".claude/skills/mtk-setup/SKILL.md",
+      "action": "modify",
+      "purpose": "quote argument-hint (portal blocking finding)",
+      "mechanical": true
+    },
+    {
+      "path": "scripts/validate-toolkit.sh",
+      "action": "modify",
+      "purpose": "reject unquoted multi-bracket frontmatter values",
+      "mechanical": false
+    },
+    {
+      "path": ".claude-plugin/icon.svg",
+      "action": "create",
+      "purpose": "directory listing icon",
+      "mechanical": true
+    },
+    {
+      "path": "scripts/build-plugin-branch.sh",
+      "action": "create",
+      "purpose": "build the slim plugin branch from a source ref",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-build-plugin-branch.sh",
+      "action": "create",
+      "purpose": "fixture-repo tests for build-plugin-branch.sh",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-validate-frontmatter-yaml.sh",
+      "action": "create",
+      "purpose": "regression test for the validator's unquoted-flow-sequence frontmatter check (SC5)",
+      "mechanical": false
+    },
+    {
+      "path": ".github/workflows/release.yml",
+      "action": "modify",
+      "purpose": "build and push plugin after tagging",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/manifest.json",
+      "action": "modify",
+      "purpose": "register new files",
+      "mechanical": true
+    },
+    {
+      "path": "CHANGELOG.md",
+      "action": "modify",
+      "purpose": "[Unreleased] entry",
+      "mechanical": true
+    }
+  ],
+  "public_contracts": [
+    {
+      "kind": "script",
+      "signature": "scripts/build-plugin-branch.sh [--source <ref>] [--branch <name>] [--repo <dir>]",
+      "change": "new",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "branch",
+      "signature": "refs/heads/plugin \u2014 slim release payload tracked by the Claude directory",
+      "change": "new",
+      "surface": "internal-tooling"
+    }
+  ],
+  "success_criteria": [
+    {
+      "id": "SC1",
+      "description": "exported tree omits dev-only paths and unlisted docs, keeps manifest-listed docs",
+      "verification": "bash tests/hooks/test-build-plugin-branch.sh",
+      "evidence_channel": "test-run",
+      "observable": "PASS lines for omit/keep assertions"
+    },
+    {
+      "id": "SC2",
+      "description": "trimmed manifest lists only files present; checksums verify clean",
+      "verification": "bash tests/hooks/test-build-plugin-branch.sh",
+      "evidence_channel": "test-run",
+      "observable": "0 mismatched, 0 missing"
+    },
+    {
+      "id": "SC3",
+      "description": "rebuild with no change creates no commit; rebuild after change appends one commit on the old tip",
+      "verification": "bash tests/hooks/test-build-plugin-branch.sh",
+      "evidence_channel": "test-run",
+      "observable": "PASS lines for idempotence and parentage"
+    },
+    {
+      "id": "SC4",
+      "description": "source branch, index and working tree untouched",
+      "verification": "bash tests/hooks/test-build-plugin-branch.sh",
+      "evidence_channel": "test-run",
+      "observable": "PASS line for untouched source"
+    },
+    {
+      "id": "SC5",
+      "description": "validator rejects unquoted multi-bracket frontmatter and the repo passes",
+      "verification": "bash tests/hooks/test-validate-frontmatter-yaml.sh && bash scripts/validate-toolkit.sh",
+      "evidence_channel": "test-run",
+      "observable": "Toolkit validation passed; negative case fails"
+    },
+    {
+      "id": "SC6",
+      "description": "real-repo dry build yields ~290 files with clean checksums",
+      "verification": "bash scripts/build-plugin-branch.sh --branch plugin-dryrun",
+      "evidence_channel": "command-output",
+      "observable": "file count and checksum verify line"
+    }
+  ],
+  "test_manifest": [
+    {
+      "path": "tests/hooks/test-build-plugin-branch.sh",
+      "covers": [
+        "SC1",
+        "SC2",
+        "SC3",
+        "SC4"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-validate-frontmatter-yaml.sh",
+      "covers": [
+        "SC5"
+      ]
+    }
+  ],
+  "out_of_scope": [
+    "portal policy holds (credential reads, allowed-tools, unfollowable scripts, MCP bundle size)",
+    "pointing moberg-plugins at the plugin branch",
+    "deleting dirtest/* branches"
+  ],
+  "assumptions": [
+    "[ASSUMED] the 290-file slim tree validates within the portal time budget like the 277-file dirtest/runtime"
+  ],
+  "risks": [
+    "GITHUB_TOKEN push of plugin may be blocked by a branch rule; step fails loudly, tag/release unaffected"
+  ],
+  "plan": {
+    "batches": [
+      {
+        "id": "B1",
+        "files": [
+          ".claude/skills/mtk-doctor/SKILL.md",
+          ".claude/skills/mtk-setup/SKILL.md",
+          "scripts/validate-toolkit.sh",
+          ".claude-plugin/icon.svg",
+          "tests/hooks/test-validate-frontmatter-yaml.sh"
+        ],
+        "acceptance": "SC5",
+        "verification": "bash scripts/validate-toolkit.sh",
+        "depends": [],
+        "depends_rationale": "independent of the build script"
+      },
+      {
+        "id": "B2",
+        "files": [
+          "tests/hooks/test-build-plugin-branch.sh",
+          "scripts/build-plugin-branch.sh"
+        ],
+        "acceptance": "SC1-SC4, SC6",
+        "verification": "bash tests/hooks/test-build-plugin-branch.sh",
+        "depends": [],
+        "depends_rationale": "own files only"
+      },
+      {
+        "id": "B3",
+        "files": [
+          ".github/workflows/release.yml",
+          ".claude/manifest.json",
+          "CHANGELOG.md"
+        ],
+        "acceptance": "validate-toolkit passes; full hook suite green",
+        "verification": "bash scripts/validate-toolkit.sh",
+        "depends": [
+          "B1",
+          "B2"
+        ],
+        "depends_rationale": "registers B1/B2 files and wires B2's script"
+      }
+    ]
+  },
+  "post_approval_drift": [
+    {
+      "id": "PD1",
+      "batch": "B1",
+      "kind": "file",
+      "detail": "added tests/hooks/test-validate-frontmatter-yaml.sh + manifest entry",
+      "reason": "Stage 1 F4 / Stage 2 S1: SC5 negative case had no automated evidence",
+      "scope_increase": true,
+      "accepted_by": "engineer (AskUserQuestion, 2026-10-01)"
+    }
+  ]
+}

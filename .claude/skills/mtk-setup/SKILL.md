@@ -3,7 +3,7 @@ name: mtk-setup
 description: One-stop setup entry point that bootstraps a repo or re-runs architecture audit
 type: skill
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion
-argument-hint: [--audit|--audit-only] [--merge] [--preview] [--non-interactive] [--no-verify-commands] [--update-guidelines] [--refresh [--dry-run]] [--check] [--converge]
+argument-hint: "[--audit|--audit-only] [--merge] [--preview] [--non-interactive] [--no-verify-commands] [--update-guidelines] [--refresh [--dry-run]] [--check] [--converge]"
 user-invocable: true
 ---
 
