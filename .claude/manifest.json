@@ -1614,6 +1614,12 @@
       "action": "sync",
       "description": "Foundations diagram used in the README Architecture section (the site copy lives on gh-pages)"
     },
+    ".claude-plugin/icon.svg": {
+      "source": ".claude-plugin/icon.svg",
+      "target": ".claude-plugin/icon.svg",
+      "action": "sync",
+      "description": "Square Moberg icon shown on the Claude plugin directory listing"
+    },
     "docs/assets/pipeline-diagram.png": {
       "source": "docs/assets/pipeline-diagram.png",
       "target": "docs/assets/pipeline-diagram.png",
