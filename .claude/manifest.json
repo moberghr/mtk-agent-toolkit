@@ -789,6 +789,12 @@
       "action": "sync",
       "description": "Hook test for config-guard.sh covering each weakening signal across .NET, JS/TS and Python configs, stricter and unrelated edits that must pass, the allow list and its 24h expiry, and the kill-switch"
     },
+    "tests/hooks/test-validate-frontmatter-yaml.sh": {
+      "source": "tests/hooks/test-validate-frontmatter-yaml.sh",
+      "target": "tests/hooks/test-validate-frontmatter-yaml.sh",
+      "action": "sync",
+      "description": "Regression test for validate-toolkit's frontmatter check \u2014 unquoted flow sequence followed by text fails; valid lists, nested lists, quoted values and CRLF files handled"
+    },
     "hooks/fact-force-guard.sh": {
       "source": "hooks/fact-force-guard.sh",
       "target": "hooks/fact-force-guard.sh",
