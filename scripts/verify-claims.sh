@@ -25,7 +25,7 @@ set -euo pipefail
 #     <doc> is derived from the repo-root-relative path, not the basename —
 #     two same-named docs in different directories (e.g. per-package
 #     CLAUDE.md files in a monorepo) must not collide. A doc passed by a
-#     path outside the repo (setup-converge's scratch temp copies) has no
+#     path outside the repo (setup-refresh --check's scratch temp copies) has no
 #     meaningful repo-relative form, so that case falls back to basename.
 #
 # Exit codes:
@@ -53,7 +53,8 @@ mkdir -p "$CACHE_DIR"
 # DOC_SLUG: repo-root-relative path with `/` and `.` collapsed to `_`
 # (basename alone lets two same-named docs in different directories clobber
 # each other's report — DF-9). A path outside the repo root (e.g. a
-# setup-converge scratch temp copy — see setup-converge/SKILL.md STEP 1) has
+# setup-refresh --check scratch temp copy — see setup-refresh/SKILL.md
+# ## Check Mode, step 2) has
 # no meaningful repo-relative form, so it falls back to basename, unchanged
 # from before this fix.
 case "$INPUT" in

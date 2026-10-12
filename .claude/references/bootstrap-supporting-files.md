@@ -49,9 +49,7 @@ Ensure the following files exist:
 - `.claude/skills/pre-commit-review/SKILL.md` — pre-commit security review
 - `.claude/skills/spec-driven-development/SKILL.md`
 - `.claude/skills/incremental-implementation/SKILL.md`
-- `.claude/skills/test-driven-development/SKILL.md`
 - `.claude/skills/planning-and-task-breakdown/SKILL.md`
-- `.claude/skills/debugging-and-error-recovery/SKILL.md`
 - `.claude/skills/code-review-and-quality/SKILL.md`
 - `.claude/skills/tech-stack-{stack}/SKILL.md` — for the active stack
 - `.claude/agents/compliance-reviewer.md`
@@ -85,7 +83,7 @@ mkdir -p tasks
 
 Create `tasks/lessons.md` if it doesn't exist (header only).
 
-Add `tasks/todo.md` and `CLAUDE.local.md` (personal, opt-in constitution companion — `instructions-capture` writes personal learnings here; never auto-created) to `.gitignore` if not already there. Do NOT gitignore `tasks/lessons.md`.
+Add `tasks/todo.md` and `CLAUDE.local.md` (personal, opt-in constitution companion — instructions capture mode (`/mtk capture instructions`) writes personal learnings here; never auto-created) to `.gitignore` if not already there. Do NOT gitignore `tasks/lessons.md`.
 
 ### Learnings Store Seed
 
@@ -178,16 +176,23 @@ Close with: `Install manually when you're ready — MTK works without any of the
 
 ### Version Stamp
 
-Write **one** provenance file: `.claude/mtk-version.json`. It records the installed MTK version (for session-start drift detection) and pins the external coding-guidelines fetch (sha + sha256, for reproducible re-fetch by `--update-guidelines`). Do **NOT** write a slim `.claude/manifest.json` into target repos — the toolkit's full manifest lives only at `$CLAUDE_PLUGIN_ROOT/.claude/manifest.json`. Scripts (`generate-tool-configs.sh`, `mtk-doctor.sh`) resolve it from the plugin root.
+Write **one** provenance file: `.claude/mtk-version.json`. It records the installed MTK version (for session-start drift detection) and the coding-guidelines pin (sha + sha256) that STEP 1 fetched with. Do **NOT** write a slim `.claude/manifest.json` into target repos — the toolkit's full manifest lives only at `$CLAUDE_PLUGIN_ROOT/.claude/manifest.json`. Scripts (`generate-tool-configs.sh`, `mtk-doctor.sh`) resolve it from the plugin root.
+
+A `coding-guidelines` block already in `.claude/mtk-version.json` is the repo's own pin (written by `/mtk-setup --update-guidelines`, and the one `scripts/update-guidelines.sh` reads first): carry it forward unchanged. Otherwise copy the plugin manifest's block.
 
 ```bash
 PM="${MTK_ROOT:-.}/.claude/manifest.json"
-V=$(python3 -c "import json; print(json.load(open('$PM'))['version'])")
-SHA=$(python3 -c "import json; print(json.load(open('$PM'))['coding-guidelines']['sha'])" 2>/dev/null || echo "")
-S256=$(python3 -c "import json; print(json.load(open('$PM'))['coding-guidelines']['files']['CodingStyle.md'])" 2>/dev/null || echo "")
-cat > .claude/mtk-version.json <<EOF
-{"version":"$V","installed":"$(date -u +%Y-%m-%d)","source":"https://github.com/moberghr/mtk-agent-toolkit","coding-guidelines":{"repo":"moberghr/coding-guidelines","sha":"$SHA","files":{"CodingStyle.md":"$S256"}}}
-EOF
+python3 - "$PM" <<'STAMP'
+import datetime, json, os, sys
+pm = json.load(open(sys.argv[1]))
+old = json.load(open(".claude/mtk-version.json")) if os.path.exists(".claude/mtk-version.json") else {}
+out = {"version": pm["version"], "installed": datetime.date.today().isoformat(),
+       "source": "https://github.com/moberghr/mtk-agent-toolkit"}
+cg = old.get("coding-guidelines") or pm.get("coding-guidelines")
+if cg:
+    out["coding-guidelines"] = cg
+json.dump(out, open(".claude/mtk-version.json", "w"), indent=2)
+STAMP
 ```
 
 Omit the `coding-guidelines` block when no external guidelines were pinned (placeholder stacks). Committed (not gitignored).

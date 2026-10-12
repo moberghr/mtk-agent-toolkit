@@ -89,10 +89,5 @@ Detailed rules in `.claude/rules/` (auto-loaded):
 | `architecture-principles.md` | Layer boundaries, dependency rules | A1.x |
 | `coding-guidelines.md` (python) | Type hints, async patterns, Pydantic v2 | S2.x |
 
-Shared references (`.claude/references/`):
-- `security-checklist.md` — auth, input validation, secrets, PII
-- `testing-patterns.md` — test levels, isolation, providers
-- `performance-checklist.md` — async I/O, query shape, caching
-
 Stack-specific (`.claude/references/python/`):
-- `coding-guidelines.md` · `sqlalchemy-checklist.md` · `fastapi-patterns.md` · `testing-supplement.md` · `performance-supplement.md` · `analyzer-config.md`
+- `coding-guidelines.md` · `testing-supplement.md` · `analyzer-config.md`

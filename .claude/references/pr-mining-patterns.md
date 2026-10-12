@@ -1,7 +1,7 @@
 ---
 name: pr-mining-patterns
 description: Heuristics, denylist, and output schema for mining recurring reviewer-feedback phrases from PRs
-globs: ["scripts/pr-review-mine.sh", ".claude/skills/pr-review-mining/**", ".claude/skills/repo-health/**"]
+globs: ["scripts/pr-review-mine.sh", ".claude/skills/repo-health/**"]
 alwaysApply: false
 type: reference
 ---

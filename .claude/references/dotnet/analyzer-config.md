@@ -93,11 +93,4 @@ Never run a bare `dotnet format` to "just fix it" — analyzer code-fixes can re
 
 ## Integration with MTK
 
-Build output from `dotnet build` includes these analyzer warnings. The toolkit's `hooks/parse-build-diagnostics.sh` parser (shipped with the plugin, under `${CLAUDE_PLUGIN_ROOT}`) converts them into review-finding-schema findings with `source: "analyzer"` and `confidence: 100`.
-
-During the implement workflow's batches, capture the build log to a file and parse it. Do not `tee /dev/tty`: agent shells have no controlling terminal and fail with "Device not configured".
-```bash
-mkdir -p .mtk
-dotnet build 2>&1 | tee .mtk/build.log
-bash "${MTK_ROOT:-.}/hooks/parse-build-diagnostics.sh" --file .mtk/build.log > .mtk/analyzer-output.json
-```
+`hooks/parse-build-diagnostics.sh` (shipped under `${CLAUDE_PLUGIN_ROOT}`) turns these build warnings into review findings with `source: "analyzer"`, `confidence: 100`. The capture command is in `tech-stack-dotnet` `## Analyzer Configuration`.

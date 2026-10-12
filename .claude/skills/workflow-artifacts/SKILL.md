@@ -50,9 +50,9 @@ Orchestration state that lives only in chat is lost on compaction or restart. Th
      event agent_returned --data '{"agent":"batch:B2"}'
    ```
    `event … --ts <iso8601>` replays a timestamp captured elsewhere (a dynamic workflow's per-batch dispatch/return times); tag such events `"source":"workflow-replay"` in `--data`.
-3. **Persist anchors as soon as they exist.** When the spec, plan, and todo files are written, record their paths — in the same call as the next command that runs anyway (the EARS lint, the constitution digest, the context-pack build):
+3. **Persist anchors as soon as they exist.** When the spec, plan, and todo files are written, record their paths — in the same call as the next command that runs anyway (the context-pack build, the manifest pre-flight, the EARS lint in extended mode):
    ```bash
-   bash scripts/lint-ears.sh docs/specs/2026-05-07-foo.md && "$WFA" set "$MTK_WF_UUID" \
+   bash scripts/build-context-pack.sh "$MTK_WF_UUID" docs/specs/2026-05-07-foo.json && "$WFA" set "$MTK_WF_UUID" \
      results.spec_path=docs/specs/2026-05-07-foo.md \
      results.plan_path=docs/plans/2026-05-07-foo.md \
      results.todo_path=tasks/todo.md

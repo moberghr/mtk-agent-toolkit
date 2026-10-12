@@ -1,9 +1,3 @@
----
-description: Detailed MTK agent routing — the task-to-skill decision tree, the full routed-workflow composition table, the model-invoked skill list, the two-stage review graph, the review-output schema, the eval pipeline, and path-scoped reference loading
-globs: ["**/*"]
-alwaysApply: false
----
-
 # MTK Agent Routing Guide
 
 The compact routing tables live in `AGENTS.md` (the canonical constitution). This guide holds
@@ -25,23 +19,18 @@ flowchart TD
     Q1 -- "Bug / regression /<br/>failing test" --> BUG["Load skills:"]
     Q1 -- "Code review /<br/>PR review /<br/>quality audit" --> REV["Load skills:"]
     Q1 -- "Creating or<br/>modifying a skill" --> SKILL["Load skills:"]
-    Q1 -- "Engineer corrects<br/>your approach" --> CORR["correction-capture"]
-    Q1 -- "You struggled 2+ times,<br/>then found what works" --> GOLD["golden-path-capture"]
+    Q1 -- "Engineer corrects your approach, or<br/>you struggled 2+ times then found what works" --> CORR["lessons (capture)"]
 
     FEAT --> F1["context-engineering"]
     F1 --> F1b["brainstorming<br/><i>if approach unclear</i>"]
     F1b --> F2["spec-driven-development"]
     F2 --> F3["planning-and-task-breakdown"]
     F3 --> F4["incremental-implementation"]
-    F4 --> F5["test-driven-development"]
-    F5 --> F6["source-driven-development<br/><i>if framework uncertain</i>"]
-    F6 --> F7["verification-before-completion"]
-    F7 --> F8["using-git-worktrees<br/><i>if isolation needed</i>"]
+    F4 --> F7["verification-before-completion"]
 
     BUG --> B1["context-engineering"]
-    B1 --> B2["debugging-and-error-recovery"]
-    B2 --> B3["test-driven-development<br/><i>if behavior changes</i>"]
-    B3 --> B4["verification-before-completion"]
+    B1 --> B2["fix<br/><i>reproduce first, failing test before the fix</i>"]
+    B2 --> B4["verification-before-completion"]
 
     REV --> R1["context-engineering"]
     R1 --> R2["code-review-and-quality"]
@@ -55,27 +44,20 @@ flowchart TD
 
 ## Routed Workflow Skills
 
-Not directly invocable; reached via `/mtk <description>`.
+Reached via `/mtk <description>`; `mtk-doctor` and `lessons` are also directly invocable.
 
 | Workflow | Composition |
 |:---|:---|
-| fix | debugging/error recovery → focused verification |
+| fix | reproduce → failing test → root-cause fix within 1–3 files → focused verification |
 | batch-fix | corrective batch of multiple small independent fixes (>3 files, no new contract) → findings list + spec stub + one gate → per-finding TDD → inline impl → proportional review; between `fix` and `implement` |
-| implement | brainstorm *(optional)* → context → spec *(+ JSON sidecar)* → task breakdown → TDD → source-driven impl → **spec-drift-detection** → two-stage review → simplification |
+| implement | brainstorm *(optional)* → context → spec *(+ JSON sidecar)* → task breakdown → test-first batches → **spec-drift-detection** → two-stage review → simplification |
 | pre-commit-review | static linter pass *(confidence 100)* → AI review *(confidence-scored)*, merged via `.claude/references/review-finding-schema.md` |
-| context-report | diagnostic snapshot of active MTK configuration |
-| setup-refresh | drift-scoped refresh of all generated setup artifacts (reached via `/mtk-setup --refresh`) — staleness plan → scoped regen → diff proposals for engineer-edited files |
-| setup-converge | judges the codebase against agreed `architecture-principles.md`/`conventions.md` and reports drift as graded, read-only work items (reached via `/mtk-setup --converge`) — never auto-fixes |
-| repo-health | 12-asset AI-readiness scorecard → PR review mining (last N merged PRs) |
-| mtk-doctor | install health check across core files, components, hooks, integrity — PASS/WARN/FAIL, `--json`, `--fix` |
-| toolkit-health | usage stats and adoption signals from analytics.json, with anomaly diagnostics |
+| setup-refresh | drift-scoped refresh of all generated setup artifacts (reached via `/mtk-setup --refresh`) — staleness plan → scoped regen → diff proposals for engineer-edited files; `--check` is the read-only drift report of code against the agreed principles |
+| repo-health | 9-asset AI-readiness action checklist (no score) → audit drift → PR review mining (last N merged PRs, suggest-only `[MINED:feedback]`) |
+| mtk-doctor | install health check across core files, components, hooks, integrity, active config — PASS/WARN/FAIL, `--json`, `--fix`; `--usage` prints raw usage counts with n |
 | research-context | cited external research brief (library best-practices, version-specific behavior) grounded in named project files |
-| instructions-audit | quality-rubric audit of the instructions file (`AGENTS.md` first, then shims) → minimal append-only diffs |
-| instructions-capture | end-of-session capture of discovered commands/gotchas into the instructions file, apply only with approval |
-| pr-review-mining | mine recurring reviewer-feedback phrases from merged PRs as suggest-only [MINED:feedback] candidates |
-| promote-lesson | promote a personal lesson (personal lessons store or Claude Code native memory) to the team-wide lessons file; optionally open a validated contribute-back PR |
-| lesson-mining | sweep recent session transcripts for durable lesson/memory candidates (reject-by-default rubric, suggest-only) |
-| lesson-refresh | audit the lessons stores for staleness — Keep/Update/Consolidate/Retire, suggest-only |
+| instructions | constitution `audit` (verify-references / verify-commands → append-only diffs) or session `capture` (new commands/gotchas), applied only with approval |
+| lessons | team lessons lifecycle, also user-invocable as `/lessons <mode>`: `capture` (a correction or golden path), `mine` (reject-by-default transcript sweep, suggest-only), `refresh` (Keep/Update/Consolidate/Retire stale anchors, suggest-only), `promote` (native memory → `tasks/lessons.md`, optional contribute-back PR; `/promote-lesson` is a one-release alias) |
 
 ---
 
@@ -84,11 +66,10 @@ Not directly invocable; reached via `/mtk <description>`.
 Not user-invocable — loaded automatically when triggered:
 
 - `handoff` — capture session state when context is tight or work is paused mid-stream
-- `correction-capture` — capture engineer corrections as reusable lessons
-- `golden-path-capture` — capture a working approach you found after struggling 2+ times with the same sub-problem in-session (no engineer correction required)
+- `lessons` (`capture` mode) — capture an engineer correction, or a working approach found after struggling 2+ times with the same sub-problem, as a reusable lesson
 - `prior-work-check` — before approving a spec or multi-file work, confirm no existing skill/helper/handler/lesson already covers it
 - `subagent-implementation` — replaces incremental-implementation for 3+ batches, 6+ non-mechanical files, or non-none security_impact; one fresh implementer subagent per batch
-- `code-simplification` — after a verified fix/feature, reduce complexity and remove dead code without changing behavior
+- `code-simplification` — after a verified fix/feature, run Claude Code's `/simplify` with the finance and security carve-outs
 - `workflow-artifacts` — durable workflow state under `.mtk/workflows/` so orchestration survives compaction, crash, and handoff
 
 ---
@@ -147,8 +128,8 @@ Load shared references **progressively** — only what the current phase needs:
 | Phase | References |
 |:---|:---|
 | **Always** | The coding guidelines from the active tech stack's `## Reference Files` |
-| **Planning** | `security-checklist.md` *(if scope touches security)*, `testing-patterns.md` |
-| **Implementation** | `performance-checklist.md`, plus stack-specific ORM checklist and framework patterns |
+| **Planning** | `domain-finance.md` *(if scope touches money, audit or auth)*, the stack's testing supplement |
+| **Implementation** | the stack's data-layer and analyzer references from its `## Reference Files` |
 | **Review** | the repo's quick-check list *(if present)* |
 
 ## Path-Scoped Reference Loading

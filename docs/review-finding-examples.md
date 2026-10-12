@@ -9,7 +9,7 @@ alwaysApply: false
 reviewer emits against. This file holds the long-form material that used to sit beside it:
 the confidence rubric with its reasoning, the anti-sandbagging and anti-inflation rules with
 their failure stories, the full false-positive exclusion list, ABSTAINED semantics, lane
-accounting for the orchestrator, the scores block, and decision-origin tagging. Nothing here
+accounting for the orchestrator, and decision-origin tagging. Nothing here
 overrides the schema; where the two disagree, the schema wins and this file is stale.
 
 ## Markdown Table Template
@@ -108,9 +108,12 @@ honest filter.
 - **Review could not be completed → `ABSTAINED`** (evaluated first; see below)
 - Any `critical` finding at or above threshold → `NEEDS_CHANGES`
 - Any finding with `gate: "mandatory"` → `NEEDS_CHANGES`
-- **Any `scores.<dim>.value < 7` → `NEEDS_CHANGES`** (per the scored-evaluator contract)
-- **Uniform `scores` (all five values equal) → `NEEDS_CHANGES` with reason `non-discriminating`**
-- Otherwise → `PASS`
+- Otherwise → `PASS`, provided the evidence is there: an empty `findings[]` carries a
+  `below_threshold_rationale` naming what was checked. A PASS without it is recorded as
+  `ABSTAINED`.
+
+There is no per-dimension score. Scores were dropped because a 1–10 number added a second,
+softer verdict beside the findings: findings plus missing evidence decide the verdict.
 
 Warnings and suggestions do not force `NEEDS_CHANGES` but should be addressed.
 
@@ -139,8 +142,6 @@ Rules for an abstaining reviewer:
   useful; claiming coverage that did not happen is not.
 - `findings[]` may contain real findings discovered before abstaining. They are reported,
   but they do **not** convert the verdict to `PASS`.
-- `scores` may be omitted entirely. A dimension that was not evaluated must **not** be
-  scored — inventing a 7 to fill the schema is the exact failure this verdict exists to stop.
 - Never choose `ABSTAINED` to dodge work. Abstention is for genuine inability, not
   reluctance. A reviewer that can review and does not is failing, not abstaining.
 
@@ -170,24 +171,6 @@ Binding rules:
 5. **Never silently re-dispatch to turn an abstention into a pass.** A retry is allowed; the
    abstention still appears in the roster with both attempts recorded.
 
-## Scores Block (Scored Adversarial Evaluator)
-
-Every review (compliance and code-review-and-quality) MUST emit a `scores` object with five dimensions: `correctness`, `security`, `test_coverage`, `architecture_fit`, `simplicity`.
-
-**Per-dimension contract:**
-- `value` — integer 1–10 (9–10 exemplary · 7–8 acceptable · 4–6 blocks · 1–3 severe).
-- `evidence` — file:line citation. A score without evidence is treated as 0 (auto-fail).
-- `rationale` — one-line explanation tying the score to the evidence.
-
-**Auto-fail rules** (enforced by reviewers, not the schema):
-1. Any `value < 7` → block.
-2. All five `value`s equal → reject as `non-discriminating`.
-3. Missing `evidence` → score becomes 0 → block.
-
-**Iteration cap.** Orchestrators cap remediation at 2 iterations on the same blocking dimension. A third iteration that would still score < 7 on the same dimension escalates to a human reviewer.
-
-**Workflow artifact integration.** When `MTK_WF_UUID` is set, the orchestrator emits per-dimension scores into `results.review_scores.<dim>` plus `results.review_iteration` for cycle tracking.
-
 ## Decision-Origin Tagging
 
 Every finding carries a `decision_origin` field that records who or what produced the underlying decision. The five values map to authorship in the conversation:
@@ -208,4 +191,4 @@ Every finding carries a `decision_origin` field that records who or what produce
 π = approved / (approved + modified + rejected)
 ```
 
-Computed over the last 30 days of learnings and reviews by `bash scripts/learnings.sh metrics`. The default warn threshold is `0.70` and is tunable via `.claude/review-config.json` (`sycophancy_index.warn_threshold`). Crossing the threshold is a process signal, not an error — it surfaces in `toolkit-health` and prompts a deliberate re-read of the last few recommendations.
+Computed over the last 30 days of learnings and reviews by `bash scripts/learnings.sh metrics`. The default warn threshold is `0.70` and is tunable via `.claude/review-config.json` (`sycophancy_index.warn_threshold`); below `sycophancy_index.min_n` (default 10) recommendations the status is `insufficient-data`, never `warn`. Crossing the threshold is a process signal, not an error — it surfaces in `mtk-doctor --usage` and prompts a deliberate re-read of the last few recommendations.

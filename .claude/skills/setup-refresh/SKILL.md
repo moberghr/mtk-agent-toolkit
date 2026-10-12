@@ -13,7 +13,7 @@ Resolve MTK skill/reference/script paths per `.claude/references/mtk-file-resolu
 
 ---
 
-This skill re-runs setup's generators on an already-bootstrapped repo. It never re-audits blind: it consults `scripts/setup-refresh-plan.sh` for a per-artifact staleness verdict, regenerates only what drifted, and — critically — never silently overwrites a file an engineer has hand-edited. Engineer-edited files go through the diff-proposal contract in `.claude/references/regen-diff-contract.md`, the same contract `setup-audit` and `setup-bootstrap` use for their own re-run merges. This is the inverse of `.claude/skills/setup-converge/SKILL.md`: refresh brings the docs back in line with the code, while converge treats the docs as normative and reports where the *code* has drifted from them.
+This skill re-runs setup's generators on an already-bootstrapped repo. It never re-audits blind: it consults `scripts/setup-refresh-plan.sh` for a per-artifact staleness verdict, regenerates only what drifted, and — critically — never silently overwrites a file an engineer has hand-edited. Engineer-edited files go through the diff-proposal contract in `.claude/references/regen-diff-contract.md`, the same contract `setup-audit` and `setup-bootstrap` use for their own re-run merges. `--check` (## Check Mode) is the read-only inverse: it treats the docs as normative and reports where the *code* has drifted from them, writing nothing outside `.claude/.mtk-cache/`.
 
 ## File Preservation Policy
 
@@ -35,6 +35,17 @@ If either file is missing, stop immediately and tell the engineer:
 Do not attempt a partial refresh, and do not fall back to generating these files yourself — that is bootstrap's job, not refresh's.
 
 Otherwise, resolve the active stack as usual: `bash scripts/resolve-tech-stack.sh "$PWD"` (polyglot-aware — subproject `.claude/tech-stack` → root `.claude/tech-stack.map` glob → root file), then load `.claude/skills/tech-stack-{stack}/SKILL.md`. Its `## Scan Recipes` section is the input STEP 3 uses when a full re-audit is required. In a polyglot repo, run the scan recipes per declared subtree rather than once against the root stack.
+
+## Check Mode (`--check`)
+
+Read-only: no doc, source file or `tasks/todo.md` is written without approval, and nothing outside `.claude/.mtk-cache/`. Run STEP 0's preconditions, then:
+
+1. **Staleness gate.** `bash scripts/setup-refresh-plan.sh --check`. Print the table verbatim and keep the exit code: `0` fresh, `1` stale, `2` usage/setup error (report it and stop).
+2. **Claim regrade.** For each stamped doc (`architecture-principles.md`, `conventions.md` carrying `<!-- mtk-stamp`), copy it to a temp dir and run `bash scripts/verify-claims.sh <temp copy>`. The script rewrites its input, so it never runs on the on-disk doc, and the copy is never written back. Check each exit code: a nonzero exit is an engine failure, not a clean result. Stop with "verification engine failed for `<doc>` (exit N)" and do not read that doc's `weak-claims-*.json`, which may be stale. Otherwise read `.claude/.mtk-cache/weak-claims-<doc-basename-slug>.json` (an out-of-repo input falls back to its basename) and take its `weak` array.
+3. **Drift pairing.** `bash scripts/audit-drift-check.sh <doc> --json` is read-only. Attach each `drift` entry whose `cited_anchor` matches a weak claim's anchor as that item's changed paths.
+4. **Grade** each `weak` entry by its *original* tag (the `text` field, before the downgrade), per S1.15: `[EXTRACTED]`/`[ENFORCED]` → **blocking**; `[INFERRED:N]` with N ≥ 0.7 → **flag**; `[INFERRED:N]` with N < 0.7, or `[AMBIGUOUS]` → **note**. Each item quotes the principle line, the failed anchor (or "claim carries no evidence anchor"), and the changed paths (or "no drift-check match — anchor may be a symbol"). It ends with a one-line direction for the human, never a diff or a rewritten rule. Report nothing that is not a `weak` entry: an impression with no failing claim is not an item, and an empty `weak` array after exit 0 is a clean `0/0/0`.
+5. **Report.** Write `.claude/.mtk-cache/check-report.md` (per doc: stamp SHA vs HEAD, then blocking → flags → notes) and print `| doc | blocking | flags | notes |`. Outcome: fresh only when the plan exited 0 and there are no blocking items.
+6. **Todo append, interactive only.** Offer via `AskUserQuestion` to append the blocking items to `tasks/todo.md`. In a non-interactive run, never ask and never append; say "todo-append skipped: non-interactive run". The report file keeps the items.
 
 ## STEP 1: Staleness Plan
 
@@ -206,7 +217,7 @@ Next steps:
 - No file outside the plan's `stale`/`missing` artifacts (or the derived AGENTS.md/tool-config/index set, the `allowedTools` key move in `.claude/settings*.json`, or an engineer-approved retired index) was modified; no non-MTK file was modified or deleted.
 - Every doc rewritten in STEP 3/4 carries a refreshed `<!-- mtk-stamp -->` with `previous-stamp` / `sections-changed` / `claims-delta` populated.
 - `scripts/verify-claims.sh` ran per refreshed doc, including the one-retry loop where downgrades occurred.
-- Every engineer-edited file went through `.claude/references/regen-diff-contract.md` — no direct `Write` to `CLAUDE.md` or any `.claude/rules/*.md`, and no `git merge-file --union` anywhere in this run.
+- Every engineer-edited file — including an `AGENTS.md` row flagged for footer-version drift — went through `.claude/references/regen-diff-contract.md`, not `generate-agents-md.sh`: no direct `Write` to `CLAUDE.md` or any `.claude/rules/*.md`, no `git merge-file --union`, and no exit-0 generator no-op reported as `Updated`.
 - Each retired generated index (`.claude/rules/INDEX.md`, `.claude/rules/triggers.index`, `.claude/triggers.index` carrying a `build-rule-index`/`build-triggers-index` header) was deleted only after the engineer approved it and is listed under "Retired prior MTK files"; under `--non-interactive` none was deleted.
-- An `AGENTS.md` row flagged for footer-version drift went through the regen-diff-contract, not `generate-agents-md.sh`; no run reported an exit-0 generator no-op as `Updated`.
 - The STEP 6 report was printed with all four counts and an itemized needs-review list (or explicit "none").
+- Check mode: `verify-claims.sh` ran only on temp copies with every exit code checked; every item cites a `weak` entry; nothing outside `.claude/.mtk-cache/` was written, and `tasks/todo.md` only after interactive approval.

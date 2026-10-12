@@ -60,7 +60,7 @@ Skills available:
   /mtk fix <description> — Quick fix (1-3 files)
   /mtk review before commit — Fast security-focused review of staged changes
   /mtk-setup --audit     — Re-run architecture audit
-Keep AGENTS.md fresh: run instructions-capture at session end to propose session learnings as diffs (personal notes → CLAUDE.local.md, gitignored); edit AGENTS.md directly via /memory at any time.
+Keep AGENTS.md fresh: run `/mtk capture instructions` at session end to propose session learnings as diffs (personal notes → CLAUDE.local.md, gitignored); edit AGENTS.md directly via /memory at any time.
 Next: Try it with:
   /mtk Add [your feature description here]
 ```

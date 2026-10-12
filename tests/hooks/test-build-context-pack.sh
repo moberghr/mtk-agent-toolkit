@@ -197,4 +197,25 @@ grep -q '^## AGENTS.md — Critical Rules' "$O" || fail "late marker: heading no
 grep -q 'C9.1' "$O" || fail "late marker: AGENTS.md rule body missing"
 ok "the marker string below line 10 does not demote a hand-authored AGENTS.md"
 
+# 8. Applicable rules: a reviewer reads only the rule files that are global
+#    (no `paths:`) or whose `paths:` globs match a manifest path — not every
+#    rule file (~39k tokens per compliance dispatch in large consumer repos).
+D="$(make_const_proj rules)"
+mkdir -p "$D/.claude/rules/nested"
+printf '# Global rule\n\n- G1 applies everywhere.\n' > "$D/.claude/rules/global.md"
+printf -- '---\npaths:\n  - "src/**"\n---\n# Src rule\n' > "$D/.claude/rules/src-rule.md"
+printf -- '---\npaths: ["docs/**/*.md", "hooks/*.sh"]\n---\n# Docs rule\n' > "$D/.claude/rules/docs-rule.md"
+printf -- '---\npaths:\n  - "**/*.{py,pyi}"\n---\n# Python rule\n' > "$D/.claude/rules/nested/py-rule.md"
+O="$D/pack.md"; run_const_pack "$D" "$O"
+sect="$(awk '/^## Applicable rules/{f=1;next} f&&/^## /{exit} f' "$O")"
+[ -n "$sect" ] || fail "rules: no '## Applicable rules' section"
+applies="$(printf '%s\n' "$sect" | awk '/^Not matched/{exit} {print}')"
+unmatched="$(printf '%s\n' "$sect" | awk '/^Not matched/{f=1;next} f')"
+case "$applies" in *'.claude/rules/global.md` — global'*) ;; *) fail "rules: global rule not listed as applicable" ;; esac
+case "$applies" in *'.claude/rules/src-rule.md` — matches `src/mod.py`'*) ;; *) fail "rules: src/** rule not matched to src/mod.py" ;; esac
+case "$applies" in *'nested/py-rule.md` — matches'*) ;; *) fail "rules: nested **/*.{py,pyi} rule not matched" ;; esac
+case "$applies" in *docs-rule.md*) fail "rules: docs rule wrongly listed as applicable" ;; esac
+case "$unmatched" in *'docs-rule.md` — `docs/**/*.md`, `hooks/*.sh`'*) ;; *) fail "rules: unmatched docs rule not listed with its globs" ;; esac
+ok "applicable rules selected by paths: frontmatter (global, matched, nested, brace globs; unmatched listed with globs)"
+
 echo "test-build-context-pack: all checks passed"

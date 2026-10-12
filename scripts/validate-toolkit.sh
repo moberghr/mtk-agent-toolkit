@@ -86,9 +86,8 @@ require_file "CONTRIBUTING.md"
 require_file "AGENTS.md"
 
 # Generic references — required regardless of stack
-require_file ".claude/references/testing-patterns.md"
-require_file ".claude/references/security-checklist.md"
-require_file ".claude/references/performance-checklist.md"
+require_file ".claude/references/domain-finance.md"
+require_file ".claude/references/implement-review-lanes.md"
 
 # Reviewer agents — the two-stage review model depends on these
 require_file ".claude/agents/compliance-reviewer.md"
@@ -724,7 +723,7 @@ for agent in .claude/agents/*.md; do
   model="$(awk -F: '/^model:/{gsub(/[[:space:]]/,"",$2);print $2;exit}' "$agent")"
   effort="$(awk -F: '/^effort:/{gsub(/[[:space:]]/,"",$2);print $2;exit}' "$agent")"
   case "${model:-}" in ''|opus|sonnet|haiku|fable|inherit) : ;; *) printf 'WARN: agent %s has unexpected model tier "%s" (expected opus|sonnet|haiku|fable|inherit)\n' "$agent_name" "$model" ;; esac
-  case "${effort:-}" in ''|low|medium|high|max) : ;; *) printf 'WARN: agent %s has unexpected effort "%s" (expected low|medium|high|max)\n' "$agent_name" "$effort" ;; esac
+  case "${effort:-}" in ''|low|medium|high|xhigh|max) : ;; *) printf 'WARN: agent %s has unexpected effort "%s" (expected low|medium|high|xhigh|max)\n' "$agent_name" "$effort" ;; esac
 done
 
 printf 'Toolkit validation passed.\n'

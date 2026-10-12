@@ -1,5 +1,5 @@
 ---
-description: Template for CODE_INDEX.md — repo-root capability index seeded by setup-bootstrap, consumed by code-simplification --audit-duplicates
+description: Template for CODE_INDEX.md — repo-root capability index seeded by setup-bootstrap, consumed by prior-work-check via query-code-index.sh
 globs: ["CODE_INDEX.md"]
 alwaysApply: false
 ---
@@ -8,7 +8,7 @@ alwaysApply: false
 
 > CODE_INDEX is a capability-oriented index of the codebase, organized by **what the code does** rather than by **where it lives**. Its purpose is to make duplication visible before new code is written.
 
-`setup-bootstrap` generates an initial CODE_INDEX.md at the repo root during first-time setup. `code-simplification` (in `--audit-duplicates` mode) refreshes it and surfaces near-duplicate capabilities for consolidation.
+`setup-bootstrap` generates an initial CODE_INDEX.md at the repo root during first-time setup. `prior-work-check` queries it (`bash scripts/query-code-index.sh find <keyword>`) before new code is written; keep it current by hand when a capability is added or consolidated.
 
 ## Format
 
@@ -53,7 +53,6 @@ The rows below are **ILLUSTRATIVE ONLY** — they show the format using fictiona
 
 - Before writing a new feature: scan the relevant section to see if the capability already exists.
 - During spec review: `+C #13` (prior work checked) is partly satisfied by a CODE_INDEX scan.
-- During simplification: `--audit-duplicates` mode greps the index for near-duplicate capability names.
 
 ## What NOT to put here
 

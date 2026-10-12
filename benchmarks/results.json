@@ -1,7 +1,7 @@
 {
   "schema": "mtk.benchmarks.v1",
-  "generated_at": "2026-10-12T17:14:38Z",
-  "commit": "38b38d3",
+  "generated_at": "2026-10-12T18:42:06Z",
+  "commit": "d706ac1",
   "toolkit_version": "8.2.0",
   "runner": "scripts/run-benchmarks.sh",
   "run_complete": true,

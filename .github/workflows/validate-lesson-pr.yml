@@ -1,6 +1,6 @@
 name: validate-lesson-pr
 
-# Validates contribute-back lesson PRs (from promote-lesson). It checks the PR
+# Validates contribute-back lesson PRs (from /lessons promote). It checks the PR
 # touches ONLY lessons/contributed/, stays within size caps, and contains no
 # secrets or prompt-injection markers, then labels it `lesson-validated`.
 #

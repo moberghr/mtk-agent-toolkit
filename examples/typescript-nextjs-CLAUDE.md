@@ -94,10 +94,5 @@ Detailed rules in `.claude/rules/` (auto-loaded):
 | `architecture-principles.md` | Feature folders, server/client split | A1.x |
 | `coding-guidelines.md` (typescript) | Strict TS, React patterns, server actions | S2.x |
 
-Shared references (`.claude/references/`):
-- `security-checklist.md` — auth, XSS/CSRF, secrets, PII
-- `testing-patterns.md` — test levels, RTL, E2E discipline
-- `performance-checklist.md` — bundle size, streaming, caching
-
 Stack-specific (`.claude/references/typescript/`):
-- `coding-guidelines.md` · `react-patterns.md` · `nextjs-patterns.md` · `testing-supplement.md` · `performance-supplement.md` · `analyzer-config.md`
+- `coding-guidelines.md` · `testing-supplement.md` · `analyzer-config.md`

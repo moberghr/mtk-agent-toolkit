@@ -4,7 +4,7 @@ set -euo pipefail
 # poison-lint.sh — deterministic, no-LLM supply-chain scan of the context-entering
 # artifacts MTK SHIPS (skills, agents, plugin hook config) for prompt-injection and
 # tool-poisoning patterns. MTK is a skill *publisher*; a poisoned first-party skill,
-# or external text laundered into a shipped file by lesson-mining/promote-lesson, is a
+# or external text laundered into a shipped file by lessons mine/promote, is a
 # real supply-chain risk. Pattern bank borrowed from the `assay` scanner's poison floor
 # (see docs/competitive-analysis-2026-07.md, P0#5).
 #

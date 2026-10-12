@@ -85,15 +85,12 @@ Detailed rules in `.claude/rules/` (auto-loaded):
 |---|---|---|
 | `architecture-principles.md` | Slice boundaries, layer dependencies, actor topology | A1.x |
 | `coding-guidelines.md` (dotnet) | Modern C#, async patterns, records, sealed classes | S2.x |
-| `ef-core-checklist.md` | AsNoTracking, query splitting, migration safety | S3.x |
 
 Shared references (`.claude/references/`):
-- `security-checklist.md` — auth, input validation, secrets, PII
-- `domain-finance.md` — money types, audit trails, regulatory state
-- `testing-patterns.md` — test levels, isolation, providers
+- `domain-finance.md` — money types, audit trails, regulatory state, security baseline
 
 Stack-specific (`.claude/references/dotnet/`):
-- `coding-guidelines.md` · `ef-core-checklist.md` · `mediatr-slice-patterns.md` · `testing-supplement.md` · `performance-supplement.md` · `analyzer-config.md`
+- `coding-guidelines.md` · `testing-supplement.md` · `analyzer-config.md`
 
 ---
 

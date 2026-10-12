@@ -4,7 +4,7 @@
 
 ### Turn Claude Code into a disciplined engineering partner
 
-**A Claude Code plugin that enforces your team's coding standards, security policies, and review discipline on every AI-generated line — while keeping ~103K tokens of that intelligence *out* of your context until the moment it's needed. Language-agnostic workflows with pluggable tech stacks for .NET, Python, and TypeScript.**
+**A Claude Code plugin that enforces your team's coding standards, security policies, and review discipline on every AI-generated line — while keeping ~129K tokens of that intelligence *out* of your context until the moment it's needed. Language-agnostic workflows with pluggable tech stacks for .NET, Python, and TypeScript.**
 
 [![Version](https://img.shields.io/badge/version-7.24.0-blue.svg)](https://github.com/moberghr/mtk-agent-toolkit/releases)
 [![Website](https://img.shields.io/badge/website-moberghr.github.io-6d28d9.svg)](https://moberghr.github.io/mtk-agent-toolkit/)
@@ -55,7 +55,7 @@ MTK closes the 80% gap with four things working together:
 | Review is one prompt: "review this code" | Two-stage pipeline: spec-compliance gate first, then test + architecture specialists in parallel |
 | Findings are vague: "consider adding tests" | Structured JSON — severity, confidence score, rule citation, `file:line` — filtered below confidence 80 so there's no noise |
 | Generated rules are trusted blindly | Every generated claim is grep-verified against your code; the ones it can't prove are downgraded in place |
-| The toolkit inflates your context window | Only ~3,453 tokens load per session; ~103K tokens stay out of always-on context until relevant |
+| The toolkit inflates your context window | Only ~3,805 tokens load per session; ~129K tokens stay out of always-on context until relevant |
 
 > **MTK is not a replacement for human review.** It's a rigorous first pass that catches the mechanical stuff — so your senior engineers spend their attention on design, product, and the judgment calls an AI can't make.
 
@@ -96,12 +96,12 @@ There are just **two commands to remember** — `/mtk` and `/mtk-setup`. Everyth
 | Fix a bug (1–3 files) | `/mtk fix <what's broken>` | Scope-guarded; self-escalates to `batch-fix` or `implement` if scope grows |
 | Apply a batch of small fixes | `/mtk apply these findings` | `batch-fix` — several independent fixes (>3 files, no new contract); one gate, inline, proportional review |
 | Review before committing | `/mtk review before commit` | Deterministic linters + AI judgment in one pass |
-| See what MTK has loaded | `/mtk status` | Active stack, references, hooks, domain packs |
-| Check toolkit usage trends | `/mtk health` | Usage-pulse report from `.claude/analytics.json` |
+| See what MTK has loaded | `/mtk status` | `mtk-doctor`: active stack, references, hooks, domain packs |
+| Check toolkit usage | `/mtk-doctor --usage` | Raw usage counts from `.claude/analytics.json`, each with its n — no verdicts |
 | Health-check the install | `/mtk-doctor` | PASS/WARN/FAIL — deprecated models, version sync, hook integrity, always-on token cost, environment fit |
 | Re-audit architecture | `/mtk-setup --audit` | Refreshes `architecture-principles.md` |
-| Reconcile docs ↔ code | `/mtk-setup --refresh` / `--converge` / `--check` | Keep docs honest about code, or code honest about docs — see [Setup that keeps proving itself](#setup-that-keeps-proving-itself) |
-| Promote a personal lesson | `/promote-lesson` | Move a lesson from `personal.md` or Claude Code native memory (`~/.claude/projects/<sanitized-cwd>/memory/`) into the team-wide `tasks/lessons.md` (+ optional contribute-back PR) |
+| Reconcile docs ↔ code | `/mtk-setup --refresh` / `--check` | Keep docs honest about code, or code honest about docs — see [Setup that keeps proving itself](#setup-that-keeps-proving-itself) |
+| Promote a lesson | `/lessons promote` | Move a rule from Claude Code native memory (`~/.claude/projects/<sanitized-cwd>/memory/`) into the team-wide `tasks/lessons.md` (+ optional contribute-back PR); `/promote-lesson` still works for one release |
 
 ### What runs on session start
 
@@ -116,7 +116,7 @@ No network calls. All writes stay inside the working directory. Silence the end-
 
 ## Token Economics
 
-> **MTK ships 43 skills, 6 agents, and 50 reference documents — yet only ~3,453 tokens load into every session. The other ~103,000 tokens stay out of always-on context (~89K deferred behind progressive disclosure, ~14K of review offloaded to isolated subagents) until the exact moment they're relevant.**
+> **MTK ships 33 skills, 6 agents, and 59 reference documents — yet only ~3,805 tokens load into every session. The other ~129,000 tokens stay out of always-on context (~121K deferred behind progressive disclosure, ~8K of review offloaded to isolated subagents) until the exact moment they're relevant.**
 
 Most "big" AI toolkits pay for their power by inflating your context window: a giant `CLAUDE.md`, a wall of always-on rules, review logic that clutters the main thread. MTK is engineered the opposite way — to keep tokens **out** of context. See exactly where they go, computed from your own installed files:
 
@@ -129,33 +129,34 @@ MTK context footprint & savings  (approx, ~4 chars/token)
 ════════════════════════════════════════════════════════════
 
 Always-on — loaded into EVERY session:
-  skill descriptions       6407 chars  ~  1601 tok  (43 skills)
-  CLAUDE.md                6388 chars  ~  1597 tok
-  agent descriptions       1016 chars  ~   254 tok  (6 agents)
-  ── always-on floor              ~  3453 tok
+  skill descriptions       4964 chars  ~  1241 tok  (33 skills)
+  AGENTS.md                8465 chars  ~  2116 tok
+  CLAUDE.md                 726 chars  ~   181 tok
+  agent descriptions       1066 chars  ~   266 tok  (6 agents)
+  ── always-on floor              ~  3805 tok
 
 Kept OUT of always-on by progressive disclosure (load only when relevant):
-  references             237603 chars  ~ 59400 tok  (50 files, glob-gated)
-  rule bodies             15954 chars  ~  3988 tok  (path-gated)
-  manifest.json          102659 chars  ~ 25664 tok  (read on demand, never inlined)
-  ── deferred total               ~ 89054 tok  ← would be always-on if inlined into CLAUDE.md
+  references             315340 chars  ~ 78835 tok  (59 files, glob-gated)
+  rule bodies             24196 chars  ~  6049 tok  (path-gated)
+  manifest.json          144112 chars  ~ 36028 tok  (read on demand, never inlined)
+  ── deferred total               ~120912 tok  ← would be always-on if inlined into CLAUDE.md
 
 Review offloaded to isolated subagent context:
-  6 agent bodies          55600 chars  ~ 13900 tok  (never enters the main thread)
+  6 agent bodies          33484 chars  ~  8371 tok  (never enters the main thread)
 
-Summary: MTK keeps ~102954 tok out of your always-on context (deferred + review offload),
-compresses tool output on demand, and holds the always-on floor to ~3453 tok/session.
+Summary: MTK keeps ~129283 tok out of your always-on context (deferred + review offload),
+compresses tool output on demand, and holds the always-on floor to ~3805 tok/session.
 ```
 
 Every number is derived from on-disk files — nothing is fabricated from telemetry MTK doesn't collect. Five levers make it work:
 
 ### 1 · Progressive disclosure — load one thing at a time
 
-The 43 skill *bodies* total ~129K tokens, but only **one loads when its skill actually runs**. Rule bodies are path-scoped by their `paths:` frontmatter, and Claude Code loads one only when a matching file is touched. All 50 reference docs are glob-gated via manifest `applyTo` arrays: edit a `DbContext` and the EF Core checklist loads; edit a controller and it doesn't. **Nothing loads "just in case."**
+The 33 skill *bodies* total ~90K tokens, but only **one loads when its skill actually runs**. Rule bodies are path-scoped by their `paths:` frontmatter, and Claude Code loads one only when a matching file is touched. All 59 reference docs are glob-gated via manifest `applyTo` arrays: edit a test file and the stack's testing supplement loads; edit a controller and it doesn't. **Nothing loads "just in case."**
 
 ### 2 · Review offloaded to isolated context
 
-The six review agents (~13,900 tokens of adversarial logic) run in **forked subagent context** (`context: fork`). They read the diff in their own window and return only structured findings. The heavy review and security machinery never touches your main conversation.
+The six review agents (~8,400 tokens of adversarial logic) run in **forked subagent context** (`context: fork`). They read the diff in their own window and return only structured findings. The heavy review and security machinery never touches your main conversation.
 
 ### 3 · On-demand output compression
 
@@ -180,7 +181,7 @@ Failures and summary lines survive both times — only the repetition is dropped
 ### 4 · A baseline that can't silently creep
 
 - **Cache-stable prefix** — the always-loaded `CLAUDE.md` carries no per-release version banner, so the prompt-cache stays warm across releases.
-- **On-demand manifest** — the ~25,664-token `manifest.json` is read only by the scripts and skills that need it, never inlined into context.
+- **On-demand manifest** — the ~36,000-token `manifest.json` is read only by the scripts and skills that need it, never inlined into context.
 - **Budget enforced in CI** — `validate-toolkit.sh` caps each skill description at 200 chars and the whole catalogue at ~1,750 tokens, and prints the running total on every run. Because Claude Code reserves only ~1% of context for skill metadata, this protects routing quality even on smaller-context models.
 - **`.claudeignore` at setup** — bootstrap generates a stack-aware ignore file so Claude Code natively keeps dependency and build directories out of search and reads.
 - **Deliberate resets** — `context-engineering` and `handoff` read the harness's own `/context` figure and reset at a clean phase boundary, so quality resets where you choose rather than at an auto-compaction mid-edit.
@@ -189,7 +190,7 @@ Failures and summary lines survive both times — only the repetition is dropped
 
 The linters and enforcement hooks are plain bash — their *detection* costs **zero model tokens**. A 37-rule linter pass flags hardcoded secrets, SQL injection, disabled tests, and float-money at confidence 100 without the model reading or reasoning about a single line; only the findings it raises — a line or two each — enter context. The gates are just as cheap: `verify-completion`, `security-gate`, and `scope-guard` print a one-line advisory when they fire and stay silent otherwise. The model spends its budget on the judgment calls a regex can't make, not the mechanical checks a script does for free.
 
-The larger saving is the review-and-fix round you *never pay for*. Catching an out-of-scope edit, an evidence-less "done", or a hardcoded secret at the hook/linter stage — before it reaches an adversarial review pass that reads the whole diff and reasons across six scored dimensions — avoids the thousands of tokens that a wasted review round and its follow-up fix would have cost. Deterministic gates are the cheapest possible reviewer: they never think, and they're never wrong about a regex match.
+The larger saving is the review-and-fix round you *never pay for*. Catching an out-of-scope edit, an evidence-less "done", or a hardcoded secret at the hook/linter stage — before it reaches an adversarial review pass that reads the whole diff across every review lane — avoids the thousands of tokens that a wasted review round and its follow-up fix would have cost. Deterministic gates are the cheapest possible reviewer: they never think, and they're never wrong about a regex match.
 
 **The payoff:** run many plugins together and MTK stays a good citizen. Its always-on cost is under 4K tokens, and `mtk-doctor` prices that cost for you (`/mtk-doctor` → CONTEXT category).
 
@@ -224,7 +225,7 @@ A few things make this more than a checklist:
 - **Large features run one fresh subagent per batch,** each returning a typed JSON result (files, build, tests, deviations). An ack-only or unparseable "done!" is recorded *inconclusive* and respawned — never laundered into a pass.
 - **Four named, fail-closed gates** (`plan_trust`, `phase_exit`, `failure_stop`, `memory_sync`) are the only legal places to advance, retry, or stop — and a missing gate event counts as drift.
 - **Orchestration state lives on disk** (`.mtk/workflows/{uuid}.json` + an append-only event log), so a run survives compaction and crash and resumes in a fresh session with zero chat history.
-- **A remediation circuit-breaker** escalates to a human on the third fix iteration — or the moment the review score stops improving — so automated fixing never grinds forever.
+- **A remediation circuit-breaker** escalates to a human on the third fix iteration — or earlier, when a tracked score stops improving — so automated fixing never grinds forever.
 
 ### The `/mtk` router
 
@@ -234,8 +235,10 @@ You don't memorize skill names. You describe what you want:
 /mtk add user auth                 → implement
 /mtk fix the null check            → fix
 /mtk review before commit          → pre-commit-review
-/mtk what's loaded?                → context-report
-/mtk toolkit health                → toolkit-health
+/mtk what's loaded?                → mtk-doctor
+/mtk toolkit health                → mtk-doctor --usage
+/mtk audit AGENTS.md               → instructions (audit)
+/mtk mine lessons                  → lessons (mine)
 /mtk help                          → lists all routed workflows
 ```
 
@@ -320,7 +323,7 @@ Verdict: NEEDS_CHANGES — implementation drifted from approved spec
 
 Phase 0: Loading context...
   Tech stack: dotnet | Build: dotnet build | Test: dotnet test
-  Loaded: CLAUDE.md, coding-guidelines, security-checklist
+  Loaded: AGENTS.md, coding-guidelines, domain-finance
 
 Phase 1: Writing spec...
   Spec: docs/specs/2026-04-14-payment-retry.md
@@ -354,7 +357,7 @@ Most AI-setup tools stop at generation: they emit a `CLAUDE.md`, a rules pack, o
 - **Grep-verified claims.** Every generated rule carries an evidence anchor. `verify-claims.sh` re-greps each anchor against your working tree and **downgrades in place** anything it can't prove: `[EXTRACTED]` → `[INFERRED:0.5 unverified]`, `[ENFORCED]` → `[ASPIRATIONAL unverified]`. Hallucinated architecture never ships silently.
 - **Verified commands.** The build / test / format commands written into your `CLAUDE.md` aren't guessed — MTK **runs them first** (timeboxed, each reported verified / failed / skipped) and stamps the result into the Tech Stack section, so what's published is proven, not assumed.
 - **Confidence-tagged audit.** Every architecture principle is tagged `[EXTRACTED]` / `[INFERRED:0.0–1.0]` / `[AMBIGUOUS]` with a mandatory `file:line`, glob-with-hit-count, or commit-SHA citation. Absolute language ("never", "always") is blocked unless zero counter-examples exist.
-- **A re-runnable loop, not a one-shot.** `--refresh` reconciles the docs to code drift (hunk-by-hunk diffs for files you've edited — never a silent overwrite). `--converge` inverts it, reporting where the *code* drifted from agreed principles as graded work items. `--check` gates it all as a red/green CI check pinned to your installed toolkit version.
+- **A re-runnable loop, not a one-shot.** `--refresh` reconciles the docs to code drift (hunk-by-hunk diffs for files you've edited — never a silent overwrite). `--check` inverts it and gates it: a red/green CI staleness check pinned to your installed toolkit version, plus a graded report of where the *code* drifted from the agreed principles.
 - **Non-destructive by contract.** Bootstrap is additive and merge-only. **There is no replace mode** — it never `git rm`s a file it didn't generate, and only overwrites files carrying MTK's own provenance stamp. Run it on a mature repo without fear.
 - **Migration ingestion.** Already on Cursor or Copilot? Bootstrap reads your existing `.cursorrules`, Copilot, Windsurf, Cline, and Gemini configs as evidence-anchored rule candidates instead of throwing them away.
 
@@ -382,7 +385,7 @@ native eval suites in `evals/` against scaffolded repos, with and without the pl
 |:---|:---|:---|
 | **7 benchmark suites** | Linters catch secrets / SQLi / disabled tests / float money; security-gate blocks `DROP TABLE`, `rm -rf`, force-push to main; scope-guard warns on out-of-spec edits; verify-completion rejects evidence-less "done" | **30/30 assertions passing** |
 | **8 plugin-eval cases** | Native `claude plugin eval` cases in scaffolded repos: fresh test evidence before "done", no edits on a pure question, a staged secret blocks the commit, no unconfirmed force-push to `main`, a swallowed ledger-write exception ranks critical, scope escalation on a "small fix", `/mtk` routing, implement stops for approval | Scored with and without the plugin; the `core` suite gates every release |
-| **33 pressure tests** | Adversarial behavioral tests that try to talk skills out of doing their job | Part of the release gate |
+| **26 pressure tests** | Adversarial behavioral tests that try to talk skills out of doing their job | Part of the release gate |
 | **16 AI failure modes (F1–F16)** | Research-cited catalogue — hallucinated packages, stubbed-success returns, frozen-replay evidence — that reviewers cite by code so patterns aggregate across your codebase | `.claude/references/ai-failure-modes.md` |
 | **37 linter rules** | Hierarchical packs (core / stack / domain / project), zero dependencies beyond coreutils | `hooks/linter-patterns/` |
 
@@ -392,25 +395,23 @@ Benchmarks run against fixture diffs, so results are repeatable regardless of yo
 
 ## Skills
 
-**43 skills:** 4 user-invocable entry points (`/mtk`, `/mtk-setup`, `/mtk-doctor`, `/promote-lesson`), plus workflow, tech-stack, and enabling skills that the entry points orchestrate. You invoke two; the rest compose themselves.
+**33 skills:** 5 user-invocable entry points (`/mtk`, `/mtk-setup`, `/mtk-doctor`, `/lessons`, and `/promote-lesson` as a one-release alias), plus workflow, tech-stack, and enabling skills that the entry points orchestrate. You invoke a few; the rest compose themselves.
 
 | Skill | What it does |
 |:---|:---|
 | **context-engineering** | Loads project norms progressively; injects tech stack dynamically at load time |
-| **spec-driven-development** | Produces an executable spec with a JSON sidecar for drift detection; EARS-linted, Claude-Ready-scored |
+| **spec-driven-development** | Produces an executable spec with a JSON sidecar for drift detection; EARS linting and the Claude-Ready score are opt-in |
 | **planning-and-task-breakdown** | Breaks a spec into vertical-slice batches with checkpoint criteria |
 | **incremental-implementation** / **subagent-implementation** | Implements one batch at a time (inline, or one fresh subagent per batch above the HIGH threshold) |
-| **test-driven-development** | Red-green-refactor; language-agnostic |
-| **debugging-and-error-recovery** | Reproduce first, then fix root cause within scope |
-| **source-driven-development** | Verify SDK/framework behavior from authoritative sources before implementing |
-| **code-review-and-quality** | Adversarial review across 6 axes; isolated context (`context: fork`, `effort: max`) |
+| **code-review-and-quality** | Runs the compliance, silent-failure, test and architecture review lanes on a PR or diff; isolated context (`context: fork`, `effort: max`) |
 | **security-and-hardening** | Trust-boundary analysis, audit-trail verification; isolated context |
 | **spec-drift-detection** | Compares implementation against the spec sidecar; flags unapproved scope |
 | **verification-before-completion** | Requires fresh, criterion-by-criterion evidence before any "done" claim |
-| **code-simplification** | Behavior-preserving cleanup after verification passes |
-| **correction-capture** / **golden-path-capture** / **lesson-mining** | Three paths that feed one structured, cross-session learning store |
+| **code-simplification** | Behavior-preserving cleanup after verification passes, via Claude Code's `/simplify` with finance and security carve-outs |
+| **lessons** | One skill, four modes — `capture` (a correction or golden path), `mine` (past transcripts), `refresh` (stale anchors), `promote` (native memory → team) — over one structured learning store |
 | **handoff** | Captures session state for recovery across context boundaries |
-| **context-report** / **toolkit-health** | Diagnostics: active configuration; historical usage pulse |
+| **instructions** | Audits AGENTS.md/CLAUDE.md for rot, or captures a session's discovered commands and gotchas; append-only, approval-gated |
+| **mtk-doctor** | Install health, active configuration, and (`--usage`) raw usage counts |
 | **writing-skills** | Meta-skill for authoring new skills with pressure tests |
 
 Every skill follows a standardized anatomy (Overview / When To Use / Workflow / Verification) and states each rule once, in plain words, in the step it governs.
@@ -441,7 +442,7 @@ flowchart TD
 | **context-miner** | Stage 2 (HIGH/MAX) — mines git history, PR/issue threads, and prior lessons for organizational context the diff missed: prior reverts, related open issues, recorded decisions. |
 | **plan-gap-reviewer** | Pre-approval — anti-anchored plan critique, forbidden from reading lessons, prior reviewer output, or the planner's rationale, so it challenges the plan cold. |
 
-Reviews score five dimensions (correctness, security, test coverage, architecture fit, simplicity) 1–10, each requiring a `file:line` evidence quote — a score without evidence is treated as 0, and any dimension below 7 blocks the merge. All agents can also report **BLOCKED** (files missing) or **NEEDS_CONTEXT** (too complex to review) — a clear escalation beats a low-confidence rubber stamp.
+There is no score: findings plus missing evidence decide the verdict. A critical finding blocks the merge, and a clean result must name what was checked — a PASS with no evidence behind it is recorded as an abstention. All agents can also report **BLOCKED** (files missing) or **NEEDS_CONTEXT** (too complex to review) — a clear escalation beats a low-confidence rubber stamp.
 
 ---
 
@@ -468,19 +469,19 @@ Reviews score five dimensions (correctness, security, test coverage, architectur
 ### Component model
 
 ```
-ENTRY POINTS (4 user-invocable skills)
-  /mtk · /mtk-setup · /mtk-doctor · /promote-lesson
+ENTRY POINTS (5 user-invocable skills)
+  /mtk · /mtk-setup · /mtk-doctor · /lessons · /promote-lesson (alias)
       ↓ orchestrate
-43 SKILLS  — language-agnostic workflows + 3 tech-stack packs + enabling skills
+33 SKILLS  — language-agnostic workflows + 3 tech-stack packs + enabling skills
       ↓ route to
 6 REVIEW AGENTS  — compliance · silent-failure-hunter · test · architecture · context-miner · plan-gap
       ↓ backed by
-50 REFERENCES  — 32 shared (security, testing, performance, finance, AI failure modes, review schema, …)
-                 + 6 per stack × 3 stacks (coding-guidelines, ORM checklist, framework patterns, …)
+59 REFERENCES  — 50 shared (finance + security baseline, review lanes, AI failure modes, review schema, …)
+                 + 3 per stack × 3 stacks (coding-guidelines, testing supplement, analyzer config)
       ↓ enforced by
 10 HOOKS across 4 lifecycle events  — SessionStart (incl. compact) · PreToolUse · PostToolUse · Stop
       ↓ validated by
-7 BENCHMARK SUITES (30/30) · 8 PLUGIN-EVAL CASES · 33 PRESSURE TESTS
+7 BENCHMARK SUITES (30/30) · 8 PLUGIN-EVAL CASES · 26 PRESSURE TESTS
 ```
 
 ### Hooks & enforcement
@@ -516,15 +517,15 @@ TypeScript auto-detects the package manager (bun > pnpm > yarn > npm) from lockf
 
 ## The learning loop
 
-The same mistake never has to be corrected twice. Three capture paths feed one structured store with five-layer retrieval (proximity / recurrence / severity / validity / phase):
+The same mistake never has to be corrected twice. The `lessons` skill feeds one structured store with five-layer retrieval (proximity / recurrence / severity / validity / phase) from three capture paths:
 
-- **correction-capture** — the engineer says "no, not like that."
-- **golden-path-capture** — the model resolves its own repeated failure and records the path.
-- **lesson-mining** — a reject-by-default sweep of past session transcripts (suggest-only).
+- **`capture`, correction** — the engineer says "no, not like that."
+- **`capture`, golden path** — the model resolves its own repeated failure and records the path.
+- **`mine`** — a reject-by-default sweep of past session transcripts (suggest-only).
 
-Matured lessons promote to team-wide rules via `/promote-lesson`, which can open a **fail-closed contribute-back PR** to the toolkit: CI whitelists only `lessons/contributed/`, caps it at 2 files / 20 KB, scans for secrets and prompt injection, then *labels* it — with read-only permissions, so it structurally cannot merge or write.
+Matured lessons promote to team-wide rules via `/lessons promote`, which can open a **fail-closed contribute-back PR** to the toolkit: CI whitelists only `lessons/contributed/`, caps it at 2 files / 20 KB, scans for secrets and prompt injection, then *labels* it — with read-only permissions, so it structurally cannot merge or write.
 
-And because over-deference is its own failure mode, MTK computes a **sycophancy index** — π = approved / (approved + modified + rejected) over every finding's `decision_origin` tag. When π ≥ 0.70, `toolkit-health` warns that the model's recommendations are being accepted without enough pushback. Over-deference, made measurable.
+And because over-deference is its own failure mode, MTK computes a **sycophancy index** — π = approved / (approved + modified + rejected) over every finding's `decision_origin` tag. Once at least 10 recommendations are tagged and π ≥ 0.70, `learnings.sh metrics` (shown by `mtk-doctor --usage`) warns that the model's recommendations are being accepted without enough pushback. Over-deference, made measurable.
 
 ---
 
@@ -537,14 +538,14 @@ References declare `applyTo` glob arrays in the manifest. When `context-engineer
 
 ```json
 {
-  "references/dotnet/ef-core-checklist.md": {
-    "applyTo": ["**/*DbContext.cs", "**/Entities/**", "**/Migrations/**"],
+  "references/dotnet/testing-supplement.md": {
+    "applyTo": ["**/*.Tests/**", "**/tests/**", "**/*Tests.cs"],
     "stack": "dotnet"
   }
 }
 ```
 
-Edit a controller and the EF Core checklist doesn't load. Edit a `DbContext` and it does.
+Edit a controller and the .NET testing supplement doesn't load. Edit a test project and it does.
 </details>
 
 <details>
@@ -584,13 +585,13 @@ Yes. MTK is a Claude Code plugin — hooks, skill routing, and session recovery 
 <details>
 <summary><b>Does all this slow the AI down?</b></summary>
 
-Per-feature wall-clock is slightly longer. Net throughput is dramatically higher because the drift tax — rework, production incidents, review rounds, "that looked fine to me" postmortems — drops. And thanks to progressive disclosure, the discipline costs you almost nothing in context (~3,453 tokens/session).
+Per-feature wall-clock is slightly longer. Net throughput is dramatically higher because the drift tax — rework, production incidents, review rounds, "that looked fine to me" postmortems — drops. And thanks to progressive disclosure, the discipline costs you almost nothing in context (~3,805 tokens/session).
 </details>
 
 <details>
 <summary><b>How is this different from writing a CLAUDE.md manually — or from other setup tools?</b></summary>
 
-Three things: (1) `/mtk-setup` generates `CLAUDE.md` from your *actual codebase*, not guesswork; (2) MTK adds workflow enforcement (planning, TDD, review, evidence gates), not just rules; (3) every generated claim is **grep-verified** against your code and downgraded if it can't be proven, and setup is a re-runnable loop (`--refresh` / `--converge` / `--check`), not a one-shot dump that drifts.
+Three things: (1) `/mtk-setup` generates `CLAUDE.md` from your *actual codebase*, not guesswork; (2) MTK adds workflow enforcement (planning, TDD, review, evidence gates), not just rules; (3) every generated claim is **grep-verified** against your code and downgraded if it can't be proven, and setup is a re-runnable loop (`--refresh` / `--check`), not a one-shot dump that drifts.
 </details>
 
 <details>

@@ -36,8 +36,8 @@ Treat security and compliance as design constraints, not final review polish. Ch
 
 ## Workflow
 
-1. Read `CLAUDE.md` and `.claude/references/security-checklist.md` first.
-2. If a domain supplement exists (e.g. `.claude/references/domain-finance.md`), load it for domain-specific rationalizations and review questions.
+1. Read the domain and security supplement (`.claude/references/domain-finance.md`, or the team's `domain-<name>.md`) for regulated state, sensitive data, audit invariants and review questions.
+2. Read the stack skill's `## Framework Patterns` for framework-level auth and validation idioms.
 3. Identify trust boundaries:
    - user input
    - external service input

@@ -1,6 +1,6 @@
 ---
 name: repo-health
-description: Periodic AI-readiness report — scorecard against 12 named assets plus PR review mining from the last N merged PRs.
+description: Periodic AI-readiness report — 9-asset action checklist, audit drift, and suggest-only reviewer-feedback phrases mined from the last N merged PRs.
 type: skill
 license: MIT
 compatibility:
@@ -12,97 +12,50 @@ user-invocable: false
 
 ## Overview
 
-Single periodic command that combines:
-
-1. The **12-asset readiness scorecard** (`scripts/repo-health-score.sh`) — bounded checklist with `🟩🟨⬜` icons and a medal (🥉🥈🥇🏆).
-2. **PR review mining** (`scripts/pr-review-mine.sh`) — repeated reviewer-feedback phrases from the last N merged PRs, suggest-only.
-3. A **top-3 actionable changes** summary derived from the two above.
-
-Writes the combined report to `.claude/repo-health-latest.md` (always) and `.claude/repo-health-latest.json` (with `--json`). Both files are gitignored.
+One report from three scripts — `repo-health-score.sh` (nine assets, `pass`/`partial`/`fail`/`na` plus `action_needed`; no medal or aggregate; assets 5–6 read `na` outside the MTK checkout; rubric in `.claude/references/repo-health-assets.md`), `audit-drift-check.sh`, and `pr-review-mine.sh` (imperative reviewer phrases recurring across ≥2 merged PRs, tagged `[MINED:feedback]`, suggest-only; heuristics and denylist in `.claude/references/pr-mining-patterns.md`).
+Writes `.claude/repo-health-latest.md` (always) and `.claude/repo-health-latest.json` (with `--json`); both are gitignored.
 
 ## When To Use
 
-- The engineer asks: "is this repo AI-ready?", "repo health", "readiness scorecard", "what should we improve?", "mine our PRs".
-- As a periodic check (weekly / monthly retro) — no schedule enforcement, run when useful.
-- Before a major release — confirm baseline hasn't drifted.
-- After running `/mtk-setup --audit` — see whether tagged principles bumped asset #2.
+- "Is this repo AI-ready?", "repo health", "what should we improve?", "mine our PRs", "what do reviewers keep asking for?"
+- Periodically, before a major release, or after `/mtk-setup --audit`.
 
 ### When NOT To Use
 
-- For toolkit *adoption* analytics (who's using which MTK skills) → that's `toolkit-health`.
-- During implementation of a feature — this is a diagnostic, not part of the build loop.
-- When a repo is brand new with <3 merged PRs — mining will be empty and the scorecard will mostly fail. Run `/mtk-setup` first.
+- MTK usage numbers → `mtk-doctor --usage`.
+- Inside the build loop, or on a repo with fewer than 3 merged PRs (mining has no signal; run with `--no-mining`).
 
 ## Workflow
 
-1. **Parse flags.** Accept:
-   - `--prs N` (1..50, default 10) — number of merged PRs the mining step scans.
-   - `--json` — also write `.claude/repo-health-latest.json`.
-   - `--no-mining` — skip the PR mining step (scorecard only).
+1. **Flags.** `--prs N` (1..50, default 10), `--json`, `--no-mining`.
 
-2. **Run the scorecard.** Always.
+2. **Checklist.** `bash scripts/repo-health-score.sh` (add `--json` for the JSON file). The nine assets are canonical; never add, drop or re-grade one at runtime — a change goes through the reference and the script.
 
-   ```bash
-   bash scripts/repo-health-score.sh
-   ```
-
-   Capture stdout — this is the first half of the report. The 12 assets are canonical (`.claude/references/repo-health-assets.md`); do not add assets without updating that reference.
-
-2b. **Run audit-drift check** on stamped docs. Best-effort, non-blocking.
+3. **Audit drift** (best-effort, never blocks):
 
    ```bash
-   CONST_DOC=AGENTS.md; [ -f "$CONST_DOC" ] || CONST_DOC=CLAUDE.md   # the constitution; CLAUDE.md is only the shim, except in legacy pre-inversion repos
+   CONST_DOC=AGENTS.md; [ -f "$CONST_DOC" ] || CONST_DOC=CLAUDE.md
    for doc in "$CONST_DOC" .claude/references/architecture-principles.md .claude/references/conventions.md; do
      [ -f "$doc" ] || continue
-     bash scripts/audit-drift-check.sh "$doc" || true   # exit 1 = drift, captured for report
+     bash scripts/audit-drift-check.sh "$doc" || true   # exit 1 = drift
    done
    ```
 
-   The script reads each doc's `audited-against:` stamp, intersects `git diff --name-only <sha>..HEAD` with file paths cited in the doc, and prints a markdown table of stale citations. If any doc reports drift, the AI Context bucket in the scorecard is annotated `🟨 audit drift: N citations` (do not change `pass` to `fail` — drift is a warning, not a regression).
+   Drift annotates asset 2 as `🟨 audit drift: N citations`; it never changes the status. Unstamped docs are skipped silently.
 
-   Skip silently for unstamped docs (no warning — older audits pre-v7.8.0 have no stamp).
+4. **Mining** (unless `--no-mining`): `bash scripts/pr-review-mine.sh --prs <N>`. Fail-soft: without an authenticated `gh` it prints `Skipped: <reason>` and exits 0 — report that line, never phrases from memory. A phrase needs ≥2 distinct PRs; one reviewer repeating it in one PR is not a team norm. Boilerplate that slips through ("great work") goes on the `## Denylist` of `pr-mining-patterns.md`, then re-run; the denylist is never bypassed for one run.
 
-3. **Run PR mining.** Unless `--no-mining` is set.
+5. **Top 3 actions.** Candidates: every `action_needed` asset and every mined phrase cited by ≥3 PRs. Rank AI Context > Onboarding > Toolkit > mined phrase. One sentence each, naming the file or command.
 
-   ```bash
-   bash scripts/pr-review-mine.sh --prs <N>
-   ```
+6. **Write the report** to `.claude/repo-health-latest.md`: checklist, drift table, mining section, `## Top 3 actionable changes`. With `--json`, also `.claude/repo-health-latest.json` as `{ "scorecard": {...}, "mining": {...}, "top3": [...] }`. Write the file even when the engineer asks for chat only; echo the path, the `Needs action` line and the top 3.
 
-   The script is fail-soft: when `gh` is missing or unauthenticated, it emits a `Skipped:` block and exits 0. Capture stdout — this is the second half of the report.
+7. **Publish** per `.claude/references/artifact-publishing.md` after the file is on disk (silent no-op when the tool is unavailable or `MTK_ARTIFACT_PUBLISH=0`).
 
-4. **Derive top-3 actionable changes.** Read both outputs:
-
-   - Every `⬜` asset in the scorecard is a candidate.
-   - Every mined phrase with ≥3 PR citations is a candidate.
-
-   Rank by: fail in AI Context bucket > fail in Dev Workflow > fail in Onboarding > mined phrase. Pick the top 3, each phrased as a single sentence with the file path or action to take.
-
-5. **Write the report.** Concatenate into `.claude/repo-health-latest.md`:
-
-   ```markdown
-   # Repo health report — <ISO date>
-
-   <scorecard output>
-
-   <mining output>
-
-   ## Top 3 actionable changes
-
-   1. ...
-   2. ...
-   3. ...
-   ```
-
-   With `--json`, also write `.claude/repo-health-latest.json` containing `{ "scorecard": {...}, "mining": {...}, "top3": [...] }`.
-
-6. **Present to the engineer.** Echo the report path and the medal + top-3 in chat. Do not dump the full report inline unless asked.
-
-6.5. **Publish the report artifact (additive, capability-gated).** After the report is on disk, follow `.claude/references/artifact-publishing.md`. repo-health usually runs standalone (no active workflow), so this publishes `.claude/repo-health-latest.md` directly as a Claude Artifact and reports the URL in chat; if a REVIEW workflow is active, it records `results.health_report_path` and updates that workflow's artifact in place instead. Silent no-op when the tool is unavailable or `MTK_ARTIFACT_PUBLISH=0`. Disk is written first regardless.
+**Never edit `architecture-principles.md` from this skill.** A mined phrase becomes a principle only when the engineer promotes it, one phrase at a time, with the `[MINED:feedback]` tag and its PR numbers, after seeing the diff.
 
 ## Verification
 
-- `.claude/repo-health-latest.md` exists and contains a `Medal:` line, a 12-row asset table, and a "Top 3 actionable changes" section.
-- Report published as an artifact (or gate correctly closed) per `.claude/references/artifact-publishing.md`; the on-disk report was written first regardless.
-- The mining section either lists phrases with PR citations OR an explicit `Skipped: <reason>` line — never fabricated phrases.
-- No edits were made to `.claude/references/architecture-principles.md`.
-- `bash scripts/repo-health-score.sh --json | jq .medal` returns a non-empty string.
+- `.claude/repo-health-latest.md` exists with a `Needs action:` line, the nine-asset table and a "Top 3 actionable changes" section.
+- `bash scripts/repo-health-score.sh --json | jq '.action_needed'` is an array; the output carries no medal or score.
+- The mining section cites PR numbers (`#<n>`) for every phrase, or reads `Skipped: <reason>`.
+- `architecture-principles.md` is unchanged.

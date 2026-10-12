@@ -31,7 +31,7 @@ When Playwright MCP tools are available in-session, capture around the observabl
 
 ## Sensitive content — scrub before persisting
 
-Evidence artifacts live beside the spec under `docs/specs/`, which target repos gitignore (only `docs/specs/baseline/` is tracked), so they are local working artifacts. Scrub them anyway: they get cited in completion tables, pasted into PRs and receipts, and read by reviewers (see `security-checklist.md`; for regulated data, `domain-finance.md`):
+Evidence artifacts live beside the spec under `docs/specs/`, which target repos gitignore (only `docs/specs/baseline/` is tracked), so they are local working artifacts. Scrub them anyway: they get cited in completion tables, pasted into PRs and receipts, and read by reviewers (see `domain-finance.md`):
 
 - **`network.json`**: strip `Authorization`/`Cookie`/`Set-Cookie` headers, session tokens, and API keys before writing. Redact request/response bodies containing account numbers, personal data, or other regulated state — keep URL, method, and status; replace redacted values with `"<redacted>"`.
 - **`screenshot.png`**: capture only the state the criterion asserts. If the screen shows real customer or account data, reproduce against test data or crop/mask before persisting.

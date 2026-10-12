@@ -34,7 +34,7 @@ The gate name is the contract. When skills, agents, and hooks reference a gate t
 
 **Pending:** Phase still in progress.
 
-**Skill responsible:** `incremental-implementation`, `subagent-implementation`, `code-review-and-quality`, `spec-drift-detection` — each owns the gate at its own phase boundary.
+**Skill responsible:** `incremental-implementation`, `subagent-implementation`, `implement-review-lanes.md` (review), `spec-drift-detection` — each owns the gate at its own phase boundary.
 
 ## 3. `failure_stop_gate`
 
@@ -64,7 +64,7 @@ On `ESCALATE`, stop the loop, record `failure_stop_gate fail`, and hand the trig
 
 **Pending:** Phase 7 not yet reached.
 
-**Skill responsible:** `implement` (Phase 7), with input from `correction-capture` and `promote-lesson`.
+**Skill responsible:** `implement` (Phase 7), with input from the `lessons` skill (`capture` and `promote` modes).
 
 ## How to record a gate
 

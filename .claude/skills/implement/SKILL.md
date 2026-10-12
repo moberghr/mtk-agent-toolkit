@@ -13,24 +13,7 @@ Resolve MTK skill/reference/script paths per `.claude/references/mtk-file-resolu
 
 ---
 
-You are a senior engineer building serious software. This skill is the user-facing entry point for substantial work. Language and framework specifics come from the active tech stack skill.
-
-The skill itself is intentionally thin. The source of truth for workflow behavior is the skill layer:
-
-- `.claude/skills/context-engineering/SKILL.md`
-- `.claude/skills/workflow-artifacts/SKILL.md`
-- `.claude/skills/spec-driven-development/SKILL.md`
-- `.claude/skills/planning-and-task-breakdown/SKILL.md`
-- `.claude/skills/incremental-implementation/SKILL.md`
-- `.claude/skills/test-driven-development/SKILL.md`
-- `.claude/skills/source-driven-development/SKILL.md`
-- `.claude/skills/code-review-and-quality/SKILL.md`
-- `.claude/skills/security-and-hardening/SKILL.md`
-- `.claude/skills/verification-before-completion/SKILL.md`
-- `.claude/skills/spec-drift-detection/SKILL.md`
-- `.claude/skills/brainstorming/SKILL.md`
-- `.claude/skills/code-simplification/SKILL.md`
-- `.claude/skills/tech-stack-{stack}/SKILL.md` — loaded based on `.claude/tech-stack`
+The entry point for substantial work. Stack specifics come from the active tech stack skill; the workflow detail lives in the skills each phase names (`context-engineering`, `workflow-artifacts`, `brainstorming`, `spec-driven-development`, `planning-and-task-breakdown`, `incremental-implementation` / `subagent-implementation`, `security-and-hardening`, `spec-drift-detection`, `verification-before-completion`, `code-simplification`) and in the `implement-*` references.
 
 ## Phase 0: Load Context (Progressive Disclosure)
 
@@ -45,25 +28,10 @@ Before doing anything else:
    - If a single active `BUILD` workflow exists for this feature, ask via `AskUserQuestion` whether to resume that uuid or start a new one.
    - Otherwise prune expired workflows, init, and emit the phase-0 marker in **one** call — the phase goes in `--data`, not as a positional: `"$WFA" prune --older-than 30 >/dev/null; MTK_WF_UUID=$("$WFA" init BUILD --goal "<one-line user goal>") && "$WFA" event "$MTK_WF_UUID" phase_started --data '{"phase":"phase-0"}'`. Remember the uuid for the rest of the session.
    - **Bookkeeping rides along, never alone.** Every later `"$WFA"` write in this skill is appended with `&&` to the command it records (the lint, the checkpoint, the sidecar write) or grouped into one `"$WFA" batch "$MTK_WF_UUID" <op> -- <op> …` call. A standalone artifact write is a full model turn spent on one line of JSON. Only `init`, `list`, `read`, and `verify-seal` run alone.
-1. Follow `.claude/skills/context-engineering/SKILL.md`.
-2. Read the constitution: `AGENTS.md` (canonical) or `CLAUDE.md` (often only a shim that imports `@AGENTS.md`; follow the import). Accept either. If neither exists, stop and tell the engineer to run `/mtk-setup`.
-3. **Load the active tech stack:** resolve it with `bash scripts/resolve-tech-stack.sh "$PWD"` (a single word like `dotnet` or `python`). The resolver is **polyglot-monorepo aware** — for a subproject under a differently-stacked root it returns the subproject's stack via a nested `.claude/tech-stack` or a root `.claude/tech-stack.map` glob, falling back to the repo-root `.claude/tech-stack`. When the change targets a specific subtree, pass a representative path from the `change_manifest` (e.g. `bash scripts/resolve-tech-stack.sh "src/web/spa"`) rather than `$PWD`, so the workflow loads the right stack for the files it will touch. Then read `.claude/skills/tech-stack-{stack}/SKILL.md`. This provides build/test commands, ORM guidance, framework patterns, and reference file paths used throughout the workflow. If it resolves empty, do not halt: run `bash scripts/setup-detect.sh --json` (read-only) to infer the stack, and load the matching `tech-stack-{stack}` skill if one exists for the inferred primary. If inference is empty or no matching skill exists, warn the engineer that the tech stack is unconfigured (suggest `/mtk-setup`) and proceed with `CLAUDE.md`-only context.
-4. Read only the references needed for the **current phase**:
-   - **Always (Phase 0):** the coding guidelines from the tech stack's `## Reference Files`, `.claude/references/architecture-principles.md` if present
-   - **Defer to Phase 1 (spec):** `.claude/references/security-checklist.md` (only if scope touches auth/financial/infra), `.claude/references/testing-patterns.md`
-   - **Defer to Phase 3 (implementation):** `.claude/references/performance-checklist.md`, plus stack-specific references from the tech stack's `## Reference Files` (e.g., ORM checklist, framework patterns)
-   - **Defer to Phase 4 (review):** `.claude/references/pre-commit-review-list.md` if present
-   - **Path-scoped auto-load (any phase):** references in `.claude/manifest.json` may declare an `applyTo` glob array. When the current phase has files in scope (from `change_manifest` or `git diff --name-only HEAD`), activate references whose globs match any touched file. Skip references whose globs match nothing for this task. See `context-engineering` skill for the match procedure.
-5. Resolve the lessons path using the main worktree if needed, then read relevant entries from `tasks/lessons.md`.
-6. Detect `--terse` or `--verbose` for output intensity:
-   - **`--terse`:** Minimal output. Skip explanations, rationale, and intermediate status. Report only: decisions, actions, findings, and evidence. No filler phrases. Aimed at senior engineers who read diffs.
-   - **`--verbose`:** Full explanations. Include rationale for each decision, alternatives considered, references consulted, and step-by-step reasoning. Aimed at engineers learning the codebase or reviewing unfamiliar areas.
-   - **Default (no flag):** Balanced output. Brief rationale for non-obvious decisions, standard reporting, no excess explanation.
-7. **Worktree pre-flight (capture only).** Run `git status --porcelain` and remember the set of already-modified and untracked paths — the *pre-existing dirty set*. This is a read-only snapshot, not a gate yet. It feeds two later checks: (a) the spec's dirty-worktree risk step (`spec-driven-development` step 4b, for **out-of-manifest** paths), and (b) the **Phase 2.9 worktree collision gate** (for **in-manifest** paths — the parallel-session case). Capturing it now, before any edit, is what lets the collision gate tell "already dirty when we started" apart from "dirty because this workflow touched it."
-
-**Progressive disclosure principle:** Load references at the phase where they are first needed, not all upfront. This preserves context budget for the actual code and decisions that matter in each phase. Re-anchor on references when switching phases.
-
-**Parallel loading:** Within a single phase, load independent references in parallel — issue multiple `Read` calls in one message. Same for independent `Glob`/`Grep` discovery. See `docs/parallelism-patterns.md`.
+1. Follow `.claude/skills/context-engineering/SKILL.md`: it resolves the stack for the files in scope (pass a representative `change_manifest` path when the change targets a subtree), loads the `tech-stack-{stack}` skill, and loads references per phase and per `applyTo` match. If neither `AGENTS.md` nor `CLAUDE.md` exists, stop and tell the engineer to run `/mtk-setup`. Phase 0 itself loads only the stack's coding guidelines and `architecture-principles.md` if present.
+2. Query lessons for the initial scope (`learnings.sh query --phase implement`, else `tasks/lessons.md`, resolved from the main worktree).
+3. Output intensity: `--terse` reports only decisions, actions, findings and evidence; `--verbose` adds rationale, alternatives and references consulted; default is brief rationale for non-obvious decisions.
+4. **Worktree pre-flight (capture only).** Run `git status --porcelain` and remember the set of already-modified and untracked paths — the *pre-existing dirty set*. This is a read-only snapshot, not a gate yet. It feeds two later checks: (a) the spec's dirty-worktree risk step (`spec-driven-development` step 3b, for **out-of-manifest** paths), and (b) the **Phase 2.9 worktree collision gate** (for **in-manifest** paths — the parallel-session case). Capturing it now, before any edit, is what lets the collision gate tell "already dirty when we started" apart from "dirty because this workflow touched it."
 
 ## Phase 0.5: Brainstorm (When Needed)
 
@@ -89,7 +57,7 @@ Adopting the engineer's artifact does **not** skip the approval gate — Phase 2
 
 Follow `.claude/skills/spec-driven-development/SKILL.md`.
 
-**Resolve ambiguity before drafting, not at the approval gate.** The spec skill's ambiguity gate (step 6) is mandatory — if two or more plausible designs, undefined scope edges, or unresolved architectural choices exist, ask via `AskUserQuestion` *before* writing the spec. The Phase 2.5 approval gate is a go/no-go on a fully-informed plan, not a place to surface open questions for the first time.
+**Resolve ambiguity before drafting, not at the approval gate.** The spec skill's ambiguity gate (step 5) is mandatory — if two or more plausible designs, undefined scope edges, or unresolved architectural choices exist, ask via `AskUserQuestion` *before* writing the spec. The Phase 2.5 approval gate is a go/no-go on a fully-informed plan, not a place to surface open questions for the first time.
 
 The resulting plan must include:
 
@@ -101,8 +69,7 @@ The resulting plan must include:
 
 **Persist the spec to disk before continuing.** Save to `docs/specs/YYYY-MM-DD-<feature-slug>.md` using today's date and a kebab-case slug. Create `docs/specs/` if missing. This is mandatory — the engineer must be able to read and edit the spec outside of chat.
 
-Record its path in the same call as the EARS lint the spec skill already runs:
-`bash scripts/lint-ears.sh docs/specs/<file> && "$WFA" set "$MTK_WF_UUID" results.spec_path=docs/specs/<file>`
+Record its path riding on the next command (`… && "$WFA" set "$MTK_WF_UUID" results.spec_path=docs/specs/<file>`). The spec is standard mode unless the engineer asks for **extended spec mode** or the rigor score lands at MAX; then the extended sections (EARS + `lint-ears.sh`, INVEST+C, Constitution Check, baseline delta) are added before the gate.
 
 ## Phase 2: Write The Task Breakdown
 
@@ -123,7 +90,7 @@ bash scripts/build-context-pack.sh "$MTK_WF_UUID" docs/specs/<date>-<slug>.json 
        results.context_pack=.mtk/workflows/"$MTK_WF_UUID"/context-pack.md
 ```
 
-The script selects coding-guideline sections by the kinds of files in the manifest and lists every other heading with its path, so a subagent pulls a section on demand rather than reading guideline files end to end. Pass `results.context_pack` to every subagent prompt (implementer template and reviewer agents read it first). Rebuild it whenever the manifest is amended in Phase 3.5.
+The script selects coding-guideline sections by the kinds of files in the manifest and lists every other heading with its path, so a subagent pulls a section on demand rather than reading guideline files end to end. Its `## Applicable rules` section lists the `.claude/rules/` files whose `paths:` globs match the manifest; reviewers read those and no others. Pass `results.context_pack` to every subagent prompt (implementer template and reviewer agents read it first). Rebuild it whenever the manifest is amended in Phase 3.5.
 
 ## Rigor Score (Continuous Ceremony Scaling)
 
@@ -216,6 +183,9 @@ Runs after approval, before the first edit. Three checks:
    default at HIGH/MAX; `MTK_BASELINE_CAPTURE=1`/`=0` forces or skips. **If no
    baseline exists, every later checkpoint must say so** rather than implying one.
 
+At HIGH/MAX, also recommend a dedicated worktree and a branch pin before the first edit
+(`incremental-implementation` → *Batch policy*).
+
 **Read `.claude/references/implement-preflight.md`** for the dispatch probe
 procedure, the inline-MAX compensations in full, and the baseline capture and
 reporting rules.
@@ -226,12 +196,7 @@ reporting rules.
 - **Subagent path** (`.claude/skills/subagent-implementation/SKILL.md`) — when the rigor level is HIGH or MAX (any hard trigger — `plan.batches.length >= 3`, non-mechanical `change_manifest` entries >= 6, `security_impact != "none"` — or score ≥ 8; see Rigor Score). Dispatches one fresh implementer subagent per batch with orchestrator-side drift micro-checks. In interactive mode it asks once which model (Sonnet/Opus) to use for the implementer; in autonomous mode it does **not** ask — the Sonnet policy default applies (Opus for plan-flagged novel/tricky batches), consistent with the autonomous "never ask in Phases 3-7" rule. Runs a manual Agent-per-batch loop by default; the native dynamic-workflow runtime is used only when the engineer explicitly opts in (drift/persistence/Phase-4 stay orchestrator-side either way).
 - **Inline path** (`.claude/skills/incremental-implementation/SKILL.md`) — for everything below threshold. Smaller features stay in the main context.
 
-Always also follow:
-
-- `.claude/skills/test-driven-development/SKILL.md`
-- `.claude/skills/source-driven-development/SKILL.md` when framework or SDK behavior is uncertain
-- `.claude/skills/research-context/SKILL.md` when a choice is version-sensitive or depends on current external best-practice (returns a cited brief; does not edit code)
-- `.claude/skills/security-and-hardening/SKILL.md` when the scope touches auth, financial state, secrets, or infra
+Also follow `security-and-hardening` when scope touches auth, financial state, secrets, or infra, and `research-context` when a choice depends on current external best-practice. Test policy (failing test first, test level, no in-memory provider for DB semantics, reading a dependency's real surface) is in `incremental-implementation` → *Batch policy*; the implementer prompt carries the same rules.
 
 Whichever path runs, every batch must:
 
@@ -281,24 +246,8 @@ not re-open it.
 
 ## Phase 4: Review (Two-Stage)
 
-**Stage 1 — Spec compliance.** `compliance-reviewer` against the sealed spec.
-Re-check the seal with `verify-seal`; a STALE seal **refuses completion**.
+Run `verification-before-completion` first, then **read `.claude/references/implement-review-lanes.md`** — the single source for the lane set at each rigor level, the dispatch inputs, the silent-failure trigger, the defect-class sweep, and lane accounting (`ABSTAINED`, `NO_RESPONSE`, by-policy). Stage 1 `compliance-reviewer` checks against the sealed spec; re-check the seal with `verify-seal` — a STALE seal **refuses completion**. Stage 2 runs only after Stage 1 has no Critical findings.
 
-**Stage 2 — Quality and coverage.** Reviewer set is dictated by the rigor level
-(see the Rigor Score table): conditional at LIGHT/STANDARD, `test-reviewer` always
-at HIGH (plus `architecture-reviewer` on a boundary/slice condition), both plus
-`silent-failure-hunter` at MAX.
-
-**A reviewer is a pass to perform, not a dispatch mechanism.** When the Agent tool
-is unavailable or forbidden, read the agent's own `.md` and apply its checklist
-inline. That costs context isolation, never coverage — and the Final Report must
-say which lanes ran inline.
-
-Scope every lane to this run's changed files, excluding the pre-existing dirty
-baseline, or reviewers attribute someone else's edits to this run.
-
-**Read `.claude/references/implement-review-lanes.md`** for each stage's full
-procedure and the lane-accounting rules.
 ## Phase 5: Fix Review Findings
 
 Fix every critical issue and every warning unless you record a one-line waiver with a reason, then:
@@ -311,41 +260,15 @@ Maximum 3 review iterations.
 
 ## Phase 6: Cleanup
 
-Follow `.claude/skills/code-simplification/SKILL.md`.
-
-If cleanup changes code, re-run the build and test commands from the active tech stack skill.
+Follow `code-simplification` (built-in `/simplify` on Claude Code, with its finance carve-outs). If cleanup changes code, re-run the build and tests.
 
 ## Phase 7: Compound (Learn And Strengthen)
 
-This phase is not optional cleanup — it is how the toolkit gets smarter over time.
-
-1. **What was learned?** Answer explicitly:
-   - Did any assumption from the spec turn out to be wrong?
-   - Did any framework/SDK behavior surprise you?
-   - Did any review finding reveal a gap in the standards?
-   - Did you receive any corrections from the engineer during this session?
-
-2. **Capture lessons.** For each learning, append to `tasks/lessons.md`:
-   - What happened
-   - The rule to follow next time
-   - Why it matters
-   - When it applies
-
-3. **Check for promotion.** If a lesson matches an existing pattern in `tasks/lessons.md` (3+ similar entries), propose adding it as a rule in `CLAUDE.md`.
-
-4. **Check CLAUDE.md for drift.** If the work added new stable patterns (naming, structure, conventions), propose updates to `CLAUDE.md`. Do not silently modify it.
-
-5. **Update pre-commit-review-list.** If a security or compliance issue was found during review, add it to `.claude/references/pre-commit-review-list.md` so it's caught earlier next time.
-
-6. **Escalate a repeat reduction.** If this run recorded a ceremony reduction — a Phase 3 path,
-   a reviewer lane, a gate — for a reason a previous run in this repo already recorded (check
-   `tasks/lessons.md` and prior workflow artifacts), stop logging it a third time. A reduction
-   that recurs is not bad luck; it is the contract describing a path this environment does not
-   have. Propose the durable fix instead — the env declaration that makes it explicit
-   (`MTK_SUBAGENT_DISPATCH=0`), or a lesson naming the constraint — and say which in the final
-   report. Honest bookkeeping repeated three times is still an unfixed contract.
-
-7. **State the compound.** In the final report, include a "What compounded" section listing what future sessions will benefit from.
+1. **What was learned?** A wrong spec assumption, a surprising framework/SDK behavior, a review finding that exposed a gap in the standards, an engineer correction. Append each to `tasks/lessons.md`: what happened, the rule next time, why, when it applies.
+2. **Promote.** A lesson with 3+ similar entries → propose a rule in `AGENTS.md`/`CLAUDE.md`. New stable patterns (naming, structure) → propose a constitution update. Never modify it silently.
+3. **Pre-commit list.** A security or compliance issue found in review → add it to `.claude/references/pre-commit-review-list.md`.
+4. **Escalate a repeat reduction.** If this run recorded a ceremony reduction (a Phase 3 path, a reviewer lane, a gate) for a reason a previous run in this repo already recorded (`tasks/lessons.md`, prior workflow artifacts), do not log it a third time. Propose the durable fix — the env declaration (`MTK_SUBAGENT_DISPATCH=0`) or a lesson naming the constraint — and say which in the final report.
+5. **State the compound** in the final report: what future sessions will benefit from.
 
 ## Phase 7.5: Archive (Delta Sync-Back)
 

@@ -1,9 +1,3 @@
----
-description: How MTK linter "guard packs" are structured, discovered, and authored — shippable deterministic review units that catch AI failure modes before review
-globs: ["hooks/linter-patterns/**"]
-alwaysApply: false
----
-
 # Guard Packs
 
 A **guard pack** is a deterministic, shippable unit of review: a tab-separated file

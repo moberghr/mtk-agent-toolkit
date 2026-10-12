@@ -274,7 +274,7 @@ for c in cases:
                 f"does not select it{hint} — reorder the route table or add a 'note'"
             )
     else:
-        # Not a /mtk route target (e.g. hook-routed skill like correction-capture).
+        # Not a /mtk route target (e.g. a mode the skill fires on its own trigger, like lessons capture).
         # Require a note documenting why the mapping holds.
         if not note:
             errs.append(

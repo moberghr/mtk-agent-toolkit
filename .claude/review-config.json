@@ -18,6 +18,7 @@
   "sycophancy_index": {
     "warn_threshold": 0.70,
     "window_days": 30,
-    "$doc": "π = approved / (approved + modified + rejected) over the last window_days. Status flips to warn when pi >= warn_threshold. Surfaced by toolkit-health and scripts/learnings.sh metrics."
+    "min_n": 10,
+    "$doc": "π = approved / (approved + modified + rejected) over the last window_days. Status is insufficient-data until that denominator reaches min_n, then flips to warn when pi >= warn_threshold. Surfaced by scripts/learnings.sh metrics and mtk-doctor --usage."
   }
 }

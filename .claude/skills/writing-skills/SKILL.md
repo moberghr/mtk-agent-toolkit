@@ -18,13 +18,11 @@ A skill is a reusable behavior contract that shapes how an agent approaches a ca
 
 - Adding a new skill to the toolkit
 - Substantially rewriting an existing skill
-- Converting a one-off command pattern into a reusable skill
 
 ### When NOT To Use
 
 - One-off project-specific conventions (put those in CLAUDE.md)
 - Mechanical constraints better handled by automation (put those in hooks or settings)
-- Well-documented standard practices that don't need reinforcement
 
 ## Workflow
 
@@ -139,5 +137,4 @@ Entry-point skills follow the same pattern — Phase 0 load instructions stay id
 - [ ] SKILL.md is under 500 lines
 - [ ] Pressure tests exist and the skill passes them
 - [ ] If this skill claims another skill consumes/invokes/checks its output, grep that skill and confirm the reciprocal reference exists
-- [ ] Skill is registered in manifest.json
-- [ ] `validate-toolkit.sh` passes
+- [ ] Skill is registered in manifest.json and `validate-toolkit.sh` passes

@@ -1,130 +1,37 @@
 ---
 name: repo-health-assets
-description: Canonical 12-asset checklist with pass/partial/fail rubric and medal thresholds for the repo-health scorecard
+description: Canonical 9-asset checklist with the pass/partial/fail/na rubric for the repo-health scorecard
 globs: ["scripts/repo-health-score.sh", ".claude/skills/repo-health/**"]
 alwaysApply: false
 type: reference
 ---
 
-# Repo health — 12 assets
+# Repo health — 9 assets
 
-> Used by `scripts/repo-health-score.sh` and the `repo-health` skill. Pattern borrowed from `github.com/johnpapa/ai-ready` (bounded scorecard + medal).
->
-> Every asset returns one of `pass` / `partial` / `fail` / `na`. The medal is computed against `pass` count over `12 − na`.
-
-## Buckets
+> Used by `scripts/repo-health-score.sh` and the `repo-health` skill. Each asset returns `pass` / `partial` / `fail` / `na`. There is no medal and no aggregate score: the output is the per-asset table plus `action_needed`, the assets at `partial` or `fail`. Counting specs, plans or rule files is deliberately not an asset — it rewards MTK paperwork, not readiness.
 
 | # | Asset | Bucket |
 |---|---|---|
-| 1 | Instructions file present and non-empty | AI Context |
-| 2 | Architecture principles file with ≥5 tagged principles | AI Context |
-| 3 | `.claude/tech-stack` pinned to a known tech-stack-* skill | AI Context |
-| 4 | `tasks/lessons.md` with ≥1 `## ` lesson entry | AI Context |
-| 5 | `docs/specs/` with ≥1 spec in the last 90 days | Dev Workflow |
-| 6 | `docs/plans/` with ≥1 plan in the last 90 days | Dev Workflow |
-| 7 | `.claude/manifest.json` and `.claude-plugin/plugin.json` versions in sync | Dev Workflow |
-| 8 | `bash scripts/validate-toolkit.sh` exits 0 | Dev Workflow |
-| 9 | `README.md` present and non-empty | Onboarding |
-| 10 | Build & test commands documented (CLAUDE.md / README / tech-stack skill) | Onboarding |
-| 11 | `.claude/rules/` with ≥2 rule files | Onboarding |
-| 12 | `.gitignore` excludes `.claude/settings.local.json` (and analytics.json if present) | Onboarding |
+| 1 | Instructions file (the resolved constitution) present and non-empty | AI Context |
+| 2 | `architecture-principles.md` with ≥5 tagged principles | AI Context |
+| 3 | Tech stack resolves to a known `tech-stack-*` skill | AI Context |
+| 4 | `tasks/lessons.md` with ≥1 `## ` entry | AI Context |
+| 5 | `manifest.json`, `plugin.json` and the marketplace entry carry one version | Toolkit (MTK repo only) |
+| 6 | `bash scripts/validate-toolkit.sh` exits 0 | Toolkit (MTK repo only) |
+| 7 | `README.md` present and non-empty | Onboarding |
+| 8 | Build & test commands documented | Onboarding |
+| 9 | `.gitignore` excludes `.claude/settings.local.json` (and `analytics.json` if present) | Onboarding |
 
 ## Rubric
 
-### 1. Instructions file present
+1. **Instructions file.** Resolved by `scripts/resolve-constitution.sh`. pass: non-empty · partial: empty · fail: missing.
+2. **Principles tagged.** Lines matching `[EXTRACTED|INFERRED:N.N|AMBIGUOUS|MINED:<kind>]`. pass: ≥5 · partial: 1–4 · fail: file missing or untagged (action: `/mtk-setup --audit`).
+3. **Tech stack.** Resolved by `scripts/resolve-tech-stack.sh` (root file, subproject file or `tech-stack.map`). pass: resolves and `.claude/skills/tech-stack-<stack>/` exists · partial: resolves, no skill · fail: nothing resolves in a repo with `.claude/skills/` · na: no `.claude/skills/`.
+4. **Lessons.** pass: ≥1 `## ` heading · partial: file without entries · fail: missing.
+5. **Versions in sync** (C0.1). Scored only inside the toolkit checkout — `.claude/manifest.json`, `.claude-plugin/plugin.json` and `scripts/validate-toolkit.sh` all present. pass: all versions equal · fail: any differ · na: outside the toolkit.
+6. **Validator passes.** Same toolkit detection. pass: exit 0 · fail: non-zero · na: outside the toolkit.
+7. **README.** pass: non-empty · partial: empty · fail: missing.
+8. **Build & test commands.** One of `dotnet build|test`, `npm test`, `npm run build`, `pytest`, `cargo test|build`, `go test|build`, `bash scripts/*.sh` in the resolved constitution, `AGENTS.md`, `CLAUDE.md`, `README.md` or a `tech-stack-*` skill. pass: found · fail: none.
+9. **Gitignore.** pass: `.claude/settings.local.json` excluded, plus `.claude/analytics.json` when that file exists · fail: an exclusion or `.gitignore` missing.
 
-- **pass** — file exists and has any content.
-- **partial** — file exists but is empty.
-- **fail** — file missing.
-
-### 2. Architecture principles tagged
-
-Pattern `[EXTRACTED|INFERRED:N.N|AMBIGUOUS|MINED:feedback]` per line.
-
-- **pass** — ≥5 tagged principles.
-- **partial** — 1–4 tagged principles.
-- **fail** — file missing OR no tags.
-
-### 3. Tech stack pinned
-
-- **pass** — `.claude/tech-stack` exists and contains a single word matching `.claude/skills/tech-stack-<word>/`.
-- **partial** — file exists with a value but no matching skill.
-- **fail** — file empty OR missing in an MTK repo.
-- **na** — repo has no `.claude/skills/` at all.
-
-### 4. Lessons captured
-
-- **pass** — ≥1 `## ` heading in `tasks/lessons.md`.
-- **partial** — file exists but no `## ` headings.
-- **fail** — file missing.
-
-### 5. Recent specs
-
-`docs/specs/*.md` modified within 90 days.
-
-- **pass** — ≥1 recent spec.
-- **partial** — directory has specs but none recent.
-- **fail** — directory missing or empty.
-
-### 6. Recent plans
-
-Same as 5, against `docs/plans/`.
-
-### 7. Manifest versions in sync
-
-- **pass** — `manifest.json.version == plugin.json.version`, and, when `.claude-plugin/marketplace.json` exists, its MTK plugin entry's `version` matches too (C0.1 — all three move together).
-- **fail** — any of the versions differ.
-- **na** — neither file exists (non-MTK repo).
-
-### 8. Toolkit validator passes
-
-- **pass** — `bash scripts/validate-toolkit.sh` exits 0.
-- **partial** — file exists but not executable.
-- **fail** — validator exits non-zero.
-- **na** — validator script missing (non-MTK repo).
-
-### 9. README present
-
-- **pass** — `README.md` exists and non-empty.
-- **partial** — file exists but empty.
-- **fail** — missing.
-
-### 10. Build & test commands documented
-
-Greps for one of: `dotnet build`, `dotnet test`, `npm test`, `npm run build`, `pytest`, `cargo test`, `cargo build`, `go test`, `go build`, `bash scripts/*.sh`.
-
-- **pass** — found in any of `CLAUDE.md`, `README.md`, `.claude/skills/tech-stack-*/SKILL.md`.
-- **fail** — no matches anywhere.
-
-### 11. Rules documented
-
-- **pass** — `.claude/rules/` with ≥2 markdown files.
-- **partial** — directory exists with 1 file.
-- **fail** — directory empty.
-- **na** — directory missing in non-MTK repo.
-
-### 12. Sensitive files gitignored
-
-- **pass** — `.gitignore` excludes `.claude/settings.local.json` AND (`.claude/analytics.json` if the file exists).
-- **fail** — any missing exclusion OR `.gitignore` missing.
-
-## Medal thresholds
-
-Based on the count of `pass` assets:
-
-| Threshold | Medal |
-|---|---|
-| ≥10 pass | 🏆 platinum |
-| ≥8 pass | 🥇 gold |
-| ≥6 pass | 🥈 silver |
-| ≥4 pass | 🥉 bronze |
-| <4 pass | (no medal) |
-
-`partial` does not count toward the medal — it is a warning signal only. `na` assets are excluded from the denominator (shown as `12 − na`).
-
-## When to re-run
-
-- Weekly / on demand via `/mtk repo-health`.
-- After a release (manifest version bump → asset 7).
-- After `/mtk-setup --audit` re-runs (asset 2 should jump).
-- Before promoting a `[MINED:feedback]` candidate to a real principle (sanity-check asset 2 first).
+Audit drift (`scripts/audit-drift-check.sh`) annotates asset 2 in the report; it never changes the asset's status.

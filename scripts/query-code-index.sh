@@ -6,8 +6,8 @@ set -euo pipefail
 # CODE_INDEX.md (see .claude/references/code-index-template.md) is a static
 # markdown capability table grouped by domain, with columns
 # Capability / Entry point (`path/to/file:Symbol`) / Notes. This script is the
-# structured text-query front door so prior-work-check and
-# code-simplification --audit-duplicates stop grepping it ad hoc.
+# structured text-query front door so prior-work-check stops grepping it
+# ad hoc.
 #
 # It is NOT a semantic call-graph. `callers` is a TEXTUAL reference search only.
 #

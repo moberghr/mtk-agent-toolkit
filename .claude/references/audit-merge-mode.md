@@ -7,85 +7,40 @@ alwaysApply: false
 
 # Setup Audit — MERGE MODE (--merge)
 
-Read this companion when `setup-audit` is invoked with `--merge`. It carries the full multi-repo unification flow that the `# MERGE MODE (--merge)` section of the skill defers to.
-
-You have audited multiple repositories and now want a single, unified architecture principles document. This mode reads audit files from `.claude/references/audits/` and produces a unified doc.
+Unify the per-repo audits in `.claude/references/audits/` into one team-wide `.claude/references/architecture-principles.md`. The only file written is that output. The input audits are never modified.
 
 ## STEP 0: Locate Inputs
 
-```bash
-ls -la .claude/references/audits/
-```
-
-Each file is an architecture audit from a different project (e.g., `service-a.md`, `service-b.md`, `service-c.md`).
-
-If the directory is empty or doesn't exist, tell the engineer:
-> "No audit files found. To use --merge:
-> 1. Run `/mtk-setup --audit` (without --merge) in each repo (service-a, service-b, etc.)
-> 2. Copy each generated `.claude/references/architecture-principles.md` into THIS repo at:
->    `.claude/references/audits/service-a.md`
->    `.claude/references/audits/service-b.md`
->    etc.
-> 3. Run `/mtk-setup --merge` again."
+`ls -la .claude/references/audits/`. If it is empty or missing, tell the engineer: run `/mtk-setup --audit` in each repo, copy each `architecture-principles.md` here as `audits/<repo>.md`, then re-run `/mtk-setup --merge`.
 
 ## STEP 1: Analyze Across Audits
 
-For each section of the architecture doc, compare across all audits:
+Per section, sort each principle into **consistent** (same everywhere: a team standard), **different** (same concern, different patterns: needs alignment, with a recommendation), or **unique** (one repo: project-specific).
 
-### What's Consistent (standardize on this)
-- Patterns used the same way across all projects → these are your team's actual standards
-- Same tools and frameworks → these are your tech stack
+**Confidence Tag Merge Rules (S1.15):**
+- All sources `[EXTRACTED]` and agreeing → `[EXTRACTED]`.
+- Mixed tags, or any source `[INFERRED]` → `[INFERRED:min(confidences)]`, citing each source repo.
+- Sources contradict → `[AMBIGUOUS]` with both source pointers.
+- Only one repo → keep its tag; mark it project-specific.
 
-### What's Different (team needs to decide)
-- Different patterns for the same concern → flag as "needs alignment"
-- Different conventions → flag with a recommendation
-
-### What's Unique (project-specific)
-- Patterns that only appear in one project → document as project-specific, not team-wide
-
-### Confidence Tag Merge Rules (S1.15)
-
-Per-repo audits already carry `[EXTRACTED] / [INFERRED:N] / [AMBIGUOUS]` tags (see STEP 3 of single-repo audit). When merging:
-
-- All sources tag the principle `[EXTRACTED]` and agree → keep `[EXTRACTED]`.
-- Mixed tags or one source `[INFERRED]` → output `[INFERRED:min(confidences)]`. Cite both source repos.
-- Sources contradict the principle itself → output `[AMBIGUOUS]` with both source pointers.
-- A principle appears in only one repo → keep its original tag, mark as project-specific.
+Every merged line keeps its evidence anchors, prefixed with the source repo.
 
 ## STEP 2: Generate Unified Document
 
-Generate `.claude/references/architecture-principles.md` (overwriting if it already exists — ask via AskUserQuestion first):
+If the output already exists, ask via `AskUserQuestion` before overwriting, and write through `mtk_guarded_write` (`hooks/lib/shrink-guard.sh`, S3.16).
 
 ```markdown
-# Moberg Architecture Principles
+# Architecture Principles
 
-> Unified from audits of: [list repos]
-> Generated: [date]
->
-> This document defines team-wide architectural standards.
-> Project-specific patterns are noted where they differ.
-
----
+> Unified from audits of: [repos] · Generated: [date]
 
 ## Team-Wide Standards
-[Patterns consistent across ALL scanned projects]
-
 ## Recommended Alignments
-⚠️ [Patterns that differ between projects — with recommendation on which to standardize]
-
+⚠️ [differing patterns, with a recommendation]
 ## Project-Specific Patterns
-### service-a
-[Unique patterns]
-### service-b
-[Unique patterns]
-[etc.]
+### <repo>
 ```
 
 ## STEP 3: Present Results
 
-Present the unified doc and highlight the key decisions the team needs to make. Do not make standardization decisions for the team — flag them clearly so engineers can debate and decide.
-
-## Merge Mode Constraints
-- This mode is READ-ONLY except for writing the unified output document
-- If `.claude/references/architecture-principles.md` already exists, use AskUserQuestion before overwriting
-- Do not modify the input audit files in `.claude/references/audits/`
+Present the doc and list the alignment decisions. The team makes them: flag each one, never decide it.

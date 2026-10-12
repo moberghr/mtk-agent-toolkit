@@ -78,7 +78,9 @@ plugin_json="$tree_dir/.claude-plugin/plugin.json"
 [ -f "$tree_dir/scripts/generate-checksums.sh" ] || die "$source_ref has no scripts/generate-checksums.sh — cannot regenerate checksums"
 
 # --- drop dev-only paths and unlisted docs -----------------------------------
-for d in tests evals examples .github docs/specs docs/plans; do
+# writing-skills is maintainer tooling for authoring MTK's own skills; it stays in
+# the repo but never ships, so its description does not load into every session.
+for d in tests evals examples .github docs/specs docs/plans .claude/skills/writing-skills; do
   rm -rf "${tree_dir:?}/$d"
 done
 

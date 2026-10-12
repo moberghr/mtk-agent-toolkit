@@ -26,14 +26,16 @@ in_toolkit
 JSON=0
 FIX=0
 STRICT=0
+USAGE_MODE=0
 for arg in "$@"; do
   case "$arg" in
     --json) JSON=1 ;;
     --fix) FIX=1 ;;
     --strict) STRICT=1 ;;
+    --usage) USAGE_MODE=1 ;;
     -h|--help)
       cat <<USAGE
-Usage: mtk-doctor [--json] [--fix] [--strict]
+Usage: mtk-doctor [--json] [--fix] [--strict] [--usage]
 
   --json    Machine-readable output for CI dashboards
   --fix     Auto-fix safe items: gitignore additions, chmod +x, moving the
@@ -41,12 +43,100 @@ Usage: mtk-doctor [--json] [--fix] [--strict]
             merging missing permission-baseline deny/ask rules into
             .claude/settings.json. Any other FAIL is reported, never auto-fixed.
   --strict  Exit non-zero on WARN as well as FAIL
+  --usage   Report raw usage numbers instead of health checks: the
+            .claude/analytics.json counters (n = sessions), spec/plan/lesson
+            counts, learnings.sh decision-origin totals, and eval cases. No
+            thresholds, no verdicts. Read-only; combine with --json.
 USAGE
       exit 0
       ;;
     *) printf 'Unknown flag: %s\n' "$arg" >&2; exit 2 ;;
   esac
 done
+
+# ──────────────────────────────────────────────
+# USAGE MODE (--usage) — raw numbers, no thresholds
+# ──────────────────────────────────────────────
+# Healthy-range thresholds were never calibrated against real usage, so this
+# mode reports counts with their n and leaves the judgement to the reader. Read-only: it never writes a file.
+if [ "$USAGE_MODE" -eq 1 ]; then
+  if ! command -v python3 >/dev/null 2>&1; then
+    printf 'mtk-doctor --usage needs python3\n' >&2; exit 2
+  fi
+  in_project
+  METRICS_JSON=""
+  if [ -f "$ROOT_DIR/scripts/learnings.sh" ]; then
+    METRICS_JSON="$(bash "$ROOT_DIR/scripts/learnings.sh" metrics 2>/dev/null || true)"
+  fi
+  EVALS_DIR=""
+  [ -d "$ROOT_DIR/evals" ] && EVALS_DIR="$ROOT_DIR/evals"
+  python3 - "$JSON" "$METRICS_JSON" "$EVALS_DIR" <<'PY'
+import glob, json, os, re, sys
+sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3
+as_json, metrics_raw, evals_dir = sys.argv[1] == "1", sys.argv[2], sys.argv[3]
+out = {}
+a_path = ".claude/analytics.json"
+if not os.path.isfile(a_path):
+    out["analytics"] = {"status": "absent", "detail": "created by the Stop recorder after the first session"}
+else:
+    try:
+        with open(a_path, encoding="utf-8") as fh:
+            a = json.load(fh)
+        out["analytics"] = {"status": "ok", "n_sessions": a.get("sessions", 0)}
+        out["analytics"].update({k: v for k, v in a.items() if k != "sessions"})
+    except (OSError, ValueError) as e:
+        out["analytics"] = {"status": "unparseable", "detail": str(e)}
+lessons = 0
+if os.path.isfile("tasks/lessons.md"):
+    with open("tasks/lessons.md", encoding="utf-8", errors="replace") as fh:
+        lessons = sum(1 for line in fh if line.startswith("## "))
+out["artifacts"] = {"specs": len(glob.glob("docs/specs/*.md")), "plans": len(glob.glob("docs/plans/*.md")),
+                    "lessons_md_entries": lessons}
+if metrics_raw.strip():
+    try:
+        m = json.loads(metrics_raw)
+        t = m.get("totals", {})
+        n = sum(t.get(k, 0) for k in ("claude-recommended-approved", "claude-recommended-modified",
+                                      "claude-recommended-rejected"))
+        out["decision_origin"] = {"window_days": m.get("window_days"), "totals": t,
+                                  "n_recommendations": n, "pi": m.get("pi")}
+    except ValueError:
+        out["decision_origin"] = {"status": "unparseable"}
+else:
+    out["decision_origin"] = {"status": "unavailable"}
+if evals_dir:
+    tags = {}
+    cases = glob.glob(os.path.join(evals_dir, "*", "prompt.md"))
+    for c in cases:
+        with open(c, encoding="utf-8", errors="replace") as fh:
+            front = fh.read(4000).split("\n---", 1)[0]
+        for tag in sorted(set(re.findall(r"\b(smoke|core)\b", front))):
+            tags[tag] = tags.get(tag, 0) + 1
+    ev = {"cases": len(cases), "tags": tags}
+    runs = sorted(glob.glob(os.path.join(evals_dir, "results", "*", "aggregate-result.json")), key=os.path.getmtime)
+    if runs:
+        try:
+            with open(runs[-1], encoding="utf-8") as fh:
+                r = json.load(fh)
+            g = r.get("aggregates", {})
+            ev["latest_run"] = {"file": os.path.relpath(runs[-1], evals_dir), "overallScore": g.get("overallScore"),
+                                "casesPassed": g.get("casesPassed"), "casesTotal": g.get("casesTotal"),
+                                "meanDelta": g.get("meanDelta"), "partial": r.get("partial", g.get("partial"))}
+        except (OSError, ValueError):
+            ev["latest_run"] = {"status": "unparseable"}
+    out["evals"] = ev
+if as_json:
+    print(json.dumps(out, sort_keys=True))
+else:
+    for section, body in out.items():
+        print(section.upper())
+        for k, v in body.items():
+            print(f"  {k}: {json.dumps(v) if isinstance(v, (dict, list)) else v}")
+        print()
+    print("Raw counts with their n. A ratio over fewer than ~20 sessions or ~10 recommendations is noise.")
+PY
+  exit 0
+fi
 
 # Deprecated or retired model IDs (prefix match on an agent's `model:` value) —
 # update when Anthropic deprecates more. Source: the Anthropic models overview
@@ -512,9 +602,7 @@ fi
 # FAIL when a file resolves nowhere; WARN when it resolves ONLY by cache search,
 # because then every inline resolver in the skills still misses it.
 REFERENCED_FILES=(
-  .claude/references/security-checklist.md
-  .claude/references/testing-patterns.md
-  .claude/references/performance-checklist.md
+  .claude/references/domain-finance.md
   .claude/references/mtk-file-resolution.md
   .claude/review-config.json
   .claude/schemas/handoff.schema.json
@@ -603,12 +691,12 @@ fi
 
 # Lesson anchor staleness — a lesson citing a path/symbol that no longer
 # exists reads as authority while pointing at nothing. WARN-only; retirement
-# is the lesson-refresh skill's job and always a human decision.
+# is `lessons refresh`'s job and always a human decision.
 if [ -f tasks/lessons.md ] && [ -f scripts/lesson-anchors.sh ]; then
   ANCHOR_SUMMARY="$(bash scripts/lesson-anchors.sh 2>/dev/null | tail -1 || true)"
   case "$ANCHOR_SUMMARY" in
     *' 0 stale'*) record PASS integrity "lesson anchors live" "$ANCHOR_SUMMARY" ;;
-    *stale*)      record WARN integrity "stale lesson anchors" "$ANCHOR_SUMMARY — run 'bash scripts/lesson-anchors.sh' for locations, then the lesson-refresh skill to triage" ;;
+    *stale*)      record WARN integrity "stale lesson anchors" "$ANCHOR_SUMMARY — run 'bash scripts/lesson-anchors.sh' for locations, then '/lessons refresh' to triage" ;;
     *)            record PASS integrity "lesson anchors unchecked" "no summary from lesson-anchors.sh" ;;
   esac
 fi
@@ -1044,6 +1132,48 @@ else
       "${FMT_WANT} not on PATH — format-on-edit.sh logs to stderr and never blocks, so edits will silently go unformatted"
   fi
 fi
+
+# ──────────────────────────────────────────────
+# CONFIG — what is active (the old /mtk status report)
+# ──────────────────────────────────────────────
+# Report-only except for two WARNs: a stack or domain the project names with no
+# skill or linter pack behind it silently loads nothing.
+in_project
+CFG_STACK=""
+[ -f ".claude/tech-stack" ] && CFG_STACK="$(tr -d '[:space:]' < .claude/tech-stack)"
+CFG_DOMAINS=""
+[ -f ".claude/domains" ] && CFG_DOMAINS="$(grep -v '^[[:space:]]*#' .claude/domains | tr -d '[:blank:]' | grep -v '^$' || true)"
+in_toolkit
+count_rules() { grep -c '^[^#[:space:]]' "$1" 2>/dev/null || true; }
+if [ -z "$CFG_STACK" ]; then
+  record PASS config "tech stack not set" "no .claude/tech-stack — run /mtk-setup"
+elif [ -f ".claude/skills/tech-stack-${CFG_STACK}/SKILL.md" ]; then
+  record PASS config "tech stack ${CFG_STACK}" "skill tech-stack-${CFG_STACK} present"
+else
+  record WARN config "tech stack ${CFG_STACK} has no skill" "no .claude/skills/tech-stack-${CFG_STACK}/SKILL.md, so no stack context loads"
+fi
+for pack_dir in hooks/linter-patterns/core ${CFG_STACK:+hooks/linter-patterns/stack-$CFG_STACK}; do
+  [ -d "$pack_dir" ] || continue
+  for f in "$pack_dir"/*.txt; do
+    [ -f "$f" ] && record PASS config "linter pack ${f#hooks/linter-patterns/}" "$(count_rules "$f") rules"
+  done
+done
+if [ -n "$CFG_DOMAINS" ]; then
+  while IFS= read -r d; do
+    if [ -d "hooks/linter-patterns/domain-$d" ]; then
+      for f in hooks/linter-patterns/domain-"$d"/*.txt; do
+        [ -f "$f" ] && record PASS config "linter pack ${f#hooks/linter-patterns/}" "$(count_rules "$f") rules"
+      done
+    else
+      record WARN config "domain ${d} has no linter pack" "listed in .claude/domains but hooks/linter-patterns/domain-${d}/ is missing"
+    fi
+  done <<< "$CFG_DOMAINS"
+fi
+for agent in .claude/agents/*.md; do
+  [ -f "$agent" ] || continue
+  a_model="$(grep -m1 '^model:' "$agent" | sed 's/model:[[:space:]]*//' || true)"
+  record PASS config "agent $(basename "$agent" .md)" "model: ${a_model:-inherit}"
+done
 
 # ──────────────────────────────────────────────
 # OUTPUT

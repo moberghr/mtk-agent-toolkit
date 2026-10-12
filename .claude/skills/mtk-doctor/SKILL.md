@@ -1,9 +1,9 @@
 ---
 name: mtk-doctor
-description: Run an MTK install health check (core files, components, hooks, integrity, environment fit) with PASS/WARN/FAIL diagnostics, --json for CI, and --fix for safe auto-repairs.
+description: MTK health check (core, components, hooks, integrity, active config, environment) with PASS/WARN/FAIL, --json, --fix; --usage reports raw usage counts.
 type: skill
 allowed-tools: Read, Bash
-argument-hint: "[--json] [--fix] [--strict]"
+argument-hint: "[--json] [--fix] [--strict] [--usage]"
 user-invocable: true
 ---
 
@@ -21,11 +21,12 @@ The script ships with the plugin, so run it from `${CLAUDE_PLUGIN_ROOT}`. It dia
 - When the engineer asks "is the toolkit healthy?" or "is anything broken?"
 - After upgrading MTK in a target repo (catch deprecated IDs and hook drift)
 - In CI as `bash scripts/mtk-doctor.sh --strict --json` for dashboards
+- "What MTK config is active?" — the CONFIG section lists stack, linter packs, domains and agents
+- "How are we using MTK?" — `--usage`
 
 ### When NOT To Use
 
 - For structural validation in tight loops — use `validate-toolkit.sh` (faster, focused).
-- To debug a specific failing skill — use `context-report` instead.
 
 ## Workflow
 
@@ -46,7 +47,9 @@ The script ships with the plugin, so run it from `${CLAUDE_PLUGIN_ROOT}`. It dia
    ```
    Strict treats WARN as failure (exit 1). JSON output suits dashboards.
 
-4. **Triage failures.** Each FAIL entry includes a `detail` field pointing at the fix path. Common cases:
+4. **Usage numbers.** `--usage` (optionally with `--json`) skips the health checks and prints the raw `.claude/analytics.json` counters with `n_sessions`, spec/plan/lesson counts, the `learnings.sh metrics` decision-origin totals with `n_recommendations` and π, and the eval case count plus the newest `evals/results/*/aggregate-result.json`. There are no healthy ranges: report the numbers with their n and say a ratio over fewer than ~20 sessions or ~10 recommendations is noise. `total_operations` counts only Edit/Write/Bash (the evidence ledger sees no Read/Grep/Glob). Read-only.
+
+5. **Triage failures.** Each FAIL entry includes a `detail` field pointing at the fix path. Common cases:
    - "version mismatch" → bump both manifest.json and plugin.json (and marketplace.json) to the same value
    - "deprecated model" → update agent frontmatter to a current model ID or alias; "previous-generation model pinned" (WARN) → the alias already follows the current generation
    - "uses permissions.allowedTools" → Claude Code has no such key (valid: `permissions.allow` / `deny` / `ask`), so the list was ignored; `--fix` runs `scripts/migrate-settings-permissions.sh` on `.claude/settings.json` and `.claude/settings.local.json`
@@ -63,6 +66,7 @@ The script ships with the plugin, so run it from `${CLAUDE_PLUGIN_ROOT}`. It dia
 - **HOOKS** — hooks registered in the project's settings.json exist and are executable, event names are documented Claude Code events, all MTK hooks use `set -euo pipefail`
 - **PERMISSIONS** — the project's `.claude/settings.json` / `settings.local.json` carry no `permissions.allowedTools` (FAIL; `--fix` migrates it)
 - **INTEGRITY** — manifest paths exist, gitignore coverage, analytics freshness, validate-toolkit passes
+- **CONFIG** — the active tech stack and its skill, linter packs with rule counts (core, stack, each `.claude/domains` entry), review agents with their model. WARN when a named stack has no `tech-stack-*` skill or a listed domain has no `hooks/linter-patterns/domain-*` pack; both silently load nothing
 - **CONTEXT** — always-on context baseline (CLAUDE.md + a loaded AGENTS.md + alwaysApply refs, in tokens/bytes), MCP schema count from the project's own `.mcp.json`, `ENABLE_TOOL_SEARCH` state (report-only, never WARN/FAIL)
 - **ENVIRONMENT** — fit between the install and the machine, which structural checks cannot see: MTK hook basenames also wired in the user's global `settings.json`, and whether the active stack's formatter binary is actually on PATH. WARN at most — an environment mismatch is never a broken install
 
@@ -73,4 +77,5 @@ The script ships with the plugin, so run it from `${CLAUDE_PLUGIN_ROOT}`. It dia
 - [ ] Exit code 1 on any FAIL
 - [ ] `--strict` exits 1 on WARN
 - [ ] `--json` output is valid JSON parseable by `jq`
+- [ ] `--usage` prints counts with their n and no verdicts, and writes nothing
 - [ ] `--fix` only modifies gitignore, file permissions, and the `allowedTools` → `allow` key move; never edits source files

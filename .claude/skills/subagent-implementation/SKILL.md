@@ -36,11 +36,7 @@ Phase 3 of `implement/SKILL.md` invokes this skill when **any** of these are tru
 
 Companion files: this skill's detail payloads live in `.claude/references/subagent-implementer-prompt.md` and `.claude/references/subagent-dynamic-workflow.md` — resolve them under `${CLAUDE_PLUGIN_ROOT}` on a plugin install, else project-relative. If a companion cannot be resolved, stop the affected step and report the missing file — do not reconstruct its content from memory.
 
-### Decision Graph
-
-The orchestrator never edits source. The implementer subagent never spawns further subagents. The drift check is fast and orchestrator-side — no reviewer agent per batch.
-
-The full decision graph lives in `.claude/references/subagent-dynamic-workflow.md` (under `${CLAUDE_PLUGIN_ROOT}` on a plugin install). Read it when you need the branch/halt topology.
+Invariants: the orchestrator never edits source for a dispatched batch; the implementer never spawns subagents; the drift check is orchestrator-side, with no reviewer agent per batch.
 
 ### Execution paths
 
@@ -161,7 +157,7 @@ Take the manual Agent-loop path below unless the engineer opted in to the dynami
       - **Record reported traps.** For each entry in the result's `traps[]`, add `trap add --title "<title>" --body "<body>" --phase "<batch_id>" --severity <warn|high>` as one more op in the same `"$WFA" batch` call that persists the result — this is the carry-forward the next batch's bundle (sub-step 1) reads back.
       - Run `bash scripts/validate-handoff.sh docs/specs/<date>-<slug>.json` (if available) to surface schema drift early.
       - Tick the batch row in `tasks/todo.md`.
-   7. **Cumulative churn check.** After every batch, run `git diff --stat <base>...HEAD` and count net **non-generated** lines since the last review (same exclusion list as `incremental-implementation` step 9). This path always runs at rigor HIGH/MAX, so the thresholds are the doubled defaults: ≥ `MTK_CHURN_REVIEW_LINES` (**600** here) without an intermediate review → trigger an early `pre-commit-review-list` pass; ≥ `MTK_CHURN_HALT_LINES` (**1000** here) without a review → halt and run `compliance-reviewer` before continuing, then reset the count. A field run with the flat 500-line rule ran four mid-loop compliance reviews before the two-stage review — each found real items, but review time roughly doubled for a run whose batches were already isolated and drift-checked.
+   7. **Cumulative churn check.** After every batch, run `git diff --stat <base>...HEAD` and count net **non-generated** lines since the last review (same exclusion list as `incremental-implementation` step 8). This path always runs at rigor HIGH/MAX, so the thresholds are the doubled defaults: ≥ `MTK_CHURN_REVIEW_LINES` (**600** here) without an intermediate review → trigger an early `pre-commit-review-list` pass; ≥ `MTK_CHURN_HALT_LINES` (**1000** here) without a review → halt and run `compliance-reviewer` before continuing, then reset the count. A field run with the flat 500-line rule ran four mid-loop compliance reviews before the two-stage review — each found real items, but review time roughly doubled for a run whose batches were already isolated and drift-checked.
 4. **After all batches:**
    - Write a final aggregated `behavioral_diff` to `sidecar.implement.behavioral_diff`.
    - Hand control back to `implement/SKILL.md` Phase 3.5 (whole-feature spec-drift) → Phase 4 (two-stage review). Both run unchanged. Per-batch micro-checks are supplemental, not a replacement.
@@ -172,15 +168,9 @@ Steps 1-6 of the dynamic-workflow path and the "If the `Workflow` tool errors…
 
 The **mechanical exception** applies here too: the orchestrator implements all-mechanical batches inline *before* generating the workflow, and the generated script covers only the non-mechanical batches (one `agent()` call each). Do not spawn an `agent()` for a batch that changes no logic and no contract.
 
-### Dispatch hardening (large prompts & args)
+### Dispatch hardening
 
-Large doc/code batches produce large context bundles, and the dynamic-workflow path has historically been fragile when those bundles are passed the wrong way — an unbound-`args` crash, or the runtime stalling on a multi-kilobyte prompt shoved through a single argument. Three rules make dispatch robust regardless of batch size:
-
-1. **Never pass a large prompt block as a positional/CLI argument.** The implementer prompt and context bundle can be tens of KB. Write the assembled bundle to a file under `.mtk/workflows/<uuid>/batch-<id>.prompt.md` and pass the **path** (the `agent()` prompt string reads it, or the manual `Agent` prompt references it). A prompt block in `argv` is what triggers the arg-length / stall failures.
-2. **Bind `args` as actual JSON, never a stringified blob.** When the generated workflow script reads `args`, pass it as a real JSON value in the `Workflow` call (`args: { batch: {...} }`), not a JSON-encoded string. A stringified list reaches the script as one string, so `args.batches.map(...)` throws — the "args-unbound" crash from the v7.14 dogfooding run. If the script needs no input, do not reference `args` at all.
-3. **Compress before you hand off.** Run the prior-batch summary and any pasted command output through `scripts/mtk-compress.sh` (see `.claude/references/output-compression.md`) before it enters the bundle — dense handoffs keep each batch's dispatch inside a safe size envelope.
-
-These are dispatch-mechanism rules only; the prompt *contract* (TASK/DELIVERABLE/SCOPE/VERIFY) and the orchestrator-side gates are unchanged.
+Never pass a large prompt block as a positional/CLI argument: write the assembled bundle to `.mtk/workflows/<uuid>/batch-<id>.prompt.md` and pass the **path** — prompt blocks in `argv` caused the arg-length and stall failures. Run the prior-batch summary and pasted command output through `scripts/mtk-compress.sh` before it enters the bundle. On the workflow path, bind `args` as real JSON, never a stringified blob (the v7.14 "args-unbound" crash).
 
 ### Implementer prompt template
 
@@ -199,7 +189,6 @@ The implementer prompt template is shared by both execution paths and is organiz
 - Drift micro-check is orchestrator-side and synchronous. No agent call per batch.
 - Phase 4 review (compliance, test, architecture, silent-failure-hunter) runs unchanged after the loop — sized from the **current** rigor level, which may have been recomputed lower if scope was reduced mid-loop (see next rule).
 - **Mid-loop scope reduction re-scores rigor.** If the approved batch set shrinks during the loop (a batch is deferred, dropped, or split to a follow-up), recompute the rigor level from the remaining batches (see `implement/SKILL.md` Rigor Score → *Recompute on scope reduction*) and record the transition on the workflow artifact. Batches already dispatched are unaffected; if the recomputed level drops below HIGH, remaining not-yet-started batches return to `implement` Phase 3 for the inline path.
-- **Dynamic-workflow path:** the workflow replaces only the inner dispatch loop. Drift micro-check, sidecar persistence, churn check, and Phase 4 are orchestrator-side and run **after** the workflow returns — never inside it. The native runtime's plan-approval gate does not replace MTK's Phase 2.5; it is a transparency checkpoint on an already-approved scope.
 - **Waves come from `depends`, and only from `depends`.** Batches at the same topological level run concurrently (width ≤ `MTK_BATCH_WAVE_MAX`, default 3); different levels run strictly in order. A later batch reading an earlier batch's files must carry an edge — if it does not, the plan is wrong: fix the edge, do not hand-serialize.
 
 ## Verification

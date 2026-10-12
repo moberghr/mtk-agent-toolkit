@@ -23,180 +23,45 @@ if [ -f .claude/tech-stack-pm ]; then echo "--- Package Manager ---"; cat .claud
 
 ## Overview
 
-Good output depends on good context. Context is the complete information payload the model
-sees at generation time — load the minimum relevant part needed to act correctly, then refresh
-it when the task shifts.
-
-## Context Operations (Write / Select / Compress / Isolate)
-
-The four moves of context engineering. MTK already implements each; the names give them a
-shared vocabulary (borrow: LangChain / jihoo-kim context-engineering taxonomy).
-
-| Operation | What it means | Where MTK does it |
-|---|---|---|
-| **Write** | Persist state outside the window so it survives compaction/handoff | auto-memory + `tasks/lessons.md`, `workflow-artifacts`, `handoff` |
-| **Select** | Pull in only what the current step needs | rule `paths:` frontmatter (native path-scoped loading), path-scoped `applyTo` reference loading (below) |
-| **Compress** | Shrink what must stay in-window without losing signal | `.claude/references/output-compression.md`, `mtk-compress.sh` |
-| **Isolate** | Give a sub-task its own fresh window | `subagent-implementation` (one implementer per batch), review agents (`context: fork`) |
+Load the minimum context the current phase needs, from the right stack, and refresh it when the
+scope changes. The constitution (`AGENTS.md` / `CLAUDE.md`) is already loaded by the harness; do
+not re-read it.
 
 ## When To Use
 
-- Starting a new session
-- Switching from planning to implementation or implementation to review
-- Entering an unfamiliar area of the codebase
-- When the model starts making assumptions or drifting from project norms
-
-### When NOT To Use
-
-- As an excuse to endlessly read without acting
+- Phase 0 of `fix`, `batch-fix`, and `implement`, and at every later phase boundary
+- Entering an unfamiliar area, or when new files enter scope
 
 ## Workflow
 
-1. Start with `CLAUDE.md` when present.
-2. Load only the shared references relevant to the task.
-3. **Path-scoped auto-load.** Reference entries in `.claude/manifest.json`
-   may declare an `applyTo` glob array. When the current task has a known
-   set of files in scope (from the spec's `change_manifest` or from
-   `git diff --name-only HEAD`):
-   - Test each touched file against the globs (bash `case` / `fnmatch`
-     semantics).
-   - Load references whose globs match at least one touched file.
-   - Skip references whose globs match nothing — they're not relevant to
-     this task.
-   - References without `applyTo` are always-on when needed (e.g.
-     coding-guidelines, framework-patterns); load on demand per phase.
-4. Read the exact file to be changed and 2-3 neighboring files that establish local patterns.
-5. Separate trusted local standards from untrusted external inputs.
-6. Before a new phase, summarize what matters now:
-   - current goal
-   - files in scope
-   - governing rules
-   - open risks
-   - which `applyTo` references activated and why
-7. Refresh context when the scope or failure mode changes. If new files
-   enter scope, re-run the path-scoped match and load any newly-applicable
-   references.
+1. **Resolve the stack for the files in scope.** `bash scripts/resolve-tech-stack.sh <path>` is
+   polyglot-aware (subproject `.claude/tech-stack` → root `.claude/tech-stack.map` glob → root
+   file). Pass a representative target path, not `$PWD`, when the change sits in a subtree; add
+   `--check <paths>` to warn when the resolved stack disagrees with the files. Then read
+   `.claude/skills/tech-stack-{stack}/SKILL.md` for build/test commands and reference paths.
+   If nothing resolves, infer with `bash scripts/setup-detect.sh --json` (read-only) and load the
+   matching stack skill; if that is empty too, say the stack is unconfigured (suggest
+   `/mtk-setup`) and continue in degraded mode.
+2. **Load references for the current phase only.** Spec: `domain-finance.md` (finance and
+   security supplement, only when scope touches auth/financial/infra) and the stack's testing
+   supplement. Implementation: the stack's `## Reference Files` entries for the touched layers. Review:
+   `pre-commit-review-list.md` if present. Read by section where one section is enough.
+3. **`applyTo` matching.** Reference entries in `.claude/manifest.json` may declare an `applyTo`
+   glob array. Test each file in scope (the spec's `change_manifest`, else
+   `git diff --name-only HEAD`) against the globs with `case`/`fnmatch` semantics; load the
+   references that match at least one file and skip the rest. References without `applyTo` load
+   on demand per phase. Re-run the match when new files enter scope.
+4. **Native `paths:` rules.** `.claude/rules/*.md` carry `paths:` frontmatter and Claude Code loads
+   a rule only when a matching file is read or edited. Do not read every rule up front; when the
+   task needs a rule whose paths did not match (a security pass, a release), read that one file.
+5. Read the file to be changed and 2-3 neighbours that set the local pattern.
+6. Independent reads go out in one message, not sequentially.
 
-## Rules
-
-`.claude/rules/*.md` files carry `paths:` frontmatter, and Claude Code loads a
-rule only when a file matching its globs is read or edited. Do not read every
-rule file up front; when a task's intent needs a rule whose paths did not match
-(a security pass, a release), read that one file directly.
-
-## Parallel Loading
-
-Reference reads in load-context steps are independent — issue multiple `Read` calls in a single message, not sequentially. Same applies to independent `Glob`/`Grep` discovery and to reviewer agents fanning out on orthogonal axes. If Call B's input would mention Call A's output, force them sequential; otherwise batch them.
-
-See `docs/parallelism-patterns.md` for canonical patterns (parallel ref load, Stage 2 reviewer fan-out, batch deferred-tool hydration).
-
-## Context Fatigue Signals
-
-Track four lightweight signals during a session and flag fatigue early
-— refresh, prune, or hand off before output quality collapses. None of
-these require tooling; estimate from session state.
-
-| Signal | Weight | Read as |
-|---|---|---|
-| **Token utilization** | 40% | Approaching the conversation's context limit (e.g., compaction warnings appearing). High = imminent fatigue. |
-| **Scope scatter** | 25% | Number of distinct directories or features touched this session. >3 unrelated areas = scope creep, recall degrades. |
-| **Re-read ratio** | 20% | How often the same file is re-loaded because earlier reads aged out. >2 re-reads of the same file = context evicted. |
-| **Error density** | 15% | Build/test failures, corrections from the engineer, or tool-call retries per phase. Rising density = signal-to-noise dropping. |
-
-**Composite reading.** If 2+ signals are elevated simultaneously:
-
-1. Pause before the next phase.
-2. Prune: drop references no longer relevant; release skills not in active use.
-3. Re-summarize the active goal (3-5 lines) so the next phase anchors on a clean restatement, not on accumulated noise.
-4. If pruning isn't enough, escalate to `handoff` — capture state, end the session, resume in a fresh context.
-
-**Honest reporting.** These are heuristics, not measurements. When you report fatigue, name which signals are elevated and why — don't hide behind a composite score.
-
-## Context Budget Tracking
-
-Track what is loaded, but against the real cost model, not a line count. Instruction text
-(CLAUDE.md, rules, skills, references) is prompt-cached and cheap on repeat turns; tool output
-(build/test logs, file dumps, grep floods) is not cached and is re-billed on every turn that
-follows it. So bound tool output first — pipe large output through `mtk-compress.sh`, read files
-by section, cap log tails — and prune instructions second. The implement loop legitimately
-loads ~15 skills on the 1M default window; skill count alone is not a warning signal.
-
-**When to check the budget:**
-- At each phase boundary, check the harness's `/context` figure — MTK runs no budget hook of its own. Past roughly 60% of the window, reset or hand off deliberately rather than riding to auto-compaction
-- If output quality drops or instructions are being ignored, context may be over-budget regardless of the number
-- Before loading a new reference, check if an earlier one can be released
-
-**Warning signals:**
-- A single tool result larger than the instruction set it sits beside (an uncompressed test log, a whole-file dump when a section would do)
-- Full reference files loaded when only a section is needed
-- Same context loaded multiple times (after compaction recovery)
-
-## Proactive Reset (`/context` boundary + rot-symptom override)
-
-Quality degrades long before the context window fills, and auto-compaction tends to fire at the worst possible moment (mid-phase, mid-edit). Do not ride the budget up to the limit. Reset **deliberately, at a clean boundary** — a phase exit, a finished batch, a green verification — once the harness `/context` figure passes roughly 60% of the window. A clean reset-and-reseed (re-anchor on the goal + the files now in scope) keeps later work sharp.
-
-Read a real number, never a guess: use the harness's `/context` figure. If it is not available, fall back to the fatigue signals above. When auto-compaction does fire, `session-start` re-injects the on-disk task state on the `compact` event — re-anchor on it rather than on the summary.
-
-**Rot-symptom override.** Behavioral degradation beats the percentage. If **2 or more** of these appear, reset now regardless of how low the number looks:
-
-- Re-reading files you already read this session (context evicted).
-- Re-asking the engineer something already answered.
-- Contradicting a decision made earlier in the session.
-- Reintroducing code or an approach that was already rejected.
-
-A low token count with active rot symptoms is still a degraded context — the symptoms are the ground truth, the percentage is the proxy. When the reset would lose in-progress state, escalate to `handoff` instead of clearing blind.
-
-## Context Footprint
-
-After completing reference loading at the end of Phase 0 (and after any subsequent phase that loads new references), emit a one-block footprint report so the engineer can see the cost of what was loaded:
-
-```bash
-# Run wc -l on each loaded reference file, then format the output:
-# Example output:
-#
-# Context footprint (Phase 0):
-#   security-checklist.md                         78 lines  (~2k tokens)
-#   testing-patterns.md                          112 lines  (~2k tokens)
-#   dotnet/coding-guidelines.md                  195 lines  (~3k tokens)
-#   ─────────────────────────────────────────────────────────────────
-#   Total: 3 files, 385 lines (~5k tokens)
-#   (actual load depends on path-scoped matching — unmatched refs not counted)
-```
-
-**Token estimate:** 1 line ≈ 13 tokens (median for reference docs at ~65 chars/line ÷ 5 chars/token). This is a proxy, not an exact count.
-
-**Omit the block** if no references were loaded in that phase (e.g., a Bash-only phase that touched no reference files). Keep it skimmable — one line per file, one totals line. Engineers can skip past it if they already know their setup.
-
-## Rules
-
-- Read before writing.
-- Prefer targeted context over broad dumping.
-- Re-anchor on the local codebase pattern before introducing new structures.
-- If confidence drops, gather better context before guessing.
-- Track context budget: fewer, more relevant instructions beat more, diluted ones.
-- Respect `applyTo` globs: if a reference's globs don't match any touched
-  file, do not load it as a "just in case" measure. That defeats the budget.
-- When in doubt about which globs match, use `git diff --name-only HEAD` as
-  the authoritative list of touched files.
-- Reset proactively at a clean boundary once `/context` passes roughly 60%;
-  do not ride to auto-compaction.
-  2+ rot symptoms (re-reading, re-asking, contradicting a prior decision)
-  override the number — reset now even if usage is low.
-- Bound tool output before pruning instructions: instructions are prompt-cached,
-  tool output is not.
-
-## Model Routing
-
-Route work by complexity: reserve `opus` for code that writes real logic and the adversarial reviews that protect serious software; run discovery, planning, and structured comparison on `sonnet`/`haiku`. The full per-phase tier policy (every phase and agent, with rationale per row) is the **single source of truth** in `.claude/references/model-routing.md` — read it there rather than duplicating a table here that would drift.
-
-Agent frontmatter `model:` sets the model for subagents. Entry-point skills run on the user's selected model. When a skill spawns a reviewer agent, the agent's frontmatter controls its model. In `model-routing.md` the skill rows are advisory defaults only (skills run on the session model); the agent rows are the enforced ones.
+Bound tool output before pruning instructions: instructions are prompt-cached, tool output is
+re-billed every turn. Model tiers per phase live in `.claude/references/model-routing.md`.
 
 ## Verification
 
-- [ ] Governing standards were loaded first
-- [ ] Local pattern files were read before editing or reviewing
-- [ ] Context matches the current phase and task scope
-- [ ] Large tool output was bounded (compressed, tailed, or read by section) before more instructions were loaded
-- [ ] Reference files loaded by section, not in full, when possible
-- [ ] Path-scoped references were matched against actual touched files, not loaded speculatively
-- [ ] When scope changed mid-session, path-scoped matches were re-run
+- [ ] Stack resolved for the files in scope (not just the repo root)
+- [ ] References loaded for the current phase only; `applyTo` matched against real touched files
+- [ ] Local pattern files read before editing or reviewing

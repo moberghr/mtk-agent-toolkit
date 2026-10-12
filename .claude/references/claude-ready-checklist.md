@@ -1,29 +1,18 @@
 ---
-description: INVEST+C 16-item Claude-Ready spec checklist — gate run by spec-driven-development before approval
+description: INVEST+C 16-item Claude-Ready spec checklist — extended spec mode gate in spec-driven-development, run before approval
 globs: ["docs/specs/**/*.md"]
 alwaysApply: false
 ---
 
 # Claude-Ready Spec Checklist (INVEST+C)
 
-> Extends Bill Wake's INVEST acronym with a Claude-Ready ("+C") dimension: a spec must be self-sufficient enough that an LLM can execute it without asking clarifying questions.
+Extended spec mode only (`spec-driven-development` → Extended Spec Mode: the engineer asked, or
+rigor MAX). A spec must let an implementer proceed without clarifying questions.
 
-Apply this checklist during Phase 1 of `spec-driven-development` once the draft sections (summary, success criteria, change manifest, etc.) exist. A spec that fails 4+ items should be revised before approval — it will produce drift, rework, or fabricated assumptions during implementation.
-
-## INVEST (classic — story-level)
-
-| Letter | Question | Pass criteria |
-|---|---|---|
-| **I**ndependent | Can this be implemented without first finishing another open spec? | No blocking dependency on un-merged work. |
-| **N**egotiable | Are the requirements firm or still open for redesign? | Open questions are listed explicitly under `open_questions`, not buried in prose. |
-| **V**aluable | Does this deliver observable value to a user, system, or operator? | The `summary` names the user/operator and the value, not just the mechanism. |
-| **E**stimable | Can the implementer estimate effort within ~50%? | Change manifest enumerates files and actions; risks are listed. |
-| **S**mall | Does it fit in one focused session (or 2-3 named batches)? | If >3 batches, split into multiple specs. |
-| **T**estable | Is the spec falsifiable — can a reviewer say "this is wrong"? | Every `success_criterion` has a `verification` field naming a test, command, or observable signal. |
+The classic INVEST half (Independent, Negotiable, Valuable, Estimable, Small — split past 3
+batches, Testable) is a soft check: surface failures, do not block.
 
 ## +C — Claude-Ready (LLM-execution dimension)
-
-A passing spec must let an implementer agent proceed **without asking clarifying questions**. Each item below is required, not optional.
 
 1. **Concrete file paths.** Every entry in `change_manifest` uses real, repo-relative paths — not "the user service" or "the auth layer".
 2. **Named pattern references.** When the spec says "follow the existing pattern", it names 1-3 specific files to mirror (e.g., `src/handlers/CreateOrderHandler.cs`).
@@ -36,7 +25,7 @@ A passing spec must let an implementer agent proceed **without asking clarifying
 9. **Boundary preserved.** The spec stays inside one architectural slice (one bounded context / one feature module) unless it explicitly justifies crossing.
 10. **Local pattern verified.** The spec author has read 2-3 neighboring files and the spec respects local idioms (naming, error handling, DI registration).
 11. **No "obvious" steps.** Steps that feel obvious to a human are written down — silent assumptions cause the most expensive drift.
-12. **Lessons consulted.** Relevant entries from `tasks/lessons.md` and `.claude/lessons/personal.md` are referenced or the spec confirms none apply.
+12. **Lessons consulted.** Relevant entries from `tasks/lessons.md` (or `learnings.sh query`) are referenced or the spec confirms none apply.
 13. **Prior work checked.** The author confirms via `prior-work-check` that no existing skill, helper, or handler already does this (see `.claude/skills/prior-work-check/SKILL.md`).
 14. **Risks named.** At least one `risk` entry with mitigation, or an explicit "no significant risks because …".
 15. **Rollback plan present.** For migrations, breaking changes, or production-facing work, a one-line rollback note exists.

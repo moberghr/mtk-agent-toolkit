@@ -15,16 +15,7 @@ Resolve MTK skill/reference/script paths per `.claude/references/mtk-file-resolu
 
 ## Overview
 
-A lightweight, bounded fix loop for 1-3 file changes. Composes context-engineering, debugging-and-error-recovery, targeted TDD, and scope-guarded verification without the full feature planning overhead. Invoked by the `/mtk` router when the user says "fix", "bug", "broken", or similar.
-
-Source of truth for the composed workflow:
-
-- `.claude/skills/context-engineering/SKILL.md`
-- `.claude/skills/debugging-and-error-recovery/SKILL.md`
-- `.claude/skills/test-driven-development/SKILL.md` when behavior changes
-- `.claude/skills/source-driven-development/SKILL.md` when framework behavior is uncertain
-- `.claude/skills/security-and-hardening/SKILL.md` when the fix touches auth, audited state, secrets, or infra
-- `.claude/skills/tech-stack-{stack}/SKILL.md` — loaded based on `.claude/tech-stack`
+A lightweight, bounded fix loop for 1-3 file changes: load context, reproduce, write the failing test, fix the root cause, verify. Invoked by the `/mtk` router when the user says "fix", "bug", "broken", or similar. Composes `context-engineering`, `security-and-hardening` (when the fix touches auth, audited state, secrets, or infra), and the active `tech-stack-{stack}` skill.
 
 ## When To Use
 
@@ -42,39 +33,34 @@ Follow the phases below in order. Each phase loads what it needs and no more.
 
 ### Load Context (Progressive Disclosure)
 
-1. Follow `.claude/skills/context-engineering/SKILL.md`.
-2. Read the constitution: `AGENTS.md` (canonical) or `CLAUDE.md` (often only a shim that imports `@AGENTS.md`; follow the import). Accept either. If neither exists, stop and tell the engineer to run `/mtk-setup`.
-3. Load the active tech stack: resolve it with `bash scripts/resolve-tech-stack.sh "$PWD"` — **polyglot-monorepo aware** (subproject `.claude/tech-stack` → root `.claude/tech-stack.map` glob → root file), so a differently-stacked subtree gets its own commands instead of the root's. When the fix targets a subtree, pass a representative file path instead of `$PWD`. Then read `.claude/skills/tech-stack-{stack}/SKILL.md` for build/test commands and stack-specific reference paths.
-4. Read only what the fix needs:
+1. Follow `.claude/skills/context-engineering/SKILL.md` — it resolves the stack for the target paths (pass a target file, not `$PWD`, when the fix sits in a subtree) and loads the stack skill. If neither `AGENTS.md` nor `CLAUDE.md` exists, stop and tell the engineer to run `/mtk-setup`.
+2. Read only what the fix needs:
    - **Always:** the coding guidelines from the tech stack's `## Reference Files`
    - **If fix touches data layer/ORM:** the ORM checklist from the tech stack's `## Reference Files`
-   - **If fix touches auth/secrets/financial:** `.claude/references/security-checklist.md`
-   - **If adding tests:** `.claude/references/testing-patterns.md` plus the testing supplement from the tech stack
+   - **If fix touches auth/secrets/financial:** `.claude/references/domain-finance.md` (finance and security supplement)
+   - **If adding tests:** the testing supplement from the tech stack's `## Reference Files`
    - **Before commit:** `.claude/references/pre-commit-review-list.md` if present
-5. Resolve and scan relevant lessons. When `scripts/learnings.sh` is present, prefer the structured query (5-layer filter — proximity / recurrence / severity / validity / phase) over the flat markdown file:
+3. Resolve and scan relevant lessons. When `scripts/learnings.sh` is present, prefer the structured query (5-layer filter — proximity / recurrence / severity / validity / phase) over the flat markdown file:
    ```bash
    # Resolve the script: project copy first, else the plugin's copy.
    LS="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/learnings.sh" || ([ -f scripts/learnings.sh ] && echo scripts/learnings.sh || echo "${CLAUDE_PLUGIN_ROOT}/scripts/learnings.sh"))"
    bash "$LS" query --phase implement --files "<target file paths>" --max 8
    ```
    Falls back to scanning `tasks/lessons.md` directly when the script is absent from both the project and the plugin (older repos).
-6. Read the target file and its closest neighbors before editing.
-
-**Progressive disclosure principle:** Small fixes do not need all references loaded. Load what's relevant to the specific fix, then load additional references if the scope shifts.
-
-**Parallel loading:** Independent reference reads go out in one message, not sequentially. See `docs/parallelism-patterns.md`.
+4. Read the target file and its closest neighbors before editing.
 
 ### Execute The Fix Workflow
 
-Follow `.claude/skills/debugging-and-error-recovery/SKILL.md`.
-Use `.claude/skills/test-driven-development/SKILL.md` for regression coverage when behavior changed.
+1. **Reproduce** — capture the failing test, error output, or behavioral evidence before editing, and state the suspected root cause.
+2. **Failing test first** — for a bug fix, write the smallest test that fails for the reported reason, then make it pass. Mechanical edits (rename, format) skip this.
+3. **Fix the root cause**, not the symptom, with the smallest change that matches the local pattern.
+4. **Verify** with the active tech stack's commands: the build, then the tests for the changed area.
 
-Minimum verification (using build/test commands from the active tech stack skill):
-
-- run the build command
-- run the relevant tests for the changed area
-
-If behavior changed, add or update tests. If a test fails, debug the implementation; do not weaken the test or relax its assertion.
+**Test policy.**
+- Pick the test level from the stack skill's `## Test Level Guidance`; unit for pure logic, integration where behavior depends on framework infrastructure.
+- Never use an in-memory provider to prove database semantics (constraints, transactions, query translation); use the stack's real-provider pattern from `## ORM & Data Layer Guidance`.
+- When a library's behavior is uncertain, read its real exception/return surface from local source (decompiled package, SDK, in-repo docs) before trusting the call; say what stayed unverified.
+- If a test fails, debug the implementation; do not weaken the test or relax its assertion. After repeated failed attempts, stop and explain what is blocking.
 
 ### Scope Guard
 
@@ -113,7 +99,7 @@ Report briefly:
 
 ## Verification
 
-- [ ] Root cause was reproduced before fixing (per `debugging-and-error-recovery`)
+- [ ] Root cause was reproduced before fixing, and a bug fix has a test that failed first
 - [ ] Change stayed within 1-3 files; escalated to batch-fix (several independent fixes) or implement (new slice/contract/re-planning) if scope grew
 - [ ] Tests added or updated for the regression
 - [ ] Build is clean and relevant tests pass
