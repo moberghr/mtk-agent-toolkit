@@ -1632,6 +1632,12 @@
       "action": "sync",
       "description": "Square Moberg icon shown on the Claude plugin directory listing"
     },
+    ".claude-plugin/icon.png": {
+      "source": ".claude-plugin/icon.png",
+      "target": ".claude-plugin/icon.png",
+      "action": "sync",
+      "description": "1024px PNG of the Moberg icon, the format the Claude plugin directory listing accepts"
+    },
     "docs/assets/pipeline-diagram.png": {
       "source": "docs/assets/pipeline-diagram.png",
       "target": "docs/assets/pipeline-diagram.png",

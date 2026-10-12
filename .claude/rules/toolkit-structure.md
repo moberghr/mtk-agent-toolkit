@@ -8,7 +8,7 @@ axes:
   scope: global
 trigger:
   tool: "Edit|Write"
-  path: "^\.claude/manifest\.json$|^\.claude-plugin/"
+  path: ^\.claude/manifest\.json$|^\.claude-plugin/
 strength: inject
 ---
 
