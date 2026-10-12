@@ -72,8 +72,8 @@ Same as 5, against `docs/plans/`.
 
 ### 7. Manifest versions in sync
 
-- **pass** — `manifest.json.version == plugin.json.version`.
-- **fail** — versions differ.
+- **pass** — `manifest.json.version == plugin.json.version`, and, when `.claude-plugin/marketplace.json` exists, its MTK plugin entry's `version` matches too (C0.1 — all three move together).
+- **fail** — any of the versions differ.
 - **na** — neither file exists (non-MTK repo).
 
 ### 8. Toolkit validator passes

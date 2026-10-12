@@ -34,16 +34,20 @@ Before regenerating anything, resolve whether this is a re-run and whether a pre
 
 1. **Read current manifest version.** The full manifest lives at the plugin root (marketplace installs have no project-local `.claude/manifest.json`); target repos carry the slim `.claude/mtk-version.json` written by `setup-bootstrap`:
    ```bash
-   PM="${CLAUDE_PLUGIN_ROOT:-.}/.claude/manifest.json"
+   PM="${CLAUDE_PLUGIN_ROOT}/.claude/manifest.json"
    [ -f "$PM" ] || PM=".claude/mtk-version.json"
    CURRENT_VERSION=$(python3 -c "import json; print(json.load(open('$PM'))['version'])")
    ```
 
-2. **Read previous version from existing CLAUDE.md footer:**
+2. **Read previous version from the existing constitution footer.** Bootstrap stamps the footer on `AGENTS.md`; `CLAUDE.md` is only the import shim, so read `AGENTS.md` first and fall back to `CLAUDE.md` for legacy (pre-inversion) repos:
    ```bash
-   PREVIOUS_VERSION=$(grep -oE 'mtk-setup: v[0-9.]+' CLAUDE.md 2>/dev/null | head -1 | awk '{print $2}' | sed 's/^v//')
+   PREVIOUS_VERSION=""
+   for CONST_DOC in AGENTS.md CLAUDE.md; do
+     PREVIOUS_VERSION=$(grep -oE 'mtk-setup: v[0-9.]+' "$CONST_DOC" 2>/dev/null | head -1 | awk '{print $2}' | sed 's/^v//')
+     [ -n "$PREVIOUS_VERSION" ] && break
+   done
    ```
-   If CLAUDE.md is absent or has no footer, `PREVIOUS_VERSION` is empty.
+   If neither file exists or neither has a footer, `PREVIOUS_VERSION` is empty.
 
 3. **Locate previous template cache:**
    ```bash
@@ -54,11 +58,11 @@ Before regenerating anything, resolve whether this is a re-run and whether a pre
 
    | Case | Condition | Action |
    |---|---|---|
-   | **First v7+ run on an existing repo** | CLAUDE.md exists but no footer OR cache missing | Go to **Migration Path** below |
+   | **First v7+ run on an existing repo** | `AGENTS.md` or `CLAUDE.md` exists but neither has a footer, OR cache missing | Go to **Migration Path** below |
    | **Clean re-run** | Footer present and `$PREV_CACHE` exists | Go to **Re-Run Merge Logic** below |
-   | **Fresh bootstrap** | CLAUDE.md absent | Proceed directly to STEP 0 — no merge needed |
+   | **Fresh bootstrap** | `AGENTS.md` and `CLAUDE.md` both absent | Proceed directly to STEP 0 — no merge needed |
 
-The **Migration Path** and **Re-Run Merge Logic** procedures (including the re-run summary table) live in `.claude/references/audit-rerun-migration.md`. When the classification above is a migration or a clean re-run, read that file now (path per `## MTK File Resolution`) and follow it; do not paraphrase it from memory. On a fresh bootstrap (CLAUDE.md absent), skip it and proceed to STEP 0.
+The **Migration Path** and **Re-Run Merge Logic** procedures (including the re-run summary table) live in `.claude/references/audit-rerun-migration.md`. When the classification above is a migration or a clean re-run, read that file now (path per `## MTK File Resolution`) and follow it; do not paraphrase it from memory. On a fresh bootstrap (`AGENTS.md` and `CLAUDE.md` both absent), skip it and proceed to STEP 0.
 
 ## STEP 0: Determine The Tech Stack
 
@@ -253,7 +257,7 @@ Before reporting completion, every generated doc (`architecture-principles.md`, 
 
 ### Stamp
 
-The stamp-block format — including the re-run-only `previous-stamp` / `sections-changed` / `claims-delta` delta fields and the `CLAUDE.md` footer variant — lives in `.claude/references/audit-rerun-migration.md`. Read it now (path per `## MTK File Resolution`) and copy the block verbatim; do not paraphrase it from memory.
+The stamp-block format — including the re-run-only `previous-stamp` / `sections-changed` / `claims-delta` delta fields and the constitution (`AGENTS.md`) footer variant — lives in `.claude/references/audit-rerun-migration.md`. Read it now (path per `## MTK File Resolution`) and copy the block verbatim; do not paraphrase it from memory.
 
 **Rule tags:** every prescriptive rule line in `architecture-principles.md` carries `[ENFORCED]` / `[CONVENTION]` / `[ASPIRATIONAL]` with an evidence anchor; untagged rules are quarantined into a `## Untagged (review)` section — full ruleset in `.claude/references/audit-grounding.md` §1.
 

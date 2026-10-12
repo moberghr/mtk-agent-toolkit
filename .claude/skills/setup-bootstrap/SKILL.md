@@ -132,7 +132,7 @@ Read the pinned revision and expected sha256 from the **plugin's** manifest at `
 
 For `dotnet`:
 ```bash
-PLUGIN_MANIFEST="${CLAUDE_PLUGIN_ROOT:-.}/.claude/manifest.json"
+PLUGIN_MANIFEST="${CLAUDE_PLUGIN_ROOT}/.claude/manifest.json"
 SHA=$(python3 -c "import json; print(json.load(open('$PLUGIN_MANIFEST'))['coding-guidelines']['sha'])")
 EXPECTED=$(python3 -c "import json; print(json.load(open('$PLUGIN_MANIFEST'))['coding-guidelines']['files']['CodingStyle.md'].split(':',1)[1])")
 OUT=.claude/references/dotnet/coding-guidelines.md
@@ -296,7 +296,7 @@ Generate each file below. **Only generate files for sections relevant to this pr
 
 Each rules file target: **30–80 lines**. Be concise.
 
-#### Every rule file MUST open with auto-attach frontmatter (S1.15)
+#### Every rule file MUST open with auto-attach frontmatter
 
 Without it, **every** rule file loads into **every** request, forever. That is the
 single largest always-on cost bootstrap can inflict on a repo: measured at 30KB
@@ -434,7 +434,7 @@ demand; without it the frontmatter has nothing pointing at it and readers fall
 back to loading everything.
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT:-.}/scripts/build-rule-index.sh"
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/build-rule-index.sh"
 ```
 
 Verify before moving on — a silent skip here is exactly how a repo ends up with
@@ -450,11 +450,11 @@ done
 
 ### Settings Merge
 
-Read the active tech stack skill's `## Settings Additions` section.
+Read the all-stacks baseline `.claude/references/settings-baseline.md` (sections `### allow`, `### deny`, `### ask`; path per `## MTK File Resolution`), then the active tech stack skill's `## Settings Additions` section (`### allow`, `### deny`). Merge the baseline first and the stack additions second. Every list lands under the Claude Code `permissions` object: `### allow` → `permissions.allow`, `### deny` → `permissions.deny`, `### ask` → `permissions.ask`. There is no top-level `allowedTools` key in Claude Code settings; never write one.
 
-- **`.claude/settings.json` does not exist (fresh bootstrap):** create it from the tech-stack skill's Settings Additions layered over a minimal `{}` base. Never copy the toolkit's own `settings.json` — that's MTK's dev config, not a template.
+- **`.claude/settings.json` does not exist (fresh bootstrap):** create it from the baseline plus the tech-stack skill's Settings Additions layered over a minimal `{}` base. Never copy the toolkit's own `settings.json` — that's MTK's dev config, not a template.
 - **Never write an MTK hook command into the target's `.claude/settings.json` at all.** `$CLAUDE_PLUGIN_ROOT` is defined **only** for hooks a plugin declares in its own `hooks/hooks.json`; inside a project settings file it expands to the empty string and the hook runs as `bash /hooks/<name>` — failing on every single invocation, silently, forever. (Measured: 4,552 `bash: /hooks/format-on-edit.sh: No such file or directory` failures across 7 bootstrapped repos, with formatting never once running.) The alternatives are no better: bare `hooks/...` and `$CLAUDE_PROJECT_DIR/hooks/...` dangle in plugin-cache installs. MTK's hooks — `format-on-edit.sh` included — are wired by the plugin itself, so bootstrap's job is to write the **opt-in marker** (`.claude/tech-stack`), not a hook entry. A Settings Additions block that still lists `hooks.*` entries for an MTK hook is a bug in that tech-stack skill; `scripts/validate-toolkit.sh` fails on it.
-- **`.claude/settings.json` exists:** merge — `allowedTools`/`deny` union with existing. Any `### hooks.<Event>` block still present in a stack's Settings Additions appends to that event, but no stack should carry one for an MTK hook (see above). **Strip** any pre-existing `hooks.*` entry in the target whose command matches `[$]CLAUDE_PLUGIN_ROOT.*hooks/` — those are the broken entries written by earlier bootstraps, and leaving them costs a failed process spawn plus a failure attachment in context on every matching tool call. Removing them is safe: the plugin now wires the same hooks itself, and `mtk_is_redundant_plugin_invocation` already prevents a double-fire during the overlap.
+- **`.claude/settings.json` exists:** if it still carries the legacy `permissions.allowedTools` list, first run `bash "${CLAUDE_PLUGIN_ROOT}/scripts/migrate-settings-permissions.sh" .claude/settings.json` (and the same on `.claude/settings.local.json` when it carries the key). It activates only narrow build/test/format/lint rules into `permissions.allow`, and leaves every broad entry (interpreters, package managers, `curl`, bare `Write`/`Edit`) inert in `allowedTools`. List those leftovers under **Needs review** in the STEP 5 report so the engineer decides each one, because they were never in effect. Then merge — `permissions.allow`, `permissions.deny` and `permissions.ask` each union with the existing list (baseline first, then stack additions; existing entries kept, no duplicates). Any `### hooks.<Event>` block still present in a stack's Settings Additions appends to that event, but no stack should carry one for an MTK hook (see above). **Strip** any pre-existing `hooks.*` entry in the target that points at an MTK hook, whether the command uses `$CLAUDE_PLUGIN_ROOT/hooks/`, `$CLAUDE_PROJECT_DIR/hooks/` or a bare `hooks/` path with an MTK hook basename. Earlier bootstraps wrote these. The `$CLAUDE_PLUGIN_ROOT` form fails on every call; the vendored forms run alongside the plugin's own copy, so every hook fires twice (there is no double-run guard). Removing them is safe because the plugin wires the same hooks itself. Leave non-MTK hooks untouched.
 - **Write refused by the permission/session layer:** write the fully-merged content to `.claude/settings.json.mtk-proposed` instead and list it under **Needs review** in the STEP 5 report — one line: "review the diff, then `mv .claude/settings.json.mtk-proposed .claude/settings.json`". Never silently skip the merge; never retry the refused write verbatim.
 
 ### Reference File Customization
@@ -471,7 +471,7 @@ The per-stack substitution tables (which generic placeholder maps to which concr
 The once-consulted setup procedures — the git pre-commit hook, CI staleness gate, skills/agents checklist, `pre-commit-review-list.md` selection, `tasks/` directory, the learnings store seed, `.mtkignore`, `.claudeignore`, analyzer configuration, the .NET companion plugin, recommended tooling, the `.claude/mtk-version.json` version stamp, and cross-agent compatibility mirrors — live in **`.claude/references/bootstrap-supporting-files.md`**. Read it now and follow it.
 
 **Decisions that stay in force (surfaced here so they bind without the Read):**
-- Never overwrite an already-present git pre-commit hook, `.mtkignore`, `.claudeignore`, or `pre-commit-review-list.md` — skip it and report it.
+- Never overwrite an already-present git pre-commit hook (other than MTK's own shim or a legacy MTK symlink, which is refreshed), `.mtkignore`, `.claudeignore`, or `pre-commit-review-list.md` — skip it and report it.
 - Keep `tasks/lessons.md` tracked (never gitignore it); `.mtkignore` and `.claudeignore` are committed too.
 - Recommended tooling and the .NET companion plugin are surfaced for the engineer but never installed automatically.
 - Cross-agent config mirrors require an explicit ask — never orphan a tool a team already adopted.
@@ -493,7 +493,7 @@ question: "Is this a monorepo? (Multiple packages/services sharing a repo)"
 header: "Repo layout"
 options:
   - label: "Yes — generate per-package CLAUDE.md files"
-    description: "Short per-directory files pointing to root CLAUDE.md"
+    description: "Short per-directory files pointing to root AGENTS.md"
   - label: "No — single project"
     description: "Skip per-package generation"
 ```
@@ -504,7 +504,7 @@ Use `monorepo.packages` as the package list — already resolved from workspaces
 
 ### Generate per-package CLAUDE.md + update root
 
-The per-package file template, the generation rules (15–30 line local delta, 5-line stub for trivial packages, never overwrite, never duplicate root rules), and the root **Monorepo Layout** block live in **`.claude/references/monorepo-bootstrap.md`**. Read it now and follow it for each enumerated package, then add the Monorepo Layout block to the root CLAUDE.md (inside the 120-line cap).
+The per-package file template, the generation rules (15–30 line local delta, 5-line stub for trivial packages, never overwrite, never duplicate root rules), and the root **Monorepo Layout** block live in **`.claude/references/monorepo-bootstrap.md`**. Read it now and follow it for each enumerated package, then add the Monorepo Layout block to the root AGENTS.md, not the `CLAUDE.md` shim (inside the 120-line cap).
 
 ## STEP 4.8: Seed Template Cache (for future re-runs)
 
@@ -522,7 +522,7 @@ This produces `.claude/references.index` — a tab-separated file used by routin
 
 ## STEP 4.95: Seed CODE_INDEX.md
 
-Seed a repo-root `CODE_INDEX.md` from `.claude/references/code-index-template.md` (handlers/controllers/services by domain); skip if it exists; consumed by `code-simplification --audit-duplicates`. **Never ship the template's placeholder rows as real entries** (a prior-work scan would chase ghosts). Populate from the audit's actual capabilities — each row's `path:Symbol` MUST resolve (`test -f`/`git ls-files`) — or, if you can't, write an explicitly-empty index ("No capabilities indexed yet — run `/mtk audit duplicates`") with no rows that look like real entries.
+Seed a repo-root `CODE_INDEX.md` from `.claude/references/code-index-template.md` (handlers/controllers/services by domain); skip if it exists; consumed by `code-simplification --audit-duplicates`. **Never ship the template's placeholder rows as real entries** (a prior-work scan would chase ghosts). Populate from the audit's actual capabilities — each row's `path:Symbol` MUST resolve (`test -f`/`git ls-files`) — or, if you can't, write an explicitly-empty index ("No capabilities indexed yet — ask Claude to run the `code-simplification` skill in `--audit-duplicates` mode") with no rows that look like real entries.
 
 ## STEP 5: Verify & Report
 

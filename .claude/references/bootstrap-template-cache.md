@@ -37,7 +37,8 @@ Layout:
 
 Implementation:
 ```bash
-PM="${CLAUDE_PLUGIN_ROOT:-.}/.claude/manifest.json"
+PM="${MTK_ROOT:-.}/.claude/manifest.json"
+[ -f "$PM" ] || PM=".claude/mtk-version.json"   # marketplace installs: slim stamp written by setup-bootstrap
 VERSION=$(python3 -c "import json; print(json.load(open('$PM'))['version'])")
 CACHE_DIR=".claude/.mtk-cache/v${VERSION}"
 mkdir -p "$CACHE_DIR/rules" "$CACHE_DIR/references"

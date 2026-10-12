@@ -17,14 +17,14 @@ You have audited multiple repositories and now want a single, unified architectu
 ls -la .claude/references/audits/
 ```
 
-Each file is an architecture audit from a different project (e.g., `payfac.md`, `collection-system.md`, `bnpl.md`).
+Each file is an architecture audit from a different project (e.g., `service-a.md`, `service-b.md`, `service-c.md`).
 
 If the directory is empty or doesn't exist, tell the engineer:
 > "No audit files found. To use --merge:
-> 1. Run `/mtk-setup --audit` (without --merge) in each repo (payfac, collection-system, etc.)
+> 1. Run `/mtk-setup --audit` (without --merge) in each repo (service-a, service-b, etc.)
 > 2. Copy each generated `.claude/references/architecture-principles.md` into THIS repo at:
->    `.claude/references/audits/payfac.md`
->    `.claude/references/audits/collection-system.md`
+>    `.claude/references/audits/service-a.md`
+>    `.claude/references/audits/service-b.md`
 >    etc.
 > 3. Run `/mtk-setup --merge` again."
 
@@ -74,9 +74,9 @@ Generate `.claude/references/architecture-principles.md` (overwriting if it alre
 ⚠️ [Patterns that differ between projects — with recommendation on which to standardize]
 
 ## Project-Specific Patterns
-### PayFac
+### service-a
 [Unique patterns]
-### Collection System
+### service-b
 [Unique patterns]
 [etc.]
 ```

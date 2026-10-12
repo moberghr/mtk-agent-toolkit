@@ -21,7 +21,7 @@ Every prescriptive rule line in generated CLAUDE.md and architecture-principles.
 - `[CONVENTION]` — the rule is observed in the **majority** of sampled files (≥80%) but has exceptions. Reviewers match the rule when writing new code; existing exceptions are not bugs.
 - `[ASPIRATIONAL]` — the rule represents the team's stated intent but is **not** consistently reflected in code. Reviewers do not block on this; they suggest.
 
-**Why three tags:** without them, AI cannot tell whether to refuse a `../../` import or match the existing pattern. The audur run committed "Never write `../../`" as a rule despite the codebase doing it everywhere — the result is an AI that pretends to enforce a rule the team has implicitly abandoned.
+**Why three tags:** without them, AI cannot tell whether to refuse a `../../` import or match the existing pattern. A client run committed "Never write `../../`" as a rule despite the codebase doing it everywhere — the result is an AI that pretends to enforce a rule the team has implicitly abandoned.
 
 **Evidence requirement.** Every tagged line MUST cite at least one evidence anchor — a backticked path, path:line, glob with hit count, or symbol name. Untagged or unevidenced rules are quarantined into a `## Untagged (review)` section rather than left in the main body.
 
@@ -57,7 +57,7 @@ When a rule cites an enumeration, the generator MUST either:
 - **Enumerate fully** — list every item, or
 - **Link the source** — emit `see <path>` with no inline list at all.
 
-Partial lists steer downstream AI to the wrong subset. The audur run listed 6 of 12 localStorage keys; downstream code generation then treated those 6 as the canonical surface and missed the other 6.
+Partial lists steer downstream AI to the wrong subset. A client run listed 6 of 12 localStorage keys; downstream code generation then treated those 6 as the canonical surface and missed the other 6.
 
 Detection pattern (heuristic):
 
@@ -114,7 +114,7 @@ The bootstrap/audit summary prints the report path so the engineer can paste it 
 Every generated doc carries an `audited-against: <sha>` stamp at generation time:
 
 - **`architecture-principles.md`, `conventions.md`** — frontmatter or top-of-file `<!-- mtk-stamp -->` block.
-- **`CLAUDE.md`** — footer comment block (the file is human-edited; footer placement avoids merge conflicts with STEP -1 re-runs).
+- **`AGENTS.md`** (the constitution; legacy pre-inversion repos carry it in `CLAUDE.md`) — footer comment block (the file is human-edited; footer placement avoids merge conflicts with STEP -1 re-runs).
 
 Stamp format:
 

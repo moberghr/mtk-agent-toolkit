@@ -354,7 +354,7 @@ cmd_query() {
 
   # Lazy seed. The bootstrap-time `migrate` only reaches repos bootstrapped after
   # it shipped; every earlier repo answered "no lessons" on every query, forever
-  # (beacon 2026-09: 30 lessons in tasks/lessons.md, 0 reachable). Seed here,
+  # (a 2026-09 field run: 30 lessons in tasks/lessons.md, 0 reachable). Seed here,
   # STORE-ONLY: a read path must never rewrite the engineer's markdown, so the
   # regen half of `migrate` is deliberately not run. Title-hash dedup makes a
   # repeat harmless; `.mtk/` is gitignored state. MTK_LEARNINGS_AUTOSEED=0 opts out.

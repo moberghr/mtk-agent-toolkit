@@ -100,7 +100,7 @@ hit_count() {
           count=$(git grep -lI --fixed-strings -- "$anchor" 2>/dev/null | wc -l | tr -d ' ')
         fi
       elif [[ "$anchor" == *.* && "$anchor" != *" "* ]]; then
-        # bare filename (e.g. InventhorContext.cs) — resolve by name, else content grep
+        # bare filename (e.g. AcmeContext.cs) — resolve by name, else content grep
         if [[ -n "$(find . -name "$anchor" -not -path '*/.git/*' 2>/dev/null | head -1)" ]]; then
           count=1
         else

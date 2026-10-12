@@ -51,7 +51,8 @@ Writes the combined report to `.claude/repo-health-latest.md` (always) and `.cla
 2b. **Run audit-drift check** on stamped docs. Best-effort, non-blocking.
 
    ```bash
-   for doc in CLAUDE.md .claude/references/architecture-principles.md .claude/references/conventions.md; do
+   CONST_DOC=AGENTS.md; [ -f "$CONST_DOC" ] || CONST_DOC=CLAUDE.md   # the constitution; CLAUDE.md is only the shim, except in legacy pre-inversion repos
+   for doc in "$CONST_DOC" .claude/references/architecture-principles.md .claude/references/conventions.md; do
      [ -f "$doc" ] || continue
      bash scripts/audit-drift-check.sh "$doc" || true   # exit 1 = drift, captured for report
    done

@@ -11,36 +11,32 @@ Read this companion from `setup-bootstrap` STEP 4 (supporting files), STEP 3.6 (
 
 ### Git Pre-Commit Hook
 
-Install the deterministic linter as a git pre-commit hook so critical findings (secrets, raw SQL, etc.) block the commit automatically.
+Install the deterministic linter as a git pre-commit hook so critical findings (secrets, raw SQL, etc.) are reported on every commit.
 
-The hook source lives in the **plugin checkout**, not the target repo. Install it as a **symlink** with an ABSOLUTE source: the hook resolves its own real path to locate the plugin's `pre-commit-linters.sh` (and its pattern packs) while linting the repo being committed to, so the symlink is what lets a copy-free install find the linter. A relative `ln -s ../../hooks/...` dangles once installed into a bootstrapped repo — resolve an absolute source and verify the link is not dangling before relying on it.
+The hook is a small, **stable shim** (`hooks/git-hooks/pre-commit` in the plugin) that bootstrap **copies** into the target repo. It pins no plugin version: on every commit it resolves the current MTK install — `$MTK_PLUGIN_ROOT` if set, otherwise the newest installed version under `~/.claude/plugins/cache/*/mtk/*/` — and runs that version's `pre-commit-linters.sh`. Never install it as a symlink into the plugin cache: a link to `…/mtk/<version>/…` freezes the linter at install time and dangles after a cache cleanup, and git then skips the hook without a word.
 
-1. **If `.git/hooks/pre-commit` does not exist** — install, guarding against a dangling symlink:
+1. **If `.git/hooks/pre-commit` does not exist** — copy the shim:
    ```bash
    HOOK_TARGET=".git/hooks/pre-commit"
-   HOOK_SOURCE="${CLAUDE_PLUGIN_ROOT:-$(pwd)}/hooks/git-hooks/pre-commit"  # absolute
-   if [ ! -e "$HOOK_SOURCE" ]; then
+   HOOK_SOURCE="${MTK_ROOT:-$(pwd)}/hooks/git-hooks/pre-commit"  # absolute
+   if [ ! -f "$HOOK_SOURCE" ]; then
      echo "⚠️ Hook source not found at $HOOK_SOURCE — skipping git hook install."
    else
-     mkdir -p .git/hooks && ln -s "$HOOK_SOURCE" "$HOOK_TARGET"
-     # The hook must stay a symlink: it resolves its real path back to the
-     # plugin to find the linter. A dangling link means the source path was
-     # wrong — remove it and warn rather than copying (a copied hook can't
-     # locate the plugin's linter and would warn on every commit).
-     [ -e "$HOOK_TARGET" ] || { rm -f "$HOOK_TARGET"; echo "⚠️ Symlink to $HOOK_SOURCE dangled — git pre-commit hook NOT installed. Re-run after verifying CLAUDE_PLUGIN_ROOT."; }
+     mkdir -p .git/hooks && cp "$HOOK_SOURCE" "$HOOK_TARGET" && chmod +x "$HOOK_TARGET"
    fi
    ```
-2. **If it exists and is already a symlink to our hook** — skip (idempotent; check `readlink`).
+2. **If it exists and is ours** — a copy of the shim (`grep -q mtk-precommit-shim "$HOOK_TARGET"`), or a legacy symlink whose `readlink` target ends in `/mtk/<version>/hooks/git-hooks/pre-commit` (dangling or not) — replace it with a fresh copy of the shim (`rm -f "$HOOK_TARGET"` first, then step 1's `cp`). Test with `[ -e "$HOOK_TARGET" ] || [ -L "$HOOK_TARGET" ]`: `-e` alone is false for a dangling link.
 3. **If `.git/hooks/pre-commit` exists but is something else** — do NOT overwrite. Print a warning that interpolates the **resolved absolute `$HOOK_SOURCE`** from step 1:
    ```
    ⚠️ Existing git pre-commit hook found at .git/hooks/pre-commit.
    MTK's deterministic linter was NOT installed as a git hook.
-   To chain it manually, add this line to your existing hook:
-     exec "/absolute/path/to/plugin/hooks/git-hooks/pre-commit"
+   To chain it manually, copy the shim next to your hook and call it from there:
+     cp "/absolute/path/to/plugin/hooks/git-hooks/pre-commit" .git/hooks/mtk-pre-commit
+     .git/hooks/mtk-pre-commit || exit 1   # add this line to your existing hook
    ```
-   **Never print that path repo-relatively.** `hooks/git-hooks/pre-commit` and `hooks/pre-commit-linters.sh` exist only in the plugin checkout, never in the bootstrapped repo, so a relative `exec hooks/git-hooks/pre-commit` sends the engineer hunting for a file that isn't there. The same rule binds anything written into the generated `CLAUDE.md`: reference the linter by its resolved absolute path or by the resolver snippet — never as a bare repo-relative `hooks/…` path.
+   **Never print that path repo-relatively.** `hooks/git-hooks/pre-commit` and `hooks/pre-commit-linters.sh` exist only in the plugin checkout, never in the bootstrapped repo, so a relative `hooks/git-hooks/pre-commit` sends the engineer hunting for a file that isn't there. The same rule binds anything written into the generated `AGENTS.md`: reference the linter by its resolved absolute path or by the resolver snippet — never as a bare repo-relative `hooks/…` path.
 
-The hook runs the plugin's `pre-commit-linters.sh --cached` (< 1 second) against **this repo's** staged changes — it loads pattern packs from the plugin checkout but diffs the repo being committed to — and blocks on critical findings. If the linter can't be found it warns to stderr and lets the commit through (never a silent pass, never a hard block for a tooling gap). Engineers bypass with `git commit --no-verify`. The full AI review (`/mtk review before commit`) remains a separate, manual step.
+The hook runs the resolved plugin's `pre-commit-linters.sh --cached` (< 1 second) against **this repo's** staged changes — it loads pattern packs from the plugin but diffs the repo being committed to. It is **non-blocking by default**: findings are printed and the commit proceeds. `MTK_PRECOMMIT_BLOCK=1` makes critical findings (and a linter that fails to run) block the commit. If no linter can be found it prints a one-line notice and exits 0 (never a silent pass, never a hard block for a tooling gap). Engineers bypass with `git commit --no-verify`. The full AI review (`/mtk review before commit`) remains a separate, manual step.
 
 ### CI PR Templates (optional)
 
@@ -89,14 +85,14 @@ mkdir -p tasks
 
 Create `tasks/lessons.md` if it doesn't exist (header only).
 
-Add `tasks/todo.md` and `.claude.local.md` (personal, opt-in constitution companion — `instructions-capture` writes personal learnings here; never auto-created) to `.gitignore` if not already there. Do NOT gitignore `tasks/lessons.md`.
+Add `tasks/todo.md` and `CLAUDE.local.md` (personal, opt-in constitution companion — `instructions-capture` writes personal learnings here; never auto-created) to `.gitignore` if not already there. Do NOT gitignore `tasks/lessons.md`.
 
 ### Learnings Store Seed
 
 Ten skills retrieve lessons through `scripts/learnings.sh query`, which reads the structured store at `.mtk/learnings.jsonl` — **not** `tasks/lessons.md`. A repo whose lessons live only in markdown therefore answers every lesson query with nothing, in every session, forever, and the skill proceeds believing no lesson applied. Seed the store whenever `tasks/lessons.md` has content:
 
 ```bash
-LS="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/learnings.sh" || ([ -f scripts/learnings.sh ] && echo scripts/learnings.sh || echo "${CLAUDE_PLUGIN_ROOT:-.}/scripts/learnings.sh"))"
+LS="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/learnings.sh" || ([ -f scripts/learnings.sh ] && echo scripts/learnings.sh || echo "${MTK_ROOT:-.}/scripts/learnings.sh"))"
 if [ -f "$LS" ] && [ -s tasks/lessons.md ] && [ ! -s .mtk/learnings.jsonl ]; then
   bash "$LS" migrate
 fi
@@ -185,7 +181,7 @@ Close with: `Install manually when you're ready — MTK works without any of the
 Write **one** provenance file: `.claude/mtk-version.json`. It records the installed MTK version (for session-start drift detection) and pins the external coding-guidelines fetch (sha + sha256, for reproducible re-fetch by `--update-guidelines`). Do **NOT** write a slim `.claude/manifest.json` into target repos — the toolkit's full manifest lives only at `$CLAUDE_PLUGIN_ROOT/.claude/manifest.json`. Scripts (`generate-tool-configs.sh`, `mtk-doctor.sh`) resolve it from the plugin root.
 
 ```bash
-PM="${CLAUDE_PLUGIN_ROOT:-.}/.claude/manifest.json"
+PM="${MTK_ROOT:-.}/.claude/manifest.json"
 V=$(python3 -c "import json; print(json.load(open('$PM'))['version'])")
 SHA=$(python3 -c "import json; print(json.load(open('$PM'))['coding-guidelines']['sha'])" 2>/dev/null || echo "")
 S256=$(python3 -c "import json; print(json.load(open('$PM'))['coding-guidelines']['files']['CodingStyle.md'])" 2>/dev/null || echo "")

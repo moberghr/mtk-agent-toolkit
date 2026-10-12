@@ -166,10 +166,16 @@ PLUGIN=.claude-plugin/plugin.json
 if [[ -f "$MANIFEST" ]] && [[ -f "$PLUGIN" ]]; then
   MV=$(python3 -c "import json,sys; sys.stdout.reconfigure(newline='\n'); print(json.load(open('$MANIFEST'))['version'])" 2>/dev/null || echo "?")
   PV=$(python3 -c "import json,sys; sys.stdout.reconfigure(newline='\n'); print(json.load(open('$PLUGIN'))['version'])" 2>/dev/null || echo "?")
-  if [[ "$MV" == "$PV" ]] && [[ "$MV" != "?" ]]; then
+  # C0.1: the marketplace plugin entry must match too, when the file exists.
+  MKT=.claude-plugin/marketplace.json
+  KV="$MV"
+  if [[ -f "$MKT" ]]; then
+    KV=$(python3 -c "import json,sys; sys.stdout.reconfigure(newline='\n'); d=json.load(open('$MKT')); print(next((p.get('version','?') for p in d.get('plugins',[]) if p.get('name')=='mtk'), '?'))" 2>/dev/null || echo "?")
+  fi
+  if [[ "$MV" == "$PV" ]] && [[ "$MV" == "$KV" ]] && [[ "$MV" != "?" ]]; then
     record "7. Manifest versions in sync" "Dev Workflow" "pass" "v$MV"
   else
-    record "7. Manifest versions in sync" "Dev Workflow" "fail" "manifest=$MV plugin=$PV"
+    record "7. Manifest versions in sync" "Dev Workflow" "fail" "manifest=$MV plugin=$PV marketplace=$KV"
   fi
 else
   record "7. Manifest versions in sync" "Dev Workflow" "na" "no manifest/plugin files"

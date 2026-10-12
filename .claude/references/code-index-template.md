@@ -20,7 +20,7 @@ The rows below are **ILLUSTRATIVE ONLY** — they show the format using fictiona
 # Code Index
 
 > Capability index — what the codebase can do, not where files live.
-> Refresh: `bash scripts/build-code-index.sh` (or `/mtk audit duplicates`).
+> Refresh: `bash scripts/build-code-index.sh` (or `/mtk find duplicate capabilities`).
 > Last built: <ISO date>
 
 ## Authentication & Authorization  <!-- EXAMPLE — fictional paths, replace or delete -->

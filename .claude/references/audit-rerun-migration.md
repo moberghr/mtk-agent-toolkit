@@ -76,4 +76,4 @@ claims-delta: +<added> ~<modified> -<removed>
 
 The last three fields (`previous-stamp`, `sections-changed`, `claims-delta`) are **re-run-only** — a fresh first run (no prior stamped doc) omits them entirely. Compute them by diffing the regenerated doc against its previous on-disk version **before writing**: `previous-stamp` is the prior `audited-against` value (or `"none"` if there was no prior stamp); `sections-changed` lists the `##` headings whose content differs (or `"none"`); `claims-delta` counts tagged claim lines added/modified/removed between the two versions. This is the audit trail for what a re-run actually changed.
 
-For `CLAUDE.md` (written by `setup-bootstrap`), the stamp lives in a **footer** comment block — human edits collect above it.
+For the constitution `AGENTS.md` (written by `setup-bootstrap`; `CLAUDE.md` is only the import shim, and carries the footer only in legacy pre-inversion repos), the stamp lives in a **footer** comment block — human edits collect above it.

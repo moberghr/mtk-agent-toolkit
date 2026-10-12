@@ -23,7 +23,7 @@ test -f CLAUDE.md && echo "CLAUDE.md: $(wc -l < CLAUDE.md) lines$(grep -q '^@AGE
 echo "--- Nested per-package constitutions ---"
 find . -maxdepth 6 \( -name AGENTS.md -o -name CLAUDE.md \) -not -path "./AGENTS.md" -not -path "./CLAUDE.md" -not -path "./.git/*" -not -path "*/node_modules/*" 2>/dev/null | sort -u
 echo "--- Personal (gitignored) ---"
-test -f .claude.local.md && echo ".claude.local.md (present)" || echo ".claude.local.md (absent — create for personal-only notes)"
+test -f CLAUDE.local.md && echo "CLAUDE.local.md (present)" || echo "CLAUDE.local.md (absent — create for personal-only notes)"
 ```
 
 ## Overview
@@ -38,7 +38,7 @@ applies only what the engineer approves.
 Write target precedence: `AGENTS.md` first (the canonical, hand/LLM-authored
 constitution), then shims (`CLAUDE.md`, `GEMINI.md`) only for a fact that is
 genuinely harness-specific, then nested per-package files for a fact local to
-one package. `.claude.local.md` stays the personal, gitignored companion for
+one package. `CLAUDE.local.md` stays the personal, gitignored companion for
 first-person preferences — never a shim, never committed.
 
 It is distinct from its two siblings:
@@ -101,7 +101,7 @@ capture: inversion is `/mtk-setup`'s job, proposed through the regen-diff contra
 |---|---|
 | The resolved constitution (`AGENTS.md`, or `CLAUDE.md` in a legacy repo) | Project facts every contributor and agent benefits from, regardless of harness |
 | `CLAUDE.md` / `GEMINI.md` shim | A fact genuinely specific to that one harness (rare — most facts belong in `AGENTS.md`) |
-| `.claude.local.md` (gitignored, personal) | Your own preferences, local-only paths, machine-specific setup |
+| `CLAUDE.local.md` (gitignored, personal) | Your own preferences, local-only paths, machine-specific setup |
 
 Heuristic: first-person preference ("I like to run…") → personal. Project fact
 ("tests must run with `--runInBand` due to shared DB state") → the resolved constitution. A
@@ -120,7 +120,7 @@ If the fact is already documented, do not re-add it — update the existing line
 only if it is now wrong.
 
 ```bash
-grep -in "<keyword>" AGENTS.md CLAUDE.md .claude.local.md tasks/lessons.md 2>/dev/null
+grep -in "<keyword>" AGENTS.md CLAUDE.md CLAUDE.local.md tasks/lessons.md 2>/dev/null
 ```
 
 ### Phase 4 — Draft additions (concise)
@@ -165,7 +165,7 @@ Then ask: **"Apply these? (yes / partial / no)"**
 
 After explicit approval, apply with `Edit` (never `Write`). Append into the
 relevant section; never restructure. If the engineer approved "partial", apply
-only the named subset. If a personal item was chosen and `.claude.local.md` does
+only the named subset. If a personal item was chosen and `CLAUDE.local.md` does
 not exist, create it (it is gitignored by `setup-bootstrap` — verify it is
 listed in `.gitignore` before creating; add it if missing).
 
@@ -208,7 +208,7 @@ Capture-specific traps:
   project-specific
 - `AGENTS.md` pushed over its 120-line hard cap, or a `CLAUDE.md` shim pushed
   over its 20-line budget, by the additions
-- `.claude.local.md` content committed (it must stay gitignored)
+- `CLAUDE.local.md` content committed (it must stay gitignored)
 
 ## Verification
 
@@ -219,4 +219,4 @@ Capture-specific traps:
 - [ ] Edits used `Edit` with explicit old/new strings (never `Write`)
 - [ ] `AGENTS.md` still within its 120-line hard cap (or the `CLAUDE.md` shim
       within its 20-line budget) after additions
-- [ ] Personal items went to `.claude.local.md`, not the committed file
+- [ ] Personal items went to `CLAUDE.local.md`, not the committed file

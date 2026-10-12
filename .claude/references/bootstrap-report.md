@@ -32,7 +32,7 @@ Generated/Updated:
   ✓ .claude/references/product.md — [generated | preserved (existing)]
   ✓ .claude/references/decisions.md — [seeded | preserved (existing)]
   ✓ .claude/settings.json — merged [N] stack-specific entries
-  ✓ Git pre-commit hook: [installed | ⚠️ existing hook found, skipped]
+  ✓ Git pre-commit hook: [installed (non-blocking; MTK_PRECOMMIT_BLOCK=1 blocks) | refreshed | ⚠️ existing hook found, skipped]
   ✓ Tool prerequisites: [all found | ⚠️ N missing — see details above]
   ✓ Command verification: [N verified, N unverified, N skipped | skipped via --no-verify-commands]
   [if any unverified:]
@@ -60,7 +60,7 @@ Skills available:
   /mtk fix <description> — Quick fix (1-3 files)
   /mtk review before commit — Fast security-focused review of staged changes
   /mtk-setup --audit     — Re-run architecture audit
-Keep AGENTS.md fresh: press # mid-session to append a learning instantly; run instructions-capture at session end to propose session learnings as diffs (personal notes → .claude.local.md).
+Keep AGENTS.md fresh: run instructions-capture at session end to propose session learnings as diffs (personal notes → CLAUDE.local.md, gitignored); edit AGENTS.md directly via /memory at any time.
 Next: Try it with:
   /mtk Add [your feature description here]
 ```
