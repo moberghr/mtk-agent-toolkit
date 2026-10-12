@@ -7,7 +7,7 @@ trap _mtk_hook_diag EXIT
 
 # Format the files Claude edited this turn — QUEUE at PostToolUse, FORMAT at Stop.
 #
-# Three modes, selected by argument (same shape as `rule-trigger.sh --rearm`):
+# Three modes, selected by argument:
 #
 #   (no argument)          PostToolUse Edit|Write -> record the edited path in a
 #                                                    per-session queue

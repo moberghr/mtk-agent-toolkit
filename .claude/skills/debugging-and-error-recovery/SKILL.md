@@ -7,9 +7,6 @@ compatibility:
   - claude-code
   - cursor
   - codex
-trigger: test-failure|runtime-error|behavioral-regression|bug-report
-skip_when: new-feature-design|large-scope-planning
-triggers: [stacktrace, traceback, exception, segfault, nullreference, crashes, panicked]
 user-invocable: false
 ---
 

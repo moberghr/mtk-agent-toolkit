@@ -4,14 +4,6 @@ paths:
   - ".claude/skills/batch-fix/**"
   - ".claude/skills/workflow-artifacts/**"
   - ".claude/skills/subagent-implementation/**"
-axes:
-  decision: process
-  topic: verification
-  scope: global
-trigger:
-  tool: "Edit|Write"
-  path: ^\.claude/skills/(verification-before-completion|batch-fix|workflow-artifacts|subagent-implementation)/
-strength: inject
 ---
 
 # Verification & Proof (S5)

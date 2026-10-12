@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# post-compact.sh re-injects at most one workflow: the newest one that is still
+# session-start (compact branch, formerly post-compact.sh) re-injects at most one workflow: the newest one that is still
 # live (status not complete/completed/abandoned) and was updated within the last
 # 7 days. Only status `active` counts (a failed run is not live). Re-injecting a finished or week-old workflow after compaction revives
 # work nobody is doing. Every pointer resolves against the project root (specs
@@ -9,12 +9,15 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-HOOK="$REPO_ROOT/hooks/post-compact.sh"
+HOOK="$REPO_ROOT/hooks/session-start"
+export CLAUDE_PLUGIN_ROOT="$REPO_ROOT"   # Claude Code output format (additionalContext)
+COMPACT='{"hook_event_name":"SessionStart","source":"compact","session_id":"s-compact"}'
 
 fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
+export TMPDIR="$WORK/tmp"; mkdir -p "$TMPDIR"
 git -C "$WORK" init -q
 mkdir -p "$WORK/.mtk/workflows" "$WORK/sub/deeper" "$WORK/docs/plans" "$WORK/tasks"
 
@@ -40,7 +43,7 @@ wf wf-failed    failed    1   phase-4
 printf '# plan\n' > "$WORK/docs/plans/2099-plan.md"
 printf -- '- [ ] open item\n' > "$WORK/tasks/todo.md"
 
-out="$(cd "$WORK/sub/deeper" && CLAUDE_PROJECT_DIR="$WORK" bash "$HOOK" </dev/null 2>/dev/null || true)"
+out="$(cd "$WORK/sub/deeper" && CLAUDE_PROJECT_DIR="$WORK" bash "$HOOK" <<<"$COMPACT" 2>/dev/null || true)"
 
 case "$out" in *'wf-newest'*) : ;; *) fail "the newest live workflow must be re-injected. Got: $out" ;; esac
 for gone in wf-done wf-abandoned wf-failed wf-stale wf-older; do
@@ -56,8 +59,8 @@ printf '  PASS  pointers resolve against the project root, not the cwd\n'
 # Nothing live and recent: no workflow line at all.
 wf wf-newest completed 3 phase-3
 wf wf-older  abandoned 48 phase-2
-out="$(cd "$WORK" && CLAUDE_PROJECT_DIR="$WORK" bash "$HOOK" </dev/null 2>/dev/null || true)"
+out="$(cd "$WORK" && CLAUDE_PROJECT_DIR="$WORK" bash "$HOOK" <<<"$COMPACT" 2>/dev/null || true)"
 case "$out" in *'Active workflow'*) fail "no live recent workflow, yet one was re-injected. Got: $out" ;; esac
 printf '  PASS  finished and stale workflows stay buried\n'
 
-printf '\nAll post-compact workflow checks passed.\n'
+printf '\nAll session-start compact workflow checks passed.\n'

@@ -190,51 +190,160 @@ while IFS= read -r script; do
   grep -q 'set -euo pipefail' <(head -15 "$script") || fail "$script missing 'set -euo pipefail' — violates S3.1"
 done < <(find hooks/ scripts/ -type f \( -name '*.sh' -o -name 'pre-commit' -o -name 'session-start' -o -name 'verify-completion' \) | sort)
 
-# The git pre-commit hook and linter script must agree on supported flags.
-grep -q -- '--cached' hooks/pre-commit-linters.sh || fail "hooks/pre-commit-linters.sh must support --cached for git hooks"
+# The git pre-commit hook and linter script must agree on supported flags. The
+# linter is an on-demand script, not a wired hook, so it may live in hooks/ or
+# scripts/; check whichever copy exists rather than pinning one location.
+linters_found=0
+for linters in hooks/pre-commit-linters.sh scripts/pre-commit-linters.sh; do
+  [ -f "$linters" ] || continue
+  linters_found=1
+  grep -q -- '--cached' "$linters" || fail "$linters must support --cached for git hooks"
+done
+[ "$linters_found" -eq 1 ] || fail "pre-commit-linters.sh not found in hooks/ or scripts/ — hooks/git-hooks/pre-commit depends on it"
 
-# Tier-2 skill-invocation queue (S3.13–15)
-require_file "hooks/lib/skill-queue.sh"
-require_file "hooks/lib/prompt-nudges.sh"
-require_file "hooks/userprompt-dispatch.sh"
-require_file "hooks/spec-approval-trigger.sh"
-grep -q 'queue_skill' hooks/lib/skill-queue.sh || fail "skill-queue.sh missing queue_skill writer"
-grep -q 'MTK_HOOKS_TIER2' hooks/lib/skill-queue.sh || fail "skill-queue.sh missing MTK_HOOKS_TIER2 kill-switch gate"
-grep -q 'UserPromptSubmit' hooks/hooks.json || fail "hooks/hooks.json missing UserPromptSubmit hook entry for dispatcher"
-grep -q 'MTK_HOOKS_TIER2' .claude/settings.json || fail "settings.json missing MTK_HOOKS_TIER2 env declaration"
+# Every hook hooks.json wires must exist and be executable. Data-driven on
+# purpose: the check iterates what hooks.json actually registers, so renaming or
+# removing a hook needs no edit here, and a dangling registration (the script
+# deleted, the entry left behind) fails instead of erroring on every tool call.
+python3 - <<'MTKPY' || fail "hooks/hooks.json wires a hook command that does not resolve to an executable file"
+import json, os, shlex, sys
+d = json.load(open("hooks/hooks.json")).get("hooks", {})
+bad, seen = [], 0
+for ev, blocks in d.items():
+    for b in blocks:
+        for h in b.get("hooks", []):
+            cmd = h.get("command")
+            if not cmd:
+                continue
+            seen += 1
+            try:
+                exe = shlex.split(cmd)[0]
+            except ValueError:
+                bad.append(f"{ev}: unparseable command {cmd!r}")
+                continue
+            path = exe.replace("${CLAUDE_PLUGIN_ROOT}", ".")
+            if not os.path.isfile(path):
+                bad.append(f"{ev}: {exe} does not exist")
+            elif not os.access(path, os.X_OK):
+                bad.append(f"{ev}: {exe} is not executable")
+if seen == 0:
+    bad.append("found 0 hook commands — the selector matched nothing, so this check inspected nothing")
+for line in bad:
+    print(f"ERROR: hooks.json {line}", file=sys.stderr)
+sys.exit(1 if bad else 0)
+MTKPY
 
-# Keyword-triggered skill hints (S2.22–24)
-require_file "scripts/build-triggers-index.sh"
-require_file "hooks/lib/trigger-hints.sh"
-if [ -f ".claude/triggers.index" ]; then
-  # Index must be in sync with skill frontmatter. --check builds to a tempfile
-  # and diffs — it never rewrites the tracked file during validation.
-  bash scripts/build-triggers-index.sh --check >/dev/null 2>&1 || fail ".claude/triggers.index out of sync — run: bash scripts/build-triggers-index.sh"
-  # Every skill referenced in the index must exist.
-  while IFS=$'\t' read -r _ skill; do
-    [ -n "$skill" ] || continue
-    [ -f ".claude/skills/${skill}/SKILL.md" ] || fail "triggers.index references missing skill: $skill"
-  done < <(grep -v '^#' .claude/triggers.index)
+# Runtime diet lock. Read, Grep, Glob, MCP tool calls and user prompts carry zero
+# MTK hooks: each one is a process spawn on the hottest paths of every session, and
+# native Claude Code already covers what those hooks did (path-scoped rules via
+# `paths:`, skill routing via descriptions). Fail if hooks.json registers
+# UserPromptSubmit, or any tool-event matcher that covers Read, Grep, Glob or an
+# mcp__ tool. Matcher semantics follow Claude Code: empty or "*" matches every
+# tool; a plain `A|B` list matches those names exactly; anything else is a regex.
+# One classifier, shared with mtk-doctor: hooks/lib/hot_path_matchers.py (any
+# matcher naming mcp__ is MCP, however it is server-scoped).
+if ! DIET_OUT="$(python3 hooks/lib/hot_path_matchers.py hooks/hooks.json 2>&1)"; then
+  while IFS=$'\t' read -r where why; do
+    [ -n "$where" ] && printf 'ERROR: runtime diet: %s %s\n' "$where" "$why" >&2
+  done <<< "$DIET_OUT"
+  fail "hooks/hooks.json breaks the runtime diet — no hook may run on user prompts or on Read/Grep/Glob/MCP tool calls"
 fi
 
-# Toolset registry (S2.19–21)
-require_file ".claude/toolsets/read-only.yaml"
-require_file ".claude/toolsets/git-safe.yaml"
-require_file ".claude/toolsets/code-edit.yaml"
-require_file "scripts/resolve-toolsets.sh"
+for required_cmd in format-on-edit.sh; do
+  grep -q "$required_cmd" hooks/hooks.json \
+    || fail "hooks/hooks.json does not declare $required_cmd — it was removed from the tech-stack Settings Additions, so nothing wires it any more"
+done
 
-# Every toolset referenced in skill/agent frontmatter must resolve.
-while IFS= read -r ref_file; do
-  # Extract toolset names from `required-toolsets: [a, b]` or `forbidden-toolsets: [a, b]`
-  toolset_refs="$(grep -E '^(required|forbidden)-toolsets:' "$ref_file" 2>/dev/null | \
-    sed -E 's/^[a-z-]+:[[:space:]]*\[([^]]*)\].*/\1/' | \
-    tr ',' '\n' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//' || true)"
-  [ -z "$toolset_refs" ] && continue
-  while IFS= read -r ts; do
-    [ -n "$ts" ] || continue
-    [ -f ".claude/toolsets/${ts}.yaml" ] || fail "$ref_file references unknown toolset: $ts (no .claude/toolsets/${ts}.yaml) — violates S2.20"
-  done <<< "$toolset_refs"
-done < <(find .claude/skills .claude/agents -name '*.md' 2>/dev/null)
+# All shell scripts in hooks/ and scripts/ must be executable and follow S3.1
+while IFS= read -r script; do
+  [ -x "$script" ] || fail "$script is not executable (chmod +x) — violates S3.2"
+  # Some scripts have multi-line comment headers before pipefail; scan first 15 lines.
+  # <(head …) not head|grep: grep -q exits on match, head takes SIGPIPE (141), and
+  # pipefail would turn that success into a spurious failure on a random file.
+  grep -q 'set -euo pipefail' <(head -15 "$script") || fail "$script missing 'set -euo pipefail' — violates S3.1"
+done < <(find hooks/ scripts/ -type f \( -name '*.sh' -o -name 'pre-commit' -o -name 'session-start' -o -name 'verify-completion' \) | sort)
+
+# The git pre-commit hook and linter script must agree on supported flags. The
+# linter is an on-demand script, not a wired hook, so it may live in hooks/ or
+# scripts/; check whichever copy exists rather than pinning one location.
+linters_found=0
+for linters in hooks/pre-commit-linters.sh scripts/pre-commit-linters.sh; do
+  [ -f "$linters" ] || continue
+  linters_found=1
+  grep -q -- '--cached' "$linters" || fail "$linters must support --cached for git hooks"
+done
+[ "$linters_found" -eq 1 ] || fail "pre-commit-linters.sh not found in hooks/ or scripts/ — hooks/git-hooks/pre-commit depends on it"
+
+# Every hook hooks.json wires must exist and be executable. Data-driven on
+# purpose: the check iterates what hooks.json actually registers, so renaming or
+# removing a hook needs no edit here, and a dangling registration (the script
+# deleted, the entry left behind) fails instead of erroring on every tool call.
+python3 - <<'MTKPY' || fail "hooks/hooks.json wires a hook command that does not resolve to an executable file"
+import json, os, shlex, sys
+d = json.load(open("hooks/hooks.json")).get("hooks", {})
+bad, seen = [], 0
+for ev, blocks in d.items():
+    for b in blocks:
+        for h in b.get("hooks", []):
+            cmd = h.get("command")
+            if not cmd:
+                continue
+            seen += 1
+            try:
+                exe = shlex.split(cmd)[0]
+            except ValueError:
+                bad.append(f"{ev}: unparseable command {cmd!r}")
+                continue
+            path = exe.replace("${CLAUDE_PLUGIN_ROOT}", ".")
+            if not os.path.isfile(path):
+                bad.append(f"{ev}: {exe} does not exist")
+            elif not os.access(path, os.X_OK):
+                bad.append(f"{ev}: {exe} is not executable")
+if seen == 0:
+    bad.append("found 0 hook commands — the selector matched nothing, so this check inspected nothing")
+for line in bad:
+    print(f"ERROR: hooks.json {line}", file=sys.stderr)
+sys.exit(1 if bad else 0)
+MTKPY
+
+# Runtime diet lock. Read, Grep, Glob, MCP tool calls and user prompts carry zero
+# MTK hooks: each one is a process spawn on the hottest paths of every session, and
+# native Claude Code already covers what those hooks did (path-scoped rules via
+# `paths:`, skill routing via descriptions). Fail if hooks.json registers
+# UserPromptSubmit, or any tool-event matcher that covers Read, Grep, Glob or an
+# mcp__ tool. Matcher semantics follow Claude Code: empty or "*" matches every
+# tool; a plain `A|B` list matches those names exactly; anything else is a regex.
+python3 - <<'MTKPY' || fail "hooks/hooks.json breaks the runtime diet — no hook may run on user prompts or on Read/Grep/Glob/MCP tool calls"
+import json, os, re, shlex, sys
+d = json.load(open("hooks/hooks.json")).get("hooks", {})
+TOOL_EVENTS = {"PreToolUse", "PostToolUse", "PostToolUseFailure", "PermissionRequest"}
+PROBES = ["Read", "Grep", "Glob", "mcp__server__tool"]
+def covers(matcher, tool):
+    if matcher in (None, "", "*"):
+        return True
+    if re.fullmatch(r"[A-Za-z0-9_|]+", matcher):
+        return tool in matcher.split("|")
+    try:
+        return re.search(matcher, tool) is not None
+    except re.error:
+        return True  # an unparseable matcher cannot be proved narrow
+bad = []
+if d.get("UserPromptSubmit"):
+    bad.append("UserPromptSubmit is registered")
+for ev, blocks in d.items():
+    if ev not in TOOL_EVENTS:
+        continue
+    for b in blocks:
+        m = b.get("matcher")
+        hit = [t for t in PROBES if covers(m, t)]
+        if hit:
+            names = [os.path.basename(shlex.split(h["command"])[0]) if h.get("command") else "?"
+                     for h in b.get("hooks", [])]
+            bad.append(f"{ev} matcher {m!r} covers {', '.join(hit)} ({', '.join(names)})")
+for line in bad:
+    print(f"ERROR: runtime diet: {line}", file=sys.stderr)
+sys.exit(1 if bad else 0)
+MTKPY
 
 # Unified setup entry point must exist
 require_file ".claude/skills/mtk-setup/SKILL.md"
@@ -552,20 +661,6 @@ if [ -d tests/fixtures ] && ls tests/fixtures/*.json >/dev/null 2>&1; then
   bash scripts/run-fixtures.sh >/dev/null || fail "router-decision fixtures failed (run: bash scripts/run-fixtures.sh)"
 fi
 
-# Read-only enforcement for mcp/src/tools/ — no fs writes, no shell exec.
-# Agent-callable tools must not mutate state or spawn processes.
-if [ -d mcp/src/tools ]; then
-  if grep -rE 'fs\.(write|append|unlink|rm|mkdir|chmod|chown|symlink|rename|truncate)|child_process|execSync|[^a-zA-Z]spawn\(' mcp/src/tools/ >/dev/null 2>&1; then
-    grep -rEn 'fs\.(write|append|unlink|rm|mkdir|chmod|chown|symlink|rename|truncate)|child_process|execSync|[^a-zA-Z]spawn\(' mcp/src/tools/ >&2 || true
-    fail "mcp/src/tools/ must be read-only — write API or shell exec detected"
-  fi
-fi
-
-# Rule wake-up index must be fresh (S1/S3.10 — generated artifact kept in sync).
-if [ -x scripts/build-rule-index.sh ]; then
-  bash scripts/build-rule-index.sh --check >/dev/null 2>&1 || fail "rule index stale — run: bash scripts/build-rule-index.sh"
-fi
-
 # Embedded-bash lint for skills — deterministic bug classes in fenced ```bash blocks.
 require_file "scripts/lint-skill-bash.sh"
 bash scripts/lint-skill-bash.sh || fail "skill bash lint failed (run: bash scripts/lint-skill-bash.sh)"
@@ -605,8 +700,7 @@ for skill in .claude/skills/*/SKILL.md; do
 done
 
 # Least-privilege for agents (S1.7). Claude Code enforces the `tools:` frontmatter key on
-# agent definitions — `allowed-tools:` is a skill-frontmatter key and MTK's own toolset
-# hint; an agent that only declares `allowed-tools` runs with EVERY tool, and its spawn
+# agent definitions — `allowed-tools:` is a skill-frontmatter key; an agent that only declares `allowed-tools` runs with EVERY tool, and its spawn
 # carries every tool schema, every MCP tool name, and the whole skill roster (~35k extra
 # tokens measured on a loaded machine). So `tools:` is REQUIRED on every agent and must not
 # grant a mutating tool, `Agent`, or `Skill` — reviewers are read-only and never re-dispatch.
@@ -620,8 +714,6 @@ for agent in .claude/agents/*.md; do
   if printf '%s' "$tools_line" | grep -qE '\b(Edit|Write|MultiEdit|NotebookEdit|Agent|Skill|Workflow)\b'; then
     fail "agent $agent_name grants a mutating or dispatching tool in tools: ($tools_line) — reviewers are read-only and never re-dispatch (S1.7)"
   fi
-  printf '%s\n' "$fm" | grep -qE '^(required-toolsets|allowed-tools):' \
-    || printf 'WARN: agent %s declares no required-toolsets/allowed-tools hint for the MTK router (S2.19)\n' "$agent_name"
 done
 
 # Advisory: frontmatter enum sanity on agents (borrow — schema-validated frontmatter).

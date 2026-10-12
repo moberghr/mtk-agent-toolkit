@@ -7,8 +7,6 @@ compatibility:
   - claude-code
   - cursor
   - codex
-trigger: feature-isolation|parallel-development|experiment|clean-rollback
-skip_when: quick-single-file-fix|explicit-current-branch
 user-invocable: false
 ---
 

@@ -14,7 +14,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-BUDGET="$REPO_ROOT/hooks/context-budget.sh"
+BUDGET="$REPO_ROOT/hooks/evidence-ledger.sh"
 STOP="$REPO_ROOT/hooks/verify-completion"
 START="$REPO_ROOT/hooks/session-start"
 FORMAT="$REPO_ROOT/hooks/format-on-edit.sh"

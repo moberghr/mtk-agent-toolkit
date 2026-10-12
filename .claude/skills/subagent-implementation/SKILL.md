@@ -5,8 +5,6 @@ type: skill
 license: MIT
 compatibility:
   - claude-code
-trigger: large-multi-batch-implementation|context-isolation-needed
-skip_when: small-feature|fewer-than-three-batches|inline-implementation-fits
 user-invocable: false
 ---
 

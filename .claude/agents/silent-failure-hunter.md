@@ -3,7 +3,6 @@ name: silent-failure-hunter
 description: Adversarial reviewer that hunts silent failures — empty catches, fallbacks that mask errors, swallowed promise rejections, unjustified linter silences, defaults that hide absence. Read-only.
 allowed-tools: Read, Glob, Grep, Bash
 tools: Read, Glob, Grep, Bash
-required-toolsets: [read-only]
 model: sonnet
 effort: high
 context: fork

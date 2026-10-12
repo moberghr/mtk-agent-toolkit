@@ -7,8 +7,6 @@ compatibility:
   - claude-code
   - cursor
   - codex
-trigger: spec-approved|multi-file-implementation|batch-planning
-skip_when: single-file-fix|quick-fix-scope
 user-invocable: false
 ---
 
@@ -125,7 +123,7 @@ Convert the approved plan into small, executable tasks that can be verified one 
 
 ## Rules
 
-- Every hand-written file touched must already exist in the change manifest. **Derived artifacts are the exception** — lockfiles, snapshots, generated sources, and files whose own header says they are generated stay out of it. Name the regenerator in the batch's verification step instead (`then run scripts/build-rule-index.sh`); `validate-handoff.sh` classifies the output as collateral, so an unlisted one is never drift.
+- Every hand-written file touched must already exist in the change manifest. **Derived artifacts are the exception** — lockfiles, snapshots, generated sources, and files whose own header says they are generated stay out of it. Name the regenerator in the batch's verification step instead (`then run scripts/build-references-index.sh`); `validate-handoff.sh` classifies the output as collateral, so an unlisted one is never drift.
 - Every batch must be buildable.
 - Every behavior change must have an associated test task.
 - No task should require changing more than a small handful of files without justification.

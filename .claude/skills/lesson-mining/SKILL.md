@@ -5,8 +5,6 @@ type: skill
 license: MIT
 compatibility:
   - claude-code
-trigger: mine-lessons|what-did-we-learn|harvest-transcripts|periodic-lesson-sweep
-skip_when: no-transcripts|mid-task|single-session-recall
 user-invocable: false
 ---
 

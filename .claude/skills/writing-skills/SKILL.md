@@ -5,8 +5,6 @@ type: skill
 license: MIT
 compatibility:
   - claude-code
-trigger: new-skill|skill-rewrite|skill-conversion
-skip_when: project-convention|hook-automation|standard-practice
 user-invocable: false
 ---
 
@@ -107,9 +105,7 @@ for ship-path skills; pressure tests alone are sufficient for advisory skills.
 1. Add the skill to `.claude/manifest.json` with action `sync`.
 2. Add routing rules to `AGENTS.md` if the skill changes how tasks are dispatched.
 3. Update `docs/skill-anatomy.md` if the skill establishes a new pattern.
-4. If the skill declares `triggers:` in frontmatter, rebuild the index: `bash scripts/build-triggers-index.sh` (S2.24).
-5. If the skill declares `required-toolsets` or `forbidden-toolsets`, confirm each named toolset exists as `.claude/toolsets/<name>.yaml` (S2.20).
-6. Run `bash scripts/validate-toolkit.sh` to verify the skill passes validation.
+4. Run `bash scripts/validate-toolkit.sh` to verify the skill passes validation.
 
 Note: tech stack skills (`type: tech-stack`) follow the S2.13 declarative anatomy instead of the workflow anatomy above.
 

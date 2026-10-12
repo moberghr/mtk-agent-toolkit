@@ -4,7 +4,8 @@ set -euo pipefail
 # Deny ergonomics: every hard deny (exit 2) carries the continuation suffix
 # (batched calls cancelled + a denial is a correction, not a stop signal +
 # anti-cascade) and, where a self-service off-switch exists, a toggle hint.
-# Guards without a self-service switch (security-gate, read-guard) must NOT
+# Guards without a self-service switch (security-gate's destructive checks,
+# config-guard) must NOT
 # teach one. Allowed calls carry no suffix.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -57,27 +58,13 @@ out="$(run_hook security-gate.sh "$(bash_payload 'git status')")"
 check "security-gate allow" "$out" 0 "" "$SUFFIX_MARK"
 printf '  PASS  security-gate: allowed call carries no suffix\n'
 
-# --- interactive-guard: deny carries suffix + its toggle ----------------------
+# --- security-gate interactive check: deny carries suffix + its toggle --------
+# (interactive-guard.sh was merged into security-gate.sh; its toggle survives.)
 
-out="$(run_hook interactive-guard.sh "$(bash_payload 'gh pr merge 5 --squash')")"
-check "interactive-guard deny" "$out" 2 "$SUFFIX_MARK" ""
-check "interactive-guard toggle" "$out" 2 "disable this guard: MTK_INTERACTIVE_GUARD=0" ""
-printf '  PASS  interactive-guard: suffix + toggle hint\n'
-
-# --- read-guard: deny carries suffix but must NOT teach a toggle --------------
-
-edit_payload="$(python3 - <<PY
-import json
-print(json.dumps({"hook_event_name": "PreToolUse", "tool_name": "Read",
-                  "tool_input": {"file_path": "$REPO_ROOT/.env"}}))
-PY
-)"
-rc=0
-err="$(printf '%s' "$edit_payload" | bash hooks/read-guard.sh 2>&1 >/dev/null)" || rc=$?
-[ "$rc" -eq 2 ] || fail "read-guard must deny a .env read (got $rc). Stderr: $err"
-case "$err" in *"$SUFFIX_MARK"*) : ;; *) fail "read-guard deny missing suffix. Got: $err" ;; esac
-case "$err" in *"disable this guard"*) fail "read-guard must not teach a self-service toggle. Got: $err" ;; esac
-printf '  PASS  read-guard: suffix present, off-switch not taught\n'
+out="$(run_hook security-gate.sh "$(bash_payload 'gh pr merge 5 --squash')")"
+check "interactive deny" "$out" 2 "$SUFFIX_MARK" ""
+check "interactive toggle" "$out" 2 "disable this guard: MTK_INTERACTIVE_GUARD=0" ""
+printf '  PASS  security-gate interactive check: suffix + toggle hint\n'
 
 # --- config-guard: deny carries suffix but must NOT teach a toggle ------------
 # Approval is the engineer's (a fresh .mtk/config-guard-allow entry), so the deny

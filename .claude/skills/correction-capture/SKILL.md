@@ -7,8 +7,6 @@ compatibility:
   - claude-code
   - cursor
   - codex
-trigger: engineer-correction|no|stop|not-like-that|redirect
-skip_when: one-off-feedback|style-preference|already-documented
 user-invocable: false
 ---
 

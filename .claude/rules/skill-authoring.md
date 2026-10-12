@@ -4,14 +4,6 @@ paths:
   - "tests/pressure-tests/**"
   - "evals/**"
   - "docs/skill-anatomy.md"
-axes:
-  decision: authoring
-  topic: skills
-  scope: global
-trigger:
-  tool: "Edit|Write"
-  path: ^\.claude/skills/.*SKILL\.md$|^tests/pressure-tests/|^evals/
-strength: inject
 ---
 
 # Skill Authoring (S2)
@@ -59,16 +51,3 @@ strength: inject
 ## Plugin Paths
 
 - **S2.27** Write the plugin root as `${CLAUDE_PLUGIN_ROOT}`, braced and with no default, in skill and agent bodies. Claude Code substitutes exactly that spelling at load time, so the model sees an absolute path. The variable is never set in the Bash tool's environment. `$CLAUDE_PLUGIN_ROOT` and `${CLAUDE_PLUGIN_ROOT:-.}` are left as literals; in Bash they quietly degrade to the fallback, which works only inside the MTK repo. References are read with the Read tool, so nothing in them is substituted; write `$MTK_ROOT` there and have the caller set it from the router's `MTK_ROOT=` line. `validate-toolkit.sh` rejects the default-value form. This was verified empirically on Claude Code 2.1.296.
-
-## Toolset Scoping
-
-- **S2.19** Skills may declare `required-toolsets: [<name>, ...]` and `forbidden-toolsets: [<name>, ...]` in frontmatter. Toolset names resolve against `.claude/toolsets/<name>.yaml`. The `/mtk` router (and any other orchestrator) expands them into `allowed-tools` when dispatching. Explicit `allowed-tools` in the skill, if present, takes precedence over toolset expansion.
-- **S2.20** Every toolset name referenced in frontmatter must exist as `.claude/toolsets/<name>.yaml`. The validator enforces this. Review, audit, drift-detection, and pure-read planning skills (e.g. `brainstorming`) should declare `required-toolsets: [read-only]` unless they genuinely need to write. Planning/spec/research skills that legitimately write *artifacts* (specs, plans, todos) or need web tools (`research-context`) are not toolset-locked; they carry a written **Tool discipline** note pinning them to their phase (artifacts/web only, never source or test code), which `scope-guard` backs at edit time.
-- **S2.21** `forbidden-toolsets` wins on overlap. If a skill requires `git-safe` and forbids `code-edit`, the merged list stays inside `git-safe` even though `code-edit` extends `git-safe`.
-
-## Keyword Triggers (OpenHands pattern)
-
-- **S2.22** Skills may declare `triggers: [<keyword>, ...]` in frontmatter. On every user prompt, `hooks/lib/trigger-hints.sh` grep-scans the prompt against `.claude/triggers.index` and surfaces `💡 consider skill: <name> (matched: <keyword>)` hints in `additionalContext`. Hints are advisory; they never block.
-- **S2.23** Keywords should be single words or hyphen-joined phrases — grep match is case-insensitive with word-boundary matching. Pick words specific enough that false positives are rare (`oauth` is good; `user` is not).
-- **S2.24** `.claude/triggers.index` is generated from skill frontmatter by `scripts/build-triggers-index.sh`. Rebuild after adding or changing `triggers:` on a skill. The validator asserts the index is in sync.
-- **S2.25** Distinct from plural `triggers:` (S2.22), skills may also carry singular `trigger:` and `skip_when:` frontmatter keys. These are advisory routing hints for the model only — no hook or script consumes them, and they do not feed `.claude/triggers.index`.

@@ -216,16 +216,6 @@ Update: MTK is distributed as a Claude Code plugin — use the plugin
 manager to update rather than an in-repo update skill.
 ```
 
-## Toolset Expansion (S2.19)
-
-Before loading the target skill, read its frontmatter:
-
-- If it declares `required-toolsets: [<name>, ...]`, resolve via `bash scripts/resolve-toolsets.sh <name> ...`. Treat the result as the advisory tool scope for the dispatched skill — do not invoke tools outside that list without a written escalation note.
-- If it declares `forbidden-toolsets: [<name>, ...]`, the tools resolved from those names are off-limits for the duration of the dispatch, even if `required-toolsets` or explicit `allowed-tools` would otherwise allow them.
-- If it has an explicit `allowed-tools:` in frontmatter, that list wins (no surprise widening). Toolset expansion is for skills that leave tool scope to the dispatcher.
-
-Log the resolved scope to analytics (via existing `hooks/session-analytics.sh` pipeline) when a skill declares toolsets, so adoption is visible.
-
 ## Execution
 
 Once matched, resolve the MTK root once per `.claude/references/mtk-file-resolution.md` and state it as a single line — `MTK_ROOT=<path>` — so the dispatched skill does not re-resolve. On a plugin install the path is `${CLAUDE_PLUGIN_ROOT}` (substituted into this text at load time; it is not a Bash environment variable). Then read the target skill file and follow every step of that workflow. Do not summarize; do not skip verification. The target skill owns its own acceptance criteria.

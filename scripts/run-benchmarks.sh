@@ -318,62 +318,7 @@ else
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# BENCHMARK 3: Rule Trigger — just-in-time rule delivery
-# Deliberately placed early: later sections can abort the run, and a regression
-# test that never executes is not a regression test.
-# ═══════════════════════════════════════════════════════════════════════════════
-
-section "Rule Trigger: just-in-time delivery"
-
-RT_INDEX=".claude/rules/triggers.index"
-RT_BAK="${TMPDIR:-/tmp}/mtk-bench-triggers.bak"
-RT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-
-rt() { printf '%s' "$1" | bash hooks/rule-trigger.sh 2>&1 || true; }
-rt_exit() { local rc=0; printf '%s' "$1" | bash hooks/rule-trigger.sh >/dev/null 2>&1 || rc=$?; echo "$rc"; }
-
-if [ -f "$RT_INDEX" ]; then
-  cp "$RT_INDEX" "$RT_BAK"
-
-  # A Bash command matching a rule's pattern delivers that rule.
-  RT_HIT=$(rt '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"}}')
-  assert_match "matching Bash command delivers a rule" "$RT_HIT" "rule: git-workflow"
-
-  # A non-matching command delivers nothing.
-  RT_MISS=$(rt '{"tool_name":"Bash","tool_input":{"command":"ls -la"}}')
-  assert_no_match "non-matching command is silent" "$RT_MISS" "rule:"
-
-  # Path-scoped rules match on the repo-relative path.
-  RT_PATH=$(rt "$(printf '{"tool_name":"Edit","tool_input":{"file_path":"%s/hooks/x.sh"}}' "$RT_ROOT")")
-  assert_match "path-scoped rule matches hooks/" "$RT_PATH" "rule: hooks-and-scripts"
-
-  RT_NOPATH=$(rt "$(printf '{"tool_name":"Edit","tool_input":{"file_path":"%s/README.md"}}' "$RT_ROOT")")
-  assert_no_match "unrelated path is silent" "$RT_NOPATH" "rule:"
-
-  # Lowercase repo root (macOS case-insensitive FS) must still match — the prefix
-  # strip silently failing here would make every path rule a no-op.
-  RT_CASE=$(rt "$(printf '{"tool_name":"Edit","tool_input":{"file_path":"%s/hooks/x.sh"}}' \
-    "$(printf '%s' "$RT_ROOT" | tr '[:upper:]' '[:lower:]')")")
-  assert_match "case-differing repo root still matches" "$RT_CASE" "rule: hooks-and-scripts"
-
-  # Fail-open: a corrupt index must never block a tool call.
-  printf 'garbage\tnot\ttabs\n' > "$RT_INDEX"
-  assert_exit "corrupt index fails open (exit 0)" \
-    "$(rt_exit '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"}}')" 0
-
-  # Fail-open: a missing index must never block a tool call.
-  rm -f "$RT_INDEX"
-  assert_exit "missing index fails open (exit 0)" \
-    "$(rt_exit '{"tool_name":"Bash","tool_input":{"command":"git commit -m x"}}')" 0
-
-  cp "$RT_BAK" "$RT_INDEX"
-  rm -f "$RT_BAK"
-else
-  printf '  (skipped — %s not generated; run scripts/build-rule-index.sh)\n' "$RT_INDEX"
-fi
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# BENCHMARK 4: Security Gate — blocks destructive commands
+# BENCHMARK 3: Security Gate — blocks destructive commands
 # ═══════════════════════════════════════════════════════════════════════════════
 
 section "Security Gate: destructive commands"
@@ -513,7 +458,7 @@ PY
 }
 vc_tool() { # $1 = tool, $2 = command or file path
   python3 -c 'import json,sys;sid,tool,arg=sys.argv[1:4];ti={"command":arg} if tool=="Bash" else {"file_path":arg};print(json.dumps({"session_id":sid,"tool_name":tool,"tool_input":ti}))' \
-    "$VC_SID" "$1" "$2" | vc_env bash hooks/context-budget.sh >/dev/null 2>&1 || true
+    "$VC_SID" "$1" "$2" | vc_env bash hooks/evidence-ledger.sh >/dev/null 2>&1 || true
 }
 vc_start() {
   printf '{"session_id":"%s","hook_event_name":"SessionStart","source":"startup"}' "$VC_SID" \

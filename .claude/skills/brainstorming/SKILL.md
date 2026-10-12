@@ -7,13 +7,12 @@ compatibility:
   - claude-code
   - cursor
   - codex
-trigger: unclear-approach|multiple-designs|architectural-decision|how-should-we
-skip_when: approach-already-decided|narrow-scope|bug-fix
 user-invocable: false
-required-toolsets: [read-only]
 ---
 
 # Brainstorming
+
+> **Tool discipline:** read-only — `Read`/`Grep`/`Glob` and read-only `Bash`. Never `Edit`/`Write` source, tests or config; the approved direction feeds `spec-driven-development`, which writes the spec.
 
 ## Overview
 

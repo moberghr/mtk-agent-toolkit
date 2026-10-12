@@ -339,7 +339,52 @@ PY
 for wf in hooks/hooks.json; do
   expect "$wf wires cost-tracker.sh under Stop with async true" wired \
     "$(wiring "$REPO_ROOT/$wf" Stop "" cost-tracker.sh 1)"
+  expect "$wf no longer wires session-analytics.sh (absorbed)" missing \
+    "$(wiring "$REPO_ROOT/$wf" Stop "" session-analytics.sh 0)"
 done
+
+# --- T5: the same Stop recorder persists .claude/analytics.json -------------------------
+# (absorbed hooks/session-analytics.sh). Counters come from the session evidence ledger,
+# keyed on the Stop payload's session_id; a trivial session (< 5 ops) records nothing;
+# MTK_COST_TRACKER=0 turns off cost rows only, never the analytics.
+PROJ_A="$SANDBOX/analytics-project"
+mkdir -p "$PROJ_A/docs/specs" "$PROJ_A/tasks"
+( cd "$PROJ_A" && git init -q . )
+seed_ledger() { # $1 session  $2 ops  $3 mods  $4 scope warnings
+  ( cd "$PROJ_A" && CLAUDE_PROJECT_DIR="$PROJ_A" bash -c '
+      source "$1/hooks/lib/hook-io.sh"
+      mtk_session_bind "{\"session_id\":\"$2\"}"
+      sf="$(mtk_session_file)"
+      mtk_load_session_state "$sf"
+      ops=$3; mods=$4; scope_guard_warnings=$5
+      mtk_save_session_state "$sf"' _ "$REPO_ROOT" "$1" "$2" "$3" "$4" )
+}
+stop_a() { # $1 session  [extra env...] → "rc:stdout"
+  local sid="$1" rc=0 out; shift
+  out=$(cd "$PROJ_A" && env CLAUDE_PROJECT_DIR="$PROJ_A" "$@" bash "$HOOK" 2>&1 \
+    <<<"{\"session_id\":\"$sid\",\"transcript_path\":\"$SANDBOX/no-such-transcript.jsonl\",\"hook_event_name\":\"Stop\"}") || rc=$?
+  printf '%s:%s' "$rc" "$out"
+}
+aget() { python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get(sys.argv[2], "ABSENT"))' "$PROJ_A/.claude/analytics.json" "$1" 2>/dev/null || echo NO-FILE; }
+
+seed_ledger a-trivial 3 1 0
+expect "trivial session: exits 0 silently" "0:" "$(stop_a a-trivial)"
+[ -f "$PROJ_A/.claude/analytics.json" ] && af=present || af=absent
+expect "trivial session (< 5 ops) writes no analytics" absent "$af"
+
+seed_ledger a-one 12 4 2
+expect "substantial session: exits 0 silently" "0:" "$(stop_a a-one)"
+expect "analytics sessions after one session" 1 "$(aget sessions)"
+expect "analytics total_operations" 12 "$(aget total_operations)"
+expect "analytics total_modifications" 4 "$(aget total_modifications)"
+expect "analytics scope_guard_warnings" 2 "$(aget scope_guard_warnings)"
+expect "analytics drops the retired queue counters" ABSENT "$(aget queue_writes)"
+expect "analytics drops the retired read-bytes estimate" ABSENT "$(aget estimated_context_tokens)"
+
+seed_ledger a-two 8 1 0
+expect "cost tracking off: still exits 0 silently" "0:" "$(stop_a a-two MTK_COST_TRACKER=0)"
+expect "MTK_COST_TRACKER=0 still records analytics" 2 "$(aget sessions)"
+expect "analytics accumulates operations" 20 "$(aget total_operations)"
 
 if [ "$fails" -gt 0 ]; then
   printf '%d cost-tracker case(s) failed\n' "$fails" >&2

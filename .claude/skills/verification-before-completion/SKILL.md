@@ -7,8 +7,6 @@ compatibility:
   - claude-code
   - cursor
   - codex
-trigger: reporting-done|closing-task|handing-off|claiming-success
-skip_when: mid-exploration|research-phase
 effort: high
 user-invocable: false
 ---
@@ -219,10 +217,10 @@ Full table: `.claude/references/workflow-rationalizations.md` → verification-b
 
 ## Signal-Based Enforcement
 
-This skill is enforced via hooks in `settings.json`:
+This skill is enforced via the plugin hooks in `hooks/hooks.json`:
 
 - **Stop hook:** When the agent finishes responding, a prompt hook checks whether completion claims cite specific command output. If not, the agent is reminded to run verification and cite evidence.
-- **Freshness check:** `hooks/context-budget.sh` records the latest edit time and
+- **Freshness check:** `hooks/evidence-ledger.sh` records the latest edit time and
   the latest verification command run in the session. `hooks/verify-completion`
   compares those timestamps and warns with `VERIFICATION GAP:` when the evidence
   is stale or missing.

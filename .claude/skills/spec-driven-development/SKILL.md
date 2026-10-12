@@ -6,8 +6,6 @@ license: MIT
 compatibility:
   - claude-code
   - codex
-trigger: new-feature|breaking-change|multi-file-change|approval-required
-skip_when: typo-fix|config-update|single-line-change
 user-invocable: false
 ---
 
@@ -17,7 +15,7 @@ user-invocable: false
 
 Write the implementation spec before writing code. The spec is the shared source of truth between the engineer, the command flow, and the reviewers. Code without a spec is guessing.
 
-> **Tool discipline (phase-locked):** spec authoring is a read + spec-artifact phase. Write **only** the spec artifacts (`docs/specs/<date>-<slug>.md` and its `.json` sidecar) — never source or test code. Code starts at Phase 3, after the approval gate; a source edit here is a scope violation. (Not toolset-locked to `read-only` because it must write its spec files.)
+> **Tool discipline (phase-locked):** spec authoring is a read + spec-artifact phase. Write **only** the spec artifacts (`docs/specs/<date>-<slug>.md` and its `.json` sidecar) — never source or test code. Code starts at Phase 3, after the approval gate; a source edit here is a scope violation.
 
 > **Supplied spec/plan (adoption, not authoring):** when the engineer hands in a complete spec or plan as the input (e.g. `docs/specs/…md` or `docs/plans/…md` already on disk), `implement`'s Phase 0.7 *adopts* it as the source of truth. In that case this skill validates the supplied artifact against the schema and reconciles it against the current code (see `prior-work-check`'s existing-plan reconciliation) rather than re-authoring to a fresh path — never overwrite or version-bump the engineer's input. See `implement/SKILL.md` Phase 0.7.
 

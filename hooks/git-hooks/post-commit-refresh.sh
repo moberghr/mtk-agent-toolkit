@@ -8,7 +8,6 @@ set -euo pipefail
 #
 # Triggers:
 #   - .claude/references/   → rebuild references.index
-#   - .claude/skills/**/SKILL.md → rebuild triggers.index
 #   - .claude/manifest.json → run validator quick-check
 # Silent on no-op. Always exits 0 (never blocks operations).
 
@@ -29,9 +28,6 @@ fi
 reasons=()
 if printf '%s\n' "$CHANGED" | grep -qE '^\.claude/references/'; then
   reasons+=("references")
-fi
-if printf '%s\n' "$CHANGED" | grep -qE '^\.claude/skills/.*/SKILL\.md$'; then
-  reasons+=("triggers")
 fi
 if printf '%s\n' "$CHANGED" | grep -qE '^\.claude/manifest\.json$'; then
   reasons+=("manifest")

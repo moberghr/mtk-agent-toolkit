@@ -302,17 +302,13 @@ Without it, **every** rule file loads into **every** request, forever. That is t
 single largest always-on cost bootstrap can inflict on a repo: measured at 30KB
 (~7.5k tokens) in one repo with 7 unfrontmattered rule files, on every turn, in a
 session where throughput already halves between 200k and 500k tokens of context.
-The lazy-load machinery ships with MTK and is not optional to wire up.
+Claude Code's native `paths:` loading is the lazy-load mechanism; the frontmatter is all it needs.
 
 ```yaml
 ---
 paths:                      # globs; a rule whose glob matches a touched file is
   - "src/Handlers/**"       # loaded, the rest stay on disk until they match
   - "src/Services/**"
-axes:
-  decision: structure       # structure|process|authoring|security
-  topic: architecture       # manifest|skills|hooks|git|architecture|testing|…
-  scope: project            # global|project
 ---
 ```
 
@@ -428,22 +424,12 @@ mkdir -p .claude/rules
 ```
 (Reminder from STEP 0: never add `.claude/tech-stack` to a `mkdir -p` — it is a file.)
 
-**Then build the rule index — this step is not optional.** `INDEX.md` is the
-always-on wake-up layer that makes the rest of `.claude/rules/` loadable on
-demand; without it the frontmatter has nothing pointing at it and readers fall
-back to loading everything.
+Claude Code path-scopes each rule file by its own `paths:` frontmatter; there is
+no index to build. Verify before moving on — a missing frontmatter block is
+exactly how a repo ends up with every rule file always-on:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/build-rule-index.sh"
-```
-
-Verify before moving on — a silent skip here is exactly how a repo ends up with
-every rule file always-on:
-
-```bash
-test -f .claude/rules/INDEX.md || echo "BOOTSTRAP BUG: rule index missing"
 for f in .claude/rules/*.md; do
-  [ "$(basename "$f")" = "INDEX.md" ] && continue
   head -1 "$f" | grep -q '^---$' || echo "BOOTSTRAP BUG: $f has no auto-attach frontmatter"
 done
 ```

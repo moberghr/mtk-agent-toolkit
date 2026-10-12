@@ -44,7 +44,7 @@ Run the plan script and read its structured output — this is the sole source o
 bash scripts/setup-refresh-plan.sh --json
 ```
 
-Parse each artifact row (the script emits full paths: `.claude/references/architecture-principles.md`, `.claude/references/conventions.md`, `CLAUDE.md`, `.claude/detected-tools.json`, `AGENTS.md`, `path-references`, and the informational `.claude/setup-answers.json` row) for its `status` (`fresh` / `stale` / `missing` / `unstamped` / `unknown` / `present` / `absent`) and `reason`. STEP 3 scopes its regeneration entirely from this plan — do not re-derive staleness by re-reading the codebase from scratch. If the plan script itself fails or is not found, STOP and report the failure; do not silently degrade to a full re-audit as a workaround.
+Parse each artifact row (the script emits full paths: `.claude/references/architecture-principles.md`, `.claude/references/conventions.md`, `CLAUDE.md`, `.claude/detected-tools.json`, `AGENTS.md`, `path-references`, `permissions-baseline`, and the informational `.claude/setup-answers.json` row) for its `status` (`fresh` / `stale` / `missing` / `unstamped` / `unknown` / `present` / `absent`) and `reason`. STEP 3 scopes its regeneration entirely from this plan — do not re-derive staleness by re-reading the codebase from scratch. If the plan script itself fails or is not found, STOP and report the failure; do not silently degrade to a full re-audit as a workaround.
 
 ## STEP 2: Dry-Run Gate
 
@@ -94,10 +94,10 @@ Tool configs and derived indexes are unaffected by the branch above and run when
 
 ```bash
 bash scripts/generate-tool-configs.sh --all
-bash scripts/refresh-derived.sh references triggers
+bash scripts/refresh-derived.sh references
 ```
 
-`generate-tool-configs.sh` may write in place because it carries its own preservation guard: it refuses to overwrite any output file that lacks its auto-generated marker. **A marker-less config (GEMINI.md, `.windsurfrules`, …) is hand-curated — leave it alone, list it under "Preserved hand-authored files", and note it as a Needs review item if the plan flagged it.** Never pass `--force` to reconcile a staleness row; a row that cannot be reconciled without `--force` means the file is not MTK's to regenerate. `refresh-derived.sh` is idempotent and silent on no-op, so running it at the end of this step regardless of the trigger is safe and keeps `.claude/references.index` / `.claude/triggers.index` in sync with whatever STEP 3 just touched.
+`generate-tool-configs.sh` may write in place because it carries its own preservation guard: it refuses to overwrite any output file that lacks its auto-generated marker. **A marker-less config (GEMINI.md, `.windsurfrules`, …) is hand-curated — leave it alone, list it under "Preserved hand-authored files", and note it as a Needs review item if the plan flagged it.** Never pass `--force` to reconcile a staleness row; a row that cannot be reconciled without `--force` means the file is not MTK's to regenerate. `refresh-derived.sh` is idempotent and silent on no-op, so running it at the end of this step regardless of the trigger is safe and keeps `.claude/references.index` in sync with whatever STEP 3 just touched.
 
 ### `.claude/settings.json` permission keys
 
@@ -109,13 +109,36 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/migrate-settings-permissions.sh" .claude/set
 
 The script is idempotent: a file without the bad key, or a missing file, is left byte-for-byte untouched. It moves only an explicit allow-list of narrow build/test/format/lint rules into `permissions.allow`, printing each one; every broad entry (interpreters, package managers, `curl`, bare `Write`/`Edit`) stays inert under `allowedTools`. Report each activated entry under `Updated`, each left-inert entry under `Needs review` (the engineer decides whether to grant it — it was never in effect), and each untouched file under `Preserved (untouched)`.
 
+### `permissions-baseline` (`.claude/settings.json` deny/ask rules)
+
+When the plan marks `permissions-baseline` `stale`, the repo's `.claude/settings.json` lacks deny/ask rules from `.claude/references/settings-baseline.md` — every repo bootstrapped before 8.1.0 lacks all of them, and those deny rules are what now keep secret files (`.env`, keys, keystores, `.npmrc`, SSH keys) out of context since `read-guard.sh` was retired. List them, and build the merged candidate at a temp path (never in place):
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/settings-baseline.sh" --missing .claude/settings.json
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/settings-baseline.sh" --merge .claude/settings.json --out /tmp/mtk-refresh/settings.json
+```
+
+The merge is `hooks/merge-settings.sh`'s union: every existing key and rule stays, only the missing baseline rules are added. Hand the temp copy to STEP 4 as `fresh`. `.claude/settings.json` is protected and engineer-owned, so it is always proposed, never overwritten: show the missing rules as one hunk per list (`permissions.deny`, `permissions.ask`) via `AskUserQuestion`, write the approved ones with `--merge` (without `--out`), and report them under `Updated`. A declined hunk is listed under `Preserved (untouched)` with "engineer kept the current rules"; under `--non-interactive` nothing is written and every missing rule lands under **Needs review**. A row marked `unknown` (helper missing, invalid JSON) is reported as is — never hand-edit the file to work around it.
+
 ### `CLAUDE.md` and `.claude/rules/*`
 
 Never rewritten in place, regardless of staleness reason (version-drift footer or stale dependency mentions). Compute the fresh template content as `setup-bootstrap` would, then hand it to STEP 4 — CLAUDE.md and every `.claude/rules/*.md` file always go through the diff-proposal contract, never a direct `Write`.
 
+### Retired generated indexes
+
+Runs on every refresh, regardless of the plan. Older MTK versions generated a rule index and a keyword-trigger index that nothing reads any more. `.claude/rules/INDEX.md` is the costly one: it has no `paths:` frontmatter, so Claude Code loads it into every session. Find the candidates:
+
+```bash
+for f in .claude/rules/INDEX.md .claude/rules/triggers.index .claude/triggers.index; do
+  [ -f "$f" ] && awk 'NR<=5' "$f" | grep -qiE 'generated by `?scripts/build-(rule-index|triggers-index)\.sh' && echo "$f"
+done
+```
+
+Only a file whose header names one of those two generators is a candidate. A file at the same path without that header is hand-authored: list it under "Preserved hand-authored files" and leave it alone. **Propose each deletion. Never delete without the engineer's approval.** This is the File Preservation Policy's loud-retirement case, and the regen-diff-contract never deletes by itself. Ask once per file via `AskUserQuestion`, naming the path and its generator header and giving the reason (generated, no consumer, and for `INDEX.md` an always-on load). On approval, run `git rm -q <file>` if the file is tracked and `rm <file>` if it is not, then list it under "Retired prior MTK files". On a decline, list it under `Preserved (untouched)` with the reason "engineer kept it". Under `--non-interactive`, delete nothing and list each candidate under **Needs review**. Under `--dry-run`, STEP 2 has already stopped, so name the candidates in its paragraph instead.
+
 ## STEP 4: Engineer-Edited Files
 
-For every file STEP 3 regenerated or would regenerate (`architecture-principles.md`, `conventions.md`, `CLAUDE.md`, each `.claude/rules/*.md`, `.claude/detected-tools.json`, and `AGENTS.md` when STEP 3 routed it here via the footer-drift branch), resolve `ancestor` / `current` / `fresh` and apply `.claude/references/regen-diff-contract.md` exactly as written there — do not re-derive or restate its classification, diff-proposal, or cache-update rules here. In short: files unchanged since the last generation overwrite cleanly; files an engineer edited get their MTK delta proposed hunk-by-hunk via `AskUserQuestion`, never force-merged; hunks that no longer apply cleanly land under **Needs review** with the conflicting region quoted; protected files (`manifest.protected`) that this run has no business touching are reported `SKIP`.
+For every file STEP 3 regenerated or would regenerate (`architecture-principles.md`, `conventions.md`, `CLAUDE.md`, each `.claude/rules/*.md`, `.claude/detected-tools.json`, `.claude/settings.json` when STEP 3 proposed baseline rules, and `AGENTS.md` when STEP 3 routed it here via the footer-drift branch), resolve `ancestor` / `current` / `fresh` and apply `.claude/references/regen-diff-contract.md` exactly as written there — do not re-derive or restate its classification, diff-proposal, or cache-update rules here. In short: files unchanged since the last generation overwrite cleanly; files an engineer edited get their MTK delta proposed hunk-by-hunk via `AskUserQuestion`, never force-merged; hunks that no longer apply cleanly land under **Needs review** with the conflicting region quoted; protected files (`manifest.protected`) that this run has no business touching are reported `SKIP`.
 
 Run this step for every candidate file even if STEP 3 judged the underlying content unchanged — the contract's own `current == ancestor` check is what decides "safe to overwrite," and that decision belongs to the contract, not to this step.
 
@@ -180,9 +203,10 @@ Next steps:
 ## Verification
 
 - `bash scripts/setup-refresh-plan.sh --json` ran and its output drove every scoping decision in STEP 3 (no ad-hoc staleness judgment).
-- No file outside the plan's `stale`/`missing` artifacts (or the derived AGENTS.md/tool-config/index set, or the `allowedTools` key move in `.claude/settings*.json`) was modified; no non-MTK file was modified or deleted.
+- No file outside the plan's `stale`/`missing` artifacts (or the derived AGENTS.md/tool-config/index set, the `allowedTools` key move in `.claude/settings*.json`, or an engineer-approved retired index) was modified; no non-MTK file was modified or deleted.
 - Every doc rewritten in STEP 3/4 carries a refreshed `<!-- mtk-stamp -->` with `previous-stamp` / `sections-changed` / `claims-delta` populated.
 - `scripts/verify-claims.sh` ran per refreshed doc, including the one-retry loop where downgrades occurred.
 - Every engineer-edited file went through `.claude/references/regen-diff-contract.md` — no direct `Write` to `CLAUDE.md` or any `.claude/rules/*.md`, and no `git merge-file --union` anywhere in this run.
+- Each retired generated index (`.claude/rules/INDEX.md`, `.claude/rules/triggers.index`, `.claude/triggers.index` carrying a `build-rule-index`/`build-triggers-index` header) was deleted only after the engineer approved it and is listed under "Retired prior MTK files"; under `--non-interactive` none was deleted.
 - An `AGENTS.md` row flagged for footer-version drift went through the regen-diff-contract, not `generate-agents-md.sh`; no run reported an exit-0 generator no-op as `Updated`.
 - The STEP 6 report was printed with all four counts and an itemized needs-review list (or explicit "none").

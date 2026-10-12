@@ -144,7 +144,8 @@ mtk_emit_system_message() {
 # and refuses everything after (cascade). Every deny therefore carries a
 # continuation suffix; an optional toggle hint teaches the off-switch at the
 # moment of friction. Pass an empty toggle when the guard has no self-service
-# off-switch by design (security-gate, read-guard's human-granted approval).
+# off-switch by design (security-gate's destructive checks, config-guard's
+# human-granted approval).
 #
 # Usage:  mtk_deny "reason text" ["toggle hint"]
 #         mtk_deny - ["toggle hint"] <<EOF   (reason on stdin, e.g. heredoc)
@@ -473,7 +474,7 @@ mtk_session_lock_acquire() {
   # A live holder keeps this lock for single-digit milliseconds (load state →
   # update counters → save). So a lock older than a couple of seconds is not
   # contention, it is a corpse: the harness SIGTERMs a hook that overruns its
-  # `timeout` (context-budget.sh runs under `timeout: 3`), and SIGTERM does not
+  # `timeout` (evidence-ledger.sh runs under `timeout: 3`), and SIGTERM does not
   # run the EXIT trap, so the directory outlives the process that made it.
   # Without stealing it, every later hook pays the full spin below — 100 × 50ms
   # of dead wall-clock on the next tool call, for a counter nobody blocks on.
@@ -507,13 +508,8 @@ mtk_init_session_state() {
   [ -f "$session_file" ] && return 0
 
   cat > "$session_file" <<'EOF'
-reads=0
-files=''
 mods=0
 ops=0
-warned_files=0
-warned_mods=0
-warned_ops=0
 scope_guard_warnings=0
 benchmarks_run=0
 benchmark_last_score=''
@@ -530,9 +526,6 @@ last_verification_base=''
 last_verification_tree=''
 session_start_base=''
 session_start_tree=''
-model_id=''
-bytes_read=0
-warned_ctxpct=0
 EOF
 }
 
@@ -542,13 +535,8 @@ mtk_load_session_state() {
   # shellcheck disable=SC1090
   . "$session_file"
 
-  reads=${reads:-0}
-  files=${files:-}
   mods=${mods:-0}
   ops=${ops:-0}
-  warned_files=${warned_files:-0}
-  warned_mods=${warned_mods:-0}
-  warned_ops=${warned_ops:-0}
   scope_guard_warnings=${scope_guard_warnings:-0}
   benchmarks_run=${benchmarks_run:-0}
   benchmark_last_score=${benchmark_last_score:-}
@@ -565,9 +553,6 @@ mtk_load_session_state() {
   last_verification_tree=${last_verification_tree:-}
   session_start_base=${session_start_base:-}
   session_start_tree=${session_start_tree:-}
-  model_id=${model_id:-}
-  bytes_read=${bytes_read:-0}
-  warned_ctxpct=${warned_ctxpct:-0}
 }
 
 # Write the session state via escaped-single-quoted values and an atomic
@@ -576,21 +561,14 @@ mtk_load_session_state() {
 mtk_save_session_state() {
   local session_file="$1"
   local tmp="${session_file}.tmp.$$"
-  local files_esc bench_esc cmd_esc sum_esc model_esc
-  files_esc=$(mtk_sq_escape "${files:-}")
-  model_esc=$(mtk_sq_escape "${model_id:-}")
+  local bench_esc cmd_esc sum_esc
   bench_esc=$(mtk_sq_escape "${benchmark_last_score:-}")
   cmd_esc=$(mtk_sq_escape "${last_verification_command:-}")
   sum_esc=$(mtk_sq_escape "${last_verification_summary:-}")
 
   {
-    printf "reads=%s\n" "${reads:-0}"
-    printf "files='%s'\n" "$files_esc"
     printf "mods=%s\n" "${mods:-0}"
     printf "ops=%s\n" "${ops:-0}"
-    printf "warned_files=%s\n" "${warned_files:-0}"
-    printf "warned_mods=%s\n" "${warned_mods:-0}"
-    printf "warned_ops=%s\n" "${warned_ops:-0}"
     printf "scope_guard_warnings=%s\n" "${scope_guard_warnings:-0}"
     printf "benchmarks_run=%s\n" "${benchmarks_run:-0}"
     printf "benchmark_last_score='%s'\n" "$bench_esc"
@@ -608,9 +586,6 @@ mtk_save_session_state() {
     printf "last_verification_tree='%s'\n" "${last_verification_tree:-}"
     printf "session_start_base='%s'\n" "${session_start_base:-}"
     printf "session_start_tree='%s'\n" "${session_start_tree:-}"
-    printf "model_id='%s'\n" "$model_esc"
-    printf "bytes_read=%s\n" "${bytes_read:-0}"
-    printf "warned_ctxpct=%s\n" "${warned_ctxpct:-0}"
   } > "$tmp"
   mv "$tmp" "$session_file"
 }

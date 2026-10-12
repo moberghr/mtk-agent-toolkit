@@ -769,7 +769,7 @@ PY
 }
 
 # prune — workflow expiry. Without it .mtk/workflows/ keeps one JSON + one
-# event log per run forever, and `list` / post-compact recovery wade through
+# event log per run forever, and `list` / compaction recovery wade through
 # every finished run. A workflow is prunable only when its updated_at (file
 # mtime if absent) is older than <days> — whatever its status. Finished runs are
 # not deleted on sight: implement runs prune before every init, and a run that

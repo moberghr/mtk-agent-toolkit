@@ -7,8 +7,6 @@ compatibility:
   - claude-code
   - cursor
   - codex
-trigger: self-struggle-then-success|repeated-failure-same-signature|trial-and-error-resolved|found-working-approach
-skip_when: first-attempt-succeeded|engineer-correction|one-off-flake|already-documented
 user-invocable: false
 ---
 

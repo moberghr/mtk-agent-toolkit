@@ -66,14 +66,6 @@ jobs:
           claude --version
           git --version
 
-      - name: Keep the MCP bundle newer than its sources
-        if: steps.check.outputs.release == 'true'
-        run: |
-          # A fresh checkout gives mcp/src and dist/ near-identical mtimes. The session-start
-          # hook then rebuilds the bundle (npm ci inside the plugin dir) during the first
-          # run, and the hard links npm leaves behind make plugin eval refuse every later case.
-          touch dist/mtk-mcp-server.cjs
-
       - name: Run plugin eval suite
         if: steps.check.outputs.release == 'true'
         env:

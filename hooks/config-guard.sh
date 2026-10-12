@@ -33,7 +33,7 @@ trap _mtk_hook_diag EXIT
 #
 # Engineer approval list: .mtk/config-guard-allow (repo-relative path per line),
 # honoured only when modified within the last 24h. The deny message tells the
-# model to STOP and ask — like read-guard it never prints how to approve, and an
+# model to STOP and ask — it never prints how to approve, and an
 # Edit/Write to the list itself is always denied (matched by file identity after
 # ./ ../ normalisation, so case variants and dot segments are caught; the
 # approval lookup uses the same normalised path). A Bash write to the list is out
@@ -256,5 +256,5 @@ if [ -f "$ALLOW_FILE" ] \
 fi
 
 # Deliberately no toggle hint and no approval recipe: the approval is the
-# ENGINEER's decision, made out-of-band (read-guard precedent).
+# ENGINEER's decision, made out-of-band.
 mtk_deny "CONFIG-GUARD: this edit weakens ${REL_PATH} (${SIGNAL}). Fix the code the analyzer flags instead of silencing it. If the engineer explicitly asked for this suppression, STOP and ask them to approve it — do not work around this guard." ""

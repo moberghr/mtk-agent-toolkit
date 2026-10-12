@@ -7,8 +7,6 @@ compatibility:
   - claude-code
   - cursor
   - codex
-trigger: instructions-capture|capture-claude-md|session-learnings|update-claude-md|update-agents-md|what-did-we-learn|revise-claude-md|capture-instructions
-skip_when: bootstrap|first-time-setup|mid-task|nothing-learned
 user-invocable: false
 ---
 

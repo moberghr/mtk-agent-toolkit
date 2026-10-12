@@ -6,8 +6,6 @@ license: MIT
 compatibility:
   - claude-code
   - codex
-trigger: post-implementation|pr-review|merge-safety-check|quality-audit
-skip_when: no-behavioral-diff|pre-implementation-phase
 effort: max
 context: fork
 user-invocable: false
@@ -32,7 +30,7 @@ git diff --stat HEAD 2>/dev/null || git diff --stat --cached 2>/dev/null || echo
 
 Review changed code as an adversary, not a collaborator. The review must prioritize real risks over style and decide whether the change improves overall code health.
 
-This skill is read-only except for workflow-artifact recording via `scripts/workflow-artifact.sh` — a deliberate exception to the S2.20 read-only guidance for review skills.
+This skill is read-only except for workflow-artifact recording via `scripts/workflow-artifact.sh` — a deliberate exception to the read-only guidance for review skills.
 
 ## When To Use
 

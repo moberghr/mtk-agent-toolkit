@@ -56,8 +56,7 @@ Rules:
   with files you "might" touch.
 - `mechanical` is an OPTIONAL per-entry boolean (default `false`). An entry is
   **mechanical** only when it changes no logic and no public contract —
-  rename-only, formatting-only, or otherwise no-behavioral-change (cf. the TDD
-  `skip_when` categories `rename-only|formatting-only|no-behavioral-change`); an
+  rename-only, formatting-only, or otherwise no-behavioral-change; an
   entry touching any public contract — including a serialized shape, persisted
   schema, or wire format — is never mechanical. Mechanical entries are still
   implemented and verified, but they don't count toward the `implement` rigor

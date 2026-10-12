@@ -5,8 +5,6 @@ license: MIT
 compatibility:
   - claude-code
   - codex
-trigger: tech-stack-context
-skip_when: never-skip-when-active-stack
 type: tech-stack
 user-invocable: false
 ---
@@ -165,7 +163,7 @@ Merge these into the project's `.claude/settings.json` during `setup-bootstrap`.
 ### hooks (do NOT add)
 
 `format-on-edit.sh` is wired by the **plugin**, in MTK's own `hooks/hooks.json`
-(PostToolUse `Edit|Write` to queue, Stop + SubagentStop `--flush` to format).
+(PostToolUse `Edit|Write` to queue; formats at PreToolUse before verification commands, plus Stop).
 Bootstrap must NOT copy it into the target's `.claude/settings.json`.
 
 `$CLAUDE_PLUGIN_ROOT` is only defined for hooks a plugin declares itself. Written

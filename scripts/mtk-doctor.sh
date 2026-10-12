@@ -13,7 +13,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 # Two trees, two kinds of check. Toolkit checks (manifest, skills, agents, hook
 # scripts, checksums, validate-toolkit) describe the MTK install and run from
 # ROOT_DIR. Project checks (constitution, settings.json permissions and hooks,
-# .gitignore, lessons, context baseline, env calibration, tech stack) describe the
+# .gitignore, lessons, context baseline, environment fit, tech stack) describe the
 # repo the doctor was run for and run from DOCTOR_PROJECT_DIR. In this dev
 # checkout the two are the same directory; in a plugin install they are not, and
 # running project checks from ROOT_DIR measured the plugin's own AGENTS.md and
@@ -36,9 +36,10 @@ for arg in "$@"; do
 Usage: mtk-doctor [--json] [--fix] [--strict]
 
   --json    Machine-readable output for CI dashboards
-  --fix     Auto-fix safe items: gitignore additions, chmod +x, and moving the
-            invalid permissions.allowedTools key into permissions.allow. Any
-            other FAIL is reported, never auto-fixed.
+  --fix     Auto-fix safe items: gitignore additions, chmod +x, moving the
+            invalid permissions.allowedTools key into permissions.allow, and
+            merging missing permission-baseline deny/ask rules into
+            .claude/settings.json. Any other FAIL is reported, never auto-fixed.
   --strict  Exit non-zero on WARN as well as FAIL
 USAGE
       exit 0
@@ -395,6 +396,38 @@ for sf in .claude/settings.json .claude/settings.local.json; do
   fi
 done
 
+# Permission baseline (.claude/references/settings-baseline.md): the native
+# deny/ask rules that replaced read-guard.sh's secret-file denies. Repos
+# bootstrapped before 8.1.0 carry none of them, so a secret file is readable
+# there with no guard at all. WARN listing what is missing; --fix unions the
+# baseline into .claude/settings.json with merge-settings.sh (existing keys and
+# rules are kept).
+DOCTOR_BASELINE="$ROOT_DIR/scripts/settings-baseline.sh"
+[ -f "$DOCTOR_BASELINE" ] || DOCTOR_BASELINE="${CLAUDE_PLUGIN_ROOT:-.}/scripts/settings-baseline.sh"
+if [ ! -f "$DOCTOR_BASELINE" ]; then
+  record WARN permissions "permission baseline not checked" "settings-baseline.sh not found (looked in $ROOT_DIR/scripts and \${CLAUDE_PLUGIN_ROOT}/scripts)"
+else
+  bl_rc=0
+  bl_out="$(bash "$DOCTOR_BASELINE" --missing .claude/settings.json 2>&1)" || bl_rc=$?
+  if [ "$bl_rc" -eq 1 ] && [ "$FIX" -eq 1 ]; then
+    bl_n="$(grep -c "$(printf '\t')" <<<"$bl_out" || true)"
+    fix_rc=0
+    fix_out="$(bash "$DOCTOR_BASELINE" --merge .claude/settings.json 2>&1)" || fix_rc=$?
+    if [ "$fix_rc" -eq 0 ]; then
+      record PASS permissions "permission baseline merged" "${bl_n} missing deny/ask rule(s) added to .claude/settings.json via merge-settings.sh"
+      bl_rc=0
+      bl_out="$(bash "$DOCTOR_BASELINE" --missing .claude/settings.json 2>&1)" || bl_rc=$?
+    else
+      record FAIL permissions "permission baseline merge failed" "settings-baseline.sh --merge exited $fix_rc: $(awk 'NR==1' <<<"$fix_out")"
+    fi
+  fi
+  case "$bl_rc" in
+    0) record PASS permissions "permission baseline present" "every deny/ask rule in settings-baseline.md is in .claude/settings.json" ;;
+    1) record WARN permissions "missing baseline permission rules" "$(grep -c "$(printf '\t')" <<<"$bl_out" || true) rule(s) absent from .claude/settings.json: $(awk -F'\t' 'NF==2{printf "%s %s; ", $1, $2}' <<<"$bl_out")— run with --fix, or /mtk-setup --refresh to review them" ;;
+    *) record WARN permissions "permission baseline not checked" "settings-baseline.sh --missing exited $bl_rc: $(awk 'NR==1' <<<"$bl_out")" ;;
+  esac
+fi
+
 # All shell scripts in hooks/ must have set -euo pipefail (S3.1)
 in_toolkit
 PIPEFAIL_MISSING=()
@@ -410,6 +443,32 @@ else
   for s in "${PIPEFAIL_MISSING[@]}"; do
     record FAIL hooks "missing pipefail" "$s — violates S3.1"
   done
+fi
+
+# No hook on the hot path (S3.6): nothing on UserPromptSubmit, and no tool
+# matcher that fires on Read/Grep/Glob or on MCP calls. Each of those runs a
+# process on every prompt or read for advice current models do not need; the
+# runtime diet removed them all, and this keeps one from being re-added. A
+# matcher is judged as the regex Claude Code applies, so `Read|Edit`, `.*` and a
+# missing matcher (match-all) all count.
+# The classifier is shared with validate-toolkit (hooks/lib/hot_path_matchers.py),
+# so the two locks cannot disagree.
+HOT_PATH_LIB="hooks/lib/hot_path_matchers.py"
+if [ -f hooks/hooks.json ] && command -v python3 >/dev/null 2>&1; then
+  if [ ! -f "$HOT_PATH_LIB" ]; then
+    record WARN hooks "hot-path check skipped" "$HOT_PATH_LIB not found in $ROOT_DIR"
+  else
+    hp_rc=0
+    HOT_PATH="$(python3 "$HOT_PATH_LIB" hooks/hooks.json 2>&1)" || hp_rc=$?
+    if [ "$hp_rc" -eq 0 ]; then
+      record PASS hooks "no hot-path hooks registered" "hooks/hooks.json has no UserPromptSubmit hook and no Read/Grep/Glob/MCP matcher"
+    else
+      while IFS=$'\t' read -r where why; do
+        [ -n "$where" ] || continue
+        record FAIL hooks "hot-path hook registered" "${where} — ${why}; hooks/hooks.json must keep the read path, MCP calls and prompts hook-free (S3.6)"
+      done <<< "$HOT_PATH"
+    fi
+  fi
 fi
 
 # ──────────────────────────────────────────────
@@ -731,7 +790,7 @@ fi
 # CONTEXT
 # ──────────────────────────────────────────────
 # Always-on context cost: what loads into every session before the first prompt
-# (CLAUDE.md + the rules wake-up layer + alwaysApply references + MCP tool schemas).
+# (CLAUDE.md + a loaded AGENTS.md + alwaysApply references + the project's MCP tool schemas).
 # Report-only — surfaces the baseline so teams can keep it lean. These checks must
 # stay PASS on a clean repo (pressure-test S1); the numbers live in the detail string.
 in_project
@@ -766,7 +825,6 @@ if [ "$CTX_LOADED" = "AGENTS.md" ] && [ -f AGENTS.md ]; then
   add_ctx_file "AGENTS.md"
   CTX_AGENTS="AGENTS.md + "
 fi
-add_ctx_file ".claude/rules/INDEX.md"
 
 # alwaysApply=true references — the only refs that load unconditionally. Read the
 # generated TSV index (tab-separated: path, alwaysApply, description, globs).
@@ -785,10 +843,10 @@ if [ "$ctx_bytes" -gt 0 ]; then
   # ~13 tokens/line proxy, consistent with the context-engineering skill.
   ctx_tokens=$((ctx_lines * 13))
   record PASS context "always-on context baseline" \
-    "~${ctx_tokens} tokens (${ctx_lines} lines / ${ctx_bytes} bytes): CLAUDE.md + ${CTX_AGENTS}rules/INDEX.md + ${ALWAYSON_REFS} alwaysApply ref(s)"
+    "~${ctx_tokens} tokens (${ctx_lines} lines / ${ctx_bytes} bytes): CLAUDE.md + ${CTX_AGENTS}${ALWAYSON_REFS} alwaysApply ref(s)"
 else
   record PASS context "always-on context baseline" \
-    "no always-on files found (CLAUDE.md / AGENTS.md / rules/INDEX.md absent — likely the source repo)"
+    "no always-on files found (CLAUDE.md / AGENTS.md absent — likely the source repo)"
 fi
 
 # MCP schema overhead — every connected server loads its full tool schema at
@@ -820,80 +878,7 @@ fi
 # file is present, every version matches, and the toolkit still misbehaves
 # because a knob is calibrated for someone else's setup or a binary is absent.
 
-# Read an env value MTK would see: process env wins, then settings.local.json
-# (per-machine), then settings.json (shared). No jq (S3.3) — the env block is
-# flat "KEY": "VALUE" pairs.
-env_setting() {
-  local key="$1" v f
-  v="$(printenv "$key" 2>/dev/null || true)"
-  if [ -n "$v" ]; then printf '%s' "$v"; return 0; fi
-  for f in .claude/settings.local.json .claude/settings.json; do
-    [ -f "$f" ] || continue
-    v="$(grep -o "\"${key}\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" "$f" 2>/dev/null | head -1 |
-         sed -E 's/.*:[[:space:]]*"([^"]*)"/\1/' || true)"
-    if [ -n "$v" ]; then printf '%s' "$v"; return 0; fi
-  done
-  return 0
-}
-
-# 1. Context-budget calibration. hooks/context-budget.sh scales its file/mod/op
-#    nudges off MTK_CONTEXT_WINDOW_TOKENS, default 1000000. On a 200k model the
-#    defaults fire too late; on a 1M model an old 200000 pin fires several times
-#    too early, which trains the engineer to ignore the one hook that tells them
-#    to checkpoint.
-#
-#    Claude Code context windows (code.claude.com/docs/en/model-config, Oct 2026):
-#    1M by default on Fable 5 / 5.1, Opus 4.7 and later (5, 5.5), Sonnet 5 and
-#    later (5.5) and Haiku 5.5. Opus 4.6 and Sonnet 4.6 reach 1M only through
-#    their `[1m]` variant. Haiku 4.5, Sonnet 4.5, Opus 4.5 and older are 200k.
-#    CLAUDE_CODE_DISABLE_1M_CONTEXT=1 caps every model at 200k. On Bedrock,
-#    Google Cloud and Foundry the `haiku` and `sonnet` aliases resolve to the 4.5
-#    models (200k), and `opus` on Foundry to Opus 4.6.
-#    model_context_window prints 200000, 1000000, or nothing when unknown.
-model_context_window() {
-  local m provider
-  m="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
-  [ -n "$m" ] || return 0
-  if [ "$(env_setting CLAUDE_CODE_DISABLE_1M_CONTEXT)" = "1" ]; then
-    printf '200000'; return 0
-  fi
-  case "$m" in *'[1m]'*) printf '1000000'; return 0 ;; esac
-  provider="anthropic"
-  [ "$(env_setting CLAUDE_CODE_USE_BEDROCK)" = "1" ] && provider="cloud"
-  [ "$(env_setting CLAUDE_CODE_USE_VERTEX)" = "1" ] && provider="cloud"
-  [ "$(env_setting CLAUDE_CODE_USE_FOUNDRY)" = "1" ] && provider="foundry"
-  case "$m" in
-    haiku|sonnet)
-      [ "$provider" = "anthropic" ] && printf '1000000' || printf '200000' ;;
-    opus)
-      [ "$provider" = "foundry" ] && printf '200000' || printf '1000000' ;;
-    fable|best|opusplan) printf '1000000' ;;
-    *opus-4-6*|*sonnet-4-6*) printf '200000' ;;
-    *haiku-4*|*sonnet-4*|*opus-4-5*|*opus-4-1*|*opus-4-0*|*opus-4-2025*|*claude-3*|*claude-2*) printf '200000' ;;
-    *opus-4-7*|*opus-4-8*|*opus-5*|*sonnet-5*|*haiku-5*|*fable-5*|*mythos-5*) printf '1000000' ;;
-  esac
-  return 0
-}
-CTX_WINDOW="$(env_setting MTK_CONTEXT_WINDOW_TOKENS)"
-MODEL_HINT="$(env_setting ANTHROPIC_MODEL)"
-[ -n "$MODEL_HINT" ] || MODEL_HINT="$(env_setting model)"
-MODEL_WINDOW="$(model_context_window "$MODEL_HINT")"
-# context-budget.sh sizes its window from the session's model id with the same
-# mapping as model_context_window, so an unset MTK_CONTEXT_WINDOW_TOKENS is the
-# normal case, not a miscalibration. Only a pin that disagrees with the model is
-# worth a WARN: it overrides the derived window for every model.
-if [ -n "$CTX_WINDOW" ] && [ -n "$MODEL_WINDOW" ] && [ "$CTX_WINDOW" != "$MODEL_WINDOW" ]; then
-  record WARN environment "context budget pinned against the model" \
-    "MTK_CONTEXT_WINDOW_TOKENS=${CTX_WINDOW}, but model '${MODEL_HINT}' runs with ${MODEL_WINDOW} tokens — context-budget.sh would size itself from the model id; unset the pin unless the override is deliberate"
-elif [ -n "$CTX_WINDOW" ]; then
-  record PASS environment "context budget pinned" \
-    "MTK_CONTEXT_WINDOW_TOKENS=${CTX_WINDOW} overrides the window context-budget.sh derives from the model id"
-else
-  record PASS environment "context budget sized from the model id" \
-    "context-budget.sh derives the window per session (${MODEL_HINT:-model unknown here}: ${MODEL_WINDOW:-1000000 assumed}); set MTK_CONTEXT_WINDOW_TOKENS only to override it"
-fi
-
-# 2. Hook basename also wired in the user's global settings. Two different
+# 1. Hook basename also wired in the user's global settings. Two different
 #    scripts sharing a basename both fire, and their log lines are
 #    indistinguishable — a real debugging trap, not a correctness bug. Nothing
 #    suppresses either copy (MTK hooks have no double-run guard), so both run.
@@ -938,7 +923,7 @@ else
   record PASS environment "no user-level settings.json to collide with"
 fi
 
-# 2b. Hooks registered twice: plugin hooks/hooks.json + project
+# 1b. Hooks registered twice: plugin hooks/hooks.json + project
 #    .claude/settings.json, for ANY event. The harness counts both ("Ran 9 stop
 #    hooks" in the field, issue #60 — 5 plugin + 4 project) and both copies run:
 #    there is no double-run guard. Show the Stop arithmetic, and WARN for every
@@ -991,7 +976,7 @@ PY
   fi
 fi
 
-# 2c. Stale plugin-cache versions. installed_plugins.json records ONE installPath
+# 1c. Stale plugin-cache versions. installed_plugins.json records ONE installPath
 #    per plugin; older version directories beside it are upgrade leftovers. They
 #    cost disk, and any "newest cache copy" search (this doctor's own, or an
 #    engineer setting MTK_HELPER_ROOT by hand) can land on the wrong one. Name
@@ -1036,7 +1021,7 @@ PY
   fi
 fi
 
-# 3. Formatter present for the active stack. format-on-edit.sh never blocks and
+# 2. Formatter present for the active stack. format-on-edit.sh never blocks and
 #    logs only to stderr, so a missing binary is invisible: edits look formatted
 #    and are not.
 STACK=""

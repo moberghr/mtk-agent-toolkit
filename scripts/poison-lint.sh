@@ -104,10 +104,9 @@ collect_into() {
 
 collect_into SKILLS .claude/skills -name SKILL.md
 collect_into AGENTS .claude/agents -name '*.md'
-# Rule files became a runtime-loaded surface when hooks/rule-trigger.sh started
-# injecting them into context on a matched tool call. Before that they were only
-# read when the model chose to; now they arrive unprompted, which puts them in the
-# same trust tier as skills and agents. Scan them.
+# Rule files are a runtime-loaded surface: Claude Code auto-loads .claude/rules/*.md
+# into context, so they arrive unprompted, which puts them in the same trust tier
+# as skills and agents. Scan them.
 collect_into RULES .claude/rules -name '*.md'
 HOOKCFG=()
 [ -f hooks/hooks.json ] && HOOKCFG=(hooks/hooks.json)

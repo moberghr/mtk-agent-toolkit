@@ -5,8 +5,6 @@ type: skill
 license: MIT
 compatibility:
   - claude-code
-trigger: toolkit-health-check|adoption-audit|analytics-review
-skip_when: no-analytics-file|first-session
 user-invocable: false
 ---
 
@@ -25,7 +23,7 @@ if [ -f tasks/lessons.md ]; then grep -c '^## ' tasks/lessons.md 2>/dev/null || 
 
 ## Overview
 
-`hooks/session-analytics.sh` persists session stats to `.claude/analytics.json`. This skill reads that file plus on-disk artifacts (specs, lessons, MTK-related commits) and produces a human-readable health report with anomaly flags and suggested actions. Treat the analytics as an operational pulse, not a formal KPI dashboard: some counters are activity metrics, others are lightweight workflow signals. Read-only — never mutates state.
+`hooks/cost-tracker.sh` (the async Stop recorder) persists session stats to `.claude/analytics.json`. `total_operations` counts only Edit, Write and Bash calls — the evidence ledger sees no Read/Grep/Glob — and `total_modifications` counts Edit/Write. This skill reads that file plus on-disk artifacts (specs, lessons, MTK-related commits) and produces a human-readable health report with anomaly flags and suggested actions. Treat the analytics as an operational pulse, not a formal KPI dashboard: some counters are activity metrics, others are lightweight workflow signals. Read-only — never mutates state.
 
 ## When To Use
 
@@ -66,7 +64,7 @@ if [ -f tasks/lessons.md ]; then grep -c '^## ' tasks/lessons.md 2>/dev/null || 
    | `specs_created / sessions` | ≥ 0.05 over 20+ sessions | "Very few specs — team may skip `/mtk implement` for features" |
    | `lessons_captured` | growing over time | "Lessons stagnant — Phase 7 compound step may be skipped" |
    | `scope_guard_warnings / sessions` | < 0.3 | "Frequent scope-guard warnings — specs may be too narrow or team is expanding scope inline" |
-   | `total_modifications / total_operations` | 0.1–0.6 | "Very low mod ratio" → mostly reads (discovery-heavy); "very high" → little verification |
+   | `total_modifications / total_operations` | 0.1–0.6 | "Very low mod ratio" → mostly Bash (running and exploring, little editing); "very high" → little verification |
    | `benchmarks_run` | > 0 after toolkit changes | "No benchmark runs recorded — behavioral checks may be stale" |
    | `benchmark_last_score` | matches latest baseline | stale score → benchmarks have run, but the last result may no longer reflect current hooks |
 

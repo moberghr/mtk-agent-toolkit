@@ -5,14 +5,6 @@ type: skill
 license: MIT
 compatibility:
   - claude-code
-trigger: research-needed|current-best-practice|version-sensitive-decision|external-info-grounding
-skip_when: behavior-verifiable-from-local-repo|well-understood-stable-api|no-external-uncertainty
-triggers:
-  - best-practice
-  - best-practices
-  - latest-version
-  - upgrade-guide
-  - migration-guide
 user-invocable: false
 ---
 
@@ -22,7 +14,7 @@ user-invocable: false
 
 `source-driven-development` answers "does this *known* API behave the way I think?" from authoritative docs; `research-context` answers "given what this repo already does, what is the *current* best way to do X?" — pulling fresh external information (release notes, current best-practices, migration paths, security advisories) and **grounding it against named files in this repo** so the answer fits the codebase, not a generic tutorial. Its output is a small, cited brief consumed by `spec-driven-development` (version-sensitive ambiguity gate, step 6) and `implement` (Phase 3) so decisions ride on current information rather than training-cutoff memory.
 
-> **Tool discipline (phase-locked):** read + web-fetch only — `Read`/`Grep`/`Glob` and `WebSearch`/`WebFetch` (which is why it is not locked to the `read-only` toolset). Never `Edit`/`Write` source or test code; the only artifact it may write is its own brief. Runs on `sonnet` per `.claude/references/model-routing.md`.
+> **Tool discipline (phase-locked):** read + web-fetch only — `Read`/`Grep`/`Glob` and `WebSearch`/`WebFetch`. Never `Edit`/`Write` source or test code; the only artifact it may write is its own brief. Runs on `sonnet` per `.claude/references/model-routing.md`.
 
 ## When To Use
 

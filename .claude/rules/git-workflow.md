@@ -5,14 +5,6 @@ paths:
   - ".claude-plugin/marketplace.json"
   - "CHANGELOG.md"
   - "checksums.sha256"
-axes:
-  decision: process
-  topic: git
-  scope: global
-trigger:
-  tool: "Bash"
-  pattern: "git[[:space:]]+(commit|push|tag|rebase)|gh[[:space:]]+(pr|release)[[:space:]]+(create|merge)"
-strength: inject
 ---
 
 # Git & Workflow (S4)
@@ -39,7 +31,7 @@ strength: inject
 
   Pipe-to-`tail` stays fine for read-only chatty commands (`git log`, `gh pr view`). Recommended env for agent shells: `GH_PROMPT_DISABLED=1`, `GIT_TERMINAL_PROMPT=0`, `GH_PAGER=cat`, `GIT_PAGER=cat` — the pager is the same hang class, since `gh`/`git` page into `less` whenever they detect a TTY. Windows shells (Git Bash/ConPTY) misreport TTY status, so `gh`'s own non-interactive detection is not a substitute for the flags.
 
-  Enforced by `hooks/interactive-guard.sh` (PreToolUse, `Bash` matcher) as a hard deny — it blocks the missing-flag case and the piped case separately, allows read-only pipes, and is disabled with `MTK_INTERACTIVE_GUARD=0`. When a merge is blocked *after* it may already have landed, check `gh pr view <n> --json state` before retrying.
+  Enforced by the interactive-prompt check in `hooks/security-gate.sh` (PreToolUse, `Bash` matcher) as a hard deny — it blocks the missing-flag case and the piped case separately, allows read-only pipes, and is disabled with `MTK_INTERACTIVE_GUARD=0`. When a merge is blocked *after* it may already have landed, check `gh pr view <n> --json state` before retrying.
 
 ## Versioning
 

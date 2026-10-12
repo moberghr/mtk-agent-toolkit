@@ -6,16 +6,16 @@ set -euo pipefail
 #
 # The doctor resolves its own root from $0 and cd's there for toolkit checks
 # (manifest, skills, hooks/ pipefail). Before this fix it ran every project check
-# (constitution budget, settings.json permissions and hooks, context baseline,
-# env calibration) from that directory too, so in a plugin install it measured the
+# (constitution budget, settings.json permissions and hooks, context baseline)
+# from that directory too, so in a plugin install it measured the
 # plugin's AGENTS.md and settings and never looked at the repo it was run for.
 #
 # Fixture: the doctor stays in this checkout (the "plugin"); a scratch project
 # with a 200-line AGENTS.md, a settings.json carrying the invalid
 # permissions.allowedTools key, and a hook block using PostToolUseFailure plus a
 # made-up event. Checks: project AGENTS.md measured, allowedTools FAIL, --fix
-# migrates its narrow entries, event names judged against the documented list, context-window
-# calibration follows the model's real window.
+# migrates its narrow entries, event names judged against the documented list, and no
+# context-budget calibration check (the thresholds it calibrated are gone).
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -82,29 +82,13 @@ grep -qE $'^WARN\tunknown hook event\tNotARealEvent' <<< "$OUT" \
   && pass "made-up event flagged" \
   || fail "NotARealEvent in project settings.json was not flagged — event check is not reading the project"
 
-# 4. context-window calibration: context-budget.sh sizes its window from the
-#    model id, so an unset MTK_CONTEXT_WINDOW_TOKENS is reported as model-derived
-#    (with the window), never as "miscalibrated"; only a pin that contradicts
-#    the model's window WARNs.
-ctx_line() { grep -E $'^(PASS|WARN)\tcontext budget' <<< "$1" || true; }
-for m in claude-haiku-4-5 claude-opus-4-6 claude-sonnet-4-5; do
-  o="$(ctx_line "$(run_doctor ANTHROPIC_MODEL="$m" | checks)")"
-  case "$o" in
-    *$'PASS\tcontext budget sized from the model id'*200000*) pass "$m: 200k window reported as model-derived, no WARN" ;;
-    *) fail "$m: expected a model-derived PASS naming 200000, got: $o" ;;
-  esac
-done
-for m in claude-haiku-5-5 claude-opus-5-5 claude-sonnet-5-5 'claude-opus-4-6[1m]' claude-fable-5-1; do
-  o="$(ctx_line "$(run_doctor ANTHROPIC_MODEL="$m" | checks)")"
-  case "$o" in
-    *$'PASS\tcontext budget sized from the model id'*1000000*) pass "$m: 1M window reported as model-derived" ;;
-    *) fail "$m: expected a model-derived PASS naming 1000000, got: $o" ;;
-  esac
-done
-o="$(ctx_line "$(run_doctor ANTHROPIC_MODEL=claude-opus-5-5 CLAUDE_CODE_DISABLE_1M_CONTEXT=1 | checks)")"
-case "$o" in *200000*) pass "CLAUDE_CODE_DISABLE_1M_CONTEXT=1 caps the window at 200k" ;; *) fail "CLAUDE_CODE_DISABLE_1M_CONTEXT=1 not reflected: $o" ;; esac
-o="$(ctx_line "$(run_doctor ANTHROPIC_MODEL=claude-haiku-4-5 MTK_CONTEXT_WINDOW_TOKENS=1000000 | checks)")"
-case "$o" in *$'WARN\tcontext budget pinned against the model'*) pass "a pin contradicting the model WARNs" ;; *) fail "pin vs model mismatch did not WARN: $o" ;; esac
+# 4. no context-budget calibration check: the evidence ledger has no
+#    window-scaled thresholds, so no model or MTK_CONTEXT_WINDOW_TOKENS pin can
+#    produce a context-budget line at all.
+o="$(run_doctor ANTHROPIC_MODEL=claude-haiku-4-5 MTK_CONTEXT_WINDOW_TOKENS=1000000 | checks)"
+grep -qE $'^(PASS|WARN)\tcontext budget' <<< "$o" \
+  && fail "context-budget calibration check should be gone: $(grep -E 'context budget' <<< "$o" || true)" \
+  || pass "no context-budget calibration check"
 
 # 5. --fix migrates the project settings (and only the project's)
 PLUGIN_SETTINGS_BEFORE="$(cat "$REPO_ROOT/.claude/settings.json")"

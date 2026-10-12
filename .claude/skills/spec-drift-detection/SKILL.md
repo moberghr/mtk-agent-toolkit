@@ -6,14 +6,13 @@ license: MIT
 compatibility:
   - claude-code
   - codex
-trigger: post-implementation|pre-review|spec-approved|ship-gate
-skip_when: no-spec|typo-fix|single-line-change
 user-invocable: false
 effort: high
-required-toolsets: [read-only]
 ---
 
 # Spec-Drift Detection
+
+> **Tool discipline:** read-only — `Read`/`Grep`/`Glob` and read-only `Bash` (`git diff`, the drift scripts). Never `Edit`/`Write` code or the spec; report drift, never fix it.
 
 ## Overview
 

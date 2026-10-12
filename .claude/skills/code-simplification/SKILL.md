@@ -7,8 +7,6 @@ compatibility:
   - claude-code
   - cursor
   - codex
-trigger: post-verification|cleanup-pass|heavy-abstractions
-skip_when: pre-correctness|unrelated-refactor
 user-invocable: false
 ---
 

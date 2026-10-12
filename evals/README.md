@@ -65,9 +65,8 @@ Exit codes: `0` every case met `--threshold`, `1` a case fell below it (or faile
 load), `2` partial run (cost ceiling hit or credentials rejected).
 
 If a run fails with "has more than one hard link", a `node_modules/` tree exists under
-the plugin (the session-start hook rebuilds the MCP bundle with `npm ci` when
-`mcp/src` looks newer than `dist/`). Run from a checkout without `mcp/node_modules`
-and keep the bundle newer than its sources (`touch dist/mtk-mcp-server.cjs`).
+the plugin; an older checkout may still hold `mcp/node_modules/` from the removed MCP
+server. Delete it and rerun.
 
 ## Three-arm method
 

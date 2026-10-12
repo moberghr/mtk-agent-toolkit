@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Output Compression
 
-Long Bash output (build logs, test runs, JSON dumps, fetched HTML) burns context budget without proportional information value. `scripts/mtk-compress.sh` is a stdin → stdout filter that compresses output before it lands in context. The PostToolUse hook `hooks/compress-monitor.sh` flags large outputs that did not go through it.
+Long Bash output (build logs, test runs, JSON dumps, fetched HTML) burns context budget without proportional information value. `scripts/mtk-compress.sh` is a stdin → stdout filter that compresses output before it lands in context.
 
 ## When to compress
 
@@ -83,8 +83,6 @@ Set in `.claude/settings.local.json` `env` block (per-machine, gitignored):
 | `MTK_COMPRESS_MAX_LOG_LINES` | 30 | Keep this many head + tail lines in `logs` mode |
 | `MTK_COMPRESS_MAX_ARRAY_ITEMS` | 5 | Keep this many head + tail items per JSON array |
 | `MTK_COMPRESS_DISABLED` | 0 | If `1`, the compressor passes through unchanged |
-| `MTK_COMPRESS_WARN_CHARS` | 5000 | Monitor hook warns above this if output skipped compression |
-| `MTK_COMPRESS_MONITOR_DISABLED` | 0 | If `1`, silence the PostToolUse warning |
 
 ## Analytics
 

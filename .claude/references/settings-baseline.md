@@ -46,11 +46,34 @@ Nothing is pre-authorized for every stack. Each tech-stack skill's
 - `Read(**/*.key)`
 - `Read(**/*.pfx)`
 - `Read(**/*.p12)`
+- `Read(**/*.jks)` — Java keystores
+- `Read(**/*.keystore)`
+- `Read(**/*.kdbx)` — KeePass databases
+- `Read(**/id_rsa)` — SSH private keys; the `.*` rules also cover the `.pub` halves
+- `Read(**/id_rsa.*)`
+- `Read(**/id_dsa)`
+- `Read(**/id_dsa.*)`
+- `Read(**/id_ecdsa)`
+- `Read(**/id_ecdsa.*)`
+- `Read(**/id_ed25519)`
+- `Read(**/id_ed25519.*)`
+- `Read(**/.npmrc)` — registry tokens
+- `Read(**/.netrc)`
+- `Read(**/.pgpass)`
+- `Read(**/credentials)` — AWS-style credentials files
 - `Read(**/secrets/**)` — a directory named `secrets` at any depth
-- `Read(**/secrets.json)`
-- `Read(**/secrets.yaml)`
-- `Read(**/secrets.yml)`
+- `Read(**/secrets.*)` — `secrets.json`, `secrets.yaml`, `secrets.yml`, any extension
 - `Read(**/*.secret)`
+- `Read(**/*.secrets)`
+
+This list is the native replacement for the retired `hooks/read-guard.sh` and
+covers every secret pattern that hook denied
+(`tests/hooks/test-settings-baseline.sh` pins that). Unlike the hook it has no
+`.example` / `.template` / `.sample` / `.dist` carve-out — an allow rule cannot
+override a deny — so a sample such as `secrets.example.json` is unreadable too.
+Repos bootstrapped before this list existed get the missing rules proposed by
+`setup-refresh` and reported (and merged with `--fix`) by `mtk-doctor`, both via
+`scripts/settings-baseline.sh`.
 
 A blanket `Read(**/*secret*)` is deliberately absent: it also blocks source files
 such as `SecretRotationService.cs` or `secret-store.ts`, which reviewers need to

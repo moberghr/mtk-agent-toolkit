@@ -9,7 +9,7 @@ set -euo pipefail
 # filesystem serves the same checkout as both /Users/x/Dev/repo and
 # /Users/x/dev/repo, and `pwd -P` resolves symlinks but not case. REL_PATH then
 # stays absolute, every `case "$REL_PATH" in docs/specs/*)` match misses, and
-# the hook exits 0. scope-guard and read-guard FAIL OPEN in that condition.
+# the hook exits 0. scope-guard FAILS OPEN in that condition.
 #
 # Covers:
 #   (a) exact spelling (the fast path) still works

@@ -7,8 +7,6 @@ compatibility:
   - claude-code
   - cursor
   - codex
-trigger: instructions-audit|memory-rot|stale-claude-md|claude-md-quality|agents-md-audit|stale-agents-md
-skip_when: bootstrap|first-time-setup|no-existing-constitution
 user-invocable: false
 ---
 

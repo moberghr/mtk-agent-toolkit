@@ -10,7 +10,7 @@
 | Harness | Version | Basis | Instructions | Skills | Agents | Hooks | MCP | Install |
 |---|---|---|---|---|---|---|---|---|
 | Claude Code | 2.1.278 | tested (daily) | `CLAUDE.md`, `AGENTS.md` (v2.1.277+, see modes) | `.claude/skills/` + plugin `skills` only | `.claude/agents/*.md` | full | `.mcp.json` | `.claude-plugin/` marketplace |
-| Codex CLI | 0.153.4 | **tested** | `AGENTS.md` (project) + `~/.codex/AGENTS.md` (global) | plugin `"skills": "./.claude/skills"` ✅, `.agents/skills/` (project + `~/.agents/skills`) | `.codex/agents/*.toml` only | plugin `hooks/hooks.json` in Claude format ✅ — see caveats | ❌ plugin `.mcp.json` registered but `${CLAUDE_PLUGIN_ROOT}` not expanded | reads `.claude-plugin/marketplace.json` + `plugin.json` directly |
+| Codex CLI | 0.153.4 | **tested** | `AGENTS.md` (project) + `~/.codex/AGENTS.md` (global) | plugin `"skills": "./.claude/skills"` ✅, `.agents/skills/` (project + `~/.agents/skills`) | `.codex/agents/*.toml` only | plugin `hooks/hooks.json` in Claude format ✅ — see caveats | n/a — MTK ships no MCP server | reads `.claude-plugin/marketplace.json` + `plugin.json` directly |
 | OpenCode | 1.18.20 | **tested** | `AGENTS.md`, `~/.config/opencode/AGENTS.md` | `.claude/skills/` ✅, `.agents/skills/` ✅, `.opencode/skills/` | `.opencode/agents/*.md` only — `.claude/agents/` **not** read ✅ | none native; JS plugin API can host a shim | `opencode.json` `mcp` block | `opencode plugin <module>` |
 | Cursor | — | docs | `AGENTS.md`, `.cursor/rules/*.mdc` | `.agents/skills/`, `.cursor/skills/`, legacy `.claude/skills/` | `.claude/agents/*.md` read directly | `.cursor/hooks.json` v1, camelCase events, own payload/output | `.cursor/mcp.json` | no plugin system |
 | Gemini CLI | — | docs | `GEMINI.md` (`contextFileName` configurable) | `.gemini/skills/`, extension `skills/` | extension `agents/*.md` | `settings.json`/extension `hooks/hooks.json`, `BeforeTool`/`AfterTool`/… names | `settings.json` `mcpServers` | `gemini extensions install` |
@@ -40,7 +40,7 @@ and reads `.claude-plugin/plugin.json` as-is. No Codex-specific manifest is need
 
 **Skills.** `"skills": "./.claude/skills"` loads every skill, namespaced `mtk:<name>` in the
 model's skill list. A skill carrying non-spec top-level keys (`type`, `effort`, `context`,
-`user-invocable`, `trigger`, `required-toolsets`) **loaded** — lenient parsing. A `SKILL.md`
+`user-invocable`) **loaded** — lenient parsing. A `SKILL.md`
 with no frontmatter logs `failed to load skill … missing YAML frontmatter` and is skipped.
 `~/.agents/skills/` and project `.agents/skills/` are also scanned.
 
@@ -51,13 +51,12 @@ with no frontmatter logs `failed to load skill … missing YAML frontmatter` and
 
 | Codex action | Hooks that fired | ⇒ `tool_name` matches |
 |---|---|---|
-| shell (`exec`) | security-gate, interactive-guard, rule-trigger (3) | `Bash` |
-| `apply_patch` | scope-guard, rule-trigger (2) | `Edit`\|`Write` |
+| shell (`exec`) | security-gate | `Bash` |
+| `apply_patch` | scope-guard | `Edit`\|`Write` |
 | file read | none — Codex reads with `cat` via shell | no `Read`/`Grep`/`Glob` tools exist |
 
-Consequence: `hooks/read-guard.sh` (secret-file read block) **never fires** under Codex, and
-there is no `permissions.deny` equivalent — a secret read via `cat .env` is uncaught until the
-security gate learns to classify secret-pattern paths in shell commands.
+Consequence: there is no `permissions.deny` equivalent under Codex — a secret read via `cat .env`
+is uncaught until the security gate learns to classify secret-pattern paths in shell commands.
 
 Output protocol: exit 2 + stderr → the model sees
 `Command blocked by PreToolUse hook: BLOCKED: Force push to main/master is not allowed.`
@@ -73,11 +72,6 @@ install time. Hooks added or changed by a later plugin update are reported as
 `.codex/hooks.json` never ran under `codex exec` (untrusted; no trust prompt non-interactively).
 The hash input format was not recovered (command string, hook JSON, script contents and file
 hash all mismatch).
-
-**MCP.** The plugin's `.mcp.json` is registered (`codex mcp list` shows `mtk-context`) but
-`${CLAUDE_PLUGIN_ROOT}` in `args` stays literal, so the server never starts —
-`mtk_active_stack` reports unavailable. Root `mcp.json` with `${PLUGIN_ROOT}` was not
-registered at all.
 
 **Agents.** `~/.codex/agents/*.toml` and `.codex/agents/*.toml` with `name`, `description`,
 `developer_instructions` (+ `model`, `model_reasoning_effort`, `sandbox_mode`). Markdown

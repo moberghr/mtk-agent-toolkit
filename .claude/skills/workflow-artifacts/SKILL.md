@@ -7,8 +7,6 @@ compatibility:
   - claude-code
   - cursor
   - codex
-trigger: workflow-start|phase-transition|gate-decision|resume-after-crash
-skip_when: single-turn-task|exploration
 user-invocable: false
 ---
 

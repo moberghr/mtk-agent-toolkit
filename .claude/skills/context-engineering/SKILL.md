@@ -7,8 +7,6 @@ compatibility:
   - claude-code
   - cursor
   - codex
-trigger: session-start|phase-switch|unfamiliar-code|output-drift
-skip_when: single-command|trivial-lookup
 user-invocable: false
 ---
 
@@ -37,7 +35,7 @@ shared vocabulary (borrow: LangChain / jihoo-kim context-engineering taxonomy).
 | Operation | What it means | Where MTK does it |
 |---|---|---|
 | **Write** | Persist state outside the window so it survives compaction/handoff | auto-memory + `tasks/lessons.md`, `workflow-artifacts`, `handoff` |
-| **Select** | Pull in only what the current step needs | rules `INDEX.md` wake-up layer, path-scoped `applyTo` reference loading (below) |
+| **Select** | Pull in only what the current step needs | rule `paths:` frontmatter (native path-scoped loading), path-scoped `applyTo` reference loading (below) |
 | **Compress** | Shrink what must stay in-window without losing signal | `.claude/references/output-compression.md`, `mtk-compress.sh` |
 | **Isolate** | Give a sub-task its own fresh window | `subagent-implementation` (one implementer per batch), review agents (`context: fork`) |
 
@@ -60,11 +58,8 @@ shared vocabulary (borrow: LangChain / jihoo-kim context-engineering taxonomy).
    may declare an `applyTo` glob array. When the current task has a known
    set of files in scope (from the spec's `change_manifest` or from
    `git diff --name-only HEAD`):
-   - **MCP-first:** If `mtk_resolve_references` tool is available, call it
-     with the list of touched files. It returns deterministic glob matches
-     against the manifest's `applyTo` arrays. Use its output directly.
-   - **Fallback:** If the MCP tool is unavailable, manually test each
-     touched file against the globs (bash `case` / `fnmatch` semantics).
+   - Test each touched file against the globs (bash `case` / `fnmatch`
+     semantics).
    - Load references whose globs match at least one touched file.
    - Skip references whose globs match nothing — they're not relevant to
      this task.
@@ -82,25 +77,12 @@ shared vocabulary (borrow: LangChain / jihoo-kim context-engineering taxonomy).
    enter scope, re-run the path-scoped match and load any newly-applicable
    references.
 
-## Rule Taxonomy & Wake-Up Layer
+## Rules
 
-`.claude/rules/` is loaded through a token-budgeted **wake-up layer**, not eagerly.
-
-1. **Read `.claude/rules/INDEX.md` first.** It is the always-on layer: one line
-   per rule with its three axes — **decision** (structure | process | authoring |
-   security), **topic** (manifest | skills | hooks | git | …), **scope** (global |
-   project) — plus rule count and line count. This is cheap (target < 60 lines).
-2. **Pull a full rule file only when its axes match the active task.** Editing
-   under `hooks/` or `scripts/` → load `topic: hooks`. Branching/committing →
-   `topic: git`. Authoring a skill → `topic: skills`. Touching the manifest or
-   release → `topic: manifest`. Do not load every rule file "just in case" — the
-   index exists so you can decide what's relevant before spending the tokens.
-3. **Axes complement `paths:`.** A rule whose `paths:` glob matches a touched file
-   is always relevant; the axes let you *also* pull rules by intent (e.g. all
-   `decision: security` rules during a security pass) even when no path matched.
-4. **Keep the index fresh.** After editing any rule file's content or frontmatter,
-   run `bash scripts/build-rule-index.sh`. CI runs `--check` and fails on a stale
-   index. INDEX.md is generated — never hand-edit it.
+`.claude/rules/*.md` files carry `paths:` frontmatter, and Claude Code loads a
+rule only when a file matching its globs is read or edited. Do not read every
+rule file up front; when a task's intent needs a rule whose paths did not match
+(a security pass, a release), read that one file directly.
 
 ## Parallel Loading
 
@@ -140,7 +122,7 @@ by section, cap log tails — and prune instructions second. The implement loop 
 loads ~15 skills on the 1M default window; skill count alone is not a warning signal.
 
 **When to check the budget:**
-- When the `context-budget` hook nudges (estimated consumption past `MTK_CONTEXT_BUDGET_PCT`%, default 60, of `MTK_CONTEXT_WINDOW_TOKENS`, default 1000000) — it counts read bytes only, so treat it as a floor and reset/hand off deliberately rather than riding to compaction
+- At each phase boundary, check the harness's `/context` figure — MTK runs no budget hook of its own. Past roughly 60% of the window, reset or hand off deliberately rather than riding to auto-compaction
 - If output quality drops or instructions are being ignored, context may be over-budget regardless of the number
 - Before loading a new reference, check if an earlier one can be released
 
@@ -149,11 +131,11 @@ loads ~15 skills on the 1M default window; skill count alone is not a warning si
 - Full reference files loaded when only a section is needed
 - Same context loaded multiple times (after compaction recovery)
 
-## Proactive Reset (budget-hook boundary + rot-symptom override)
+## Proactive Reset (`/context` boundary + rot-symptom override)
 
-Quality degrades long before the context window fills, and tool-forced compaction tends to fire at the worst possible moment (mid-phase, mid-edit). Do not ride the budget up to the limit. Reset **deliberately, at a clean boundary** — a phase exit, a finished batch, a green verification — once the `context-budget` hook's nudge fires (`MTK_CONTEXT_BUDGET_PCT`, default 60) or the harness `/context` figure passes that mark. A clean reset-and-reseed (re-anchor on the goal + the files now in scope) keeps later work sharp.
+Quality degrades long before the context window fills, and auto-compaction tends to fire at the worst possible moment (mid-phase, mid-edit). Do not ride the budget up to the limit. Reset **deliberately, at a clean boundary** — a phase exit, a finished batch, a green verification — once the harness `/context` figure passes roughly 60% of the window. A clean reset-and-reseed (re-anchor on the goal + the files now in scope) keeps later work sharp.
 
-Read a real number, never a guess: prefer the harness's `/context` figure or the `context-budget` hook estimate. If neither is available, fall back to the fatigue signals above.
+Read a real number, never a guess: use the harness's `/context` figure. If it is not available, fall back to the fatigue signals above. When auto-compaction does fire, `session-start` re-injects the on-disk task state on the `compact` event — re-anchor on it rather than on the summary.
 
 **Rot-symptom override.** Behavioral degradation beats the percentage. If **2 or more** of these appear, reset now regardless of how low the number looks:
 
@@ -196,8 +178,8 @@ After completing reference loading at the end of Phase 0 (and after any subseque
   file, do NOT load it as a "just in case" measure. That defeats the budget.
 - When in doubt about which globs match, use `git diff --name-only HEAD` as
   the authoritative list of touched files.
-- Reset proactively at a clean boundary once the `context-budget` hook nudges
-  (or `/context` passes `MTK_CONTEXT_BUDGET_PCT`); do not ride to compaction.
+- Reset proactively at a clean boundary once `/context` passes roughly 60%;
+  do not ride to auto-compaction.
   2+ rot symptoms (re-reading, re-asking, contradicting a prior decision)
   override the number — reset now even if usage is low.
 - Bound tool output before pruning instructions: instructions are prompt-cached,

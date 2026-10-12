@@ -55,7 +55,7 @@ MTK closes the 80% gap with four things working together:
 | Review is one prompt: "review this code" | Two-stage pipeline: spec-compliance gate first, then test + architecture specialists in parallel |
 | Findings are vague: "consider adding tests" | Structured JSON — severity, confidence score, rule citation, `file:line` — filtered below confidence 80 so there's no noise |
 | Generated rules are trusted blindly | Every generated claim is grep-verified against your code; the ones it can't prove are downgraded in place |
-| The toolkit inflates your context window | Only ~3,842 tokens load per session; ~103K tokens stay out of always-on context until relevant |
+| The toolkit inflates your context window | Only ~3,453 tokens load per session; ~103K tokens stay out of always-on context until relevant |
 
 > **MTK is not a replacement for human review.** It's a rigorous first pass that catches the mechanical stuff — so your senior engineers spend their attention on design, product, and the judgment calls an AI can't make.
 
@@ -109,15 +109,14 @@ When Claude Code starts a session with this plugin enabled, the `SessionStart` h
 
 - Surfaces a session-recovery message if there are in-progress specs (`docs/specs/`), plans (`docs/plans/`), or incomplete `tasks/todo.md` items.
 - Runs an advisory toolkit version-drift check.
-- Compiles the bundled MCP server *only if* `node` is present and the source changed — a local build of code shipped in the repo, no network, no package install. The MCP server is optional; every skill has a bash fallback.
 
-No network calls. All writes stay inside the working directory. Disable tier-2 (skill-invoking) hooks with `MTK_HOOKS_TIER2=0` in `.claude/settings.local.json`.
+No network calls. All writes stay inside the working directory. Silence the end-of-session workflow-continuation nudge with `MTK_HOOKS_TIER2=0` in `.claude/settings.local.json`.
 
 ---
 
 ## Token Economics
 
-> **MTK ships 43 skills, 6 agents, and 50 reference documents — yet only ~3,842 tokens load into every session. The other ~103,000 tokens stay out of always-on context (~89K deferred behind progressive disclosure, ~14K of review offloaded to isolated subagents) until the exact moment they're relevant.**
+> **MTK ships 43 skills, 6 agents, and 50 reference documents — yet only ~3,453 tokens load into every session. The other ~103,000 tokens stay out of always-on context (~89K deferred behind progressive disclosure, ~14K of review offloaded to isolated subagents) until the exact moment they're relevant.**
 
 Most "big" AI toolkits pay for their power by inflating your context window: a giant `CLAUDE.md`, a wall of always-on rules, review logic that clutters the main thread. MTK is engineered the opposite way — to keep tokens **out** of context. See exactly where they go, computed from your own installed files:
 
@@ -132,28 +131,27 @@ MTK context footprint & savings  (approx, ~4 chars/token)
 Always-on — loaded into EVERY session:
   skill descriptions       6407 chars  ~  1601 tok  (43 skills)
   CLAUDE.md                6388 chars  ~  1597 tok
-  rules/INDEX.md           1559 chars  ~   389 tok
   agent descriptions       1016 chars  ~   254 tok  (6 agents)
-  ── always-on floor              ~  3842 tok
+  ── always-on floor              ~  3453 tok
 
 Kept OUT of always-on by progressive disclosure (load only when relevant):
   references             237603 chars  ~ 59400 tok  (50 files, glob-gated)
   rule bodies             15954 chars  ~  3988 tok  (path-gated)
-  manifest.json          102659 chars  ~ 25664 tok  (MCP-gated, never inlined)
+  manifest.json          102659 chars  ~ 25664 tok  (read on demand, never inlined)
   ── deferred total               ~ 89054 tok  ← would be always-on if inlined into CLAUDE.md
 
 Review offloaded to isolated subagent context:
   6 agent bodies          55600 chars  ~ 13900 tok  (never enters the main thread)
 
 Summary: MTK keeps ~102954 tok out of your always-on context (deferred + review offload),
-compresses tool output on demand, and holds the always-on floor to ~3842 tok/session.
+compresses tool output on demand, and holds the always-on floor to ~3453 tok/session.
 ```
 
 Every number is derived from on-disk files — nothing is fabricated from telemetry MTK doesn't collect. Five levers make it work:
 
 ### 1 · Progressive disclosure — load one thing at a time
 
-The 43 skill *bodies* total ~129K tokens, but only **one loads when its skill actually runs**. Rule bodies sit behind a <60-line `rules/INDEX.md` "wake-up layer" and load only when their decision/topic/scope axes — or file globs — match the task in front of you. All 50 reference docs are glob-gated via manifest `applyTo` arrays: edit a `DbContext` and the EF Core checklist loads; edit a controller and it doesn't. **Nothing loads "just in case."**
+The 43 skill *bodies* total ~129K tokens, but only **one loads when its skill actually runs**. Rule bodies are path-scoped by their `paths:` frontmatter, and Claude Code loads one only when a matching file is touched. All 50 reference docs are glob-gated via manifest `applyTo` arrays: edit a `DbContext` and the EF Core checklist loads; edit a controller and it doesn't. **Nothing loads "just in case."**
 
 ### 2 · Review offloaded to isolated context
 
@@ -168,7 +166,7 @@ dotnet test 2>&1 | bash scripts/mtk-compress.sh        # auto-detect: tests / lo
 bash scripts/mtk-compress.sh stats                     # session + all-time tokens reclaimed
 ```
 
-Five content-aware modes preserve what matters (test failures, error lines, summaries) and elide what doesn't (thousands of PASS lines, long arrays, boilerplate). A `PostToolUse` hook even **flags large Bash output that bypassed compression** and tells you which mode would have reclaimed the tokens — so the savings happen even when you forget.
+Five content-aware modes preserve what matters (test failures, error lines, summaries) and elide what doesn't (thousands of PASS lines, long arrays, boilerplate).
 
 Measured on this toolkit (reproduce with `mtk-compress` + `wc -c`, at its own ~4 chars/token approximation):
 
@@ -182,10 +180,10 @@ Failures and summary lines survive both times — only the repetition is dropped
 ### 4 · A baseline that can't silently creep
 
 - **Cache-stable prefix** — the always-loaded `CLAUDE.md` carries no per-release version banner, so the prompt-cache stays warm across releases.
-- **MCP-gated manifest** — the ~25,664-token `manifest.json` is served on demand through the bundled MCP server, never inlined into context.
+- **On-demand manifest** — the ~25,664-token `manifest.json` is read only by the scripts and skills that need it, never inlined into context.
 - **Budget enforced in CI** — `validate-toolkit.sh` caps each skill description at 200 chars and the whole catalogue at ~1,750 tokens, and prints the running total on every run. Because Claude Code reserves only ~1% of context for skill metadata, this protects routing quality even on smaller-context models.
 - **`.claudeignore` at setup** — bootstrap generates a stack-aware ignore file so Claude Code natively keeps dependency and build directories out of search and reads.
-- **A context-budget hook** nudges a clean handoff once a session passes 60% of the window — so quality resets at a boundary you choose, not a forced mid-edit compaction.
+- **Deliberate resets** — `context-engineering` and `handoff` read the harness's own `/context` figure and reset at a clean phase boundary, so quality resets where you choose rather than at an auto-compaction mid-edit.
 
 ### 5 · Deterministic checks spend no model tokens
 
@@ -487,8 +485,7 @@ ENTRY POINTS (4 user-invocable skills)
 50 REFERENCES  — 32 shared (security, testing, performance, finance, AI failure modes, review schema, …)
                  + 6 per stack × 3 stacks (coding-guidelines, ORM checklist, framework patterns, …)
       ↓ enforced by
-14 HOOKS across 7 lifecycle events  — SessionStart · PreToolUse · PostToolUse · PreCompact
-                                       · SessionStart(compact) · UserPromptSubmit · Stop
+10 HOOKS across 4 lifecycle events  — SessionStart (incl. compact) · PreToolUse · PostToolUse · Stop
       ↓ validated by
 7 BENCHMARK SUITES (30/30) · 8 PLUGIN-EVAL CASES · 33 PRESSURE TESTS
 ```
@@ -499,14 +496,16 @@ Hooks are deterministic — they fire every time, unlike advisory `CLAUDE.md` in
 
 | Hook | Event | What it does |
 |:---|:---|:---|
-| **session-start** | SessionStart | Session recovery; compiles the bundled MCP server on first use if `node` is present |
-| **security-gate** | PreToolUse (Bash) | Blocks destructive ops: DB drops, force-push to main, `rm -rf` on broad paths |
-| **read-guard** | PreToolUse (Read) | Blocks secret-bearing files (`.env`, `*.pem`, `id_rsa`, …) from entering context — no self-approval path |
+| **session-start** | SessionStart | Session recovery; on `compact`, re-injects tech stack, active specs/plans, tasks, a recent handoff and one live workflow |
+| **security-gate** | PreToolUse (Bash) | Blocks destructive ops (DB drops, force-push, `rm -rf` on broad paths, `curl … \| sh`) and commands that would hang on an interactive prompt |
+| **format-on-edit** | PreToolUse (Bash) · PostToolUse (Edit/Write) · Stop | Queues edited files, formats them before a verification command runs, and flushes the rest at Stop |
 | **scope-guard** | PreToolUse (Edit/Write) | Warns when an edit falls outside the active spec's `change_manifest` |
-| **context-budget** / **compress-monitor** | PostToolUse | Tracks files/edits/ops and nudges a reset past 60%; flags large uncompressed output |
-| **post-compact** | SessionStart (matcher `compact`) | Re-injects tech stack, active specs/plans, tasks, and handoff artifacts after auto-compaction |
+| **config-guard** | PreToolUse (Edit/Write) | Blocks edits that weaken linter, analyzer, or formatter config |
+| **evidence-ledger** | PostToolUse (Edit/Write/Bash) | Records edits and verification runs for `verify-completion`; prints nothing |
+| **spec-approval-trigger** | PostToolUse (Edit/Write) | Points to planning when a spec flips to `approved`; flags a sealed spec edited after approval |
 | **verify-completion** | Stop | Rejects "done" claims lacking fresh, cited command output |
-| **capture-learnings** / **session-analytics** | Stop | Prompts lesson capture after substantial sessions; persists usage stats |
+| **workflow-continuation** | Stop (async) | One-line nudge when a session ends with an unfinished workflow |
+| **cost-tracker** | Stop (async) | Persists usage stats to `.claude/analytics.json` and token-cost estimates to `.mtk/metrics/costs.jsonl` |
 
 ### Tech stacks
 
@@ -586,13 +585,13 @@ Create `.claude/domains` with a domain name (e.g. `finance`) to activate sector-
 <details>
 <summary><b>Do I need Claude Code to use this?</b></summary>
 
-Yes. MTK is a Claude Code plugin — hooks, skill routing, session recovery, and the bundled MCP server rely on Claude Code's runtime. The reference documents are useful reading on their own, and MTK generates native config for Cursor, Copilot, Windsurf, Gemini, and Cline, but the workflow *enforcement* runs under Claude Code.
+Yes. MTK is a Claude Code plugin — hooks, skill routing, and session recovery rely on Claude Code's runtime. The reference documents are useful reading on their own, and MTK generates native config for Cursor, Copilot, Windsurf, Gemini, and Cline, but the workflow *enforcement* runs under Claude Code.
 </details>
 
 <details>
 <summary><b>Does all this slow the AI down?</b></summary>
 
-Per-feature wall-clock is slightly longer. Net throughput is dramatically higher because the drift tax — rework, production incidents, review rounds, "that looked fine to me" postmortems — drops. And thanks to progressive disclosure, the discipline costs you almost nothing in context (~3,842 tokens/session).
+Per-feature wall-clock is slightly longer. Net throughput is dramatically higher because the drift tax — rework, production incidents, review rounds, "that looked fine to me" postmortems — drops. And thanks to progressive disclosure, the discipline costs you almost nothing in context (~3,453 tokens/session).
 </details>
 
 <details>
@@ -656,26 +655,24 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). The short version:
 
 ## What MTK runs
 
-Everything the plugin executes on your machine, what it writes, and what it contacts. Hooks and the MCP server run locally as you, outside Claude Code's sandbox.
+Everything the plugin executes on your machine, what it writes, and what it contacts. Hooks run locally as you, outside Claude Code's sandbox.
 
 **Hooks** (`hooks/hooks.json`, plain bash — needs bash, coreutils, git, python3):
 
 | Event | Hooks | What they do |
 |---|---|---|
-| SessionStart | `session-start`, `post-compact.sh`, `rule-trigger.sh --rearm` | Inject MTK context, re-inject on-disk task state after compaction |
-| PreToolUse | `security-gate.sh`, `interactive-guard.sh`, `scope-guard.sh`, `config-guard.sh`, `fact-force-guard.sh`, `read-guard.sh`, `rule-trigger.sh`, `mcp-health.sh` | Advise on or block tool calls: destructive/secret-leaking commands, prompt-hanging `gh`/`git` calls, edits outside an approved spec, edits that weaken linter config, reads of secret files; warn on reads of generated/vendored dirs and on MCP servers that keep failing |
-| PostToolUse / PostToolUseFailure | `context-budget.sh`, `spec-approval-trigger.sh`, `format-on-edit.sh`, `compress-monitor.sh`, `fact-force-guard.sh`, `mcp-health.sh` | Context-size nudges; queue spec-approval reminders; queue edited files for formatting |
-| PreCompact | `pre-compact-snapshot.sh` | Snapshot task state before compaction |
-| UserPromptSubmit | `userprompt-dispatch.sh` | Surface queued skill suggestions and keyword hints |
-| Stop / SubagentStop | `verify-completion`, `format-on-edit.sh --flush`, `capture-learnings.sh`, `session-analytics.sh`, `workflow-continuation.sh`, `cost-tracker.sh` | Check completion claims for evidence; run your project's own formatter (`dotnet format`, `ruff`/`black`, or `npx --no-install biome`/`prettier` — never installs anything) on edited files; prompt lesson capture; record local usage and token-cost estimates |
+| SessionStart | `session-start` | Inject MTK context; on `compact`, re-inject on-disk task state |
+| PreToolUse (Bash) | `security-gate.sh`, `format-on-edit.sh --flush-before-verify` | Block destructive or prompt-hanging commands; format queued files before a verification command runs |
+| PreToolUse (Edit\|Write) | `scope-guard.sh`, `config-guard.sh` | Warn on edits outside an approved spec; block edits that weaken linter config |
+| PostToolUse (Edit\|Write\|Bash) | `evidence-ledger.sh` | Record edits and verification runs for `verify-completion` (silent) |
+| PostToolUse (Edit\|Write) | `spec-approval-trigger.sh`, `format-on-edit.sh` | Point to planning on spec approval; queue edited files for formatting |
+| Stop | `verify-completion`, `format-on-edit.sh --flush`, `workflow-continuation.sh` (async), `cost-tracker.sh` (async) | Check completion claims for evidence; run your project's own formatter (`dotnet format`, `ruff`/`black`, or `npx --no-install biome`/`prettier` — never installs anything) on edited files; nudge on an unfinished workflow; record local usage and token-cost estimates |
 
 Hooks read the session transcript locally (completion evidence, cost estimates). They never change Claude Code's permission settings.
 
-**Files written in your repo:** `.claude/analytics.json` (usage counts), `.claude/observability/`, `.claude/queue/`, `.mtk/workflows/`, `.mtk/metrics/costs.jsonl`, and `.mtk/config-guard-allow` (only when you allow a config edit). Short-lived state goes to `$TMPDIR/mtk-*`. `/mtk-setup` writes `AGENTS.md`, the `CLAUDE.md` shim, `.claude/rules/`, `.claude/references/`, and merges recommended `permissions.allow`/`deny`/`ask` entries into `.claude/settings.json` — only when you run it.
+**Files written in your repo:** `.claude/analytics.json` (usage counts), `.claude/observability/`, `.mtk/workflows/`, `.mtk/metrics/costs.jsonl`, and `.mtk/config-guard-allow` (only when you allow a config edit). Short-lived state goes to `$TMPDIR/mtk-*`. `/mtk-setup` writes `AGENTS.md`, the `CLAUDE.md` shim, `.claude/rules/`, `.claude/references/`, and merges recommended `permissions.allow`/`deny`/`ask` entries into `.claude/settings.json` — only when you run it.
 
-**MCP server** (`mtk-context`, stdio): `node ${CLAUDE_PLUGIN_ROOT}/dist/mtk-mcp-server.cjs`. It reads repo files (tech stack, manifest, references, solution structure) and makes no network calls. The bundle is unminified and includes the MCP SDK, which is why it is ~600 KiB; its source is in [`mcp/src/`](mcp/src/) and it is rebuilt with `bash scripts/build-mcp.sh`.
-
-**Network:** no hook and no MCP tool makes a network request. `/mtk-setup` fetches the coding guidelines from `raw.githubusercontent.com/moberghr/coding-guidelines` at a pinned commit and verifies their sha256. Skills that need GitHub or the web (PR-review mining, CI status, `research-context`) ask Claude to run `gh` or web tools through its normal, permission-checked tools. MTK collects no telemetry.
+**Network:** no hook makes a network request. `/mtk-setup` fetches the coding guidelines from `raw.githubusercontent.com/moberghr/coding-guidelines` at a pinned commit and verifies their sha256. Skills that need GitHub or the web (PR-review mining, CI status, `research-context`) ask Claude to run `gh` or web tools through its normal, permission-checked tools. MTK collects no telemetry.
 
 ---
 

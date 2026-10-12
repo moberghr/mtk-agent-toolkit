@@ -3,7 +3,6 @@ name: plan-gap-reviewer
 description: Fresh, anti-anchored review of a saved plan against the current codebase — does not load lessons, prior reviewer output, or planner rationale.
 allowed-tools: Read, Glob, Grep
 tools: Read, Glob, Grep
-required-toolsets: [read-only]
 model: sonnet
 effort: high
 context: fork

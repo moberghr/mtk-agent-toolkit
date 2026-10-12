@@ -6,14 +6,13 @@ license: MIT
 compatibility:
   - claude-code
   - codex
-trigger: pre-spec-approval|pre-implementation|duplication-risk|new-capability
-skip_when: typo-fix|config-update|trivial-change
 user-invocable: false
 effort: high
-required-toolsets: [read-only]
 ---
 
 # Prior Work Check
+
+> **Tool discipline:** read-only — `Read`/`Grep`/`Glob` and read-only `Bash` queries. Never `Edit`/`Write`; report what exists and let the caller decide.
 
 ## Overview
 

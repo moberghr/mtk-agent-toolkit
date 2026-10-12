@@ -49,6 +49,9 @@ set -euo pipefail
 #      explicit exception to the general degradation rule).
 #   7. .claude/setup-answers.json — informational only: `present` / `absent`.
 #      Never affects the --check exit code or the summary counts.
+#   8. permissions-baseline — scripts/settings-baseline.sh --missing against
+#      .claude/settings.json: any baseline deny/ask rule absent -> stale with
+#      the count; none -> fresh; helper missing or unreadable JSON -> unknown.
 #
 # Usage:
 #   bash scripts/setup-refresh-plan.sh [--json] [--check]
@@ -326,13 +329,12 @@ else:
 
     def is_known_artifact(tok):
         # Names that collide with an MTK-owned kebab-case artifact (skill,
-        # script, rule, toolset, dotfile) are never dependency names.
+        # script, rule, dotfile) are never dependency names.
         candidates_paths = (
             os.path.join(".claude", "skills", tok),
             os.path.join("scripts", tok + ".sh"),
             os.path.join("scripts", tok + ".py"),
             os.path.join(".claude", "rules", tok + ".md"),
-            os.path.join(".claude", "toolsets", tok + ".yaml"),
             os.path.join(".claude", tok),
         )
         return any(os.path.exists(p) for p in candidates_paths)
@@ -489,6 +491,24 @@ if [ -f "$VERIFY_REFS" ]; then
   esac
 fi
 # else: no row — verify-references.sh absent is the one explicit "skip" case.
+
+# --- Row 8: permissions-baseline (.claude/settings.json deny/ask) -----------
+# The all-stacks baseline (settings-baseline.md) replaced read-guard.sh's
+# secret-file denies; a repo bootstrapped before 8.1.0 has none of its rules.
+# stale = at least one baseline deny/ask rule absent from .claude/settings.json
+# (the skill proposes them through the diff contract); helper missing -> unknown.
+BASELINE_ROW="permissions-baseline"
+if [ -f "$SCRIPT_DIR/settings-baseline.sh" ]; then
+  bl_rc=0
+  bl_out="$(bash "$SCRIPT_DIR/settings-baseline.sh" --missing .claude/settings.json 2>/dev/null)" || bl_rc=$?
+  case "$bl_rc" in
+    0) add_row "$BASELINE_ROW" "fresh" "every baseline deny/ask rule is in .claude/settings.json" ;;
+    1) add_row "$BASELINE_ROW" "stale" "$(printf '%s\n' "$bl_out" | awk 'NF' | wc -l | tr -d ' ') baseline deny/ask rule(s) missing from .claude/settings.json" ;;
+    *) add_row "$BASELINE_ROW" "unknown" "settings-baseline.sh could not read .claude/settings.json (exit $bl_rc)" ;;
+  esac
+else
+  add_row "$BASELINE_ROW" "unknown" "settings-baseline.sh not found"
+fi
 
 # --- Row 7: .claude/setup-answers.json (informational only) ----------------
 SETUP_ANSWERS=".claude/setup-answers.json"

@@ -6,9 +6,6 @@ license: MIT
 compatibility:
   - claude-code
   - codex
-trigger: new-behavior|bug-fix|public-contract-change|regression-test
-skip_when: rename-only|formatting-only|no-behavioral-change
-triggers: [regression, flaky, untested]
 user-invocable: false
 ---
 

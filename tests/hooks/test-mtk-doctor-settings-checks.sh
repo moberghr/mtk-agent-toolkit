@@ -6,8 +6,8 @@ set -euo pipefail
 #   - permissions.allowedTools: FAIL only for convertible narrow entries, WARN for
 #     inert broad leftovers, WARN (not "uses allowedTools") when the migration
 #     script is missing or cannot check; --fix activates only narrow entries
-#   - no "context budget miscalibrated" WARN: context-budget sizes its window
-#     from the model id, so an unset MTK_CONTEXT_WINDOW_TOKENS is normal
+#   - no context-budget calibration lines: the evidence ledger has no
+#     window-scaled thresholds left to calibrate
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -64,11 +64,10 @@ out="$(run_doctor)"
 grep -q 'allowedTools not checked' <<<"$out" || fail "a missing script should WARN that it could not check. Output: $out"
 ok "missing migration script is a WARN about the check, not a finding"
 
-# --- context budget: no stale miscalibration WARN -----------------------------
+# --- no context-budget calibration lines at all (thresholds removed) ----------
 printf '{}\n' > "$PROJ/.claude/settings.json"
 out="$(run_doctor ANTHROPIC_MODEL=claude-haiku-4-5)"
-! grep -q 'context budget miscalibrated' <<<"$out" || fail "stale 'miscalibrated' WARN still emitted. Output: $out"
-grep -q 'context budget sized from the model id' <<<"$out" || fail "expected the model-derived context budget PASS"
-ok "context budget reported as model-derived"
+! grep -q 'context budget' <<<"$out" || fail "context-budget calibration lines must be gone. Output: $out"
+ok "no context-budget calibration lines"
 
 printf '\nAll mtk-doctor settings checks passed.\n'

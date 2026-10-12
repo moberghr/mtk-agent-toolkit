@@ -10,6 +10,9 @@ set -euo pipefail
 #     of a silent pipefail abort
 #   - an unbraced $CLAUDE_PLUGIN_ROOT/ inside a fenced bash block in a skill
 #     fails; the same text as inline prose does not
+#   - runtime diet: hooks.json registering UserPromptSubmit, or a tool matcher
+#     covering Read/Grep/Glob/mcp__ (exact list, regex, server-scoped mcp__ or "*"), fails
+#   - a hooks.json command that resolves to no file fails
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -25,10 +28,11 @@ trap 'rm -rf "$D" "$B"' EXIT
 cp "$VALIDATOR" "$D/scripts/validate-toolkit.sh"
 git -C "$D" init -q
 
-# Register every file the manifest does not list yet (in-flight work), so the
-# sandbox starts clean and each case fails for its own reason only.
+# Register every file the manifest does not list yet, and drop entries whose
+# file is gone (in-flight work either way), so the sandbox starts clean and each
+# case fails for its own reason only.
 ( cd "$D" && git ls-files -z --others --exclude-standard ) | ( cd "$D" && python3 -c '
-import json, sys
+import json, os, sys
 paths = [p for p in sys.stdin.read().split("\0") if p]
 m = json.load(open(".claude/manifest.json"))
 files = m["files"]
@@ -36,6 +40,11 @@ sources = {v.get("source") for v in files.values() if isinstance(v, dict)}
 for p in paths:
     if p not in sources and p not in files and not p.startswith(("docs/specs/", "docs/plans/")):
         files[p] = {"source": p, "target": p, "action": "sync", "description": "Sandbox registration for the validator guard test."}
+for k in list(files):
+    v = files[k]
+    src = v.get("source", "") if isinstance(v, dict) else ""
+    if src and "://" not in src and not os.path.exists(src):
+        del files[k]
 json.dump(m, open(".claude/manifest.json", "w"), indent=2)
 ' )
 
@@ -50,7 +59,7 @@ out="$(run)" || fail "clean sandbox must validate. Errors: $(grep ERROR <<<"$out
 ok "clean sandbox validates"
 
 # --- internal codename, whole word, any case -----------------------------------
-HOOK="$D/hooks/ci-status.sh"
+HOOK="$D/scripts/refresh-derived.sh"
 cp "$HOOK" "$B/hook.orig"
 NAME="$(printf 'Bea%s' con)"
 printf '# example from the %s project\n' "$NAME" >> "$HOOK"
@@ -70,6 +79,53 @@ ok "prose mention in backticks is allowed"
 printf '\n```bash\nbash "$CLAUDE_PLUGIN_ROOT/scripts/x.sh"\n```\n' >> "$SKILL"
 expect_fail "unbraced plugin root in a fenced bash block is flagged" "unbraced"
 cp "$B/skill.orig" "$SKILL"
+
+# --- runtime diet: no hook on prompts or on Read/Grep/Glob/MCP calls -----------
+HJ="$D/hooks/hooks.json"
+cp "$HJ" "$B/hooks.orig"
+inject_hook() { # $1 event  $2 matcher ("" = none)  $3 command
+  python3 - "$HJ" "$1" "$2" "$3" <<'PY'
+import json, sys
+path, ev, matcher, cmd = sys.argv[1:]
+d = json.load(open(path))
+block = {"hooks": [{"type": "command", "command": cmd, "timeout": 5}]}
+if matcher:
+    block["matcher"] = matcher
+d.setdefault("hooks", {}).setdefault(ev, []).append(block)
+json.dump(d, open(path, "w"), indent=2)
+PY
+}
+KEPT='"${CLAUDE_PLUGIN_ROOT}/hooks/session-start"'
+inject_hook UserPromptSubmit "" "$KEPT"
+expect_fail "a UserPromptSubmit hook is rejected" "runtime diet"
+cp "$B/hooks.orig" "$HJ"
+inject_hook PreToolUse "Read" "$KEPT"
+expect_fail "an exact Read matcher is rejected" "runtime diet"
+cp "$B/hooks.orig" "$HJ"
+inject_hook PostToolUse "Edit|Glob" "$KEPT"
+expect_fail "a list matcher that includes Glob is rejected" "runtime diet"
+cp "$B/hooks.orig" "$HJ"
+inject_hook PostToolUseFailure "mcp__.*" "$KEPT"
+expect_fail "an mcp__ regex matcher is rejected" "runtime diet"
+cp "$B/hooks.orig" "$HJ"
+inject_hook PreToolUse "mcp__github__.*" "$KEPT"
+expect_fail "a server-scoped mcp__ matcher is rejected" "runtime diet"
+cp "$B/hooks.orig" "$HJ"
+inject_hook PostToolUse "Bash|mcp__memory__.*" "$KEPT"
+expect_fail "an mcp__ alternative inside a Bash matcher is rejected" "runtime diet"
+cp "$B/hooks.orig" "$HJ"
+inject_hook PreToolUse "*" "$KEPT"
+expect_fail "a wildcard tool matcher is rejected" "runtime diet"
+cp "$B/hooks.orig" "$HJ"
+inject_hook PreToolUse "Bash" "$KEPT"
+out="$(run)" || fail "a Bash-only matcher must be allowed: $(grep ERROR <<<"$out" | awk 'NR==1')"
+ok "a Bash-only matcher is allowed"
+cp "$B/hooks.orig" "$HJ"
+
+# --- dangling hook command -----------------------------------------------------
+inject_hook Stop "" '"${CLAUDE_PLUGIN_ROOT}/hooks/no-such-hook.sh"'
+expect_fail "a hooks.json command with no file behind it is rejected" "does not resolve to an executable"
+cp "$B/hooks.orig" "$HJ"
 
 # --- manifest without readable source lines ------------------------------------
 cp "$D/.claude/manifest.json" "$B/manifest.orig"

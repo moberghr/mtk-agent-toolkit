@@ -49,7 +49,6 @@ if ls .claude/agents/*.md >/dev/null 2>&1; then
 fi
 
 claude_chars=0;  [ -f CLAUDE.md ] && claude_chars=$(wc -c < CLAUDE.md | tr -d ' ')
-index_chars=0;   [ -f .claude/rules/INDEX.md ] && index_chars=$(wc -c < .claude/rules/INDEX.md | tr -d ' ')
 
 # AGENTS.md counts toward the always-on floor only when it is actually loaded.
 # That is resolve-constitution.sh's --loaded question, deliberately NOT its
@@ -72,12 +71,12 @@ if [ "$_loaded_const" = "AGENTS.md" ] && [ -f AGENTS.md ]; then
   agents_chars=$(wc -c < AGENTS.md | tr -d ' ')
 fi
 
-alwayson_chars=$(( desc_chars + agent_desc_chars + agents_chars + claude_chars + index_chars ))
+alwayson_chars=$(( desc_chars + agent_desc_chars + agents_chars + claude_chars ))
 
 # ---- deferred: kept OUT of always-on by progressive disclosure ----
 ref_chars=$(find .claude/references -name '*.md' -type f 2>/dev/null | sum_bytes)
 ref_count=$(find .claude/references -name '*.md' -type f 2>/dev/null | wc -l | tr -d ' ')
-rulebody_chars=$(find .claude/rules -name '*.md' ! -name 'INDEX.md' 2>/dev/null | sum_bytes)
+rulebody_chars=$(find .claude/rules -name '*.md' 2>/dev/null | sum_bytes)
 manifest_chars=0; [ -f .claude/manifest.json ] && manifest_chars=$(wc -c < .claude/manifest.json | tr -d ' ')
 deferred_chars=$(( ref_chars + rulebody_chars + manifest_chars ))
 
@@ -95,14 +94,13 @@ printf '\nAlways-on — loaded into EVERY session:\n'
 printf '  skill descriptions   %8d chars  ~%6d tok  (%d skills)\n' "$desc_chars" "$(TOK "$desc_chars")" "$skill_count"
 [ "$agents_loaded" -eq 1 ] && printf '  AGENTS.md            %8d chars  ~%6d tok\n' "$agents_chars" "$(TOK "$agents_chars")"
 printf '  CLAUDE.md            %8d chars  ~%6d tok\n' "$claude_chars" "$(TOK "$claude_chars")"
-printf '  rules/INDEX.md       %8d chars  ~%6d tok\n' "$index_chars" "$(TOK "$index_chars")"
 printf '  agent descriptions   %8d chars  ~%6d tok  (%d agents)\n' "$agent_desc_chars" "$(TOK "$agent_desc_chars")" "$agent_count"
 printf '  ── always-on floor              ~%6d tok\n' "$(TOK "$alwayson_chars")"
 
 printf '\nKept OUT of always-on by progressive disclosure (load only when relevant):\n'
 printf '  references           %8d chars  ~%6d tok  (%d files, glob-gated)\n' "$ref_chars" "$(TOK "$ref_chars")" "$ref_count"
 printf '  rule bodies          %8d chars  ~%6d tok  (path-gated)\n' "$rulebody_chars" "$(TOK "$rulebody_chars")"
-printf '  manifest.json        %8d chars  ~%6d tok  (MCP-gated, never inlined)\n' "$manifest_chars" "$(TOK "$manifest_chars")"
+printf '  manifest.json        %8d chars  ~%6d tok  (read on demand, never inlined)\n' "$manifest_chars" "$(TOK "$manifest_chars")"
 printf '  ── deferred total               ~%6d tok  ← would be always-on if inlined into CLAUDE.md\n' "$(TOK "$deferred_chars")"
 
 printf '\nReview offloaded to isolated subagent context:\n'

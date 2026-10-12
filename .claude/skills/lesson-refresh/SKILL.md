@@ -5,8 +5,6 @@ type: skill
 license: MIT
 compatibility:
   - claude-code
-trigger: refresh-lessons|audit-lessons|stale-lessons|prune-lessons|lessons-cleanup
-skip_when: mid-task|no-lessons-file|single-lesson-edit
 user-invocable: false
 ---
 

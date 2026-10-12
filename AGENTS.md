@@ -75,10 +75,9 @@ Releases regenerate `checksums.sha256` via `bash scripts/generate-checksums.sh` 
 
 ## Standards Reference
 
-Detailed rules live in `.claude/rules/` (auto-loaded by Claude Code): `toolkit-structure.md` (S1.x,
-manifest/organization/naming), `skill-authoring.md` (S2.x), `hooks-and-scripts.md` (S3.x),
-`git-workflow.md` (S4.x), `verification-and-proof.md` (S5.x). `.claude/rules/INDEX.md` is the
-wake-up layer — read it first and pull a full rule file only when its axes match the task.
+Detailed rules live in `.claude/rules/`: `toolkit-structure.md` (S1.x, manifest/organization/naming),
+`skill-authoring.md` (S2.x), `hooks-and-scripts.md` (S3.x), `git-workflow.md` (S4.x), `verification-and-proof.md`
+(S5.x). Rules are path-scoped by their `paths:` frontmatter; Claude Code loads one when a matching file is touched.
 
 Reference docs are read on demand: shared ones in `.claude/references/` (`security-checklist.md`,
 `testing-patterns.md`, `performance-checklist.md`, `domain-finance.md`, `env-knobs.md`), and

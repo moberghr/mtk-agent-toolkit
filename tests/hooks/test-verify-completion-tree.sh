@@ -14,7 +14,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-BUDGET="$REPO_ROOT/hooks/context-budget.sh"
+BUDGET="$REPO_ROOT/hooks/evidence-ledger.sh"
 STOP="$REPO_ROOT/hooks/verify-completion"
 START="$REPO_ROOT/hooks/session-start"
 
@@ -64,7 +64,8 @@ EVIDENCE='All done. Tests: 5 passed, exit code 0.'
 start qa
 out="$(stop qa 'Done.')"
 [ -z "$out" ] || fail "Q&A reply ending 'Done.' with no edits must not block. Got: $out"
-post qa2 Read "$WORK/a.txt"
+start qa2
+post qa2 Bash 'ls'
 out="$(stop qa2 'Done.')"
 [ -z "$out" ] || fail "read-only session must not block. Got: $out"
 printf '  PASS  session with no changes never blocks\n'
