@@ -224,7 +224,7 @@ A few things make this more than a checklist:
 - **A human approval gate you can't skip (Phase 2.5).** Before any code is written, MTK prints the full todo, batch breakdown, and gate sequence to your terminal and *stops*, offering five choices: approve & run, approve interactively, edit first, revise, or show the full plan. Until you answer, source edits are blocked. Approval is a decision you make — never one the model infers from your original request.
 - **Ceremony scales to blast radius.** A scored rubric sizes rigor (LIGHT / STANDARD / HIGH / MAX) from batch count, files touched, security impact, public contracts, and breaking-change status. A small fix gets a light pass; a breaking multi-batch auth change gets the full apparatus. A hard floor forces at least HIGH whenever the change hits ≥3 batches, ≥6 non-mechanical files, or any security impact.
 - **Large features run one fresh subagent per batch,** each returning a typed JSON result (files, build, tests, deviations). An ack-only or unparseable "done!" is recorded *inconclusive* and respawned — never laundered into a pass.
-- **Five named, fail-closed gates** (`plan_trust`, `phase_exit`, `failure_stop`, `memory_sync`, `skill_precedence`) are the only legal places to advance, retry, or stop — and a missing gate event counts as drift.
+- **Four named, fail-closed gates** (`plan_trust`, `phase_exit`, `failure_stop`, `memory_sync`) are the only legal places to advance, retry, or stop — and a missing gate event counts as drift.
 - **Orchestration state lives on disk** (`.mtk/workflows/{uuid}.json` + an append-only event log), so a run survives compaction and crash and resumes in a fresh session with zero chat history.
 - **A remediation circuit-breaker** escalates to a human on the third fix iteration — or the moment the review score stops improving — so automated fixing never grinds forever.
 
@@ -279,7 +279,7 @@ Reviews output structured findings — not vague suggestions:
 }
 ```
 
-Every finding carries a `confidence` score (50–100), a `source` (`ai`, `linter`, `analyzer`, `context`, or `drift`), a `decision_origin` for provenance, and a citation to the exact rule violated. A curated 7-category false-positive exclusion list drops non-findings *before* scoring, and findings below the threshold (default 80) are filtered out — so what surfaces is real risk, not preference.
+Every finding carries a `confidence` score (50–100), a `source` (`ai`, `linter`, `analyzer`, `context`, or `drift`), an optional `decision_origin` for provenance, and a citation to the exact rule violated. A curated 7-category false-positive exclusion list drops non-findings *before* scoring, and findings below the threshold (default 80) are filtered out — so what surfaces is real risk, not preference.
 
 ### What the deterministic linter catches
 
@@ -647,6 +647,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). The short version:
 2. **Review / security / verification skills** must have an eval suite in `evals/`.
 3. **Every new file** must be registered in `manifest.json`.
 4. **Run `bash scripts/validate-toolkit.sh`** and **`bash scripts/run-benchmarks.sh`** before pushing.
+5. **Develop against the checkout as the plugin:** `claude --plugin-dir .` (the project `.claude/settings.json` wires no hooks; see [Developing MTK](CONTRIBUTING.md#developing-mtk)).
 
 ---
 
@@ -667,7 +668,7 @@ Everything the plugin executes on your machine, what it writes, and what it cont
 
 Hooks read the session transcript locally (completion evidence, cost estimates). They never change Claude Code's permission settings.
 
-**Files written in your repo:** `.claude/analytics.json` (usage counts), `.claude/observability/`, `.claude/queue/`, `.mtk/workflows/`, `.mtk/metrics/costs.jsonl`, and `.mtk/config-guard-allow` (only when you allow a config edit). Short-lived state goes to `$TMPDIR/mtk-*`. `/mtk-setup` writes `AGENTS.md`, the `CLAUDE.md` shim, `.claude/rules/`, `.claude/references/`, and merges recommended `allowedTools`/`deny` entries into `.claude/settings.json` — only when you run it.
+**Files written in your repo:** `.claude/analytics.json` (usage counts), `.claude/observability/`, `.claude/queue/`, `.mtk/workflows/`, `.mtk/metrics/costs.jsonl`, and `.mtk/config-guard-allow` (only when you allow a config edit). Short-lived state goes to `$TMPDIR/mtk-*`. `/mtk-setup` writes `AGENTS.md`, the `CLAUDE.md` shim, `.claude/rules/`, `.claude/references/`, and merges recommended `permissions.allow`/`deny`/`ask` entries into `.claude/settings.json` — only when you run it.
 
 **MCP server** (`mtk-context`, stdio): `node ${CLAUDE_PLUGIN_ROOT}/dist/mtk-mcp-server.cjs`. It reads repo files (tech stack, manifest, references, solution structure) and makes no network calls. The bundle is unminified and includes the MCP SDK, which is why it is ~600 KiB; its source is in [`mcp/src/`](mcp/src/) and it is rebuilt with `bash scripts/build-mcp.sh`.
 

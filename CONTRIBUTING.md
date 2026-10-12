@@ -47,6 +47,22 @@ graph LR
 
 ---
 
+## Developing MTK
+
+Run Claude Code from this checkout with the checkout loaded as the plugin:
+
+```bash
+claude --plugin-dir .
+```
+
+That is the only supported dev mode. The hooks run from `hooks/hooks.json` with `${CLAUDE_PLUGIN_ROOT}` pointing at your working copy, the skills and agents load from `.claude/`, and the `mtk-context` MCP server starts from the root `.mcp.json`. An edit to a hook or skill is live in the next session, exactly as a plugin install will run it.
+
+- **No hooks in `.claude/settings.json`.** The project settings carry only `env` and `permissions`. Wiring the same hooks there as well would run every hook twice; `validate-toolkit.sh` fails if a `hooks` block comes back.
+- **One copy of MTK at a time.** If the marketplace `mtk` plugin is also enabled for your user, disable it while you work here, or both copies' hooks fire.
+- **Plain `claude` (no `--plugin-dir`) does not run the checkout's hooks.** It runs whatever MTK you have installed, or none.
+
+---
+
 ## Architecture Model
 
 MTK has two user-facing entry points:

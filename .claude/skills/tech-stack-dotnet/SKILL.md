@@ -96,7 +96,7 @@ find . \( -name "*.sln" -o -name "*.slnx" -o -name "*.csproj" \) -not -path "*/b
 
 Path: `.claude/references/dotnet/coding-guidelines.md`
 
-Source: `https://raw.githubusercontent.com/moberghr/coding-guidelines/main/CodingStyle.md`
+Source: `https://raw.githubusercontent.com/moberghr/coding-guidelines/<sha>/CodingStyle.md`, where `<sha>` is the commit pinned in the plugin manifest (`coding-guidelines.sha` in `${CLAUDE_PLUGIN_ROOT}/.claude/manifest.json`, with the expected sha256 under `coding-guidelines.files`). `setup-bootstrap` STEP 1 fetches that revision and verifies the hash. Never fetch from `main`.
 
 Key conventions enforced by the coding guidelines (summary for reviewers):
 - Lambda params: `x`, nested: `y`, `z`
@@ -110,9 +110,11 @@ Key conventions enforced by the coding guidelines (summary for reviewers):
 
 See `.claude/references/dotnet/analyzer-config.md` for recommended Roslyn analyzer packages and `.editorconfig` rules. Key packages: `Microsoft.EntityFrameworkCore.Analyzers`, `Meziantou.Analyzer`, `Roslynator.Analyzers`.
 
-Build with analyzer capture:
+Build with analyzer capture. The build log goes to a file, not `/dev/tty`: agent shells have no controlling terminal, so `tee /dev/tty` fails there with "Device not configured". The parser ships with the plugin, so resolve it under `${CLAUDE_PLUGIN_ROOT}`:
 ```bash
-dotnet build 2>&1 | tee /dev/tty | hooks/parse-build-diagnostics.sh > .mtk/analyzer-output.json
+mkdir -p .mtk
+dotnet build 2>&1 | tee .mtk/build.log
+bash "${CLAUDE_PLUGIN_ROOT}/hooks/parse-build-diagnostics.sh" --file .mtk/build.log > .mtk/analyzer-output.json
 ```
 
 ## Companion Plugin: dotnet-claude-kit
@@ -126,7 +128,7 @@ If `codewithmukesh/dotnet-claude-kit` is installed, its 15 Roslyn MCP tools are 
 - `GetDiagnostics` — call for compiler and analyzer warnings on specific files, more targeted than full `dotnet build`.
 - `GetTestCoverageMap` — call during test review to verify coverage claims.
 
-**Graceful degradation:** If dotnet-claude-kit is not installed, all MTK skills fall back to build output parsing (`hooks/parse-build-diagnostics.sh`) and AI-based review. The workflow is the same; the deterministic layer is thinner.
+**Graceful degradation:** If dotnet-claude-kit is not installed, all MTK skills fall back to build output parsing (`${CLAUDE_PLUGIN_ROOT}/hooks/parse-build-diagnostics.sh`) and AI-based review. The workflow is the same; the deterministic layer is thinner.
 
 ## Recommended Tooling
 
@@ -146,16 +148,16 @@ These files are loaded by commands and review agents when the active stack is `d
 
 ## Settings Additions
 
-Merge these into the project's `.claude/settings.json` during `setup-bootstrap`:
+Merge these into the project's `.claude/settings.json` during `setup-bootstrap`. Each `### <key>` names a Claude Code permission list, `permissions.allow` / `permissions.deny` (there is no `allowedTools` settings key, and entries written under it are ignored). The all-stacks baseline in `.claude/references/settings-baseline.md` is merged alongside these.
 
-### allowedTools (merge: union)
+### allow (merge: union)
 - `Bash(dotnet build:*)`
 - `Bash(dotnet test:*)`
 - `Bash(dotnet format:*)`
 
 ### deny (merge: union)
 - `Read(**/appsettings.Production.json)`
-- `Bash(dotnet publish:*)` — deny-only; publish is a deploy-adjacent action bootstrap should not pre-authorize. When a pattern appears in both `allowedTools` and `deny`, deny wins, so it is listed here only.
+- `Bash(dotnet publish:*)` — deny-only; publish is a deploy-adjacent action bootstrap should not pre-authorize. When a pattern appears in both `allow` and `deny`, deny wins, so it is listed here only.
 
 ### hooks (do NOT add)
 

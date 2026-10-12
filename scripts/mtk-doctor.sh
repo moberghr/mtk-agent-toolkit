@@ -7,8 +7,20 @@ set -euo pipefail
 # The project being diagnosed is where the doctor was INVOKED, which in a plugin
 # install is not the script's own tree. Capture it before the cd below.
 DOCTOR_PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
+DOCTOR_PROJECT_DIR="$(cd "$DOCTOR_PROJECT_DIR" 2>/dev/null && pwd)" || DOCTOR_PROJECT_DIR="$PWD"
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$ROOT_DIR"
+
+# Two trees, two kinds of check. Toolkit checks (manifest, skills, agents, hook
+# scripts, checksums, validate-toolkit) describe the MTK install and run from
+# ROOT_DIR. Project checks (constitution, settings.json permissions and hooks,
+# .gitignore, lessons, context baseline, env calibration, tech stack) describe the
+# repo the doctor was run for and run from DOCTOR_PROJECT_DIR. In this dev
+# checkout the two are the same directory; in a plugin install they are not, and
+# running project checks from ROOT_DIR measured the plugin's own AGENTS.md and
+# settings instead of the repo's. Each section below switches explicitly.
+in_toolkit() { cd "$ROOT_DIR"; }
+in_project() { cd "$DOCTOR_PROJECT_DIR"; }
+in_toolkit
 
 # Args
 JSON=0
@@ -24,7 +36,9 @@ for arg in "$@"; do
 Usage: mtk-doctor [--json] [--fix] [--strict]
 
   --json    Machine-readable output for CI dashboards
-  --fix     Auto-fix safe items (gitignore additions, chmod +x). Never fixes FAILs.
+  --fix     Auto-fix safe items: gitignore additions, chmod +x, and moving the
+            invalid permissions.allowedTools key into permissions.allow. Any
+            other FAIL is reported, never auto-fixed.
   --strict  Exit non-zero on WARN as well as FAIL
 USAGE
       exit 0
@@ -33,18 +47,37 @@ USAGE
   esac
 done
 
-# Deprecated model IDs — update when Anthropic deprecates more.
+# Deprecated or retired model IDs (prefix match on an agent's `model:` value) —
+# update when Anthropic deprecates more. Source: the Anthropic models overview
+# (deprecated: Opus 4 / 4.1, Sonnet 4, Haiku 3; every other 3.x and 2.x model is
+# retired). Opus 4.5-4.8, Sonnet 4.5/4.6 and Haiku 4.5 are previous-generation
+# but still served, so they are listed as superseded (WARN), not deprecated (FAIL).
 # Note: agents pin aliases (model: opus|sonnet|haiku|fable), not version IDs. On the
-# Anthropic API an alias resolves to the latest in its family (opus -> Opus 5, the
-# current generation; see .claude/references/model-routing.md "Provider tier slots").
-# On Bedrock/Vertex/Foundry the same alias may resolve to an OLDER version; pin
+# Anthropic API an alias resolves to the latest in its family (opus -> Opus 5.5,
+# sonnet -> Sonnet 5.5, haiku -> Haiku 5.5, fable -> Fable 5.1; see
+# .claude/references/model-routing.md "Provider tier slots"). On Bedrock, Google
+# Cloud, Foundry and Claude Platform on AWS the same alias may resolve to an OLDER
+# version (haiku -> Haiku 4.5, sonnet -> Sonnet 4.5/4.6); pin
 # ANTHROPIC_DEFAULT_OPUS_MODEL / _SONNET_MODEL / _HAIKU_MODEL to a full ID there.
 DEPRECATED_MODELS=(
-  "claude-3-opus"
-  "claude-3-sonnet"
-  "claude-3-haiku"
+  "claude-3-"
+  "claude-3.5-"
   "claude-2"
   "claude-instant"
+  "claude-opus-4-0"
+  "claude-opus-4-1"
+  "claude-opus-4-2025"
+  "claude-sonnet-4-0"
+  "claude-sonnet-4-2025"
+)
+SUPERSEDED_MODELS=(
+  "claude-opus-4-5"
+  "claude-opus-4-6"
+  "claude-opus-4-7"
+  "claude-opus-4-8"
+  "claude-sonnet-4-5"
+  "claude-sonnet-4-6"
+  "claude-haiku-4-5"
 )
 
 # Result aggregation
@@ -89,6 +122,7 @@ else
 fi
 
 # Target-repo provenance file (single source of truth for installed version).
+in_project
 if [ -f ".claude/mtk-version.json" ]; then
   record PASS core ".claude/mtk-version.json present"
 fi
@@ -151,6 +185,7 @@ fi
 # ──────────────────────────────────────────────
 # COMPONENTS
 # ──────────────────────────────────────────────
+in_toolkit
 # Manifest version sync
 MANIFEST_VERSION=""
 if [ -n "$DOCTOR_MANIFEST" ]; then
@@ -203,13 +238,20 @@ fi
 
 # Deprecated models in agent frontmatter
 DEPRECATED_HITS=()
+SUPERSEDED_HITS=()
 while IFS= read -r agent_md; do
+  agent_model="$(awk '/^model:/ { sub(/^model:[[:space:]]*/, ""); print; exit }' "$agent_md" 2>/dev/null || true)"
+  [ -n "$agent_model" ] || continue
   for model in "${DEPRECATED_MODELS[@]}"; do
-    if grep -q "^model: *${model}" "$agent_md" 2>/dev/null; then
-      DEPRECATED_HITS+=("$agent_md → $model")
-    fi
+    case "$agent_model" in "$model"*) DEPRECATED_HITS+=("$agent_md → $agent_model") ;; esac
+  done
+  for model in "${SUPERSEDED_MODELS[@]}"; do
+    case "$agent_model" in "$model"*) SUPERSEDED_HITS+=("$agent_md → $agent_model") ;; esac
   done
 done < <(find .claude/agents -name '*.md' -type f 2>/dev/null)
+for h in "${SUPERSEDED_HITS[@]+"${SUPERSEDED_HITS[@]}"}"; do
+  record WARN components "previous-generation model pinned" "$h — still served, but the alias (opus|sonnet|haiku|fable) follows the current generation"
+done
 
 if [ "${#DEPRECATED_HITS[@]}" -eq 0 ]; then
   record PASS components "no deprecated model IDs" "checked ${#DEPRECATED_MODELS[@]} known-deprecated IDs; aliases resolve to latest on Anthropic API — pin ANTHROPIC_DEFAULT_*_MODEL on Bedrock/Vertex"
@@ -222,8 +264,12 @@ fi
 # ──────────────────────────────────────────────
 # HOOKS
 # ──────────────────────────────────────────────
-# All registered hook scripts in .claude/settings.json must exist and be executable.
-KNOWN_EVENTS="SessionStart PreToolUse PostToolUse PreCompact PostCompact UserPromptSubmit Stop SessionEnd Notification InstructionsLoaded SubagentStart SubagentStop TaskCompleted"
+# All registered hook scripts in the PROJECT's .claude/settings.json must exist
+# and be executable.
+in_project
+# The documented Claude Code hook events (code.claude.com/docs/en/hooks, checked
+# Oct 2026). A key outside this list never fires, so a typo is a dead hook.
+KNOWN_EVENTS="SessionStart Setup UserPromptSubmit UserPromptExpansion PreToolUse PermissionRequest PermissionDenied PostToolUse PostToolUseFailure PostToolBatch Notification MessageDisplay SubagentStart SubagentStop TaskCreated TaskCompleted Stop StopFailure TeammateIdle InstructionsLoaded ConfigChange CwdChanged DirectoryAdded FileChanged WorktreeCreate WorktreeRemove PreCompact PostCompact PreModelSwitch PostModelSwitch Elicitation ElicitationResult SessionEnd"
 
 while IFS= read -r line; do
   cmd="$(printf '%s' "$line" | sed 's/^.*"command": *"//; s/".*$//')"
@@ -240,8 +286,8 @@ while IFS= read -r line; do
   # Hook commands are anchored on $CLAUDE_PROJECT_DIR here and on
   # $CLAUDE_PLUGIN_ROOT in plugin-installed repos; resolve both so the existence
   # and +x checks below run against a real path.
-  script="${script//\$CLAUDE_PROJECT_DIR/$ROOT_DIR}"
-  script="${script//\$\{CLAUDE_PROJECT_DIR\}/$ROOT_DIR}"
+  script="${script//\$CLAUDE_PROJECT_DIR/$DOCTOR_PROJECT_DIR}"
+  script="${script//\$\{CLAUDE_PROJECT_DIR\}/$DOCTOR_PROJECT_DIR}"
   # $CLAUDE_PLUGIN_ROOT is only authoritative when the environment supplies it.
   # This checkout is a reasonable guess otherwise — but remember it was a guess,
   # because "I guessed and missed" must not be reported as "the hook is missing".
@@ -258,7 +304,7 @@ while IFS= read -r line; do
   case "$script" in
     *'$'*) record WARN hooks "hook path has an unresolved variable" "$cmd"; continue ;;
   esac
-  case "$script" in /*) ;; *) script="$ROOT_DIR/$script" ;; esac
+  case "$script" in /*) ;; *) script="$DOCTOR_PROJECT_DIR/$script" ;; esac
   if [ ! -f "$script" ]; then
     if [ "$plugin_guessed" -eq 1 ]; then
       record WARN hooks "hook path unresolvable" "$cmd — \$CLAUDE_PLUGIN_ROOT is unset and the hook is not under $ROOT_DIR either; set it to check plugin-installed hooks"
@@ -274,17 +320,83 @@ while IFS= read -r line; do
   fi
 done < <(grep -E '"command": *"[^"]*hooks/' .claude/settings.json 2>/dev/null || true)
 
-# Check that hook event names are valid
+# Check that hook event names are valid: the keys of the `hooks` object only, so
+# a capitalised key elsewhere in the file is not mistaken for an event.
+HOOK_EVENT_NAMES=""
+if [ -f .claude/settings.json ] && command -v python3 >/dev/null 2>&1; then
+  HOOK_EVENT_NAMES="$(python3 - .claude/settings.json <<'PY' 2>/dev/null || true
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
+import json
+hooks = json.load(open(sys.argv[1])).get("hooks", {})
+for k in sorted(hooks if isinstance(hooks, dict) else {}):
+    print(k)
+PY
+)"
+fi
 while IFS= read -r event; do
-  if ! printf ' %s ' "$KNOWN_EVENTS" | grep -q " $event "; then
-    record WARN hooks "unknown hook event" "$event"
-  fi
-done < <(grep -oE '"(SessionStart|PreToolUse|PostToolUse|PreCompact|PostCompact|UserPromptSubmit|Stop|SessionEnd|Notification|InstructionsLoaded|SubagentStart|SubagentStop|TaskCompleted|[A-Z][a-zA-Z]+)":' .claude/settings.json 2>/dev/null \
-        | sed 's/[":]//g' | sort -u)
+  [ -n "$event" ] || continue
+  case " $KNOWN_EVENTS " in
+    *" $event "*) ;;
+    *) record WARN hooks "unknown hook event" "$event" ;;
+  esac
+done <<< "$HOOK_EVENT_NAMES"
 
-record PASS hooks "settings.json hook block validated"
+SETTINGS_PARSE_OK=1
+if [ -f .claude/settings.json ] && command -v python3 >/dev/null 2>&1; then
+  python3 -c 'import json,sys; json.load(open(sys.argv[1]))' .claude/settings.json >/dev/null 2>&1 || SETTINGS_PARSE_OK=0
+fi
+if [ "$SETTINGS_PARSE_OK" -eq 1 ]; then
+  record PASS hooks "settings.json hook block validated"
+else
+  record FAIL hooks ".claude/settings.json is not valid JSON" "Claude Code cannot load it, so none of its hooks, permissions or env apply — fix the syntax (python3 -m json.tool .claude/settings.json shows where)"
+fi
+
+# Claude Code's permission keys are permissions.allow / deny / ask. There is no
+# permissions.allowedTools (that is the --allowedTools CLI flag), so a list
+# written under it is silently ignored and every command it meant to allow still
+# prompts. Earlier setup-bootstrap runs wrote exactly that key. --fix migrates it.
+DOCTOR_MIGRATE="$ROOT_DIR/scripts/migrate-settings-permissions.sh"
+[ -f "$DOCTOR_MIGRATE" ] || DOCTOR_MIGRATE="${CLAUDE_PLUGIN_ROOT:-.}/scripts/migrate-settings-permissions.sh"
+# The migration moves only narrow build/test/lint entries (they were never in
+# effect, so moving a broad one would silently switch it on). Exit codes of
+# --check: 0 nothing convertible (inert leftovers are listed), 1 convertible
+# entries remain, 2 cannot check. Only 1 is "uses allowedTools".
+for sf in .claude/settings.json .claude/settings.local.json; do
+  [ -f "$sf" ] || continue
+  grep -q '"allowedTools"' "$sf" 2>/dev/null || continue
+  if [ ! -f "$DOCTOR_MIGRATE" ]; then
+    record WARN permissions "$sf: allowedTools not checked" "migrate-settings-permissions.sh not found (looked in $ROOT_DIR/scripts and \${CLAUDE_PLUGIN_ROOT}/scripts)"
+    continue
+  fi
+  mig_rc=0
+  mig_out="$(bash "$DOCTOR_MIGRATE" --check "$sf" 2>&1)" || mig_rc=$?
+  if [ "$mig_rc" -eq 1 ] && [ "$FIX" -eq 1 ]; then
+    fix_rc=0
+    fix_out="$(bash "$DOCTOR_MIGRATE" "$sf" 2>&1)" || fix_rc=$?
+    if [ "$fix_rc" -eq 0 ]; then
+      record PASS permissions "$sf migrated" "$(grep -c '^activated: ' <<<"$fix_out" || true) narrow permissions.allowedTools entr(y/ies) activated in permissions.allow: $(grep '^activated: ' <<<"$fix_out" | sed 's/^activated: [^:]*: //' | tr '\n' ' ')"
+      mig_rc=0
+      mig_out="$fix_out"
+    else
+      record FAIL permissions "$sf migration failed" "migrate-settings-permissions.sh exited $fix_rc: $(awk 'NR==1' <<<"$fix_out")"
+      continue
+    fi
+  fi
+  case "$mig_rc" in
+    0) ;;
+    1) record FAIL permissions "$sf uses permissions.allowedTools" "Claude Code ignores that key, so these narrow entries never apply: $(grep '^convertible: ' <<<"$mig_out" | sed 's/^convertible: [^:]*: //' | tr '\n' ' ')— run with --fix, or: bash \${CLAUDE_PLUGIN_ROOT}/scripts/migrate-settings-permissions.sh $sf"
+       continue ;;
+    *) record WARN permissions "$sf: allowedTools check failed" "migrate-settings-permissions.sh --check exited $mig_rc: $(awk 'NR==1' <<<"$mig_out")"
+       continue ;;
+  esac
+  inert="$(grep 'needs a manual decision' <<<"$mig_out" | sed -E 's/^left inert: [^:]*: (.*) needs a manual decision.*/\1/' | tr '\n' ' ' || true)"
+  if [ -n "$inert" ]; then
+    record WARN permissions "$sf has inert broad permissions.allowedTools entries" "never in effect and not migrated automatically: ${inert}— move each to permissions.allow only if you want it on, then delete permissions.allowedTools"
+  fi
+done
 
 # All shell scripts in hooks/ must have set -euo pipefail (S3.1)
+in_toolkit
 PIPEFAIL_MISSING=()
 while IFS= read -r sh; do
   if ! head -15 "$sh" | grep -q 'set -euo pipefail'; then
@@ -335,7 +447,7 @@ fi
 # Runtime-referenced MTK files resolve somewhere along the documented order
 # (.claude/references/mtk-file-resolution.md): MTK_HELPER_ROOT → CLAUDE_PLUGIN_ROOT
 # → this tree → the project → newest plugin-cache copy. Skills name these files
-# by path mid-run; a 2026-09 field run (beacon) discovered four of them missing
+# by path mid-run; a 2026-09 field run discovered four of them missing
 # only when a phase tried to read them, and its scripts' inline resolvers
 # (`${CLAUDE_PLUGIN_ROOT:-.}/scripts/…`) never look in the plugin cache at all.
 # FAIL when a file resolves nowhere; WARN when it resolves ONLY by cache search,
@@ -383,6 +495,7 @@ else
 fi
 
 # .gitignore coverage
+in_project
 GITIGNORE_MISSING=()
 GITIGNORE_REQUIRED=(
   ".claude/settings.local.json"
@@ -408,6 +521,7 @@ else
 fi
 
 # Rule enforcement map — which rules are load-bearing and which are hope.
+in_toolkit
 # WARN on broken refs (a rule naming an enforcer that does not exist reads as
 # enforced and is not) and on undocumented hooks (an enforcer nothing
 # documents is the same drift from the other side).
@@ -441,6 +555,7 @@ if [ -f tasks/lessons.md ] && [ -f scripts/lesson-anchors.sh ]; then
 fi
 
 # Analytics freshness
+in_project
 if [ -f .claude/analytics.json ]; then
   if find .claude/analytics.json -mtime +30 -print -quit 2>/dev/null | grep -q .; then
     record WARN integrity "analytics.json stale" "older than 30 days — toolkit may be unused"
@@ -452,6 +567,7 @@ else
 fi
 
 # Release checksum manifest (optional) — installed bytes match the release.
+in_toolkit
 if [ -f checksums.sha256 ] && [ -f scripts/generate-checksums.sh ]; then
   CHECKSUM_LINE="$(bash scripts/generate-checksums.sh --verify --quiet 2>/dev/null | grep '^checksums:' | tail -1 || true)"
   if printf '%s' "$CHECKSUM_LINE" | grep -q ' 0 mismatched, 0 missing'; then
@@ -505,6 +621,7 @@ fi
 # with no contract fields is fine, and malformed contracts are WARN (never FAIL),
 # so the check never blocks a repo that doesn't use contracts. See
 # .claude/references/learnings-schema.md → Executable lesson contract.
+in_project
 LEARN_FILE=".mtk/learnings.jsonl"
 if [ -f "$LEARN_FILE" ] && command -v python3 >/dev/null 2>&1; then
   LINT_OUT="$(python3 - "$LEARN_FILE" <<'PY'
@@ -595,6 +712,7 @@ fi
 # ──────────────────────────────────────────────
 # Scan shipped context-entering artifacts (skills/agents/hook config) for
 # prompt-injection / credential-exfil / hidden-Unicode red flags. See P0#5.
+in_toolkit
 if [ -f "scripts/poison-lint.sh" ]; then
   POISON_OUT="$(bash scripts/poison-lint.sh --quiet 2>&1 || true)"
   POISON_SUMMARY="$(printf '%s\n' "$POISON_OUT" | grep '^poison-lint:' | tail -1 || true)"
@@ -616,6 +734,7 @@ fi
 # (CLAUDE.md + the rules wake-up layer + alwaysApply references + MCP tool schemas).
 # Report-only — surfaces the baseline so teams can keep it lean. These checks must
 # stay PASS on a clean repo (pressure-test S1); the numbers live in the detail string.
+in_project
 ctx_lines=0
 ctx_bytes=0
 add_ctx_file() {
@@ -718,29 +837,66 @@ env_setting() {
 }
 
 # 1. Context-budget calibration. hooks/context-budget.sh scales its file/mod/op
-#    nudges off MTK_CONTEXT_WINDOW_TOKENS, default 1000000. On a 200k model
-#    (Haiku 4.5) the defaults fire too late; on a 1M model an old 200000 pin
-#    fires several times too early, which trains the engineer to ignore the one
-#    hook that tells them to checkpoint.
+#    nudges off MTK_CONTEXT_WINDOW_TOKENS, default 1000000. On a 200k model the
+#    defaults fire too late; on a 1M model an old 200000 pin fires several times
+#    too early, which trains the engineer to ignore the one hook that tells them
+#    to checkpoint.
+#
+#    Claude Code context windows (code.claude.com/docs/en/model-config, Oct 2026):
+#    1M by default on Fable 5 / 5.1, Opus 4.7 and later (5, 5.5), Sonnet 5 and
+#    later (5.5) and Haiku 5.5. Opus 4.6 and Sonnet 4.6 reach 1M only through
+#    their `[1m]` variant. Haiku 4.5, Sonnet 4.5, Opus 4.5 and older are 200k.
+#    CLAUDE_CODE_DISABLE_1M_CONTEXT=1 caps every model at 200k. On Bedrock,
+#    Google Cloud and Foundry the `haiku` and `sonnet` aliases resolve to the 4.5
+#    models (200k), and `opus` on Foundry to Opus 4.6.
+#    model_context_window prints 200000, 1000000, or nothing when unknown.
+model_context_window() {
+  local m provider
+  m="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+  [ -n "$m" ] || return 0
+  if [ "$(env_setting CLAUDE_CODE_DISABLE_1M_CONTEXT)" = "1" ]; then
+    printf '200000'; return 0
+  fi
+  case "$m" in *'[1m]'*) printf '1000000'; return 0 ;; esac
+  provider="anthropic"
+  [ "$(env_setting CLAUDE_CODE_USE_BEDROCK)" = "1" ] && provider="cloud"
+  [ "$(env_setting CLAUDE_CODE_USE_VERTEX)" = "1" ] && provider="cloud"
+  [ "$(env_setting CLAUDE_CODE_USE_FOUNDRY)" = "1" ] && provider="foundry"
+  case "$m" in
+    haiku|sonnet)
+      [ "$provider" = "anthropic" ] && printf '1000000' || printf '200000' ;;
+    opus)
+      [ "$provider" = "foundry" ] && printf '200000' || printf '1000000' ;;
+    fable|best|opusplan) printf '1000000' ;;
+    *opus-4-6*|*sonnet-4-6*) printf '200000' ;;
+    *haiku-4*|*sonnet-4*|*opus-4-5*|*opus-4-1*|*opus-4-0*|*opus-4-2025*|*claude-3*|*claude-2*) printf '200000' ;;
+    *opus-4-7*|*opus-4-8*|*opus-5*|*sonnet-5*|*haiku-5*|*fable-5*|*mythos-5*) printf '1000000' ;;
+  esac
+  return 0
+}
 CTX_WINDOW="$(env_setting MTK_CONTEXT_WINDOW_TOKENS)"
 MODEL_HINT="$(env_setting ANTHROPIC_MODEL)"
 [ -n "$MODEL_HINT" ] || MODEL_HINT="$(env_setting model)"
-if [ -n "$CTX_WINDOW" ]; then
-  record PASS environment "context budget calibrated" \
-    "MTK_CONTEXT_WINDOW_TOKENS=${CTX_WINDOW} — context-budget.sh thresholds scale from this, not the 1000000 default"
-elif printf '%s' "$MODEL_HINT" | grep -qiE 'haiku'; then
-  record WARN environment "context budget miscalibrated for this model" \
-    "model '${MODEL_HINT}' has a 200k window but MTK_CONTEXT_WINDOW_TOKENS is unset — context-budget.sh warns at 150 files / 200 mods / 600 ops, calibrated for a 1M window. Set MTK_CONTEXT_WINDOW_TOKENS=200000 in .claude/settings.local.json env"
+MODEL_WINDOW="$(model_context_window "$MODEL_HINT")"
+# context-budget.sh sizes its window from the session's model id with the same
+# mapping as model_context_window, so an unset MTK_CONTEXT_WINDOW_TOKENS is the
+# normal case, not a miscalibration. Only a pin that disagrees with the model is
+# worth a WARN: it overrides the derived window for every model.
+if [ -n "$CTX_WINDOW" ] && [ -n "$MODEL_WINDOW" ] && [ "$CTX_WINDOW" != "$MODEL_WINDOW" ]; then
+  record WARN environment "context budget pinned against the model" \
+    "MTK_CONTEXT_WINDOW_TOKENS=${CTX_WINDOW}, but model '${MODEL_HINT}' runs with ${MODEL_WINDOW} tokens — context-budget.sh would size itself from the model id; unset the pin unless the override is deliberate"
+elif [ -n "$CTX_WINDOW" ]; then
+  record PASS environment "context budget pinned" \
+    "MTK_CONTEXT_WINDOW_TOKENS=${CTX_WINDOW} overrides the window context-budget.sh derives from the model id"
 else
-  record PASS environment "context budget at default calibration" \
-    "MTK_CONTEXT_WINDOW_TOKENS unset — assuming a 1000000-token window (150 files / 200 mods / 600 ops). Set it if your model's window differs"
+  record PASS environment "context budget sized from the model id" \
+    "context-budget.sh derives the window per session (${MODEL_HINT:-model unknown here}: ${MODEL_WINDOW:-1000000 assumed}); set MTK_CONTEXT_WINDOW_TOKENS only to override it"
 fi
 
 # 2. Hook basename also wired in the user's global settings. Two different
 #    scripts sharing a basename both fire, and their log lines are
-#    indistinguishable — a real debugging trap, not a correctness bug. The
-#    double-run guard in hook-io.sh deliberately reads only the PROJECT settings,
-#    so it does not (and should not) suppress this case.
+#    indistinguishable — a real debugging trap, not a correctness bug. Nothing
+#    suppresses either copy (MTK hooks have no double-run guard), so both run.
 USER_SETTINGS="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json"
 if [ -f "$USER_SETTINGS" ]; then
   # Compare against the basenames of hook commands the user actually WIRES, not
@@ -756,7 +912,7 @@ if [ -f "$USER_SETTINGS" ]; then
   # MTK's hooks live in the project in this checkout and in the plugin root in an
   # install. Without either, there is nothing to compare — say so rather than
   # reporting "no collisions" for a comparison that never happened.
-  MTK_HOOK_DIR="hooks"
+  MTK_HOOK_DIR="$ROOT_DIR/hooks"
   [ -d "$MTK_HOOK_DIR" ] || MTK_HOOK_DIR="${CLAUDE_PLUGIN_ROOT:-}/hooks"
   SHADOWED=""
   MTK_HOOKS_SEEN=0
@@ -782,59 +938,56 @@ else
   record PASS environment "no user-level settings.json to collide with"
 fi
 
-# 2b. Stop hooks registered twice: plugin hooks/hooks.json + project
-#    .claude/settings.json. "Ran 9 stop hooks" in the field (issue #60) was 5
-#    plugin entries plus 4 project entries — registration, not execution: every
-#    plugin copy of a basename the project also wires exits early through
-#    mtk_is_redundant_plugin_invocation. Show that arithmetic so the figure stops
-#    reading as a bug, and WARN for a doubly-wired Stop hook WITHOUT the guard,
-#    which really does run twice (and races itself on shared files).
+# 2b. Hooks registered twice: plugin hooks/hooks.json + project
+#    .claude/settings.json, for ANY event. The harness counts both ("Ran 9 stop
+#    hooks" in the field, issue #60 — 5 plugin + 4 project) and both copies run:
+#    there is no double-run guard. Show the Stop arithmetic, and WARN for every
+#    event+basename wired in both places — the project copy should be removed (a
+#    dev checkout runs the repo's hooks through `claude --plugin-dir .`).
 HOOKS_JSON="$ROOT_DIR/hooks/hooks.json"
 if [ -f "$HOOKS_JSON" ] && command -v python3 >/dev/null 2>&1; then
-  STOP_WIRING="$(python3 - "$HOOKS_JSON" ".claude/settings.json" <<'PY' 2>/dev/null || true
+  HOOK_WIRING="$(python3 - "$HOOKS_JSON" ".claude/settings.json" <<'PY' 2>/dev/null || true
 import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
 import json, os
-def stop_basenames(path):
+def basenames(path):
     try:
         doc = json.load(open(path))
     except Exception:
         return []
     hooks = doc.get("hooks", doc) if isinstance(doc, dict) else {}
     out = []
-    for entry in hooks.get("Stop", []) or []:
-        for h in entry.get("hooks", []) or []:
-            tok = str(h.get("command", "")).split()
-            if tok and tok[0] in ("bash", "sh", "zsh"):
-                tok = tok[1:]
-            if tok:
-                out.append(os.path.basename(tok[0].strip("\"'")))
+    for event, entries in (hooks.items() if isinstance(hooks, dict) else []):
+        for entry in entries if isinstance(entries, list) else []:
+            for h in (entry.get("hooks", []) if isinstance(entry, dict) else []) or []:
+                tok = str(h.get("command", "")).split()
+                if tok and tok[0] in ("bash", "sh", "zsh"):
+                    tok = tok[1:]
+                if tok:
+                    out.append((event, os.path.basename(tok[0].strip("\"'"))))
     return out
-for b in stop_basenames(sys.argv[1]): print("plugin\t" + b)
-for b in stop_basenames(sys.argv[2]): print("project\t" + b)
+for e, b in basenames(sys.argv[1]): print("plugin\t" + e + "\t" + b)
+for e, b in basenames(sys.argv[2]): print("project\t" + e + "\t" + b)
 PY
 )"
-  PLUGIN_STOP=0; PROJECT_STOP=0; SHARED_STOP=0; UNGUARDED_STOP=""
-  while IFS=$'\t' read -r src base; do
-    [ -n "$base" ] || continue
+  PLUGIN_STOP=0; PROJECT_STOP=0; DOUBLE_WIRED=""
+  while IFS=$'\t' read -r src event base; do
+    [ -n "$base" ] && [ "$event" = "Stop" ] || continue
     case "$src" in
       plugin)  PLUGIN_STOP=$((PLUGIN_STOP + 1)) ;;
       project) PROJECT_STOP=$((PROJECT_STOP + 1)) ;;
     esac
-  done <<< "$STOP_WIRING"
-  while IFS= read -r base; do
-    [ -n "$base" ] || continue
-    SHARED_STOP=$((SHARED_STOP + 1))
-    if ! grep -q 'mtk_is_redundant_plugin_invocation' "$ROOT_DIR/hooks/$base" 2>/dev/null; then
-      UNGUARDED_STOP="${UNGUARDED_STOP}${UNGUARDED_STOP:+, }${base}"
-    fi
-  done < <(printf '%s\n' "$STOP_WIRING" | awk -F'\t' '$1=="plugin"{p[$2]=1} $1=="project"{q[$2]=1} END{for (b in p) if (b in q) print b}')
+  done <<< "$HOOK_WIRING"
+  while IFS= read -r pair; do
+    [ -n "$pair" ] || continue
+    DOUBLE_WIRED="${DOUBLE_WIRED}${DOUBLE_WIRED:+, }${pair}"
+  done < <(awk -F'\t' '$1=="plugin"{p[$2" "$3]=1} $1=="project"{q[$2" "$3]=1} END{for (k in p) if (k in q) print k}' <<<"$HOOK_WIRING" | sort)
   STOP_TOTAL=$((PLUGIN_STOP + PROJECT_STOP))
   # The arithmetic is always worth showing; the WARN rides alongside it.
   record PASS environment "Stop hook registrations accounted for" \
-    "${STOP_TOTAL} = ${PLUGIN_STOP} plugin (hooks/hooks.json) + ${PROJECT_STOP} project (.claude/settings.json) — the harness reports this as 'Ran ${STOP_TOTAL} stop hooks'; ${SHARED_STOP} shared basename(s), and a guarded plugin copy exits before doing work"
-  if [ -n "$UNGUARDED_STOP" ]; then
-    record WARN environment "Stop hook wired twice without the double-run guard" \
-      "${UNGUARDED_STOP} — registered in hooks/hooks.json and .claude/settings.json but missing mtk_is_redundant_plugin_invocation, so both copies run on every Stop and race on shared files"
+    "${STOP_TOTAL} = ${PLUGIN_STOP} plugin (hooks/hooks.json) + ${PROJECT_STOP} project (.claude/settings.json) — the harness reports this as 'Ran ${STOP_TOTAL} stop hooks'"
+  if [ -n "$DOUBLE_WIRED" ]; then
+    record WARN environment "hook wired twice" \
+      "${DOUBLE_WIRED} — registered in hooks/hooks.json and .claude/settings.json, so both copies run on every such event and race on shared files; remove the .claude/settings.json entry (dev checkouts: run claude --plugin-dir .)"
   fi
 fi
 

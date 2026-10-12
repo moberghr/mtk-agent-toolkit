@@ -50,10 +50,12 @@ The policy table names concrete Claude tiers (`haiku`/`sonnet`/`opus`) because t
 
 | Slot | Meaning | Current Claude binding |
 |---|---|---|
-| `fast` | Cheapest tier — discovery, grep, structured collection, no judgment | **Haiku 4.5** (alias `haiku`) |
-| `default` | Workhorse — bounded judgment, standard code generation, most reviews | **Sonnet 5** (alias `sonnet`) |
-| `strong` | Highest capability — real logic, adversarial/security review, novel batches | **Opus 5** (alias `opus`) |
+| `fast` | Cheapest tier — discovery, grep, structured collection, no judgment | **Haiku 5.5** (alias `haiku`) |
+| `default` | Workhorse — bounded judgment, standard code generation, most reviews | **Sonnet 5.5** (alias `sonnet`) |
+| `strong` | Highest capability — real logic, adversarial/security review, novel batches | **Opus 5.5** (alias `opus`) |
 | `strong` (optional, review-only) | Compliance and security review lanes **only** — never implementers, never discovery | **Fable 5.1** (alias `fable`) |
+
+The bindings are what each alias resolves to on the Anthropic API. On Amazon Bedrock, Google Cloud and Microsoft Foundry the same aliases resolve to older models (`haiku` to Haiku 4.5, `sonnet` to Sonnet 4.5, and `opus` to Opus 4.6 on Foundry), so pin `ANTHROPIC_DEFAULT_HAIKU_MODEL` / `_SONNET_MODEL` / `_OPUS_MODEL` there to keep the slots on the generation above.
 
 **Fable 5.1 as an optional `strong` binding.** The `compliance-reviewer` and security lanes may pin `model: fable` instead of `opus`: their cost is justified where a missed finding is expensive (audited state, auth, secrets), and a reviewer runs once per change, not once per batch. It is not a binding for implementers (per-batch cost multiplies) or for discovery (no judgment to buy). The fallback table below treats `fable` exactly like `opus` — a `strong` lane that cannot run falls to `default` and records `ABSTAINED` semantics.
 
@@ -82,9 +84,9 @@ The rule:
 
 | Unavailable tier | Fallback | Notes |
 |---|---|---|
-| `strong` (Opus 5 / Fable 5.1) | `default` (Sonnet 5) for the **rest of the run** | Not a re-ask; not a per-batch probe of whether the limit lifted. Record the switch on the workflow artifact and name it in the final report. |
-| `default` (Sonnet 5) | **halt** | Implementer code and review agents never drop to `fast`. Report to the engineer; do not "just try haiku". |
-| `fast` (Haiku 4.5) | `default` | Discovery/grep work is cheap enough to run one tier up. |
+| `strong` (Opus 5.5 / Fable 5.1) | `default` (Sonnet 5.5) for the **rest of the run** | Not a re-ask; not a per-batch probe of whether the limit lifted. Record the switch on the workflow artifact and name it in the final report. |
+| `default` (Sonnet 5.5) | **halt** | Implementer code and review agents never drop to `fast`. Report to the engineer; do not "just try haiku". |
+| `fast` (Haiku 5.5) | `default` | Discovery/grep work is cheap enough to run one tier up. |
 
 Review agents pin their tier in frontmatter, so a `strong`-pinned lane
 (`compliance-reviewer`, security) that cannot run on `strong` runs on `default` and

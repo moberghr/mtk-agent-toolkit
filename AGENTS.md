@@ -62,7 +62,7 @@ Releases regenerate `checksums.sha256` via `bash scripts/generate-checksums.sh` 
 ## Critical Rules (Always Apply)
 
 - **C0.1** Manifest versions must match: `.claude/manifest.json` version == `.claude-plugin/plugin.json` version == `.claude-plugin/marketplace.json` plugin entry version. Bump all three when releasing.
-- **C0.2** Every file in the repo must be listed in manifest.json `files` section. Every manifest path must exist on disk.
+- **C0.2** Every repo file must have a manifest.json `files` entry, except the short allow-list of non-shipped files in `validate-toolkit.sh` (`manifest_allowed_unlisted`). Every manifest path must exist on disk.
 - **C0.3** Skills follow the anatomy in `.claude/rules/skill-authoring.md` S2.2 (Overview / When To Use / Workflow / Verification for workflow skills; phase-structured and entry-point skills are exempt as listed there). Entry-point skills use `allowed-tools` and `argument-hint` in frontmatter. Skill directory name must match frontmatter `name:`.
 - **C0.4** Agents and skills must have `---` frontmatter blocks.
 - **C0.5** Hooks must be executable (`chmod +x`) and use `set -euo pipefail`.
@@ -94,9 +94,9 @@ model-invoked skill list, the two-stage review graph, the review-output schema, 
 tech-stack loading and progressive/path-scoped reference loading all live in
 `.claude/references/agent-routing-guide.md` — read it whenever routing is not obvious.
 
-Two skills are user-invocable: `/mtk-setup` (first-time setup; `--audit`, `--merge`, `--refresh`,
-`--check`, `--converge`) and `/mtk <description>` (the natural-language router). Everything else is
-a **routed workflow skill** reached through `/mtk`, or a **model-invoked skill** loaded
+Four skills are user-invocable: `/mtk-setup` (setup; `--audit`, `--merge`, `--refresh`, `--check`,
+`--converge`), `/mtk <description>` (the router), `/mtk-doctor` and `/promote-lesson`. Everything else
+is a **routed workflow skill** reached through `/mtk`, or a **model-invoked skill** loaded
 automatically when its trigger fires. The canonical route list is the `/mtk` decision rule above.
 
 The active tech stack is recorded in `.claude/tech-stack`; every entry-point skill and agent reads

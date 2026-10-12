@@ -9,16 +9,16 @@ Recommended Roslyn analyzer packages and configuration for serious .NET software
 
 ## Recommended Packages
 
-Add to `Directory.Build.props` to apply across all projects:
+Add to `Directory.Build.props` to apply across all projects. The Microsoft packages track the SDK major version (10.* for .NET 10 / EF Core 10); match them to the `TargetFramework` and EF Core version the repo actually uses:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.*" />
-  <PackageReference Include="Microsoft.EntityFrameworkCore.Analyzers" Version="9.*" />
+  <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.*" />
+  <PackageReference Include="Microsoft.EntityFrameworkCore.Analyzers" Version="10.*" />
   <PackageReference Include="Meziantou.Analyzer" Version="2.*" />
   <PackageReference Include="Roslynator.Analyzers" Version="4.*" />
   <PackageReference Include="StyleCop.Analyzers" Version="1.*" />
-  <PackageReference Include="SonarAnalyzer.CSharp" Version="9.*" />
+  <PackageReference Include="SonarAnalyzer.CSharp" Version="10.*" />
 </ItemGroup>
 
 <PropertyGroup>
@@ -34,7 +34,8 @@ These rules catch issues the toolkit's coding guidelines specifically call out:
 
 | Rule ID | Package | What It Catches | Recommended Severity |
 |---------|---------|----------------|---------------------|
-| EF1001 | EF Core Analyzers | Client-side evaluation (LINQ evaluated in memory, not DB) | error |
+| EF1001 | EF Core Analyzers | Use of EF Core internal APIs (`*.Internal` namespaces), which can change in any release | error |
+| EF1002 | EF Core Analyzers | Interpolated string passed to `FromSqlRaw` / `ExecuteSqlRaw` (SQL injection risk) | error |
 | CA2007 | NetAnalyzers | Missing ConfigureAwait on awaited tasks | warning |
 | CA1848 | NetAnalyzers | Use LoggerMessage delegates for high-perf logging | suggestion |
 | CA2100 | NetAnalyzers | SQL injection vulnerability in raw queries | error |
@@ -50,8 +51,9 @@ These rules catch issues the toolkit's coding guidelines specifically call out:
 Add to `.editorconfig` at the solution root to enforce critical rules:
 
 ```ini
-# EF Core — client-side evaluation is always a bug in production
+# EF Core — internal API usage breaks on upgrade; raw SQL from interpolated strings is injectable
 dotnet_diagnostic.EF1001.severity = error
+dotnet_diagnostic.EF1002.severity = error
 
 # SQL injection — never acceptable
 dotnet_diagnostic.CA2100.severity = error
@@ -91,9 +93,11 @@ Never run a bare `dotnet format` to "just fix it" — analyzer code-fixes can re
 
 ## Integration with MTK
 
-Build output from `dotnet build` includes these analyzer warnings. The toolkit's `hooks/parse-build-diagnostics.sh` parser converts them into review-finding-schema findings with `source: "analyzer"` and `confidence: 100`.
+Build output from `dotnet build` includes these analyzer warnings. The toolkit's `hooks/parse-build-diagnostics.sh` parser (shipped with the plugin, under `${CLAUDE_PLUGIN_ROOT}`) converts them into review-finding-schema findings with `source: "analyzer"` and `confidence: 100`.
 
-During the implement workflow's batches, pipe build output to capture analyzer findings:
+During the implement workflow's batches, capture the build log to a file and parse it. Do not `tee /dev/tty`: agent shells have no controlling terminal and fail with "Device not configured".
 ```bash
-dotnet build 2>&1 | tee /dev/tty | hooks/parse-build-diagnostics.sh > .mtk/analyzer-output.json
+mkdir -p .mtk
+dotnet build 2>&1 | tee .mtk/build.log
+bash "${MTK_ROOT:-.}/hooks/parse-build-diagnostics.sh" --file .mtk/build.log > .mtk/analyzer-output.json
 ```

@@ -1,6 +1,6 @@
 # MTK MCP Server (`mtk-context`)
 
-A read-only stdio MCP server that exposes canonical MTK state to agents (Claude, Codex, any MCP-aware LLM). Bundled to `dist/mtk-mcp-server.cjs` by `scripts/build-mcp.sh`. The bundle is **gitignored** and rebuilt just-in-time by `hooks/session-start` whenever `mcp/src/**` is newer than the bundle (S3.12).
+A read-only stdio MCP server that exposes canonical MTK state to agents (Claude, Codex, any MCP-aware LLM). Bundled to `dist/mtk-mcp-server.cjs` by `scripts/build-mcp.sh`. The bundle is **tracked in git and ships with the plugin** (S3.12: it is the only runtime artifact, so users never run `npm install`). In a checkout with `mcp/` sources, `hooks/session-start` rebuilds it when `mcp/src/**` is newer than the bundle; commit the rebuilt bundle with the source change.
 
 ## Tools
 
@@ -20,7 +20,7 @@ Skills should call the MCP tool when available and fall through to the bash comm
 
 ## Registering with Claude
 
-Add the following to your project `.mcp.json` (gitignored — do not commit secrets):
+Nothing to register in a target repo. The plugin declares the server in its own root `.mcp.json`, and Claude Code starts it for every project where the `mtk` plugin is enabled:
 
 ```json
 {
@@ -28,13 +28,13 @@ Add the following to your project `.mcp.json` (gitignored — do not commit secr
     "mtk-context": {
       "type": "stdio",
       "command": "node",
-      "args": ["dist/mtk-mcp-server.cjs"]
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/mtk-mcp-server.cjs"]
     }
   }
 }
 ```
 
-The path resolves relative to the working directory you launch Claude from. If the bundle is missing, run `bash scripts/build-mcp.sh` once.
+`${CLAUDE_PLUGIN_ROOT}` is set only for servers a plugin declares, so do not copy this block into a project `.mcp.json`: there it expands to nothing and the server fails to start. When developing MTK itself, load the checkout as the plugin (`claude --plugin-dir .`, see CONTRIBUTING.md) and the same declaration points at your working copy. If the bundle is missing, run `bash scripts/build-mcp.sh` once.
 
 ## Threat model
 

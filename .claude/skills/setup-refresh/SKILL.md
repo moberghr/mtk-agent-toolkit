@@ -99,6 +99,16 @@ bash scripts/refresh-derived.sh references triggers
 
 `generate-tool-configs.sh` may write in place because it carries its own preservation guard: it refuses to overwrite any output file that lacks its auto-generated marker. **A marker-less config (GEMINI.md, `.windsurfrules`, …) is hand-curated — leave it alone, list it under "Preserved hand-authored files", and note it as a Needs review item if the plan flagged it.** Never pass `--force` to reconcile a staleness row; a row that cannot be reconciled without `--force` means the file is not MTK's to regenerate. `refresh-derived.sh` is idempotent and silent on no-op, so running it at the end of this step regardless of the trigger is safe and keeps `.claude/references.index` / `.claude/triggers.index` in sync with whatever STEP 3 just touched.
 
+### `.claude/settings.json` permission keys
+
+Runs on every refresh, regardless of the plan (like `refresh-derived.sh`). Earlier bootstraps wrote stack allow lists under `permissions.allowedTools`, a key Claude Code does not read (its permission lists are `permissions.allow` / `deny` / `ask`), so those entries never applied. Activate the narrow ones:
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/migrate-settings-permissions.sh" .claude/settings.json .claude/settings.local.json
+```
+
+The script is idempotent: a file without the bad key, or a missing file, is left byte-for-byte untouched. It moves only an explicit allow-list of narrow build/test/format/lint rules into `permissions.allow`, printing each one; every broad entry (interpreters, package managers, `curl`, bare `Write`/`Edit`) stays inert under `allowedTools`. Report each activated entry under `Updated`, each left-inert entry under `Needs review` (the engineer decides whether to grant it — it was never in effect), and each untouched file under `Preserved (untouched)`.
+
 ### `CLAUDE.md` and `.claude/rules/*`
 
 Never rewritten in place, regardless of staleness reason (version-drift footer or stale dependency mentions). Compute the fresh template content as `setup-bootstrap` would, then hand it to STEP 4 — CLAUDE.md and every `.claude/rules/*.md` file always go through the diff-proposal contract, never a direct `Write`.
@@ -170,7 +180,7 @@ Next steps:
 ## Verification
 
 - `bash scripts/setup-refresh-plan.sh --json` ran and its output drove every scoping decision in STEP 3 (no ad-hoc staleness judgment).
-- No file outside the plan's `stale`/`missing` artifacts (or the derived AGENTS.md/tool-config/index set) was modified; no non-MTK file was modified or deleted.
+- No file outside the plan's `stale`/`missing` artifacts (or the derived AGENTS.md/tool-config/index set, or the `allowedTools` key move in `.claude/settings*.json`) was modified; no non-MTK file was modified or deleted.
 - Every doc rewritten in STEP 3/4 carries a refreshed `<!-- mtk-stamp -->` with `previous-stamp` / `sections-changed` / `claims-delta` populated.
 - `scripts/verify-claims.sh` ran per refreshed doc, including the one-retry loop where downgrades occurred.
 - Every engineer-edited file went through `.claude/references/regen-diff-contract.md` — no direct `Write` to `CLAUDE.md` or any `.claude/rules/*.md`, and no `git merge-file --union` anywhere in this run.

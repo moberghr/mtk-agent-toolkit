@@ -71,7 +71,7 @@ in one session — this is a shape an e2e test finds and a unit test does not.
 ## Tauri
 
 - **The `#[tauri::command]` boundary is the trust boundary.** Validate every input on the Rust side. The frontend is not trusted, even in a desktop app — XSS in a webview becomes a native execution vulnerability.
-- **Allowlist discipline.** Declare every command and every capability explicitly in `tauri.conf.json`. Never set `all: true` on allowlist categories — it's a privilege escalation waiting to happen.
+- **Capability discipline (Tauri v2).** Access is granted by capability files in `src-tauri/capabilities/*.json`, each naming the windows it applies to and the permissions they get (`core:default`, `fs:allow-read-text-file`, plugin permissions, and permissions you define for your own commands). Grant the narrowest permission and path scope that works; a scope like `$HOME/**` or a capability on `"windows": ["*"]` is a privilege escalation waiting to happen. The v1 `tauri.conf.json` `allowlist` (with `all: true`) is gone in v2; finding it means the app is still on v1.
 - **Keep sensitive operations Rust-side.** File system access, shell execution, HTTP to arbitrary URLs: expose narrow commands (`read_user_config`, not `read_any_file`), not raw capabilities.
 - **Use `tauri::AppHandle` for window / event operations.** Don't pass raw pointers or mutable globals between Rust and JS.
 - **IPC is async.** Every `invoke()` returns a Promise. Handle errors explicitly — unhandled rejections from IPC surface as silent failures in the UI.
@@ -91,7 +91,7 @@ in one session — this is a shape an e2e test finds and a unit test does not.
 - Is the framework's primary pattern used consistently (Server Components / App Router / middleware chain)?
 - Is the trust boundary (server / client, Rust / JS) validated explicitly, not assumed?
 - Are cross-cutting concerns in the right layer (middleware / provider / context) rather than duplicated?
-- For Tauri: is the allowlist minimal? Are IPC commands scoped narrowly?
+- For Tauri: are the capability files minimal (narrow permissions and scopes, no wildcard windows)? Are IPC commands scoped narrowly?
 - For Next.js: is `'use client'` pushed as far down the tree as possible?
 - For React Native: are long lists virtualized (`FlatList`/`SectionList`, not `.map()` in `ScrollView`)? Are secrets in `expo-secure-store` rather than AsyncStorage? Is platform divergence handled explicitly (`Platform`/`.ios.tsx`/`.android.tsx`)?
 - For backends: are structured errors, timeouts, and input validation in place at every endpoint?

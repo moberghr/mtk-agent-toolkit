@@ -57,5 +57,5 @@ Add `biome.json`:
 ## Integration with MTK
 
 ```bash
-npx tsc --noEmit 2>&1 | hooks/parse-build-diagnostics.sh --format tsc > .mtk/analyzer-output.json
+npx tsc --noEmit 2>&1 | bash "${MTK_ROOT:-.}/hooks/parse-build-diagnostics.sh" --format tsc > .mtk/analyzer-output.json
 ```

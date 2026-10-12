@@ -124,7 +124,7 @@ See `.claude/references/python/analyzer-config.md` for recommended ruff rules an
 
 Lint with analyzer capture:
 ```bash
-ruff check --output-format json . | hooks/parse-build-diagnostics.sh --format ruff > .mtk/analyzer-output.json
+ruff check --output-format json . | bash "${CLAUDE_PLUGIN_ROOT}/hooks/parse-build-diagnostics.sh" --format ruff > .mtk/analyzer-output.json
 ```
 
 ## Recommended Tooling
@@ -145,9 +145,9 @@ These files are loaded by commands and review agents when the active stack is `p
 
 ## Settings Additions
 
-Merge these into the project's `.claude/settings.json` during `setup-bootstrap`:
+Merge these into the project's `.claude/settings.json` during `setup-bootstrap`. Each `### <key>` names a Claude Code permission list, `permissions.allow` / `permissions.deny` (there is no `allowedTools` settings key, and entries written under it are ignored). The all-stacks baseline in `.claude/references/settings-baseline.md` is merged alongside these.
 
-### allowedTools (merge: union)
+### allow (merge: union)
 - `Bash(python:*)`
 - `Bash(python3:*)`
 - `Bash(pytest:*)`

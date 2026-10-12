@@ -154,7 +154,7 @@ The TypeScript ecosystem has no single dominant ORM the way EF Core dominates .N
 **Tauri (when `src-tauri/` exists):**
 
 - The `#[tauri::command]` boundary is the trust boundary. Validate all inputs on the Rust side — the frontend is not trusted.
-- Declare every command explicitly in `tauri.conf.json` allowlist. Don't enable `all: true` on any allowlist category.
+- Grant access through Tauri v2 capabilities (`src-tauri/capabilities/*.json`): list each permission the window needs (e.g. `fs:allow-read-text-file` with a narrow path scope), never a broad scope like `$HOME/**` or `"windows": ["*"]`. The v1 `tauri.conf.json` `allowlist` (and its `all: true`) does not exist in v2; a repo still carrying it is on v1 and needs the v2 migration.
 - Use `tauri::AppHandle` for window / event operations, not raw pointers.
 - Keep sensitive operations (file system, shell, HTTP with arbitrary URLs) inside Rust; expose narrow commands, not raw capabilities.
 
@@ -200,7 +200,7 @@ See `.claude/references/typescript/analyzer-config.md` for recommended tsconfig 
 
 Type check with analyzer capture:
 ```bash
-npx tsc --noEmit 2>&1 | hooks/parse-build-diagnostics.sh --format tsc > .mtk/analyzer-output.json
+npx tsc --noEmit 2>&1 | bash "${CLAUDE_PLUGIN_ROOT}/hooks/parse-build-diagnostics.sh" --format tsc > .mtk/analyzer-output.json
 ```
 
 ## Recommended Tooling
@@ -221,9 +221,9 @@ These files are loaded by commands and review agents when the active stack is `t
 
 ## Settings Additions
 
-Merge these into the project's `.claude/settings.json` during `setup-bootstrap`:
+Merge these into the project's `.claude/settings.json` during `setup-bootstrap`. Each `### <key>` names a Claude Code permission list, `permissions.allow` / `permissions.deny` (there is no `allowedTools` settings key, and entries written under it are ignored). The all-stacks baseline in `.claude/references/settings-baseline.md` is merged alongside these.
 
-### allowedTools (merge: union)
+### allow (merge: union)
 - `Bash(bun:*)`
 - `Bash(pnpm:*)`
 - `Bash(yarn:*)`
@@ -283,7 +283,7 @@ adds the three stack-agnostic always-include items, and caps the list at 10.
 - [React] Rules of Hooks, SSR-safe browser access, stable list keys
 - [React Native / Expo] no DOM/web APIs, secrets in `expo-secure-store` not AsyncStorage, `FlatList` over `.map()` in `ScrollView`
 - [Next.js] `'use client'` at the boundary, server actions validated, `next/image` / `next/font` over raw tags
-- [Tauri] allowlist discipline, every `#[tauri::command]` validates input, no `all: true`
+- [Tauri] minimal v2 capability files (no broad scopes, no `"windows": ["*"]`), every `#[tauri::command]` validates input
 - [Prisma / Drizzle] `select` projection over `include`, indexes on foreign keys, paginated list queries
 - [TanStack Query] explicit `staleTime`, stable `queryKey`, no server-state duplication in `useState`
 

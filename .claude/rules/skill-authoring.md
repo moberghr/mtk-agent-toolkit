@@ -56,6 +56,10 @@ strength: inject
 - **S2.11** Commands that orchestrate multiple skills should specify which references each phase needs.
 - **S2.26** A SKILL.md is a **navigation layer, not a payload.** It carries decision logic (when to act, which phase, which reference) and routes to `.claude/references/**` for detail — it must not inline reference material it could link. If a block is content the skill needs only sometimes, move it to a reference file and point at it. The line budgets the validator enforces (500 workflow / 1000 phase-based) are the ceiling, not the target.
 
+## Plugin Paths
+
+- **S2.27** Write the plugin root as `${CLAUDE_PLUGIN_ROOT}`, braced and with no default, in skill and agent bodies. Claude Code substitutes exactly that spelling at load time, so the model sees an absolute path. The variable is never set in the Bash tool's environment. `$CLAUDE_PLUGIN_ROOT` and `${CLAUDE_PLUGIN_ROOT:-.}` are left as literals; in Bash they quietly degrade to the fallback, which works only inside the MTK repo. References are read with the Read tool, so nothing in them is substituted; write `$MTK_ROOT` there and have the caller set it from the router's `MTK_ROOT=` line. `validate-toolkit.sh` rejects the default-value form. This was verified empirically on Claude Code 2.1.296.
+
 ## Toolset Scoping
 
 - **S2.19** Skills may declare `required-toolsets: [<name>, ...]` and `forbidden-toolsets: [<name>, ...]` in frontmatter. Toolset names resolve against `.claude/toolsets/<name>.yaml`. The `/mtk` router (and any other orchestrator) expands them into `allowed-tools` when dispatching. Explicit `allowed-tools` in the skill, if present, takes precedence over toolset expansion.

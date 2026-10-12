@@ -11,7 +11,9 @@ user-invocable: true
 
 ## Overview
 
-`mtk-doctor` is the holistic health check for an MTK installation. Where `validate-toolkit.sh` checks structural integrity (manifest matches files, frontmatter shape), the doctor catches runtime rot: deprecated model IDs in agents, oversized CLAUDE.md, missing gitignore entries, stale analytics, dangling hook registrations.
+`mtk-doctor` is the holistic health check for an MTK installation. Where `validate-toolkit.sh` checks structural integrity (manifest matches files, frontmatter shape), the doctor catches runtime rot: deprecated model IDs in agents, an oversized constitution, settings keys Claude Code ignores, missing gitignore entries, stale analytics, dangling hook registrations.
+
+The script ships with the plugin, so run it from `${CLAUDE_PLUGIN_ROOT}`. It diagnoses two trees: toolkit checks run against the plugin's own files, project checks (constitution, `.claude/settings*.json`, `.gitignore`, lessons, context baseline, environment) against the repo it was run for (`$CLAUDE_PROJECT_DIR`, else the current directory).
 
 ## When To Use
 
@@ -29,36 +31,38 @@ user-invocable: true
 
 1. **Run the script.** Default: human-readable output.
    ```bash
-   bash scripts/mtk-doctor.sh
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/mtk-doctor.sh"
    ```
 
-2. **Apply safe fixes.** Auto-fix gitignore additions and chmod issues:
+2. **Apply safe fixes.** Auto-fix gitignore additions, chmod issues, and the invalid `permissions.allowedTools` key:
    ```bash
-   bash scripts/mtk-doctor.sh --fix
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/mtk-doctor.sh" --fix
    ```
-   FAILs are never auto-fixed. Auto-fix is for known-safe items only.
+   The `allowedTools` migration is the only FAIL `--fix` repairs (a lossless key move). Every other FAIL is reported, not fixed.
 
 3. **CI mode.** Strict + JSON:
    ```bash
-   bash scripts/mtk-doctor.sh --strict --json
+   bash "${CLAUDE_PLUGIN_ROOT}/scripts/mtk-doctor.sh" --strict --json
    ```
    Strict treats WARN as failure (exit 1). JSON output suits dashboards.
 
 4. **Triage failures.** Each FAIL entry includes a `detail` field pointing at the fix path. Common cases:
    - "version mismatch" → bump both manifest.json and plugin.json (and marketplace.json) to the same value
-   - "deprecated model" → update agent frontmatter to a current model ID
+   - "deprecated model" → update agent frontmatter to a current model ID or alias; "previous-generation model pinned" (WARN) → the alias already follows the current generation
+   - "uses permissions.allowedTools" → Claude Code has no such key (valid: `permissions.allow` / `deny` / `ask`), so the list was ignored; `--fix` runs `scripts/migrate-settings-permissions.sh` on `.claude/settings.json` and `.claude/settings.local.json`
    - "hook missing" → either add the hook script or remove its registration from settings.json
    - "skill name mismatch" → rename the directory or update frontmatter `name:` to match
-   - "context budget miscalibrated" → set `MTK_CONTEXT_WINDOW_TOKENS` in `.claude/settings.local.json` `env` to the model's real window
+   - "context budget miscalibrated" → set `MTK_CONTEXT_WINDOW_TOKENS` in `.claude/settings.local.json` `env` to the model's real window (200k for Haiku 4.5, Opus/Sonnet 4.6 without `[1m]`, or any model under `CLAUDE_CODE_DISABLE_1M_CONTEXT=1`; the 5.x models, Opus 4.7+ and Fable are 1M)
    - "hook basename also wired globally" → confirm the collision is intended; two scripts sharing a filename both run and log indistinguishably
    - "hook collision check skipped" → set `CLAUDE_PLUGIN_ROOT` so the check can see MTK's hooks; it compared nothing, which is not the same as finding nothing
    - "formatter missing" → install the stack's formatter, or accept that edits go unformatted (the hook never blocks)
 
 ## Categories Checked
 
-- **CORE** — required files (manifest, plugin.json, README, AGENTS, validate-toolkit), CLAUDE.md line budget if present
+- **CORE** — required toolkit files (manifest, plugin.json, README, AGENTS, validate-toolkit); the project's resolved constitution line budget
 - **COMPONENTS** — version sync, skill counts, skill name/directory consistency, deprecated model detection
-- **HOOKS** — registered hooks exist and are executable, event names valid, all hooks use `set -euo pipefail`
+- **HOOKS** — hooks registered in the project's settings.json exist and are executable, event names are documented Claude Code events, all MTK hooks use `set -euo pipefail`
+- **PERMISSIONS** — the project's `.claude/settings.json` / `settings.local.json` carry no `permissions.allowedTools` (FAIL; `--fix` migrates it)
 - **INTEGRITY** — manifest paths exist, gitignore coverage, analytics freshness, validate-toolkit passes
 - **CONTEXT** — always-on context baseline (CLAUDE.md + rules/INDEX.md + alwaysApply refs, in tokens/bytes), MCP schema count from `.mcp.json`, `ENABLE_TOOL_SEARCH` state (report-only, never WARN/FAIL)
 - **ENVIRONMENT** — fit between the install and the machine, which structural checks cannot see: `MTK_CONTEXT_WINDOW_TOKENS` calibration against the model in use, MTK hook basenames also wired in the user's global `settings.json`, and whether the active stack's formatter binary is actually on PATH. WARN at most — an environment mismatch is never a broken install
@@ -70,11 +74,11 @@ user-invocable: true
 - [ ] Exit code 1 on any FAIL
 - [ ] `--strict` exits 1 on WARN
 - [ ] `--json` output is valid JSON parseable by `jq`
-- [ ] `--fix` only modifies gitignore and file permissions; never edits source files
+- [ ] `--fix` only modifies gitignore, file permissions, and the `allowedTools` → `allow` key move; never edits source files
 
 ## Red Flags
 
 - Doctor reports PASS when validate-toolkit.sh fails — checks are out of sync
-- `--fix` modifies source code or skill content (it shouldn't — only gitignore + chmod)
+- `--fix` modifies source code or skill content (it shouldn't — only gitignore, chmod, and the settings key move)
 - New checks added that overlap with validate-toolkit.sh — keep validator structural, doctor holistic
 - Deprecated model list goes stale — update `DEPRECATED_MODELS` in scripts/mtk-doctor.sh when Anthropic deprecates more

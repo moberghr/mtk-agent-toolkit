@@ -61,5 +61,5 @@ disallow_untyped_defs = true
 ## Integration with MTK
 
 ```bash
-ruff check --output-format json . | hooks/parse-build-diagnostics.sh --format ruff > .mtk/analyzer-output.json
+ruff check --output-format json . | bash "${MTK_ROOT:-.}/hooks/parse-build-diagnostics.sh" --format ruff > .mtk/analyzer-output.json
 ```
