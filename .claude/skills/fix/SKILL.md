@@ -36,7 +36,7 @@ Follow the phases below in order. Each phase loads what it needs and no more.
 1. Follow `.claude/skills/context-engineering/SKILL.md` — it resolves the stack for the target paths (pass a target file, not `$PWD`, when the fix sits in a subtree) and loads the stack skill. If neither `AGENTS.md` nor `CLAUDE.md` exists, stop and tell the engineer to run `/mtk-setup`.
 2. Read only what the fix needs:
    - **Always:** the coding guidelines from the tech stack's `## Reference Files`
-   - **If fix touches data layer/ORM:** the ORM checklist from the tech stack's `## Reference Files`
+   - **If fix touches data layer/ORM:** the tech stack skill's `## ORM & Data Layer Guidance` (and `## Framework Patterns` for handler/HTTP code)
    - **If fix touches auth/secrets/financial:** `.claude/references/domain-finance.md` (finance and security supplement)
    - **If adding tests:** the testing supplement from the tech stack's `## Reference Files`
    - **Before commit:** `.claude/references/pre-commit-review-list.md` if present

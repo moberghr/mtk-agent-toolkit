@@ -117,6 +117,7 @@ Move a rule from Claude Code's native memory into `tasks/lessons.md`. A team tha
    - Only `type: feedback` and `type: project` memories can be promoted. `user` and `reference` memories are about the engineer or point outside the repo.
    - If a keyword argument was given, filter on it, ignoring case.
    - Show a numbered list: title, a one-line excerpt, and the file it came from.
+   - If the legacy `.claude/lessons/personal.md` exists, list its `## ` entries too and offer, per entry, to promote it here or move it to native memory; nothing reads that file any more.
    - If there are no promotable memories, say "nothing to promote" and stop.
 2. **Ask which to promote.** Use `AskUserQuestion`; several selections are fine.
 3. **Reword for the team.** Turn first-person phrasing ("I", "my") into team phrasing ("engineers", "the codebase"). Show the proposed text and get the engineer's confirmation.

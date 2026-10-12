@@ -1,13 +1,13 @@
 {
   "schema": "mtk.benchmarks.v1",
-  "generated_at": "2026-10-12T18:42:06Z",
-  "commit": "d706ac1",
+  "generated_at": "2026-10-12T19:22:24Z",
+  "commit": "0faf426",
   "toolkit_version": "8.2.0",
   "runner": "scripts/run-benchmarks.sh",
   "run_complete": true,
   "totals": {
-    "passed": 29,
-    "failed": 2,
+    "passed": 31,
+    "failed": 0,
     "total": 31
   },
   "sections": [
@@ -43,8 +43,8 @@
     },
     {
       "name": "Toolkit Validation",
-      "passed": 0,
-      "failed": 2
+      "passed": 2,
+      "failed": 0
     }
   ],
   "measures": "Deterministic behaviour of MTK bash hooks, linter pattern packs, and the structural validator, executed against fixed in-repo fixtures. Every assertion is a real process invocation with a checked exit code or matched output \u2014 no LLM is involved in producing or grading these numbers.",

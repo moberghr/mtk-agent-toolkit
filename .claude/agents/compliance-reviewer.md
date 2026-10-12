@@ -44,8 +44,9 @@ against it. Code that does not match its stated intent is a **critical** finding
 
 Review the diff against what Step 1 loaded, citing the project's own identifiers — a rule id
 from the constitution or a rule file, or `Coding Guidelines — <section>`. Do not invent rule
-numbers. For stack mechanics (ORM, framework, performance), use the checklists the tech-stack
-skill's `## Reference Files` names. Axes, security first:
+numbers. For stack mechanics (ORM, framework, performance), use the pack's `## ORM & Data Layer
+Guidance` and `## Framework Patterns` sections (standalone: the same two sections of the
+tech-stack skill). Axes, security first:
 
 - **Security & compliance** — authn/authz on every entry point, secrets, input validation,
   injection, PII in logs and errors, audit trail for state changes the project audits.

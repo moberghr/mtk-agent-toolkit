@@ -26,7 +26,9 @@ set -euo pipefail
 #
 # Usage:
 #   bash scripts/lesson-anchors.sh [--strict] [file ...]
-#   (default files: tasks/lessons.md and .claude/lessons/personal.md if present)
+#   (default files: tasks/lessons.md, plus the legacy .claude/lessons/personal.md
+#   if it still exists — `lessons promote` offers to migrate it; until then its
+#   anchors can rot like any other lesson's)
 
 ROOT_DIR="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 cd "$ROOT_DIR"
@@ -36,7 +38,7 @@ FILES=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --strict) STRICT=1; shift ;;
-    -h|--help) sed -n '3,30p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '3,31p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) FILES+=("$1"); shift ;;
   esac
 done

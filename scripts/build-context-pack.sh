@@ -16,6 +16,8 @@ set -euo pipefail
 #   1. header (uuid, generated-at, sidecar path, stack)
 #   2. build/test/format commands — the tech-stack skill's `## Build & Test Commands`
 #      and `## Format Command` sections, verbatim
+#   2b. stack field rules — the tech-stack skill's `## ORM & Data Layer Guidance` and
+#      `## Framework Patterns` sections, verbatim and always (see the comment at 2b)
 #   3. the resolved constitution file's `## Critical Rules` verbatim (AGENTS.md when it
 #      exists, is not generator-marked, and CLAUDE.md is absent or a shim importing it
 #      via `@AGENTS.md`; otherwise CLAUDE.md — same rule as constitution-digest.sh's
@@ -143,6 +145,16 @@ if skill:
         h, b = section(skill, pref)
         if b:
             parts.append(f"## {h}\n\n{b}\n"); inventory.append(f"commands: {h} ({len(b)} chars)")
+    # 2b. stack field rules — the ORM/data-layer and framework sections hold the
+    # rules that bite at runtime (EF ordering after a projection, AsNoTracking,
+    # HttpClientFactory, CancellationToken, lazy init). Emitted ALWAYS, not gated
+    # on KIND_TABLE: both are short (~0.5-2.5k chars per stack), and the kind table
+    # keys on file names, which miss the files where these rules apply most
+    # (an OrderService.cs running an EF query, a Program.cs registering clients).
+    for pref in ("ORM & Data Layer Guidance", "Framework Patterns"):
+        h, b = section(skill, pref)
+        if b:
+            parts.append(f"## {h}  _(from `tech-stack-{stack}`)_\n\n{b}\n"); inventory.append(f"stack rules: {h} ({len(b)} chars)")
 else:
     parts.append("## Build & Test Commands\n\n_(tech stack unresolved — run `bash scripts/resolve-tech-stack.sh` or set `.claude/tech-stack`)_\n")
     inventory.append("commands: MISSING (stack unresolved)")

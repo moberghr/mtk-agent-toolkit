@@ -21,8 +21,8 @@ a genuinely sound structure gets a zero-finding PASS with its rationale.
 ## Step 1: Load standards
 
 Beyond the contract's inputs: `.claude/references/architecture-principles.md` if present (the
-pack carries its `[EXTRACTED]` lines), the framework-patterns reference the tech-stack
-skill's `## Reference Files` names, and the spec sidecar's change manifest and public
+pack carries its `[EXTRACTED]` lines), the pack's `## Framework Patterns` section (standalone:
+the tech-stack skill's `## Framework Patterns`), and the spec sidecar's change manifest and public
 contracts. Start from the pack's `## Change map` for callers and callees. Read two or three
 neighbouring files as the expected pattern.
 

@@ -27,7 +27,7 @@ replaces its table and JSON; its ABSTAINED rule applies unchanged.
 
 These rules are the contract. Violating any one invalidates your review.
 
-- Do **not** read `tasks/lessons.md`, `.claude/lessons/personal.md`, or any
+- Do **not** read `tasks/lessons.md`, the legacy `.claude/lessons/personal.md`, or any
   prior session memory. Those files reflect past work and bias you toward
   prior conclusions.
 - Do **not** read prior reviewer output, prior planner notes, or any

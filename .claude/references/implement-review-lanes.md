@@ -1,5 +1,5 @@
 ---
-description: Single source for code review — lane sets per rigor, dispatch rules, the silent-failure trigger regex, the defect-class sweep, lane accounting and ABSTAINED; read by implement Phase 4, batch-fix, and code-review-and-quality
+description: Single source for code review — lane sets per rigor, dispatch rules, the silent-failure trigger regex, the defect-class sweep, lane accounting and ABSTAINED; read by implement Phase 4 and code-review-and-quality
 globs: []
 alwaysApply: false
 ---
@@ -41,7 +41,7 @@ It emits `category: "error-handling"`; merge and dedupe by `(file, line, rule)`.
 pack's `## Applicable rules` lists (plus an unmatched one only when the diff touches its globs),
 never all of `.claude/rules/`. Outside implement there is no pack: resolve
   the stack with `bash scripts/resolve-tech-stack.sh --check <changed paths>` and pass the stack
-  skill's `## Reference Files`.
+  skill's `## Reference Files` plus its `## ORM & Data Layer Guidance` and `## Framework Patterns`.
 - **Scope to this run's files.** Hand each lane the changed-file set and exclude the pre-existing
   dirty baseline, or it attributes someone else's edits to this run.
 - **A reviewer is a pass to perform, not a dispatch mechanism.** When the Agent tool is

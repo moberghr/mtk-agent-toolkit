@@ -15,13 +15,14 @@ You are a router. Classify the user's intent from their input, then load and fol
 
 Match the user's input against these patterns. Check from top to bottom; first match wins.
 
-**Order matters — do not "tidy" it.** `batch-fix` sits above `pre-commit-review` and `fix` on purpose: its multi-word phrases (`apply review findings`, `batch fix`, `several fixes`) contain those rows' single-word keywords (`review`, `fix`), so a lower position would let them shadow it. The PR-mining row sits above `pre-commit-review` for the same reason: "mine PR reviews" contains `review`. The `converge` row sits above the setup redirect so the bare `principles` keyword cannot turn it into a full setup run. `scripts/run-fixtures.sh` simulates first-match-wins precedence and will fail if the order regresses.
+**Order matters — do not "tidy" it.** `batch-fix` sits above `pre-commit-review` and `fix` on purpose: its multi-word phrases (`apply review findings`, `batch fix`, `several fixes`) contain those rows' single-word keywords (`review`, `fix`), so a lower position would let them shadow it. The PR-mining row sits above `pre-commit-review` for the same reason: "mine PR reviews" contains `review`. The duplicates row sits high too: lower down, `add` (implement) or the bare `audit` (setup redirect) would take "find duplicate capabilities before I add another mapper" or "audit duplicates". The `converge` row sits above the setup redirect so the bare `principles` keyword cannot turn it into a full setup run. `scripts/run-fixtures.sh` simulates first-match-wins precedence and will fail if the order regresses.
 
 | Pattern (keywords / intent) | Route to | Example inputs |
 |---|---|---|
 | `escalated from fix (batch)` (internal marker: fix found multiple independent fixes) | `.claude/skills/batch-fix/SKILL.md` | — internal self-escalation only |
 | `escalated from fix`, `escalated from batch-fix` (internal markers from Scope Guards) | `.claude/skills/implement/SKILL.md` | — internal self-escalation only |
 | `batch fix`, `apply findings`, `apply review findings`, `corrective batch`, `several fixes`, `multiple fixes` | `.claude/skills/batch-fix/SKILL.md` | "apply these review findings", "run a batch fix over these nits" |
+| `audit duplicates`, `audit-duplicates`, `duplicate capabilities`, `find existing helper`, `find an existing helper`, `is there an existing helper`, `already have a helper` | `.claude/skills/prior-work-check/SKILL.md` | "audit duplicates", "find duplicate capabilities before I add another mapper" |
 | `mine pr`, `pr mining`, `pr review mining`, `reviewer feedback`, `reviewers keep` | `.claude/skills/repo-health/SKILL.md` (PR-mining section) | "mine PR reviews", "what do reviewers keep repeating?" |
 | `review`, `check`, `commit`, `staged`, `pre-commit`, `before I commit` | `.claude/skills/pre-commit-review/SKILL.md` | "review before commit", "check staged changes" |
 | `repo-health`, `repo health`, `readiness`, `scorecard`, `ai-ready`, `ai ready`, `repo report` | `.claude/skills/repo-health/SKILL.md` | "is this repo AI-ready?", "run repo-health" |
@@ -61,7 +62,8 @@ the obvious route — encoding the contested pairs measurably cuts misroutes.
 | `instructions` (`capture`) | `lessons` (`capture`) | the finding is a fact about this repo (a command, a path, an env quirk) that belongs in the constitution; a reusable rule from a correction or a dead end is a lesson |
 | `lessons` (`promote`) | `lessons` (`mine`) | a specific known lesson goes native memory → team; sweeping transcripts for candidates is `mine` |
 | `lessons` (`refresh`) | `lessons` (`mine`) | auditing/retiring EXISTING lessons is `refresh`; harvesting NEW candidates from transcripts is `mine` |
-| `/mtk-setup` | `implement`/`fix` | anything setup/bootstrap/audit/architecture-principles — always redirect to `/mtk-setup`, never absorb. Code drifting from the agreed principles ("converge") is `/mtk-setup --check`. Exceptions: `audit lessons` (lessons refresh) and `audit agents.md`/`audit claude.md` (instructions audit) are not setup |
+| `prior-work-check` | `implement`/`code-simplification` | the ask is whether a capability or helper already exists ("audit duplicates", "find existing helper") — a read-only search of CODE_INDEX, skills and helpers, not a change or a cleanup |
+| `/mtk-setup` | `implement`/`fix` | anything setup/bootstrap/audit/architecture-principles — always redirect to `/mtk-setup`, never absorb. Code drifting from the agreed principles ("converge") is `/mtk-setup --check`. Exceptions: `audit duplicates` (prior-work-check), `audit lessons` (lessons refresh) and `audit agents.md`/`audit claude.md` (instructions audit) are not setup |
 
 ## Routing Rules
 
@@ -71,7 +73,7 @@ the obvious route — encoding the contested pairs measurably cuts misroutes.
 4. **Ambiguous → ask, but only if genuinely ambiguous.** If input matches two rows with similar specificity (e.g., "fix the auth feature" — fix verb + feature-sized noun), ask one clarifying question: "Is this a small fix (1-3 files), a batch of small independent fixes, or a larger feature?" Do not ask for inputs that clearly match one row.
 5. **No input → help.** If invoked with no argument, print the help text.
 6. **Pass description through.** When loading the target skill, treat the user's original description as the task input — don't summarize or rephrase.
-7. **Setup requests → redirect.** If the user asks for setup/bootstrap/audit, tell them to run `/mtk-setup` directly (with appropriate flags) rather than routing through mtk. An `audit` that matched an earlier row (`audit lessons`, `audit agents.md`, `audit claude.md`) is not a setup request; `converge` goes to `/mtk-setup --check`.
+7. **Setup requests → redirect.** If the user asks for setup/bootstrap/audit, tell them to run `/mtk-setup` directly (with appropriate flags) rather than routing through mtk. An `audit` that matched an earlier row (`audit duplicates`, `audit lessons`, `audit agents.md`, `audit claude.md`) is not a setup request; `converge` goes to `/mtk-setup --check`.
 
 ## Help Output
 

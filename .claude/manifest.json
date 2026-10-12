@@ -11,6 +11,12 @@
     }
   },
   "files": {
+    "tests/fixtures/router-audit-duplicates.json": {
+      "source": "tests/fixtures/router-audit-duplicates.json",
+      "target": "tests/fixtures/router-audit-duplicates.json",
+      "action": "sync",
+      "description": "Router-mapping fixture: audit duplicates and existing-helper searches route to prior-work-check, above implement and the /mtk-setup redirect"
+    },
     "hooks/linter-patterns/README.md": {
       "source": "hooks/linter-patterns/README.md",
       "target": "hooks/linter-patterns/README.md",
@@ -712,7 +718,7 @@
       "source": ".claude/skills/prior-work-check/SKILL.md",
       "target": ".claude/skills/prior-work-check/SKILL.md",
       "action": "sync",
-      "description": "One prior-work query plus existing-plan reconciliation, run once per implement run, so a spec does not duplicate an existing helper, handler or lesson"
+      "description": "One prior-work query plus existing-plan reconciliation, run once per implement run, so a spec does not duplicate an existing helper, handler or lesson; also the /mtk route for audit duplicates and existing-helper searches"
     },
     "docs/recommended-tooling/shared.md": {
       "source": "docs/recommended-tooling/shared.md",
@@ -2212,7 +2218,7 @@
       "source": "tests/hooks/test-build-context-pack.sh",
       "target": "tests/hooks/test-build-context-pack.sh",
       "action": "sync",
-      "description": "Verifies build-context-pack.sh emits the shared Change map (declared symbols per manifest file and their referrers) with generated-file exclusions, new-file marking, and the MTK_CONTEXT_PACK_CHANGE_MAP=0 opt-out"
+      "description": "Verifies build-context-pack.sh packs the stack ORM/framework rules (including post-projection ordering) and the applicable rule files, and emits the shared Change map (declared symbols per manifest file and their referrers) with generated-file exclusions, new-file marking, and the MTK_CONTEXT_PACK_CHANGE_MAP=0 opt-out"
     },
     "tests/hooks/test-host-load-probe.sh": {
       "source": "tests/hooks/test-host-load-probe.sh",
@@ -2428,7 +2434,7 @@
       "source": "scripts/build-context-pack.sh",
       "target": "scripts/build-context-pack.sh",
       "action": "sync",
-      "description": "Writes the per-run context pack (.mtk/workflows/<uuid>/context-pack.md): commands, constitution critical rules, applicable rule files for the diff, selected coding-guideline sections, EXTRACTED principles and matching lessons"
+      "description": "Writes the per-run context pack (.mtk/workflows/<uuid>/context-pack.md): commands, the stack skill's ORM/data-layer and framework rules, constitution critical rules, applicable rule files for the diff, selected coding-guideline sections, EXTRACTED principles and matching lessons"
     },
     "references/mtk-file-resolution.md": {
       "source": ".claude/references/mtk-file-resolution.md",

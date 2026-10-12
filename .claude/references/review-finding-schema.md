@@ -80,7 +80,8 @@ Every agent in `.claude/agents/` follows this section; the agent file adds only 
   instead of the constitution, the tech-stack skill and the guideline files. Standalone (no
   pack): the constitution (`AGENTS.md`, or `CLAUDE.md` in legacy repos — skip it if it is
   already in your context), `.claude/tech-stack` → `.claude/skills/tech-stack-{stack}/SKILL.md`,
-  and from its `## Reference Files` only the files your lane names. Read the spec and its JSON
+  its `## ORM & Data Layer Guidance` and `## Framework Patterns` sections, and from its
+  `## Reference Files` only the files your lane names. Read the spec and its JSON
   sidecar when passed. Diff: `git diff --cached`, else `git diff HEAD`.
 - **Rules.** Read only the rule files that apply (procedure below), never every file in
   `.claude/rules/`.

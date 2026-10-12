@@ -72,6 +72,16 @@ OUT="$PROJ/.mtk/pack.md"
   || fail "build-context-pack exited non-zero: $(cat "$PROJ/run.err")"
 [ -f "$OUT" ] || fail "pack not written at $OUT"
 
+# 0. Stack field rules: the tech-stack skill's ORM/data-layer and framework
+#    sections are in the pack, including the field-learned post-projection rule
+#    (it lived in a deleted reference file, so the pack must carry it now).
+grep -q '^## ORM & Data Layer Guidance' "$OUT" || fail "no '## ORM & Data Layer Guidance' section in the pack"
+grep -q '^## Framework Patterns' "$OUT" || fail "no '## Framework Patterns' section in the pack"
+grep -q 'Order and filter on the entity, not on a projected member' "$OUT" \
+  || fail "post-projection OrderBy/Where rule missing from the pack"
+grep -q 'AsNoTracking' "$OUT" || fail "AsNoTracking rule missing from the pack"
+ok "stack ORM and framework rules (incl. post-projection ordering) are in the pack"
+
 # 1. Section present.
 grep -q '^## Change map' "$OUT" || fail "no '## Change map' section in the pack"
 ok "Change map section present"
