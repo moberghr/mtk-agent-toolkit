@@ -4,7 +4,7 @@ set -euo pipefail
 # host-load-probe.sh: one place that answers "is this host too loaded to
 # dispatch an implementer subagent?" so skills do not hand-roll uptime parsing.
 #
-# WHY. A 2026-09 field run (beacon) dispatched Opus implementers onto a Mac with
+# WHY. A 2026-09 field run dispatched Opus implementers onto a Mac with
 # a load average near 100; 20-second dotnet builds took 5–15 minutes and two
 # implementers were killed by the harness's 10-minute no-output watchdog. The
 # killed-mid-batch recovery respawned into the same conditions and died the same

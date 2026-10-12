@@ -23,8 +23,6 @@ source "${SCRIPT_DIR}/lib/hook-io.sh"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/skill-queue.sh"
 
-mtk_is_redundant_plugin_invocation "$0" && exit 0
-
 mtk_queue_enabled || exit 0
 
 INPUT="$(mtk_read_payload)"

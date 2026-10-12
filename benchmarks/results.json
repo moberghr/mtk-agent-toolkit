@@ -1,14 +1,14 @@
 {
   "schema": "mtk.benchmarks.v1",
-  "generated_at": "2026-08-11T10:26:06Z",
-  "commit": "64681b8",
-  "toolkit_version": "7.30.0",
+  "generated_at": "2026-10-12T13:43:47Z",
+  "commit": "de0c626",
+  "toolkit_version": "8.0.3",
   "runner": "scripts/run-benchmarks.sh",
   "run_complete": true,
   "totals": {
-    "passed": 37,
+    "passed": 38,
     "failed": 0,
-    "total": 37
+    "total": 38
   },
   "sections": [
     {
@@ -38,7 +38,7 @@
     },
     {
       "name": "Verify Completion: evidence gating",
-      "passed": 7,
+      "passed": 8,
       "failed": 0
     },
     {

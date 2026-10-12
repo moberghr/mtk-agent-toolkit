@@ -5,7 +5,7 @@ set -euo pipefail
 # manifest file declares and the files that reference them — so reviewer lanes
 # read one call graph instead of each re-deriving it.
 #
-# WHY. In a 2026-09 field run (beacon) three of four reviewer lanes rebuilt the
+# WHY. In a 2026-09 field run three of four reviewer lanes rebuilt the
 # same cross-source call graph of the touched symbols; roughly a third of all
 # reviewer tokens was that duplicated work. The pack is built once per run and
 # every lane already reads it, so it is the one place the graph belongs.
@@ -23,7 +23,7 @@ trap 'rm -rf "$PROJ"' EXIT
 mkdir -p "$PROJ/src/Gates" "$PROJ/src/Handlers" "$PROJ/tests" "$PROJ/docs/specs" "$PROJ/lib"
 
 cat > "$PROJ/src/Gates/SqlExecutionGate.cs" <<'CS'
-namespace Beacon.Gates;
+namespace Acme.Gates;
 public interface ISqlExecutionGate { bool Validate(string sql); }
 public sealed class SqlExecutionGate : ISqlExecutionGate
 {
@@ -32,7 +32,7 @@ public sealed class SqlExecutionGate : ISqlExecutionGate
 }
 CS
 cat > "$PROJ/src/Handlers/RunQueryHandler.cs" <<'CS'
-namespace Beacon.Handlers;
+namespace Acme.Handlers;
 public class RunQueryHandler
 {
     private readonly ISqlExecutionGate _gate;

@@ -11,8 +11,6 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
 
-mtk_is_redundant_plugin_invocation "$0" && exit 0
-
 # Stash push/apply mutates git state — opt-in for plugin installs so team
 # repos never get surprise stash entries. Project-local wiring (the toolkit's
 # own settings.json) keeps the original always-on behavior.

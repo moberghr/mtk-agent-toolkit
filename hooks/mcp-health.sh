@@ -68,8 +68,6 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
 
-mtk_is_redundant_plugin_invocation "$0" && exit 0
-
 [ "${MTK_MCP_HEALTH:-1}" = "0" ] && exit 0
 
 # Bounded read (see hook-io.sh mtk_read_payload for why). Empty/unparseable

@@ -16,9 +16,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
 
-mtk_is_redundant_plugin_invocation "$0" && exit 0
-
 INPUT="$(mtk_read_payload)"
+# Before anything else: the session's baseline fingerprint must predate the
+# first Edit/Write (verify-completion's "did this session change anything").
+mtk_ensure_session_baseline "$INPUT"
 
 # Extract file_path from the tool input JSON
 FILE_PATH=$(mtk_extract_file_path "$INPUT" 2>/dev/null || echo "")

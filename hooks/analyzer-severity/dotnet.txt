@@ -1,6 +1,6 @@
 # .NET Roslyn analyzer severity mappings
 # Format: RULE_ID<TAB>severity<TAB>description
-EF1001	critical	Client-side evaluation detected by EF Core analyzer
+EF1001	critical	EF Core internal API usage (types in .Internal namespaces can change without notice)
 CA2100	critical	SQL injection vulnerability in raw query
 CA2000	warning	Dispose objects before losing scope
 CA1816	warning	Dispose pattern implementation issue

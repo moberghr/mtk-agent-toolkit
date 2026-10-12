@@ -153,7 +153,7 @@ ok "F1: unseeded store with no lessons.md is diagnosed"
 
 # F2: no store, but tasks/lessons.md exists — the gap that made every query in a
 # bootstrapped repo return empty forever (seed only ran in setup-bootstrap, so a
-# repo bootstrapped before that shipped never got one; beacon 2026-09: 30 lessons,
+# repo bootstrapped before that shipped never got one; a 2026-09 field run: 30 lessons,
 # 0 reachable). query now seeds the store itself, store-only: it must never
 # rewrite tasks/lessons.md from a read path. stderr names what happened and the
 # `migrate` command that also regenerates the markdown view.

@@ -28,8 +28,6 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
 
-mtk_is_redundant_plugin_invocation "$0" && exit 0
-
 [ "${MTK_COST_TRACKER:-1}" = "0" ] && exit 0
 
 # Bounded read: a stalled stdin must never wedge the Stop event.

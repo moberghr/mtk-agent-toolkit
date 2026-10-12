@@ -14,7 +14,33 @@ PLUGIN_ROOT="${SCRIPT_DIR}/.."
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
 
-mtk_is_redundant_plugin_invocation "$0" && exit 0
+# Session ledger baseline for verify-completion: bind to the payload's
+# session_id and record the working-tree fingerprint before any tool runs, so a
+# Stop can tell whether this session changed files at all (Bash-made edits
+# included). Also caches the model id, which sizes context-budget's window.
+# Read only when a payload is piped in; an interactive stdin is never waited on.
+# Runs on startup, clear, compact and resume; a baseline is recorded only when
+# the session's ledger has none and no tool has run yet.
+if [ ! -t 0 ]; then
+  SS_INPUT="$(mtk_read_payload 2 2>/dev/null || true)"
+  if [ -n "$SS_INPUT" ]; then
+    mtk_session_bind "$SS_INPUT"
+    if [ -n "${_MTK_SESSION_ID:-}" ]; then
+      SS_FP="$(mtk_tree_fingerprint 2>/dev/null)" || SS_FP=""
+      SS_MODEL="$(mtk_extract_json_string "$SS_INPUT" "model" 2>/dev/null || true)"
+      SS_FILE="$(mtk_session_file)"
+      mtk_session_lock_acquire "$SS_FILE"
+      mtk_load_session_state "$SS_FILE"
+      if [ -n "$SS_FP" ] && [ -z "${session_start_tree:-}" ] && [ "${event_seq:-0}" -eq 0 ]; then
+        session_start_base="${SS_FP%% *}"
+        session_start_tree="${SS_FP#* }"
+      fi
+      [ -n "$SS_MODEL" ] && model_id="$SS_MODEL"
+      mtk_save_session_state "$SS_FILE"
+      mtk_session_lock_release "$SS_FILE"
+    fi
+  fi
+fi
 
 # Build MCP server on first use (silent, non-blocking)
 # Rebuilds when dist/ is missing OR when any mcp/src/** file is newer than the bundle.

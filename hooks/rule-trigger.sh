@@ -45,8 +45,6 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
 
-mtk_is_redundant_plugin_invocation "$0" && exit 0
-
 REPO_ROOT="$(mtk_repo_root 2>/dev/null || pwd)"
 INDEX_FILE="$REPO_ROOT/.claude/rules/triggers.index"
 STATE_FILE="${TMPDIR:-/tmp}/mtk-rule-delivered-$(printf '%s' "$REPO_ROOT" | cksum | cut -d' ' -f1)"

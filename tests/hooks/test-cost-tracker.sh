@@ -117,7 +117,7 @@ expect "main cache_read deduped" 2000 "$(field "$C" main tokens.cache_read)"
 expect "main est_usd = priced messages only" 0.009940 "$(field "$C" main est_usd)"
 expect "main unpriced_tokens counts claude-test-9" 10 "$(field "$C" main unpriced_tokens)"
 expect "main model = last model seen" claude-test-9 "$(field "$C" main model)"
-expect "main pricing_as_of" 2026-09-23 "$(field "$C" main pricing_as_of)"
+expect "main pricing_as_of" 2026-10-12 "$(field "$C" main pricing_as_of)"
 expect "row carries session id" "$SID" "$(field "$C" main session_id)"
 # Subagent: haiku-4-5 (date suffix stripped) at 1 / 5: 1000*1 + 200*5 = 2000 -> 0.002
 expect "subagent input"  1000 "$(field "$C" subagent:abc tokens.input)"
@@ -315,7 +315,7 @@ expect "successful record wrote rows" 2 "$(rows "$MD2/costs.jsonl")"
 expect "window without .last-error has no warning" "not recorded" \
   "$(bash "$SC" window --since 2000-01-01T00:00:00Z --until 2000-01-02T00:00:00Z --metrics-dir "$MD2")"
 
-# --- T4: wiring (hooks.json + .claude/settings.json) ---------------------------------
+# --- T4: wiring (hooks.json; .claude/settings.json wires no hooks) ---------------------------------
 # Parsed as JSON, exact event key + matcher: a typo'd event key must fail this.
 wiring() { # $1=file $2=event $3=matcher ("" = none) $4=hook basename $5=require async (0/1)
   python3 - "$@" <<'PY'
@@ -336,7 +336,7 @@ for m in hooks.get(event, []) or []:
 print("missing")
 PY
 }
-for wf in hooks/hooks.json .claude/settings.json; do
+for wf in hooks/hooks.json; do
   expect "$wf wires cost-tracker.sh under Stop with async true" wired \
     "$(wiring "$REPO_ROOT/$wf" Stop "" cost-tracker.sh 1)"
 done

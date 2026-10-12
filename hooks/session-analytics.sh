@@ -27,8 +27,6 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
 
-mtk_is_redundant_plugin_invocation "$0" && exit 0
-
 # Anchor every path to the project root, never the process CWD. A bare
 # ".claude/analytics.json" mints a SECOND analytics file in any subtree the
 # session happens to run commands from (e.g. a SPA subproject under a .NET
@@ -38,7 +36,11 @@ mtk_is_redundant_plugin_invocation "$0" && exit 0
 PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(mtk_repo_root)}"
 ANALYTICS="${PROJECT_ROOT}/.claude/analytics.json"
 
-# Read session counters from context-budget temp file
+# Read session counters from context-budget temp file, keyed on the Stop
+# payload's session_id (mtk_session_bind). An interactive stdin is never waited on.
+if [ ! -t 0 ]; then
+  mtk_session_bind "$(mtk_read_payload 2>/dev/null || true)"
+fi
 SESSION_FILE="$(mtk_session_file)"
 
 session_ops=0

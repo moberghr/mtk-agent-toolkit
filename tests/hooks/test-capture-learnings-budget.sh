@@ -25,21 +25,22 @@ setup_project() {
 
 # Ask hook-io.sh itself for the session-file path, so the test cannot drift from
 # the hook's own project-id derivation (pwd -P resolution, trailing newline).
+# The ledger is keyed on the payload's session_id, so bind the same id here.
 session_file_for() {
-  # $1 = project dir, $2 = TMPDIR
+  # $1 = project dir, $2 = TMPDIR, $3 = session id
   CLAUDE_PROJECT_DIR="$1" TMPDIR="$2" bash -c \
-    'source "$0/hooks/lib/hook-io.sh"; mtk_session_file' "$REPO_ROOT"
+    'source "$0/hooks/lib/hook-io.sh"; mtk_session_bind "{\"session_id\":\"$1\"}"; mtk_session_file' "$REPO_ROOT" "$3"
 }
 
 seed_substantial() {
-  # $1 = project dir, $2 = TMPDIR
-  printf 'ops=40\nmods=9\nfiles=""\n' > "$(session_file_for "$1" "$2")"
+  # $1 = project dir, $2 = TMPDIR, $3 = session id
+  printf 'ops=40\nmods=9\nfiles=""\n' > "$(session_file_for "$1" "$2" "$3")"
 }
 
 run_stop() {
   # $1 = project dir, $2 = TMPDIR, $3 = session id
   local proj="$1" tmp="$2" sid="$3"
-  seed_substantial "$proj" "$tmp"
+  seed_substantial "$proj" "$tmp" "$sid"
   printf '{"session_id":"%s","hook_event_name":"Stop"}' "$sid" \
     | CLAUDE_PROJECT_DIR="$proj" TMPDIR="$tmp" MTK_LEARNING_MAX_NAGS=1 bash "$HOOK" 2>&1 || true
 }
@@ -69,7 +70,7 @@ echo "$out" | grep -q 'LEARNING CHECK' \
 
 # --- Case 5: MTK_LEARNING_MAX_NAGS=0 silences it entirely -------------------
 TMP2="$(mktemp -d)"
-seed_substantial "$PROJ" "$TMP2"
+seed_substantial "$PROJ" "$TMP2" sess-C
 out="$(printf '{"session_id":"sess-C","hook_event_name":"Stop"}' \
   | CLAUDE_PROJECT_DIR="$PROJ" TMPDIR="$TMP2" MTK_LEARNING_MAX_NAGS=0 bash "$HOOK" 2>&1 || true)"
 rm -rf "$TMP2"

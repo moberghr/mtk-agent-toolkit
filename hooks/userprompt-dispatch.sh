@@ -20,8 +20,6 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
 
-mtk_is_redundant_plugin_invocation "$0" && exit 0
-
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/skill-queue.sh"
 # prompt-nudges.sh is optional — may not exist yet in Batch 1. Sourced

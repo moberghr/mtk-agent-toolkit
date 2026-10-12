@@ -5,7 +5,7 @@ set -euo pipefail
 # nowhere along the MTK resolution order, and WARN when it resolves only by
 # searching the plugin cache (inline script resolvers never look there).
 #
-# WHY. A 2026-09 field run (beacon) found security-checklist.md,
+# WHY. A 2026-09 field run found security-checklist.md,
 # testing-patterns.md, review-config.json and the handoff schema "missing" only
 # when a phase tried to read them. All four ship in the manifest — resolution had
 # failed, and nothing had said so up front.

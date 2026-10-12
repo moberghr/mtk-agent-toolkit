@@ -332,7 +332,7 @@ expect "20 concurrent failures for 20 servers -> 20 records" 20 "$n_rec"
 [ -d "$STATE_FILE.lock" ] && lk=left || lk=released
 expect "state lock released after concurrent writers" released "$lk"
 
-# --- 18. T4: wiring (hooks.json + .claude/settings.json) --------------------------
+# --- 18. T4: wiring (hooks.json; .claude/settings.json wires no hooks) --------------------------
 # Parsed as JSON, exact event key + matcher: a typo'd event key must fail this.
 if command -v python3 >/dev/null 2>&1; then
   wiring() { # $1=file $2=event $3=matcher $4=hook basename
@@ -350,7 +350,7 @@ for m in hooks.get(event, []) or []:
 print("missing")
 PY
   }
-  for wf in hooks/hooks.json .claude/settings.json; do
+  for wf in hooks/hooks.json; do
     for ev in PreToolUse PostToolUse PostToolUseFailure; do
       expect "$wf wires mcp-health.sh under $ev \"mcp__.*\"" wired \
         "$(wiring "$REPO_ROOT/$wf" "$ev" 'mcp__.*' mcp-health.sh)"

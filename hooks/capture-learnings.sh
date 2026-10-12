@@ -14,14 +14,12 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
 
-mtk_is_redundant_plugin_invocation "$0" && exit 0
-
 # Per-session nag budget. This advisory is worth one read per session; re-firing
 # it on every Stop past the substantial-session threshold is how a session ends
 # up with 63 copies of the same paragraph (~9k tokens) and how a reader learns to
 # tune out every hook. Same shape as compress-monitor.sh: keyed on the payload's
-# session_id (NOT mtk_session_file, which is project+date and so would collapse
-# every session in a repo on one day into a single budget), stored in TMPDIR,
+# session_id alone (NOT mtk_session_file, which is also project-scoped and
+# falls back to project+date without a session id), stored in TMPDIR,
 # default 1, `MTK_LEARNING_MAX_NAGS=0` silences without unwiring the hook.
 MAX_NAGS="${MTK_LEARNING_MAX_NAGS:-1}"
 case "$MAX_NAGS" in
@@ -30,6 +28,7 @@ esac
 [ "$MAX_NAGS" -le 0 ] && exit 0
 
 PAYLOAD="$(mtk_read_payload 2>/dev/null || true)"
+mtk_session_bind "$PAYLOAD"
 NAG_SESSION="$(mtk_extract_json_string "$PAYLOAD" "session_id" 2>/dev/null || true)"
 [ -n "$NAG_SESSION" ] || NAG_SESSION="nosession"
 NAG_SESSION="$(printf '%s' "$NAG_SESSION" | tr -c 'A-Za-z0-9._-' '_' | cut -c1-64)"
@@ -45,9 +44,9 @@ fi
 [ "$NAG_SEEN" -ge "$MAX_NAGS" ] && exit 0
 
 # Check if the session was substantial (context-budget tracks this). Resolve the
-# session file via mtk_session_file so this hook keys off the same project root
-# (git toplevel) that context-budget.sh writes under — a bare `pwd` disagrees
-# when Claude is launched from a subdirectory.
+# session file via mtk_session_file (bound to the payload's session_id above)
+# so this hook reads the same ledger context-budget.sh writes — a bare `pwd`
+# disagrees when Claude is launched from a subdirectory.
 SESSION_FILE="$(mtk_session_file)"
 
 ops=0

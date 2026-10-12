@@ -260,7 +260,7 @@ else
   printf '  SKIP  unwritable-TMPDIR cases (running as root)\n'
 fi
 
-# --- T4: wiring (hooks.json + .claude/settings.json) --------------------------
+# --- T4: wiring (hooks.json; .claude/settings.json wires no hooks) --------------------------
 # Parsed as JSON, exact event key + matcher: a typo'd event key must fail this.
 if command -v python3 >/dev/null 2>&1; then
   wiring() { # $1=file $2=event $3=matcher $4=hook basename
@@ -278,7 +278,7 @@ for m in hooks.get(event, []) or []:
 print("missing")
 PY
   }
-  for wf in hooks/hooks.json .claude/settings.json; do
+  for wf in hooks/hooks.json; do
     for ev_m in "PreToolUse|Edit|Write" "PostToolUse|Grep|Glob|Bash"; do
       ev="${ev_m%%|*}"; mt="${ev_m#*|}"
       got="$(wiring "$REPO_ROOT/$wf" "$ev" "$mt" fact-force-guard.sh)"
