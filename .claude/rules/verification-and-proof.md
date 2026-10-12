@@ -10,7 +10,7 @@ axes:
   scope: global
 trigger:
   tool: "Edit|Write"
-  path: "^\.claude/skills/(verification-before-completion|batch-fix|workflow-artifacts|subagent-implementation)/"
+  path: ^\.claude/skills/(verification-before-completion|batch-fix|workflow-artifacts|subagent-implementation)/
 strength: inject
 ---
 

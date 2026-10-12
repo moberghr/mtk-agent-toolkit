@@ -1,6 +1,6 @@
 {
-  "version": "8.0.1",
-  "updated": "2026-09-28",
+  "version": "8.0.3",
+  "updated": "2026-10-12",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -1631,6 +1631,12 @@
       "target": ".claude-plugin/icon.svg",
       "action": "sync",
       "description": "Square Moberg icon shown on the Claude plugin directory listing"
+    },
+    ".claude-plugin/icon.png": {
+      "source": ".claude-plugin/icon.png",
+      "target": ".claude-plugin/icon.png",
+      "action": "sync",
+      "description": "1024px PNG of the Moberg icon, the format the Claude plugin directory listing accepts"
     },
     "docs/assets/pipeline-diagram.png": {
       "source": "docs/assets/pipeline-diagram.png",
