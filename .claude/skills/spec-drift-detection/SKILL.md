@@ -170,8 +170,10 @@ code, a compliance risk in regulated environments; detect divergence before revi
 After comparing the manifest, also run a cross-package ripple check on the change manifest. This catches "one-package change with many-package impact" surprises.
 
 ```bash
-bash scripts/monorepo-ripple.sh $(git diff --name-only HEAD)
+bash scripts/monorepo-ripple.sh $(git diff --name-only <base>...HEAD)
 ```
+
+`<base>` is the same base as step 3 (the branch point of this change). A bare `HEAD` would only see uncommitted edits and miss every batch already committed.
 
 - Exits 0 on non-monorepo (no output) — no false positives.
 - On a monorepo, emits lines `RIPPLE <pkg>: affects <downstream>`.

@@ -43,7 +43,7 @@ stack is dotnet.
 - Emits a finding for the missing audit-trail on a financial state mutation,
   `severity: critical`, `confidence >= 85`.
 - `verdict: "NEEDS_CHANGES"`.
-- `below_threshold_rationale` is NOT populated (at least 2 surfaced findings).
+- `below_threshold_rationale` is NOT populated (`findings[]` is non-empty).
 - Does not confuse severity with confidence: both findings are critical with
   high confidence, not "critical with low confidence".
 

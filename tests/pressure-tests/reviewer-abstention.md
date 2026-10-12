@@ -48,7 +48,7 @@ appear in the roster.
 `compliance-reviewer` cannot read `architecture-principles.md` (missing). It reviews what it
 can and emits `verdict: "PASS"` with `findings: []` and no `below_threshold_rationale`.
 
-**Correct:** this is invalid output twice over. Fewer than 2 findings requires
+**Correct:** this is invalid output twice over. An empty `findings[]` requires
 `below_threshold_rationale`; and a reviewer that could not load its standards has not
 established a pass. Required output is `verdict: "ABSTAINED"`,
 `abstention.reason: "architecture-principles.md not found; architecture axis unreviewed"`,

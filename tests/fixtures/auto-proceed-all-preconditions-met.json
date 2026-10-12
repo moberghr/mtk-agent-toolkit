@@ -1,0 +1,42 @@
+{
+  "id": "auto-proceed-all-preconditions-met",
+  "description": "MTK_AUTO_PROCEED=1 and every canonical precondition holds; no skill_precedence_gate is recorded (the gate was dropped) — orchestrator defaults the approval and records plan_trust_gate pass.",
+  "workflow_type": "BUILD",
+  "input": {
+    "phase_cursor": "phase-2",
+    "gates": {
+      "plan_trust_gate": "pending",
+      "phase_exit_gate": "pending",
+      "failure_stop_gate": "pending",
+      "memory_sync_gate": "pending"
+    },
+    "agent_outputs": {
+      "spec_check": {
+        "open_decisions_count": 0,
+        "assumed_count": 0
+      },
+      "plan_gap_reviewer": {
+        "verdict": "PASS",
+        "blocking_count": 0
+      },
+      "planning": {
+        "package_checkpoints_open": 0
+      },
+      "classification": {
+        "scope": "multi-file",
+        "security_impact": "none",
+        "rigor_level": "STANDARD"
+      }
+    },
+    "engineer_choice": null,
+    "env": {
+      "MTK_AUTO_PROCEED": "1"
+    }
+  },
+  "expected": {
+    "next_action": "advance_phase",
+    "gate_to_record": "plan_trust_gate: pass",
+    "phase_cursor_after": "phase-3",
+    "rationale": "All AUTO_PROCEED preconditions in implement-approval-gate.md hold, so the orchestrator defaults Approve & run until done and records plan_trust_gate pass with reason AUTO_PROCEED."
+  }
+}

@@ -1,6 +1,6 @@
 ---
 name: subagent-dynamic-workflow
-description: Dynamic-workflow dispatch — decision graph plus the step-by-step runtime path; read by subagent-implementation when the Workflow tool is available.
+description: Dynamic-workflow dispatch — decision graph plus the step-by-step runtime path; read by subagent-implementation only when the engineer opts in to the Workflow tool.
 globs: [".claude/skills/subagent-implementation/**"]
 alwaysApply: false
 ---
@@ -20,7 +20,7 @@ digraph subagent_impl {
   start    [label="Phase 3 entered\n(spec + sidecar approved)"];
   thr      [label="threshold met?\n(≥3 batches OR ≥6 non-mechanical files OR\nsecurity_impact != none)", shape=diamond];
   inline   [label="dispatch to\nincremental-implementation\n(inline path)", style="rounded,filled", fillcolor="#e0f0e0"];
-  ask      [label="ASK ONCE: implementer model\n(Sonnet faster/cheaper |\nOpus more capable)\nvia AskUserQuestion",
+  ask      [label="pick implementer model\n(interactive: ask once via AskUserQuestion;\nautonomous: no ask, Sonnet default,\nOpus for plan-flagged batches)",
             style="rounded,filled", fillcolor="#fff8d0"];
 
   next     [label="next batch\n(dependency order)", shape=diamond];
@@ -66,9 +66,9 @@ digraph subagent_impl {
 
 ## Dynamic-workflow path
 
-Use this when the `Workflow` tool is available. It moves the per-batch dispatch loop into a generated JS script that the native runtime executes in the background, so the orchestrator's main context stays light. **What does NOT move into the workflow:** the drift micro-check, sidecar amendment, cumulative churn check, and Phase 4 review. Those stay orchestrator-side, exactly as in the manual path. The workflow is a faster, runtime-managed replacement for steps 3.1–3.4 only.
+Use this only when the engineer has explicitly opted in to it this session and the `Workflow` tool is exposed; the manual Agent-loop path is the default (`subagent-implementation` → Execution paths). It moves the per-batch dispatch loop into a generated JS script that the native runtime executes in the background, so the orchestrator's main context stays light. **What does NOT move into the workflow:** the drift micro-check, sidecar amendment, cumulative churn check, and Phase 4 review. Those stay orchestrator-side, exactly as in the manual path. The workflow is a faster, runtime-managed replacement for steps 3.1–3.4 only.
 
-1. **Threshold gate + model pick.** Identical to manual steps 1–2. The model chosen (Sonnet/Opus) is passed as the `model` option on each `agent()` call in the script.
+1. **Threshold gate + model pick.** Identical to manual steps 1–2, including the autonomous-mode rule: no `AskUserQuestion` in autonomous mode. The model chosen (Sonnet/Opus) is passed as the `model` option on each `agent()` call in the script.
 2. **Build the batch schedule (waves from `depends`).** The plan's `depends` arrays are the single source of truth (`planning-and-task-breakdown` requires them, and requires an edge between any two batches that touch the same file). The template derives each batch's **wave** as its topological level — a batch with no dependencies is wave 0, a batch is one level after the deepest batch it depends on — so batches in the same wave share no ordering edge and run concurrently; waves run strictly in order. A wave wider than `MTK_BATCH_WAVE_MAX` (default 3; pass it as `args.waveMax`) is split into chunks so one run cannot fan out past the org's concurrency or spend guard. Correctness still beats wall-clock: if a `depends` list looks incomplete (two batches touch the same file, or a later batch reads a type an earlier one creates, with no edge), **fix the plan first** — add the edge — rather than hand-serializing in the script; the plan is what the receipt and the drift check read.
 3. **Generate the workflow script.** Adapt `templates/workflows/subagent-implementation.workflow.js`. Each batch becomes one `agent()` call that:
    - receives the **same self-sufficient prompt** as the manual path (see "Implementer prompt template" — repo root, CLAUDE.md, tech stack skill path, the single batch object, spec excerpt, full `change_manifest`, `out_of_scope`, and prior-batch summaries),

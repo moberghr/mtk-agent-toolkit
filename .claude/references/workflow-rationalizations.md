@@ -41,7 +41,7 @@ Rows below were moved verbatim out of the named skill's `## Common Rationalizati
 |---|---|
 | "I already know the best practice for this library" | Your memory has a training cutoff; the library shipped versions since. If the decision is version-sensitive, verify it for the installed version. |
 | "Let me just implement while I research" | This skill produces a brief and stops. Implementing mid-research means acting on unverified findings. |
-| "One quick web search is enough for this architecture call" | High-stakes, multi-answer questions go through `/deep-research` so claims get cross-checked and voted, not taken from a single page. |
+| "One quick web search is enough for this architecture call" | High-stakes, multi-answer questions fan out to 2–4 parallel research subagents whose claims are cross-checked, not taken from a single page. |
 
 ### subagent-implementation
 

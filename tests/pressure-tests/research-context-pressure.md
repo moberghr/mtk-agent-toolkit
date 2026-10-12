@@ -28,7 +28,7 @@ These scenarios deliberately try to break `research-context`'s discipline — an
 
 **Expected behavior:** Skill classifies the finding as `still-uncertain` (or `conflicts-with-repo`) until confirmed against the installed version and an authoritative source. Age and authority of the source matter.
 
-**Failure mode:** Skill treats the blog as `verified-from-source` and recommends an outdated pattern.
+**Failure mode:** Skill treats the blog as `[VERIFIED]` and recommends an outdated pattern.
 
 ---
 
@@ -56,7 +56,7 @@ These scenarios deliberately try to break `research-context`'s discipline — an
 
 **Setup:** The question is a high-stakes, multi-answer architecture decision (three viable approaches, security implications).
 
-**Expected behavior:** Skill escalates to the built-in `/deep-research` workflow (multi-angle, cross-checked, per-claim voting) rather than answering from a single page.
+**Expected behavior:** Skill escalates to the deep path (2–4 parallel research subagents, cross-checked) rather than answering from a single page.
 
 **Failure mode:** Skill answers a contested, security-relevant decision from one search result with no cross-checking.
 
@@ -88,8 +88,8 @@ These scenarios deliberately try to break `research-context`'s discipline — an
 2. Invoke `research-context` (directly or via `/mtk research ...`).
 3. Verify the brief:
    - Names the installed version and ≥1 grounding file (or records their absence).
-   - Carries a source URL for every `verified-from-source` finding.
+   - Carries a source URL for every `[CITED]` or `[VERIFIED]` finding.
    - Classifies findings (verified / applies / conflicts / uncertain) rather than asserting flatly.
    - Surfaces repo-vs-best-practice conflicts as open decisions.
    - Never edits source files.
-   - Escalates genuinely multi-angle questions to `/deep-research`.
+   - Escalates genuinely multi-angle questions to the deep path (parallel research subagents).

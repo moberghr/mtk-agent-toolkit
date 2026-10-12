@@ -68,7 +68,7 @@ This skill is specifically for **engineer-driven** corrections. When *you* resol
    ```bash
    # Resolve the script: project copy first, else the plugin's copy (plugin
    # installs never receive scripts/ into the target repo).
-   LS="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/learnings.sh" || ([ -f scripts/learnings.sh ] && echo scripts/learnings.sh || echo "${CLAUDE_PLUGIN_ROOT:-.}/scripts/learnings.sh"))"
+   LS="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/learnings.sh" || ([ -f scripts/learnings.sh ] && echo scripts/learnings.sh || echo "${CLAUDE_PLUGIN_ROOT}/scripts/learnings.sh"))"
    bash "$LS" add \
      --workflow "${MTK_WF_UUID:-manual}" \
      --scope "personal|team" \
@@ -128,7 +128,7 @@ This skill is specifically for **engineer-driven** corrections. When *you* resol
 
 ## Rules
 
-- Capture every correction, even if it seems minor. Minor corrections compound.
+- Apply every correction; persist only the durable ones. Before writing a lesson, test it against the reject rules in `.claude/references/lesson-mining-rubric.md` (derivable from code, framework boilerplate, already fixed in code, generic advice); a candidate any rule rejects is applied in the moment and not stored. A minor correction that states a durable, codebase-specific rule is still worth capturing.
 - Extract the general rule, not just the specific instance.
 - Include the "why" — without it, the rule becomes a cargo-cult practice.
 - Never argue with a correction in the moment. Apply it, then discuss if you genuinely think it's wrong.

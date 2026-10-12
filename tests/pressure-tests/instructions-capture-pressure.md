@@ -50,9 +50,9 @@ no-manufactured-additions rule forbids this.
   first-person workflow preference, not a project fact.
 
 **Expected:**
-- Phase 2 routes it to `.claude.local.md` (personal, gitignored)
+- Phase 2 routes it to `CLAUDE.local.md` (personal, gitignored)
 - It is **not** appended to the committed `AGENTS.md`
-- If `.claude.local.md` is absent, it is created (gitignored by bootstrap)
+- If `CLAUDE.local.md` is absent, it is created (gitignored by bootstrap)
 
 **Common rationalization to resist:** "The team file is the obvious place." No.
 Default personal; promotion to the team file is the engineer's explicit call.
@@ -160,7 +160,7 @@ For each scenario, check the output for:
 1. The expected behavior (propose / skip / redirect / distill) is present
 2. No `Write` tool invocation against any `AGENTS.md` or `CLAUDE.md`
 3. No edits applied before explicit user approval
-4. Personal items routed to `.claude.local.md`, project facts to `AGENTS.md`,
+4. Personal items routed to `CLAUDE.local.md`, project facts to `AGENTS.md`,
    and only genuinely harness-specific facts to a `CLAUDE.md`/`GEMINI.md` shim
 5. No manufactured additions; "nothing to capture" is a valid outcome
 6. `AGENTS.md` stays within its 200-line budget (a `CLAUDE.md` shim within

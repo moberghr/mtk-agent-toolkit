@@ -46,8 +46,7 @@ Below-threshold findings are counted in `summary.filtered_below_threshold`.
 
 ## Empty-Findings Rule (Anti-Sandbagging)
 
-If `findings[]` has fewer than 2 entries, `below_threshold_rationale` is
-**required**. State:
+If `findings[]` is empty, `below_threshold_rationale` is **required**. State:
 
 1. Number of below-threshold findings suppressed (if any).
 2. Classes of issues actively checked (security, architecture, data layer,
@@ -59,8 +58,8 @@ An empty review without rationale is not a valid review.
 
 ## Anti-Inflation Rule
 
-Confidence is bounded by evidence, not by the reviewer's desire to hit the
-≥2-findings bar. If the honest confidence is 65, report it as 65 (and it
+Confidence is bounded by evidence, not by the reviewer's desire to avoid an
+empty findings list. If the honest confidence is 65, report it as 65 (and it
 will be filtered). Do **not** promote it to 80 to force a surface. Inflating
 confidence to manufacture findings is a review failure.
 
@@ -201,7 +200,7 @@ Every finding carries a `decision_origin` field that records who or what produce
 | `claude-recommended-rejected` | The model proposed an approach, the engineer rejected it; the implementation went a different way. The reviewer is checking the engineer-chosen alternative. |
 | `system-inferred` | Neither user-directed nor model-proposed — emerged from a deterministic gate, lint rule, or schema constraint. |
 
-**Required at emit time.** Reviewer agents and skills emit `decision_origin` for every finding. Findings with a missing or invalid value are rejected by the review-output validator (run by `validate-toolkit.sh --strict-decision-origin`).
+**Optional at emit time.** A reviewer emits `decision_origin` when it knows who made the decision under review (the spec, the approval record, or the engineer's own words say so) and omits it otherwise; a guessed value is worse than none. When present it must be one of the five values above. No validator enforces it today.
 
 **Why it matters.** The distribution of `decision_origin` values across a workstream reveals provenance: a stream dominated by `claude-recommended-approved` signals that the engineer is accepting model recommendations without pushback (sycophancy risk). The metric is operationalised as the **sycophancy index (π)**:
 

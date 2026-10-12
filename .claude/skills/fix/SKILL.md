@@ -34,7 +34,7 @@ Source of truth for the composed workflow:
 - Small config changes
 - Renames or narrow refactors that stay within 1-3 files
 
-If the work grows beyond 3 files, introduces new architecture, or needs a formal change manifest, stop and switch to the implement workflow (via `/mtk <description>`).
+If the work grows beyond 3 files, introduces new architecture, or needs a formal change manifest, stop and escalate per the Decision Graph below: several independent fixes, or a mechanical sweep (renames, formatting) past 3 files, go to `batch-fix` (its mechanical mode: `batch-fix` → Proportionality check); one growing change goes to `implement`. The 3-file limit has no exception.
 
 ## Workflow
 
@@ -103,7 +103,7 @@ digraph fix_flow {
 ### Load Context (Progressive Disclosure)
 
 1. Follow `.claude/skills/context-engineering/SKILL.md`.
-2. Read `CLAUDE.md`. If missing, stop and tell the engineer to run `/mtk-setup`.
+2. Read the constitution: `AGENTS.md` (canonical) or `CLAUDE.md` (often only a shim that imports `@AGENTS.md`; follow the import). Accept either. If neither exists, stop and tell the engineer to run `/mtk-setup`.
 3. Load the active tech stack: resolve it with `bash scripts/resolve-tech-stack.sh "$PWD"` — **polyglot-monorepo aware** (subproject `.claude/tech-stack` → root `.claude/tech-stack.map` glob → root file), so a differently-stacked subtree gets its own commands instead of the root's. When the fix targets a subtree, pass a representative file path instead of `$PWD`. Then read `.claude/skills/tech-stack-{stack}/SKILL.md` for build/test commands and stack-specific reference paths.
 4. Read only what the fix needs:
    - **Always:** the coding guidelines from the tech stack's `## Reference Files`
@@ -114,7 +114,7 @@ digraph fix_flow {
 5. Resolve and scan relevant lessons. When `scripts/learnings.sh` is present, prefer the structured query (5-layer filter — proximity / recurrence / severity / validity / phase) over the flat markdown file:
    ```bash
    # Resolve the script: project copy first, else the plugin's copy.
-   LS="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/learnings.sh" || ([ -f scripts/learnings.sh ] && echo scripts/learnings.sh || echo "${CLAUDE_PLUGIN_ROOT:-.}/scripts/learnings.sh"))"
+   LS="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/learnings.sh" || ([ -f scripts/learnings.sh ] && echo scripts/learnings.sh || echo "${CLAUDE_PLUGIN_ROOT}/scripts/learnings.sh"))"
    bash "$LS" query --phase implement --files "<target file paths>" --max 8
    ```
    Falls back to scanning `tasks/lessons.md` directly when the script is absent from both the project and the plugin (older repos).

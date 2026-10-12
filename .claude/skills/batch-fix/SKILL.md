@@ -38,7 +38,7 @@ Source of truth for the composed workflow:
 
 Use `batch-fix` when the work is **more than `fix`** (>3 files OR multiple distinct fixes) but **less than `implement`** (introduces NO new public contract and needs NO architectural re-planning).
 
-**Proportionality check.** If, after enumeration, the batch is almost entirely mechanical (renames, formatting, i18n/string deletes, comment moves) with no behavioral or boundary-crossing finding, the stub + gate scaffolding buys little. Prefer plain `fix` for the low-risk cosmetic sweep even if it stretches past 3 files, or keep the stub to one line per finding — the full ceremony earns its keep on batches where at least one finding is behavioral or crosses a boundary.
+**Proportionality check (mechanical mode).** If, after enumeration, the batch is almost entirely mechanical (renames, formatting, i18n/string deletes, comment moves) with no behavioral or boundary-crossing finding, the stub + gate scaffolding buys little, so run it in mechanical mode: one line per finding in the stub, one gate on the list, the pre-commit gate as the only review (Phase 5). This is the single rule for multi-file cosmetic sweeps. A sweep past 3 files stays here, never in `fix`, whose 3-file limit has no exception. The full ceremony earns its keep on batches where at least one finding is behavioral or crosses a boundary.
 
 Do NOT use it when:
 
@@ -125,12 +125,12 @@ If grouping shows the findings cannot be separated into independently-verifiable
 ### Phase 1: Load Context (Progressive Disclosure)
 
 1. Follow `.claude/skills/context-engineering/SKILL.md`.
-2. Read `CLAUDE.md`. If missing, stop and tell the engineer to run `/mtk-setup`.
+2. Read the constitution: `AGENTS.md` (canonical) or `CLAUDE.md` (often only a shim that imports `@AGENTS.md`; follow the import). Accept either. If neither exists, stop and tell the engineer to run `/mtk-setup`.
 3. Load the active tech stack: resolve it with `bash scripts/resolve-tech-stack.sh --check <all target file paths>` — **polyglot-monorepo aware** (subproject `.claude/tech-stack` → root `.claude/tech-stack.map` glob → root file), so a batch touching a differently-stacked subtree gets that subtree's commands. `--check` additionally warns when the resolved stack disagrees with the files the batch will touch (e.g. resolves `dotnet` but the findings are all `.tsx`); the warning is advisory — if it fires, declare the subtree rather than pushing on with the wrong build/test commands. Then read `.claude/skills/tech-stack-{stack}/SKILL.md` (build/test commands, stack reference paths). If nothing resolves, do not halt: infer via `bash scripts/setup-detect.sh --json` (read-only) and load the matching `tech-stack-{stack}` skill; if inference is empty, announce **degraded mode** (stack build/test commands unavailable) and proceed with `CLAUDE.md`-only context.
-4. Read only what the batch needs — the coding guidelines always; the ORM checklist if a finding touches the data layer; `.claude/references/security-checklist.md` if a finding touches auth/secrets/financial; `.claude/references/testing-patterns.md` when adding tests; `.claude/references/pre-commit-review-list.md` before commit. Resolve each via the File Resolution block (project → `$CLAUDE_PLUGIN_ROOT` → plugin cache); if a needed reference resolves nowhere, announce degraded mode for that check rather than skipping it silently — in particular, if `pre-commit-review-list.md` is absent the pre-commit gate still runs, AI-review-only (degraded), and must say so.
+4. Read only what the batch needs — the coding guidelines always; the ORM checklist if a finding touches the data layer; `.claude/references/security-checklist.md` if a finding touches auth/secrets/financial; `.claude/references/testing-patterns.md` when adding tests; `.claude/references/pre-commit-review-list.md` before commit. Resolve each via the File Resolution block (project → `${CLAUDE_PLUGIN_ROOT}` → plugin cache); if a needed reference resolves nowhere, announce degraded mode for that check rather than skipping it silently — in particular, if `pre-commit-review-list.md` is absent the pre-commit gate still runs, AI-review-only (degraded), and must say so.
 5. Resolve and scan relevant lessons. Prefer the structured query when present:
    ```bash
-   LS="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/learnings.sh" || ([ -f scripts/learnings.sh ] && echo scripts/learnings.sh || echo "${CLAUDE_PLUGIN_ROOT:-.}/scripts/learnings.sh"))"
+   LS="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/learnings.sh" || ([ -f scripts/learnings.sh ] && echo scripts/learnings.sh || echo "${CLAUDE_PLUGIN_ROOT}/scripts/learnings.sh"))"
    bash "$LS" query --phase implement --files "<all target file paths>" --max 8
    ```
    Falls back to scanning `tasks/lessons.md` when the script is absent.

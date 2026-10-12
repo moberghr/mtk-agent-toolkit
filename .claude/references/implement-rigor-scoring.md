@@ -41,7 +41,7 @@ What the level dials:
 | Dial | LIGHT | STANDARD | HIGH | MAX |
 |---|---|---|---|---|
 | Phase 3 path | inline | inline | subagent | subagent |
-| Phase 4 Stage 2 reviewers | conditional (per Stage 2 rules) | conditional | `test-reviewer` always; `architecture-reviewer` if boundary/slice condition applies | both + `silent-failure-hunter` |
+| Phase 4 Stage 2 reviewers | conditional (per Stage 2 rules) | conditional | `test-reviewer` + `context-miner` always; `architecture-reviewer` if boundary/slice condition applies | both + `silent-failure-hunter` + `context-miner` |
 | `MTK_AUTO_PROCEED` eligibility | yes | yes | no | no |
 
 > **The Phase 3 dial names a path, not a guarantee.** `subagent` is what HIGH/MAX *prescribes*; whether the session can dispatch at all is probed at Phase 2.9 and recorded as `dispatch_capability`. When dispatch is forbidden or unavailable, HIGH/MAX runs the **inline-MAX profile** (Phase 2.9) with its compensations named — it does not silently become a STANDARD-shaped inline run, and it does not lower the level.

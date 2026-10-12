@@ -54,18 +54,19 @@ If you cannot name the installed version or a grounding file, say so in the brie
 | Signal | Path |
 |---|---|
 | One focused question, 1–2 likely authoritative sources (e.g. "is `X` deprecated in v8?") | **Light path**: `WebSearch` + `WebFetch` directly (2–4 fetches), or `context7` MCP for library docs if available. |
-| Multi-angle, contested, or high-stakes (architecture choice, security posture, "which of these 3 approaches") | **Deep path**: delegate to the built-in `/deep-research` workflow via the `Skill` tool, passing the framed question from Step 1. It fans out, cross-checks, votes per claim, and returns a cited report — do not re-implement that loop by hand. |
+| Multi-angle, contested, or high-stakes (architecture choice, security posture, "which of these 3 approaches") | **Deep path**: fan out 2–4 parallel research subagents (the general-purpose or research subagent the host provides through the `Agent` tool), each given the framed question from Step 1, one angle of it, and `WebSearch`/`WebFetch`. Each returns tagged claims with URLs (Step 3 tags). Then cross-check: a claim only one subagent found, or one the subagents disagree on, stays `[ASSUMED]` until a fetched source settles it. No subagent dispatch available → run the angles sequentially on the light path and say so in the brief. |
 
-Prefer the light path. Escalate to `/deep-research` only when the question genuinely has multiple competing answers or the cost of being wrong is high (security, data integrity, a hard-to-reverse migration).
+Prefer the light path. Take the deep path only when the question genuinely has multiple competing answers or the cost of being wrong is high (security, data integrity, a hard-to-reverse migration).
 
 ### Step 3 — Ground findings against the named files
 
-For each finding, classify it the same way `source-driven-development` does, and make the classification visible:
+Tag every finding with exactly one of the provenance tags used in the Step 4 brief, and make the tag visible:
 
-- **verified-from-source** — backed by a fetched authoritative source (link it).
-- **applies-to-this-repo** — confirmed compatible with the installed version and existing patterns named in Step 1.
-- **conflicts-with-repo** — current best-practice diverges from what the repo does today (flag explicitly; this is a decision for the spec/plan, not a silent override).
-- **still-uncertain** — could not confirm against an authoritative source or against the installed version.
+- **`[CITED:<url>]`** — backed by a fetched authoritative source (link it).
+- **`[VERIFIED:<file:line>]`** — confirmed against this repo: compatible with the installed version and the existing patterns named in Step 1.
+- **`[ASSUMED]`** — could not confirm against an authoritative source or against the installed version.
+
+Separately, flag a finding where current best-practice diverges from what the repo does today, and list it under **Open decisions** in the brief: it is a decision for the spec/plan, not a silent override.
 
 ### Step 4 — Emit the brief
 
@@ -117,11 +118,11 @@ scripts/workflow-artifact.sh event "$MTK_WF_UUID" research_brief --data '{"quest
 ## Rules
 
 - **Ground before you search.** No web call until the installed version and at least one repo grounding file are named (or their absence is recorded).
-- **Cite or it didn't happen.** Every `verified-from-source` finding carries a fetched URL. Memory is not a source.
-- **Version-match.** A finding for a different major/minor version than the one installed is `still-uncertain` until confirmed for the installed version.
+- **Cite or it didn't happen.** Every `[CITED:<url>]` finding carries a fetched URL. Memory is not a source.
+- **Version-match.** A finding for a different major/minor version than the one installed is `[ASSUMED]` until confirmed for the installed version.
 - **Surface conflicts, never resolve them silently.** If current best-practice contradicts the repo, that is an open decision for the spec/plan — not something this skill changes.
 - **Don't implement.** This skill produces a brief. Acting on it is another skill's job.
-- **Escalate deep, not wide.** Use `/deep-research` for genuinely multi-angle questions; don't hand-roll a fan-out.
+- **Fan out only when the question is multi-angle.** The deep path's parallel subagents are for genuinely competing answers; a focused question stays on the light path.
 
 ## Common Rationalizations
 
@@ -137,20 +138,20 @@ Full table: `.claude/references/workflow-rationalizations.md` → research-conte
 
 ## Red Flags
 
-- A brief with `verified-from-source` findings that have no URLs.
+- A brief with `[CITED]` findings that have no URLs.
 - Findings stated without naming the installed library version.
 - Research that never names a single file from this repo (ungrounded — generic tutorial output).
 - The skill editing source files.
-- A multi-angle architecture decision answered from a single web page instead of `/deep-research`.
+- A multi-angle architecture decision answered from a single web page instead of the deep path's fan-out.
 - Conflicts between repo and best-practice silently resolved instead of surfaced.
 
 ## Verification
 
 - [ ] The framed question names the active stack and the installed library version (or records that it could not be found)
 - [ ] At least one repo grounding file is named (or absence is explicitly noted)
-- [ ] Research depth (light vs `/deep-research`) was chosen deliberately per the Step 2 table
-- [ ] Every `verified-from-source` finding carries a fetched source URL
-- [ ] Findings are version-matched to the installed version, or marked `still-uncertain`
+- [ ] Research depth (light vs deep fan-out) was chosen deliberately per the Step 2 table
+- [ ] Every `[CITED]` finding carries a fetched source URL
+- [ ] Findings are version-matched to the installed version, or tagged `[ASSUMED]`
 - [ ] Repo-vs-best-practice conflicts are surfaced as open decisions, not silently resolved
 - [ ] The brief was returned to the calling skill (or presented and stopped, if standalone) — no code was edited
 - [ ] If a workflow artifact is active, the brief was recorded as a `research_brief` event

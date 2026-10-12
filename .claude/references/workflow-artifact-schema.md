@@ -40,8 +40,7 @@ Durable orchestration state lives under `.mtk/workflows/`, outside `.claude/` so
     "plan_trust_gate":      "pending|pass|fail",
     "phase_exit_gate":      "pending|pass|fail",
     "failure_stop_gate":    "pending|pass|fail",
-    "memory_sync_gate":     "pending|pass|fail",
-    "skill_precedence_gate":"pending|pass|fail"
+    "memory_sync_gate":     "pending|pass|fail"
   },
   "results": {
     "spec_path": "docs/specs/2026-05-07-foo.md",
@@ -157,7 +156,12 @@ scripts/workflow-artifact.sh gate "$UUID" plan_trust_gate pass --reason "enginee
 # Read state / list active workflows
 scripts/workflow-artifact.sh read "$UUID"
 scripts/workflow-artifact.sh list
+
+# Expire workflows (any status) not updated within N days; N >= 1 unless --force; prints pruned uuids
+scripts/workflow-artifact.sh prune --older-than 30 [--dry-run]
 ```
+
+The approval seal (`seal` / `verify-seal`, recorded under `results.approval_seal`) also carries `criteria`: `{path, sha256, count}` over the spec sidecar's frozen `success_criteria` fields (`id`, `observable`, `evidence_channel`). Spec sidecars are gitignored working artifacts, so this hash, not a `git diff`, is what proves the goalposts did not move.
 
 Skills and agents must not write the JSON directly. Always go through the helper so the event log stays in sync.
 

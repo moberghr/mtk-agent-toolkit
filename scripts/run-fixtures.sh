@@ -11,13 +11,20 @@ set -euo pipefail
 #   router-decision  (default when workflow_type present) — structural + rule check:
 #     1. Parses as JSON and matches the documented shape.
 #     2. workflow_type is BUILD|DEBUG|REVIEW|PLAN|FIX.
-#     3. Every gate in input.gates / expected.gate_to_record is one of the five
-#        gates from .claude/references/orchestration-gates.md.
+#     3. Every gate in input.gates / expected.gate_to_record is one of the four
+#        gates from .claude/references/orchestration-gates.md (input.gates may
+#        also carry the dropped skill_precedence_gate, as old artifacts do).
 #     4. expected.next_action is one of the documented actions.
 #     5. Cross-rules:
 #        - next_action=="abort"          → gate_to_record=="failure_stop_gate: fail".
 #        - next_action=="advance_phase"  → a gate MUST be recorded (gate_to_record
 #                                          non-null).
+#        - input.env.MTK_AUTO_PROCEED=="1" at phase-2 → the canonical AUTO_PROCEED
+#          preconditions are evaluated from agent_outputs (missing input fails
+#          closed): all hold ⇒ advance_phase + plan_trust_gate pass; else no advance.
+#     6. Once per run: the AUTO_PROCEED list in implement-approval-gate.md has as
+#        many bullets as the evaluator has conditions, none of them the dropped
+#        skill_precedence_gate, and orchestration-gates.md keeps no second list.
 #
 #   handoff-validation — behavioral check: actually runs scripts/validate-handoff.sh
 #     against the fixture and asserts its declared expected_exit (0 accept / 1 reject).
@@ -60,8 +67,11 @@ import json, sys, pathlib
 
 VALID_GATES = {
     "plan_trust_gate", "phase_exit_gate", "failure_stop_gate",
-    "memory_sync_gate", "skill_precedence_gate"
+    "memory_sync_gate"
 }
+# Dropped gate: still accepted in input.gates (old artifacts carry it), never
+# as a gate to record.
+LEGACY_GATES = {"skill_precedence_gate"}
 VALID_ACTIONS = {
     "advance_phase", "remediate", "block", "request_engineer",
     "resume_existing", "abort"
@@ -93,7 +103,7 @@ for required in ("description", "input", "expected"):
 inp = doc["input"]
 if "gates" in inp:
     for gate, result in inp["gates"].items():
-        if gate not in VALID_GATES:
+        if gate not in VALID_GATES | LEGACY_GATES:
             print(f"FAIL: {path}: input.gates has unknown gate {gate!r}", file=sys.stderr); sys.exit(1)
         if result not in VALID_GATE_RESULTS:
             print(f"FAIL: {path}: input.gates.{gate}={result!r} not in {sorted(VALID_GATE_RESULTS)}", file=sys.stderr); sys.exit(1)
@@ -125,6 +135,32 @@ if action == "abort":
 if action == "advance_phase":
     if g2r is None:
         print(f"FAIL: {path}: next_action=advance_phase requires a recorded gate (expected.gate_to_record must not be null)", file=sys.stderr); sys.exit(1)
+
+# Cross-rule: MTK_AUTO_PROCEED at the Phase 2.5 approval gate. Evaluates the
+# canonical precondition list (.claude/references/implement-approval-gate.md)
+# against agent_outputs; a missing input fails closed. All hold => the gate is
+# defaulted (advance_phase + plan_trust_gate pass); any fails => never advance.
+env = inp.get("env") or {}
+if env.get("MTK_AUTO_PROCEED") == "1" and inp.get("phase_cursor") == "phase-2":
+    ao = inp.get("agent_outputs") or {}
+    def num(section, key):
+        v = (ao.get(section) or {}).get(key)
+        return v if isinstance(v, int) and not isinstance(v, bool) else None
+    cls = ao.get("classification") or {}
+    conditions = [
+        num("spec_check", "open_decisions_count") == 0,
+        num("spec_check", "assumed_count") == 0,
+        num("plan_gap_reviewer", "blocking_count") == 0,
+        num("planning", "package_checkpoints_open") == 0,
+        cls.get("scope") not in (None, "breaking-change") and cls.get("security_impact") not in (None, "high"),
+        cls.get("rigor_level") in ("LIGHT", "STANDARD"),
+    ]
+    if all(conditions):
+        if action != "advance_phase" or g2r != "plan_trust_gate: pass":
+            print(f"FAIL: {path}: every AUTO_PROCEED precondition holds, so expected advance_phase + 'plan_trust_gate: pass', got {action!r} / {g2r!r}", file=sys.stderr); sys.exit(1)
+    elif action == "advance_phase":
+        failed = [i + 1 for i, c in enumerate(conditions) if not c]
+        print(f"FAIL: {path}: AUTO_PROCEED precondition(s) {failed} do not hold, so the gate must not advance", file=sys.stderr); sys.exit(1)
 
 # Cross-rule: rationale must be present and non-trivial
 rationale = exp.get("rationale", "")
@@ -254,6 +290,36 @@ if errs:
 print(f"OK (structural)   {name} (router-mapping, {len(cases)} cases: skills exist + grounded)")
 PY
 }
+
+# The evaluator in check_router_decision and the canonical prose list must not
+# drift apart: same number of preconditions, and no dropped gate in either doc.
+check_auto_proceed_contract() {
+  python3 - "$ROOT_DIR" <<'PY'
+import os, re, sys
+root = sys.argv[1]
+EVALUATOR_CONDITIONS = 6
+ref = os.path.join(root, ".claude", "references", "implement-approval-gate.md")
+try:
+    text = open(ref).read()
+except OSError as e:
+    print(f"FAIL: auto-proceed contract: cannot read {ref}: {e}", file=sys.stderr); sys.exit(1)
+m = re.search(r"only when ALL of the following hold:\n\n((?:- .*\n)+)", text)
+if not m:
+    print("FAIL: auto-proceed contract: no 'only when ALL of the following hold:' bullet list in implement-approval-gate.md", file=sys.stderr); sys.exit(1)
+bullets = [l for l in m.group(1).splitlines() if l.startswith("- ")]
+if len(bullets) != EVALUATOR_CONDITIONS:
+    print(f"FAIL: auto-proceed contract: implement-approval-gate.md lists {len(bullets)} preconditions, run-fixtures evaluates {EVALUATOR_CONDITIONS}", file=sys.stderr); sys.exit(1)
+if any("skill_precedence_gate" in l for l in bullets):
+    print("FAIL: auto-proceed contract: implement-approval-gate.md still lists skill_precedence_gate as a precondition", file=sys.stderr); sys.exit(1)
+og = open(os.path.join(root, ".claude", "references", "orchestration-gates.md")).read()
+sec = og.split("## Interaction with `MTK_AUTO_PROCEED`", 1)
+if len(sec) == 2 and re.search(r"^- ", sec[1].split("\n## ", 1)[0], re.M):
+    print("FAIL: auto-proceed contract: orchestration-gates.md keeps its own precondition list; point to implement-approval-gate.md instead", file=sys.stderr); sys.exit(1)
+print(f"OK   auto-proceed contract ({EVALUATOR_CONDITIONS} preconditions, canonical list in implement-approval-gate.md)")
+PY
+}
+
+check_auto_proceed_contract || failures=$((failures + 1))
 
 for f in "${FIX_DIR}"/*.json; do
   ft="$(fixture_type "$f")"

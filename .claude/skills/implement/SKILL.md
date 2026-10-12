@@ -37,16 +37,16 @@ The skill itself is intentionally thin. The source of truth for workflow behavio
 Before doing anything else:
 
 0. Init or resume a workflow artifact (`.claude/skills/workflow-artifacts/SKILL.md`).
-   - **Resolve the helper once** — plugin-cache installs may not have it project-relative and `$CLAUDE_PLUGIN_ROOT` is sometimes unset, so a bare `scripts/workflow-artifact.sh` can fail. Resolve it `MTK_HELPER_ROOT`-first (a checkout you pin — see `CLAUDE.md`), then project, then plugin, and use `"$WFA"` for every `workflow-artifact.sh` call in this skill:
+   - **Resolve the helper once** — plugin installs have no project-relative copy, and `CLAUDE_PLUGIN_ROOT` is never set in the Bash environment (Claude Code substitutes the braced `${CLAUDE_PLUGIN_ROOT}` into skill text at load time instead), so a bare `scripts/workflow-artifact.sh` fails. Resolve it `MTK_HELPER_ROOT`-first (a checkout you pin — see `CLAUDE.md`), then project, then plugin, and use `"$WFA"` for every `workflow-artifact.sh` call in this skill:
      ```bash
-     WFA="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/workflow-artifact.sh" || ([ -f scripts/workflow-artifact.sh ] && echo scripts/workflow-artifact.sh || echo "${CLAUDE_PLUGIN_ROOT:-.}/scripts/workflow-artifact.sh"))"
+     WFA="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/workflow-artifact.sh" || ([ -f scripts/workflow-artifact.sh ] && echo scripts/workflow-artifact.sh || echo "${CLAUDE_PLUGIN_ROOT}/scripts/workflow-artifact.sh"))"
      ```
    - Run `"$WFA" list`.
    - If a single active `BUILD` workflow exists for this feature, ask via `AskUserQuestion` whether to resume that uuid or start a new one.
-   - Otherwise init and emit the phase-0 marker in **one** call — the phase goes in `--data`, not as a positional: `MTK_WF_UUID=$("$WFA" init BUILD --goal "<one-line user goal>") && "$WFA" event "$MTK_WF_UUID" phase_started --data '{"phase":"phase-0"}'`. Remember the uuid for the rest of the session.
+   - Otherwise prune expired workflows, init, and emit the phase-0 marker in **one** call — the phase goes in `--data`, not as a positional: `"$WFA" prune --older-than 30 >/dev/null; MTK_WF_UUID=$("$WFA" init BUILD --goal "<one-line user goal>") && "$WFA" event "$MTK_WF_UUID" phase_started --data '{"phase":"phase-0"}'`. Remember the uuid for the rest of the session.
    - **Bookkeeping rides along, never alone.** Every later `"$WFA"` write in this skill is appended with `&&` to the command it records (the lint, the checkpoint, the sidecar write) or grouped into one `"$WFA" batch "$MTK_WF_UUID" <op> -- <op> …` call. A standalone artifact write is a full model turn spent on one line of JSON. Only `init`, `list`, `read`, and `verify-seal` run alone.
 1. Follow `.claude/skills/context-engineering/SKILL.md`.
-2. Read `CLAUDE.md`. If missing, stop and tell the engineer to run `/mtk-setup`.
+2. Read the constitution: `AGENTS.md` (canonical) or `CLAUDE.md` (often only a shim that imports `@AGENTS.md`; follow the import). Accept either. If neither exists, stop and tell the engineer to run `/mtk-setup`.
 3. **Load the active tech stack:** resolve it with `bash scripts/resolve-tech-stack.sh "$PWD"` (a single word like `dotnet` or `python`). The resolver is **polyglot-monorepo aware** — for a subproject under a differently-stacked root it returns the subproject's stack via a nested `.claude/tech-stack` or a root `.claude/tech-stack.map` glob, falling back to the repo-root `.claude/tech-stack`. When the change targets a specific subtree, pass a representative path from the `change_manifest` (e.g. `bash scripts/resolve-tech-stack.sh "src/web/spa"`) rather than `$PWD`, so the workflow loads the right stack for the files it will touch. Then read `.claude/skills/tech-stack-{stack}/SKILL.md`. This provides build/test commands, ORM guidance, framework patterns, and reference file paths used throughout the workflow. If it resolves empty, do not halt: run `bash scripts/setup-detect.sh --json` (read-only) to infer the stack, and load the matching `tech-stack-{stack}` skill if one exists for the inferred primary. If inference is empty or no matching skill exists, warn the engineer that the tech stack is unconfigured (suggest `/mtk-setup`) and proceed with `CLAUDE.md`-only context.
 4. Read only the references needed for the **current phase**:
    - **Always (Phase 0):** the coding guidelines from the tech stack's `## Reference Files`, `.claude/references/architecture-principles.md` if present
@@ -134,8 +134,8 @@ recompute when the approved scope **shrinks**. Ceremony scales with blast radius
 |---|---|---|---|---|
 | ≤ 3 | LIGHT | inline | conditional | eligible |
 | 4–7 | STANDARD | inline | conditional | eligible |
-| 8–11 | HIGH | subagent | `test-reviewer` always; `architecture-reviewer` on boundary/slice | no |
-| ≥ 12 | MAX | subagent | both + `silent-failure-hunter` | no |
+| 8–11 | HIGH | subagent | `test-reviewer` + `context-miner` always; `architecture-reviewer` on boundary/slice | no |
+| ≥ 12 | MAX | subagent | both + `silent-failure-hunter` + `context-miner` | no |
 
 **Hard-trigger floor — overrides the score:** `batches >= 3`, `>= 6` non-mechanical
 `change_manifest` entries, or `security_impact != "none"` forces **at least HIGH**.
@@ -198,9 +198,9 @@ cannot silently keep the approval:
 
 `MTK_AUTO_PROCEED=1` may default the recommended option **only** when the spec has
 zero open decisions and zero `[ASSUMED]` claims, no BLOCKING plan-gap findings, no
-open package-legitimacy checkpoint, `skill_precedence_gate` is `pass`, the scope is
-neither breaking-change nor high `security_impact`, and the level is LIGHT or
-STANDARD. Any condition failing ⇒ fall back to `AskUserQuestion`.
+open package-legitimacy checkpoint, the scope is neither breaking-change nor high
+`security_impact`, and the level is LIGHT or STANDARD (canonical list:
+`implement-approval-gate.md`). Any condition failing ⇒ fall back to `AskUserQuestion`.
 
 **Read `.claude/references/implement-approval-gate.md`** for the full rendering
 spec, the complete AUTO_PROCEED precondition list, harness fallbacks when
@@ -228,7 +228,7 @@ reporting rules.
 
 **Fork — pick the implementation path from the JSON sidecar at `docs/specs/<date>-<slug>.json`:**
 
-- **Subagent path** (`.claude/skills/subagent-implementation/SKILL.md`) — when the rigor level is HIGH or MAX (any hard trigger — `plan.batches.length >= 3`, non-mechanical `change_manifest` entries >= 6, `security_impact != "none"` — or score ≥ 8; see Rigor Score). Dispatches one fresh implementer subagent per batch with orchestrator-side drift micro-checks. In interactive mode it asks once which model (Sonnet/Opus) to use for the implementer; in autonomous mode it does **not** ask — the Sonnet policy default applies (Opus for plan-flagged novel/tricky batches), consistent with the autonomous "never ask in Phases 3-7" rule. Prefers the native dynamic-workflow runtime when the `Workflow` tool is available (drift/persistence/Phase-4 stay orchestrator-side), falling back to a manual Agent-per-batch loop otherwise.
+- **Subagent path** (`.claude/skills/subagent-implementation/SKILL.md`) — when the rigor level is HIGH or MAX (any hard trigger — `plan.batches.length >= 3`, non-mechanical `change_manifest` entries >= 6, `security_impact != "none"` — or score ≥ 8; see Rigor Score). Dispatches one fresh implementer subagent per batch with orchestrator-side drift micro-checks. In interactive mode it asks once which model (Sonnet/Opus) to use for the implementer; in autonomous mode it does **not** ask — the Sonnet policy default applies (Opus for plan-flagged novel/tricky batches), consistent with the autonomous "never ask in Phases 3-7" rule. Runs a manual Agent-per-batch loop by default; the native dynamic-workflow runtime is used only when the engineer explicitly opts in (drift/persistence/Phase-4 stay orchestrator-side either way).
 - **Inline path** (`.claude/skills/incremental-implementation/SKILL.md`) — for everything below threshold. Smaller features stay in the main context.
 
 Always also follow:
@@ -355,16 +355,17 @@ This phase is not optional cleanup — it is how the toolkit gets smarter over t
 ## Phase 7.5: Archive (Delta Sync-Back)
 
 Archive the run's spec/plan delta back to the durable store, then optionally write
-a **tracked** run receipt.
+a run receipt.
 
-`MTK_RUN_RECEIPT=1` writes `docs/specs/<date>-<slug>.receipt.md` — a tracked
-sibling of the spec holding baseline vs final figures, gates and their reasons,
+`MTK_RUN_RECEIPT=1` writes `docs/specs/<date>-<slug>.receipt.md` — a sibling of
+the spec and, like it, an ignored working artifact (commit it explicitly or paste
+it into the PR to keep it), holding baseline vs final figures, gates and their reasons,
 dispatch path and compensations, ceremony reductions, drift/coverage/collateral
 verdicts, reviewer lane outcomes, and a timing section (active minutes per phase,
 engineer-wait gaps, time lost to killed dispatches) derived only from event
-timestamps on the workflow artifact. The `.mtk/` workflow artifact is gitignored,
-so without the receipt the only tracked residue of a run is `tasks/lessons.md` and
-the spec. **Fields never recorded are written as `not recorded` — never
+timestamps on the workflow artifact. The `.mtk/` workflow artifact and the
+per-feature `docs/specs/` files are gitignored, so the only tracked residue of a
+run is `tasks/lessons.md` and what the sync-back archived into `docs/specs/baseline/`. **Fields never recorded are written as `not recorded` — never
 reconstructed.**
 
 **Read `.claude/references/implement-archive-receipt.md`** for the sync-back

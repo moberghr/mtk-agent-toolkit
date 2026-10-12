@@ -146,7 +146,7 @@ If reviewing a PR or branch with CI runs, check CI status before starting the nu
     - Markdown table of surfaced findings (confidence >= threshold from `.claude/review-config.json`, default 80)
     - **Scores table** — 5 dimensions × {score, evidence file:line, one-line rationale}
     - Fenced JSON block with the full structured result (verdict, summary, findings, **scores object**, below_threshold_rationale)
-8. If `findings[]` has fewer than 2 entries, populate `below_threshold_rationale` explicitly stating what axes were checked and why the code is genuinely clean. Silent empty reviews are invalid.
+8. If `findings[]` is empty, populate `below_threshold_rationale` explicitly stating what axes were checked and why the code is genuinely clean. Silent empty reviews are invalid.
 9. If a workflow artifact is active (`MTK_WF_UUID` set), record all five scores and the iteration in **one** call — `"$WFA" set "$MTK_WF_UUID" results.review_scores.correctness=<n> results.review_scores.security=<n> results.review_scores.test_coverage=<n> results.review_scores.architecture_fit=<n> results.review_scores.simplicity=<n> results.review_iteration=<n>` — appended to the remediation call from step 6 when one runs.
 
 ### Defect-class sweep (after a finding is confirmed)
@@ -199,7 +199,7 @@ See `.claude/references/workflow-rationalizations.md` for the shared MTK rationa
 - [ ] Output follows `.claude/references/review-finding-schema.md` (markdown table + fenced JSON)
 - [ ] Confidence scores follow the rubric; no inflation to hit finding-count bars
 - [ ] False-Positive Exclusion List was applied before scoring (no pre-existing-issue, linter-catchable, or unjustified-stylistic items in `findings[]`)
-- [ ] `below_threshold_rationale` is populated when fewer than 2 findings surface
+- [ ] `below_threshold_rationale` is populated when no findings surface
 - [ ] All five dimensions are scored 1–10 with a file:line evidence quote each
 - [ ] No uniform-score review; verdict is `NEEDS_CHANGES` when any dimension < 7
 - [ ] Iteration cap respected — third < 7 on the same dimension escalates to human

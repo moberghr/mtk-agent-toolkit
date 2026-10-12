@@ -132,7 +132,7 @@ The engineer must either complete or stash the unrelated work before the plan pr
 
 ## Finding Categories
 
-Every finding must use exactly one of these seven categories. Anything that does
+Every finding must use exactly one of these eight categories. Anything that does
 not fit is not a plan-gap finding — drop it.
 
 | Category | Trigger |
@@ -172,7 +172,7 @@ Your output MUST be in this format:
 
 ```
 ## Verdict
-PASS | FINDINGS
+PASS | FINDINGS | ABSTAINED
 
 ## Findings
 ### {category}/{severity}: {short title}
@@ -189,6 +189,7 @@ PASS | FINDINGS
 ```
 
 If verdict is `PASS`, the `## Findings` section is empty but still present.
+If verdict is `ABSTAINED`, add an `## Abstention` section (see Self-Escalation).
 
 ## What To Ignore
 
@@ -209,13 +210,20 @@ request — e.g., the plan ignores an explicit user constraint — that is
 always `BLOCKING`, regardless of category. The planner cannot quietly
 override the engineer.
 
-**Emit the abstention in the JSON block, not only in prose.** Set `"verdict": "ABSTAINED"`
-with a populated `abstention.reason` naming the concrete blocker, and `abstention.checked`
-listing the axes you did complete. Do **not** emit an empty `findings[]` with a PASS-shaped
-result — downstream that is indistinguishable from "I looked and it is clean", and a missing
-reviewer must never read as a clean one. Omit `scores` for dimensions you could not evaluate
-rather than inventing a passing number. See `.claude/references/review-finding-schema.md`
-→ **ABSTAINED**.
+**Abstain in the output contract, not only in prose.** If you cannot complete the review
+(the plan file is unreadable, the repo cannot be searched), set `## Verdict` to `ABSTAINED`
+and add:
+
+```
+## Abstention
+- reason: {the concrete blocker}
+- checked: {the categories you did complete}
+```
+
+Do **not** return `PASS` with an empty `## Findings` section in that case — downstream that is
+indistinguishable from "I looked and it is clean", and a missing reviewer must never read as a
+clean one. The orchestrator treats `ABSTAINED` like a lane that did not run (see
+`.claude/references/review-finding-schema.md` → Verdict mapping and Lane accounting).
 
 ## Verification (For The Orchestrator)
 

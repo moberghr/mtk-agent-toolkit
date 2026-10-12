@@ -46,14 +46,14 @@ Before writing any skill content:
 1. Follow the anatomy defined in `docs/skill-anatomy.md`:
    - Required: frontmatter (`name`, `description`, `type: skill` — or `type: tech-stack` for tech stack skills), `# Title`, `## Overview`, `## When To Use`, `## Workflow`, `## Verification`
    - Recommended: `### When NOT To Use`, `## Red Flags`, `## Rules`
-   - The shared MTK rationalization table lives in `.claude/skills/context-engineering/SKILL.md`. Do **not** duplicate universal rationalizations here. Only add a short `## Common Rationalizations` section if the skill has one or two traps that are genuinely specific (and reference the shared table at the top).
+   - The shared MTK rationalization table lives in `.claude/references/workflow-rationalizations.md`. Do **not** duplicate universal rationalizations here. Only add a short `## Common Rationalizations` section if the skill has one or two traps that are genuinely specific (and reference the shared table at the top).
 
 2. **Apply the CSO principle:** The `description` in frontmatter must trigger on conditions, not summarize the workflow.
    - Bad: "Create implementation plans with acceptance criteria and dependency ordering"
    - Good: "Use after a spec is approved and before multi-file implementation begins"
    - Why: Workflow summaries cause the agent to follow the description instead of reading the full SKILL.md
 
-3. **Identify skill-specific rationalizations:** The shared table in `context-engineering` covers universal shortcuts. For each step this specific skill might be skipped over, note whether the shortcut is truly unique to this skill. If yes, add a 1-2 entry `## Common Rationalizations` section referencing the shared table. If no, rely on the shared table alone.
+3. **Identify skill-specific rationalizations:** The shared table in `.claude/references/workflow-rationalizations.md` covers universal shortcuts. For each step this specific skill might be skipped over, note whether the shortcut is truly unique to this skill. If yes, add a 1-2 entry `## Common Rationalizations` section referencing the shared table. If no, rely on the shared table alone.
 
 4. **Write verification checklist:** Every claim the skill makes about outcomes must have a verification step.
 

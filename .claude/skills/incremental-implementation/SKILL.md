@@ -35,15 +35,19 @@ Implement in thin slices. Each slice must compile, test, and remain explainable 
 4. Follow `test-driven-development` for tests in the same batch.
 5. Use `source-driven-development` when any framework, library, or SDK behavior is uncertain.
 6. Run the batch checkpoint using the build and test commands from the active tech stack skill's `## Build & Test Commands`.
-6.5. **Capture analyzer output.** After the build command completes, pipe its output
-   through the build diagnostics parser if available:
+6.5. **Capture analyzer output.** Write the build output to a log, then feed the log
+   to the build diagnostics parser. (No `tee /dev/tty`: agent shells have no
+   terminal, so it fails.) The parser ships with the plugin; resolve it
+   plugin-first, then the project copy:
    ```bash
    # Example for .NET (adapt command from tech stack skill's Build & Test Commands):
-   dotnet build 2>&1 | tee /dev/tty | hooks/parse-build-diagnostics.sh > .mtk/analyzer-output.json
+   PBD="${CLAUDE_PLUGIN_ROOT}/hooks/parse-build-diagnostics.sh"; [ -f "$PBD" ] || PBD=hooks/parse-build-diagnostics.sh
+   mkdir -p .mtk; rc=0; dotnet build > .mtk/build.log 2>&1 || rc=$?; tail -n 30 .mtk/build.log
+   [ -f "$PBD" ] && bash "$PBD" --file .mtk/build.log > .mtk/analyzer-output.json; [ "$rc" -eq 0 ]
    ```
    Surface any critical analyzer findings immediately — they block the batch just like
    build failures. Warning-level findings carry forward to the pre-commit review.
-   If `hooks/parse-build-diagnostics.sh` does not exist in the installed toolkit, skip this step.
+   If the parser resolves nowhere, skip this step.
 7. Read `.claude/references/pre-commit-review-list.md` if present and fix any violations immediately.
 8. Mark the batch complete in `tasks/todo.md`. Record the per-batch gate decision and progress on the workflow artifact **in the same shell call as the checkpoint test run** — `<test cmd> && "$WFA" batch "$MTK_WF_UUID" gate phase_exit_gate pass --reason "batch <id> green" -- set results.batches_completed=<n>` (on red: `|| "$WFA" gate … fail …` to trigger remediation). A standalone bookkeeping turn is a wasted turn. See `.claude/references/orchestration-gates.md`.
 9. **Churn check:** After completing each batch, run `git diff --stat` and count net lines changed **since the last review** (intermediate or Phase 4), **excluding generated and mechanical files** — lockfiles, `*.Designer.cs`, `*.g.cs`, `*.generated.*`, EF migration snapshots, `*.min.js`/`*.min.css`, built bundle output (e.g. `wwwroot/dist/**`). Generated churn is not review load. Thresholds are `MTK_CHURN_REVIEW_LINES` (default **300**) and `MTK_CHURN_HALT_LINES` (default **500**); at rigor HIGH/MAX — the subagent path or the inline-MAX profile — the defaults **double** to 600/1000, because every batch there is already isolated and drift-checked and a full two-stage review is guaranteed at Phase 4, so the mid-run review is a safety net, not the primary review. If the count exceeds the review threshold, pause and trigger an early review checkpoint:

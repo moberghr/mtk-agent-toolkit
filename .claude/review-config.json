@@ -10,11 +10,10 @@
     "anyCriticalAboveThreshold": "NEEDS_CHANGES",
     "otherwise": "PASS"
   },
-  "minSurfacedFindings": 2,
   "belowThresholdRationaleRequired": true,
   "decision_origin": {
-    "required": true,
-    "$doc": "When true, reviewer findings and learnings entries must carry a decision_origin field. Enforced by scripts/learnings.sh add and by review-output validators."
+    "required": false,
+    "$doc": "Optional on reviewer findings: emit it when the decision's author is known, omit it rather than guess (review-finding-schema.md). No review-output validator enforces it. Learnings entries are separate: scripts/learnings.sh add requires it for capture sources that imply a decision and defaults it to system-inferred otherwise."
   },
   "sycophancy_index": {
     "warn_threshold": 0.70,

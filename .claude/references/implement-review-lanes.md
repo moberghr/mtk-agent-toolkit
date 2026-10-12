@@ -39,8 +39,9 @@ Only after Stage 1 passes (no Critical issues). When both reviewers apply, run t
 
 - `test-reviewer` — when the change introduces or changes public behavior
 - `architecture-reviewer` — when the change introduces new slices, boundaries, handlers, or cross-project interactions
+- `context-miner` — at rigor HIGH and MAX: the organizational-memory lane (git history of the touched paths, linked issues and PR threads, prior lessons; see `code-review-and-quality` step 4). It is accounted for like any other lane below
 
-Size this from the **current** rigor level — the level recomputed in Phase 3.5 if scope was reduced, not the original Phase 2 level. At rigor MAX, run **both** reviewers regardless of the conditions above, plus `silent-failure-hunter` (empty catches, swallowed errors, masking fallbacks). At rigor HIGH, always run `test-reviewer`, but run `architecture-reviewer` only when the boundary/slice condition above holds — a change that adds or moves no modules and crosses no boundary (e.g. a pure rename or frontmatter-only batch) skips it. At LIGHT/STANDARD, the conditions above decide.
+Size this from the **current** rigor level — the level recomputed in Phase 3.5 if scope was reduced, not the original Phase 2 level. At rigor MAX, run **both** reviewers regardless of the conditions above, plus `silent-failure-hunter` (empty catches, swallowed errors, masking fallbacks) and `context-miner`. At rigor HIGH, always run `test-reviewer` and `context-miner`, but run `architecture-reviewer` only when the boundary/slice condition above holds — a change that adds or moves no modules and crosses no boundary (e.g. a pure rename or frontmatter-only batch) skips it. At LIGHT/STANDARD, the conditions above decide.
 
 Provide all reviewers with the same diff and behavioral diff.
 

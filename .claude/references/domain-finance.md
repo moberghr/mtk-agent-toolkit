@@ -1,6 +1,6 @@
 ---
 description: Finance domain supplement — money/payment/ledger invariants and audit requirements
-globs: ["**/Money*.cs", "**/Payment*.cs", "**/Ledger*.cs", "**/*Transaction*.py", "**/*.test.ts"]
+globs: ["**/Money*.cs", "**/Payment*.cs", "**/Ledger*.cs", "**/*Transaction*.py"]
 alwaysApply: false
 ---
 # Domain Supplement — Finance

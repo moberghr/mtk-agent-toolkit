@@ -79,7 +79,7 @@
 
 **Setup:** Multi-repo audit produced:
 ```
-- [INFERRED:0.6] Money handled via Decimal type (downgraded from EXTRACTED in payfac, INFERRED:0.6 in collection-system).
+- [INFERRED:0.6] Money handled via Decimal type (downgraded from EXTRACTED in service-a, INFERRED:0.6 in service-b).
 ```
 
 **Implementation:** New monetary calculation uses `double`.

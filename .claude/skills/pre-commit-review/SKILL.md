@@ -42,7 +42,7 @@ check engineers should run before every commit.
    `source: "analyzer"`, `confidence: 100`. This is fast (analyzes specific
    files, not full build) and catches EF Core, async, and disposal patterns
    that the regex linter misses. If the tool is not available, skip this step.
-4.6. **Collateral-churn check.** Run `bash hooks/collateral-guard.sh --cached`
+4.7. **Collateral-churn check.** Run `bash hooks/collateral-guard.sh --cached`
    (add `--manifest docs/specs/<date>-<slug>.json` when this commit belongs to a
    spec). It answers a question no other check asks: is this churn *yours*? It
    flags whitespace/EOL-only rewrites (a small edit to a CRLF file rewrites the
@@ -53,23 +53,24 @@ check engineers should run before every commit.
    change from every reviewer downstream. The dependency gate below is the
    separate, stricter question of what the lockfile churn *contains*.
 
-4.7. **Dependency-introduction gate (if a manifest changed).** Detect whether
+4.8. **Dependency-introduction gate (if a manifest changed).** Detect whether
    the staged diff touches any of these manifest files:
    `package.json`, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`,
    `*.csproj`, `Directory.Packages.props`, `requirements.txt`, `pyproject.toml`,
    `Pipfile`, `poetry.lock`, `go.mod`, `Cargo.toml`, `Cargo.lock`,
    `Gemfile`, `Gemfile.lock`, `composer.json`. If any matches, list the
    **newly added** dependencies (lines beginning with `+` introducing a new
-   package name) and walk each through the 5-criteria rubric in
-   `.claude/references/dependency-intake-checklist.md` — scope, maintenance,
-   size, security, license. Two `Poor` ratings on a single dep blocks the
-   commit; one `Poor` requires explicit override in the PR description.
+   package name) and walk each through the six-criteria rubric in
+   `.claude/references/dependency-intake-checklist.md` — existence & legitimacy
+   first, then scope, maintenance, size, security, license. A `Poor` on
+   criterion 0 blocks outright; two `Poor` ratings on criteria 1–5 for a single
+   dep block the commit; one `Poor` requires explicit override in the PR description.
    Emit each problematic dep as a `category: "dependency"` finding with
    `source: "ai"` and confidence ≥ 85 for `Poor` ratings backed by evidence
    (CVE id, last-release date, license SPDX). Pure version bumps within the
    same major skip the rubric (vulnerability scan only). Skip the gate
    entirely when the checklist file is absent (older repos).
-4.8. **Monorepo ripple check.** Run
+4.9. **Monorepo ripple check.** Run
    `bash scripts/monorepo-ripple.sh $(git diff --cached --name-only)`.
    On a non-monorepo it exits 0 with no output (no false positives). On a
    monorepo, each `RIPPLE <pkg>: affects <downstream>` line becomes a
@@ -91,7 +92,7 @@ check engineers should run before every commit.
 - **Audit Missing**: Any state-changing operations on financial data without audit log writes? [finance-domain example]
 - **Secrets in Env**: Any connection strings or passwords hardcoded in `appsettings.json` or CDK environment vars? [.NET/AWS example]
 - **IAM Blast Radius**: Any new IAM grants with `*` resource that should be scoped? [AWS example]
-- **Dependency Intake**: New third-party dep added — does it pass the 5-criteria gate in `.claude/references/dependency-intake-checklist.md`? (Two `Poor` ratings block.)
+- **Dependency Intake**: New third-party dep added — does it pass the six-criteria gate in `.claude/references/dependency-intake-checklist.md`? (A `Poor` on criterion 0, or two on criteria 1–5, blocks.)
 
 ## Common Rationalizations
 
@@ -119,7 +120,7 @@ Read `.claude/review-config.json` for the threshold (default 80; `.claude/review
 
 - Any `critical` finding at/above threshold → `verdict: "NEEDS_CHANGES"`.
 - Otherwise → `verdict: "PASS"`.
-- If `findings[]` has fewer than 2 entries, `below_threshold_rationale` is mandatory — state what you checked and why you conclude the diff is clean.
+- If `findings[]` is empty, `below_threshold_rationale` is mandatory — state what you checked and why you conclude the diff is clean.
 
 Keep the table tight. This is a pre-commit gate, not a full review.
 

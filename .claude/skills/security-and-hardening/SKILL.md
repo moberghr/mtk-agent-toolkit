@@ -59,7 +59,7 @@ Treat security and compliance as design constraints, not final review polish. Ch
 - No unaudited state mutation where the domain requires audit trails.
 - No trust in external input without validation.
 - No wildcard IAM/resource access without explicit justification.
-- No new third-party dep that fails the 5-criteria intake gate (`.claude/references/dependency-intake-checklist.md`).
+- No new third-party dep that fails the six-criteria intake gate (`.claude/references/dependency-intake-checklist.md`).
 
 ## Common Rationalizations
 

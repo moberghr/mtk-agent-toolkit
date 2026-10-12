@@ -16,11 +16,11 @@ user-invocable: false
 
 ## Overview
 
-Orchestration state that lives only in chat is lost on compaction or restart. This skill stores it on disk under `.mtk/workflows/{uuid}.json` plus an append-only event log, using a small bash helper. Other workflow skills (implement, fix, planning-and-task-breakdown, spec-drift-detection) call this skill at phase boundaries and gate decisions.
+Orchestration state that lives only in chat is lost on compaction or restart. This skill stores it on disk under `.mtk/workflows/{uuid}.json` plus an append-only event log, using a small bash helper. `implement` (a `BUILD` workflow) and `setup-audit` / `setup-bootstrap` create workflows; the skills `implement` composes (incremental- and subagent-implementation, verification, review) write to the active one at phase boundaries and gate decisions. `fix` and `batch-fix` do not create a workflow. The helper also accepts `DEBUG`, `REVIEW`, `PLAN` and `FIX` types, but no shipped skill initialises them today.
 
 ## When To Use
 
-- At the start of every BUILD, DEBUG, REVIEW, PLAN, or FIX workflow.
+- At the start of every `/mtk implement` (BUILD) run, and of `setup-audit` / `setup-bootstrap`.
 - At every phase transition inside `/mtk implement`.
 - Whenever a named orchestration gate is evaluated (see `.claude/references/orchestration-gates.md`).
 - When resuming after compaction, restart, or handoff — list active workflows before starting fresh work.
@@ -33,16 +33,17 @@ Orchestration state that lives only in chat is lost on compaction or restart. Th
 
 ## Workflow
 
-1. **Resolve helper path once into `$WFA`.** The script ships at `scripts/workflow-artifact.sh` in this repo and at the same path in target installs, but a plugin-cache install may have it only under `$CLAUDE_PLUGIN_ROOT` — and that variable is sometimes unset. Resolve it once with the same three-tier idiom `spec-driven-development` uses for `learnings.sh` — `MTK_HELPER_ROOT` first (a checkout you pin; see `CLAUDE.md`), then the project copy, then the plugin copy — and call `"$WFA"` everywhere below instead of a bare path:
+1. **Resolve helper path once into `$WFA`.** The script ships at `scripts/workflow-artifact.sh` in this repo and at the same path in target installs, but a plugin install has it only under the plugin root — written `${CLAUDE_PLUGIN_ROOT}` (braces), which Claude Code substitutes into this text at load time; it is never set in the Bash environment. Resolve it once with the same three-tier idiom `spec-driven-development` uses for `learnings.sh` — `MTK_HELPER_ROOT` first (a checkout you pin; see `CLAUDE.md`), then the project copy, then the plugin copy — and call `"$WFA"` everywhere below instead of a bare path:
    ```bash
-   WFA="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/workflow-artifact.sh" || ([ -f scripts/workflow-artifact.sh ] && echo scripts/workflow-artifact.sh || echo "${CLAUDE_PLUGIN_ROOT:-.}/scripts/workflow-artifact.sh"))"
+   WFA="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/workflow-artifact.sh" || ([ -f scripts/workflow-artifact.sh ] && echo scripts/workflow-artifact.sh || echo "${CLAUDE_PLUGIN_ROOT}/scripts/workflow-artifact.sh"))"
    ```
-   Set `MTK_HELPER_ROOT=<toolkit checkout>` to force the scripts from that clone — the reliable path when dogfooding MTK from a separate checkout with `$CLAUDE_PLUGIN_ROOT` unset, or to pin one version out of a multi-version plugin cache.
+   Set `MTK_HELPER_ROOT=<toolkit checkout>` to force the scripts from that clone — the reliable path when dogfooding MTK from a separate checkout, or to pin one version out of a multi-version plugin cache.
    **State is project-anchored:** the script writes `.mtk/workflows/` under `$CLAUDE_PROJECT_DIR` (falling back to the git top-level, then cwd), so when MTK skills live outside the target project (plugin/marketplace install), export `CLAUDE_PROJECT_DIR=<project root>` or run from the project root — otherwise state lands in the wrong tree.
-2. **Init at workflow start.** Capture the returned uuid into a session variable `MTK_WF_UUID` and emit the first phase marker in the same call:
+2. **Init at workflow start.** Prune expired workflows, capture the returned uuid into a session variable `MTK_WF_UUID`, and emit the first phase marker, all in the same call:
    ```bash
-   MTK_WF_UUID=$("$WFA" init BUILD --goal "<one-line user goal>") && "$WFA" event "$MTK_WF_UUID" phase_started --data '{"phase":"phase-0"}'
+   "$WFA" prune --older-than 30 >/dev/null; MTK_WF_UUID=$("$WFA" init BUILD --goal "<one-line user goal>") && "$WFA" event "$MTK_WF_UUID" phase_started --data '{"phase":"phase-0"}'
    ```
+   `prune` deletes finished workflows (`completed` / `abandoned`) and any workflow not updated for 30 days, with their event logs; it never touches an active workflow updated within the window. Preview with `--dry-run`. Run it before `init`, never after, so it cannot touch the workflow being started. A prune failure must not block the init, hence `;`.
    **Bookkeeping rides along, never alone.** Every artifact write below goes in the *same* Bash call as the action it records — appended with `&&` to the checkpoint command, the lint, the sidecar write — or several writes go in one `"$WFA" batch` call. A standalone `"$WFA" set …` turn costs a full model round-trip for one line of JSON; a 65-call run spends a quarter of its turns on bookkeeping. The `batch` form takes ordinary subcommand argv without the uuid, separated by a bare `--`:
    ```bash
    dotnet build --nologo -v q && "$WFA" batch "$MTK_WF_UUID" \
@@ -66,7 +67,7 @@ Orchestration state that lives only in chat is lost on compaction or restart. Th
      event phase_started   --data '{"phase":"phase-3.5"}'
    ```
    A `phase_started` event carrying a `phase` auto-advances the artifact's `phase_cursor` to that phase — no separate `set phase_cursor=` call is needed, and the resume protocol (step 7) can trust `phase_cursor` rather than replaying the event log.
-5. **Record gate decisions.** Every named gate (`plan_trust_gate`, `phase_exit_gate`, `failure_stop_gate`, `memory_sync_gate`, `skill_precedence_gate`) must be persisted via:
+5. **Record gate decisions.** Every named gate (`plan_trust_gate`, `phase_exit_gate`, `failure_stop_gate`, `memory_sync_gate`) must be persisted via:
    ```bash
    "$WFA" gate "$MTK_WF_UUID" phase_exit_gate pass --reason "all batch tests green"
    ```
@@ -112,7 +113,7 @@ The dashboard reads the same `{uuid}.json` + `{uuid}.events.jsonl` files this sk
 ## Rules
 
 - All writes go through `workflow-artifact.sh`. Never `Edit` or `Write` `{uuid}.json` directly — the event log would desync.
-- Bookkeeping never gets its own turn: append `"$WFA"` calls to the command they record with `&&`, or group them with `batch`. The only standalone calls are `init`, `list`, `read`, and `verify-seal`.
+- Bookkeeping never gets its own turn: append `"$WFA"` calls to the command they record with `&&`, or group them with `batch`. The only standalone calls are `init` (with its `prune` prefix), `list`, `read`, and `verify-seal`.
 - Subagents do not write workflow artifacts. The orchestrator persists subagent results via `event agent_returned`.
 - Traps are carried, not re-derived. Record a trap the moment a phase learns it (`trap add`) and inject `trap list` into every subsequent phase brief — a trap that lives only in a phase report is lost the moment that report scrolls out of context.
 - `.mtk/` is gitignored by default. Treat artifacts as local diagnostic state, not committed history.

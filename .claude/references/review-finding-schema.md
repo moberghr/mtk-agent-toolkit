@@ -26,21 +26,21 @@ findings-only fragments merged into this envelope. Worked examples and long-form
     "file": "relative/path.ext", "line": 42,
     "rationale": "one line: why this is a problem",
     "suggested_fix": "one line: the remediation",
-    "decision_origin": "user-directed | claude-recommended-approved | claude-recommended-modified | claude-recommended-rejected | system-inferred",
-    "failure_mode": "optional F1..F14 from ai-failure-modes.md"
+    "decision_origin": "optional: user-directed | claude-recommended-approved | claude-recommended-modified | claude-recommended-rejected | system-inferred",
+    "failure_mode": "optional F1..F16 from ai-failure-modes.md"
   }],
   "scores": { "<dim>": { "value": 8, "evidence": "file:line", "rationale": "one line" } },
   "internet_facing": false,
   "needs_human_review": [{ "area": "optional axis", "why": "..." }],
-  "below_threshold_rationale": "required when findings[] has < 2 entries"
+  "below_threshold_rationale": "required when findings[] is empty"
 }
 ```
 
 ## Field rules
 
 - `source`: `linter`/`analyzer` always carry `confidence: 100`; `ai` is reasoned; `drift` is spec-drift; `context` is mined history.
-- `rule` is the canonical citation; `rule_ref`, `category`, `gate`, `failure_mode`, `internet_facing`, `needs_human_review` are optional.
-- `decision_origin` is **required** on every finding (validated by `validate-toolkit.sh --strict-decision-origin`).
+- `rule` is the canonical citation; `rule_ref`, `category`, `gate`, `failure_mode`, `decision_origin`, `internet_facing`, `needs_human_review` are optional.
+- `decision_origin`, when present, must be one of the five values above (meanings: `review-finding-examples.md`). Emit it when the reviewer knows who made the decision under review; omit it rather than guess.
 - `scores` has exactly five dimensions: `correctness`, `security`, `test_coverage`, `architecture_fit`, `simplicity`. `value` is 1–10; `evidence` is a `file:line`; a score without evidence counts as 0.
 
 ## Markdown table
@@ -59,7 +59,7 @@ Confidence = certainty the finding is real, not its severity. Bands: 95–100 de
 per-engineer override in `review-config.local.json`). Only `confidence >= threshold` enters
 `findings[]`; the rest are counted in `summary.filtered_below_threshold`.
 
-Never inflate confidence to reach the ≥2-findings bar. Drop, and do **not** count, false-positive
+There is no findings quota: a clean diff with zero findings is a valid result, explained by `below_threshold_rationale`. Never inflate confidence or pad `findings[]` to avoid an empty list. Drop, and do **not** count, false-positive
 categories: pre-existing issues outside the diff, compiler/linter-catchable issues from `source: "ai"`,
 style nits not in a loaded guideline, justified silences, plausibly intentional changes, generic
 concerns with no concrete vector, guesses needing unloaded context.
@@ -69,7 +69,7 @@ concerns with no concrete vector, guesses needing unloaded context.
 1. Review could not be completed → `ABSTAINED` (`abstention.reason` required; `scores` may be omitted; real findings found before stopping are kept but never convert to `PASS`).
 2. Any `critical` at/above threshold, or any `gate: "mandatory"` → `NEEDS_CHANGES`.
 3. Any `scores.<dim>.value < 7`, or all five values equal (`non-discriminating`) → `NEEDS_CHANGES`.
-4. Otherwise → `PASS`. `findings[]` with < 2 entries **requires** `below_threshold_rationale`.
+4. Otherwise → `PASS`. An empty `findings[]` **requires** `below_threshold_rationale` (what was checked, and why nothing reached the threshold).
 
 Warnings and suggestions never force `NEEDS_CHANGES`. Remediation on one blocking dimension is
 capped at 2 iterations; a third escalates to a human.

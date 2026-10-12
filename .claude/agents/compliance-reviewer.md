@@ -63,7 +63,7 @@ Read these files — they are your review checklists:
    - `.claude/references/security-checklist.md`, `testing-patterns.md`, `performance-checklist.md` — shared checklists
    - all files listed in the tech stack skill's `## Reference Files`
    - `.claude/skills/security-and-hardening/SKILL.md`
-2. **`.claude/rules/*.md`** — Detailed topic-specific rules (§1–§9). Glob for all files and read each one, pack or no pack: these contain the numbered rules you cite in findings, and the pack does not carry them.
+2. **`.claude/rules/*.md`** — Detailed topic-specific rules (the project's numbered rules, whatever its numbering scheme). Glob for all files and read each one, pack or no pack: these contain the numbered rules you cite in findings, and the pack does not carry them.
 3. **`.claude/references/review-finding-schema.md`** — the output contract.
 4. **The spec and its JSON sidecar** (`docs/specs/<date>-<slug>.md` / `.json`) when the orchestrator passes them — the declared change manifest, public contracts, and security impact.
 
@@ -241,7 +241,7 @@ Before you return, verify your own output — a review that fails these is not d
 - [ ] If `findings[]` is empty, `below_threshold_rationale` states what was checked and why the code is genuinely clean.
 
 ## Rules for You
-- The verdict follows the scores: any dimension < 7 or any Critical finding is `NEEDS_CHANGES`, never `APPROVED` (verdict mapping in the schema).
+- The verdict follows the scores: any dimension < 7 or any Critical finding is `NEEDS_CHANGES`, never `PASS` (verdict mapping in the schema).
 - **Find real problems, not just style nits.** Security holes, missing tests, broken data integrity, incorrect assumptions are what matter most. Style issues are the easy part.
 - Be specific: file paths, line numbers, exact rule references
 - Security issues are Critical, without exception — a security gap in this domain is a regulatory exposure, not a code-quality note.

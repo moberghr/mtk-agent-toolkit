@@ -48,6 +48,8 @@ digraph mtk_routing {
   fix      [label="fix", style="rounded,filled", fillcolor="#e0f0e0"];
   bfixkw   [label="explicit batch-fix keywords?\n('batch fix' / 'apply review\nfindings' / 'corrective batch')", shape=diamond];
   bfix     [label="batch-fix", style="rounded,filled", fillcolor="#e0f0e0"];
+  dup      [label="audit duplicates /\nduplicate capabilities?", shape=diamond];
+  simp     [label="code-simplification\n(--audit-duplicates)", style="rounded,filled", fillcolor="#e0f0e0"];
   impl     [label="implement", style="rounded,filled", fillcolor="#e0f0e0"];
   stat     [label="status / report /\nwhat's loaded / diagnostic?", shape=diamond];
   cr       [label="context-report", style="rounded,filled", fillcolor="#e0f0e0"];
@@ -57,6 +59,10 @@ digraph mtk_routing {
   cmcap    [label="instructions-capture", style="rounded,filled", fillcolor="#e0f0e0"];
   prom     [label="promote / share\na lesson?", shape=diamond];
   plsn     [label="promote-lesson", style="rounded,filled", fillcolor="#e0f0e0"];
+  lmine    [label="mine lessons / harvest\nlessons / what did we learn?", shape=diamond];
+  lmn      [label="lesson-mining", style="rounded,filled", fillcolor="#e0f0e0"];
+  lref     [label="refresh / audit / prune\nstale lessons?", shape=diamond];
+  lrf      [label="lesson-refresh", style="rounded,filled", fillcolor="#e0f0e0"];
   ho       [label="hand off / save state /\nsnapshot session?", shape=diamond];
   hoff     [label="handoff", style="rounded,filled", fillcolor="#e0f0e0"];
 
@@ -68,7 +74,9 @@ digraph mtk_routing {
   esc   -> impl  [label="yes (internal marker)"];
   esc   -> bfixkw [label="no"];
   bfixkw -> bfix [label="yes"];
-  bfixkw -> rev  [label="no"];
+  bfixkw -> dup  [label="no"];
+  dup    -> simp [label="yes"];
+  dup    -> rev  [label="no"];
   rev   -> pcr  [label="yes"];
   rev   -> rhlth [label="no"];
   rhlth -> rh   [label="yes"];
@@ -99,7 +107,11 @@ digraph mtk_routing {
   cmc   -> cmcap [label="yes"];
   cmc   -> prom [label="no"];
   prom  -> plsn [label="yes"];
-  prom  -> ho   [label="no"];
+  prom  -> lmine [label="no"];
+  lmine -> lmn  [label="yes"];
+  lmine -> lref [label="no"];
+  lref  -> lrf  [label="yes"];
+  lref  -> ho   [label="no"];
   ho    -> hoff [label="yes"];
   ho    -> setup [label="no"];
   setup -> redirect [label="yes"];
@@ -121,13 +133,14 @@ digraph mtk_routing {
 
 Match the user's input against these patterns. Check from top to bottom; first match wins.
 
-**Order matters — do not "tidy" it.** `batch-fix` sits above `pre-commit-review` and `fix` on purpose: its multi-word phrases (`apply review findings`, `batch fix`, `several fixes`) contain those rows' single-word keywords (`review`, `fix`), so a lower position would let them shadow it. `scripts/run-fixtures.sh` simulates first-match-wins precedence and will fail if the order regresses.
+**Order matters — do not "tidy" it.** `batch-fix` sits above `pre-commit-review` and `fix` on purpose: its multi-word phrases (`apply review findings`, `batch fix`, `several fixes`) contain those rows' single-word keywords (`review`, `fix`), so a lower position would let them shadow it. The `audit duplicates` row sits high for the same reason: lower down, `add` (implement) or the bare `audit` (setup redirect) would take it. `scripts/run-fixtures.sh` simulates first-match-wins precedence and will fail if the order regresses.
 
 | Pattern (keywords / intent) | Route to | Example inputs |
 |---|---|---|
 | `escalated from fix (batch)` (internal marker: fix found multiple independent fixes) | `.claude/skills/batch-fix/SKILL.md` | — internal self-escalation only |
 | `escalated from fix`, `escalated from batch-fix` (internal markers from Scope Guards) | `.claude/skills/implement/SKILL.md` | — internal self-escalation only |
 | `batch fix`, `apply findings`, `apply review findings`, `corrective batch`, `several fixes`, `multiple fixes` | `.claude/skills/batch-fix/SKILL.md` | "apply these review findings", "run a batch fix over these nits" |
+| `audit duplicates`, `audit-duplicates`, `duplicate capabilities` | `.claude/skills/code-simplification/SKILL.md` (`--audit-duplicates` mode) | "audit duplicates", "find duplicate capabilities before I add another mapper" |
 | `review`, `check`, `commit`, `staged`, `pre-commit`, `before I commit` | `.claude/skills/pre-commit-review/SKILL.md` | "review before commit", "check staged changes" |
 | `repo-health`, `repo health`, `readiness`, `scorecard`, `ai-ready`, `ai ready`, `repo report` | `.claude/skills/repo-health/SKILL.md` | "is this repo AI-ready?", "run repo-health" |
 | `mine prs`, `pr mining` | `.claude/skills/pr-review-mining/SKILL.md` | "mine the last 10 PRs", "what do reviewers keep repeating?" |
@@ -155,7 +168,7 @@ awesome-harness-engineering negative-example routing).
 | Route to… | …NOT… | …when |
 |---|---|---|
 | `fix` | `implement` | the change is 1–3 files with no new public contract; if it's feature-sized it's `implement`, if it's several small independent fixes it's `batch-fix` (ambig branch → ask once) |
-| `batch-fix` | `fix` | the batch is more than 3 files OR multiple distinct independent fixes — too big for the single-change `fix` loop |
+| `batch-fix` | `fix` | the batch is more than 3 files OR multiple distinct independent fixes — too big for the single-change `fix` loop. A purely mechanical sweep past 3 files is no exception: it runs in batch-fix's mechanical mode |
 | `batch-fix` | `implement` | the batch introduces no new public contract and no architecture; a finding that needs one escalates THAT finding to `implement` |
 | `batch-fix` | `pre-commit-review` | the ask is "apply review findings" / "apply the review comments" — running the corrective-batch loop, not a staged-changes security gate; batch-fix's row sits above `pre-commit-review` so `review` cannot shadow it |
 | `research-context` | `implement`/`fix` | the ask is an external/best-practice/version question ("what's the current way to…"), not a change to this repo |
@@ -164,7 +177,7 @@ awesome-harness-engineering negative-example routing).
 | `instructions-capture` | `handoff` | the target is AGENTS.md/CLAUDE.md content; capturing session state to resume later is `handoff` |
 | `promote-lesson` | `lesson-mining` | a specific known lesson goes personal→team; sweeping transcripts for candidates is `lesson-mining` |
 | `lesson-refresh` | `lesson-mining` | auditing/retiring EXISTING lessons is `lesson-refresh`; harvesting NEW candidates from transcripts is `lesson-mining` |
-| `/mtk-setup` | `implement`/`fix` | anything setup/bootstrap/audit/architecture-principles — always redirect to `/mtk-setup`, never absorb |
+| `/mtk-setup` | `implement`/`fix` | anything setup/bootstrap/audit/architecture-principles — always redirect to `/mtk-setup`, never absorb. Exceptions: `audit duplicates` (code-simplification) and `audit lessons` (lesson-refresh) are not setup |
 
 ## Routing Rules
 
@@ -174,7 +187,7 @@ awesome-harness-engineering negative-example routing).
 4. **Ambiguous → ask, but only if genuinely ambiguous.** If input matches two rows with similar specificity (e.g., "fix the auth feature" — fix verb + feature-sized noun), ask one clarifying question: "Is this a small fix (1-3 files), a batch of small independent fixes, or a larger feature?" Do not ask for inputs that clearly match one row.
 5. **No input → help.** If invoked with no argument, print the help text.
 6. **Pass description through.** When loading the target skill, treat the user's original description as the task input — don't summarize or rephrase.
-7. **Setup requests → redirect.** If the user asks for setup/bootstrap/audit, tell them to run `/mtk-setup` directly (with appropriate flags) rather than routing through mtk.
+7. **Setup requests → redirect.** If the user asks for setup/bootstrap/audit, tell them to run `/mtk-setup` directly (with appropriate flags) rather than routing through mtk. An `audit` that matched an earlier row (`audit duplicates`, `audit lessons`, `audit agents.md`) is not a setup request.
 
 ## Help Output
 
@@ -215,7 +228,7 @@ Log the resolved scope to analytics (via existing `hooks/session-analytics.sh` p
 
 ## Execution
 
-Once matched, resolve the MTK root once per `.claude/references/mtk-file-resolution.md` and state it as a single line — `MTK_ROOT=<path>` — so the dispatched skill does not re-resolve. Then read the target skill file and follow every step of that workflow. Do not summarize; do not skip verification. The target skill owns its own acceptance criteria.
+Once matched, resolve the MTK root once per `.claude/references/mtk-file-resolution.md` and state it as a single line — `MTK_ROOT=<path>` — so the dispatched skill does not re-resolve. On a plugin install the path is `${CLAUDE_PLUGIN_ROOT}` (substituted into this text at load time; it is not a Bash environment variable). Then read the target skill file and follow every step of that workflow. Do not summarize; do not skip verification. The target skill owns its own acceptance criteria.
 
 If the route is `/mtk-setup` (setup family), tell the user:
 

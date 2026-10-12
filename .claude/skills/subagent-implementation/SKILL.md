@@ -36,30 +36,29 @@ Phase 3 of `implement/SKILL.md` invokes this skill when **any** of these are tru
 
 ## Workflow
 
-Companion files: this skill's detail payloads live in `.claude/references/subagent-implementer-prompt.md` and `.claude/references/subagent-dynamic-workflow.md` — resolve them under `$CLAUDE_PLUGIN_ROOT` when set (plugin-cache installs), else project-relative. If a companion cannot be resolved, stop the affected step and report the missing file — do not reconstruct its content from memory.
+Companion files: this skill's detail payloads live in `.claude/references/subagent-implementer-prompt.md` and `.claude/references/subagent-dynamic-workflow.md` — resolve them under `${CLAUDE_PLUGIN_ROOT}` on a plugin install, else project-relative. If a companion cannot be resolved, stop the affected step and report the missing file — do not reconstruct its content from memory.
 
 ### Decision Graph
 
 The orchestrator never edits source. The implementer subagent never spawns further subagents. The drift check is fast and orchestrator-side — no reviewer agent per batch.
 
-The full decision graph lives in `.claude/references/subagent-dynamic-workflow.md` (under `$CLAUDE_PLUGIN_ROOT` when set). Read it when you need the branch/halt topology.
+The full decision graph lives in `.claude/references/subagent-dynamic-workflow.md` (under `${CLAUDE_PLUGIN_ROOT}` on a plugin install). Read it when you need the branch/halt topology.
 
 ### Execution paths
 
 There are two ways to run the per-batch loop. Both share the **same implementer prompt template, the same structured JSON result, and the same orchestrator-side drift / sidecar / churn / Phase-4 discipline.** Only the dispatch mechanism differs.
 
-- **Dynamic-workflow path (preferred when the `Workflow` tool is available).** The orchestrator generates a JavaScript orchestration script that runs the batches through Claude Code's native dynamic-workflow runtime in the background, with its built-in plan-approval gate. The runtime handles concurrency, retries, and structured-output validation. The orchestrator then does the drift micro-check and sidecar persistence **after** the run returns. See `.claude/references/subagent-dynamic-workflow.md`.
-- **Manual Agent-loop path (fallback).** When the `Workflow` tool is not exposed in this harness, dispatch one implementer subagent per batch by hand. See "Steps (manual Agent-loop path)" below.
-
+- **Manual Agent-loop path (default).** Dispatch one implementer subagent per batch by hand. See "Steps (manual Agent-loop path)" below.
+- **Dynamic-workflow path (opt-in only).** Take it only when the engineer explicitly asks for it in this session and the `Workflow` tool is exposed; the tool requires that opt-in, and tool availability alone is not one. Field runs of this path failed 5 of 5 (stalls, socket errors, crashes on large refactors), so it is never chosen by default. The orchestrator generates a JavaScript orchestration script that runs the batches through Claude Code's native dynamic-workflow runtime in the background, with its built-in plan-approval gate. The runtime handles concurrency, retries, and structured-output validation. The orchestrator then does the drift micro-check and sidecar persistence **after** the run returns. See `.claude/references/subagent-dynamic-workflow.md`.
 - **Inline-MAX path (when dispatch is forbidden or unavailable).** Neither of the two paths above can run if the harness exposes no subagent tools, or if a standing instruction forbids subagents the engineer did not ask for. That is a property of the session, and `implement`'s Phase 2.9 probe records it as `dispatch_capability=forbidden|unavailable` **before** Phase 3 promises a path. In that case run the batches inline under the **inline-MAX profile** (`implement/SKILL.md` Phase 2.9): the same per-batch order, the same sealed manifest, the same drift micro-check and churn check — with C1-C3 replacing what dispatch would have bought. Two rules make it a substitute rather than an excuse:
   - **Say it before the first batch, not in the report afterwards.** Record `results.phase3_path="inline-MAX (<reason>; C1-C3 applied)"`.
   - **Do not lower the rigor level to fit the path.** The level reflects the change's blast radius; the path reflects the session's tooling. Recomputing MAX down to STANDARD because dispatch is unavailable is a scope reduction that never happened.
 
   If this is the *second* run in the same repo to take this path for the same reason, Phase 7's repeat-reduction rule applies: propose `MTK_SUBAGENT_DISPATCH=0` (or a lesson naming the constraint) instead of recording the same reduction again.
 
-Pick the path once, at the top of Phase 3, based on tool availability **and** the Phase 2.9 dispatch probe. Do not mix them within one feature.
+Pick the path once, at the top of Phase 3, based on the Phase 2.9 dispatch probe and whether the engineer opted in to the dynamic-workflow path. Do not mix them within one feature.
 
-When the `Workflow` tool is available, take the dynamic-workflow path: read `.claude/references/subagent-dynamic-workflow.md` now and follow it. The manual Agent-loop path below is for sessions where `Workflow` is not exposed.
+Take the manual Agent-loop path below unless the engineer opted in to the dynamic-workflow path; only then read `.claude/references/subagent-dynamic-workflow.md` and follow it.
 
 ### Steps (manual Agent-loop path)
 
@@ -171,7 +170,7 @@ When the `Workflow` tool is available, take the dynamic-workflow path: read `.cl
 
 ### Dynamic-workflow path
 
-Steps 1-6 of the dynamic-workflow path and the "If the `Workflow` tool errors…" fallback rule live in `.claude/references/subagent-dynamic-workflow.md` (resolve under `$CLAUDE_PLUGIN_ROOT` when set). Read it now and follow it when the `Workflow` tool is available.
+Steps 1-6 of the dynamic-workflow path and the "If the `Workflow` tool errors…" fallback rule live in `.claude/references/subagent-dynamic-workflow.md` (resolve under `${CLAUDE_PLUGIN_ROOT}` on a plugin install). Read it now and follow it when the engineer opted in to this path.
 
 The **mechanical exception** applies here too: the orchestrator implements all-mechanical batches inline *before* generating the workflow, and the generated script covers only the non-mechanical batches (one `agent()` call each). Do not spawn an `agent()` for a batch that changes no logic and no contract.
 
@@ -228,7 +227,7 @@ Full table: `.claude/references/workflow-rationalizations.md` → subagent-imple
 ## Verification
 
 - [ ] Threshold check ran and produced a documented yes/no
-- [ ] Execution path chosen once (dynamic-workflow when `Workflow` tool available, else manual Agent-loop) and not mixed mid-feature
+- [ ] Execution path chosen once (manual Agent-loop by default; dynamic-workflow only on the engineer's explicit opt-in) and not mixed mid-feature
 - [ ] Implementer model was asked once via `AskUserQuestion` (or defaulted with explicit notice)
 - [ ] One fresh subagent dispatched per batch (no reuse) — or one `agent()` call per batch in the generated script
 - [ ] Each batch returned a structured JSON result matching the schema (validated by the runtime on the workflow path)

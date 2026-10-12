@@ -1,0 +1,14 @@
+{
+  "id": "router-audit-duplicates",
+  "fixture_type": "router-mapping",
+  "description": "/mtk audit duplicates reaches code-simplification's --audit-duplicates mode instead of the /mtk-setup redirect that catches other 'audit' requests.",
+  "cases": [
+    { "prompt": "audit duplicates", "expected_skill": "code-simplification" },
+    { "prompt": "audit duplicates in the billing module", "expected_skill": "code-simplification" },
+    { "prompt": "find duplicate capabilities before I add another mapper", "expected_skill": "code-simplification" }
+  ],
+  "expected": {
+    "next_action": "route",
+    "rationale": "The duplicates row sits above the setup row, so first-match-wins sends duplicate audits to code-simplification; a bare 'audit this repo' still redirects to /mtk-setup."
+  }
+}

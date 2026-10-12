@@ -8,8 +8,7 @@
       "plan_trust_gate": "pass",
       "phase_exit_gate": "pending",
       "failure_stop_gate": "pending",
-      "memory_sync_gate": "pending",
-      "skill_precedence_gate": "pass"
+      "memory_sync_gate": "pending"
     },
     "agent_outputs": {
       "builder": {
