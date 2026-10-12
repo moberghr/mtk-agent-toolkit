@@ -4,6 +4,90 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [9.0.0] - 2026-10-12
+
+Prose diet and skill consolidation. The new native eval suite shows bare Sonnet 5.5 already
+scores 1.0 on verification, silent-failure review, routine fixes and Q&A. MTK's measured value
+lies in the deterministic gates (force-push-guard: bare 0.00 → MTK 0.67) and the approval
+workflow (implement-stops-for-approval: bare 0.11 → MTK 1.00). This release keeps every
+mechanism that field runs proved, and cuts the coaching around them.
+
+The 9.0 candidate meets or beats 8.2.0 on every eval case: overall 0.82 → 0.83, at the same
+model, judge and number of runs.
+
+### Measured
+
+| | Before | After |
+|---|---|---|
+| Skills | 45 | 33 |
+| Skill descriptions (load every session) | 6,852 chars | 4,964 chars |
+| Reviewer agents | 1,136 lines | ~660 lines (−41%) |
+| Implement-chain instructions | ~172 KB | ~135 KB (−22%) |
+
+compliance-reviewer now reads only the rules whose `paths:` match the diff, not every rule file.
+In large repos that cut was about 39k tokens per dispatch.
+
+### Breaking: skills removed or merged
+
+| Removed or merged | Use instead |
+|---|---|
+| `test-driven-development`, `debugging-and-error-recovery`, `source-driven-development` | Short policy notes in `fix` and `incremental-implementation`. The review lanes now check the dependency's real exception surface. |
+| `using-git-worktrees` | Native `EnterWorktree` / Agent `isolation: "worktree"`. At HIGH/MAX, `incremental-implementation` recommends a worktree plus a branch pin. |
+| `code-review-and-quality` | A short entry over `references/implement-review-lanes.md`, now the single source for lanes, accounting and ABSTAINED. **The 5-dimension review scores are removed**; findings plus missing evidence decide the verdict. |
+| `code-simplification` | A stub for the built-in `/simplify`, keeping the finance carve-outs. `--audit-duplicates` is gone; "audit duplicates" routes to `prior-work-check`. |
+| `correction-capture`, `golden-path-capture`, `lesson-mining`, `lesson-refresh` | `lessons` with modes `capture`, `mine`, `refresh` and `promote`. `/promote-lesson` remains as an alias for one release. |
+| `instructions-audit`, `instructions-capture` | `instructions` with modes `audit` and `capture` |
+| `context-report`, `toolkit-health` | `mtk-doctor`, and `mtk-doctor --usage` (raw counts with n, no thresholds) |
+| `setup-converge` | `setup-refresh --check` / `/mtk-setup --check` |
+| `pr-review-mining` | `repo-health` |
+
+Old `/mtk` phrases still route to the new targets; `tests/fixtures/router-consolidated-skills.json`
+pins this.
+
+### Changed
+
+- **Prose cleanup across every skill and agent:**
+  - Common Rationalizations and Red Flags sections are removed, along with inline excuse tables, the
+    restating dot graphs, `references/workflow-rationalizations.md` and ALL-CAPS pressure. The three
+    field-earned safety sites keep their emphasis.
+  - Rules found only in a removed table were folded into the workflow step they govern.
+- **Agents:** the reviewer contract (inputs, threshold, ABSTAINED, rule selection, anti-anchoring) now
+  lives once, in `review-finding-schema.md`. The ignored `allowed-tools` / `context: fork` keys are
+  gone from agents.
+- **Context pack:** it lists the applicable rule files for the diff. It also carries the stack skill's
+  ORM/data-layer and framework rules, including the post-projection ordering rule.
+- **Opt-in spec ceremony:**
+  - EARS/ANT, INVEST+C, Constitution Check and delta/baseline now form an extended mode, used at rigor
+    MAX or on request.
+  - `prior-work-check` runs once per run.
+  - `context-engineering` shrinks from 238 to 67 lines, and Phase 0 no longer re-reads the constitution
+    that Claude Code already loads.
+- **Size cuts:**
+  - `setup-bootstrap`: 526 → 305 lines.
+  - tech-stack skills: about 40% smaller, with the deduplicated EF/MediatR rules kept.
+  - The generic security, testing and performance checklists fold into `domain-finance.md` and the
+    stack supplements.
+- **repo-health:** a 9-asset action checklist with no medal score.
+- **New script `scripts/update-guidelines.sh`:** fetches by pinned SHA and checks sha256.
+- **Shipped plugin:** `writing-skills` is no longer included.
+
+### Fixed
+
+- repo-health never searched AGENTS.md for build/test commands.
+- A guidelines pin bumped by `--update-guidelines` was overwritten on the next bootstrap.
+- The `/mtk` doctor row's bare `broken` keyword caught "this test is broken" before `fix`.
+- `learnings.sh metrics` reports `insufficient-data` until n ≥ 10.
+
+### Migration
+
+- **Calls to removed skill names.** Repos whose AGENTS.md or docs name a removed skill keep working
+  through `/mtk` routing. Run `/mtk-setup --check` to find stale references.
+- **Legacy personal lessons.** `.claude/lessons/personal.md` is no longer surfaced at session start.
+  `lessons promote` offers to promote each entry, or move it to native memory.
+- **Non-Claude harnesses.** Cursor, Copilot and other tool configs that `generate-tool-configs.sh`
+  produces no longer carry the generic security, testing and performance rules. Only the domain rules
+  remain, because MTK is Claude-first.
+
 ## [8.2.0] - 2026-10-12
 
 Runtime diet. Hooks that duplicated native Claude Code, or whose output never reached the
