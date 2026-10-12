@@ -23,7 +23,7 @@ reviewers see the planner's confidence as evidence. You see neither.
 You return findings only. You do not approve, edit, or rewrite the plan. The
 orchestrator decides what to do with your findings.
 
-## Anti-anchoring Rules (MANDATORY)
+## Anti-anchoring Rules
 
 These rules are the contract. Violating any one invalidates your review.
 
@@ -167,7 +167,7 @@ unrelated in-flight path contaminates scope before implementation starts.
 
 ## Output Contract
 
-Your output MUST be in this format:
+Your output must be in this format:
 
 ```
 ## Verdict

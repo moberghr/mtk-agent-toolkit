@@ -124,20 +124,9 @@ A handoff captures the current session state — branch, in-progress work, decis
 
 - Handoffs must be factual — describe what IS, not what should be
 - Include file paths so the next session can load context efficiently
-- Keep under 100 lines. This is a pointer, not a transcript
+- Keep under 100 lines. This is a pointer, not a transcript; reference files instead of pasting code blocks longer than 5 lines
 - Do not include full code or diffs — reference the files instead
 - Use today's actual date (resolve via `date +%Y-%m-%d`), not placeholder text
-
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared table. Handoff-specific traps: "the git log is enough" (git log shows what was committed, not in-progress work or the why behind decisions), "I'll just paste the whole conversation" (a 100-line pointer beats a 5,000-token transcript — the next session has tools), and "I'll write what should happen next" (handoffs describe state, not plans — next steps belong in `tasks/todo.md` or a spec).
-
-## Red Flags
-
-- Handoff over 100 lines — you're writing a transcript, trim it
-- Handoff includes code blocks longer than 5 lines — reference the file instead
-- Handoff written but `docs/handoffs/` not in `.gitignore`
-- Date in the handoff is wrong or a placeholder
 
 ## Verification
 

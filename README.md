@@ -413,13 +413,7 @@ Benchmarks run against fixture diffs, so results are repeatable regardless of yo
 | **context-report** / **toolkit-health** | Diagnostics: active configuration; historical usage pulse |
 | **writing-skills** | Meta-skill for authoring new skills with pressure tests |
 
-Every skill follows a standardized anatomy with **anti-rationalization built in** — a "Common Rationalizations" table that pre-rebuts the exact excuses an AI uses to skip steps:
-
-| Rationalization | Reality |
-|:---|:---|
-| "This is an internal endpoint" | Internal boundaries move. Security requirements don't disappear because something feels internal. |
-| "The framework probably handles that" | Probably is not a security control. Verify the behavior. |
-| "This doesn't look like regulated data" | If it affects audited state or downstream consumers, it's in scope. |
+Every skill follows a standardized anatomy (Overview / When To Use / Workflow / Verification) and states each rule once, in plain words, in the step it governs.
 
 ---
 
@@ -466,7 +460,6 @@ Reviews score five dimensions (correctness, security, test coverage, architectur
 | **Evidence over assertion** | No task is complete without cited build output, test counts, and exit codes. A Stop hook enforces it, and re-arms every criterion the instant a new edit lands. |
 | **Security as a design constraint** | Embedded in planning, implementation, and review — not a final polish phase. Runs in isolated context. |
 | **Progressive disclosure** | References, rules, and skill bodies load when needed, not all at once. See [Token Economics](#token-economics). |
-| **Anti-rationalization** | Every skill counters the exact excuses an AI uses to skip steps. |
 | **Deterministic + AI layering** | Linters catch known-bad patterns at confidence 100; AI handles judgment. Both feed one finding schema. |
 | **Dynamic context injection** | Skills use `` !`command` `` blocks to inject runtime state (tech stack, branch, diff stats) at load time. |
 | **Scope enforcement** | A real-time scope guard warns when an edit falls outside the approved change manifest — before it lands. |
@@ -645,7 +638,7 @@ Toolkit maintainers: run `bash scripts/validate-toolkit.sh` and `bash scripts/ru
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). The short version:
 
-1. **Skills** follow the anatomy in `.claude/rules/skill-authoring.md` — anti-rationalization table + verification checklist.
+1. **Skills** follow the anatomy in `.claude/rules/skill-authoring.md` — plain workflow steps + verification checklist.
 2. **Review / security / verification skills** must have a `claude plugin eval` case in `evals/` (see [evals/README.md](evals/README.md)).
 3. **Every new file** must be registered in `manifest.json`.
 4. **Run `bash scripts/validate-toolkit.sh`** and **`bash scripts/run-benchmarks.sh`** before pushing.

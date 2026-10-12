@@ -59,7 +59,7 @@ The script ships with the plugin, so run it from `${CLAUDE_PLUGIN_ROOT}`. It dia
 ## Categories Checked
 
 - **CORE** — required toolkit files (manifest, plugin.json, README, AGENTS, validate-toolkit); the project's resolved constitution line budget
-- **COMPONENTS** — version sync, skill counts, skill name/directory consistency, deprecated model detection
+- **COMPONENTS** — version sync, skill counts, skill name/directory consistency, deprecated model detection (update `DEPRECATED_MODELS` in `scripts/mtk-doctor.sh` when Anthropic deprecates more models)
 - **HOOKS** — hooks registered in the project's settings.json exist and are executable, event names are documented Claude Code events, all MTK hooks use `set -euo pipefail`
 - **PERMISSIONS** — the project's `.claude/settings.json` / `settings.local.json` carry no `permissions.allowedTools` (FAIL; `--fix` migrates it)
 - **INTEGRITY** — manifest paths exist, gitignore coverage, analytics freshness, validate-toolkit passes
@@ -74,10 +74,3 @@ The script ships with the plugin, so run it from `${CLAUDE_PLUGIN_ROOT}`. It dia
 - [ ] `--strict` exits 1 on WARN
 - [ ] `--json` output is valid JSON parseable by `jq`
 - [ ] `--fix` only modifies gitignore, file permissions, and the `allowedTools` → `allow` key move; never edits source files
-
-## Red Flags
-
-- Doctor reports PASS when validate-toolkit.sh fails — checks are out of sync
-- `--fix` modifies source code or skill content (it shouldn't — only gitignore, chmod, and the settings key move)
-- New checks added that overlap with validate-toolkit.sh — keep validator structural, doctor holistic
-- Deprecated model list goes stale — update `DEPRECATED_MODELS` in scripts/mtk-doctor.sh when Anthropic deprecates more

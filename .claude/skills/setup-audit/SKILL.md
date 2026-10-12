@@ -151,7 +151,7 @@ For each block, sample 2-3 representative files in detail to understand intent �
 
 **Verbatim version extraction.** Framework and runtime versions in `architecture-principles.md`, `CLAUDE.md`, and `detected-tools.json` are quoted verbatim from the manifest file — not paraphrased, rounded, or restated from training-data knowledge, because `verify-claims.sh` re-checks them against the manifest. Read and cite:
 
-- TypeScript / Node: `cat package.json | jq '.dependencies.next, .dependencies.react, .devDependencies.typescript, .engines.node'` (or `grep -E '"(next|react|typescript|node)"'` if `jq` unavailable). Quote the actual range string (e.g., `next: ^15.0.3` → write "Next.js 15", NOT "Next.js 16").
+- TypeScript / Node: `cat package.json | jq '.dependencies.next, .dependencies.react, .devDependencies.typescript, .engines.node'` (or `grep -E '"(next|react|typescript|node)"'` if `jq` unavailable). Quote the actual range string (e.g., `next: ^15.0.3` → write "Next.js 15", not "Next.js 16").
 - Python: `grep -E '^\s*(python|django|fastapi|flask|sqlalchemy)\s*=' pyproject.toml` (or the `[project] dependencies` block).
 - .NET: `grep -hE '<TargetFramework[s]?>|<PackageReference Include=' **/*.csproj` — quote both `TargetFramework(s)` (e.g., `net9.0`) and the explicit `Version=` on each `PackageReference`.
 
@@ -204,8 +204,8 @@ Based on everything you found, create `.claude/references/architecture-principle
 - Don't skip sections — if you found nothing for a section, say "Not found in this codebase"
 - **Counter-example gate before absolute language.** Before writing any principle using `NEVER`, `ALWAYS`, `all`, `every`, or `must`, grep for counter-examples. A pattern seen *somewhere* is not a law. Real failures: "all API handlers validate with Yup" (only 1 of 9); "never use `DateTime.UtcNow`" (used in 2 files). If ANY counter-example exists, do not state it as absolute — soften to "most"/"prefer", report the dominant form with its proportion, and tag `[INFERRED:N]` or `[AMBIGUOUS]` (never `[EXTRACTED]`). Reserve absolute language + `[EXTRACTED]` for genuinely zero-counter-example facts.
 - **Reproducible numeric claims.** Every numeric claim (project counts, file censuses, "N of M" proportions) must carry the exact shell command that produced it, runnable from the repo root, so `verify-claims` can re-run it. Real failures: "18 projects" (actual 17, propagated to 4 lines); grep counts that don't reproduce. If you cannot produce a reproducible command, drop the number and state the fact qualitatively ("several projects") instead of guessing one.
-- **Capability requires a usage site, not just an import.** Do NOT assert a capability or integration exists from an import/using/package-reference alone. Real failures: "CDK provisions EC2/VPC" inferred from a dead `using Amazon.CDK.AWS.EC2;` (zero VPC/Subnet/SG in code); a dead `AWSSQSResource` (0 references) presented as active "SQS access". Require a USAGE SITE — instantiation, call, or DI registration — before claiming the capability. If only an import exists with no usage, omit it or explicitly mark it `dead/unused reference`.
-- **Security-claim grounding.** NEVER assert that a sanitization / validation / audit / secret-handling path EXISTS unless a usage site is found (imported AND called). Real failures: "use the existing dompurify/sanitize-html path" while dompurify is imported nowhere; "never log raw event XML" framed as an existing invariant while code logs raw XML + MQ creds. If the protection is ABSENT, state it as a GAP ("no input sanitization found on X — add it"), not as an existing convention to follow.
+- **Capability requires a usage site, not just an import.** Do not assert a capability or integration exists from an import/using/package-reference alone. Real failures: "CDK provisions EC2/VPC" inferred from a dead `using Amazon.CDK.AWS.EC2;` (zero VPC/Subnet/SG in code); a dead `AWSSQSResource` (0 references) presented as active "SQS access". Require a USAGE SITE — instantiation, call, or DI registration — before claiming the capability. If only an import exists with no usage, omit it or explicitly mark it `dead/unused reference`.
+- **Security-claim grounding.** Never assert that a sanitization / validation / audit / secret-handling path exists unless a usage site is found (imported and called). Real failures: "use the existing dompurify/sanitize-html path" while dompurify is imported nowhere; "never log raw event XML" framed as an existing invariant while code logs raw XML + MQ creds. If the protection is ABSENT, state it as a GAP ("no input sanitization found on X — add it"), not as an existing convention to follow.
 - **Interview answers are authoritative.** When `.claude/setup-answers.json` exists, its contents are authoritative human input, not a scan hypothesis. Principles or rules sourced from it cite it as their evidence anchor (e.g. `Evidence: engineer interview — .claude/setup-answers.json (hard_nevers)`) and are never dropped or reworded by regeneration. If a fresh scan contradicts an interview answer, do not silently pick a side — emit a "Needs review" item describing the conflict instead.
 
 ### Confidence Tagging (S1.15)
@@ -218,7 +218,7 @@ Every principle (or sub-bullet) the audit emits must carry a **confidence tag** 
 
 **Every tagged line must cite evidence** — file:line, a path glob with a hit count, or a commit SHA. No tag without evidence.
 
-**Grade tags by evidence, not vibes (eval fix):** a directly-observable fact with a file:line citation is `[EXTRACTED]` — do NOT under-tag it `[INFERRED:0.5]` (e.g. EF Core at `Program.cs:61 UseSqlServer` is EXTRACTED). An **absence** claim ("no raw SQL", "no test project") is `[EXTRACTED]` only when you cite the zero-result command that proves it; otherwise tag it `[INFERRED]`.
+**Grade tags by evidence, not vibes (eval fix):** a directly-observable fact with a file:line citation is `[EXTRACTED]` — do not under-tag it `[INFERRED:0.5]` (e.g. EF Core at `Program.cs:61 UseSqlServer` is EXTRACTED). An **absence** claim ("no raw SQL", "no test project") is `[EXTRACTED]` only when you cite the zero-result command that proves it; otherwise tag it `[INFERRED]`.
 
 Format each principle line per the line-format example in `.claude/references/audit-output-templates.md`, and prepend that file's confidence legend block to the top of `architecture-principles.md` (right after the header).
 
@@ -301,7 +301,7 @@ The verbatim results block to print is in `.claude/references/audit-output-templ
 ---
 
 ## Audit mode invariants
-- This mode is READ-ONLY except for writing the output document
+- This mode is read-only except for writing the output document
 - Never modify source code during an audit
 - If `.claude/references/architecture-principles.md` already exists, use AskUserQuestion before overwriting
 - Create `.claude/references/` directory if it doesn't exist

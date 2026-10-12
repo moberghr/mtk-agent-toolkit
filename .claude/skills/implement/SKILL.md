@@ -148,11 +148,6 @@ does not drop.
 State the score and level in one line at the Phase 2.5 gate, e.g.
 `Rigor: HIGH (score 9 — 3 batches, 8 files, security_impact=new-auth-path)`.
 
-**At MAX only**, also read `.claude/references/workflow-rationalizations.md` — the
-full rationalization and red-flag tables moved out of the chain skills. Below MAX the
-3-row excerpts each skill keeps inline are the whole budget; load the reference
-later only if Phase 7 records a ceremony reduction a previous run already recorded.
-
 **Read `.claude/references/implement-rigor-scoring.md`** for the signal→points
 table, the external vs internal-tooling contract-surface rule, the mechanical
 definition and per-batch exception, and the scope-reduction recompute guardrails.
@@ -173,7 +168,7 @@ bash scripts/manifest-preflight.sh --human docs/specs/<date>-<slug>.json
 
 A manifest corrected here costs one edit. The same correction found in Phase 3.5 costs a drift record, an amended sidecar, and a wasted batch.
 
-## Phase 2.5: Approval Gate (STOP HERE)
+## Phase 2.5: Approval Gate (stop here)
 
 Mandatory. Before Phase 3, ask via `AskUserQuestion`.
 
@@ -278,7 +273,7 @@ If critical drift is found:
    reduction*), record the transition on the workflow artifact, and continue at
    the recomputed level. Relaxing ceremony for work already approved needs no
    new approval; only *added* scope does.
-5. Do NOT proceed to review until drift is clean.
+5. Do not proceed to review until drift is clean.
 
 Silent drift repair is forbidden. Every *increase* in scope goes through the
 approval gate; a *reduction* is recorded and re-scores rigor (item 4) but does
@@ -394,19 +389,6 @@ Report:
 - cleanup summary
 - **what compounded** — lessons captured, rules promoted, pre-commit-review items added
 - whether `CLAUDE.md` changed
-
-## Red Flags
-
-- Code started before the spec existed
-- Spec or plan not written to `docs/specs/` and `docs/plans/`
-- Phase 2.5 approval gate skipped or merged into Phase 3
-- Phase 3 started without an explicit approval answer from the engineer
-- Approval gate answered by prose prompt instead of `AskUserQuestion`
-- Spec drafted with material ambiguity unresolved (open questions deferred to "Open questions" section instead of asked via `AskUserQuestion` before drafting)
-- Files touched outside the change manifest
-- Checkpoints skipped
-- No behavioral diff before review
-- Review omitted for substantial work
 
 ## Critical Rules
 

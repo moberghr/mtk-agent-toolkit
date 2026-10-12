@@ -71,7 +71,7 @@ Convert the approved plan into small, executable tasks that can be verified one 
      An empty list is allowed only with an explicit "no rule constrains this
      batch" note.
 4. Prefer vertical slices where possible so each batch leaves the system in a working state.
-4b. **Package-legitimacy gate for new dependencies.** If any batch introduces a third-party package **not already present** in the repo's dependency manifests — especially one an AI assistant, blog post, or the spec's research brief recommended — do NOT plan a bare install step. Instead:
+4b. **Package-legitimacy gate for new dependencies.** If any batch introduces a third-party package **not already present** in the repo's dependency manifests — especially one an AI assistant, blog post, or the spec's research brief recommended — do not plan a bare install step. Instead:
    - Run the stack's registry-verification command (from `.claude/references/dependency-intake-checklist.md` criterion 0, also listed in the active tech-stack skill) to confirm the package exists and is the real one (not a typosquat / hallucination).
    - Tag the package `[ASSUMED]` in the plan until verified, and insert an explicit `checkpoint:human-verify` step **before** the install task. This checkpoint is one of the conditions that blocks `MTK_AUTO_PROCEED` at the `implement` Phase 2.5 gate, so an unverified package can never be installed autonomously.
    - A criterion-0 Poor (not found / dead repo / typosquat signal) blocks the dependency outright — re-plan without it.
@@ -128,21 +128,6 @@ Convert the approved plan into small, executable tasks that can be verified one 
 - Every behavior change must have an associated test task.
 - No task should require changing more than a small handful of files without justification.
 - Re-planning is mandatory if the task grows beyond the approved manifest.
-
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared table. Planning-specific traps: "I'll just keep the tasks in my head" (hidden plans drift fastest — write the list so implementation and review can check reality against it), "this batch is a bit large, but it saves time" (oversized batches hide breakage and make checkpoints meaningless), and "I'll add verification steps later" (a task without verification is not a task, it's a wish).
-
-## Red Flags
-
-- Batches too large to verify quickly
-- Checkpoints omitted
-- `tasks/todo.md` drifting from actual implementation
-- Tasks ordered by convenience rather than dependency
-- Missing Boundary or Depends annotations — without them, task scope is ambiguous
-- A Boundary written as a bare file prohibition with no invariant behind it — the implementer routes around the file instead of honoring the intent
-- A verification command composed from memory rather than quoted from the tech-stack skill or its references
-- Circular dependencies between tasks
 
 ## Verification
 

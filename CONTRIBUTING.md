@@ -163,22 +163,9 @@ When you add a new required hook or script:
 
 ---
 
-## Anti-Rationalization Tables
+## No Persuasion Scaffolding
 
-This is one of MTK's highest-value prompt patterns.
-
-Good entries are:
-
-- specific to real model failure modes
-- phrased the way a model actually rationalizes
-- paired with a sharp rebuttal
-- grounded in the domain or workflow phase
-
-Bad entries are:
-
-- generic advice
-- rule restatements with no behavioral trap
-- contrived hypotheticals the model never actually uses
+Skills do not carry rationalization tables, red-flag lists, ALL-CAPS emphasis, or graphs that restate a table or numbered steps. Current models follow instructions literally and over-trigger on pressure language. When a field run exposes a skipped step, add one plain sentence to that workflow step instead.
 
 ---
 

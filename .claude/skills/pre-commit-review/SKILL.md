@@ -33,7 +33,7 @@ check engineers should run before every commit.
    `git diff --cached --name-only`** (or `git diff --name-only` if using
    unstaged). Discard all other findings — surfacing repo-wide warnings on an
    unrelated commit erodes trust in the gate. Merge the filtered set into your
-   output with `source: "analyzer"` and `confidence: 100`. **Do NOT run the
+   output with `source: "analyzer"` and `confidence: 100`. **Do not run the
    build yourself** — the pre-commit gate must stay fast (seconds, not minutes).
    Only consume cached output.
 4.6. **Roslyn MCP tools (if available, .NET only).** If `dotnet-claude-kit` is
@@ -83,29 +83,16 @@ check engineers should run before every commit.
    `source: "ai"` and their own confidence scores per the rubric.
 6. Combine linter + AI findings into a single schema-conformant output.
 
-## Check ONLY These (from `.claude/rules/security.md` §1.x and the generated `pre-commit-review-list.md` (tech-stack items); if neither exists, use the fallback list below):
+## Check only these (from `.claude/rules/security.md` §1.x and the generated `pre-commit-review-list.md` (tech-stack items); if neither exists, use the fallback list below):
 
 - **Secrets**: Any hardcoded credentials, connection strings with passwords, API keys, tokens?
-- **SQL Injection**: Any string-concatenated SQL? Must be parameterized only (EF Core is fine — [.NET example]).
+- **SQL Injection**: Any string-concatenated SQL? Must be parameterized only (EF Core LINQ is fine; `FromSqlRaw` with concatenation is still injection — [.NET example]).
 - **PII in Logs**: Any PII (names, emails, account numbers) in log statements or exception messages?
-- **Auth Missing**: Any new endpoints without `[Authorize]` or `RequireAuthorization()`? [.NET example]
+- **Auth Missing**: Any new endpoints, internal ones included, without `[Authorize]` or `RequireAuthorization()`? [.NET example]
 - **Audit Missing**: Any state-changing operations on financial data without audit log writes? [finance-domain example]
 - **Secrets in Env**: Any connection strings or passwords hardcoded in `appsettings.json` or CDK environment vars? [.NET/AWS example]
 - **IAM Blast Radius**: Any new IAM grants with `*` resource that should be scoped? [AWS example]
 - **Dependency Intake**: New third-party dep added — does it pass the six-criteria gate in `.claude/references/dependency-intake-checklist.md`? (A `Poor` on criterion 0, or two on criteria 1–5, blocks.)
-
-## Common Rationalizations
-
-| Rationalization | Reality |
-|---|---|
-| "It's just a DTO change, no security implications" | DTOs define what data crosses trust boundaries. A missing `[JsonIgnore]` on an internal field leaks data. Check it. |
-| "EF Core handles parameterization, so SQL injection isn't possible here" | EF Core handles it when you use LINQ. `FromSqlRaw` with string concatenation is still injection. Check for raw SQL. |
-| "This is an internal endpoint, it doesn't need `[Authorize]`" | Internal endpoints get exposed. Network boundaries shift. Auth on every endpoint. No exceptions. |
-| "The audit trail isn't needed here — this doesn't touch financial data" | If it mutates state that affects financial calculations, reports, or compliance records, it needs an audit trail. "Financial data" is broader than you think. |
-| "This change is too small to have security implications" | The smallest changes cause the biggest incidents. A one-line config change can expose a connection string. A renamed property can break auth middleware. Check every diff. |
-| "I already reviewed this mentally, running the checklist is redundant" | Mental reviews miss things. That's the whole point of a checklist. Pilots don't skip pre-flight because they "already know the plane works." |
-
----
 
 ## Output Contract
 

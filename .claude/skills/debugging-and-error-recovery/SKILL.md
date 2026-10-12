@@ -56,17 +56,6 @@ Start from the failure, confirm the cause, make the smallest correct fix, and ve
 - Stop after repeated failed attempts and explain what is blocking forward progress.
 - Fix the root cause, not just the visible symptom.
 
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared table. Debugging-specific traps: "the test already fails, I don't need a regression test" (if the failure can recur, guard it explicitly — an ad-hoc repro doesn't become a permanent test by accident), and "this quick change should fix it" (state the hypothesis first so the fix can be judged against it, not just against "the error is gone").
-
-## Red Flags
-
-- Editing based on guesswork without reproduction
-- Touching a 4th file without escalation
-- Fixing symptoms while leaving the root cause intact
-- Multiple failed attempts with no updated hypothesis
-
 ## Verification
 
 - [ ] Root cause is stated clearly

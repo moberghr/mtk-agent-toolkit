@@ -90,17 +90,6 @@ git branch -d <branch-name>  # only if merged
 - Never force-delete a worktree without explicit engineer confirmation.
 - Resolve the lessons path (`tasks/lessons.md`) using the main worktree when working in a worktree (use `git rev-parse --git-common-dir` to find the main worktree root).
 
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared table. Worktree-specific traps: "dependencies are already installed" (the worktree is a fresh checkout — it has no node_modules, no bin/obj, no venv), "the gitignore is probably fine" (committing a worktree directory wastes everyone's time — verify first), and "I'll skip baseline tests, I know the tests pass" (pre-existing failures get blamed on your changes — prove the starting state).
-
-## Red Flags
-
-- Worktree created in a tracked directory
-- Dependencies not installed before testing
-- Baseline tests not run before starting work
-- Worktree discarded without engineer confirmation
-
 ## Verification
 
 - [ ] Worktree directory is gitignored

@@ -39,7 +39,7 @@ Wraps `scripts/pr-review-mine.sh` (fetches merged PR review threads via `gh`, cl
    - `--json` — machine-readable output to stdout.
 
 3. **Read the canonical patterns reference.** `.claude/references/pr-mining-patterns.md` defines what phrases mean and which are denylisted. If the engineer sees obvious noise (e.g., "looks good to me" sneaks through), append it to the `## Denylist` section of that file and re-run.
-4. **Suggest-only.** Present each candidate phrase to the engineer with its PR citations. Do NOT modify `architecture-principles.md` automatically — the engineer must opt in per-phrase, prefixing the resulting principle with `[MINED:feedback]` and citing the PR numbers.
+4. **Suggest-only.** Present each candidate phrase to the engineer with its PR citations. Do not modify `architecture-principles.md` automatically — the engineer must opt in per-phrase, prefixing the resulting principle with `[MINED:feedback]` and citing the PR numbers.
 5. **Record the run.** If invoked from `repo-health`, the parent skill emits a "PR mining" section into `.claude/repo-health-latest.md` with the table.
 
 ## Verification
@@ -48,11 +48,3 @@ Wraps `scripts/pr-review-mine.sh` (fetches merged PR review threads via `gh`, cl
 - The output references concrete PR numbers (`#<n>`) — fabricated phrases without citations are a red flag.
 - No edits were made to `architecture-principles.md`.
 - If `gh` was missing or unauthenticated, the output explicitly says `Skipped: <reason>` rather than fabricating phrases.
-
-## Red Flags
-
-| Rationalization | Reality |
-|---|---|
-| "This phrase appeared once but it's clearly a rule — I'll promote it." | The miner deliberately requires ≥2 distinct PRs. Single-PR feedback is one reviewer's preference, not a team norm. |
-| "I'll just write the mined phrase straight into `architecture-principles.md`." | Always tag `[MINED:feedback]` and cite PRs. Untagged mined rules are indistinguishable from extracted ones. |
-| "`gh` failed, I'll guess what reviewers usually say." | Mining is fail-soft — when `gh` is unavailable, the output is empty. Do not invent phrases. |

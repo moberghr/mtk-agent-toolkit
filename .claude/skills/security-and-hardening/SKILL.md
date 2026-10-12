@@ -58,17 +58,6 @@ Treat security and compliance as design constraints, not final review polish. Ch
 - No wildcard IAM/resource access without explicit justification.
 - No new third-party dep that fails the six-criteria intake gate (`.claude/references/dependency-intake-checklist.md`).
 
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared table. Security-specific traps: "this is an internal endpoint" (internal boundaries move — security requirements don't disappear because something feels internal), and "this doesn't look like regulated data" (if it affects audited state, reporting, audit records, or downstream consumers, it is in scope — check the domain supplement).
-
-## Red Flags
-
-- New endpoint with no obvious auth path
-- State mutation with no audit story
-- PII or secrets appearing in logs or exception messages
-- Broad IAM or secret access added casually
-
 ## Verification
 
 - [ ] Trust boundaries were identified

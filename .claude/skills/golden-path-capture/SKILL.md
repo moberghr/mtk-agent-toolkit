@@ -126,19 +126,6 @@ The capture reuses `correction-capture`'s destinations and the same `scripts/lea
 - Never confuse this with `correction-capture`. If a human redirected you, it is a correction, full stop.
 - Capture in-session. A golden path deferred to a later sweep is a golden path usually lost.
 
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared table. Golden-path-specific traps: "I figured it out myself, so there's nothing to record" (self-figured-out is the *whole point* — the struggle you resolved is the highest-density lesson there is), "I'll let the lesson-mining sweep catch this later" (the sweep is the safety net for what live capture missed; do not offload live capture onto it), "it only failed a couple of times, not a real pattern" (2+ on the same signature is the bar — it already cleared it), and "the wrong turns are embarrassing, I'll just record the fix" (the wrong turns are what stop the next session repeating them — record them).
-
-## Red Flags
-
-- A struggle-then-success arc resolved but no lesson captured before moving on
-- Lesson captured with an empty or omitted `wrong_turns` — the failed attempts were dropped
-- Capturing something the engineer actually corrected (belongs in `correction-capture`)
-- Deferring capture to Phase 7 or a future `lesson-mining` sweep instead of writing it now
-- A recurring self-struggle (3+) captured as a lesson but never proposed for CLAUDE.md / reference promotion
-- Recording a single-attempt success or a transient flake as a golden path
-
 ## Verification
 
 - [ ] The full arc was confirmed: same signature failed 2+ times, no engineer correction, materially different fix

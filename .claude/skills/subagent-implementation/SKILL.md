@@ -62,7 +62,7 @@ Take the manual Agent-loop path below unless the engineer opted in to the dynami
 
 1. **Threshold gate.** Read `docs/specs/<date>-<slug>.json`. Dispatch when any hard trigger is met **or** the rigor score is ≥ 8 (rigor HIGH/MAX). If neither holds → return control to `implement/SKILL.md` Phase 3 with the recommendation to use `incremental-implementation` instead. Do not silently fall through.
 2. **Pick implementer model.** The policy default is **Sonnet** — see `.claude/references/model-routing.md` (reserve Opus for batches the plan flags novel/tricky: concurrency, unfamiliar SDK, subtle invariants). Whether to *ask* depends on the Phase 2.5 mode:
-   - **Autonomous mode (Phase 2.5 returned `Approve & run until done`): do NOT ask.** An `AskUserQuestion` here would violate the autonomous "never call `AskUserQuestion` in Phases 3-7" rule (`implement/SKILL.md`) — the two rules only appear to conflict; the model ask is an interactive affordance, and autonomous mode resolves it by *not asking*. Default to the policy tier (Sonnet), escalate to Opus only for batches the plan flags novel/tricky, and emit one line: `Implementer model: Sonnet (autonomous default; Opus for plan-flagged novel/tricky batches).`
+   - **Autonomous mode (Phase 2.5 returned `Approve & run until done`): do not ask.** An `AskUserQuestion` here would violate the autonomous "never call `AskUserQuestion` in Phases 3-7" rule (`implement/SKILL.md`) — the two rules only appear to conflict; the model ask is an interactive affordance, and autonomous mode resolves it by *not asking*. Default to the policy tier (Sonnet), escalate to Opus only for batches the plan flags novel/tricky, and emit one line: `Implementer model: Sonnet (autonomous default; Opus for plan-flagged novel/tricky batches).`
    - **Interactive mode: invoke `AskUserQuestion` once** (load via `ToolSearch select:AskUserQuestion` if deferred):
      - Question: `Implementer subagent model? Affects per-batch cost and capability.`
      - Options:
@@ -76,7 +76,7 @@ Take the manual Agent-loop path below unless the engineer opted in to the dynami
    1. **Build the context bundle.** Concatenate:
       - Spec sections relevant to this batch (`Summary`, `Architecture and design`, `Security and compliance impact` if non-none)
       - The single batch object from `plan.batches[]` (id, files, acceptance, verification, boundary, depends)
-      - **Prior-batch summary:** for every batch already in `sidecar.implement.completed_batches`, include `{id, actual_files, behavioral_diff}`. Do NOT include full prior diffs — just the summary. Emit it as a dense block (one batch per line: `id | n files | behavioral_diff`) and prefix it with the completed-batch count, e.g. `prior-batches: 3` — the implementer can checksum line count against that number and flag a truncated handoff rather than building on a silently-cut summary.
+      - **Prior-batch summary:** for every batch already in `sidecar.implement.completed_batches`, include `{id, actual_files, behavioral_diff}`. Do not include full prior diffs — just the summary. Emit it as a dense block (one batch per line: `id | n files | behavioral_diff`) and prefix it with the completed-batch count, e.g. `prior-batches: 3` — the implementer can checksum line count against that number and flag a truncated handoff rather than building on a silently-cut summary.
       - The path of the run's **context pack** (`results.context_pack`, built in `implement` Phase 2 by `scripts/build-context-pack.sh`). It carries the build/test/format commands, CLAUDE.md critical rules, the manifest-selected coding-guideline sections, `[EXTRACTED]` principles, matching lessons, and a **change map** (declared symbols per manifest file and their referrers) — the subagent reads it **instead of** CLAUDE.md, the tech-stack skill, and the guideline files, and starts any caller/callee question from the change map. Do not paste the pack body; pass the path. If the manifest was amended since the pack was built, rebuild it first.
       - The full `change_manifest` and `out_of_scope` arrays — the subagent must know its boundary.
       - **Carried traps:** paste `"$WFA" trap list "$MTK_WF_UUID"` into the brief's "Known traps" block so this batch inherits every gotcha earlier batches learned the hard way (stale generated contract, `format`-only analyzer, mis-seeding fixture). A trap left in a prior batch's result never reaches the next implementer (S5.2).
@@ -201,26 +201,6 @@ The implementer prompt template is shared by both execution paths and is organiz
 - **Mid-loop scope reduction re-scores rigor.** If the approved batch set shrinks during the loop (a batch is deferred, dropped, or split to a follow-up), recompute the rigor level from the remaining batches (see `implement/SKILL.md` Rigor Score → *Recompute on scope reduction*) and record the transition on the workflow artifact. Batches already dispatched are unaffected; if the recomputed level drops below HIGH, remaining not-yet-started batches return to `implement` Phase 3 for the inline path.
 - **Dynamic-workflow path:** the workflow replaces only the inner dispatch loop. Drift micro-check, sidecar persistence, churn check, and Phase 4 are orchestrator-side and run **after** the workflow returns — never inside it. The native runtime's plan-approval gate does not replace MTK's Phase 2.5; it is a transparency checkpoint on an already-approved scope.
 - **Waves come from `depends`, and only from `depends`.** Batches at the same topological level run concurrently (width ≤ `MTK_BATCH_WAVE_MAX`, default 3); different levels run strictly in order. A later batch reading an earlier batch's files must carry an edge — if it does not, the plan is wrong: fix the edge, do not hand-serialize.
-
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared table. Subagent-implementation-specific traps:
-
-| Rationalization | Reality |
-|---|---|
-| "I'll just edit it myself, faster than dispatching" | That defeats the entire point. Context contamination is the cost you pay invisibly. Dispatch. |
-| "The implementer got killed by the rate limit — treat it as inconclusive and respawn with narrowed scope" | No. Its partial work is on disk; a narrowed respawn either redoes it or builds a second copy beside it. Inventory, build, and respawn to *finish* from the partial state (or revert the batch's own files and restart) on the fallback tier. Record the kill first. |
-| "These two batches touch the same file but the edits don't overlap, they can share a wave" | No. Two implementers writing one file race on the Edit tool's read-before-write check; one of them stalls or clobbers. Same file ⇒ edge, always. |
-
-Full table: `.claude/references/workflow-rationalizations.md` → subagent-implementation.
-
-## Red Flags
-
-- Orchestrator using `Edit` or `Write` on source files
-- Two batches in one wave whose `files` overlap (the plan is missing an edge)
-- A killed implementer handled as `inconclusive` (narrowed-scope respawn over partial work already on disk), or respawned on the same unavailable tier
-
-Full table: `.claude/references/workflow-rationalizations.md` → subagent-implementation.
 
 ## Verification
 

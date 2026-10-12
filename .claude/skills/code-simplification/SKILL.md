@@ -47,7 +47,7 @@ that catches duplicates that slipped past it.
    `.claude/references/code-index-template.md`). If absent, skip
    index-guided scanning and note CODE_INDEX.md missing in the report
    (it is generated during `setup-bootstrap`).
-2. Extract ALL capability rows from the file you already read in step 1 —
+2. Extract all capability rows from the file you already read in step 1 —
    this audit needs the full table, so do not enumerate it through
    per-keyword queries. Use `bash scripts/query-code-index.sh find
    "<keyword>"` (prints each matching row prefixed with its `## <Domain>`
@@ -104,16 +104,6 @@ A guard in one of these categories is presumed load-bearing. If you believe one 
 - Walk the less-code ladder; stop at the first rung that satisfies the requirement.
 - Never simplify away a safety carve-out — auth, secrets, validation, migrations, delete-guards, audit logging are presumed load-bearing.
 - Ask before removing uncertain dead code.
-
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared table. Simplification-specific traps: "now that I'm here, I should refactor the whole module" (cleanup is not permission for a hidden rewrite — stay scoped), and "the dead code is probably still needed somewhere" (probably is a reason to verify or ask, not to leave clutter in place).
-
-## Red Flags
-
-- Cleanup that changes behavior
-- Broad refactor hidden inside feature work
-- Dead code left in place because nobody verified ownership
 
 ## Verification
 

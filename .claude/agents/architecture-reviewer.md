@@ -25,7 +25,7 @@ say so — a zero-finding pass with a clear rationale is better than manufacture
 
 ## Output Contract
 
-Your output MUST follow `.claude/references/review-finding-schema.md`:
+Your output must follow `.claude/references/review-finding-schema.md`:
 
 1. A markdown table of surfaced findings (findings with `confidence >= threshold`)
 2. A fenced ```json block containing the full structured result (verdict, summary, findings, rationale)
@@ -40,7 +40,7 @@ low-confidence findings just to have output; instead produce an explicit
 
 Read these files — they are your review checklists:
 
-1. **The context pack** at the path the orchestrator passes (`results.context_pack`, normally `.mtk/workflows/<uuid>/context-pack.md`) — build/test/format commands, CLAUDE.md critical rules, the coding-guideline sections selected for this change, `[EXTRACTED]` architecture principles, and applicable lessons. Read it instead of the files it was built from. Fall back to the full list ONLY when no pack path was passed (a standalone run):
+1. **The context pack** at the path the orchestrator passes (`results.context_pack`, normally `.mtk/workflows/<uuid>/context-pack.md`) — build/test/format commands, CLAUDE.md critical rules, the coding-guideline sections selected for this change, `[EXTRACTED]` architecture principles, and applicable lessons. Read it instead of the files it was built from. Fall back to the full list only when no pack path was passed (a standalone run):
    - `CLAUDE.md` — project overview, critical rules, standards reference
    - `.claude/tech-stack` — the active stack word (e.g., `dotnet`, `python`)
    - `.claude/skills/tech-stack-{stack}/SKILL.md` — framework patterns, ORM guidance, reference paths
@@ -86,17 +86,6 @@ If no diff, ask which files to review.
 - [ ] DI lifetimes correct (DbContext scoped not singleton, HttpClient via factory)
 - [ ] Configuration access through typed options, not raw config strings
 - [ ] Logging follows project patterns
-
-## Common Rationalizations
-
-| Rationalization | Reality |
-|---|---|
-| "It's just one more dependency across slices" | Dependency direction matters more than count. One wrong-direction dependency creates a precedent that compounds. |
-| "We'll refactor it later" | Architectural debt compounds faster than code debt. The coupling you add today becomes the constraint you work around tomorrow. |
-| "It works, why change the structure?" | Working code in the wrong place creates maintenance traps. The next developer copies the pattern, and now you have systemic drift. |
-| "Other code already does it this way" | Existing violations don't justify new ones. If the codebase has a bad pattern, adding another instance makes cleanup harder, not easier. |
-| "It's a small module, boundaries don't matter" | Boundaries exist regardless of size. A 20-line service in the wrong layer is still in the wrong layer. |
-| "The abstraction will be useful later" | YAGNI. Speculative abstractions add complexity now for a future that may never arrive. Add the abstraction when you have 3 concrete uses. |
 
 ## Step 4: Output
 

@@ -39,7 +39,7 @@ Before accepting any completion claim, run the **tamper check**: confirm the fro
 ```
 
 - **exit 0** → the approved spec/plan bytes and the frozen criteria are intact; proceed. If the OK line says `success_criteria not sealed` (no sidecar existed at approval), the criteria are not proved frozen: say so in the Not-Proved ledger.
-- **exit 1 (STALE)** → a goalpost moved, or a sealed spec/plan changed after approval. The printed `changed=` names which (`success_criteria (<sidecar>)` for a criteria edit). This is **fail-closed**: do NOT verify against the new definition and do NOT accept the completion claim. Re-open Phase 2.5 for explicit re-approval; the gate re-seals (`workflow-artifact.sh seal`). An unapproved criteria change is unapproved scope, `failure_stop_gate` territory if it slipped in to force a pass. Record the printed `sealed=`/`current=` hashes and the changed file in the block finding; never silently accept the edited criterion.
+- **exit 1 (STALE)** → a goalpost moved, or a sealed spec/plan changed after approval. The printed `changed=` names which (`success_criteria (<sidecar>)` for a criteria edit). This is **fail-closed**: do not verify against the new definition and do not accept the completion claim. Re-open Phase 2.5 for explicit re-approval; the gate re-seals (`workflow-artifact.sh seal`). An unapproved criteria change is unapproved scope, `failure_stop_gate` territory if it slipped in to force a pass. Record the printed `sealed=`/`current=` hashes and the changed file in the block finding; never silently accept the edited criterion.
 - **exit 2** → uncheckable (corrupt artifact). Treat as STALE until the artifact is repaired.
 - **exit 3 (no seal)** → an older workflow, or a run that never passed the gate. The criteria cannot be proved frozen: compare them by hand against the approved spec the engineer saw, and record the tamper check as Not-Proved.
 
@@ -146,7 +146,7 @@ The `evidence_channel` field on each success criterion names the surface where t
 
 ## Claim Extraction (When Verifying Upstream Agent Work)
 
-When the work being verified came from a prior agent — a builder subagent, a reviewer, an integration verifier — do NOT trust their summary. Extract their factual claims and reconcile each one independently before stating completion.
+When the work being verified came from a prior agent — a builder subagent, a reviewer, an integration verifier — do not trust their summary. Extract their factual claims and reconcile each one independently before stating completion.
 
 **Procedure:**
 
@@ -201,19 +201,6 @@ When the work being verified came from a prior agent — a builder subagent, a r
   drive it through the remediation circuit-breaker
   (`scripts/workflow-artifact.sh remediation`) and escalate to a human on
   `ESCALATE` — iteration cap or plateau (see `.claude/references/orchestration-gates.md`).
-
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` — the shared MTK rationalization table covers the universal shortcuts. Skill-specific traps to watch for here: running tests a few minutes ago (stale once you touched code), treating build success as test success (different claims, different evidence), and assuming compilation proves behavior (it proves syntax only).
-
-## Red Flags
-
-- Completion reported without any command output cited
-- Claiming done while any criterion is `re-armed` (edit landed after verification)
-- Completion stated as prose instead of the `criterion | verdict | evidence` table
-- A behavior-shaped completion with no Not-Proved ledger, or with an empty Not-Proved column
-
-Full table: `.claude/references/workflow-rationalizations.md` → verification-before-completion.
 
 ## Signal-Based Enforcement
 

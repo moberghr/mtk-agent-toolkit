@@ -104,17 +104,6 @@ if [ -f tasks/lessons.md ]; then grep -c '^## ' tasks/lessons.md 2>/dev/null || 
 - **Separate activity from effectiveness.** Sessions, ops, and mods are activity. Scope-guard warnings and benchmark stats are workflow signals, not proof of engineering quality.
 - **Parallel loading.** Load all data sources in one message, per `docs/parallelism-patterns.md`.
 
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared table. Toolkit-health specific traps: "we've been busy, the numbers don't matter" (if numbers don't match activity, the hooks are broken — investigate); "the anomaly thresholds are arbitrary" (they are — say so in the report, but still flag).
-
-## Red Flags
-
-- Reporting ratios on fewer than 3 sessions as if meaningful
-- Silently skipping missing files instead of reporting the gap
-- Modifying `.claude/analytics.json` during a "health check"
-- Claiming adoption success without citing specs_created / lessons_captured actuals
-
 ## Verification
 
 - [ ] `.claude/analytics.json` was read (or its absence reported)

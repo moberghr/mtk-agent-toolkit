@@ -117,21 +117,6 @@ The dashboard reads the same `{uuid}.json` + `{uuid}.events.jsonl` files this sk
 - `.mtk/` is gitignored by default. Treat artifacts as local diagnostic state, not committed history.
 - A `failure_stop_gate: fail` event terminates the workflow. Do not emit further events after `workflow_failed`.
 
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared table. Workflow-artifact-specific traps:
-
-- *"This is a small task, the artifact is overkill."* — Init takes one line; the value is realized only when something fails. Skipping it is the same as not having it when you need it.
-- *"I'll just track state in the conversation."* — Compaction silently destroys conversation state. The artifact exists exactly because chat is unreliable.
-- *"I'll write the JSON directly, faster than calling the script."* — The event log is the durable trace; direct writes silently break it.
-
-## Red Flags
-
-- Phase advances without a `phase_exit_gate: pass` event in the log.
-- `status: active` workflows older than 24 hours with no recent events.
-- Direct edits to `{uuid}.json` (the event log will not contain a corresponding `field_updated` event).
-- Multiple workflows of the same type both `active` (probably a missed close).
-
 ## Verification
 
 - [ ] `"$WFA" list` (resolved per step 1) shows the current workflow with the expected type and phase

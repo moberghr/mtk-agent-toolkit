@@ -35,7 +35,7 @@ values). When a finding matches one of these, cite its F-code in the finding's
 
 ## Output Contract
 
-Your output MUST follow `.claude/references/review-finding-schema.md`:
+Your output must follow `.claude/references/review-finding-schema.md`:
 
 1. A markdown table of surfaced findings (findings with `confidence >= threshold`)
 2. A fenced ```json block with the full structured result (verdict, summary, findings, optional context, rationale)
@@ -57,7 +57,7 @@ paths get severity bumps:
    normally `.mtk/workflows/<uuid>/context-pack.md`) — CLAUDE.md critical rules,
    the coding-guideline sections selected for this change, `[EXTRACTED]`
    architecture principles, applicable lessons. Read it instead of the files it
-   was built from. Fall back to the full list ONLY when no pack path was passed:
+   was built from. Fall back to the full list only when no pack path was passed:
    - `CLAUDE.md` — §1.x security/audit requirements; §2.x rules on result
      patterns and error propagation
    - `.claude/tech-stack` — active stack identifier

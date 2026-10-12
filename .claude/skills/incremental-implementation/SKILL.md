@@ -82,19 +82,6 @@ Implement in thin slices. Each slice must compile, test, and remain explainable 
 - Keep changes rollback-friendly and dependency-focused.
 - Do not mix unrelated cleanup into implementation batches.
 
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared table. Incremental-implementation-specific traps: "since I'm in the file already, I'll clean this up too" (that is how slices become unreadable and impossible to review — stay scoped per batch), and "this abstraction will help future work" (future work is hypothetical, current complexity is real — earn abstractions from duplication, don't pre-build them).
-
-## Red Flags
-
-- Skipped checkpoint
-- Batch grows beyond planned size
-- Behavioral diff no longer matches the original intent
-- Repeated build failures that suggest the design is wrong
-- New abstractions appearing before the third real use case
-- Cumulative non-generated churn exceeding the halt threshold (`MTK_CHURN_HALT_LINES`, default 500; 1000 at HIGH/MAX) without an intermediate review
-
 ## Verification
 
 - [ ] Each batch compiles and tests cleanly before the next begins

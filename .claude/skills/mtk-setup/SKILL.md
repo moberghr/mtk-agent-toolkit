@@ -18,7 +18,7 @@ MTK distinguishes between two setup tasks:
 - **Bootstrap (first-time setup):** Detect tech stack, pull coding guidelines, audit the codebase once, generate `AGENTS.md` (plus the `CLAUDE.md` shim that imports it), `.claude/tech-stack`, and `.claude/references/architecture-principles.md`. This is the one-time preparation.
 - **Re-audit:** Re-run the architectural audit only. Regenerates `.claude/references/architecture-principles.md` (and `conventions.md`) to reflect current reality. Use after significant architectural change.
 - **Merge:** Unify architecture audits from multiple repos (e.g., a team hub repo that aggregates `service-a`, `service-b`, etc.) into a single team-wide document.
-- **Refresh:** Drift-scoped refresh of ALL generated rules and findings (architecture-principles, conventions, detected-tools, reference pruning, AGENTS.md/tool configs, indexes) — not just the audit doc. `--check` is the CI gate that reports staleness without writing anything.
+- **Refresh:** Drift-scoped refresh of all generated rules and findings (architecture-principles, conventions, detected-tools, reference pruning, AGENTS.md/tool configs, indexes) — not just the audit doc. `--check` is the CI gate that reports staleness without writing anything.
 - **Converge:** Inverse of refresh — code is judged against the agreed `architecture-principles.md`/`conventions.md`, and violations are reported as graded work items (blocking/flag/note), never auto-fixed.
 
 ## When To Use
@@ -44,7 +44,7 @@ Parse the argument string into a mode and flags:
 | `--non-interactive` | Skip interview questions (bootstrap only) |
 | `--no-verify-commands` | Skip STEP 3.5a's build/test/format command execution during AGENTS.md generation (bootstrap only) |
 | `--update-guidelines` | Bump the pinned `moberghr/coding-guidelines` SHA in `.claude/manifest.json` to current HEAD and refresh recorded sha256 hashes. Does **not** re-run bootstrap; engineer must invoke `/mtk-setup` afterward if they want the new guidelines applied. Cannot be combined with other flags. |
-| `--refresh` | Drift-scoped refresh of ALL generated rules and findings (not just the audit doc). Delegates to `setup-refresh`. |
+| `--refresh` | Drift-scoped refresh of all generated rules and findings (not just the audit doc). Delegates to `setup-refresh`. |
 | `--dry-run` | Only with `--refresh`: print the invalidation plan, write nothing. |
 | `--check` | CI staleness gate — run `scripts/setup-refresh-plan.sh --check`, print its output, propagate its exit code. Writes nothing. |
 | `--converge` | Inverse of `--refresh`: judge the code against `architecture-principles.md`/`conventions.md` and report drift as graded work items (blocking/flag/note). Delegates to `setup-converge`. Read-only outside `.claude/.mtk-cache/`. |
@@ -87,12 +87,12 @@ Flag combination rules:
    ```bash
    curl -fsSL "https://raw.githubusercontent.com/moberghr/coding-guidelines/$CURRENT_SHA/$FILE_PATH" | sha256sum | awk '{print $1}'
    ```
-   Check `curl`'s exit status for every file (e.g. via `${PIPESTATUS[0]}`, since it's piped into `sha256sum`) — `-f` makes curl itself fail on HTTP error responses instead of emitting an error page as if it were file content. If any fetch fails, STOP immediately: report which file(s) failed and leave `$PM` untouched — do not write a pin update for only some of the files. Only proceed to step 5's write once every file's hash has been computed successfully.
+   Check `curl`'s exit status for every file (e.g. via `${PIPESTATUS[0]}`, since it's piped into `sha256sum`) — `-f` makes curl itself fail on HTTP error responses instead of emitting an error page as if it were file content. If any fetch fails, stop immediately: report which file(s) failed and leave `$PM` untouched — do not write a pin update for only some of the files. Only proceed to step 5's write once every file's hash has been computed successfully.
 4. Print a diff summary: old SHA → new SHA, plus any sha256 changes per file.
 5. **Write rule — never write into the plugin cache.** Determine the write target from `$PM`, not just from `CLAUDE_PLUGIN_ROOT` being set (the fallback below can also resolve to a plugin path):
    - If `$PM` is plugin-prefixed — under `${CLAUDE_PLUGIN_ROOT}` or under `~/.claude/plugins` (a marketplace install reading the plugin's own manifest) — do **not** write there. Instead write the updated pin to the repo-local `.claude/mtk-version.json`, under its `coding-guidelines` block (`repo`, `sha`, `files.<path>`) — create the block if absent, leaving every other top-level key (`version`, `installed`, `source`) untouched.
    - Otherwise — `$PM` is the local `.claude/manifest.json` (the toolkit repo itself, no plugin prefix), or `$PM` already fell back to `.claude/mtk-version.json` (no manifest reachable at all) — update that same file in place: `coding-guidelines.sha` and each `coding-guidelines.files.<path>` value.
-6. Tell the engineer: "Guidelines pin updated in `<file>`. Run `/mtk-setup --audit` or `/mtk-setup` to apply the new guidelines to this repo." The report line MUST name the file that now carries the updated pin (`.claude/manifest.json` or `.claude/mtk-version.json`). Do **not** auto-invoke bootstrap — the engineer decides when to apply.
+6. Tell the engineer: "Guidelines pin updated in `<file>`. Run `/mtk-setup --audit` or `/mtk-setup` to apply the new guidelines to this repo." The report line must name the file that now carries the updated pin (`.claude/manifest.json` or `.claude/mtk-version.json`). Do **not** auto-invoke bootstrap — the engineer decides when to apply.
 
 **Inline workflow for `--check`:**
 
@@ -113,7 +113,7 @@ For `--converge` on a repo with no `.claude/tech-stack` (or no stamped `architec
 
 ### STEP 2: Read and Follow the Target Skill
 
-Read the target SKILL.md (paths resolved per the MTK File Resolution section below). Follow every step of that skill inline — do NOT summarize or skip steps. The target skill owns its own verification section; run those checks before reporting back.
+Read the target SKILL.md (paths resolved per the MTK File Resolution section below). Follow every step of that skill inline — do not summarize or skip steps. The target skill owns its own verification section; run those checks before reporting back.
 
 ### STEP 3: Report
 

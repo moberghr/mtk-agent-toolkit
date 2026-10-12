@@ -28,7 +28,7 @@ test -f .claude/tech-stack || MISSING_TECH_STACK=1
 test -f .claude/mtk-version.json || MISSING_VERSION=1
 ```
 
-If either file is missing, STOP immediately and tell the engineer:
+If either file is missing, stop immediately and tell the engineer:
 
 > "This repo has not been bootstrapped yet (`.claude/tech-stack` and/or `.claude/mtk-version.json` missing). Run `/mtk-setup` (full bootstrap) first, then `/mtk-setup --refresh` on future re-runs."
 
@@ -44,7 +44,7 @@ Run the plan script and read its structured output — this is the sole source o
 bash scripts/setup-refresh-plan.sh --json
 ```
 
-Parse each artifact row (the script emits full paths: `.claude/references/architecture-principles.md`, `.claude/references/conventions.md`, `CLAUDE.md`, `.claude/detected-tools.json`, `AGENTS.md`, `path-references`, `permissions-baseline`, and the informational `.claude/setup-answers.json` row) for its `status` (`fresh` / `stale` / `missing` / `unstamped` / `unknown` / `present` / `absent`) and `reason`. STEP 3 scopes its regeneration entirely from this plan — do not re-derive staleness by re-reading the codebase from scratch. If the plan script itself fails or is not found, STOP and report the failure; do not silently degrade to a full re-audit as a workaround.
+Parse each artifact row (the script emits full paths: `.claude/references/architecture-principles.md`, `.claude/references/conventions.md`, `CLAUDE.md`, `.claude/detected-tools.json`, `AGENTS.md`, `path-references`, `permissions-baseline`, and the informational `.claude/setup-answers.json` row) for its `status` (`fresh` / `stale` / `missing` / `unstamped` / `unknown` / `present` / `absent`) and `reason`. STEP 3 scopes its regeneration entirely from this plan — do not re-derive staleness by re-reading the codebase from scratch. If the plan script itself fails or is not found, stop and report the failure; do not silently degrade to a full re-audit as a workaround.
 
 ## STEP 2: Dry-Run Gate
 
@@ -52,7 +52,7 @@ If `--dry-run` was passed:
 
 1. Re-run `bash scripts/setup-refresh-plan.sh` **without** `--json` and print the resulting plan table verbatim — every row, no reformatting or summarizing away entries (the table format exists only in the default output mode).
 2. Follow it with one paragraph describing what a full refresh would do, per stale/missing row (e.g., "`architecture-principles.md` is stale — 4 claims touch changed files under `src/Api/`; a refresh would re-read those files plus their containing modules, regenerate the affected sections, and propose any resulting diff against your on-disk copy per the regen-diff-contract before writing anything").
-3. STOP. Write nothing — no docs, no cache entries, no stamps, no `.claude/detected-tools.json` updates.
+3. Stop. Write nothing — no docs, no cache entries, no stamps, no `.claude/detected-tools.json` updates.
 
 ## STEP 3: Scoped Regeneration
 

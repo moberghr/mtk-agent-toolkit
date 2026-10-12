@@ -116,27 +116,6 @@ scripts/workflow-artifact.sh event "$MTK_WF_UUID" research_brief --data '{"quest
 - **Don't implement.** This skill produces a brief. Acting on it is another skill's job.
 - **Fan out only when the question is multi-angle.** The deep path's parallel subagents are for genuinely competing answers; a focused question stays on the light path.
 
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared table. Research-context-specific traps:
-
-| Rationalization | Reality |
-|---|---|
-| "I'll research the general approach, version doesn't matter" | Version is the whole point — a recommendation for v7 can be an anti-pattern in v9. Name the installed version first. |
-| "Web result says X, so I'll just code X" | A blog from two years ago about a different version is not grounding. Classify the finding and check it against the installed version + repo patterns. |
-| "The repo does it differently, I'll quietly switch to the modern way" | A conflict between repo and current best-practice is a decision for the spec/plan, surfaced explicitly — not a silent rewrite. |
-
-Full table: `.claude/references/workflow-rationalizations.md` → research-context.
-
-## Red Flags
-
-- A brief with `[CITED]` findings that have no URLs.
-- Findings stated without naming the installed library version.
-- Research that never names a single file from this repo (ungrounded — generic tutorial output).
-- The skill editing source files.
-- A multi-angle architecture decision answered from a single web page instead of the deep path's fan-out.
-- Conflicts between repo and best-practice silently resolved instead of surfaced.
-
 ## Verification
 
 - [ ] The framed question names the active stack and the installed library version (or records that it could not be found)

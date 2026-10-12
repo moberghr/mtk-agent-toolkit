@@ -131,18 +131,6 @@ chosen one.
   unless wide exploration was explicitly requested.
 - A divergence-mode result without a Trap Register is incomplete.
 
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared table. Brainstorming-specific traps: "there's really only one way to do this" (then present that one approach and explain why alternatives don't apply — the discipline still helps), and "let me prototype and then we'll decide" (prototyping creates sunk-cost bias — decide on the approach first, then build).
-
-## Red Flags
-
-- Implementation started before the approach was approved
-- Only one approach presented when multiple are viable
-- Tradeoffs described vaguely instead of concretely
-- Engineer's choice overridden silently
-- Brainstorming used to stall instead of converge
-
 ## Verification
 
 - [ ] Context was explored before proposing approaches

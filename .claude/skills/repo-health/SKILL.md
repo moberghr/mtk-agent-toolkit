@@ -46,7 +46,7 @@ Writes the combined report to `.claude/repo-health-latest.md` (always) and `.cla
    bash scripts/repo-health-score.sh
    ```
 
-   Capture stdout — this is the first half of the report.
+   Capture stdout — this is the first half of the report. The 12 assets are canonical (`.claude/references/repo-health-assets.md`); do not add assets without updating that reference.
 
 2b. **Run audit-drift check** on stamped docs. Best-effort, non-blocking.
 
@@ -106,13 +106,3 @@ Writes the combined report to `.claude/repo-health-latest.md` (always) and `.cla
 - The mining section either lists phrases with PR citations OR an explicit `Skipped: <reason>` line — never fabricated phrases.
 - No edits were made to `.claude/references/architecture-principles.md`.
 - `bash scripts/repo-health-score.sh --json | jq .medal` returns a non-empty string.
-
-## Red Flags
-
-| Rationalization | Reality |
-|---|---|
-| "I'll auto-promote the mined phrases to principles since they're already cited." | Mining is always suggest-only. Promotion is a separate, manual step with `[MINED:feedback]` tagging. |
-| "`gh` failed, so I'll guess what reviewers usually say." | Mining is fail-soft — leave the section empty rather than fabricate. |
-| "I'll add new assets on the fly to make the score look better." | The 12 assets are canonical (see `repo-health-assets.md`). Don't extend without updating the reference. |
-
-Full table: `.claude/references/workflow-rationalizations.md` → repo-health.

@@ -175,17 +175,6 @@ tests pass is exactly where this pays: passing tests are why nobody looked.
 - Security-sensitive changes need explicit scrutiny, not a passing glance.
 - Approve changes that improve overall code health even if they are not perfect.
 
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared MTK rationalization table. Review-specific traps: authors are blind to their own assumptions (self-review isn't review), "mostly style" is a dodge (real review starts with correctness and risk), and soft-pedaling a real production risk to avoid blocking progress is a review failure.
-
-## Red Flags
-
-- Review with no severity ordering
-- Security-sensitive diff with no security-focused findings or explicit clear statement
-- No verification story for the implementation
-- Large unreviewable change accepted as-is instead of flagged
-
 ## Verification
 
 - [ ] Every dispatched lane is accounted for as PASS / NEEDS_CHANGES / ABSTAINED / NO_RESPONSE

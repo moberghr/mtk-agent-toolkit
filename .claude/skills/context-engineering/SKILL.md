@@ -175,7 +175,7 @@ After completing reference loading at the end of Phase 0 (and after any subseque
 - If confidence drops, gather better context before guessing.
 - Track context budget: fewer, more relevant instructions beat more, diluted ones.
 - Respect `applyTo` globs: if a reference's globs don't match any touched
-  file, do NOT load it as a "just in case" measure. That defeats the budget.
+  file, do not load it as a "just in case" measure. That defeats the budget.
 - When in doubt about which globs match, use `git diff --name-only HEAD` as
   the authoritative list of touched files.
 - Reset proactively at a clean boundary once `/context` passes roughly 60%;
@@ -190,24 +190,6 @@ After completing reference loading at the end of Phase 0 (and after any subseque
 Route work by complexity: reserve `opus` for code that writes real logic and the adversarial reviews that protect serious software; run discovery, planning, and structured comparison on `sonnet`/`haiku`. The full per-phase tier policy (every phase and agent, with rationale per row) is the **single source of truth** in `.claude/references/model-routing.md` — read it there rather than duplicating a table here that would drift.
 
 Agent frontmatter `model:` sets the model for subagents. Entry-point skills run on the user's selected model. When a skill spawns a reviewer agent, the agent's frontmatter controls its model. In `model-routing.md` the skill rows are advisory defaults only (skills run on the session model); the agent rows are the enforced ones.
-
-## Common Rationalizations
-
-**Shared table for all MTK skills.** If you catch yourself thinking one of these, stop and re-read what the current skill actually requires. Excerpt:
-
-| Rationalization | Reality |
-|---|---|
-| "More context is always better" | No. Irrelevant context crowds out the rules that actually matter. |
-| "I already read a similar file in another project" | Local codebase patterns win over generic memory. |
-| "The tests pass, so this is fine" | Passing tests do not clear architecture, security, or performance risks. |
-
-Full table: `.claude/references/workflow-rationalizations.md` → context-engineering.
-
-## Red Flags
-
-- Editing without reading the target file and neighbors
-- Repeating generic patterns that the local codebase does not use
-- Loading many files with no clear reason
 
 ## Verification
 

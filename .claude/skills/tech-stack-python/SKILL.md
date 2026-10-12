@@ -27,7 +27,7 @@ Python is interpreted, so there's no separate compile step. Use type checking an
 - **Test (batch):** `pytest -q --tb=short <path/to/module>` or `pytest -q --tb=short -k <pattern>`
 - **Test (full):** `pytest -q --tb=short`
 - **Bounded output is the default.** Batch checkpoints run these through `bash scripts/mtk-verify-run.sh --label <batch-id>-<step> -- <cmd>` — the wrapper's bounded tail is the evidence, the log path is the receipt.
-- **Format:** `ruff format <path>` (or `black <path>` if the project uses black). Wired through `hooks/format-on-edit.sh`, which **queues** edited paths at PostToolUse and **formats** them at Stop — both halves must be wired or nothing is formatted. Do NOT use `$CLAUDE_FILE` — it is not a Claude Code env var.
+- **Format:** `ruff format <path>` (or `black <path>` if the project uses black). Wired through `hooks/format-on-edit.sh`, which **queues** edited paths at PostToolUse and **formats** them at Stop — both halves must be wired or nothing is formatted. Do not use `$CLAUDE_FILE` — it is not a Claude Code env var.
 - **Lint:** `ruff check <path>` (or `flake8` / `pylint` per project)
 
 If the project uses `tox`, the full test command is `tox`. If Poetry: `poetry run pytest`. If a Makefile or `justfile` exists, prefer the project-defined targets (`make test`, `just test`).
@@ -97,7 +97,7 @@ find . -maxdepth 2 \( -name "pyproject.toml" -o -name "setup.py" -o -name "requi
 - **Unit tests:** pure logic, validators, mappings, branching rules. Use `pytest` parametrize for edge cases.
 - **Integration tests:** endpoints, persistence, authentication, serialization. Use FastAPI `TestClient` or Django `Client` / DRF `APIClient`.
 - **End-to-end tests:** only when the project already uses them (Playwright, Selenium).
-- For SQLAlchemy/Django ORM behavior: do NOT default to SQLite in-memory if the production database is Postgres and you depend on Postgres features.
+- For SQLAlchemy/Django ORM behavior: do not default to SQLite in-memory if the production database is Postgres and you depend on Postgres features.
 - Use fixtures (`conftest.py`) for shared setup. Prefer `factory_boy` or `pytest-factoryboy` for test data.
 - Mock at boundaries (HTTP clients, message queues), not internal collaborators.
 

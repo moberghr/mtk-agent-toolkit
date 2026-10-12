@@ -169,24 +169,6 @@ Emit one fenced block summarizing all three queries:
 - Findings are deterministic where possible. Don't downgrade severity based
   on convenience.
 
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared table.
-Prior-work-specific traps: "I already grepped during planning" (you grepped
-for the spec's chosen name — re-grep for the capability under other names),
-"there's nothing in lessons.md about this" (re-read with synonyms — lessons
-are written in human prose, not your chosen keywords), and "security_impact
-is conservative enough" (regulated paths drive the floor; never the
-engineer's gut feel).
-
-## Red Flags
-
-- Skipped Query 1 because "I already know there's no implementation"
-- Query 2 read lessons.md but didn't grep architecture-principles.md
-- Query 3 produced `regulated` matches but the spec's `security_impact`
-  wasn't reclassified
-- Verdict `PASS` with one or more BLOCK findings hidden in the body
-
 ## Verification
 
 - [ ] All three queries ran with output captured

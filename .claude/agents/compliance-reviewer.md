@@ -29,7 +29,7 @@ say so — a zero-finding pass with a clear rationale is better than manufacture
 
 ## Output Contract
 
-Your output MUST follow `.claude/references/review-finding-schema.md`:
+Your output must follow `.claude/references/review-finding-schema.md`:
 
 1. A markdown table of surfaced findings (findings with `confidence >= threshold`)
 2. A fenced ```json block containing the full structured result (verdict,
@@ -52,7 +52,7 @@ counted in `summary.filtered_below_threshold`.
 
 Read these files — they are your review checklists:
 
-1. **The context pack** at the path the orchestrator passes (`results.context_pack`, normally `.mtk/workflows/<uuid>/context-pack.md`) — build/test/format commands, CLAUDE.md critical rules, the coding-guideline sections selected for this change, `[EXTRACTED]` architecture principles, and applicable lessons. Read it instead of the files it was built from. Fall back to the full list ONLY when no pack path was passed (a standalone run):
+1. **The context pack** at the path the orchestrator passes (`results.context_pack`, normally `.mtk/workflows/<uuid>/context-pack.md`) — build/test/format commands, CLAUDE.md critical rules, the coding-guideline sections selected for this change, `[EXTRACTED]` architecture principles, and applicable lessons. Read it instead of the files it was built from. Fall back to the full list only when no pack path was passed (a standalone run):
    - `CLAUDE.md` — project overview, critical rules (§0.x), standards reference
    - `.claude/tech-stack` — the active stack word (e.g., `dotnet`, `python`)
    - `.claude/skills/tech-stack-{stack}/SKILL.md` — reference paths, ORM guidance, framework patterns; its `## Reference Files` names the stack docs below
@@ -74,7 +74,7 @@ actual conventions. Inconsistency with existing code is a finding.
 If the implementer provided a **behavioral diff** (a statement of what changed for
 callers/users), read it carefully. This tells you:
 - What the implementation INTENDED to change
-- What should NOT have changed
+- What should not have changed
 
 Use this to focus your review. If the actual code changes don't match the stated
 behavioral diff, that is a **Critical** finding — the implementation doesn't match its

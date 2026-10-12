@@ -221,32 +221,6 @@ After applying edits:
   Nested per-package `AGENTS.md`/`CLAUDE.md` files get the full rubric only
   when they carry package-local content beyond a pointer to the root.
 
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared MTK
-rationalization table. Audit-specific traps:
-
-- **"I should find at least one issue per criterion."** No. Empty findings
-  with rationale beats manufactured ones.
-- **"This whole section is stale; I should rewrite it."** No. Propose a diff
-  of the smallest change that fixes the gap, then ask. Wholesale rewrites are
-  the engineer's call, not the skill's.
-- **"The codebase has so many new conventions; I should add them all."**
-  Captures should be specific to *this* constitution file, not a generic
-  best-practices dump. If a convention is not yet enforced, it doesn't
-  belong here.
-- **"CLAUDE.md has no Critical Rules section, I should flag that as rot."**
-  No — a shim legitimately has no rules section of its own; check its
-  `@AGENTS.md` import instead (Phase 2.4).
-
-## Red Flags
-
-- Audit report with no rubric scores (just prose impressions)
-- Edits applied before user approval
-- A "rewrite the whole file" proposal in Phase 4
-- Currency cross-checks skipped — broken-command rot is the highest-value
-  finding and must not be missed
-
 ## Verification
 
 - [ ] Phase 2 currency checks ran and broken references are listed (or "none

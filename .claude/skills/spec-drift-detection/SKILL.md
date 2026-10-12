@@ -34,7 +34,7 @@ code, a compliance risk in regulated environments; detect divergence before revi
 1. **Locate the spec manifest.**
    - Default: the latest `docs/specs/*.json` on the current branch.
    - Override: accept an explicit path if the engineer supplies one.
-   - If no manifest exists, **STOP** and report `BLOCKED — no spec manifest
+   - If no manifest exists, **stop** and report `BLOCKED — no spec manifest
      found; drift cannot be checked. Either generate one via
      `spec-driven-development` or confirm this change is quick-fix scope.`
 
@@ -73,10 +73,10 @@ code, a compliance risk in regulated environments; detect divergence before revi
 
    | Axis | Finding criteria | Confidence band |
    |------|------------------|-----------------|
-   | File-list match | File touched that is NOT in change_manifest | 95–100 (deterministic) |
-   | File-list match | Derived artifact touched that is NOT in change_manifest | **not a finding** — see below |
-   | File-list match | File declared in change_manifest that was NOT touched | 95–100 |
-   | Public contract | Signature added that is NOT in public_contracts | 85–95 |
+   | File-list match | File touched that is not in change_manifest | 95–100 (deterministic) |
+   | File-list match | Derived artifact touched that is not in change_manifest | **not a finding** — see below |
+   | File-list match | File declared in change_manifest that was not touched | 95–100 |
+   | Public contract | Signature added that is not in public_contracts | 85–95 |
    | Public contract | Contract declared but not implemented | 90–100 |
    | Security impact | `security_impact: none` but auth/payments/audit files touched | 95+ |
    | Out-of-scope | Declared out_of_scope item that appears to be implemented | 80–90 |
@@ -206,19 +206,6 @@ determined by the principle's confidence tag:
 If `architecture-principles.md` is missing or has no tags (legacy format),
 skip principle drift and continue with manifest drift only — emit a one-line
 note that principle drift was unavailable.
-
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared table. Drift-specific traps: "the extra file was just a helper, it's basically in scope" (if it wasn't in the change_manifest, the approval gate did not cover it — flag it), "security_impact was 'none' but this auth change is tiny" (if the diff touches auth, payments, or audit — even tiny — the field was wrong), and "this drift is minor, I'll just fix it silently" (silent drift is the exact compliance failure this skill exists to prevent — emit the finding).
-
-## Red Flags
-
-- Drift check run without a spec manifest on disk
-- Reviewer silently modifies the spec to match the implementation
-- Critical drift downgraded to warning because "it's close enough"
-- `security_impact` field ignored because the diff "looks small"
-- Out-of-scope items marked as acceptable scope expansion without engineer
-  confirmation
 
 ## Gate
 

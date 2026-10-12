@@ -9,125 +9,7 @@ user-invocable: true
 
 # MTK — Unified Entry Point
 
-You are a router. Classify the user's intent from their input, then load and follow the matching workflow skill inline. Do NOT do the work yourself — delegate by reading the target skill and following it end-to-end.
-
-## Routing Decision Graph
-
-This graph is the canonical decision flow. The Route Table below is the lookup; this graph is the order. Walk the diamonds top to bottom; first match wins.
-
-```dot
-digraph mtk_routing {
-  rankdir=TB;
-  node [shape=box, style=rounded, fontname="Helvetica"];
-  edge [fontname="Helvetica", fontsize=10];
-
-  start    [label="user input"];
-  empty    [label="empty / help?", shape=diamond];
-  help     [label="print help", style="rounded,filled", fillcolor="#e8f0ff"];
-  bfesc    [label="contains\n'escalated from fix (batch)'?", shape=diamond];
-  esc      [label="contains 'escalated from fix'\nor 'escalated from batch-fix'?", shape=diamond];
-  setup    [label="setup / bootstrap /\naudit / init / first time?", shape=diamond];
-  redirect [label="redirect: /mtk-setup", style="rounded,filled", fillcolor="#e8f0ff"];
-  rev      [label="review / commit /\nstaged / pre-commit?", shape=diamond];
-  pcr      [label="pre-commit-review", style="rounded,filled", fillcolor="#e0f0e0"];
-  rhlth    [label="repo-health / readiness /\nscorecard / ai-ready?", shape=diamond];
-  rh       [label="repo-health", style="rounded,filled", fillcolor="#e0f0e0"];
-  prm      [label="mine prs /\npr mining?", shape=diamond];
-  prmine   [label="pr-review-mining", style="rounded,filled", fillcolor="#e0f0e0"];
-  doc      [label="doctor / broken /\nintegrity / install health?", shape=diamond];
-  mdoc     [label="mtk-doctor", style="rounded,filled", fillcolor="#e0f0e0"];
-  hlth     [label="usage / stats /\nanalytics / adoption?", shape=diamond];
-  th       [label="toolkit-health", style="rounded,filled", fillcolor="#e0f0e0"];
-  rsch     [label="research / best practice /\ncurrent way / latest version?", shape=diamond];
-  rc       [label="research-context", style="rounded,filled", fillcolor="#e0f0e0"];
-  fixv     [label="fix / bug / broken /\nerror / typo / failing?", shape=diamond];
-  feat     [label="add / create / build /\nfeature / implement / new?", shape=diamond];
-  ambig    [label="ALSO matches feature\n(e.g. 'fix the auth feature')?", shape=diamond];
-  ask      [label="ask ONE Q:\nsmall fix (1-3 files),\nbatch of small independent fixes,\nor larger feature?", style="rounded,filled", fillcolor="#fff8d0"];
-  bfixv    [label="multiple independent small\nfixes / corrective batch,\nno new contract?", shape=diamond];
-  fix      [label="fix", style="rounded,filled", fillcolor="#e0f0e0"];
-  bfixkw   [label="explicit batch-fix keywords?\n('batch fix' / 'apply review\nfindings' / 'corrective batch')", shape=diamond];
-  bfix     [label="batch-fix", style="rounded,filled", fillcolor="#e0f0e0"];
-  dup      [label="audit duplicates /\nduplicate capabilities?", shape=diamond];
-  simp     [label="code-simplification\n(--audit-duplicates)", style="rounded,filled", fillcolor="#e0f0e0"];
-  impl     [label="implement", style="rounded,filled", fillcolor="#e0f0e0"];
-  stat     [label="status / report /\nwhat's loaded / diagnostic?", shape=diamond];
-  cr       [label="context-report", style="rounded,filled", fillcolor="#e0f0e0"];
-  cmd      [label="audit agents.md /\nclaude.md stale?", shape=diamond];
-  cma      [label="instructions-audit", style="rounded,filled", fillcolor="#e0f0e0"];
-  cmc      [label="capture session\nlearnings to agents.md?", shape=diamond];
-  cmcap    [label="instructions-capture", style="rounded,filled", fillcolor="#e0f0e0"];
-  prom     [label="promote / share\na lesson?", shape=diamond];
-  plsn     [label="promote-lesson", style="rounded,filled", fillcolor="#e0f0e0"];
-  lmine    [label="mine lessons / harvest\nlessons / what did we learn?", shape=diamond];
-  lmn      [label="lesson-mining", style="rounded,filled", fillcolor="#e0f0e0"];
-  lref     [label="refresh / audit / prune\nstale lessons?", shape=diamond];
-  lrf      [label="lesson-refresh", style="rounded,filled", fillcolor="#e0f0e0"];
-  ho       [label="hand off / save state /\nsnapshot session?", shape=diamond];
-  hoff     [label="handoff", style="rounded,filled", fillcolor="#e0f0e0"];
-
-  start -> empty;
-  empty -> help [label="yes"];
-  empty -> bfesc [label="no"];
-  bfesc -> bfix  [label="yes (internal marker)"];
-  bfesc -> esc   [label="no"];
-  esc   -> impl  [label="yes (internal marker)"];
-  esc   -> bfixkw [label="no"];
-  bfixkw -> bfix [label="yes"];
-  bfixkw -> dup  [label="no"];
-  dup    -> simp [label="yes"];
-  dup    -> rev  [label="no"];
-  rev   -> pcr  [label="yes"];
-  rev   -> rhlth [label="no"];
-  rhlth -> rh   [label="yes"];
-  rhlth -> prm  [label="no"];
-  prm   -> prmine [label="yes"];
-  prm   -> doc  [label="no"];
-  doc   -> mdoc [label="yes"];
-  doc   -> hlth [label="no"];
-  hlth  -> th   [label="yes"];
-  hlth  -> rsch [label="no"];
-  rsch  -> rc   [label="yes"];
-  rsch  -> fixv [label="no"];
-  fixv  -> ambig [label="yes"];
-  ambig -> ask  [label="yes"];
-  ambig -> fix  [label="no"];
-  ask   -> fix  [label="user: small fix"];
-  ask   -> bfix [label="user: batch of small fixes"];
-  ask   -> impl [label="user: larger feature"];
-  fixv  -> bfixv [label="no"];
-  bfixv -> bfix  [label="yes"];
-  bfixv -> feat  [label="no"];
-  feat  -> impl [label="yes"];
-  feat  -> stat [label="no"];
-  stat  -> cr   [label="yes"];
-  stat  -> cmd  [label="no"];
-  cmd   -> cma  [label="yes"];
-  cmd   -> cmc  [label="no"];
-  cmc   -> cmcap [label="yes"];
-  cmc   -> prom [label="no"];
-  prom  -> plsn [label="yes"];
-  prom  -> lmine [label="no"];
-  lmine -> lmn  [label="yes"];
-  lmine -> lref [label="no"];
-  lref  -> lrf  [label="yes"];
-  lref  -> ho   [label="no"];
-  ho    -> hoff [label="yes"];
-  ho    -> setup [label="no"];
-  setup -> redirect [label="yes"];
-  setup -> help [label="no match → help"];
-}
-```
-
-**Red flags while routing:**
-
-| Rationalization | Reality |
-|---|---|
-| "User said 'fix' so just route to fix" | Check for feature-sized nouns first ("fix the auth system") — that's the ambig branch, ask once. |
-| "Setup-ish wording, I'll route to implement" | Setup is `/mtk-setup` only. Always redirect, never absorb. |
-| "I'll summarize what they want before routing" | Pass the original description through verbatim (Rule 6). |
-| "Two diamonds match, I'll just pick one" | If both match with similar specificity, ask one Q. Silent guessing = wrong half the time. |
-| "Several small fixes, so route to implement" | Multiple independent fixes with no new contract is `batch-fix`, not implement's full apparatus. |
+You are a router. Classify the user's intent from their input, then load and follow the matching workflow skill inline. Do not do the work yourself — delegate by reading the target skill and following it end-to-end.
 
 ## Route Table
 
@@ -161,11 +43,11 @@ Match the user's input against these patterns. Check from top to bottom; first m
 
 ## Route Disambiguation (negative boundaries)
 
-Positive keyword matches collide on adjacent intents. These boundaries say when NOT to take
+Positive keyword matches collide on adjacent intents. These boundaries say when not to take
 the obvious route — encoding the contested pairs measurably cuts misroutes (borrow:
 awesome-harness-engineering negative-example routing).
 
-| Route to… | …NOT… | …when |
+| Route to… | …not… | …when |
 |---|---|---|
 | `fix` | `implement` | the change is 1–3 files with no new public contract; if it's feature-sized it's `implement`, if it's several small independent fixes it's `batch-fix` (ambig branch → ask once) |
 | `batch-fix` | `fix` | the batch is more than 3 files OR multiple distinct independent fixes — too big for the single-change `fix` loop. A purely mechanical sweep past 3 files is no exception: it runs in batch-fix's mechanical mode |

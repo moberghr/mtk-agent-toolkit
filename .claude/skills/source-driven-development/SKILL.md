@@ -44,16 +44,6 @@ When framework behavior matters, memory is not enough. Verify unfamiliar APIs ag
 - Prefer authoritative sources over memory.
 - If the behavior cannot be verified, state that plainly.
 
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared table. Source-driven-specific traps: "this API probably behaves like the last one I used" (similar names cause production bugs — verify the actual contract for this version), and "I'll fix it if it breaks" (source checks are cheaper than post-failure recovery, especially for transaction or security behavior).
-
-## Red Flags
-
-- New framework usage with no evidence behind it
-- Version-sensitive assumptions stated as certainty
-- Security or transaction behavior guessed from memory
-
 ## Verification
 
 - [ ] Uncertain APIs were identified

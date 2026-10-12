@@ -43,15 +43,15 @@ Before writing any skill content:
 
 1. Follow the anatomy defined in `docs/skill-anatomy.md`:
    - Required: frontmatter (`name`, `description`, `type: skill` — or `type: tech-stack` for tech stack skills), `# Title`, `## Overview`, `## When To Use`, `## Workflow`, `## Verification`
-   - Recommended: `### When NOT To Use`, `## Red Flags`, `## Rules`
-   - The shared MTK rationalization table lives in `.claude/references/workflow-rationalizations.md`. Do **not** duplicate universal rationalizations here. Only add a short `## Common Rationalizations` section if the skill has one or two traps that are genuinely specific (and reference the shared table at the top).
+   - Recommended: `### When NOT To Use`, `## Rules`
+   - Do not add rationalization tables, red-flag lists, or ALL-CAPS emphasis. Current models follow instructions literally and over-trigger on pressure language; state each rule once, in plain words, in the step it governs.
 
 2. **Apply the CSO principle:** The `description` in frontmatter must trigger on conditions, not summarize the workflow.
    - Bad: "Create implementation plans with acceptance criteria and dependency ordering"
    - Good: "Use after a spec is approved and before multi-file implementation begins"
    - Why: Workflow summaries cause the agent to follow the description instead of reading the full SKILL.md
 
-3. **Identify skill-specific rationalizations:** The shared table in `.claude/references/workflow-rationalizations.md` covers universal shortcuts. For each step this specific skill might be skipped over, note whether the shortcut is truly unique to this skill. If yes, add a 1-2 entry `## Common Rationalizations` section referencing the shared table. If no, rely on the shared table alone.
+3. **Put field-earned rules in the workflow:** When a baseline failure shows a step being skipped, close it with one plain sentence in that step (what to do and, if it is not obvious, why). Do not restate it in a separate table or list.
 
 4. **Write verification checklist:** Every claim the skill makes about outcomes must have a verification step.
 
@@ -72,9 +72,7 @@ Before writing any skill content:
 
 2. Run each scenario and verify the skill holds.
 3. If the skill breaks, strengthen the specific gap:
-   - Add the rationalization to the table
-   - Add the red flag
-   - Tighten the workflow step
+   - Tighten the workflow step that was skipped
 
 4. Save pressure tests to `tests/pressure-tests/<skill-name>-pressure.md`.
 
@@ -115,7 +113,7 @@ When a skill runs repeatedly across sessions — especially a reviewer agent or 
 
 **Rule:** put invariants first, volatile state last.
 
-- Invariants (top): persona statement, output contract, standards checklist, rationalization table, red flags. These never change between sessions.
+- Invariants (top): persona statement, output contract, standards checklist. These never change between sessions.
 - Dynamic state (bottom): current branch, diff stats, touched files, behavioral diff. Inject these via `` !`command` `` fenced blocks or at the call site, not woven through the static body.
 
 A good reviewer agent has the same top ~80% byte-for-byte across every invocation, with only the diff + behavioral-diff injected at the end. That prefix caches; subsequent sessions pay only for the tail.
@@ -125,30 +123,18 @@ Entry-point skills follow the same pattern — Phase 0 load instructions stay id
 ## Rules
 
 - No skill without baseline failure observations.
-- No skill without rationalization coverage (shared-table reference or skill-specific entries).
+- Field-earned rules live in the workflow step they govern, stated once in plain words.
 - No skill without a verification checklist.
 - Descriptions trigger on conditions, never summarize workflows (CSO principle).
 - Keep frequently-loaded skills under 500 lines.
 - Test discipline-enforcing skills with adversarial pressure scenarios.
 - Cache-stable prefix for reviewer agents and high-traffic entry-point skills: invariants top, dynamic state bottom.
 
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared table. Writing-skills specific traps: "the skill is obvious, I don't need to test it" (obvious skills get ignored — test to find the gaps), and "this description summarizes the skill well" (summarizing triggers the agent to follow the summary instead of reading the full content — use trigger conditions).
-
-## Red Flags
-
-- Skill written without observing baseline failures first
-- Description summarizes the workflow instead of triggering on conditions
-- No rationalization table
-- No pressure tests
-- Skill exceeds 500 lines without progressive disclosure
-
 ## Verification
 
 - [ ] Baseline failures were documented before writing the skill
 - [ ] Description follows the CSO principle (condition-based triggering)
-- [ ] Rationalization table covers every skippable step
+- [ ] Every skippable step states its rule in the step itself (no rationalization tables or red-flag lists)
 - [ ] Verification checklist covers every outcome claim
 - [ ] SKILL.md is under 500 lines
 - [ ] Pressure tests exist and the skill passes them

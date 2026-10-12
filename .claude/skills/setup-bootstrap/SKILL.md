@@ -38,7 +38,7 @@ The content you generate is subject to an **instruction budget** — compliance 
 
 1. **Root AGENTS.md target: 60–80 lines. Hard cap: 120 lines.** If you can't get under 120, something belongs in `.claude/rules/` or a hook, not AGENTS.md. The `CLAUDE.md` shim gets its own cap: ~20 lines, and no rule text at all.
 2. **Trigger-action rules with the reason attached.** Prefer `When X, do Y — because Z` over bare `Always follow X`. Describe the wanted behavior rather than enumerating failures, and write prohibitions only for constraints the codebase actually enforces (the counter-example gate in STEP 3 decides which). Do not add `IMPORTANT:` / `YOU MUST` markers: current models weight the system prompt closely, so the markers cause over-triggering and rigid behavior instead of compliance.
-3. **Mechanize what you can.** If a rule can live in a hook or `settings.json` deny-list, put it there and do NOT duplicate in AGENTS.md.
+3. **Mechanize what you can.** If a rule can live in a hook or `settings.json` deny-list, put it there and do not duplicate in AGENTS.md.
 4. **No aspirational rules.** Every rule must come from an actual pattern or actual failure mode in this codebase. If you're inventing it, drop it.
 5. **No list-of-everything.** Omit rules Claude can figure out from reading the code (e.g., "use async/await" in a JS project).
 
@@ -149,7 +149,7 @@ If the fetch fails (network restrictions), check if the file already exists. If 
 Check if `.claude/references/architecture-principles.md` exists.
 
 - **If it exists:** leave it alone — init respects prior architecture decisions.
-- **If it does NOT exist:** auto-generate it from the Step 2 audit findings using the same template as `/mtk-setup --audit` (descriptive audit of actual patterns, with "⚠️ Inconsistency" flags where the codebase disagrees with itself). No prompt — this is the one-time bootstrap. The inline generation must include the repomap evidence pass (setup-audit STEP 0.5) and the mandatory `## Provenance` section (setup-audit STEP 3.5) — if you cannot run those inline, delegate the generation to `setup-audit` instead of producing an unevidenced document.
+- **If it does not exist:** auto-generate it from the Step 2 audit findings using the same template as `/mtk-setup --audit` (descriptive audit of actual patterns, with "⚠️ Inconsistency" flags where the codebase disagrees with itself). No prompt — this is the one-time bootstrap. The inline generation must include the repomap evidence pass (setup-audit STEP 0.5) and the mandatory `## Provenance` section (setup-audit STEP 3.5) — if you cannot run those inline, delegate the generation to `setup-audit` instead of producing an unevidenced document.
 
 To refresh the file later as the architecture evolves, the engineer runs `/mtk-setup --audit` explicitly.
 
@@ -250,7 +250,7 @@ The generated output follows Claude Code best practices:
 - **Root `CLAUDE.md`** is the shim: ~20 lines, no rule text of its own.
 - **`.claude/rules/*.md`** files hold detailed, topic-specific rules (auto-loaded by Claude Code)
 - **`.claude/references/`** files are read on-demand by skills and agents (not duplicated)
-- **Hooks / `settings.json` deny-list** handle anything mechanically enforceable (formatting, secret scanning, banned commands) — do NOT duplicate those rules in AGENTS.md.
+- **Hooks / `settings.json` deny-list** handle anything mechanically enforceable (formatting, secret scanning, banned commands) — do not duplicate those rules in AGENTS.md.
 
 ### If neither AGENTS.md nor CLAUDE.md exists → Generate from scratch
 
@@ -296,7 +296,7 @@ Generate each file below. **Only generate files for sections relevant to this pr
 
 Each rules file target: **30–80 lines**. Be concise.
 
-#### Every rule file MUST open with auto-attach frontmatter
+#### Every rule file must open with auto-attach frontmatter
 
 Without it, **every** rule file loads into **every** request, forever. That is the
 single largest always-on cost bootstrap can inflict on a repo: measured at 30KB
@@ -332,7 +332,7 @@ The rule file templates are largely the same as before — adapt the content per
 - `project-specific.md` — anything unique
 
 ### Rules for Generation
-- **Counter-example gate — run before emitting any absolute rule.** A pattern seen *somewhere* is not a law. Before writing any rule containing `NEVER`, `ALWAYS`, `all`, `every`, or `must`, grep for counter-examples and count hits that contradict it. If ANY exist, do NOT state it as absolute — soften to `Prefer X`, note the exception count/location, and tag `[CONVENTION]` not `[ENFORCED]`. Reserve absolute language / `[ENFORCED]` for zero-counter-example, build-gated or tool-enforced rules.
+- **Counter-example gate — run before emitting any absolute rule.** A pattern seen *somewhere* is not a law. Before writing any rule containing `NEVER`, `ALWAYS`, `all`, `every`, or `must`, grep for counter-examples and count hits that contradict it. If ANY exist, do not state it as absolute — soften to `Prefer X`, note the exception count/location, and tag `[CONVENTION]` not `[ENFORCED]`. Reserve absolute language / `[ENFORCED]` for zero-counter-example, build-gated or tool-enforced rules.
 - Every rule in `.claude/rules/` must have a section number (§X.Y) for review agents to cite.
 - Include **code examples** from the actual codebase where possible.
 - Flag conflicts: "⚠️ Guideline says X, but codebase does Y. Standardize on: [recommendation]"
@@ -344,9 +344,9 @@ The rule file templates are largely the same as before — adapt the content per
 
 ## STEP 3.5a: Verify Generated References
 
-Before writing files (or presenting preview), validate every concrete directory, project, and file claim in ALL generated content. This prevents stale references from appearing when bootstrap runs alongside cleanup or when solution files reference deleted projects.
+Before writing files (or presenting preview), validate every concrete directory, project, and file claim in all generated content. This prevents stale references from appearing when bootstrap runs alongside cleanup or when solution files reference deleted projects.
 
-**Scope:** Verify claims in ALL generated files — `AGENTS.md`, `.claude/references/architecture-principles.md`, every `.claude/rules/*.md`, and (if monorepo) every per-package `CLAUDE.md`. The `CLAUDE.md` shim carries no claims of its own, so it needs no pass.
+**Scope:** Verify claims in all generated files — `AGENTS.md`, `.claude/references/architecture-principles.md`, every `.claude/rules/*.md`, and (if monorepo) every per-package `CLAUDE.md`. The `CLAUDE.md` shim carries no claims of its own, so it needs no pass.
 
 **Verification procedure:** run `scripts/verify-references.sh` over every generated doc. It performs four mechanical checks — path/directory claims (only backtick-spanned path tokens, resolved against root, `src/`, and the git index to avoid prose false positives), `.csproj` project-file existence, an informational framework/version dump for cross-checking, and solution-membership vs disk reality — and prints `STALE …` lines (exit 3 if any found, 0 if clean). Rules files are passed in, which also covers their project/dir proper-noun references.
 
@@ -361,10 +361,10 @@ bash scripts/verify-references.sh AGENTS.md \
 - If a directory/project is referenced as "exists" but doesn't → remove the reference or mark as removed.
 - If a directory/project is referenced as "not on disk" but does exist → correct the claim.
 - If a framework version is claimed but no project file uses it → remove the claim.
-- If a solution references a project that doesn't exist on disk → note the stale solution entry but do NOT modify the `.sln` file.
+- If a solution references a project that doesn't exist on disk → note the stale solution entry but do not modify the `.sln` file.
 - Re-run this check after any file deletions or renames in the same session.
 
-**Rule:** Never infer disk presence from solution membership, package manifests, or lock files alone. The `test -d` / `test -f` check is the source of truth. The generated content must reflect the repository state AT THE TIME OF WRITING, not at the time of scanning. **Claim-level grounding (MANDATORY):** after writing each generated doc, run `bash scripts/verify-claims.sh <file>` and apply `.claude/references/audit-grounding.md` (rule tags `[ENFORCED]/[CONVENTION]/[ASPIRATIONAL]`, `<!-- mtk-stamp -->` footer on AGENTS.md, zero-hit downgrades, transient-state and terminology flags, paste-ready weak-claims report).
+**Rule:** Never infer disk presence from solution membership, package manifests, or lock files alone. The `test -d` / `test -f` check is the source of truth. The generated content must reflect the repository state AT THE TIME OF WRITING, not at the time of scanning. **Claim-level grounding (mandatory):** after writing each generated doc, run `bash scripts/verify-claims.sh <file>` and apply `.claude/references/audit-grounding.md` (rule tags `[ENFORCED]/[CONVENTION]/[ASPIRATIONAL]`, `<!-- mtk-stamp -->` footer on AGENTS.md, zero-hit downgrades, transient-state and terminology flags, paste-ready weak-claims report).
 
 ### Command verification (F7)
 
@@ -448,7 +448,7 @@ Read the all-stacks baseline `.claude/references/settings-baseline.md` (sections
 Shared reference files ship as generic, multi-stack guidance with "match existing" placeholders. After confirming they exist, substitute those placeholders with concrete scan findings so that every subsequent `/mtk` implement and review run gets project-specific guidance without re-scanning.
 
 **When to customize:** Only when the scan found exactly ONE tool in a category (unambiguous evidence).
-**When NOT to customize:** If the scan found multiple tools (e.g., both xUnit and NUnit), or zero matches — leave the generic guidance intact.
+**When not to customize:** If the scan found multiple tools (e.g., both xUnit and NUnit), or zero matches — leave the generic guidance intact.
 
 The per-stack substitution tables (which generic placeholder maps to which concrete replacement, per category) and the full procedure live in **`.claude/references/bootstrap-customization.md`**. Read it now for the active stack and apply the substitutions. Only narrow on unambiguous single-tool evidence; never remove sections for tools the project doesn't use yet.
 
@@ -508,7 +508,7 @@ This produces `.claude/references.index` — a tab-separated file used by routin
 
 ## STEP 4.95: Seed CODE_INDEX.md
 
-Seed a repo-root `CODE_INDEX.md` from `.claude/references/code-index-template.md` (handlers/controllers/services by domain); skip if it exists; consumed by `code-simplification --audit-duplicates`. **Never ship the template's placeholder rows as real entries** (a prior-work scan would chase ghosts). Populate from the audit's actual capabilities — each row's `path:Symbol` MUST resolve (`test -f`/`git ls-files`) — or, if you can't, write an explicitly-empty index ("No capabilities indexed yet — ask Claude to run the `code-simplification` skill in `--audit-duplicates` mode") with no rows that look like real entries.
+Seed a repo-root `CODE_INDEX.md` from `.claude/references/code-index-template.md` (handlers/controllers/services by domain); skip if it exists; consumed by `code-simplification --audit-duplicates`. **Never ship the template's placeholder rows as real entries** (a prior-work scan would chase ghosts). Populate from the audit's actual capabilities — each row's `path:Symbol` must resolve (`test -f`/`git ls-files`) — or, if you can't, write an explicitly-empty index ("No capabilities indexed yet — ask Claude to run the `code-simplification` skill in `--audit-duplicates` mode") with no rows that look like real entries.
 
 ## STEP 5: Verify & Report
 

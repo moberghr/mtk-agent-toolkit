@@ -45,16 +45,6 @@ Use tests as proof of intent, not cleanup after coding. The test should define t
 - Prefer behavior assertions over implementation-detail assertions.
 - Match local test naming and fixture patterns.
 
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared table. TDD-specific traps: "I'll add the test after the code works" (then the test proves your implementation, not the intended behavior — write it failing first), "a unit test is enough for this query" (not if the risk lives in translation, provider behavior, or relational semantics — check the tech stack's ORM guidance), and "this assertion is good enough" (if it wouldn't fail on a real regression, it is not good enough).
-
-## Red Flags
-
-- Behavior changed with no new or updated test
-- Assertions only prove no exception or no error
-- In-memory or mock provider used for behavior that depends on real database semantics
-
 ## Verification
 
 - [ ] The test failed before the implementation

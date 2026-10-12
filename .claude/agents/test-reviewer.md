@@ -25,7 +25,7 @@ with a clear rationale is better than manufactured findings.
 
 ## Output Contract
 
-Your output MUST follow `.claude/references/review-finding-schema.md`:
+Your output must follow `.claude/references/review-finding-schema.md`:
 
 1. A markdown table of surfaced findings (findings with `confidence >= threshold`)
 2. A fenced ```json block containing the full structured result (verdict, summary, findings, rationale)
@@ -40,7 +40,7 @@ low-confidence findings just to have output; instead produce an explicit
 
 Read these files — they are your review checklists:
 
-1. **The context pack** at the path the orchestrator passes (`results.context_pack`, normally `.mtk/workflows/<uuid>/context-pack.md`) — build/test/format commands, CLAUDE.md critical rules, the coding-guideline sections selected for this change, `[EXTRACTED]` architecture principles, and applicable lessons. Read it instead of the files it was built from. Fall back to the full list ONLY when no pack path was passed (a standalone run):
+1. **The context pack** at the path the orchestrator passes (`results.context_pack`, normally `.mtk/workflows/<uuid>/context-pack.md`) — build/test/format commands, CLAUDE.md critical rules, the coding-guideline sections selected for this change, `[EXTRACTED]` architecture principles, and applicable lessons. Read it instead of the files it was built from. Fall back to the full list only when no pack path was passed (a standalone run):
    - `CLAUDE.md` — project overview, critical rules, standards reference
    - `.claude/tech-stack` — the active stack word (e.g., `dotnet`, `python`)
    - `.claude/skills/tech-stack-{stack}/SKILL.md` — test guidance, ORM patterns, reference paths
@@ -95,17 +95,6 @@ Explicitly check for these test anti-patterns:
 - **Exception-swallowing catch blocks** — Tests that catch exceptions and pass silently. If the test expects an exception, use the framework's exception assertion (`Assert.Throws`, `pytest.raises`).
 - **Mock-only verification** — Tests that only verify the mock was called (testing wiring, not behavior). If the only assertion is `mock.Verify(x => x.SomeMethod(...))` with no check on the actual result, the test proves nothing about correctness.
 - **Copy-paste duplication** — Test methods that are near-identical but don't vary the interesting parameter. These add maintenance cost without coverage value.
-
-## Common Rationalizations
-
-| Rationalization | Reality |
-|---|---|
-| "Tests pass, so they're good enough" | Passing tests with trivial assertions catch nothing. A test that asserts `result != null` passes even when the result is completely wrong. |
-| "Coverage is 90%" | Line coverage measures execution, not verification. Code can execute without being tested if assertions are weak. |
-| "It's a simple change, existing tests cover it" | Verify, don't assume. Read the existing tests — do they actually assert the behavior you changed? |
-| "The mock is equivalent to production" | Mocks diverge over time. If the behavior depends on database semantics, framework middleware, or external service contracts, a mock may hide the real issue. |
-| "Simple CRUD, no edge cases needed" | CRUD with financial data needs boundary tests. What happens with zero amounts, negative values, duplicate keys, concurrent updates? |
-| "I'll add more tests later" | Later means never. Test debt compounds faster than code debt. |
 
 ## Step 5: Output
 

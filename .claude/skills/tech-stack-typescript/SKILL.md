@@ -52,7 +52,7 @@ fi
 - **Test (batch):** `<pm> test <path/to/file>` or `<pm> run test -- <pattern>` (vitest/jest support filter flags; check `package.json` scripts)
 - **Test (full):** `<pm> test` or `<pm> run test`
 - **Bounded output is the default.** Pass `--reporter=dot` (vitest) or `--silent` (jest) where the runner supports it. Batch checkpoints run these through `bash scripts/mtk-verify-run.sh --label <batch-id>-<step> -- <cmd>` — the wrapper's bounded tail is the evidence, the log path is the receipt.
-- **Format:** `<pm> run format` if defined, else `npx prettier --write <path>` or `npx biome format --write <path>` based on project config. Wired through `hooks/format-on-edit.sh`, which **queues** edited paths at PostToolUse and **formats** them at Stop, dispatching biome → prettier by extension — both halves must be wired or nothing is formatted. Do NOT use `$CLAUDE_FILE` — it is not a Claude Code env var.
+- **Format:** `<pm> run format` if defined, else `npx prettier --write <path>` or `npx biome format --write <path>` based on project config. Wired through `hooks/format-on-edit.sh`, which **queues** edited paths at PostToolUse and **formats** them at Stop, dispatching biome → prettier by extension — both halves must be wired or nothing is formatted. Do not use `$CLAUDE_FILE` — it is not a Claude Code env var.
 - **Lint:** `<pm> run lint` if defined, else `npx eslint <path>` or `npx biome check <path>` based on project config
 
 **Tauri addendum (when `src-tauri/` exists):**

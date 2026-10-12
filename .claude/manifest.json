@@ -2691,12 +2691,6 @@
         "docs/specs/**"
       ],
       "description": "Full field reference for the spec's JSON sidecar (docs/specs/<date>-<slug>.json) — allowed values, coverage claims, conditional descopes, downstream plan/implement sections — read by spec-driven-development when authoring or amending a sidecar"
-    },
-    "references/workflow-rationalizations.md": {
-      "source": ".claude/references/workflow-rationalizations.md",
-      "target": ".claude/references/workflow-rationalizations.md",
-      "action": "sync",
-      "description": "Shared rationalization table plus every skill's full Common Rationalizations / Red Flags content — loaded at rigor MAX or on a repeated ceremony reduction, not inline in each skill"
     }
   },
   "protected": [

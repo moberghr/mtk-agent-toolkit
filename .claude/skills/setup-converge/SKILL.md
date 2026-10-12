@@ -29,7 +29,7 @@ for doc in .claude/references/architecture-principles.md .claude/references/conv
 done
 ```
 
-If either bootstrap file is missing, OR `STAMPED_DOCS` is empty, STOP immediately and tell the engineer:
+If either bootstrap file is missing, OR `STAMPED_DOCS` is empty, stop immediately and tell the engineer:
 
 > "This repo has not been bootstrapped/audited yet (`.claude/tech-stack`, `.claude/mtk-version.json`, or a stamped `architecture-principles.md`/`conventions.md` is missing). Run `/mtk-setup` (full bootstrap) first, or `/mtk-setup --audit` to generate a stamped principles doc, then `/mtk-setup --converge`."
 
@@ -52,7 +52,7 @@ for doc in "${STAMPED_DOCS[@]}"; do
 done
 ```
 
-Check the exit code of **every** `verify-claims.sh` invocation individually. A nonzero exit means the engine itself failed on that doc — not that the doc verified clean. On nonzero exit, STOP immediately with "verification engine failed for `<doc>` (exit `N`) — converge cannot distinguish engine failure from a clean result; fix the engine error first". Never proceed to STEP 2 or STEP 3 after an engine failure, and never read that doc's `weak-claims-*.json` — after a failed run it may be stale (partially written, or a leftover from a previous invocation) and cannot be trusted as "this doc verified clean."
+Check the exit code of **every** `verify-claims.sh` invocation individually. A nonzero exit means the engine itself failed on that doc — not that the doc verified clean. On nonzero exit, stop immediately with "verification engine failed for `<doc>` (exit `N`) — converge cannot distinguish engine failure from a clean result; fix the engine error first". Never proceed to STEP 2 or STEP 3 after an engine failure, and never read that doc's `weak-claims-*.json` — after a failed run it may be stale (partially written, or a leftover from a previous invocation) and cannot be trusted as "this doc verified clean."
 
 `verify-claims.sh` derives its report name from the input path relative to the repo root, falling back to **basename** when the input lives outside the repo — which these `/tmp/mtk-converge/` scratch copies always do — so the report path is the same regardless of the temp location: `.claude/.mtk-cache/weak-claims-<doc-slug>.json` (e.g. `weak-claims-architecture-principles_md.json`). Parse that JSON per stamped doc — its `weak` array is the raw material for STEP 3. Never point `verify-claims.sh` at the on-disk doc; never copy the rewritten temp file back over the original.
 
@@ -76,12 +76,12 @@ Map every entry in each doc's `weak` array to a work item, graded by the S1.15 s
 | `[INFERRED:N]` with N ≥ 0.7 | **flag** |
 | `[INFERRED:N]` with N < 0.7, or `[AMBIGUOUS]` | **note** |
 
-Each work item MUST cite, verbatim:
+Each work item must cite, verbatim:
 
 - The principle line (quoted from `text`).
 - The evidence anchor that failed (`anchor` field for `zero-hit-anchor` entries; for `no-evidence-anchor` entries, state explicitly "claim carries no evidence anchor" — never invent one).
 - The violating/changed path(s) from STEP 2's drift pairing, when a match was found; otherwise state "no drift-check match — anchor may be a symbol, not a path."
-- A one-line **suggested remediation direction** — a pointer for the human, NOT a fix ("consider whether `Foo` still applies, or the principle needs updating" — never a diff, never a rewritten rule).
+- A one-line **suggested remediation direction** — a pointer for the human, not a fix ("consider whether `Foo` still applies, or the principle needs updating" — never a diff, never a rewritten rule).
 
 Never grade or report anything that isn't traceable to a `weak-claims` entry. A module "feeling off" with no failing claim and no drift-check pairing is not a work item — converge only reports what the verification engine actually found.
 

@@ -132,17 +132,6 @@ This skill is specifically for **engineer-driven** corrections. When *you* resol
 - Never argue with a correction in the moment. Apply it, then discuss if you genuinely think it's wrong.
 - Repeated corrections (3+) should be proposed as CLAUDE.md rules.
 
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared table. Correction-specific traps: "this correction is too specific to save" (extract the general principle — the specific instance becomes a reusable rule), "the engineer is being nitpicky" (if they took the time to correct you, it matters — capture it), and "this is already in the coding guidelines" (then you missed it — note which guideline and why, that's the real lesson).
-
-## Red Flags
-
-- Correction received but not captured in the chosen destination (`.claude/lessons/personal.md` or `tasks/lessons.md`)
-- Lesson captured without the "why" or "applies to" fields
-- Same correction given more than twice without proposing a CLAUDE.md rule
-- Correction acknowledged performatively but not applied to current work
-
 ## Verification
 
 - [ ] The correction was acknowledged without performative agreement

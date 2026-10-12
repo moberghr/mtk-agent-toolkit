@@ -180,34 +180,6 @@ listed in `.gitignore` before creating; add it if missing).
   AGENTS.md".
 - **No manufactured additions.** "Nothing to capture" is a valid, common outcome.
 
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared MTK table.
-Capture-specific traps:
-
-- **"I should add a few things so the session feels productive."** No. Capture
-  only what was genuinely surfaced. Empty output beats noise in the prompt.
-- **"This gotcha is obvious."** If you had to discover it this session, it was
-  not obvious to a cold-start agent — capture it.
-- **"I'll rewrite the Commands section to be cleaner while I'm here."** No. That
-  is `instructions-audit`'s job, gated on its own rubric. Capture appends; it does
-  not refactor.
-- **"This is a personal preference, but the team file is easier."** Default
-  personal. Promotion to the team file is the engineer's explicit call.
-- **"This is Claude-specific, so CLAUDE.md is the obvious place."** Usually
-  not — a shim addition should be rare. If it applies to any agent reading
-  the constitution, it belongs in `AGENTS.md`.
-
-## Red Flags
-
-- Additions applied before the engineer approved them
-- A whole-section rewrite proposed instead of an append
-- Generic best practices ("write tests", "use good names") added as if
-  project-specific
-- `AGENTS.md` pushed over its 120-line hard cap, or a `CLAUDE.md` shim pushed
-  over its 20-line budget, by the additions
-- `CLAUDE.local.md` content committed (it must stay gitignored)
-
 ## Verification
 
 - [ ] Phase 1 reflection named concrete session learnings (or "nothing to capture")
