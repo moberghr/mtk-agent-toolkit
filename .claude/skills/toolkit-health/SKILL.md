@@ -89,16 +89,14 @@ if [ -f tasks/lessons.md ]; then grep -c '^## ' tasks/lessons.md 2>/dev/null || 
 
    When the denominator (`approved + modified + rejected`) is below 10, label the reading "insufficient sample — π not yet meaningful" rather than warning on a noisy estimate.
 
-8. **Skill-eval coverage & sprawl.** Run `bash scripts/skill-eval/coverage.sh --json`
-   and surface:
-   - `coverage_pct` — share of skills with behavioral evals (eval-*.md or
-     prompts.jsonl). Structural validation (`validate-toolkit.sh`) proves a
-     skill is well-formed, not that it behaves.
-   - `overlap_candidates` — pairs of skills whose descriptions overlap above the
-     threshold (advisory sprawl signal). For each pair, suggest "confirm these are
-     distinct or consolidate."
-   - Flag `coverage_pct < 20` as "behavioral coverage low — gating skills should
-     have evals; see `evals/README.md`."
+8. **Behavioural eval coverage** (only where `evals/*/prompt.md` exists, i.e. the
+   toolkit's own checkout; skip silently elsewhere). Count the native
+   `claude plugin eval` cases and their tags (`smoke`, `core`) from the
+   `prompt.md` frontmatter. If `evals/results/*/aggregate-result.json` exists, report
+   the newest one's `aggregates.overallScore`, `casesPassed`/`casesTotal`, `meanDelta`
+   and `partial`. Structural validation (`validate-toolkit.sh`) proves a skill is
+   well-formed, not that it behaves. Flag "no `core` eval cases" or "no eval run
+   recorded" with the pointer "see `evals/README.md`".
 
 ## Rules
 

@@ -38,6 +38,9 @@ jobs:
           done
           exit $EXIT_CODE
 
+      - name: Run router and workflow fixtures
+        run: bash scripts/run-fixtures.sh
+
       - name: Syntax-check all bash scripts
         run: |
           EXIT_CODE=0

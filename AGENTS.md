@@ -36,7 +36,8 @@
 
 ```bash
 bash scripts/validate-toolkit.sh                            # structure + manifest (before every commit)
-bash scripts/run-fixtures.sh && bash scripts/run-evals.sh   # router fixtures + evals
+bash scripts/run-fixtures.sh                                # router + workflow fixtures
+claude plugin eval . --tag smoke --scaffold --allow-tools Bash Write Edit --trust-plugin   # behavioural evals (model calls; see evals/README.md)
 bash scripts/mtk-doctor.sh                                  # install health check (--json, --fix)
 ```
 

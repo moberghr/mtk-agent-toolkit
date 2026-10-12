@@ -85,22 +85,22 @@ Before writing any skill content:
 If the skill is on the ship path — meaning a miss ends up in a commit, a PR,
 or a release — add measurable evals in addition to pressure tests:
 
-1. Create `evals/<skill-name>/` with at minimum:
-   - `eval-01-<positive>.md` — scenario where the skill MUST trigger
-   - `eval-02-<negative>.md` — scenario where the skill MUST NOT trigger
-   - `eval-03-<adversarial>.md` — scenario designed to make the skill skip
-     steps or inflate output
-   - `grader.md` — grading prompt checking expected signals
-2. Each scenario declares `category: positive | negative | adversarial` in
-   frontmatter, includes a fenced `prompt` block for automated extraction,
-   and specifies Expected Signals + a pass/partial/fail Rubric.
-3. Evals are distributed via `manifest.json` so target teams can run them.
-4. Run with `bash scripts/run-evals.sh` (manual mode by default; wire
-   `EVAL_EXECUTOR` / `EVAL_GRADER` env vars for automation).
+1. Add a native `claude plugin eval` case: `evals/<case>/prompt.md` (the user
+   prompt plus `tags`, limits and `allowed_tools` frontmatter), `case.yaml`
+   naming a `scaffold.sh` that builds the repo the prompt runs in, and one
+   grader per file under `graders/`. Layout and run commands: `evals/README.md`.
+2. Prefer deterministic graders (`regex` over a produced file or the trace,
+   `tool_used`, `file_exists`) and keep `llm` rubrics to short outputs with
+   concrete PASS/FAIL conditions. Grade behaviour, not wording.
+3. Mark graders that can only pass with the plugin `arm: with-only`, and
+   "must not do X" checks `arm: both`, so the without-plugin arm stays comparable.
+4. Tag the case `core` (and `smoke` if it is cheap), then iterate with
+   `claude plugin eval . --case <case> --runs 1 --ablation none --scaffold
+   --allow-tools Bash Write Edit --trust-plugin` until it loads and grades sensibly.
 
-Pressure tests are adversarial-only. Evals span positive/negative/adversarial
-and give a measurable pass rate. Use both for ship-path skills; pressure
-tests alone are sufficient for advisory skills.
+Pressure tests are adversarial-only scenarios read by a human. Evals are
+executed and give a measurable score against a no-plugin baseline. Use both
+for ship-path skills; pressure tests alone are sufficient for advisory skills.
 
 ### Phase 4: Register
 

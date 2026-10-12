@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: fix-scope-escalation
+context:
+  scaffold_script: scaffold.sh

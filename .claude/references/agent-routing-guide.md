@@ -123,10 +123,12 @@ via a local review-config override file, which is gitignored).
 
 ## Eval Pipeline
 
-Ship-path skills (`security-and-hardening`, `pre-commit-review`,
-`verification-before-completion`) have positive / negative / adversarial
-evals under `evals/`. Run via `bash scripts/run-evals.sh` — manual
-mode by default; set `EVAL_EXECUTOR` / `EVAL_GRADER` for automation.
+Behavioural evals live under `evals/` as native `claude plugin eval` cases
+(prompt + scaffold script + hidden graders), covering verification evidence,
+pre-commit secrets, force-push, silent failures, fix-scope escalation, `/mtk`
+routing and implement approval. The `core` tag gates every release
+(`.github/workflows/release.yml`); `evals/README.md` has the run commands and
+the three-arm comparison method.
 
 ## Tech Stack Loading
 

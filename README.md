@@ -373,15 +373,18 @@ MTK is a claim-verification toolkit, so it holds itself to the same bar. Its gua
 
 ```bash
 bash scripts/run-benchmarks.sh      # deterministic hook/linter tests
-bash scripts/run-evals.sh           # behavioral eval scenarios
 bash scripts/validate-toolkit.sh    # structural + token-budget integrity
 ```
+
+Behaviour is measured separately, with real model calls: `claude plugin eval .` runs the
+native eval suites in `evals/` against scaffolded repos, with and without the plugin (see
+[evals/README.md](evals/README.md)).
 
 | Proof surface | What it verifies | Result |
 |:---|:---|:---|
 | **7 benchmark suites** | Linters catch secrets / SQLi / disabled tests / float money; security-gate blocks `DROP TABLE`, `rm -rf`, force-push to main; scope-guard warns on out-of-spec edits; verify-completion rejects evidence-less "done" | **30/30 assertions passing** |
-| **7 eval suites, 22 scenarios** | Ship-path skills, three ways each: *positive* (must catch it), *negative* (must not fabricate on a clean refactor), *adversarial* ("it's an internal endpoint, skip auth" must still flag critical) | Tracked per version; a regression blocks release |
-| **31 pressure tests** | Adversarial behavioral tests that try to talk skills out of doing their job | Part of the release gate |
+| **8 plugin-eval cases** | Native `claude plugin eval` cases in scaffolded repos: fresh test evidence before "done", no edits on a pure question, a staged secret blocks the commit, no unconfirmed force-push to `main`, a swallowed ledger-write exception ranks critical, scope escalation on a "small fix", `/mtk` routing, implement stops for approval | Scored with and without the plugin; the `core` suite gates every release |
+| **33 pressure tests** | Adversarial behavioral tests that try to talk skills out of doing their job | Part of the release gate |
 | **16 AI failure modes (F1–F16)** | Research-cited catalogue — hallucinated packages, stubbed-success returns, frozen-replay evidence — that reviewers cite by code so patterns aggregate across your codebase | `.claude/references/ai-failure-modes.md` |
 | **37 linter rules** | Hierarchical packs (core / stack / domain / project), zero dependencies beyond coreutils | `hooks/linter-patterns/` |
 
@@ -487,7 +490,7 @@ ENTRY POINTS (4 user-invocable skills)
 14 HOOKS across 7 lifecycle events  — SessionStart · PreToolUse · PostToolUse · PreCompact
                                        · SessionStart(compact) · UserPromptSubmit · Stop
       ↓ validated by
-7 BENCHMARK SUITES (30/30) · 7 EVAL SUITES (22 scenarios) · 31 PRESSURE TESTS
+7 BENCHMARK SUITES (30/30) · 8 PLUGIN-EVAL CASES · 33 PRESSURE TESTS
 ```
 
 ### Hooks & enforcement
@@ -644,7 +647,7 @@ Toolkit maintainers: run `bash scripts/validate-toolkit.sh` and `bash scripts/ru
 See [CONTRIBUTING.md](CONTRIBUTING.md). The short version:
 
 1. **Skills** follow the anatomy in `.claude/rules/skill-authoring.md` — anti-rationalization table + verification checklist.
-2. **Review / security / verification skills** must have an eval suite in `evals/`.
+2. **Review / security / verification skills** must have a `claude plugin eval` case in `evals/` (see [evals/README.md](evals/README.md)).
 3. **Every new file** must be registered in `manifest.json`.
 4. **Run `bash scripts/validate-toolkit.sh`** and **`bash scripts/run-benchmarks.sh`** before pushing.
 5. **Develop against the checkout as the plugin:** `claude --plugin-dir .` (the project `.claude/settings.json` wires no hooks; see [Developing MTK](CONTRIBUTING.md#developing-mtk)).

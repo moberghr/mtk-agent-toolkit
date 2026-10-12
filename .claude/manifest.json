@@ -1,5 +1,5 @@
 {
-  "version": "8.1.0",
+  "version": "8.1.1",
   "updated": "2026-10-12",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
@@ -11,6 +11,294 @@
     }
   },
   "files": {
+    "evals/verification-evidence/scaffold.sh": {
+      "source": "evals/verification-evidence/scaffold.sh",
+      "target": "evals/verification-evidence/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case verification-evidence: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/verification-evidence/prompt.md": {
+      "source": "evals/verification-evidence/prompt.md",
+      "target": "evals/verification-evidence/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case verification-evidence: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/verification-evidence/graders/tested-after-edit.md": {
+      "source": "evals/verification-evidence/graders/tested-after-edit.md",
+      "target": "evals/verification-evidence/graders/tested-after-edit.md",
+      "action": "sync",
+      "description": "Plugin-eval case verification-evidence: grader 'tested-after-edit'"
+    },
+    "evals/verification-evidence/graders/cites-test-result.md": {
+      "source": "evals/verification-evidence/graders/cites-test-result.md",
+      "target": "evals/verification-evidence/graders/cites-test-result.md",
+      "action": "sync",
+      "description": "Plugin-eval case verification-evidence: grader 'cites-test-result'"
+    },
+    "evals/verification-evidence/graders/bug-fixed.md": {
+      "source": "evals/verification-evidence/graders/bug-fixed.md",
+      "target": "evals/verification-evidence/graders/bug-fixed.md",
+      "action": "sync",
+      "description": "Plugin-eval case verification-evidence: grader 'bug-fixed'"
+    },
+    "evals/verification-evidence/case.yaml": {
+      "source": "evals/verification-evidence/case.yaml",
+      "target": "evals/verification-evidence/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case verification-evidence: scaffold and execution settings"
+    },
+    "evals/silent-failure-finance/scaffold.sh": {
+      "source": "evals/silent-failure-finance/scaffold.sh",
+      "target": "evals/silent-failure-finance/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case silent-failure-finance: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/silent-failure-finance/prompt.md": {
+      "source": "evals/silent-failure-finance/prompt.md",
+      "target": "evals/silent-failure-finance/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case silent-failure-finance: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/silent-failure-finance/graders/no-edit.md": {
+      "source": "evals/silent-failure-finance/graders/no-edit.md",
+      "target": "evals/silent-failure-finance/graders/no-edit.md",
+      "action": "sync",
+      "description": "Plugin-eval case silent-failure-finance: grader 'no-edit'"
+    },
+    "evals/silent-failure-finance/graders/flags-swallowed-ledger-write.md": {
+      "source": "evals/silent-failure-finance/graders/flags-swallowed-ledger-write.md",
+      "target": "evals/silent-failure-finance/graders/flags-swallowed-ledger-write.md",
+      "action": "sync",
+      "description": "Plugin-eval case silent-failure-finance: grader 'flags-swallowed-ledger-write'"
+    },
+    "evals/silent-failure-finance/case.yaml": {
+      "source": "evals/silent-failure-finance/case.yaml",
+      "target": "evals/silent-failure-finance/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case silent-failure-finance: scaffold and execution settings"
+    },
+    "evals/router-fix/scaffold.sh": {
+      "source": "evals/router-fix/scaffold.sh",
+      "target": "evals/router-fix/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case router-fix: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/router-fix/prompt.md": {
+      "source": "evals/router-fix/prompt.md",
+      "target": "evals/router-fix/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case router-fix: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/router-fix/graders/routed-to-fix.md": {
+      "source": "evals/router-fix/graders/routed-to-fix.md",
+      "target": "evals/router-fix/graders/routed-to-fix.md",
+      "action": "sync",
+      "description": "Plugin-eval case router-fix: grader 'routed-to-fix'"
+    },
+    "evals/router-fix/graders/function-intact.md": {
+      "source": "evals/router-fix/graders/function-intact.md",
+      "target": "evals/router-fix/graders/function-intact.md",
+      "action": "sync",
+      "description": "Plugin-eval case router-fix: grader 'function-intact'"
+    },
+    "evals/router-fix/graders/bug-fixed.md": {
+      "source": "evals/router-fix/graders/bug-fixed.md",
+      "target": "evals/router-fix/graders/bug-fixed.md",
+      "action": "sync",
+      "description": "Plugin-eval case router-fix: grader 'bug-fixed'"
+    },
+    "evals/router-fix/case.yaml": {
+      "source": "evals/router-fix/case.yaml",
+      "target": "evals/router-fix/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case router-fix: scaffold and execution settings"
+    },
+    "evals/pre-commit-secret/scaffold.sh": {
+      "source": "evals/pre-commit-secret/scaffold.sh",
+      "target": "evals/pre-commit-secret/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case pre-commit-secret: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/pre-commit-secret/prompt.md": {
+      "source": "evals/pre-commit-secret/prompt.md",
+      "target": "evals/pre-commit-secret/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case pre-commit-secret: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/pre-commit-secret/graders/no-commit.md": {
+      "source": "evals/pre-commit-secret/graders/no-commit.md",
+      "target": "evals/pre-commit-secret/graders/no-commit.md",
+      "action": "sync",
+      "description": "Plugin-eval case pre-commit-secret: grader 'no-commit'"
+    },
+    "evals/pre-commit-secret/graders/flags-secret.md": {
+      "source": "evals/pre-commit-secret/graders/flags-secret.md",
+      "target": "evals/pre-commit-secret/graders/flags-secret.md",
+      "action": "sync",
+      "description": "Plugin-eval case pre-commit-secret: grader 'flags-secret'"
+    },
+    "evals/pre-commit-secret/case.yaml": {
+      "source": "evals/pre-commit-secret/case.yaml",
+      "target": "evals/pre-commit-secret/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case pre-commit-secret: scaffold and execution settings"
+    },
+    "evals/no-false-done/scaffold.sh": {
+      "source": "evals/no-false-done/scaffold.sh",
+      "target": "evals/no-false-done/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case no-false-done: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/no-false-done/prompt.md": {
+      "source": "evals/no-false-done/prompt.md",
+      "target": "evals/no-false-done/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case no-false-done: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/no-false-done/graders/no-write.md": {
+      "source": "evals/no-false-done/graders/no-write.md",
+      "target": "evals/no-false-done/graders/no-write.md",
+      "action": "sync",
+      "description": "Plugin-eval case no-false-done: grader 'no-write'"
+    },
+    "evals/no-false-done/graders/no-edit.md": {
+      "source": "evals/no-false-done/graders/no-edit.md",
+      "target": "evals/no-false-done/graders/no-edit.md",
+      "action": "sync",
+      "description": "Plugin-eval case no-false-done: grader 'no-edit'"
+    },
+    "evals/no-false-done/graders/answer-correct.md": {
+      "source": "evals/no-false-done/graders/answer-correct.md",
+      "target": "evals/no-false-done/graders/answer-correct.md",
+      "action": "sync",
+      "description": "Plugin-eval case no-false-done: grader 'answer-correct'"
+    },
+    "evals/no-false-done/case.yaml": {
+      "source": "evals/no-false-done/case.yaml",
+      "target": "evals/no-false-done/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case no-false-done: scaffold and execution settings"
+    },
+    "evals/implement-stops-for-approval/scaffold.sh": {
+      "source": "evals/implement-stops-for-approval/scaffold.sh",
+      "target": "evals/implement-stops-for-approval/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case implement-stops-for-approval: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/implement-stops-for-approval/prompt.md": {
+      "source": "evals/implement-stops-for-approval/prompt.md",
+      "target": "evals/implement-stops-for-approval/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case implement-stops-for-approval: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/implement-stops-for-approval/graders/spec-written.md": {
+      "source": "evals/implement-stops-for-approval/graders/spec-written.md",
+      "target": "evals/implement-stops-for-approval/graders/spec-written.md",
+      "action": "sync",
+      "description": "Plugin-eval case implement-stops-for-approval: grader 'spec-written'"
+    },
+    "evals/implement-stops-for-approval/graders/source-unchanged.md": {
+      "source": "evals/implement-stops-for-approval/graders/source-unchanged.md",
+      "target": "evals/implement-stops-for-approval/graders/source-unchanged.md",
+      "action": "sync",
+      "description": "Plugin-eval case implement-stops-for-approval: grader 'source-unchanged'"
+    },
+    "evals/implement-stops-for-approval/graders/presents-plan.md": {
+      "source": "evals/implement-stops-for-approval/graders/presents-plan.md",
+      "target": "evals/implement-stops-for-approval/graders/presents-plan.md",
+      "action": "sync",
+      "description": "Plugin-eval case implement-stops-for-approval: grader 'presents-plan'"
+    },
+    "evals/implement-stops-for-approval/graders/no-source-edit.md": {
+      "source": "evals/implement-stops-for-approval/graders/no-source-edit.md",
+      "target": "evals/implement-stops-for-approval/graders/no-source-edit.md",
+      "action": "sync",
+      "description": "Plugin-eval case implement-stops-for-approval: grader 'no-source-edit'"
+    },
+    "evals/implement-stops-for-approval/case.yaml": {
+      "source": "evals/implement-stops-for-approval/case.yaml",
+      "target": "evals/implement-stops-for-approval/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case implement-stops-for-approval: scaffold and execution settings"
+    },
+    "evals/force-push-guard/scaffold.sh": {
+      "source": "evals/force-push-guard/scaffold.sh",
+      "target": "evals/force-push-guard/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case force-push-guard: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/force-push-guard/prompt.md": {
+      "source": "evals/force-push-guard/prompt.md",
+      "target": "evals/force-push-guard/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case force-push-guard: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/force-push-guard/graders/remote-unchanged.md": {
+      "source": "evals/force-push-guard/graders/remote-unchanged.md",
+      "target": "evals/force-push-guard/graders/remote-unchanged.md",
+      "action": "sync",
+      "description": "Plugin-eval case force-push-guard: grader 'remote-unchanged'"
+    },
+    "evals/force-push-guard/graders/no-force-push-call.md": {
+      "source": "evals/force-push-guard/graders/no-force-push-call.md",
+      "target": "evals/force-push-guard/graders/no-force-push-call.md",
+      "action": "sync",
+      "description": "Plugin-eval case force-push-guard: grader 'no-force-push-call'"
+    },
+    "evals/force-push-guard/graders/asks-before-rewrite.md": {
+      "source": "evals/force-push-guard/graders/asks-before-rewrite.md",
+      "target": "evals/force-push-guard/graders/asks-before-rewrite.md",
+      "action": "sync",
+      "description": "Plugin-eval case force-push-guard: grader 'asks-before-rewrite'"
+    },
+    "evals/force-push-guard/case.yaml": {
+      "source": "evals/force-push-guard/case.yaml",
+      "target": "evals/force-push-guard/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case force-push-guard: scaffold and execution settings"
+    },
+    "evals/fix-scope-escalation/scaffold.sh": {
+      "source": "evals/fix-scope-escalation/scaffold.sh",
+      "target": "evals/fix-scope-escalation/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case fix-scope-escalation: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/fix-scope-escalation/prompt.md": {
+      "source": "evals/fix-scope-escalation/prompt.md",
+      "target": "evals/fix-scope-escalation/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case fix-scope-escalation: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/fix-scope-escalation/graders/report-untouched.md": {
+      "source": "evals/fix-scope-escalation/graders/report-untouched.md",
+      "target": "evals/fix-scope-escalation/graders/report-untouched.md",
+      "action": "sync",
+      "description": "Plugin-eval case fix-scope-escalation: grader 'report-untouched'"
+    },
+    "evals/fix-scope-escalation/graders/ledger-untouched.md": {
+      "source": "evals/fix-scope-escalation/graders/ledger-untouched.md",
+      "target": "evals/fix-scope-escalation/graders/ledger-untouched.md",
+      "action": "sync",
+      "description": "Plugin-eval case fix-scope-escalation: grader 'ledger-untouched'"
+    },
+    "evals/fix-scope-escalation/graders/flags-scope.md": {
+      "source": "evals/fix-scope-escalation/graders/flags-scope.md",
+      "target": "evals/fix-scope-escalation/graders/flags-scope.md",
+      "action": "sync",
+      "description": "Plugin-eval case fix-scope-escalation: grader 'flags-scope'"
+    },
+    "evals/fix-scope-escalation/case.yaml": {
+      "source": "evals/fix-scope-escalation/case.yaml",
+      "target": "evals/fix-scope-escalation/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case fix-scope-escalation: scaffold and execution settings"
+    },
+    "benchmarks/fixtures/destructive-sql-command.txt": {
+      "source": "benchmarks/fixtures/destructive-sql-command.txt",
+      "target": "benchmarks/fixtures/destructive-sql-command.txt",
+      "action": "sync",
+      "description": "Benchmark fixture holding the destructive SQL probe string, read at runtime so run-benchmarks.sh itself contains no literal the security gate blocks"
+    },
     "tests/hooks/test-security-gate-superset.sh": {
       "source": "tests/hooks/test-security-gate-superset.sh",
       "target": "tests/hooks/test-security-gate-superset.sh",
@@ -696,30 +984,6 @@
       "action": "sync",
       "description": "Adversarial pressure test for instructions-capture (anti-manufacture, approval gate, personal-vs-canonical-vs-shim routing, append-not-rewrite)"
     },
-    "scripts/skill-eval/run-eval.sh": {
-      "source": "scripts/skill-eval/run-eval.sh",
-      "target": "scripts/skill-eval/run-eval.sh",
-      "action": "sync",
-      "description": "Runs eval prompts for a single skill, grades each response with a sub-agent, writes per-run JSON results"
-    },
-    "scripts/skill-eval/aggregate.sh": {
-      "source": "scripts/skill-eval/aggregate.sh",
-      "target": "scripts/skill-eval/aggregate.sh",
-      "action": "sync",
-      "description": "Runs N iterations of run-eval.sh and reports per-prompt pass-rate plus standard deviation"
-    },
-    "scripts/skill-eval/grader-prompt.md": {
-      "source": "scripts/skill-eval/grader-prompt.md",
-      "target": "scripts/skill-eval/grader-prompt.md",
-      "action": "sync",
-      "description": "Sub-agent system prompt used by the eval grader \u2014 strict three-grade scale with single-line JSON output"
-    },
-    "evals/code-review-and-quality/prompts.jsonl": {
-      "source": "evals/code-review-and-quality/prompts.jsonl",
-      "target": "evals/code-review-and-quality/prompts.jsonl",
-      "action": "sync",
-      "description": "Starter eval prompt set for code-review-and-quality \u2014 covers FP discipline, confidence threshold, output schema, dispatch triggers"
-    },
     "skills/verification-before-completion/SKILL.md": {
       "source": ".claude/skills/verification-before-completion/SKILL.md",
       "target": ".claude/skills/verification-before-completion/SKILL.md",
@@ -819,23 +1083,11 @@
       "action": "sync",
       "description": "Adversarial pressure test for security-and-hardening skill"
     },
-    "tests/pressure-tests/verification-pressure.md": {
-      "source": "tests/pressure-tests/verification-pressure.md",
-      "target": "tests/pressure-tests/verification-pressure.md",
-      "action": "sync",
-      "description": "Adversarial pressure test for verification-before-completion skill"
-    },
     "tests/pressure-tests/code-review-pressure.md": {
       "source": "tests/pressure-tests/code-review-pressure.md",
       "target": "tests/pressure-tests/code-review-pressure.md",
       "action": "sync",
       "description": "Adversarial pressure test for code-review skill"
-    },
-    "tests/pressure-tests/pre-commit-review-pressure.md": {
-      "source": "tests/pressure-tests/pre-commit-review-pressure.md",
-      "target": "tests/pressure-tests/pre-commit-review-pressure.md",
-      "action": "sync",
-      "description": "Adversarial pressure test for pre-commit-review skill"
     },
     "tests/pressure-tests/subagent-implementation-pressure.md": {
       "source": "tests/pressure-tests/subagent-implementation-pressure.md",
@@ -1152,119 +1404,11 @@
       "action": "sync",
       "description": "Fake credentials covering every secret-scan pattern (self-test fixture, not real secrets)"
     },
-    "scripts/run-evals.sh": {
-      "source": "scripts/run-evals.sh",
-      "target": "scripts/run-evals.sh",
-      "action": "sync",
-      "description": "Eval pipeline runner: lists scenarios, supports manual or automated execution (via EVAL_EXECUTOR / EVAL_GRADER env hooks)"
-    },
     "evals/README.md": {
       "source": "evals/README.md",
       "target": "evals/README.md",
       "action": "sync",
       "description": "Eval pipeline overview, directory layout, and manual/automated run guidance"
-    },
-    "evals/rigor/eval-01-mechanical-batch.md": {
-      "source": "evals/rigor/eval-01-mechanical-batch.md",
-      "target": "evals/rigor/eval-01-mechanical-batch.md",
-      "action": "sync",
-      "description": "Rigor eval: an all-mechanical (rename/frontmatter) 6-file batch must score LIGHT/STANDARD, not force-floored to HIGH"
-    },
-    "evals/rigor/eval-02-scope-reduction-recompute.md": {
-      "source": "evals/rigor/eval-02-scope-reduction-recompute.md",
-      "target": "evals/rigor/eval-02-scope-reduction-recompute.md",
-      "action": "sync",
-      "description": "Rigor eval: deferring the biggest batches mid-run must recompute the level down and right-size Phase 4 review, without dropping below the remaining work's floor"
-    },
-    "evals/rigor/grader.md": {
-      "source": "evals/rigor/grader.md",
-      "target": "evals/rigor/grader.md",
-      "action": "sync",
-      "description": "Grader for the rigor eval: floor-avoidance, mechanical-split surfacing, and the contract-touch guard"
-    },
-    "evals/batch-fix/eval-01-corrective-batch.md": {
-      "source": "evals/batch-fix/eval-01-corrective-batch.md",
-      "target": "evals/batch-fix/eval-01-corrective-batch.md",
-      "action": "sync",
-      "description": "Batch-fix eval: five independent small fixes with no new contract must route to batch-fix with one gate and inline review"
-    },
-    "evals/batch-fix/grader.md": {
-      "source": "evals/batch-fix/grader.md",
-      "target": "evals/batch-fix/grader.md",
-      "action": "sync",
-      "description": "Grader for the batch-fix eval: correct routing, single approval gate, inline implementation, proportional review"
-    },
-    "evals/security-and-hardening/eval-01-hardcoded-secret.md": {
-      "source": "evals/security-and-hardening/eval-01-hardcoded-secret.md",
-      "target": "evals/security-and-hardening/eval-01-hardcoded-secret.md",
-      "action": "sync",
-      "description": "Positive eval: hardcoded DB connection string must be flagged critical"
-    },
-    "evals/security-and-hardening/eval-02-pure-refactor.md": {
-      "source": "evals/security-and-hardening/eval-02-pure-refactor.md",
-      "target": "evals/security-and-hardening/eval-02-pure-refactor.md",
-      "action": "sync",
-      "description": "Negative eval: pure internal refactor must not trigger security findings"
-    },
-    "evals/security-and-hardening/eval-03-internal-endpoint-pressure.md": {
-      "source": "evals/security-and-hardening/eval-03-internal-endpoint-pressure.md",
-      "target": "evals/security-and-hardening/eval-03-internal-endpoint-pressure.md",
-      "action": "sync",
-      "description": "Adversarial eval: 'internal endpoint, skip auth' pressure \u2014 missing auth must stay critical"
-    },
-    "evals/security-and-hardening/grader.md": {
-      "source": "evals/security-and-hardening/grader.md",
-      "target": "evals/security-and-hardening/grader.md",
-      "action": "sync",
-      "description": "Grader prompt for security-and-hardening evals"
-    },
-    "evals/pre-commit-review/eval-01-sql-concat.md": {
-      "source": "evals/pre-commit-review/eval-01-sql-concat.md",
-      "target": "evals/pre-commit-review/eval-01-sql-concat.md",
-      "action": "sync",
-      "description": "Positive eval: raw SQL with string interpolation must be flagged critical"
-    },
-    "evals/pre-commit-review/eval-02-docs-only.md": {
-      "source": "evals/pre-commit-review/eval-02-docs-only.md",
-      "target": "evals/pre-commit-review/eval-02-docs-only.md",
-      "action": "sync",
-      "description": "Negative eval: docs-only diff must pass with substantive rationale, no fabricated findings"
-    },
-    "evals/pre-commit-review/eval-03-inflate-to-pass.md": {
-      "source": "evals/pre-commit-review/eval-03-inflate-to-pass.md",
-      "target": "evals/pre-commit-review/eval-03-inflate-to-pass.md",
-      "action": "sync",
-      "description": "Adversarial eval: cosmetic rename with pressure to surface findings \u2014 must resist inflation"
-    },
-    "evals/pre-commit-review/grader.md": {
-      "source": "evals/pre-commit-review/grader.md",
-      "target": "evals/pre-commit-review/grader.md",
-      "action": "sync",
-      "description": "Grader prompt for pre-commit-review evals"
-    },
-    "evals/verification-before-completion/eval-01-done-without-evidence.md": {
-      "source": "evals/verification-before-completion/eval-01-done-without-evidence.md",
-      "target": "evals/verification-before-completion/eval-01-done-without-evidence.md",
-      "action": "sync",
-      "description": "Positive eval: completion claim without cited command output must be blocked"
-    },
-    "evals/verification-before-completion/eval-02-evidence-cited.md": {
-      "source": "evals/verification-before-completion/eval-02-evidence-cited.md",
-      "target": "evals/verification-before-completion/eval-02-evidence-cited.md",
-      "action": "sync",
-      "description": "Negative eval: completion with exit code + test counts must be accepted cleanly"
-    },
-    "evals/verification-before-completion/eval-03-trivial-change-excuse.md": {
-      "source": "evals/verification-before-completion/eval-03-trivial-change-excuse.md",
-      "target": "evals/verification-before-completion/eval-03-trivial-change-excuse.md",
-      "action": "sync",
-      "description": "Adversarial eval: 'trivial change, obvious compilation' must still require build evidence"
-    },
-    "evals/verification-before-completion/grader.md": {
-      "source": "evals/verification-before-completion/grader.md",
-      "target": "evals/verification-before-completion/grader.md",
-      "action": "sync",
-      "description": "Grader prompt for verification-before-completion evals"
     },
     "tests/pressure-tests/test-reviewer-pressure.md": {
       "source": "tests/pressure-tests/test-reviewer-pressure.md",
@@ -1691,12 +1835,6 @@
       "target": "tests/pressure-tests/toolkit-health-pressure.md",
       "action": "sync",
       "description": "Adversarial pressure test for toolkit-health (corrupt analytics, stale data, empty state, noise-to-anomaly)"
-    },
-    "tests/pressure-tests/silent-failure-hunter-pressure.md": {
-      "source": "tests/pressure-tests/silent-failure-hunter-pressure.md",
-      "target": "tests/pressure-tests/silent-failure-hunter-pressure.md",
-      "action": "sync",
-      "description": "Adversarial pressure test for silent-failure-hunter (audited paths, justified silences, FP discipline, empty-with-rationale)"
     },
     "docs/parallelism-patterns.md": {
       "source": "docs/parallelism-patterns.md",
@@ -2373,53 +2511,11 @@
       "action": "sync",
       "description": "Generate the token-budgeted rule wake-up index (.claude/rules/INDEX.md) from rule axes; --check fails on staleness"
     },
-    "scripts/skill-eval/coverage.sh": {
-      "source": "scripts/skill-eval/coverage.sh",
-      "target": "scripts/skill-eval/coverage.sh",
-      "action": "sync",
-      "description": "Behavioral-eval coverage and description-overlap sprawl report across all skills; advisory, --json for CI"
-    },
     "references/delta-spec-model.md": {
       "source": ".claude/references/delta-spec-model.md",
       "target": ".claude/references/delta-spec-model.md",
       "action": "sync",
       "description": "Delta-spec model: feature specs as deltas against a living per-area baseline, synced back on archive into an auditable trail"
-    },
-    "evals/fix/grader.md": {
-      "source": "evals/fix/grader.md",
-      "target": "evals/fix/grader.md",
-      "action": "sync",
-      "description": "Grader prompt for fix-skill evals (scope discipline and escalation)"
-    },
-    "evals/fix/eval-01-real-fix.md": {
-      "source": "evals/fix/eval-01-real-fix.md",
-      "target": "evals/fix/eval-01-real-fix.md",
-      "action": "sync",
-      "description": "Positive eval: single-file fix stays in scope with reproduction"
-    },
-    "evals/fix/eval-02-scope-creep.md": {
-      "source": "evals/fix/eval-02-scope-creep.md",
-      "target": "evals/fix/eval-02-scope-creep.md",
-      "action": "sync",
-      "description": "Adversarial eval: oversized quick fix must escalate to implement"
-    },
-    "evals/spec-drift-detection/grader.md": {
-      "source": "evals/spec-drift-detection/grader.md",
-      "target": "evals/spec-drift-detection/grader.md",
-      "action": "sync",
-      "description": "Grader prompt for spec-drift-detection evals"
-    },
-    "evals/spec-drift-detection/eval-01-silent-drift.md": {
-      "source": "evals/spec-drift-detection/eval-01-silent-drift.md",
-      "target": "evals/spec-drift-detection/eval-01-silent-drift.md",
-      "action": "sync",
-      "description": "Adversarial eval: out-of-manifest auth file with understated security_impact must be flagged critical"
-    },
-    "evals/spec-drift-detection/eval-02-clean-pass.md": {
-      "source": "evals/spec-drift-detection/eval-02-clean-pass.md",
-      "target": "evals/spec-drift-detection/eval-02-clean-pass.md",
-      "action": "sync",
-      "description": "Negative eval: manifest-matching change passes with no fabricated drift"
     },
     "templates/workflows/subagent-implementation.workflow.js": {
       "source": "templates/workflows/subagent-implementation.workflow.js",
@@ -2787,24 +2883,6 @@
       "action": "sync",
       "description": "Templates and generation rules for product.md and decisions.md, read on-demand by setup-bootstrap STEP 3.8"
     },
-    "evals/setup-bootstrap/grader.md": {
-      "source": "evals/setup-bootstrap/grader.md",
-      "target": "evals/setup-bootstrap/grader.md",
-      "action": "sync",
-      "description": "Grader prompt for setup-bootstrap evals"
-    },
-    "evals/setup-bootstrap/eval-01-clean-bootstrap.md": {
-      "source": "evals/setup-bootstrap/eval-01-clean-bootstrap.md",
-      "target": "evals/setup-bootstrap/eval-01-clean-bootstrap.md",
-      "action": "sync",
-      "description": "Positive eval: clean bootstrap of a small single-stack fixture repo must be lean and grounded"
-    },
-    "evals/setup-bootstrap/eval-02-rerun-preservation.md": {
-      "source": "evals/setup-bootstrap/eval-02-rerun-preservation.md",
-      "target": "evals/setup-bootstrap/eval-02-rerun-preservation.md",
-      "action": "sync",
-      "description": "Adversarial eval: re-run over hand-authored content must preserve edits and itemize needs-review conflicts"
-    },
     "tests/hooks/test-secret-scan.sh": {
       "source": "tests/hooks/test-secret-scan.sh",
       "target": "tests/hooks/test-secret-scan.sh",
@@ -2907,24 +2985,6 @@
       "target": ".claude/references/workflow-rationalizations.md",
       "action": "sync",
       "description": "Shared rationalization table plus every skill's full Common Rationalizations / Red Flags content — loaded at rigor MAX or on a repeated ceremony reduction, not inline in each skill"
-    },
-    "evals/subagent-implementation/grader.md": {
-      "source": "evals/subagent-implementation/grader.md",
-      "target": "evals/subagent-implementation/grader.md",
-      "action": "sync",
-      "description": "Grader for the wave-scheduling eval: waves derived from depends, shared files force an edge, wave cap honoured, sequential fallback when every batch chains"
-    },
-    "evals/subagent-implementation/eval-01-independent-waves.md": {
-      "source": "evals/subagent-implementation/eval-01-independent-waves.md",
-      "target": "evals/subagent-implementation/eval-01-independent-waves.md",
-      "action": "sync",
-      "description": "Wave eval: six batches with four proven-independent middle batches must schedule as B1 → B2+B3+B4 → B5 → B6 under the default wave cap of 3"
-    },
-    "evals/subagent-implementation/eval-02-shared-file-serializes.md": {
-      "source": "evals/subagent-implementation/eval-02-shared-file-serializes.md",
-      "target": "evals/subagent-implementation/eval-02-shared-file-serializes.md",
-      "action": "sync",
-      "description": "Wave eval: two edge-free batches that touch the same DI registration file must be flagged BLOCKING by the plan-gap check and serialized, never run in one wave"
     }
   },
   "protected": [

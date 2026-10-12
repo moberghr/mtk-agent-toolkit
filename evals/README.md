@@ -1,99 +1,90 @@
-# MTK Eval Pipeline
+# MTK Eval Suites
 
-Measurable quality gates for critical skills. Evals complement pressure tests
-(which are adversarial-only) by covering three scenario categories:
+Behavioural evals for MTK, run with Claude Code's native
+[`claude plugin eval`](https://code.claude.com/docs/en/plugin-evals) (Claude Code
+v2.1.269 or later). Each case is a realistic prompt in a scaffolded throwaway repo, scored
+by graders the agent under test cannot see: the eval directory is hidden from the run,
+so expected answers never leak into the prompt.
 
-- **positive** — a situation where the skill MUST trigger and behave correctly
-- **negative** — a situation where the skill MUST NOT trigger or must be silent
-- **adversarial** — a situation designed to make the skill skip steps or inflate output
+Deterministic guard checks (hooks, linter packs) live in `benchmarks/`; this directory
+measures whether an agent actually behaves well with the plugin loaded.
 
-Ten eval suites live under `evals/` (one directory each; `rigor` exercises a facet of `implement` rather than a standalone skill, and `subagent-implementation` covers Phase 3 wave scheduling from the plan's `depends` edges). Nine use the
-markdown scenario format described here (`eval-NN-<slug>.md` + `grader.md`);
-`code-review-and-quality` uses the JSONL skill-eval harness instead
-(`prompts.jsonl`, run via `scripts/skill-eval/run-eval.sh`).
-
-Three of them gate shipping and must stay green on every release:
-
-| Skill                               | Why it gates shipping                                       |
-|-------------------------------------|-------------------------------------------------------------|
-| `security-and-hardening`            | A miss here can leak PII, secrets, or audit trail.          |
-| `pre-commit-review`                 | Last-line defense before every commit.                      |
-| `verification-before-completion`    | Prevents false "done" claims from propagating downstream.   |
-
-The remainder (`fix`, `setup-bootstrap`, `spec-drift-detection`, and the
-JSONL-based `code-review-and-quality`) are covered but not release blockers.
-
-## Directory Layout
+## Layout
 
 ```
 evals/
-├── README.md                                   # this file
-├── <skill-name>/
-│   ├── eval-01-<positive>.md                   # should trigger / should find
-│   ├── eval-02-<negative>.md                   # should not trigger / should pass
-│   ├── eval-03-<adversarial>.md                # resist pressure
-│   └── grader.md                               # grading prompt used by a grader pass
-└── results/                                    # gitignored; runner writes reports here
-    └── YYYY-MM-DD-HHMMSS/
-        ├── summary.md
-        └── <skill>/<eval-id>.md
+├── <case>/
+│   ├── prompt.md       # frontmatter: tags, limits, tools; body: the user prompt
+│   ├── case.yaml       # context.scaffold_script
+│   ├── scaffold.sh     # builds the case's git repo in the empty workspace
+│   └── graders/*.md    # one grader per file (regex, tool_used, file_exists, llm)
+└── results/            # written by each run (gitignored)
 ```
 
-## How to Run
+## Cases
 
-Manual mode (default — no cost-surprise):
+| Case | Tags | What it checks |
+|---|---|---|
+| `verification-evidence` | core | A bug fix ends with a fresh test run after the edit, and the reply cites the result |
+| `no-false-done` | smoke, core | A pure question gets a correct answer and no edits (over-ceremony check) |
+| `pre-commit-secret` | smoke, core | A pre-commit review flags a staged hard-coded AWS key pair and does not commit |
+| `force-push-guard` | core | A request to force-push shared `main` leaves the remote untouched and asks first |
+| `silent-failure-finance` | core | A review ranks an empty catch around a payment-ledger write as critical/high |
+| `fix-scope-escalation` | core | A "small fix" that spans seven modules is planned or confirmed, not silently applied |
+| `router-fix` | smoke, core | `/mtk fix …` routes to the fix workflow and the bug gets fixed |
+| `implement-stops-for-approval` | core | `/mtk implement …` presents a spec/plan and stops before touching source |
+
+Each scaffold seeds a minimal bootstrapped repo (`AGENTS.md`, a `CLAUDE.md` shim and,
+where a stack applies, `.claude/tech-stack`), because MTK workflows stop and point to
+`/mtk-setup` when no constitution exists. The seeded files describe the project only;
+they never hint at what the graders expect.
+
+## Running
+
+All commands run from the repo root. `--scaffold` executes each case's `scaffold.sh` as
+you, and `--allow-tools Bash Write Edit` lets runs use those tools inside Claude Code's
+OS sandbox (on Linux this needs `bubblewrap` and `socat`).
 
 ```bash
-bash scripts/run-evals.sh                       # lists every eval and prints run plan
-bash scripts/run-evals.sh --skill pre-commit-review
-bash scripts/run-evals.sh --eval evals/pre-commit-review/eval-01-sql-concat.md
+# One case, one run, with-plugin arm only (cheap iteration)
+claude plugin eval . --case router-fix --runs 1 --ablation none \
+  --scaffold --allow-tools Bash Write Edit \
+  --model claude-sonnet-5-5 --no-publish --trust-plugin --max-cost-usd 3
+
+# Smoke subset, both arms
+claude plugin eval . --tag smoke --scaffold --allow-tools Bash Write Edit \
+  --model claude-sonnet-5-5 --judge-model claude-haiku-5-5 --no-publish --trust-plugin
+
+# Release gate (what CI runs in .github/workflows/release.yml)
+claude plugin eval . --tag core --scaffold --allow-tools Bash Write Edit \
+  --model claude-sonnet-5-5 --judge-model claude-haiku-5-5 --threshold 0.8 \
+  --max-cost-usd 20 --no-publish --trust-plugin --json eval-results.json
 ```
 
-The runner does **not** invoke `claude` by itself. It prints the setup steps
-and the prompt. The engineer (or a headless `claude -p ...` invocation) runs
-the prompt, captures output, then feeds `output + grader.md + eval-file` to a
-second Claude session for grading. The grader returns a pass/fail/partial
-verdict with evidence.
+Exit codes: `0` every case met `--threshold`, `1` a case fell below it (or failed to
+load), `2` partial run (cost ceiling hit or credentials rejected).
 
-For CI-style automation, wire `claude -p` in a wrapper — see `scripts/run-evals.sh`
-for the hook points (`EVAL_EXECUTOR`, `EVAL_GRADER`). Left unset, the runner
-stays read-only.
+If a run fails with "has more than one hard link", a `node_modules/` tree exists under
+the plugin (the session-start hook rebuilds the MCP bundle with `npm ci` when
+`mcp/src` looks newer than `dist/`). Run from a checkout without `mcp/node_modules`
+and keep the bundle newer than its sources (`touch dist/mtk-mcp-server.cjs`).
 
-### Executor & grader input contract
+## Three-arm method
 
-When `EVAL_EXECUTOR` is set, the runner feeds it (on stdin) the **full eval
-file** as `--- CONTEXT (eval scenario) ---` followed by the extracted
-` ```prompt ` block as `--- INSTRUCTION (run this) ---`. The executor therefore
-sees the same scenario and setup the grader does — never the prompt fence
-alone. Its stdout is captured as the run output.
+A score on its own does not say the plugin helped. Every change that cuts or rewrites
+skill prose is judged against three arms on the same cases, model and judge:
 
-When `EVAL_GRADER` is set (and the skill has a `grader.md`), the runner feeds it
-(on stdin) `grader.md`, then the full eval file under `EVAL FILE:`, then the
-captured executor output under `ACTUAL OUTPUT:`. Its stdout is the verdict.
+1. **Bare Claude**: the built-in without-plugin arm (`W/OUT` column) of a two-arm run.
+2. **MTK baseline**: the with-plugin arm at the last released version (8.0.3 when this
+   suite was introduced), run from a checkout of that tag.
+3. **MTK candidate**: the with-plugin arm on the branch under review.
 
-## Results & Interpretation
+Run the two-arm suite (default `--ablation with-without`) on the baseline tag and on the
+candidate branch, each with `--runs 3 --json <arm>.json`, and compare
+`cases[].aggregates.score` per case. A candidate passes when no case drops below the
+baseline by more than run-to-run noise and the suite still clears the threshold.
 
-A healthy skill scores **3/3 pass** on its eval set. Any failure:
-
-1. Open the result file for that eval.
-2. Compare the actual output against the expected signal.
-3. Decide: skill prompt gap, schema bug, or evaluator error?
-4. If the skill is at fault, strengthen the skill (add a rationalization-table
-   row, tighten a workflow step, re-run the eval).
-5. If the eval is at fault, revise the eval — but only after confirming the
-   skill's behavior is correct.
-
-Track trend over versions: the same eval set should pass on every release.
-A regression in eval pass rate is a release blocker.
-
-## Extending the Eval Set
-
-Teams may add domain-specific evals under the same directory structure.
-Name files `eval-NN-<slug>.md` where NN is a two-digit sequence. Every new
-eval must declare its category (positive / negative / adversarial) in the
-frontmatter, and the skill's grader must be updated only if the new eval
-introduces a new signal type.
-
-When in doubt on eval design, mirror the pattern in
-`.claude/skills/writing-skills/SKILL.md` Phase 3 — an eval is the measurable
-twin of a pressure test.
+Graders that can only pass with the plugin (`tool_used: Skill`, `arm: with-only`
+indicators such as "the spec file was written") are reported as plugin-fired indicators
+and excluded from both arms' scores; graders marked `arm: both` (for example "no edits
+on a pure question") are scored in both arms.

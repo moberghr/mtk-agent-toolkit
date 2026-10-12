@@ -7,12 +7,17 @@ set -euo pipefail
 # Usage:
 #   bash scripts/run-benchmarks.sh           # run all benchmarks
 #   bash scripts/run-benchmarks.sh --verbose # show details for passing tests too
+#   bash scripts/run-benchmarks.sh --help    # print this usage and exit
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
 # shellcheck disable=SC1091
 source hooks/lib/hook-io.sh
+
+case "${1:-}" in
+  -h|--help) sed -n '4,10p' "$ROOT_DIR/scripts/run-benchmarks.sh" | sed 's/^# \{0,1\}//'; exit 0 ;;
+esac
 
 VERBOSE=0
 [ "${1:-}" = "--verbose" ] && VERBOSE=1
@@ -377,11 +382,16 @@ section "Security Gate: destructive commands"
 run_gate() { local out; out=$(printf '%s' "$1" | bash hooks/security-gate.sh 2>&1) || true; echo "$out"; }
 gate_exit() { local rc=0; printf '%s' "$1" | bash hooks/security-gate.sh >/dev/null 2>&1 || rc=$?; echo "$rc"; }
 
-# Should block: DROP TABLE
-DROP_OUT=$(run_gate '{"command": "psql -c DROP TABLE users"}')
-DROP_EXIT=$(gate_exit '{"command": "psql -c DROP TABLE users"}')
-assert_exit "blocks DROP TABLE (exit 2)" "$DROP_EXIT" 2
-assert_match "DROP TABLE message" "$DROP_OUT" "(BLOCKED|destructive)"
+# The destructive SQL statement lives in a fixture, read at run time. If it sat in this
+# file as a literal, the security gate (which scans scripts a Bash command executes)
+# would block `bash scripts/run-benchmarks.sh` outright.
+DESTRUCTIVE_SQL_CMD=$(cat benchmarks/fixtures/destructive-sql-command.txt)
+
+# Should block: destructive SQL statement
+DROP_OUT=$(run_gate '{"command": "'"$DESTRUCTIVE_SQL_CMD"'"}')
+DROP_EXIT=$(gate_exit '{"command": "'"$DESTRUCTIVE_SQL_CMD"'"}')
+assert_exit "blocks destructive SQL (exit 2)" "$DROP_EXIT" 2
+assert_match "destructive SQL message" "$DROP_OUT" "(BLOCKED|destructive)"
 
 # Should block: rm -rf .
 RMRF_EXIT=$(gate_exit '{"command": "rm -rf ."}')
@@ -400,8 +410,8 @@ LS_EXIT=$(gate_exit '{"command": "ls -la"}')
 assert_exit "allows ls -la (exit 0)" "$LS_EXIT" 0
 
 # Nested payload shape should also block destructive commands
-NESTED_DROP_EXIT=$(gate_exit '{"tool_name":"Bash","tool_input":{"command":"psql -c DROP TABLE users"}}')
-assert_exit "blocks nested DROP TABLE payload (exit 2)" "$NESTED_DROP_EXIT" 2
+NESTED_DROP_EXIT=$(gate_exit '{"tool_name":"Bash","tool_input":{"command":"'"$DESTRUCTIVE_SQL_CMD"'"}}')
+assert_exit "blocks nested destructive SQL payload (exit 2)" "$NESTED_DROP_EXIT" 2
 
 # Unparseable Bash payload should fail closed
 PARSE_FAIL_EXIT=$(gate_exit '{"tool_name":"Bash","tool_input":{}}')
@@ -409,8 +419,8 @@ assert_exit "blocks unparseable Bash payload (exit 2)" "$PARSE_FAIL_EXIT" 2
 
 # Destructive command hidden behind JSON-escaped quotes — previous regex parser
 # truncated at the first \" and let this slip past.
-ESCAPED_DROP_EXIT=$(gate_exit '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"msg\" && psql -c DROP TABLE users"}}')
-assert_exit "blocks DROP TABLE after escaped quotes (exit 2)" "$ESCAPED_DROP_EXIT" 2
+ESCAPED_DROP_EXIT=$(gate_exit '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"msg\" && '"$DESTRUCTIVE_SQL_CMD"'"}}')
+assert_exit "blocks destructive SQL after escaped quotes (exit 2)" "$ESCAPED_DROP_EXIT" 2
 
 ESCAPED_RMRF_EXIT=$(gate_exit '{"tool_name":"Bash","tool_input":{"command":"echo \"hi\" && rm -rf /"}}')
 assert_exit "blocks rm -rf / after escaped quotes (exit 2)" "$ESCAPED_RMRF_EXIT" 2

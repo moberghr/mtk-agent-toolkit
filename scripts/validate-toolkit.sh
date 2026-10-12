@@ -566,12 +566,6 @@ if [ -x scripts/build-rule-index.sh ]; then
   bash scripts/build-rule-index.sh --check >/dev/null 2>&1 || fail "rule index stale — run: bash scripts/build-rule-index.sh"
 fi
 
-# Skill-eval coverage (advisory, non-blocking — sprawl signal, never fails the build).
-if [ -x scripts/skill-eval/coverage.sh ]; then
-  # awk reads all of its input, so the producer never takes SIGPIPE (S3.17).
-  { bash scripts/skill-eval/coverage.sh 2>/dev/null || true; } | awk 'NR==1'
-fi
-
 # Embedded-bash lint for skills — deterministic bug classes in fenced ```bash blocks.
 require_file "scripts/lint-skill-bash.sh"
 bash scripts/lint-skill-bash.sh || fail "skill bash lint failed (run: bash scripts/lint-skill-bash.sh)"
