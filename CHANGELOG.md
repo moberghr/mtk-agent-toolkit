@@ -4,6 +4,63 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [8.2.0] - 2026-10-12
+
+Runtime diet. Hooks that duplicated native Claude Code, or whose output never reached the
+model, are removed. Nothing now runs on Read, Grep, Glob, MCP calls or prompt submit.
+
+### Hook processes per tool call
+
+| Tool call | Before | After |
+|---|---|---|
+| Read | 2 | 0 |
+| Grep / Glob | 3 | 0 |
+| MCP | 2–3 | 0 |
+| Prompt submit | 1 | 0 |
+| Bash | 7 | 3 |
+| Edit / Write | 7 | 5 |
+| Stop | 6 | 4 |
+
+The 8.1.1 eval baseline shows that the gates carry the value: force-push-guard scores +0.67 over
+bare Claude, and implement-stops-for-approval scores +0.44.
+
+### Removed
+
+- `rule-trigger.sh`. Its advice went to stderr on exit 0, so the model never saw it, and native
+  `paths:` rule loading does the job. Also removed: `.claude/rules/INDEX.md` (always loaded),
+  `build-rule-index.sh`, and the rule `trigger:`/`strength:`/`axes:` frontmatter.
+- `userprompt-dispatch.sh`, trigger-hints, prompt-nudges and the tier-2 skill queue
+  (`.claude/queue/`, S3.13–S3.15). The keyword hints misfired on ordinary words, and native skill
+  descriptions already route. `.claude/triggers.index`, `build-triggers-index.sh` and the skill
+  `triggers:`/`trigger:`/`skip_when:` keys are gone too.
+- `read-guard.sh`. Secret reads are now denied by native `permissions.deny` rules, which cover
+  every pattern read-guard did (pinned by `test-settings-baseline.sh`). `setup-refresh` proposes
+  any missing baseline rules, and `mtk-doctor` WARNs about them (`--fix` merges them).
+- `fact-force-guard.sh`, `mcp-health.sh`, `compress-monitor.sh`, `pre-compact-snapshot.sh` with
+  `mtk-recover.sh`, `capture-learnings.sh`, and the dead `api-compat-check.sh`,
+  `verify-behavioral-diff.sh`, `analytics-report.sh` and `migrate-reference-frontmatter.py`.
+- The `mtk-context` MCP server (`mcp/`, `dist/`, `.mcp.json`, `build-mcp.sh`). It had one optional
+  caller with a `cat` fallback, and it broke the dev checkout.
+- The toolsets layer (`.claude/toolsets/`, `resolve-toolsets.sh`, `required-toolsets:`), which was
+  never enforced. Agents are scoped by `tools:`.
+
+### Changed
+
+- **Merged hooks:**
+  - `interactive-guard.sh` is merged into `security-gate.sh`, so a Bash command is parsed once.
+  - `post-compact.sh` is merged into `session-start`, which now also runs on `resume`.
+  - `session-analytics.sh` is merged into `cost-tracker.sh`, so one async Stop recorder does both.
+- `context-budget.sh` is now `evidence-ledger.sh`, a ledger only: verification records, tree
+  fingerprints and edit bumps. Its context thresholds duplicated native `/context` and
+  auto-compaction.
+- `scope-guard.sh` warns once per file per session, ignores finished or receipted specs, and
+  matches exact paths or directory prefixes only.
+- `spec-approval-trigger.sh` speaks through `additionalContext` instead of a queue.
+- The validator and `mtk-doctor` fail if a hook is registered on UserPromptSubmit, or on any
+  matcher covering Read/Grep/Glob or an `mcp__` tool.
+- `setup-refresh` offers to retire generated `INDEX.md`/`triggers.index` files in repos
+  bootstrapped earlier.
+
 ## [8.1.1] - 2026-10-12
 
 ### Changed — real behavioural evals
