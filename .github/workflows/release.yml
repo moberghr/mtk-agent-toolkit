@@ -4,7 +4,8 @@ name: Release on Version Bump
 # verifies it matches .claude-plugin/plugin.json (C0.1 / S1.4), and — if no tag
 # for that version exists yet — creates the tag and a GitHub release with notes
 # pulled from the matching CHANGELOG.md section. Pushes that don't bump the
-# version are a no-op (the tag already exists).
+# version create no tag or release (the tag already exists); every run still
+# rebuilds the slim plugin branch from that tag, which is a no-op when unchanged.
 
 on:
   push:
@@ -12,6 +13,12 @@ on:
 
 permissions:
   contents: write
+
+# Overlapping release runs (two quick merges to main) queue instead of racing on the
+# tag and the append-only plugin branch.
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -87,3 +94,30 @@ jobs:
           git push origin "v$V"
           gh release create "v$V" --title "${{ steps.notes.outputs.title }}" --notes-file notes.md
           echo "Released v$V"
+
+      # The Claude plugin directory tracks the `plugin` branch: validating the whole repo
+      # times out, so the script builds a slim runtime-only tree and appends one commit per
+      # release (history preserved) so the directory scans each version.
+      # Self-healing: this step runs on every push to main, not only on a version bump. It
+      # builds from tag v$V (created above, or by an earlier release), the script is
+      # idempotent, and the push is a no-op when nothing changed — so a publish that failed
+      # or was skipped heals on the next run. Manual recovery from a checkout:
+      #   bash scripts/build-plugin-branch.sh --source vX.Y.Z && git push origin refs/heads/plugin:refs/heads/plugin
+      - name: Build and push the slim plugin branch
+        run: |
+          V="${{ steps.ver.outputs.version }}"
+          if ! git rev-parse -q --verify "refs/tags/v$V" >/dev/null; then
+            echo "::error::Tag v$V does not exist (did tag creation fail?) — cannot build the plugin branch"; exit 1
+          fi
+          # commit-tree needs a committer identity; the tag step sets it only when it runs.
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin plugin >/dev/null; then
+            git fetch origin plugin:refs/remotes/origin/plugin
+          else
+            echo "No plugin branch yet — this run creates it."
+          fi
+          bash scripts/build-plugin-branch.sh --source "v$V" --branch plugin
+          # Plain push only: the branch is append-only, never force.
+          git push origin refs/heads/plugin:refs/heads/plugin
+          echo "Published plugin branch for v$V"

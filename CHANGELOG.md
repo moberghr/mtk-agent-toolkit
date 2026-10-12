@@ -4,6 +4,25 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Added — Claude directory release branch
+
+- `scripts/build-plugin-branch.sh` and a release-workflow step publish a slim `plugin` branch
+  (only the runtime payload, ~290 files, with a trimmed manifest and its own checksums). The
+  Claude plugin directory tracks it, because validating the whole repo (~475 files) times out
+  in the directory portal. The step runs on every push to `main` and builds from the current
+  version's tag; the build is idempotent and the push a no-op when nothing changed, so a failed
+  publish heals on the next run. Release runs share a concurrency group, so overlapping runs
+  queue instead of racing. Development stays on `main`; `moberg-plugins` installs are unchanged.
+- `.claude-plugin/icon.svg` for the directory listing.
+
+### Fixed
+
+- `mtk-doctor` and `mtk-setup` frontmatter: `argument-hint` values like `[--json] [--fix]` were
+  invalid YAML (a value starting with `[` parses as a list); they are now quoted, and
+  `validate-toolkit.sh` fails on an unquoted flow sequence followed by more text (CRLF files
+  included; nested lists, quoted brackets and trailing comments pass). Regression test:
+  `tests/hooks/test-validate-frontmatter-yaml.sh`.
+
 ## [8.0.1] - 2026-09-28
 
 Prepares MTK for Anthropic's Claude plugin directory (#112) and folds in the prompt-audit cleanup.

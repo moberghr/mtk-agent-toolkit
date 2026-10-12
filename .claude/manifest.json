@@ -789,6 +789,18 @@
       "action": "sync",
       "description": "Hook test for config-guard.sh covering each weakening signal across .NET, JS/TS and Python configs, stricter and unrelated edits that must pass, the allow list and its 24h expiry, and the kill-switch"
     },
+    "tests/hooks/test-build-plugin-branch.sh": {
+      "source": "tests/hooks/test-build-plugin-branch.sh",
+      "target": "tests/hooks/test-build-plugin-branch.sh",
+      "action": "sync",
+      "description": "Fixture-repo tests for build-plugin-branch.sh \u2014 dev paths dropped, manifest trimmed, checksums verify, idempotent append-only commits, caller's branch untouched"
+    },
+    "tests/hooks/test-validate-frontmatter-yaml.sh": {
+      "source": "tests/hooks/test-validate-frontmatter-yaml.sh",
+      "target": "tests/hooks/test-validate-frontmatter-yaml.sh",
+      "action": "sync",
+      "description": "Regression test for validate-toolkit's frontmatter check \u2014 unquoted flow sequence followed by text fails; valid lists, nested lists, quoted values and CRLF files handled"
+    },
     "hooks/fact-force-guard.sh": {
       "source": "hooks/fact-force-guard.sh",
       "target": "hooks/fact-force-guard.sh",
@@ -860,6 +872,12 @@
       "target": "scripts/generate-checksums.sh",
       "action": "sync",
       "description": "Release integrity manifest \u2014 writes checksums.sha256 (SHA-256 of every manifest-listed file) at release time; --verify recomputes and reports drift"
+    },
+    "scripts/build-plugin-branch.sh": {
+      "source": "scripts/build-plugin-branch.sh",
+      "target": "scripts/build-plugin-branch.sh",
+      "action": "sync",
+      "description": "Builds the slim plugin release branch the Claude directory tracks \u2014 exports a ref, drops dev-only paths, trims the manifest, regenerates checksums, appends one commit (never pushes or forces)"
     },
     "scripts/resolve-tech-stack.sh": {
       "source": "scripts/resolve-tech-stack.sh",
@@ -1607,6 +1625,12 @@
       "target": "docs/assets/foundations.png",
       "action": "sync",
       "description": "Foundations diagram used in the README Architecture section (the site copy lives on gh-pages)"
+    },
+    ".claude-plugin/icon.svg": {
+      "source": ".claude-plugin/icon.svg",
+      "target": ".claude-plugin/icon.svg",
+      "action": "sync",
+      "description": "Square Moberg icon shown on the Claude plugin directory listing"
     },
     "docs/assets/pipeline-diagram.png": {
       "source": "docs/assets/pipeline-diagram.png",
