@@ -4,6 +4,116 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [8.1.0] - 2026-10-12
+
+Correctness release from the October value-vs-noise audit, which ran across four lanes plus
+two independent assessments. It fixes defects; it removes no behaviour. The runtime and prose
+diets follow in 8.2.0 and 9.0.0.
+
+### Fixed — plugin installs
+
+- **Plugin paths in skills.** Claude Code substitutes only the braced `${CLAUDE_PLUGIN_ROOT}` into skill and
+  agent text at load time, and never exports it to the Bash tool. About 30 sites used the default-value
+  form, which is left as a literal and degrades to `./`. Every MTK script call outside this repo was
+  therefore silently missing. Skills and agents now use the braced form, and references use `$MTK_ROOT`.
+  New rule S2.27 and a validator check prevent the regression.
+- **`permissions.allowedTools` → `permissions.allow`.** The old key is not a Claude Code key, so every
+  allow list that bootstrap merged into target repos was ignored, and engineers kept getting prompted for
+  `dotnet build`/`test`. Settings Additions, `merge-settings.sh` and bootstrap now use
+  `allow`/`deny`/`ask`. New `scripts/migrate-settings-permissions.sh` repairs existing repos; it is run by
+  `setup-refresh`, and by `mtk-doctor --fix`, which now FAILs on the old key. The migration
+  activates only an explicit allow-list of narrow build/test/format/lint rules
+  (`hooks/lib/narrow-permissions.txt`). Broad entries (interpreters, package managers, `curl`,
+  bare `Write`/`Edit`) were never in effect, so they stay inert and are listed for a manual
+  decision. The dev `.claude/settings.json` allow list is live too, minus `curl` and `find`.
+- **Native permissions baseline.** New `references/settings-baseline.md` is merged into every bootstrapped
+  repo: deny reads of `.env*`, keys and secret stores; ask before force-push, `reset --hard`, `clean -f`
+  and `ef database drop`.
+- **Pre-commit hook.** It is now a stable shim that resolves the newest installed plugin at run time,
+  instead of a symlink into a version-pinned cache path that froze the linter and dangled after cache
+  cleanup. Critical findings still block; `MTK_PRECOMMIT_BLOCK=0` makes it advisory. A missing
+  linter prints a notice instead of failing the commit.
+
+### Fixed — gates
+
+- **Verification recognition.** Matches a runner only in command position. `echo dotnet test`, `grep … test`
+  and quoted or heredoc mentions no longer count as verification.
+- **Evidence is bound to the verified tree.** A fingerprint is taken at verification and compared at Stop,
+  so Bash-made edits and formatter edits after a check re-arm the gate.
+- **verify-completion.** No longer blocks an edit-free Q&A reply that ends "Done.". It skips a
+  claim only when it positively knows nothing changed, so a missing ledger, baseline or
+  `session_id` fails closed. A baseline is recorded before the first tool call and on `resume`. Stdin is bounded, the
+  ledger is keyed on `session_id` (concurrent sessions no longer satisfy each other's checks), and the hint
+  no longer points target repos at files they don't have.
+- **Formatting.** Formatting runs before a verification command (new PreToolUse `--flush-before-verify`),
+  so the verified tree is the formatted tree. The SubagentStop flush, which rewrote the parent's open files
+  mid-turn, is removed. `ruff check --fix` is dropped; dotnet uses `format whitespace` only.
+- **security-gate.** Now blocks `push -f`, a trailing `--force`, `git -C … push`, `+refspec`,
+  `--force-with-lease`/`--force-if-includes` to main/master/develop/release, `rm -fr`/`-r -f`,
+  `xargs rm -rf`, `reset --hard`, `clean -fdx`, curl-to-shell and `ef database drop`. The blanket `awk`
+  exemption is gone. Commit messages, PR bodies and heredocs that only mention these are no longer blocked.
+  Also blocked: `--mirror`, `find -delete`, `rm -rf` on a variable, `base64 -d | sh`, curl into
+  interpreters, inline SQL via any client, escaped `\rm`, and git `-c` alias/editor values. The
+  8.0.3 pattern set stays as a floor (`hooks/lib/gate-backstop.sh`, rule S3.18), and
+  `test-security-gate-superset.sh` fails on any probe 8.0.3 denied and the current gate allows. A
+  doc written through a Bash heredoc that mentions a destructive command is denied, with a hint to
+  use the Write tool. A plugin eval caught `--force-with-lease=main:<sha>` overwriting main.
+- **AUTO_PROCEED could never fire.** It required `skill_precedence_gate`, which nothing records; the gate is
+  dropped. `implement-approval-gate.md` holds the single canonical condition list.
+- **Spec working artifacts are gitignored by design.** The tamper check now verifies the approval seal,
+  which covers the frozen `success_criteria`, instead of a `git diff` of an ignored file. Evidence and
+  receipts are described as working artifacts.
+
+### Fixed — content and contracts
+
+- Internal project and client names removed from shipped files; the validator now rejects them.
+- The CLAUDE.md→AGENTS.md inversion is finished:
+  - setup-audit reads the footer from AGENTS.md;
+  - the Monorepo block goes to AGENTS.md;
+  - preview-gate caps AGENTS.md;
+  - implement, fix and batch-fix accept AGENTS.md or CLAUDE.md.
+- `mtk-doctor`:
+  - measures the project, not the plugin root;
+  - `KNOWN_EVENTS` and `DEPRECATED_MODELS` are current;
+  - context windows follow the model-config docs (1M default for the 5.5 family);
+  - Stop hooks wired twice are named.
+- Model facts:
+  - `model-routing.md` rebound to the 5.5 family and Fable 5.1;
+  - pricing rows for Sonnet 5.5 and Haiku 5.5;
+  - `context-budget.sh` per-model window.
+- Review schema:
+  - `decision_origin` is optional (the validating flag never existed);
+  - the empty-findings rationale no longer implies a two-finding quota;
+  - `APPROVED`→`PASS`;
+  - context-miner uses the schema's fields and skips when `gh` is missing.
+- research-context:
+  - no longer routes to a `/deep-research` skill that doesn't exist;
+  - uses one tag vocabulary.
+- fix vs batch-fix:
+  - one rule for multi-file cosmetic sweeps (batch-fix mechanical mode);
+  - `/mtk audit duplicates` now routes.
+- post-compact re-injects only the newest active workflow updated within 7 days. New
+  `workflow-artifact.sh prune --older-than <days>`: the cutoff applies to every status, a cutoff
+  below 1 day needs `--force`, and pruned uuids are reported.
+- `subagent-implementation`: the dynamic-Workflow path is opt-in. It failed in every field run,
+  and the Workflow tool needs explicit user opt-in; the manual per-batch loop is the default.
+- `review-config.json` matches the schema: no findings quota, and `decision_origin` is optional.
+- Smaller fixes:
+  - `tee /dev/tty` (fails in agent shells);
+  - EF1001 label;
+  - Tauri v2 capabilities;
+  - `CLAUDE.local.md` spelling;
+  - duplicate step numbers;
+  - dependency-intake criteria count;
+  - the domain-finance `*.test.ts` glob;
+  - context-miner added to the rigor table;
+  - ripple diff `<base>...HEAD`.
+
+### Changed — development
+
+- The dev checkout runs the repo's hooks as a plugin (`claude --plugin-dir .`; see CONTRIBUTING). `.claude/settings.json` no longer wires hooks, and the double-run guard `mtk_is_redundant_plugin_invocation` and its test are removed.
+- AGENTS.md C0.2 is now enforced in both directions (disk→manifest as well as manifest→disk).
+
 ## [8.0.3] - 2026-10-12
 
 Publishes the slim `plugin` branch from a version that passes directory validation. The

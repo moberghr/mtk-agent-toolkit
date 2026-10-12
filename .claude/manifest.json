@@ -1,5 +1,5 @@
 {
-  "version": "8.0.3",
+  "version": "8.1.0",
   "updated": "2026-10-12",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
@@ -11,6 +11,138 @@
     }
   },
   "files": {
+    "tests/hooks/test-security-gate-superset.sh": {
+      "source": "tests/hooks/test-security-gate-superset.sh",
+      "target": "tests/hooks/test-security-gate-superset.sh",
+      "action": "sync",
+      "description": "Runs the 8.0.3 gate and the current gate over the probe corpus and fails on any probe the old gate denied and the current one allows (message bodies excepted)"
+    },
+    "tests/hooks/test-security-gate-round3.sh": {
+      "source": "tests/hooks/test-security-gate-round3.sh",
+      "target": "tests/hooks/test-security-gate-round3.sh",
+      "action": "sync",
+      "description": "Probe matrix for the round-3 gate additions: --repo=, pushd/popd, --git-dir/GIT_DIR, refspec globs, option abbreviations, find -delete/-exec rm, rm on variables, base64/curl into interpreters, inline SQL"
+    },
+    "tests/hooks/fixtures/security-gate-superset.cases": {
+      "source": "tests/hooks/fixtures/security-gate-superset.cases",
+      "target": "tests/hooks/fixtures/security-gate-superset.cases",
+      "action": "sync",
+      "description": "Probe corpus (placeholders, no literals) for the security-gate superset test: every probe the 8.0.3 gate denies"
+    },
+    "hooks/lib/narrow-permissions.txt": {
+      "source": "hooks/lib/narrow-permissions.txt",
+      "target": "hooks/lib/narrow-permissions.txt",
+      "action": "sync",
+      "description": "Single allow-list of narrow build/test/format/lint permission rules that migrate-settings-permissions.sh and merge-settings.sh may activate from a legacy allowedTools list"
+    },
+    "hooks/lib/gate-backstop.sh": {
+      "source": "hooks/lib/gate-backstop.sh",
+      "target": "hooks/lib/gate-backstop.sh",
+      "action": "sync",
+      "description": "Security-gate floor: the 8.0.3 destructive-command pattern set (SQL, referenced files, force-push to main, rm), run before the token checks so the gate never denies less than the previous release"
+    },
+    "tests/hooks/test-validate-toolkit-guards.sh": {
+      "source": "tests/hooks/test-validate-toolkit-guards.sh",
+      "target": "tests/hooks/test-validate-toolkit-guards.sh",
+      "action": "sync",
+      "description": "Verifies validate-toolkit guards: internal codenames, disk-to-manifest check outside a git work tree, manifest_sources under pipefail, unbraced plugin-root paths in skill bash blocks"
+    },
+    "tests/hooks/test-mtk-doctor-settings-checks.sh": {
+      "source": "tests/hooks/test-mtk-doctor-settings-checks.sh",
+      "target": "tests/hooks/test-mtk-doctor-settings-checks.sh",
+      "action": "sync",
+      "description": "Verifies mtk-doctor settings checks: double wiring on every event, unparseable settings.json FAILs, allowedTools FAIL for convertible and WARN for broad leftovers, model-derived context window"
+    },
+    "tests/hooks/test-verify-completion-failclosed.sh": {
+      "source": "tests/hooks/test-verify-completion-failclosed.sh",
+      "target": "tests/hooks/test-verify-completion-failclosed.sh",
+      "action": "sync",
+      "description": "Verifies verify-completion fails closed: a missing ledger, baseline, session_id or fingerprint falls through to the gap checks instead of passing silently"
+    },
+    "tests/hooks/test-security-gate-bypasses.sh": {
+      "source": "tests/hooks/test-security-gate-bypasses.sh",
+      "target": "tests/hooks/test-security-gate-bypasses.sh",
+      "action": "sync",
+      "description": "Bypass probes for security-gate: write-then-execute heredocs, extra interpreters, false heredoc openers, escaped rm, git -c alias/editor values, lease pushes with an undeterminable branch, --mirror, referenced SQL via any client, awk command pipes"
+    },
+    "tests/fixtures/router-audit-duplicates.json": {
+      "source": "tests/fixtures/router-audit-duplicates.json",
+      "target": "tests/fixtures/router-audit-duplicates.json",
+      "action": "sync",
+      "description": "Fixture: '/mtk audit duplicates' routes to code-simplification --audit-duplicates ahead of the generic audit-to-/mtk-setup redirect"
+    },
+    "tests/fixtures/auto-proceed-all-preconditions-met.json": {
+      "source": "tests/fixtures/auto-proceed-all-preconditions-met.json",
+      "target": "tests/fixtures/auto-proceed-all-preconditions-met.json",
+      "action": "sync",
+      "description": "Fixture: AUTO_PROCEED evaluates true when every canonical precondition holds, without the dropped skill_precedence_gate"
+    },
+    "tests/hooks/test-workflow-artifact-criteria-seal.sh": {
+      "source": "tests/hooks/test-workflow-artifact-criteria-seal.sh",
+      "target": "tests/hooks/test-workflow-artifact-criteria-seal.sh",
+      "action": "sync",
+      "description": "Verifies the approval seal covers the sidecar's frozen success_criteria so verify-seal reports STALE on a criteria edit or deleted sidecar"
+    },
+    "tests/hooks/test-workflow-artifact-prune.sh": {
+      "source": "tests/hooks/test-workflow-artifact-prune.sh",
+      "target": "tests/hooks/test-workflow-artifact-prune.sh",
+      "action": "sync",
+      "description": "Verifies workflow-artifact.sh prune applies the --older-than cutoff to every status, rejects a cutoff below 1 day without --force, reports pruned uuids and never touches a recent workflow"
+    },
+    "tests/hooks/test-context-window.sh": {
+      "source": "tests/hooks/test-context-window.sh",
+      "target": "tests/hooks/test-context-window.sh",
+      "action": "sync",
+      "description": "Verifies context-budget derives the context window per model (1M default for the 5.5 family, 200k for 4.5, [1m] for 4.6, DISABLE_1M override)"
+    },
+    "tests/hooks/test-verify-completion-tree.sh": {
+      "source": "tests/hooks/test-verify-completion-tree.sh",
+      "target": "tests/hooks/test-verify-completion-tree.sh",
+      "action": "sync",
+      "description": "Verifies verify-completion binds evidence to the tree fingerprint: no block on edit-free Q&A, re-arm on shell edits, per-session ledgers, bounded stdin, plugin-relative hint"
+    },
+    "tests/hooks/test-verification-recognition.sh": {
+      "source": "tests/hooks/test-verification-recognition.sh",
+      "target": "tests/hooks/test-verification-recognition.sh",
+      "action": "sync",
+      "description": "Verifies a build/test runner counts as verification only in command position; echo/grep/quoted/heredoc mentions do not"
+    },
+    "tests/hooks/test-security-gate-probes.sh": {
+      "source": "tests/hooks/test-security-gate-probes.sh",
+      "target": "tests/hooks/test-security-gate-probes.sh",
+      "action": "sync",
+      "description": "Probe matrix for security-gate: force-push variants (incl. leases to protected branches), rm/reset/clean/ef-drop forms and curl-to-shell are blocked; commit messages, PR bodies and heredocs that only mention them are allowed"
+    },
+    "tests/hooks/test-post-compact-workflows.sh": {
+      "source": "tests/hooks/test-post-compact-workflows.sh",
+      "target": "tests/hooks/test-post-compact-workflows.sh",
+      "action": "sync",
+      "description": "Verifies post-compact re-injects only the newest active workflow updated within 7 days, with root-anchored paths from any subdirectory"
+    },
+    "tests/hooks/test-mtk-doctor-project-dir.sh": {
+      "source": "tests/hooks/test-mtk-doctor-project-dir.sh",
+      "target": "tests/hooks/test-mtk-doctor-project-dir.sh",
+      "action": "sync",
+      "description": "Verifies mtk-doctor runs project checks (constitution, settings, permissions) against the project directory, not the plugin root"
+    },
+    "tests/hooks/test-migrate-settings-permissions.sh": {
+      "source": "tests/hooks/test-migrate-settings-permissions.sh",
+      "target": "tests/hooks/test-migrate-settings-permissions.sh",
+      "action": "sync",
+      "description": "Verifies migrate-settings-permissions.sh folds allowedTools into allow, preserves other keys, is idempotent, and honours --check"
+    },
+    "scripts/migrate-settings-permissions.sh": {
+      "source": "scripts/migrate-settings-permissions.sh",
+      "target": "scripts/migrate-settings-permissions.sh",
+      "action": "sync",
+      "description": "Moves the ignored permissions.allowedTools key into permissions.allow (union, de-duplicated, idempotent); --check exits 1 when the bad key is present"
+    },
+    "references/settings-baseline.md": {
+      "source": ".claude/references/settings-baseline.md",
+      "target": ".claude/references/settings-baseline.md",
+      "action": "sync",
+      "description": "All-stacks permissions baseline (allow/deny/ask) that setup-bootstrap merges into every target repo's .claude/settings.json before the stack's Settings Additions"
+    },
     "skills/implement/SKILL.md": {
       "source": ".claude/skills/implement/SKILL.md",
       "target": ".claude/skills/implement/SKILL.md",
@@ -508,7 +640,7 @@
       "source": ".claude/skills/research-context/SKILL.md",
       "target": ".claude/skills/research-context/SKILL.md",
       "action": "sync",
-      "description": "Research current external best-practices grounded in named project files; defers heavy questions to /deep-research and returns a cited brief"
+      "description": "Research current external best-practices grounded in named project files; fans heavy questions out to parallel research subagents and returns a cited brief"
     },
     "skills/code-simplification/SKILL.md": {
       "source": ".claude/skills/code-simplification/SKILL.md",
@@ -913,7 +1045,7 @@
       "source": "hooks/git-hooks/pre-commit",
       "target": "hooks/git-hooks/pre-commit",
       "action": "sync",
-      "description": "Git pre-commit hook that runs the deterministic linter and blocks commits on critical findings"
+      "description": "Stable git pre-commit shim that resolves the current MTK plugin root at run time and runs the deterministic linter; reports by default, blocks only with MTK_PRECOMMIT_BLOCK=1"
     },
     "hooks/linter-patterns/core/secrets.txt": {
       "source": "hooks/linter-patterns/core/secrets.txt",
@@ -1438,7 +1570,7 @@
       "source": "hooks/merge-settings.sh",
       "target": "hooks/merge-settings.sh",
       "action": "sync",
-      "description": "Merges two settings.json files by unioning arrays (allowedTools, deny, hooks) without clobbering"
+      "description": "Merges two settings.json files by unioning arrays (permissions.allow/deny/ask, hooks) without clobbering; folds a legacy allowedTools key into allow"
     },
     "CHANGELOG.md": {
       "source": "CHANGELOG.md",
@@ -1810,7 +1942,7 @@
       "source": ".claude/references/orchestration-gates.md",
       "target": ".claude/references/orchestration-gates.md",
       "action": "sync",
-      "description": "Five named fail-closed gates the implement workflow records on the workflow artifact before advancing"
+      "description": "Four named fail-closed gates the implement workflow records on the workflow artifact before advancing"
     },
     "references/artifact-publishing.md": {
       "source": ".claude/references/artifact-publishing.md",
@@ -2557,13 +2689,7 @@
       "source": "tests/hooks/test-pre-commit-target-repo.sh",
       "target": "tests/hooks/test-pre-commit-target-repo.sh",
       "action": "sync",
-      "description": "Verifies the git pre-commit hook works in a bootstrapped target repo where .git/hooks/pre-commit symlinks into the plugin checkout and the repo has no hooks/ dir"
-    },
-    "tests/hooks/test-promotion-guard.sh": {
-      "source": "tests/hooks/test-promotion-guard.sh",
-      "target": "tests/hooks/test-promotion-guard.sh",
-      "action": "sync",
-      "description": "Verifies mtk_is_redundant_plugin_invocation skips a plugin-copy hook when the project wires the same basename, and always runs a project-local copy"
+      "description": "Verifies the git pre-commit shim in a bootstrapped target repo: copy install, non-blocking default, MTK_PRECOMMIT_BLOCK=1, newest live cache version, missing linter"
     },
     "tests/pressure-tests/lesson-mining-rubric.md": {
       "source": "tests/pressure-tests/lesson-mining-rubric.md",
@@ -2725,7 +2851,7 @@
       "source": "tests/hooks/test-mtk-doctor-stop-hooks.sh",
       "target": "tests/hooks/test-mtk-doctor-stop-hooks.sh",
       "action": "sync",
-      "description": "Hook test for mtk-doctor Stop-hook registration accounting, the unguarded double-wiring WARN, and the stale plugin-cache-versions WARN (issue #60)"
+      "description": "Hook test for mtk-doctor Stop-hook registration accounting, the double-wiring WARN, and the stale plugin-cache-versions WARN (issue #60)"
     },
     "tests/hooks/test-manifest-preflight.sh": {
       "source": "tests/hooks/test-manifest-preflight.sh",
@@ -2765,7 +2891,7 @@
       "source": ".claude/references/mtk-file-resolution.md",
       "target": ".claude/references/mtk-file-resolution.md",
       "action": "sync",
-      "description": "Canonical MTK root resolution (MTK_HELPER_ROOT → CLAUDE_PLUGIN_ROOT → project → plugin-cache find) that entry-point skills point at instead of repeating the block"
+      "description": "Canonical MTK root resolution (MTK_HELPER_ROOT, then the load-time substituted plugin root, then project, then plugin-cache find) that entry-point skills point at instead of repeating the block"
     },
     "references/spec-sidecar-manifest.md": {
       "source": ".claude/references/spec-sidecar-manifest.md",
