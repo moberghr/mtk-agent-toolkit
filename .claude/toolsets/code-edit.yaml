@@ -1,0 +1,16 @@
+name: code-edit
+description: Standard implementation toolset — read/write/edit code, run build+test commands. For implementation skills.
+extends: git-safe
+tools:
+  - Write
+  - Edit
+  - Bash(dotnet build:*)
+  - Bash(dotnet test:*)
+  - Bash(dotnet format:*)
+  - Bash(python:*)
+  - Bash(pytest:*)
+  - Bash(ruff:*)
+  - Bash(npm:*)
+  - Bash(pnpm:*)
+  - Bash(bun:*)
+  - Bash(node:*)

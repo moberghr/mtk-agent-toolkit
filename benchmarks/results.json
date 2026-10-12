@@ -1,0 +1,64 @@
+{
+  "schema": "mtk.benchmarks.v1",
+  "generated_at": "2026-08-11T10:26:06Z",
+  "commit": "64681b8",
+  "toolkit_version": "7.30.0",
+  "runner": "scripts/run-benchmarks.sh",
+  "run_complete": true,
+  "totals": {
+    "passed": 37,
+    "failed": 0,
+    "total": 37
+  },
+  "sections": [
+    {
+      "name": "Linter Patterns: known-bad.diff",
+      "passed": 4,
+      "failed": 0
+    },
+    {
+      "name": "Linter Patterns: known-good.diff",
+      "passed": 2,
+      "failed": 0
+    },
+    {
+      "name": "Rule Trigger: just-in-time delivery",
+      "passed": 7,
+      "failed": 0
+    },
+    {
+      "name": "Security Gate: destructive commands",
+      "passed": 11,
+      "failed": 0
+    },
+    {
+      "name": "Scope Guard: spec-aware scope detection",
+      "passed": 3,
+      "failed": 0
+    },
+    {
+      "name": "Verify Completion: evidence gating",
+      "passed": 7,
+      "failed": 0
+    },
+    {
+      "name": "Prerequisites: tool detection",
+      "passed": 1,
+      "failed": 0
+    },
+    {
+      "name": "Toolkit Validation",
+      "passed": 2,
+      "failed": 0
+    }
+  ],
+  "measures": "Deterministic behaviour of MTK bash hooks, linter pattern packs, and the structural validator, executed against fixed in-repo fixtures. Every assertion is a real process invocation with a checked exit code or matched output \u2014 no LLM is involved in producing or grading these numbers.",
+  "excludes": [
+    "Model behaviour: whether an agent actually follows a skill is NOT measured here (see evals/).",
+    "Cross-model coverage: results reflect one bash environment, not model-version differences.",
+    "Real-world hit rate: linter sections measure pattern behaviour on curated known-good/known-bad fixtures, not prevalence in production diffs.",
+    "False-negative rate: fixtures prove the patterns fire on seeded cases; they do not bound what the patterns miss.",
+    "Timing and cost: no wall-clock or token measurements are collected.",
+    "Environment coverage: one run on one host. run_complete:false means the run aborted early and the counts are partial."
+  ]
+}

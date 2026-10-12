@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+# Session-start hook for Moberg toolkit
+# Detects platform and emits appropriate context format
+# Supports: Claude Code, Cursor, Copilot CLI, Gemini CLI
+
+set -euo pipefail
+
+# Diagnostic: emit hook name + exit code on non-zero exit (silent on success).
+_mtk_hook_diag() { local c=$?; [[ $c -ne 0 ]] && echo "[mtk-hook:$(basename "$0")] exit $c" >&2 2>/dev/null || true; return 0; }
+trap _mtk_hook_diag EXIT
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PLUGIN_ROOT="${SCRIPT_DIR}/.."
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/lib/hook-io.sh"
+
+mtk_is_redundant_plugin_invocation "$0" && exit 0
+
+# Build MCP server on first use (silent, non-blocking)
+# Rebuilds when dist/ is missing OR when any mcp/src/** file is newer than the bundle.
+# MCP is optional — all skills have bash fallbacks (S3.12).
+if [ -d "$PLUGIN_ROOT/mcp" ] && command -v node >/dev/null 2>&1; then
+  needs_build=0
+  if [ ! -f "$PLUGIN_ROOT/dist/mtk-mcp-server.cjs" ]; then
+    needs_build=1
+  elif [ -n "$(find "$PLUGIN_ROOT/mcp/src" -newer "$PLUGIN_ROOT/dist/mtk-mcp-server.cjs" -print -quit 2>/dev/null)" ]; then
+    needs_build=1
+  fi
+  if [ "$needs_build" = "1" ]; then
+    bash "$PLUGIN_ROOT/scripts/build-mcp.sh" --quiet 2>/dev/null || true
+  fi
+fi
+
+# Check for in-progress specs and plans (session recovery)
+RECOVERY_MSG=""
+if [[ -d "docs/specs" ]]; then
+  RECENT_SPEC="$(find docs/specs -name '*.md' -mtime -1 2>/dev/null | head -1)"
+  if [[ -n "$RECENT_SPEC" ]]; then
+    RECOVERY_MSG="SESSION RECOVERY: Found recent spec at ${RECENT_SPEC}. You may have an in-progress feature. Read the spec to resume where you left off."
+  fi
+fi
+if [[ -d "docs/plans" ]] && [[ -z "$RECOVERY_MSG" ]]; then
+  RECENT_PLAN="$(find docs/plans -name '*.md' -mtime -1 2>/dev/null | head -1)"
+  if [[ -n "$RECENT_PLAN" ]]; then
+    RECOVERY_MSG="SESSION RECOVERY: Found recent plan at ${RECENT_PLAN}. You may have an in-progress implementation. Read the plan and tasks/todo.md to resume."
+  fi
+fi
+if [[ -f "tasks/todo.md" ]] && [[ -z "$RECOVERY_MSG" ]]; then
+  if grep -q '\[ \]' tasks/todo.md 2>/dev/null; then
+    RECOVERY_MSG="SESSION RECOVERY: Found incomplete tasks in tasks/todo.md. Check for in-progress work before starting something new."
+  fi
+fi
+
+# Version drift check (advisory only)
+VERSION_MSG=""
+if [ -f .claude/mtk-version.json ]; then
+  INSTALLED_VERSION="$(grep -o '"version":"[^"]*"' .claude/mtk-version.json 2>/dev/null | sed 's/"version":"//;s/"//' || true)"
+  if [ -n "$INSTALLED_VERSION" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
+    SOURCE_MANIFEST="${CLAUDE_PLUGIN_ROOT}/.claude/manifest.json"
+    if [ -f "$SOURCE_MANIFEST" ]; then
+      SOURCE_VERSION="$(grep -o '"version": "[^"]*"' "$SOURCE_MANIFEST" | head -1 | sed 's/"version": "//;s/"//' || true)"
+      if [ -n "$SOURCE_VERSION" ] && [ "$INSTALLED_VERSION" != "$SOURCE_VERSION" ]; then
+        VERSION_MSG="MTK update available: ${INSTALLED_VERSION} → ${SOURCE_VERSION}. Use the Claude Code plugin manager to upgrade."
+      fi
+    fi
+  fi
+fi
+
+# Personal lessons (gitignored, per-engineer rules captured by correction-capture)
+PERSONAL_LESSONS_MSG=""
+if [ -f ".claude/lessons/personal.md" ] && [ -s ".claude/lessons/personal.md" ]; then
+  PL_COUNT="$(grep -c '^## ' .claude/lessons/personal.md 2>/dev/null || echo 0)"
+  if [ "$PL_COUNT" -gt 0 ]; then
+    PERSONAL_LESSONS_MSG="Personal lessons active: ${PL_COUNT} entries in .claude/lessons/personal.md (gitignored, individual rules). Read them when work touches their topics. Promote to tasks/lessons.md via /promote-lesson when they apply team-wide."
+  fi
+fi
+
+# Build the context message
+BASE_MSG="Moberg toolkit is active. Available entry points: /mtk and /mtk-setup. Skills load on demand via progressive disclosure."
+CONTEXT="$BASE_MSG"
+[[ -n "$RECOVERY_MSG" ]] && CONTEXT="${CONTEXT} ${RECOVERY_MSG}"
+[[ -n "$VERSION_MSG" ]] && CONTEXT="${CONTEXT} ${VERSION_MSG}"
+[[ -n "$PERSONAL_LESSONS_MSG" ]] && CONTEXT="${CONTEXT} ${PERSONAL_LESSONS_MSG}"
+
+# Escape for JSON (bash parameter substitution — no external deps)
+json_escape() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//$'\n'/\\n}"
+  s="${s//$'\t'/\\t}"
+  printf '%s' "$s"
+}
+
+ESCAPED_CONTEXT="$(json_escape "$CONTEXT")"
+
+# Platform detection and output routing
+if [[ -n "${CURSOR_PLUGIN_ROOT:-}" ]]; then
+  # Cursor format
+  printf '{"context": "%s"}\n' "$ESCAPED_CONTEXT"
+elif [[ -n "${CLAUDE_PLUGIN_ROOT:-}" ]] && [[ -z "${COPILOT_CLI:-}" ]]; then
+  # Claude Code format — SessionStart's model-visible channel is
+  # hookSpecificOutput.additionalContext (a top-level "context" field is ignored).
+  mtk_emit_additional_context "SessionStart" "$CONTEXT"
+elif [[ -n "${COPILOT_CLI:-}" ]]; then
+  # GitHub Copilot CLI — SDK standard format
+  printf '{"role": "system", "content": "%s"}\n' "$ESCAPED_CONTEXT"
+elif [[ -n "${GEMINI_EXTENSION_ROOT:-}" ]]; then
+  # Gemini CLI format
+  printf '{"context": "%s"}\n' "$ESCAPED_CONTEXT"
+else
+  # Unknown platform — SDK standard format as fallback
+  printf '{"role": "system", "content": "%s"}\n' "$ESCAPED_CONTEXT"
+fi

@@ -1,0 +1,12 @@
+# Finance domain lint patterns. Tab-separated.
+# scope: code — Prose naming a currency or a rate is not a money-handling defect.
+# Active when .claude/domains contains "finance".
+# See .claude/references/domain-finance.md for context.
+FLOAT-MONEY-CS	critical	(float|double)[[:space:]]+(amount|balance|price|fee|cost|total|sum|payment|rate)	Float/double used for monetary value — precision loss risk	Use decimal (C#), Decimal (Python), or a Money value object
+FLOAT-MONEY-PY	critical	(amount|balance|price|fee|cost|total|payment).*:[[:space:]]*(float|int)[[:space:]]*[=)]	Numeric primitive for monetary value — precision loss risk	Use Decimal type or a Money value object
+HARDCODED-CURRENCY	warning	["'](USD|EUR|GBP|CHF|JPY|HRK|CAD|AUD|CNY)["']	Hardcoded currency code — should be configurable	Extract to configuration or accept as parameter
+HARDCODED-RATE	warning	(exchange[_-]?rate|interest[_-]?rate|fee[_-]?rate)[[:space:]]*[:=][[:space:]]*[0-9]+\.?[0-9]*	Hardcoded financial rate — rates change	Load from configuration or rate provider
+MONEY-DIVIDE	warning	(amount|balance|price|fee|total|payment)[^;]*\/[[:space:]]*[0-9]	Division on monetary value without explicit rounding	Use Math.Round/decimal.Round with explicit MidpointRounding
+FIN-ANON-ENDPOINT	warning	\[AllowAnonymous\]	Anonymous access in a finance domain — confirm the endpoint is genuinely public	Require auth + a capability/authorization check, or justify the exception in review
+FIN-AUDITED-DELETE	warning	(Transactions|Ledger|Payments|AuditLog|JournalEntries|Entries)\.(Remove|RemoveRange|Delete|ExecuteDelete)\(	Hard-deleting audited financial records breaks the audit trail	Soft-delete or append a reversing entry; audited state should be append-only
+FIN-SENSITIVE-LOG	warning	(LogInformation|LogDebug|LogTrace|LogWarning|Console\.Write)[^;]*(card[_-]?number|\biban\b|\bssn\b|account[_-]?number|\bpan\b|cvv)	Sensitive financial identifier flowing into a log sink	Mask/tokenize the value before logging; never log full PANs/IBANs/SSNs

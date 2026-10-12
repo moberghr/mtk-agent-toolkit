@@ -1,0 +1,1625 @@
+# Changelog
+
+All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
+
+## [Unreleased]
+
+## [8.0.1] - 2026-09-28
+
+Prepares MTK for Anthropic's Claude plugin directory (#112) and folds in the prompt-audit cleanup.
+
+### Fixed — directory submission prep
+
+- **Hooks broke under an install path containing a space.** All 27 `hooks/hooks.json` commands
+  now wrap `${CLAUDE_PLUGIN_ROOT}` in double quotes. `mtk-doctor`'s Stop-hook basename parser
+  strips the quotes (new test case), `validate-toolkit.sh`'s hook-anchor selector accepts escaped
+  quotes, and the hook-wiring test assertions compare the unquoted path.
+- `plugin.json` no longer carries a `settings.json` key. Claude Code ignored it at load time (plugin
+  settings honor only `agent` and `subagentStatusLine`), so it never applied anything to plugin
+  users; with it gone `claude plugin validate . --strict` passes.
+
+### Changed
+
+- The GitHub Pages site (`index.html`, `how-it-works.*`, its build script and site-only assets)
+  moved to the `gh-pages` branch; Pages now serves from there. `build-how-it-works.py --check`
+  takes `MTK_REPO_ROOT=<toolkit checkout>`.
+- 51 completed specs and plans moved off `main` to the `archive/design-history` branch. `main`
+  keeps `docs/specs/baseline/`, every spec or plan another file links to, and September 2026 work.
+  The plugin folder is now 475 files, inside the directory's 512-file limit.
+- README: new **What MTK runs** section listing every hook, the files MTK writes, the bundled MCP
+  server, and the one network fetch (`/mtk-setup`'s pinned coding guidelines).
+
+### Fixed — prompt-audit cleanup
+
+- `setup-bootstrap` gave itself contradictory phrasing rules: its SKILL.md says never to add
+  `IMPORTANT:` / `YOU MUST` markers, while `root-agents-md-template.md` and
+  `bootstrap-interview.md` told it to prefix critical rules with them and to prefer negative
+  phrasing. The references now match the skill: trigger-action rules with the reason attached,
+  prohibitions only for enforced constraints, no emphasis markers.
+- `compliance-reviewer`: replaced the unscoped "You get no credit for approvals" incentive line
+  with "an approval has to be earned by the code, never granted by default", so the persona stays
+  adversarial without nudging toward manufactured findings.
+- Dialled back shouted headings in `pre-commit-review` (`## Common Rationalizations`, matching the
+  other skills) and `audit-merge-mode` (`## Merge Mode Constraints`).
+- `docs/parallelism-patterns.md` no longer pins model versions ("Current Claude models").
+
+## [8.0.0] - 2026-09-23
+
+**Major version for the constitution move.** `AGENTS.md` became the canonical constitution and
+`CLAUDE.md` a shim that imports it. That change first shipped in **7.36.0**, which folded it in
+from `[Unreleased]` under a minor bump — it should have been a major release. 8.0.0 is the major
+version that marks it; there is no further breaking change beyond it. Repos whose constitution
+still lives in `CLAUDE.md` keep it: the inversion is proposed through the regen-diff contract,
+never applied silently. Upgrading from 7.35.0 or earlier? Read the 7.36.0 section below
+too — it is part of this upgrade.
+
+### Fixed — three-lane review round over the inversion
+
+A performance, a simplification and an adversarial review lane over the inversion diff. Every
+defect below was reproduced before it was fixed.
+
+- **Data loss: `generate-agents-md.sh --force` destroyed a hand-authored constitution** when
+  `CLAUDE.md` was a symlink to `AGENTS.md`. The symlink reads as a constitution *body*, so it
+  matched neither "absent" nor the `^@AGENTS\.md` shim pattern, the file resolved as
+  `CLAUDE.md`, and the whole canonical-constitution guard was skipped — replacing the rules
+  with a nine-line generated summary. Same file on both sides now counts as canonical.
+- **`resolve-artifact-root.sh` required `CLAUDE.md`**, so an `AGENTS.md`-only subproject
+  resolved to the repo root: specs, plans and `scope-guard`'s `docs/specs/*` matching all
+  followed it into the wrong tree. Either spelling now declares a subtree (S1.16 updated).
+- **`mtk-doctor`'s constitution budget was vacuous** — it measured the ~11-line shim, so it
+  could never fail, while the file that actually costs always-on context went unmeasured.
+- **`setup-refresh-plan` row 3 reported a false `fresh`** — it read the version footer from
+  `CLAUDE.md` though bootstrap stamps it on the resolved constitution, so a genuinely
+  version-stale repo read as `fresh — check skipped`.
+- **`instructions-audit` could never see the Copilot mirror** — `find -name` was given a path
+  containing a slash, and `-name` matches basenames only.
+- **`verify-references.sh` defaulted to the shim**, scanning eleven lines instead of the file
+  holding the path claims.
+- **Pointer configs named a non-existent `CLAUDE.md`** in a repo with no constitution at all.
+- `repo-health` asset 1 was renamed in code but not in its contract reference; `how-it-works`
+  documented a trigger token removed for SC7.
+
+### Changed — one constitution resolver instead of nine copies
+
+`scripts/resolve-constitution.sh` joins `resolve-tech-stack.sh` and `resolve-artifact-root.sh`
+as the third standalone resolver. The predicate it owns had been copy-pasted into nine callers
+and had already diverged — marker variable vs. literal string, differing stderr redirection,
+differing empty-repo answers — and the symlink defect above had to be patched into all nine by
+hand. `--loaded` answers the separate context-accounting question ("which bytes enter every
+session", where the generator-marker clause does *not* apply), so that distinction is now code
+with a test rather than two prose comments in two scripts. Callers keep the same short inline
+fallback the `resolve-tech-stack.sh` callers already use, so a partial or older install still
+resolves correctly. `tests/hooks/test-resolve-constitution.sh` owns the 20-case matrix.
+
+### Changed — the AGENTS.md budget is enforced in bytes as well as lines
+
+The validator said 200 lines, the template and two skills said "target 60-80, hard cap 120",
+and the repo's own `AGENTS.md` was 174 — passing one gate while blowing the other. Resolved in
+favour of the documented cap.
+
+- `AGENTS.md` trimmed **174 → 119 lines, 15.1KB → 8.3KB**. The `## Agent Routing` section
+  duplicated the routing guide introduced in this same release and wrote the `/mtk` route list
+  three times at three different lengths; the `MTK_*` knob table moved to the new
+  `.claude/references/env-knobs.md`.
+- `validate-toolkit.sh` enforces the 120-line hard cap **plus a 16,000-byte cap** — a passing
+  line count does not bound a file built of wide markdown table rows. The 120-line `CLAUDE.md`
+  cap, vacuous since the inversion, is retired in favour of a 30-line shim cap.
+- Always-on constitution cost is **~2,251 tok against a ~3,498 tok pre-inversion baseline** —
+  net below where the constitution started, not merely below its peak.
+
+## [7.36.0] - 2026-09-23
+
+> **Note (added in 8.0.0):** this release also shipped the `AGENTS.md`-canonical inversion
+> (see "Changed — AGENTS.md is the canonical constitution" below), a breaking change that should
+> have carried a major version. 8.0.0 marks it.
+
+### Added — lint-config weakening guard, search-before-edit nudge, MCP server backoff, session cost tracking, lesson scoring
+
+Four new hooks and two scripts, each aimed at a failure seen in real sessions: silencing
+an analyzer to get a green build, editing a file without checking its callers, retrying a
+dead MCP server in a loop, and not knowing what a run cost. Every knob is in
+`.claude/references/env-knobs.md`.
+
+- **`hooks/config-guard.sh` (PreToolUse `Edit|Write`, hard deny).** Blocks only edits that
+  *weaken* a linter, analyzer or formatter config: rule-ID suppression codes added to a
+  suppression key (`NoWarn`, `ignore`, `extend-ignore`, `disable`, …), rules or strictness
+  switched off (`severity = none|silent|suggestion`, `"off"`, `TreatWarningsAsErrors=false`,
+  `<Nullable>disable`, …), and new lines in `.eslintignore`-style ignore files. Covers .NET
+  (`.editorconfig`, `Directory.Build.props`, project files, rulesets), JS/TS (ESLint, Biome,
+  tsconfig) and Python (ruff, pyproject, mypy, pylint, flake8) configs. Stricter edits,
+  version bumps and `error` → `warning` pass. The deny tells the agent to fix the code and,
+  if the engineer asked for the suppression, to stop and ask; it names no bypass. The
+  engineer approves a path in `.mtk/config-guard-allow` (honoured for 24h after the file
+  was modified; the agent cannot Edit/Write it). Kill-switch `MTK_CONFIG_GUARD=0`.
+- **`hooks/fact-force-guard.sh` (PostToolUse `Grep|Glob|Bash` + PreToolUse `Edit|Write`,
+  advisory).** Records the session's searches, and when the agent edits an existing in-repo
+  code file whose name no search mentioned, adds one note asking it to find the file's
+  dependents first. Once per file per session, capped at `MTK_FACT_FORCE_MAX_NUDGES`
+  (default 5); tests, docs, `.mtk/` and `tasks/` are exempt. `MTK_FACT_FORCE_ENFORCE=1`
+  makes the note a one-time deny (the retry passes); `MTK_FACT_FORCE=0` turns it off.
+- **`hooks/mcp-health.sh` (PreToolUse, PostToolUse and the new `PostToolUseFailure`
+  event on `mcp__.*`).** Classifies MCP failures (auth, forbidden, rate limit, unavailable,
+  transport; tool-level errors are ignored) and puts the failing server into exponential
+  backoff, `min(base × 2^(failures−1), max)` with `MTK_MCP_HEALTH_BACKOFF_BASE_SECS` (30)
+  and `MTK_MCP_HEALTH_BACKOFF_MAX_SECS` (600). Calls during backoff get an advisory to use
+  non-MCP fallbacks, or a deny with `MTK_MCP_HEALTH_ENFORCE=1`; a successful call clears the
+  record. It never probes or reconnects, and stores only the failure class, never the raw
+  error text. Kill-switch `MTK_MCP_HEALTH=0`.
+- **`hooks/cost-tracker.sh` (async Stop) + `scripts/session-cost.sh` +
+  `hooks/lib/model-pricing.tsv`.** After each Stop, records the token usage since the last
+  Stop (main thread and each subagent, deduplicated by message id) with an API-equivalent
+  USD estimate to `.mtk/metrics/costs.jsonl`. Only counts, model ids, session id and
+  timestamps are stored. `session-cost.sh window --since … --until …` sums a span, and the
+  implement run receipt now carries a **cost** field from it
+  (`.claude/references/implement-archive-receipt.md`). Transcripts are an internal format,
+  so a parse failure records nothing rather than a zero row; the failure is kept in
+  `.mtk/metrics/.last-error` and `window` prints a `warning:` line while it stands. Kill-switch
+  `MTK_COST_TRACKER=0`.
+- **`scripts/lesson-score.sh` + lesson-refresh ranking.** Scores each lesson in
+  `.mtk/learnings.jsonl` from recurrence, recent recalls, reconfirmation, time since last
+  signal, expiry and stale anchors (`lesson-anchors.sh`), clamped to [0.05, 0.95], and marks
+  lessons under 0.40 `due`. Suggest-only: `lesson-refresh` step 2 uses the order to decide
+  which lessons get the deepest checks first, and retirement stays a human decision.
+- **Harness-adapter research note.** `docs/ecc-harness-adapters-2026-09.md` records how
+  other agent toolkits adapt one hook and instruction set across harnesses, and is linked
+  from the multi-harness migration plan (`docs/plans/2026-09-21-multi-harness-migration.md`).
+- **Feature catalog** (`docs/how-it-works.data.json`) gains entries for the four hooks, the
+  two scripts, and the previously undocumented `batch-fix` skill, so
+  `build-how-it-works.py --check` passes again.
+
+### Changed — AGENTS.md is the canonical constitution; CLAUDE.md is a shim
+
+Every harness the team uses reads `AGENTS.md`, and Claude Code now reads it natively. The
+rules therefore live in one file instead of a Claude-shaped original plus a summary that
+drifts from it.
+
+- **`AGENTS.md` holds the constitution** — skill routing, build and test commands, project
+  profile, critical rules, standards reference, and a compact agent-routing section. The
+  detailed routing material (decision tree, workflow-composition table, review-output schema,
+  eval pipeline, path-scoped loading) moved to `.claude/references/agent-routing-guide.md`.
+- **`CLAUDE.md` is an 11-line shim** — a bare `@AGENTS.md` import, a plain-text pointer for a
+  harness that reads the file literally, and a short *Claude Code only* section. No rule text:
+  the default `instructionFiles` mode `claude-md-or-agents-md` reads `CLAUDE.md` and ignores
+  `AGENTS.md` whenever a `CLAUDE.md` exists (the bare import is what makes the constitution
+  reachable), while `claude-md-and-agents-md` loads both and de-duplicates the imported file —
+  so a rule written into the shim is duplicated under one mode and lost under the other.
+- **Every script that mines the constitution resolves `AGENTS.md` first** — digest, context
+  pack, rule-enforcement map, repo-health, doctor, refresh plan, savings, and both generators
+  share one rule: `AGENTS.md` when it exists and `CLAUDE.md` is absent or a shim, else
+  `CLAUDE.md`. A repo with only a legacy `CLAUDE.md` produces exactly the output it did before.
+- **Bootstrap authors `AGENTS.md`** from `.claude/references/root-agents-md-template.md` (same
+  60–80 line target, 120 hard cap, same `<!-- mtk-setup` footer) and writes the shim from a
+  second template block in the same reference. A repo whose constitution still sits in
+  `CLAUDE.md` gets the inversion *proposed* through the regen-diff contract, never applied
+  silently; a hand-curated `AGENTS.md` is preserved untouched.
+- **Copilot, Windsurf and Cline mirrors shrink to pointer mode** — marker, a line naming
+  `AGENTS.md` as canonical, and the `## Critical Rules` body, capped at 40 lines; an
+  over-length body ends in a visible truncation marker and warns on stderr with the dropped
+  line count. Gemini and the glob-scoped Cursor `.mdc` rules keep their full-content shape but
+  take their critical rules from the same resolved constitution, so a shim repo no longer
+  emits mirrors with no rules at all.
+- **`generate-agents-md.sh --force` refuses to overwrite a canonical `AGENTS.md`** (exit 1,
+  file untouched) — that summarizer would replace hand-authored rules with a references
+  summary. Pass an explicit output path for a legacy-style summary.
+- **`claude-md-audit` / `claude-md-capture` are now `instructions-audit` / `instructions-capture`**,
+  targeting `AGENTS.md` first and then shims. The `/mtk` router keeps the `claude.md` phrasings
+  as synonyms and adds `agents.md` / `instructions` ones.
+- **`validate-toolkit.sh` gains two checks:** a `CLAUDE.md` without an `@AGENTS.md` import fails,
+  and an `AGENTS.md` over 200 lines fails with its line count.
+
+
+### Verified — multi-harness spike (Codex CLI 0.153.4, OpenCode 1.18.20)
+
+WS0 of `docs/plans/2026-09-21-multi-harness-migration.md`; results in
+`docs/harness-support-matrix.md`. Codex maps its shell to `Bash` and `apply_patch` to
+`Edit|Write` hook matchers (proven by hook counts and by `security-gate.sh` blocking a forced
+push to `main` end to end), loads `"skills": "./.claude/skills"` with non-spec frontmatter keys
+intact, ignores a root `plugin.json`/`mcp.json` beside `.claude-plugin/`, leaves
+`${CLAUDE_PLUGIN_ROOT}` unexpanded in `.mcp.json` (the MTK MCP server is unreachable there),
+has no Read/Grep/Glob tools (so `read-guard.sh` never fires), and pins hook trust per hook at
+install — hooks added by a later update show `Failed` until re-trusted. OpenCode discovers
+`.claude/skills` and `.agents/skills` but not `.claude/agents`; its plugin API can host a hook shim.
+
+### Fixed — the pre-commit linter no longer treats a documentation page as source
+
+A wiki page under `docs/wiki/` quoted a vulnerable SQL line to explain the injection
+it had removed. `RAW-SQL-INTERPOLATED` (a `stack-dotnet` code rule) fired on the
+quotation, the commit was blocked as `NEEDS_CHANGES`, and the author — correctly
+declining to reach for `--no-verify` — paraphrased the page into something less
+accurate. The linter had no path filtering at all: every added line in every staged
+file was scanned by every active rule.
+
+- **Pattern packs now declare a scope.** A `# scope: code|prose|all` header directive
+  says which class of file a pack applies to. `hooks/pre-commit-linters.sh` classifies
+  each changed file by extension (`.md`, `.mdx`, `.markdown`, `.rst`, `.adoc`,
+  `.asciidoc`, `.txt` are prose) and drops a pack's hits on files outside its scope.
+- **Shipped packs are scoped.** All `stack-*` and `domain-*` packs plus `slopwatch`
+  are `scope: code` — they describe what a program does, and a page quoting a bad
+  line is not running it. `secrets` and `docdrift` stay `scope: all`: a hardcoded key
+  is a leak wherever it is written, and drift smells live in prose too.
+- **Classification is by extension, not directory**, so it holds wherever a repo keeps
+  its wiki, and a pack with no directive keeps the old scan-everything behavior — so
+  gitignored project-local packs are unaffected.
+
+`tests/hooks/test-linter-scope.sh` pins all four halves: the code rule silent on the
+page, the same rule still critical in the `.cs` file, the AWS key in the page still
+caught, and a doc-only commit passing.
+
+### Added — encode the skills-since field run: briefs state invariants, commands are quoted, derived files are collateral, the undeclared caller is the default
+
+A 2026-09-18 seven-batch `implement` run landed one critical and nine warnings in a
+single review iteration. Manifest pre-flight (four bad paths rejected before any
+edit), the pre-edit baseline (both stalls proved inherited), and the four-lane
+reviewer fan-out (19 minutes wall-clock; the critical found independently by three
+lanes) all earned their cost. Neither real defect came from the toolkit — both came
+from the brief. These changes move the corrections into the artifacts that generate
+briefs, and take three smaller costs out of the run.
+
+- **A Boundary states an invariant, not a file.** "Don't touch `SkillsDataRepository`"
+  meant "don't add filtering there"; the implementer read it literally and loaded every
+  bundled file on every request to route around it, and the correct fix was two lines in
+  the forbidden file. `planning-and-task-breakdown` now requires the boundary to be
+  written as the behavior that must hold, naming a file only when the file itself is
+  frozen, and flags a bare prohibition as a red flag. The implementer brief gains the
+  matching rule: a boundary you cannot satisfy is `blocked` or a recorded `deviation` —
+  never a silent redesign.
+- **The context pack is the command authority.** A freehand `dotnet ef …
+  --startup-project` in a brief cost a batch a failed run while the correct invocation
+  sat in the stack's data-layer reference. Planning must now quote every verification
+  command from the tech-stack skill or the reference it cites, naming the source, or
+  mark it `[UNVERIFIED]`; the implementer runs the pack's form when a brief disagrees
+  and reports the discrepancy as a trap.
+- **Derived artifacts are collateral, not drift.** `validate-handoff.sh` now sorts
+  undeclared files into machine-written and hand-written — lockfiles, snapshots,
+  generated sources, minified bundles, and any file whose own first lines say it is
+  generated report under a `NOTE:` heading and score nothing, while a hand-written file
+  outside the manifest stays CRITICAL. `spec-drift-detection` and
+  `planning-and-task-breakdown` stop asking planners to enumerate machine output; they
+  name the regenerator instead. Covered by `tests/hooks/test-validate-handoff-derived.sh`.
+- **The undeclared caller is 100% of traffic on day one.** `silent-failure-hunter` gains
+  a "guards that bind only the declared caller" lens and a matching critical severity
+  row — a constraint inside `if (caller.HasX)` with no `else`, a filter whose "nothing
+  matched" and "nothing to send" are the same value, a new requirement applied only
+  where the old code already looked. This lens is what caught the run's critical: an
+  item that gained a requirement entered the delta, was filtered out silently, and the
+  endpoint answered `304`, so clients would have kept gated resources forever.
+- **A red baseline is an environment question first.** About 35 minutes went to an
+  x64-only `protoc` on an arm64 host and a Docker daemon that was not running. Phase 2.9
+  baseline capture now carries a signature table (`bad CPU type`, `Cannot connect to the
+  Docker daemon`, `connection refused`, feed `401`) to read before opening any source,
+  and records the blocker as both a result field and a carried trap so a later phase does
+  not re-diagnose the same machine.
+
+### Added — encode the six-phase field-run retro: carried trap list, Not-Proved ledger, the analyzer wall, composition gate, lesson-store drift check
+
+A 2026-09-14/15 six-phase port of a financially sensitive billing system, with MTK
+driving every phase, ended with every gate green — and with two uncallable API
+routes shipped in phase one, six phases that never touched a real external system,
+and an obsolete acceptance test nobody flagged. The one mechanism that demonstrably
+worked was a hand-carried trap list, which gave the final phase zero repair cycles.
+These changes make that mechanism a maintained artifact, document the analyzer wall
+that did the real catching, and make "proven" distinguishable from "green".
+(Re-landed from a stale branch; the original bumped the version and checksums, which
+belong to the release commit.)
+
+- **`workflow-artifact.sh trap add` / `trap list`.** Traps persist in
+  `results.trap_list[]` with a `trap_added` event, idempotent by title, and `trap`
+  is batchable so recording one rides along in the call that runs anyway. The
+  implementer brief injects a "Known traps" block; the batch-result schema gained an
+  optional `traps[]`; `subagent-implementation` pastes `trap list` into every bundle
+  and records reported traps; `workflow-artifacts` documents the protocol.
+- **New rule file `.claude/rules/verification-and-proof.md` (S5.1–S5.4)** — green is
+  not proof, carry a trap list, compose-then-verify, document the analyzer wall.
+  Indexed in the wake-up layer with `topic: verification` and an Edit/Write trigger on
+  the four skills it governs.
+- **`verification-before-completion` pairs behavior-shaped completions with a
+  Proved / Not-Proved ledger** naming every mocked-only integration, every unpinned
+  config or branch, and the limits of a single-fixture parity match. An empty
+  Not-Proved column is a red flag, not a clean bill.
+- **`.claude/references/dotnet/analyzer-config.md` documents the analyzer wall**:
+  the StyleCop / Sonar / Meziantou rules behind all 21 of the run's build repair
+  cycles, the `SA1512`/`SA1514` banner-above-doc-comment collision, and why a green
+  `dotnet build` does not imply a green `dotnet format --verify-no-changes`.
+- **`tech-stack-dotnet`** records two CLI gotchas rediscovered every phase:
+  `dotnet test --filter` is rejected under Microsoft.Testing.Platform (use
+  `-- --filter-class`), and `dotnet ef` scaffolding needs `--project`,
+  `--startup-project`, `--context`, and a dummy connection string.
+- **`batch-fix` Phase 6 runs a full-suite composition check.** Five individually
+  green fix rounds broke fourteen tests when composed; eleven were stale fixtures.
+  Seed the fixture, never edit expected values to reach green.
+- **`mtk-doctor` reconciles `analytics.json` against the lesson stores.** WARN when
+  analytics claims lessons but `.mtk/learnings.jsonl` is empty — the field run's
+  exact shape (25 claimed, 0 stored, `tasks/lessons.md` populated) now names the
+  `learnings.sh migrate` remedy instead of passing.
+
+Two new hook tests cover `trap add`/`trap list` (including the batch ride-along and
+title dedup) and the doctor's three store states.
+
+### Fixed — beacon field-run gaps: rule-id parsing, lesson seeding, file-resolution diagnostics, host-load routing, shared change map, security-gate false positives
+
+A 2026-09-09 implement run in a client repo confirmed the review lanes, plan-gap
+review, and killed-mid-batch RESUME as the parts that earn their cost, and surfaced
+six places where the toolkit assumed an environment it did not have:
+
+- **`constitution-digest.sh` recognises any rule-id scheme.** It matched only the
+  toolkit's own `- **C0.1**` shape; a repo numbering rules `- **§0.1**` got an empty
+  Critical Rules section and no hint. Now any short bold token containing a digit
+  counts (`C0.1`, `§0.1`, `S1.2`, `R-12`, `0.1`), `MTK_RULE_ID_PATTERN` overrides the
+  shape, and a Critical Rules section with zero matches prints a stderr hint.
+- **`learnings.sh query` seeds an empty store from `tasks/lessons.md`.** The seed
+  ran only in `setup-bootstrap`, so repos bootstrapped earlier answered every lesson
+  query with nothing, forever (30 lessons, 0 reachable). The lazy seed is store-only —
+  a read path never rewrites the markdown; `migrate --store-only` exposes the same
+  path; `MTK_LEARNINGS_AUTOSEED=0` restores diagnose-only.
+- **`mtk-doctor` checks that runtime-referenced files resolve.** Twelve files the
+  skills name by path mid-run (security checklist, testing patterns, review config,
+  handoff schema, the workflow scripts) are walked along the documented resolution
+  order. FAIL per file when one resolves nowhere; WARN when files are found only by
+  plugin-cache search, naming the exact `MTK_HELPER_ROOT` to pin, because the
+  skills' inline resolvers never look in the cache.
+- **Host load is part of the dispatch decision.** New `scripts/host-load-probe.sh`
+  reports 1-minute load per core against `MTK_HOST_LOAD_MAX` (default 2.0, exit 3
+  on overload; `MTK_HOST_LOAD_PROBE=0` skips). `implement` Phase 2.9 records it
+  beside `dispatch_capability` and routes to inline-MAX when overloaded;
+  killed-mid-batch recovery probes before respawning and, on overload, switches the
+  remaining batches to inline-MAX instead of respawning into the same kill. The field
+  run lost two implementers and their respawn to the harness's 10-minute no-output
+  watchdog while they waited on builds slowed 20× by a saturated host.
+- **Context pack section 7: a shared change map.** Declared symbols per manifest
+  file (types, public methods, defs, exports) and the tracked files referencing each
+  (`git grep -w`, generated/minified files excluded, new files marked). Reviewer lanes
+  start there instead of each re-deriving the call graph — roughly a third of reviewer
+  tokens in the field run. `MTK_CONTEXT_PACK_CHANGE_MAP=0` opts out.
+- **`security-gate.sh` judges the real command word.** A read-only `grep` behind a
+  control word (`for … do grep`, `if grep`, `! grep`), a wrapper (`xargs grep`,
+  `time grep`, `find … -exec grep`), a read-only `git` subcommand, `bash -c "grep …"`,
+  or inside `$(…)` was judged by its first token and denied — each denial costing a
+  full re-plan turn. Command substitutions are now judged by recursion (boundaries
+  become segments) rather than exempted or blanket-denied, so a destructive inner
+  command is still caught. `sed` counts as read-only unless `-i`; `awk`, `sort`,
+  `jq`, `ls`, `stat` and friends join the read-only list.
+
+Four new hook tests cover the scripts; the security-gate false-positive suite gained
+fifteen allow cases and eight block cases for the new shapes.
+
+### Fixed — GitHub issues #95–#99: Windows python3 CRLF, tech-stack.map glob expansion, `smoke-boot` rejected
+
+Five issues filed 2026-09-07 from Windows (Git Bash + native Python) and macOS field
+use, each reproduced against `main` before fixing.
+
+- **One root cause behind #95, #96 and #98: a Windows-native python3 writes `\r\n` to
+  text-mode stdout, and every bash `$(python3 …)` capture kept the `\r`.**
+  `setup-refresh-plan.sh --json` crashed (`not enough values to unpack`) and its
+  table-mode summary miscounted; `workflow-artifact.sh seal <uuid>` with no paths failed
+  with `seal target not found` on a file that existed; `manifest-preflight.sh` flagged
+  every `modify` entry MP001. Fixed at the source: every python heredoc and `-c`
+  one-liner whose stdout bash parses now opens with
+  `sys.stdout.reconfigure(newline="\n")` (16 files across `scripts/` and `hooks/`),
+  so the fix does not depend on each consumer remembering to strip a CR. Python sites
+  whose output only reaches another JSON parser or the terminal are unchanged (a `\r`
+  is JSON whitespace). New `tests/hooks/test-python-crlf-stdout.sh` drives the three
+  reported scripts through a python3 shim that emulates the Windows text layer and
+  fails on the unpatched code.
+- **#99 `resolve-tech-stack.sh`: the `tech-stack.map` line was split with an unquoted
+  `set -- $line`, which also pathname-expands.** From a repo root that has `backend/`,
+  `backend/** dotnet` became `backend/Shop.Api backend/Shop.Api.Tests … dotnet`, so the
+  resolver emitted a directory entry as the stack and `--explain` cited it as the glob.
+  Now split with `read -r`. `tests/hooks/test-resolve-tech-stack.sh` populates the
+  mapped folder (the old empty fixture gave the glob nothing to expand to, which is why
+  the case passed) and adds `**` cases. The zero-arg `seal` derivation in
+  `workflow-artifact.sh` had the same unquoted `set --` and is now a `read` loop.
+- **#97 `smoke-boot` is documented as an `evidence_channel` but the schema and
+  validator rejected it.** The v7.15 change added it to the taxonomy in
+  `spec-sidecar-manifest.md` and `verification-before-completion` but not to
+  `handoff.schema.json` or `validate-handoff.sh`'s `VALID_CHANNELS`. Both now carry all
+  nine values; the accept-fixture `handoff-evidence-channels.json` gained an SC9 using it.
+### Fixed — GitHub issues #59 and #60: scope-guard anchored to shipped specs; the "Ran 9 stop hooks" figure explained and audited
+
+- **#59 `scope-guard.sh` anchored to shipped spec sidecars.** The guard picks the
+  freshest `docs/specs/*.json` within 7 days. In a repo that keeps shipped sidecars
+  (this toolkit), that was usually a spec already archived by `spec-archive.sh`, so every
+  unrelated edit was tagged "not in the approved spec (<shipped-slug>)" — and the
+  archive's own `docs/specs/baseline/*.json` snapshot could be picked as the "spec" too
+  (the field warning named `toolkit`, the baseline area, not a slug). Candidates are now
+  taken newest-first from `docs/specs/` only (`-maxdepth 1`), and any whose slug appears
+  in `docs/specs/baseline/*.audit.jsonl` is skipped — the same fixed-string probe
+  `spec-archive.sh` uses for idempotency, without jq (S3.3). New
+  `tests/hooks/test-scope-guard-archived.sh`.
+- **#60 "Stop hooks fire multiple times" — diagnosed, and `mtk-doctor` now shows the
+  arithmetic.** The observed "Ran 9 stop hooks" is 5 Stop entries in the plugin's
+  `hooks/hooks.json` plus 4 in the project's `.claude/settings.json`: registration, not
+  execution. All five plugin Stop hooks already exit early via
+  `mtk_is_redundant_plugin_invocation` when the project wires the same basename.
+  `installed_plugins.json` records one `installPath` per plugin, so the older version
+  directories in the cache are upgrade leftovers rather than extra registrations (Claude
+  Code does not document the loader; this is what the registry on disk shows). Two doctor
+  checks in the ENVIRONMENT section: a PASS line stating `N = P plugin + S project` and
+  that this is the figure the harness reports, with a WARN for any doubly-wired Stop hook
+  that lacks the guard (that one really runs twice); and a WARN naming stale
+  plugin-cache version directories with the installed one and the exact `rm -rf` — it
+  never deletes them itself. New `tests/hooks/test-mtk-doctor-stop-hooks.sh`.
+
+## [7.35.0] - 2026-09-08
+
+### Changed — token and speed: bounded tool output, a per-run context pack, parallel batch waves, fewer bookkeeping turns, lighter instruction load
+
+A 2026-09-07 audit of v7.34.0 measured where an implement run spends tokens and
+minutes. Hooks were cheap (40–170 ms, parallel, silent on the common path). The cost
+was in the loop itself: unbounded build/test output, every subagent re-reading the
+whole standards library, batches serialized even when independent, ~65 standalone
+artifact-bookkeeping turns per run, and ~94k tokens of instruction text reachable
+from `implement` before any code was read. Six workstreams, plan at
+`docs/plans/2026-09-07-token-and-speed-optimization.md`:
+
+- **Bounded output by default (WS1).** The dotnet, python, and TypeScript stack skills
+  now prescribe quiet runners (`dotnet build --nologo -v q`, `dotnet test --nologo -v q
+  --no-build`, `pytest -q --tb=short`, `tsc --pretty false`, dot/silent reporters) and
+  the implementer prompt routes **every** VERIFY command through `mtk-verify-run.sh` —
+  the old "when output will exceed ~30 lines" judgment call is gone. Evidence is the
+  wrapper's `exit=N` line, bounded tail, and log path; raw output is never pasted.
+- **Per-run context pack (WS2).** New `scripts/build-context-pack.sh <uuid> <sidecar>`
+  writes `.mtk/workflows/<uuid>/context-pack.md` once the change manifest is known:
+  the stack's build/test/format commands, CLAUDE.md `## Critical Rules`, the
+  coding-guideline sections whose headings match the *kinds* of files in the manifest
+  (handler/entity/test/api keyword table) plus a TOC of every other heading with its
+  path, `[EXTRACTED]` architecture principles, and lessons that mention a manifest
+  path. `implement` Phase 2 builds it and records `results.context_pack`; the
+  implementer prompt and every reviewer agent read the pack **instead of** CLAUDE.md +
+  tech-stack skill + full guidelines (the old list survives only as a fallback for
+  standalone runs; `compliance-reviewer` still reads `.claude/rules/*.md` because it
+  cites rule IDs; `plan-gap-reviewer` deliberately does not get the pack — it carries
+  lessons, and that lane is anti-anchored). `review-finding-schema.md` is cut to the
+  contract (16k → 4.6k chars); the long-form rationale and examples moved to
+  `review-finding-examples.md`.
+- **Parallel batch waves (WS3).** `depends` is now **required** on every plan batch
+  (`depends_rationale` when empty), two batches that share a file must carry an edge,
+  and DI-registration / project / migration-snapshot files are serialize-if-touched.
+  The workflow template derives each batch's wave as its topological level and runs
+  same-level batches with `parallel()`, capped by `MTK_BATCH_WAVE_MAX` (default 3);
+  the manual Agent-loop dispatches a wave in one message. `plan-gap-reviewer` flags a
+  missing edge between file-sharing batches as `BLOCKING`. Drift micro-check runs
+  once per wave. New eval suite `evals/subagent-implementation/`.
+- **Bookkeeping never gets its own turn (WS5).** `workflow-artifact.sh` gains `batch
+  <uuid> <op> -- <op> …` (several set/event/gate/seal ops in one invocation) and
+  `event --ts <iso8601>` (replay a runtime-captured timestamp). Every prescribed
+  artifact write in the implement chain now rides in the same shell call as the
+  command it records, or in one `batch` call; only `init`, `list`, `read`, and
+  `verify-seal` run alone. `list` is one python3 pass instead of one per artifact.
+- **Timing on the dynamic-workflow path (WS6).** The workflow template stamps
+  `ts_dispatched` / `ts_returned` on every batch result; the orchestrator replays them
+  as `agent_dispatched` / `agent_returned --ts … --data '{"source":"workflow-replay"}'`
+  before any gate, so the run receipt's per-batch timing is populated on the path
+  WS3 makes the common one. Replayed rows are labelled `(replayed)` in the receipt.
+- **Lighter instruction load (WS4).** The nine copies of `## MTK File Resolution`
+  collapse to one reference (`mtk-file-resolution.md`) that the `/mtk` router
+  resolves once per session; oversized Common Rationalizations / Red Flags tables move
+  to `workflow-rationalizations.md` with ≤3 skill-specific rows kept inline;
+  Verification / Overview / When To Use sections in the implement chain are trimmed to
+  checklists; `context-engineering` drops its 200k-era budget text (60–120 lines per
+  skill, prune at 5+ skills, reset at 40%) for the 1M default and states the real cost
+  model — instruction text is prompt-cached, tool output is not; `model-routing.md`
+  binds the slots to the current generation and names Fable 5.1 as an optional
+  `strong` binding for compliance/security lanes only. `validate-toolkit.sh` adds
+  advisory WARNs (never `fail` this release) for skill char budgets (20k workflow /
+  35k phase-based), Verification > 8 lines, Overview > 3 lines, When To Use > 5
+  bullets.
+
+- **Reviewer agents are actually restricted now (S1.7).** The six agents declared
+  `allowed-tools: Read, Glob, Grep, Bash`, but Claude Code enforces the `tools:` key on
+  agent definitions and ignores `allowed-tools` there — so every MTK reviewer ran with
+  **all** tools (Edit and Write included, against its read-only contract) and every spawn
+  carried every tool schema, ~120 MCP/deferred tool names, and the whole ~150-entry skill
+  roster. Measured on a loaded machine: a zero-tool spawn of `test-reviewer` cost ~54k
+  tokens; a built-in agent with a real `tools:` restriction cost ~22k, with the skill
+  roster and MCP names gone entirely. All six agents now carry `tools:`;
+  `validate-toolkit.sh` **fails** on an agent without it or one granting
+  Edit/Write/Agent/Skill (the old advisory checked the wrong key).
+
+New knob: `MTK_BATCH_WAVE_MAX` (CLAUDE.md routing table). New references:
+`mtk-file-resolution.md`, `workflow-rationalizations.md`, `review-finding-examples.md`.
+`plan.batches[].depends` becomes required in `handoff.schema.json`; `parallel_safe` is
+deprecated in favour of `depends`/`wave`.
+
+**Measured (this checkout, same commands as the audit):** implement-chain skill text 213,933 → 206,414 chars (-4%) and all skills 561,243 → 547,655 chars, with WS2/WS3/WS5/WS6 adding new instructions inside the same files; implementer fixed preamble ~63k → 19,516 chars (context pack 13.4k on this repo's dotnet manifest + prompt template); compliance lane ~107k → 55,490 chars (pack + schema + rules + agent); review-finding-schema 16,017 → 4,601 chars; full `## MTK File Resolution` copies 9 → 0; standalone artifact-bookkeeping turns prescribed across the chain 47 → 28; `workflow-artifact.sh list` ~600 → 66 ms; wave scheduler unit-tested (`B1 → B2+B3+B4 → B5 → B6` for four independent middle batches under cap 3; a chain stays sequential). The plan's 40% chain-text target is **not** met this release — the char-budget/section-cap WARNs name the remaining offenders (setup-bootstrap 42.9k, batch-fix 25.3k, subagent-implementation 26.3k) for the follow-up.
+
+### Fixed — scripts that leaked their layout assumptions when run by hand from the plugin cache
+
+A 2026-09 field run drove the implement loop with the plugin disabled and every
+script invoked from the plugin cache. Four things that hooks normally paper over
+surfaced:
+
+- `scripts/constitution-digest.sh` anchored on its own parent directory and digested
+  the **plugin's** CLAUDE.md instead of the project's. Now resolves the project root
+  like `build-rule-index.sh` does (`$CLAUDE_PROJECT_DIR` → git top level → cwd).
+- `scripts/validate-handoff.sh` hard-coded `main` as the base ref, so a stacked
+  branch reported its parent's files as undeclared drift; it also saw only committed
+  files and compared manifest entries by exact string. Base ref now resolves
+  argument → `MTK_BASE_REF` → handoff `base_ref` → nearest ancestor local branch →
+  `origin/HEAD` → `main`. "Touched" is the union of committed, uncommitted, and
+  untracked-not-ignored files, minus workflow artifacts (`docs/specs/`, `docs/plans/`,
+  `tasks/`, `.mtk/`) which are never drift. Manifest entries ending in `/` cover
+  everything beneath them.
+- `hooks/format-on-edit.sh` ran bare `dotnet format`, which includes the `analyzers`
+  pass; a CA1001 auto-fix rewrote a test class and broke the build four times across
+  implementers. Now runs `whitespace` and `style` only. `tech-stack-dotnet` Format
+  Command updated to match.
+- The mid-run churn rule was a flat 300/500 lines counting every line, and fired
+  after every batch of a HIGH-rigor run, roughly doubling review time. It now counts
+  non-generated lines since the last review, is tunable via `MTK_CHURN_REVIEW_LINES`
+  / `MTK_CHURN_HALT_LINES`, and doubles its defaults at rigor HIGH/MAX where each
+  batch is already isolated and drift-checked.
+
+### Added — killed-mid-batch recovery, tier fallback, and a timing section in the run receipt
+
+A second 2026-09 field run (8 batches, 3 h 43 min active) had its first Opus
+implementer killed by the org's monthly spend limit. The session improvised the right
+recovery — checked the partial work compiled, respawned on Sonnet to finish — but the
+toolkit had no path for it: the only recovery rule was "no result → `inconclusive` →
+respawn with narrowed scope", which over partial work already on disk either redoes it
+or builds a duplicate beside it. Twenty-four minutes were lost and nothing recorded
+them.
+
+- `subagent-implementation` (both paths) now distinguishes **killed** from
+  `inconclusive`: inventory the partial state, build it, respawn to *finish* from it
+  (or revert only the batch's own files and restart), one attempt per batch, and record
+  the incident in the new `results.dispatch_incidents[]` on the workflow artifact
+  **before** dispatching the replacement. `completed_batches[]` entries now carry
+  `implementer_model`.
+- `model-routing.md` gains a **tier fallback** rule: `strong` unavailable → `default`
+  for the rest of the run, without a model re-ask and without re-probing the limit;
+  `default` unavailable → halt. Implementer code never drops to `fast`.
+- The opt-in run receipt (`MTK_RUN_RECEIPT=1`) gains a **timing** section — active
+  minutes per phase and their share, engineer-wait gaps, per-batch dispatch time, and
+  time lost to dispatch incidents — derived only from event timestamps already on the
+  artifact, with `not recorded` for anything the log does not bound. This is the figure
+  that says what the ceremony cost against what the review lanes caught; until now it
+  was reconstructed by hand after the run.
+- Pressure test scenario 16 covers the kill.
+
+## [7.34.0] - 2026-09-04
+
+### Changed — prompt audit: dated prompting patterns removed from the model-facing surface
+
+A `/claude-api prompt-audit` pass over every skill, agent, rule file, and hook that
+reaches the model, against the Claude 5 family. The surface was already clean of
+think-step-by-step scaffolds, progress-cadence choreography, and retired model IDs;
+what remained was register and one stale default:
+
+- `hooks/context-budget.sh` now defaults `MTK_CONTEXT_WINDOW_TOKENS` to **1,000,000**.
+  Every current Claude Code model except Haiku 4.5 has a 1M window, so the old 200k
+  default fired the "hand off before quality degrades" nudge five times too early —
+  the documented premature-wrap-up failure. Thresholds still scale linearly from the
+  200k calibration constants (150 files / 200 mods / 600 ops at 1M); set
+  `MTK_CONTEXT_WINDOW_TOKENS=200000` for Haiku. `mtk-doctor` now warns when a Haiku
+  model runs on the 1M default instead of the reverse.
+- `setup-bootstrap` no longer instructs the generator to prefer `NEVER Z` rules and
+  `IMPORTANT:` / `YOU MUST` markers in target repos' CLAUDE.md. Current models weight
+  the system prompt closely; the markers cause over-triggering, and a prohibition can
+  anchor toward the failure it names. Rules now carry the trigger, the action, and the
+  reason, and prohibitions are reserved for constraints the counter-example gate confirms.
+- `compliance-reviewer`: shouted `NEVER approve` / `ALWAYS Critical` rules restated at
+  normal volume (the verdict mapping already lives in the schema), and the "am I being
+  lazy" self-interrogation replaced with a concrete second pass over the security and
+  data-integrity axes plus the schema's `below_threshold_rationale`. The adversarial
+  persona is unchanged. The matching pressure test scenario was updated.
+- `setup-audit` / `setup-bootstrap`: seven consecutive `(MANDATORY)` markers dropped;
+  the rules and their recorded failure examples stay.
+- Migration-relative phrasing removed from the always-loaded rules ("formerly commands",
+  "ex-entry-points"); `C0.3` now defers to `S2.2` instead of stating a stricter anatomy
+  without S2.2's phase-structured exemption; toolkit-version labels (`v7.14`, `v7.25`)
+  dropped from lesson-capture instructions; the `subagent-implementation` dynamic-workflow
+  instruction and two `## IMPORTANT` section headings rewritten as plain conditionals.
+
+## [7.33.0] - 2026-08-25
+
+### Fixed — always-on context: two generator bugs that shipped to every bootstrapped repo
+
+Profiling 16 sessions / 3,230 API requests found the dominant cost is not hook CPU
+but **always-on context**. Measured output throughput against context size, same
+machine, same day: 164 tok/s below 200k, 129 at 200–300k, 119 at 300–400k, **87 at
+400–500k**. Roughly half speed past 400k. Every token `setup-bootstrap` writes into
+a repo's always-on layer is paid on every request for the life of that repo.
+
+Two bootstrap bugs were inflating that layer, and one made a shipped script a no-op.
+
+- **`format-on-edit.sh` was wired where its variable does not exist** (`hooks/hooks.json`, `hooks/format-on-edit.sh`, all three `tech-stack-*` skills, `setup-bootstrap`). `$CLAUDE_PLUGIN_ROOT` is defined **only** for hooks a plugin declares in its own `hooks.json`. Bootstrap wrote the same command into each target's `.claude/settings.json`, where it expands to the empty string — so every Edit ran `bash /hooks/format-on-edit.sh` and failed. Measured **4,552 failures across 7 repos**, each costing a process spawn plus a failure attachment pushed into context, and formatting never ran once. Only the PostToolUse half was ever wired in those repos, so even a resolvable path would have queued edits and never flushed them. All three halves now live in the plugin's `hooks.json`, gated on the `.claude/tech-stack` marker so plugin scope does not mean formatting repos that never adopted MTK (`MTK_FORMAT_ON_EDIT` forces either way). `validate-toolkit.sh` now fails on `$CLAUDE_PLUGIN_ROOT/hooks/` appearing in any tech-stack skill, and on `format-on-edit.sh` disappearing from `hooks.json`.
+- **Generated rules never loaded lazily** (`setup-bootstrap`). Rule files were emitted with no `paths:`/`axes:` frontmatter, and the `build-rule-index.sh` the toolkit already ships was never run — so every rule file in every bootstrapped repo entered every request. Measured across four bootstrapped repos: 7 files / 30,356 B, 6 / 16,395 B, 8 / 13,061 B and 4 / 4,606 B, all with zero frontmatter and no `INDEX.md`. Frontmatter is now mandatory, `paths` is derived from the directories each rule's own sections cite, rules whose globs match nothing are dropped rather than shipped, and the index build is a step with a post-condition check.
+- **`build-rule-index.sh` wrote to the wrong repo** (`scripts/build-rule-index.sh`). It rooted itself on `dirname $0/..`. Invoked from the plugin cache — the only way a bootstrapped repo calls it — it regenerated the **plugin's** index and left the target with none, which is precisely the always-on cost the index removes. `CLAUDE.md` already stated the contract it broke: target-repo scripts root on `$CLAUDE_PROJECT_DIR`/git. Found because the fix above is inert without it.
+
+### Fixed — a Stop advisory with no budget
+
+- **`LEARNING CHECK` re-fired on every Stop** (`hooks/capture-learnings.sh`). Past the substantial-session threshold the hook had no per-session budget at all. Measured across the transcripts on disk: 805 injections over 275 sessions, median 1, but **up to 63 in a single session** — roughly 9k tokens of the same paragraph, which is how a reader learns to tune out every hook MTK emits. Now budgeted on the payload's `session_id` (not `mtk_session_file`, which is project+date and would collapse a day's sessions into one budget), default 1, `MTK_LEARNING_MAX_NAGS` overrides and `0` silences. A spent budget exits before the lessons scan, so it costs nothing.
+
+Checked and **not** changed: `compress-monitor.sh`'s budget was suspected of leaking (median 2 nags/session against a documented "shown once"). Direct test says it works — first call nags, second and third are silent, state file reads `1`. The spread is resumed sessions and TMPDIR reaping, not a leak.
+
+### Changed — implement/SKILL.md is a navigation layer again
+
+- `implement/SKILL.md` was 551 lines / 48,293 B and cost a measured **+17,160 tokens** on load, the largest single skill payload in the toolkit and a violation of the toolkit's own S2.26. The five heaviest blocks — rigor scoring, the Phase 2.5 gate, Phase 2.9 pre-flight, Phase 4 review lanes, Phase 7.5 archive/receipt — moved to `.claude/references/implement-*.md`, read only when that phase is reached. Each phase keeps its decision logic in the skill; only elaboration moved. **551 → 413 lines, 48,293 → 28,291 B**, nothing deleted.
+
+### Fixed — two guards that cost more than they caught
+
+- **`security-gate.sh` judged what a command *mentioned*, not what it *ran*.** `grep -rn '<delete>' hooks/` searches for a string and deletes nothing; it was denied as a recursive force-delete. So was `echo`-ing a warning about one, grepping for a destructive SQL statement, and — because the guard's own source documents the SQL it blocks in `#` comments — running `bash hooks/security-gate.sh` at all. Writing a test for the hook was blocked too, by the fixture strings the test asserts on. A false deny is not cosmetic: a PreToolUse deny forces the model to re-plan and re-issue, costing a full extra turn at whatever the session's context size is, which makes it the most expensive thing this hook can do. Two narrow exemptions now apply — command segments whose command word is a read-only tool (never exempt when the segment contains a command substitution, so a substitution inside a grep still blocks), and `#` comment lines in an executed non-`.sql` file. The pre-existing test guarding the 2026-08-10 script-hiding bypass still passes; the new test pins 6 must-block cases beside 7 must-allow ones. Median cost 45 ms → 57 ms per Bash call.
+
+  Residual and deliberately not fixed: a heredoc fed to an interpreter (`python3 - <<'PY' … PY`) is still judged on its full text, so prose mentioning a destructive statement inside one is denied. That is over-coverage of a channel which genuinely can execute, and loosening it would open the same door the file scan exists to close. Use a file write rather than a heredoc when the payload is prose.
+
+- **Two hooks had no timeout** (`hooks/hooks.json`). `verify-completion` (Stop) and `session-start` were the only 2 of 20 without one. The harness cancels a hook that overruns its timeout; with none declared there is nothing to overrun, and Stop is the worst place for an unbounded hook because a hang there freezes the session. Neither is slow — `verify-completion` measures **71 ms against a 15 MB transcript** — so 10 s is ~140× headroom and fires only on a real hang. A blocking hook that times out fails **open**, which is the right trade: a missed advisory beats a frozen session. `validate-toolkit.sh` now fails on any hook without a timeout, verified by removing one and watching validation fail.
+
+Checked and **not** changed: `verify-completion` blocking at all. It already blocks at most once per stop via `stop_hook_active` (S3.7), and 18 blocks across 275 sessions is the gate working rather than misfiring.
+
+### Fixed — the test suite inherited ambient config
+
+- `MTK_COMPRESS_MAX_NAGS` is documented for `settings.local.json` `env`. Setting it there exports it into the shell running the tests, silencing the hook and failing the suite with "advisory did not fire" — a failure pointing at the hook rather than at the config. `test-compress-monitor.sh` now normalises it at the top; budget cases still override per invocation.
+
+Known and not fixed here: `security-gate.sh` false-positives on a literal string inside a **read-only** `grep` pattern — `grep -E 'rm -rf'` is blocked as a recursive force-delete. A grep pattern is not an execution.
+
+### Fixed — latency: the pre-commit linter, an all-tools matcher, a leaked lock
+
+MTK made Claude Code measurably slower on the machine it was installed on. Profiling each hook in isolation (warm, 5–10 runs, macOS bash 3.2 / arm64) found one dominant defect and two structural ones. Every figure below is measured on this repo, not estimated.
+
+- **The pre-commit linter was O(rules × added-lines) in processes** (`hooks/pre-commit-linters.sh`). `scan_cached` ran a `grep` per added line per rule, plus a `sed` and a `cut` per match — at 30 active rules (core + dotnet + finance) against a 1,207-line diff that is roughly 72,000 subprocesses. Measured: **50,738 ms** for a 1,448-line range, which is the "commit didn't land, pre-commit hook running long" report. The diff is now projected once into parallel record arrays plus a content-only file, and each rule runs **one** grep over the whole diff, indexing hits straight back to file/line with no spawn per match. Same range: **226 ms — 224× faster, byte-identical JSON output** verified on two independent ranges. The projection reuses the same `IFS=$'\t' read -r file line content` split as the old loop rather than the cheaper `cut -f3-`, because `read` coalesces leading tabs and `cut` does not — the shorter spelling would have shifted matches on tab-indented code.
+- **`context-budget.sh` ran on every tool, not every relevant tool** (`hooks/hooks.json`, `.claude/settings.json`). It was wired with no matcher, so its `*)` catch-all took the session lock and rewrote state for every MCP tool call, `Task`, `TodoWrite` and `WebFetch` — ~130 ms each, on installs where a dozen other plugins expose ~100 MCP tools. Now scoped to `Read|Edit|Write|Bash|Grep|Glob`. Consequence worth naming: `ops` no longer counts non-code tool calls, so the 120-operation threshold is now a count of code-touching operations.
+- **The Stop chain ran synchronously in plugin installs** (`hooks/hooks.json`). `.claude/settings.json` marks `capture-learnings`, `session-analytics` and `workflow-continuation` `async: true` with a timeout; `hooks.json` set neither, so a plugin-installed repo paid the full serial chain at every turn end while this dev checkout did not — the asymmetry that made MTK feel worse elsewhere than here. `hooks.json` now matches `settings.json`. `verify-completion` stays synchronous by design (S3.7 — it must be able to block the stop).
+- **A leaked session lock cost 5 s of dead wall-clock** (`mtk_session_lock_acquire`, `hooks/lib/hook-io.sh`). A live holder keeps the lock for single-digit milliseconds, but the harness SIGTERMs a hook that overruns its `timeout` (`context-budget.sh` runs under `timeout: 3`), and SIGTERM does not run the EXIT trap — so the directory outlived its owner and the next hook spun the full 100 × 50 ms before giving up. Acquire now steals a lock older than `MTK_SESSION_LOCK_STALE_SECS` (default 2). Measured: stale lock present **5,000 ms → 89 ms**; a genuinely fresh lock is still waited out (~1.6 s) rather than stolen; the uncontended path is unchanged at ~63 ms. The try counter increments on every path through the loop, so a lock that cannot be `rmdir`-ed still terminates instead of spinning forever. A trap-based release was considered and rejected: SIGTERM would not run it, and installing one in the library would clobber each hook's own `_mtk_hook_diag` EXIT trap.
+
+Deliberately not changed. Collapsing the per-event hooks into one dispatcher process (each hook pays a ~40–60 ms bash-start-plus-source floor, and `PreToolUse`/`Bash` spawns three) is the remaining structural win, but it is a refactor of 13 hooks and wants its own pressure tests. Narrowing `verify-completion`'s `STRONG_CLAIM` regex — the only true multiple-times multiplier, since a blocked stop costs an entire extra model turn — weakens the enforcement gate the toolkit is built around, and is a policy call rather than a latency fix.
+
+## [7.32.0] - 2026-08-20
+
+### Added — field-run fixes: manifest destinations, collateral churn, a reachable MAX path
+
+A three-slice `implement` run in a client repo (three specs, 11 batches, 90 files, rigor MAX/MAX/HIGH) caught six real defects — one a PII leak — and its own honesty section named five places ceremony was reduced. Those reductions, not the defects, are what this release acts on. Every item below is a gap the run proved, checked against what the toolkit already did.
+
+- **Manifest destinations are checked before the seal** (`scripts/manifest-preflight.sh`, new `implement` Phase 2.4). Phase 0.7 reconciliation validated *cited anchors* — existing code a change attaches to — and nobody validated the **destinations** the manifest proposed. Three of three slices named paths describing a repository that did not exist, including a directory whose pattern the solution never used at all; the cost was 12 drift corrections recorded after implementers had already built against the wrong paths. The check flags missing `modify` targets (critical — and names the real path when the basename is tracked elsewhere), creates into non-existent directories with a **pattern probe** that says when the presumed idiom is absent repo-wide, and sibling naming/companion conventions (timestamp-prefixed migrations, `.Designer.cs` companions). Critical findings block the gate. Drift prevention instead of drift recording.
+- **Churn that is not the change you made** (`hooks/collateral-guard.sh`, wired into `pre-commit-review` step 4.6 and a new `spec-drift-detection` collateral axis). One shape, three faces in one session: a 60-line edit to the repo's only CRLF file produced a 2,013-line diff, one `npm install` rewrote 39,000 lines of lockfile into a feature commit, and a screenshot run rewrote 78 of 84 images. Existing coverage did not reach them — the drift check inspects lockfiles for *undeclared dependencies*, a different question, and the churn thresholds count net lines without asking whose churn it is. Comparing `git diff` against `git diff -w` catches the whitespace class in one command; declared manifest paths are exempt, and every finding carries a working revert command. A fourth class (`CG004`) covers what a whitespace comparison cannot see: a structured file **re-serialized** around a small real edit — a different indent, sorted keys, or `ensure_ascii` turning every em-dash into `\u2014` — produces genuinely different *lines*, so `-w` agrees with the raw diff and stays quiet. Comparing both sides parsed and canonicalised separates a 60-line edit from 300 lines of re-serialization. Found by making the mistake while building this release: a Python `json.dump` round-trip turned a 62-line schema addition into a 325/48 diff and escaped every em-dash in two shipped plugin manifests.
+- **MAX rigor now names a path the session can actually run** (`implement` Phase 2.9 dispatch probe + inline-MAX profile, `subagent-implementation` third path, `MTK_SUBAGENT_DISPATCH`). HIGH/MAX prescribes one fresh implementer subagent per batch; `subagent-implementation` had a fallback for `Workflow` being unavailable and **none** for the `Agent` tool being forbidden outright. So the prescribed path could not run, the run honestly logged `ABSTAINED`, and the lane-accounting rule then made Phase 4 unreportable. Third recorded sighting of the same reduction. Dispatch capability is now probed *before* Phase 3 promises anything; when it is unavailable, MAX runs a declared inline profile whose compensations C1–C3 replace what dispatch bought, and lane accounting gains `ABSTAINED(by-policy)` — which passes only when those compensations were applied and named. An abstention with no substitute still blocks. The rigor level never drops to fit the tooling.
+- **A baseline before the first edit** (`implement` Phase 2.9, `MTK_BASELINE_CAPTURE`, sidecar `baseline`). Three e2e tests failed on the machine; proving them pre-existing cost a throwaway worktree checked out at the base commit — archaeology, at the worst moment. Build/test/typecheck state is now captured at the base commit at rigor HIGH/MAX with `known_failures` named as inherited, and delta claims in the final report ("+60 backend tests") are derived from that record instead of counted by hand.
+- **Coverage claims are settled by a grep, not a tag** (`spec-driven-development` `[COVERAGE:n]`, sidecar `coverage_claims`, drift coverage axis). The highest-consequence defect of the run: the spec asserted one hook "covers both manual and generated tasks with no lifecycle-specific code". It did not — a background job wrote the entity directly — so every generated checklist would have notified nobody, the exact failure that slice existed to prevent. A sentence like that reads as design description and attracts neither `[VERIFIED]` nor `[ASSUMED]`, yet it is a claim about **write paths**, which one grep settles. Unenumerated coverage claims now count as open decisions and block `MTK_AUTO_PROCEED`; the drift check re-greps each one against the built code.
+- **Defect-class sweep** (`code-review-and-quality`). A confirmed finding is a sample, not the population. The run ended one finding with "worth a look at the sibling handlers" and could not close it. A confirmed finding now owes one grep for the *pattern*, with each hit reported confirmed / not-applicable / needs-check — sibling code whose tests pass is exactly where this pays, because passing tests are why nobody looked.
+- **Pre-authorised descopes become a field** (sidecar `conditional_descopes`). Both spec-authorised reductions fired and correctly did not re-open the gate — as prose, invisible to the gate logic and the report. A fired entry now needs `evidence`; `fired: true` without it is silent drift wearing the spec's authority.
+- **Standing approvals declare their scope** (`implement` Phase 2.5, sidecar `gate_scope`). One human gate covered three slices, with slices 2 and 3 recording a standing approval. Defensible, but retroactive: the gate now records what it covered at answer time, and the approval expires when a later slice's rigor level or `security_impact` exceeds the gated slice's.
+- **Repeat reductions escalate instead of accruing** (`implement` Phase 7). A reduction recorded twice in the same repo for the same reason is not bad luck — it is the contract describing a path this environment does not have. Phase 7 now proposes the durable fix (an env declaration, or a lesson naming the constraint) rather than logging the same entry a third time.
+- **Opt-in tracked run receipt** (`MTK_RUN_RECEIPT=1`, `implement` Phase 7.5). The workflow artifact lives under gitignored `.mtk/`, so the only tracked residue of a run was `tasks/lessons.md` and the spec. The receipt lands beside the spec with baseline-vs-final figures, gates and reasons, the dispatch path, reductions, and lane outcomes — copied from recorded evidence, with `not recorded` where a field is missing rather than reconstructed.
+- **Two stack references gained what the run found empirically**: ordering or filtering by a member of a projected record is untranslatable and EF abandons the query rather than sorting in memory (`references/dotnet/ef-core-checklist.md`); an `await` in a mutation's `onSuccess` races the user and can turn a create into a rename of the record they just left, and `request.headers.get('cookie')` is always `null` on an intercepted request because Cookie is a forbidden header name (`references/typescript/framework-patterns.md`, `testing-supplement.md`).
+
+Also fixed en route, surfaced by this diff: the `SLOP-SKIP-TEST` linter pattern matched a bare `xit(`, so every `sys.exit(` in the toolkit — 47 of them across 12 shipped files — read as a disabled test. Now boundary-guarded; real `xit(`/`xdescribe(` and `.skip(` still flag. A checker that cries wolf on valid code trains people to ignore it.
+
+Tests: `test-manifest-preflight.sh` (8 checks), `test-collateral-guard.sh` (9 checks) — both built from the run's own numbers (a 60-line edit inside a 2,060-line diff, 78 of 84 assets, the three real manifest paths). Full suite 45/45 hook-test files green; fixtures, ci-lint, and rule-index check clean.
+
+### Added — round 8 full slate: Hermes hardening, read-path diet, enforcement map, lesson economics
+
+Borrow round 8 ran as a decision round — research synthesized into a five-option plan artifact, all options approved. Six focused changes:
+
+- **Evidence you can't fake** (Hermes `verification_evidence.py`): shell operators no longer mask verification outcomes. `pytest || true` and `pytest tests/x.py; echo done` used to stamp the session ledger PASS on a failing suite because the harness's `exit_code` describes the whole line; the classifier's structured/exit tiers are now gated on exit attributability (`||`/pipes/backgrounding mask; `;` requires the verification as the last segment; `&&` attributes exit 0 only; fd redirects like `2>&1` stay clean). The ledger also records `scope=targeted|full`, and `verify-completion` blocks once when a claim says ALL/fully green while the latest verification named a slice — an honest targeted claim is untouched.
+- **Compaction can't resurrect cancelled work** (Hermes `context_compressor`): post-compaction recovery context is framed as a HISTORICAL SNAPSHOT — the latest user message wins, cancel/supersede signals close items, and nothing recovered is acted on without confirming it is still wanted. Same preamble in the handoff artifact's Resume Instructions.
+- **Read-path token diet** (terse field data: re-reads of unchanged files were 92% of tool-output token waste across 18k calls; Hermes `repetition_guard`): opt-in `MTK_READ_DIET=deny` blocks a Read of a file byte-identical to what the session already read (session-keyed store; offset/limit reads always pass; post-compaction clears the store since the earlier read's content is gone; denied re-reads land in the measured-savings ledger). `=advise` emits an advisory envelope; default off. `mtk-compress` collapses output dominated by one repeated line (≥5×, ≥50% of input) to first occurrence + count.
+- **Rules that prove themselves** (claudemd-prove-it): `scripts/rule-enforcement-map.sh` classifies every numbered rule WIRED/BROKEN/PROSE by whether a live, wired enforcer backs it, plus the reverse check — hooks no rule documents. Doctor-wired, WARN-only, `--strict` for CI. First live run: 17 wired, 0 broken, 64 prose, and 15 undocumented hooks — a genuine governance finding.
+- **Lesson recall economics** (token-warden context-rent + recall-precision logging): `learnings.sh query` logs each query's surfaced ids to `.mtk/recall-log.jsonl` (ids and counts only, fail-open); `mtk-savings.sh` prints Lesson rent — `tasks/lessons.md` bills ~4,781 tok at the start of every `/mtk` run, heaviest lessons named — plus recall stats with an honest coverage note. `lesson-refresh` consults both; data informs the triage, never decides it.
+- **Growth gate** (hermes-agent-self-evolution): `scripts/growth-gate.sh` refuses a machine-proposed rewrite that grows the artifact past `--max-pct` (default 15%) — suggest-only passes can no longer ratchet always-loaded context a few percent at a time toward the absolute caps. Wired into lesson-refresh and claude-md-capture.
+
+Tests: `test-verification-attributability.sh` (8), `test-post-compact-framing.sh` (2), `test-token-diet.sh` (7), `test-rule-enforcement-map.sh` (4); full suite 43/43 files green.
+
+### Added — lesson lifecycle: stale anchors located deterministically, retirement always human-ruled
+
+Capture was solved four ways (correction-capture, golden-path-capture, lesson-mining, promote-lesson) — but the lessons stores were append-only and grew forever: nothing audited whether a lesson still matched the code, consolidated overlap, or retired superseded entries. A lesson citing a file that no longer exists reads as authority while pointing at nothing.
+
+- `scripts/lesson-anchors.sh` — deterministic stale-anchor check over `tasks/lessons.md` and `.claude/lessons/personal.md`: backtick-quoted anchors are existence-checked (`path` and `path:symbol` forms; `path:123` line anchors check only the file). Conservative by design: only tokens whose first path segment is a directory in this repo are checked — external example paths (borrow notes citing other repos) are *skipped and disclosed*, never warned about, because a checker that flags them trains people to ignore it. Rename suggestions follow unique-match-or-unresolvable: exactly one same-basename candidate suggests, several are named ambiguous, zero stays a plain miss — never guessed. WARN-only; `--strict` exits 1 for CI.
+- **`lesson-refresh` skill** — suggest-only triage of every lesson into Keep/Update/Consolidate/Retire with cited evidence; the engineer rules per lesson. Retirement is a `> STALE (<date>): <reason>` marking, never deletion. The posture is quoted from the sharpest field evidence found: a comparable tool's first automated prune scored 56 lessons dead and every verdict was wrong — prune never decides alone.
+- `mtk-doctor` gains an integrity check: stale lesson anchors WARN with a pointer to the checker and the skill.
+- Captured live in `tasks/lessons.md` along the way: a gate's exit code must never travel through a pipe (`validate | tail && commit` committed on a red validator during round 3 of this cycle — the pipeline's status is tail's).
+
+Regression test: `tests/hooks/test-lesson-anchors.sh` (stale path with heading context, moved-file rename suggestion, stale symbol, live anchors quiet, external examples skipped and disclosed, strict-mode exits).
+
+### Changed — hook invariants resolved once, not per spawn: PreToolUse wall-clock −25%
+
+Profiling the PreToolUse path showed the latency was dominated by re-deriving invariants, not by guard logic: `mtk_repo_root()` spawned `git rev-parse` (~20ms) on every call while ignoring `$CLAUDE_PROJECT_DIR` — the harness-set, cwd-independent answer the redundancy guard already prefers (and the X1 path-spelling lesson endorses); `mtk_session_file()` re-ran a `cksum|cut` + `date` pipeline on every call, including twice more inside lock acquire/release; and `rule-trigger` ran three escape-aware awk extractions (~14ms each) plus a device+inode repo-relative resolution even for Bash payloads that only need the command string.
+
+- `mtk_repo_root()` now prefers `$CLAUDE_PROJECT_DIR` (physicalized via `pwd -P`), memoized per process and keyed by `PWD`; the git spawn remains the fallback when the env var is absent, so scripts and tests outside a session are unchanged.
+- `mtk_session_file()` is memoized, and both lock helpers accept the already-computed path (`mtk_session_lock_acquire "$SESSION_FILE"`) since `$(…)` command substitution makes in-function memos invisible to the caller. No-arg calls keep the old behavior.
+- `rule-trigger` extracts only the field its tool shape needs — command for Bash, file path otherwise — and skips repo-relative resolution when there is no path. A path-gated rule never matched a Bash call before either; now it doesn't pay for not matching.
+
+Measured (10-run mean, this machine): rule-trigger on Bash payloads 51.8 → 38.3 ms (−26%); since Claude Code runs matching hooks in parallel, PreToolUse wall-clock = slowest hook, 52 → 39 ms (−25%) on every Bash tool call. Full 38-file hook test suite green.
+
+### Fixed — two more live SIGPIPE-under-pipefail defects, and the class is now a rule (S3.17)
+
+Running the full test suite surfaced the same class a third and fourth time — not flakes this time, hard failures: `generate-agents-md.sh` truncated the over-ceiling body via `printf | head`, so the hard-ceiling branch **died with 141 exactly when it was needed** (a repo with a big CLAUDE.md could not generate AGENTS.md at all), and its marker check (`head -10 | grep -q`) could mis-branch into "hand-written file — refusing to regenerate" on a file the script itself generated. `test-query-code-index.sh` had the assertion-shaped variant, blaming a different assertion per run. All three sites fixed with the canonical forms (`awk 'NR<=n'`, `grep -q … <(head …)`).
+
+Five instances in one month is a pattern, not a coincidence, so the class is now **S3.17** in `.claude/rules/hooks-and-scripts.md` — delivered just-in-time by the trigger-bound rule mechanism whenever hooks/ or scripts/ files are edited, instead of waiting to be rediscovered one flake at a time.
+
+### Added — measured savings attribution: which component earns its place is now a data question
+
+`mtk-savings.sh` reported output-compression savings in aggregate and saw only `mtk-compress` runs. The verification evidence wrapper knew its exact measured savings (full log bytes on disk vs bytes emitted into context) and recorded nothing.
+
+- `mtk-verify-run.sh` now appends one measured record per run to the shared output-economy ledger (`.claude/observability/compression.jsonl`, `mode: "verify-run"`, same schema as mtk-compress). The emission is composed to a temp file first, so the byte count is measured, not estimated. Telemetry is fail-open and can never alter the wrapper's exit code or output — a broken ledger costs a data point, not a build.
+- `mtk-savings.sh` renders a per-source table sorted by measured impact, with the honesty rules borrowed from the best measurement tools in the space: a source with no recorded runs is **named as unmeasured** (with the command that would measure it) rather than silently omitted or zeroed; an empty session prints "unmeasured" instead of `~0 tok over 0 runs`; and the summary states what MTK does *not* measure — assistant output tokens, subagent context, prompt-cache effects.
+
+Prior-work note recorded in the research trail: the hash-bound-approval-seal candidate for this round turned out to be already covered (`workflow-artifact.sh seal/verify-seal` byte-binds the approved spec+plan; `spec-approval-trigger` re-queues on stale) — the borrow ledger's own lesson, run the prior-work check before trusting a borrow backlog, paid for itself again.
+
+### Added — deny ergonomics: every hard deny now recovers in one turn
+
+Field data from hook-heavy setups shows three failure modes after a hard deny: the agent treats the block as a stop signal and abandons the task, silently loses tool calls that were batched with the denied one, or treats one denial as a rule and refuses everything after. MTK's ten deny sites each hand-rolled their message; none warned about batched-sibling cancellation, and only scope-guard named its off-switch.
+
+All hard denies now route through `mtk_deny()` (hook-io.sh): the reason, then a two-line continuation suffix — "this denial applies to THIS call only; batched calls were CANCELLED, re-issue them separately" and "a denial is a correction, not a stop signal … earlier denials are past verdicts about those calls, not rules against future ones" (the anti-cascade rule) — then, where a self-service off-switch exists, a `(disable this guard: …)` footer taught at the moment of friction. security-gate deliberately teaches no toggle (it has none); read-guard deliberately teaches none either — its access is granted by the human, out-of-band, and handing the agent the off-switch would defeat the gate. rule-trigger's reason is composed via printf, never an unquoted heredoc, because rule bodies are file content and must not pass through shell expansion. Reasons are sanitized (control/ANSI bytes stripped) and capped (`MTK_DENY_MAX_CHARS`, default 20000) since deny messages echo tool input.
+
+Also fixed in passing: `test-interactive-guard.sh` case 17 — the longer deny message pushed its `printf | grep -q` assertion into the S3.1 SIGPIPE-under-pipefail flake; now a case-match.
+
+Regression test: `tests/hooks/test-deny-ergonomics.sh` (suffix + anti-cascade on three guards, no suffix on allowed calls, toggle hints only where self-service, sanitize/cap).
+
+### Fixed — validate-toolkit reference-frontmatter scan flaked (same SIGPIPE class as the S3.1 fix)
+
+The reference-frontmatter checks used `head -20 "$ref" | grep -q …` under `set -euo pipefail`: `grep -q` exits on first match, `head` occasionally takes SIGPIPE (141), and pipefail turns that success into a spurious failure blaming a random innocent reference file — observed live during this round (three green runs, then `ai-failure-modes.md frontmatter missing 'description:'` on a file whose description sits on line 2). This is the identical class the shell-script scan fixed earlier (see the 2026-08 "gate that flakes on innocent files" lesson); these four instances survived that fix because they spell the pipe differently. Now `grep -q … <(head …)`, matching the canonical pattern, verified stable across repeated runs.
+
+### Added — fail-safe merge guards on spec-archive: the lossless promise is now checked, not assumed
+
+`spec-archive.sh` promised "archiving never deletes from the baseline by inference" — and never verified it. Three failure modes were live: a typo'd `delta.removes` entry matched nothing and removed nothing, forever, silently; the merged JSON replaced the baseline unvalidated through a non-atomic cross-device `mv`; and the JSON mutated before the MD and audit record, so a mid-run failure left the three files inconsistent. Borrowed from OpenSpec's archive design (scenario-loss refusal, unaccounted-content accounting, pre-write re-validation — "fails safe in every direction") with the growth advisory from deltaspec's C5 gate.
+
+- **Guard 1 — unmatched removes refuse** with case/whitespace-folded near-miss suggestions (`did you mean: IPay.Charge(int)?`).
+- **Guard 2 — merged JSON is re-validated** before anything is replaced.
+- **Guard 3 — loss accounting**: every key that disappeared from the baseline must be exactly accounted for by an explicit `delta.removes` entry; anything else refuses the merge naming the lost keys. Checked, not assumed-by-construction, so a future merge refactor or degenerate sidecar cannot silently break the promise.
+- **All-or-nothing commit point**: same-directory temp files, atomic renames, audit appended last; a refused archive leaves JSON, MD, and audit byte-identical.
+- **Baseline growth advisory** (never blocks): past 800 lines / ~40k est. tokens, suggest partitioning the area — a baseline too big to load cheaply stops being read (`MTK_BASELINE_MAX_LINES` / `MTK_BASELINE_MAX_TOKENS`).
+- Sidecar shape pre-validation: malformed `change_manifest`/`public_contracts`/`delta.removes` refuse with a clear message instead of degenerating inside jq.
+
+Regression test: `tests/hooks/test-spec-archive-guards.sh` (six scenarios, including byte-identical-after-refusal and advisory-never-blocks).
+
+### Added — verification evidence contract: evidence on disk, exit code + bounded tail in context
+
+Verification output used to enter context twice — verbatim when the command ran, and again re-quoted in the completion report — thousands of tokens for output whose diagnostic value lives in its last 30 lines. `mtk-compress.sh` couldn't fill this hole: it is lossy (the full output is gone) and a pipe reports the compressor's exit code, not the command's.
+
+`scripts/mtk-verify-run.sh` implements the contract as one command: full output persists to a citable `.mtk/evidence/<timestamp>-<label>.log`, context carries a machine-readable `exit=N` line plus a bounded tail (default 30 lines, `MTK_VERIFY_TAIL`; runner summaries print last, so the tail keeps them), and the command's exit code is preserved as the wrapper's own. The contract lives in `.claude/references/verification-evidence-contract.md`, wired into `verification-before-completion` (evidence-economy step) and the subagent implementer VERIFY contract (`build.evidence`/`tests.evidence` carry exit line + tail + log path, never the full dump).
+
+Stacks on the outcome-aware ledger below: the `exit=N` line is an authoritative signal for `mtk_classify_verification_outcome` — checked before any text-shape heuristic, so a suite that prints "12 passed" but exits non-zero classifies as fail. Wrapper invocations register as verification commands even when the inner command is unlisted (e.g. `./run-integration.sh`), and `verify-completion` accepts `exit=N` as cited evidence.
+
+Two refinements came from this round's fresh research sweep: the classifier reads structured harness fields (`"exit_code"`/`"returncode"`/`"success"` in the tool_response) ahead of the wrapper line and any text shape, and on failure the wrapper emits the first error-keyword hits *with their log line numbers* before the tail — a long build's first error scrolls far above the last 30 lines, and a coordinate into the persisted log beats guessing. Hit lines are raw log content, selected never rewritten.
+
+Regression test: `tests/hooks/test-mtk-verify-run.sh` (exit fidelity both ways, bounded tail, persisted citable log, classifier and ledger interop).
+
+### Added — outcome-aware verification ledger: a verification that ran is not a verification that passed
+
+The session ledger recorded that a verification command *ran* (`last_verification_seq`), never whether it *succeeded*. A `pytest` run with 12 failures stamped the session as verified, and `verify-completion` accepted it as fresh evidence for a completion claim — its EVIDENCE regex even matches `FAILED` output. Borrowed from probity's enforcement rubric ("observed failing for the right reason"): gate on the outcome observed in the tool response, not on the command having been typed.
+
+- `mtk_classify_verification_outcome()` (hook-io.sh) classifies a verification command's `tool_response` as `pass|fail|unknown` from unambiguous runner summary shapes — pytest/jest/vitest counts, dotnet `Build FAILED`/`Passed!`/`error CSnnnn`, unittest, ruff/mypy, validate-toolkit. Fail shapes win over pass shapes, so `2 failed, 10 passed` reads as fail.
+- `context-budget.sh` records `last_verification_status` alongside the existing seq/epoch/command fields. The payload is sliced at `"tool_response"` before classification, so outcome markers in the command text itself can't classify the run.
+- `verify-completion` blocks a strong completion claim when the latest verification was observed failing, with the fix-or-report-explicitly instruction. `unknown` never blocks — fail-open on ambiguity, because a gate that flakes on innocent output is a gate people learn to skip (see tasks/lessons.md).
+
+Regression test: `tests/hooks/test-verification-outcome.sh` (classifier shapes incl. the XFAIL word-boundary case, ledger recording through a real PostToolUse payload, and the Stop-hook block/no-block/fail-open triple).
+
+Research trail for this borrow round: `docs/plans/2026-08-17-competitive-borrow-rounds.md`.
+
+### Fixed — the PostToolUse hook that was actually wedging tool calls
+
+`compress-monitor.sh` read its payload with `cat > "$PAYLOAD_FILE"`. Measured on Windows, 2026-08-14: this hook ran **303s** against its declared `"timeout": 3` in `hooks.json`, holding the next tool call behind it. In one session, 24 of 292 Bash calls stalled between 303.9s and 313.3s — roughly two hours of dead time — and that tight clustering is the ~300s cancellation of this hook, not the commands and not the permission classifier.
+
+The earlier bounded-read change covered nine hooks that read via `INPUT=$(cat)` and missed this one, because here the payload arrives through a redirect rather than an assignment. That gap is the real lesson: a fix scoped to one spelling reported success while the hook actually causing the stalls stayed unbounded, which hid it for two days. The read is now `mtk_read_payload 2 > "$PAYLOAD_FILE"` — 2s, under the declared 3s, so the bound fires first. The existing `[ -s "$PAYLOAD_FILE" ] || exit 0` on the next line already handles an empty payload, so a timeout degrades to "no nag" rather than an error.
+
+Measured with a FIFO held open and nothing written: **20s before** (bounded only by the writer), **2s after**. Output on a 9000-char payload is byte-identical to the previous version.
+
+Deliberately out of scope: the stdin fallback in `parse-build-diagnostics.sh` is still unbounded. It is not registered in `hooks.json` and does not source `hook-io.sh`, so it sits outside the tool-call path and fixing it means adding a `source` line.
+
+### Verified — Codex support is inherited from the Claude plugin format, not a separate port
+
+Codex CLI 0.147.0 loads MTK as-is. Verified 2026-08-14 against a local `moberghr` marketplace: `codex plugin list` resolves the marketplace through `.claude-plugin/marketplace.json` and reports `mtk@moberghr installed, enabled 7.31.0`; `~/.codex/config.toml` carries 17 `hooks.state."mtk@moberghr:hooks/hooks.json:…"` entries, so the full hook suite registers from the existing `hooks/hooks.json` and its `${CLAUDE_PLUGIN_ROOT}` paths; and `codex exec` lists all 44 skills, loaded from `"skills": "./.claude/skills"` in `.claude-plugin/plugin.json`.
+
+Two consequences worth recording, because both are non-obvious enough to be re-discovered the hard way:
+
+- **Do not port skills into `.agents/skills/` or hooks into `.codex/hooks.json`.** Codex reads neither. `.agents/` *is* a Codex convention, but for `plugins/marketplace.json` — not skills. Both paths are now gitignored.
+- **Codex's plugin validator requires `"skills"` to resolve to exactly `./skills/`**, which MTK's `./.claude/skills` does not satisfy. The runtime accepts it anyway (proven above), so MTK deliberately does not ship `.codex-plugin/plugin.json`: adding one would take precedence over `.claude-plugin/plugin.json` and put working skill resolution at risk to gain only Codex-native display metadata.
+
+Known gap: one Stop hook reports `Failed` under Codex. All four Stop hooks exit 0 when invoked directly with a synthetic payload, so the cause is payload- or environment-specific and is not yet diagnosed.
+
+### Added — a guard for shell commands that hang waiting for an answer nobody can give
+
+Field report, 2026-08-13: `gh pr merge 272 --squash 2>&1 | tail -5` ran to the full 3-minute Bash-tool timeout and returned `(No output)`. The merge had already **succeeded** — gh then blocked on its post-merge "Delete the branch?" prompt waiting on stdin, and `tail` buffers until EOF, so the prompt text never reached the transcript. With no output and a long stall, it read as a permission denial; debugging went to hooks and permissions rather than to the command.
+
+Two independent causes, either sufficient on its own, so `hooks/interactive-guard.sh` blocks them separately: a `gh pr merge` with no `--delete-branch`/`--no-delete-branch` decision, and a prompt-capable command (`gh pr merge|create`, `gh release create`, `git push`, `git rebase`) piped into `tail`/`head`. Both messages name the fix. The first also says to check `gh pr view <n> --json state` before retrying, because the mutation may already have landed — retrying a merge that "timed out" is how you act twice on state that changed once.
+
+Recorded as **S4.12** in `.claude/rules/git-workflow.md`, whose injection trigger now covers `gh pr merge` and `git rebase` (it previously fired only on `create`/`commit`/`push`/`tag`, so it never saw the command that caused this). The rule also carries the environment half — `GH_PROMPT_DISABLED=1`, `GIT_TERMINAL_PROMPT=0`, `GH_PAGER=cat`, `GIT_PAGER=cat` — since the pager is the same hang class: `gh`/`git` page into `less` whenever they detect a TTY, and Windows shells (Git Bash/ConPTY) misreport TTY status, so gh's own non-interactive detection is not a substitute for the flags.
+
+Deliberately narrow, because an over-firing hard deny is how hooks get switched off. Matching is anchored to command position, so `echo "gh pr merge later"` and `grep -rn "git push" docs/` pass through; read-only pipes (`gh pr view … | tail`, `git log | head`) are never blocked; unpiped `git push` is never blocked. Kill-switch `MTK_INTERACTIVE_GUARD=0`.
+
+Judgement is also scoped to a single **line**, which the hook's own PR forced: the first version matched the whole payload, so `gh pr create --body "$(cat <<BODY … )"` was blocked by the literal string `| tail -5` sitting in the PR prose three lines below the command. A shell pipe binds within one line, and documentation is not a pipe. Pinned by a regression case built from the payload that caused it.
+
+One trade to weigh: unlike `security-gate.sh`, this hook fails **open** on an unparseable payload. Double-blocking one malformed input doubles the error text for no gain — this guard prevents a hang, not a breach, and security-gate already holds the fail-closed line for Bash. It reads its payload through `mtk_read_payload`, so it inherits the bounded read below rather than reintroducing the same wedge it exists to prevent.
+### Fixed — the formatter hook raced the model, and its .NET arm never formatted anything
+
+`hooks/format-on-edit.sh` ran as a bare PostToolUse mutation: Claude edits a file, the hook immediately rewrites it, and Claude's next Edit against that file fails with "File has been modified since read". The window is exactly the one a multi-edit turn lives in.
+
+Its `.cs` arm was also a no-op. `dotnet format --include` matches paths **relative to the workspace directory**; handed the absolute `tool_input.file_path` it matches nothing and still exits 0 (verified, dotnet 10.0.110). The hook reported success on every C# edit and formatted none of them. A comment in the file said "run from repo root" — there was no `cd`.
+
+The hook is now a pair, in the shape of the existing `rule-trigger.sh --rearm` convention:
+
+- **PostToolUse** (no argument) queues the edited path into a per-project, per-session file under `$TMPDIR`. No mutation, so nothing can race the model.
+- **Stop / SubagentStop** (`--flush`) formats everything queued, once, after Claude has stopped responding, then clears the queue.
+
+`--flush` dedupes, drops files deleted during the turn, and clears the queue *before* formatting so a hung formatter cannot leave entries to be reprocessed every turn. `.cs` files are grouped by their nearest `.csproj` (falling back to `.sln`/`.slnx`) and formatted with one `dotnet format --include <relative paths>` per workspace, invoked from that directory — correct *and* materially faster, since `dotnet format` loads the whole workspace before filtering. A `.cs` file with no project above it is skipped rather than triggering a repo-wide format.
+
+This matters most for Python, where the mid-turn mutation was not cosmetic: `ruff check --fix` rewrites imports and renames bindings, so it could change what a file means between the model's read and its edit.
+
+**Wiring change.** Both halves must be wired or nothing is formatted. The `## Settings Additions` block in all three tech-stack skills now emits the Stop and SubagentStop entries alongside PostToolUse; repos bootstrapped before this change have the PostToolUse half only and will queue without flushing until re-bootstrapped or hand-wired.
+
+### Fixed — eleven hooks in this checkout were wired on a path that only resolves by luck
+
+`.claude/settings.json` spelled its PreToolUse, PostToolUse, PreCompact, SessionStart and UserPromptSubmit commands as bare `hooks/<name>.sh`, while its four Stop hooks used `$CLAUDE_PROJECT_DIR/hooks/<name>`. Same file, two conventions, and only one of them is safe.
+
+A relative command resolves against the hook process's cwd, and a hook is not guaranteed to run with cwd inside the repo — `hooks/lib/hook-io.sh` states this directly in the comment above `mtk_is_redundant_plugin_invocation`, which exists precisely because that assumption does not hold. When the cwd is elsewhere the command is not found, the hook does not run, and the guard is silently *off* rather than loudly broken. That is the same failure shape S1.17 was written to prevent, one layer up: not a path computed wrong, a path never resolved at all.
+
+All eleven now anchor on `$CLAUDE_PROJECT_DIR`. `scripts/validate-toolkit.sh` gained a check for both sides of the convention — `settings.json` commands must carry `$CLAUDE_PROJECT_DIR`, `hooks/hooks.json` commands must carry `${CLAUDE_PLUGIN_ROOT}` — so the two spellings cannot drift apart again.
+
+Chasing the same split turned up a second silent gap. `mtk-doctor`'s "registered hook missing" check selected its input with `grep '"command": "hooks/'` — anchored on the *relative* spelling. It therefore inspected 11 of the 15 registered hooks and never checked the four that were already absolute: `verify-completion`, `capture-learnings.sh`, `session-analytics.sh`, `workflow-continuation.sh`. Deleting any of those four, or dropping their executable bit, produced a clean bill of health. The check now matches any `hooks/` command and expands `$CLAUDE_PROJECT_DIR` before testing the path, so it covers all 15 — and does not become a no-op for all of them once the paths above change spelling.
+
+### Added — `mtk-doctor` now grades environment fit, not just install structure
+
+Every existing doctor check answers "is MTK installed correctly": manifest paths, version sync, executable bits, checksums. None of them answer "does this install fit the machine it is running on" — the failure class where every file is present, every version matches, and the toolkit still misbehaves because a knob is calibrated for someone else's setup.
+
+A new **ENVIRONMENT** category adds three checks, all WARN at most, since an environment mismatch is never a broken install:
+
+- **Context-budget calibration.** `hooks/context-budget.sh` scales its file/mod/op nudges off `MTK_CONTEXT_WINDOW_TOKENS`, default 200000. On a large-context model the defaults fire several times too early, which trains the engineer to ignore the one hook whose whole job is telling them to checkpoint. WARN when the model looks large-context and the knob is unset; otherwise report the calibration in use.
+- **Hook basename collisions.** A hook in the user's global `~/.claude/settings.json` sharing a filename with one MTK ships — two different scripts, both firing, log lines you cannot tell apart. The double-run guard in `hook-io.sh` reads only *project* settings by design and correctly does not suppress this, so nothing else surfaces it.
+- **Formatter availability.** `format-on-edit.sh` logs to stderr and never blocks, so a missing `dotnet` / `ruff` / `npx` is invisible: edits look formatted and are not. Checked against the active `.claude/tech-stack`.
+
+The `mtk-doctor` pressure test's S1 ("clean repo passes") now scopes its assertion to non-environment categories, because ENVIRONMENT grades the machine rather than the repo — a missing `ruff` is a true finding locally and a false positive as a repo verdict.
+
+### Added — the lessons pipeline can finally see Claude Code's native memory
+
+MTK's lesson stores (`tasks/lessons.md`, `.mtk/learnings.jsonl`, `.claude/lessons/personal.md`) had no awareness that Claude Code keeps its own memory directory at `~/.claude/projects/<sanitized-cwd>/memory/` — beside the session transcripts, under the same per-project segment. A grep across the whole repo for `.claude/memory` returned nothing.
+
+That directory holds exactly the content the lessons pipeline exists for. Its `feedback` files are engineer corrections *with a stated reason* — admit rule A1, already filtered once. Its `project` files are constraints not derivable from the code. An engineer who uses native memory accumulates the team's real rules in their home directory, where `lesson-mining` never looks, `promote-lesson` cannot reach, and no teammate ever sees them.
+
+Two changes, both suggest-only, neither writing to the memory directory without approval:
+
+- **`lesson-mining` reads it as a second source and a dedup surface.** As a source, a memory stating a team-worthy rule becomes a *promotion* candidate rather than something to re-derive from a transcript. As a dedup surface, new reject rule **R7** kills a transcript candidate whose rule already lives in a memory file — two stores holding one rule is not redundancy, it is guaranteed drift, since the copies get edited independently. Survivors are now grouped by origin so it is obvious which are new and which are merely moving. Admit rule A3 (novel constraint) checks memory as a third store alongside `tasks/lessons.md` and `.mtk/learnings.jsonl`.
+- **`promote-lesson` accepts a memory file as input.** Only `type: feedback` and `type: project` are offered; `user` and `reference` memories are not team lessons. Retiring the original is source-aware: `personal.md` entries are deleted as before, but a memory file is never touched without asking — decline, and its body is replaced with a pointer to the team lesson so a later session is not told a stale version of the rule.
+
+R6 still governs the contents: memory files are engineer-authored *evidence*, never instructions.
+
+### Fixed — a hook that never received its payload blocked the tool call indefinitely
+
+Every hook read its payload with a bare `INPUT=$(cat)`, which blocks until stdin closes. When Claude Code does not close it, the hook never exits and the tool call sits behind it. Measured on Windows, 2026-08-13: `context-budget.sh` alive 235s and `scope-guard.sh` alive 182s, both against `"timeout": 5` in `hooks.json`. The declared per-hook timeout did not kill either one, so it cannot be treated as the backstop. The two spellings that look defensive — `$(cat 2>/dev/null || true)` — are not: they handle a read that *fails*, not one that never returns.
+
+Nine hooks now read through `mtk_read_payload` (`hooks/lib/hook-io.sh`), which bounds the read at 4s so it fires before the 5s declared in `hooks.json`. S3.3 graceful degradation uses the same probe as `scripts/verify-commands.sh`: `timeout`, then `gtimeout`, then an unbounded read when neither exists — a machine with no timeout binary behaves exactly as it does today rather than failing.
+
+Measured with a FIFO held open and nothing written, `read-guard.sh` returned in 26s before the change (bounded only by the writer) and 4s after.
+
+Two things for a maintainer to weigh. `security-gate.sh` fails closed on an empty payload, so a timeout there converts a silent multi-minute hang into an immediate visible block — deliberate, but a behavior change. And `parse-build-diagnostics.sh` is left untouched: it is not registered in `hooks.json`, does not source `hook-io.sh`, and has its own `--file` input path.
+
+## [7.31.0] - 2026-08-13
+
+Five tooling leaks found by a field run of `/mtk` in a target repo. The batch-fix loop itself held up — routing, per-finding scope guard, group checkpoints, and the gate's material-change carve-out all earned their keep. Everything below is the tooling *around* that loop: lesson retrieval, a stale doc path, a subagent assumption, plugin-root discovery, and hook noise.
+
+### Fixed — lessons were unreachable in every bootstrapped repo
+
+`setup-bootstrap` created `tasks/lessons.md` but never seeded the structured store at `.mtk/learnings.jsonl`, and `scripts/learnings.sh query` reads only the store. Ten skills retrieve lessons through that query, so a repo whose lessons lived in markdown answered **every** lesson query with nothing, in every session, permanently — and each skill proceeded believing no lesson applied. Bootstrap now runs `learnings.sh migrate` when `tasks/lessons.md` has content and the store is absent (idempotent via the already-migrated guard plus title-hash dedup), and reports the entry count.
+
+### Fixed — `learnings.sh query` could not distinguish "no lessons" from "no match"
+
+Every empty result printed nothing and exited 0: missing store, empty store, phase mismatch, no proximity hit, all-expired, all-superseded. A caller could not tell a clean miss from a lookup failure. The four states are now named on stderr (`no store … run migrate`, `store exists but holds 0 entries`, `scanned N stored entries, 0 matched (phase=…, scope=…, files=…)`); stdout stays a clean result list and the exit code stays 0, so existing callers are unaffected. Scoring moved off the `while | sort` pipeline onto a temp file — the loop ran in a subshell and the scanned/matched counters did not survive it. Covered by `test-learnings.sh` cases F1–F5.
+
+### Fixed — bootstrap printed a chaining path that does not exist in the target repo
+
+When a repo already had `.git/hooks/pre-commit`, bootstrap told the engineer to add `exec hooks/git-hooks/pre-commit` — repo-relative, while the file only ever exists in the plugin checkout. The warning now interpolates the resolved absolute `$HOOK_SOURCE` computed three lines above, and the rule is stated explicitly: never reference `hooks/git-hooks/pre-commit` or `hooks/pre-commit-linters.sh` by a bare repo-relative path, including in the generated `CLAUDE.md`.
+
+### Fixed — `batch-fix` Phase 5 assumed subagents were available
+
+Phase 5 named `test-reviewer`, `architecture-reviewer` and `security-and-hardening` as reviewers with no fallback, and conflated two kinds (the first two are agents, the third a skill). Each is now labeled, and the skill states that a named reviewer is a *pass to perform*, not a dispatch mechanism: when the Agent tool is absent, disabled, or forbidden by a standing instruction, read the agent's own `.md` and apply its checklist inline against the batch's changed-file set. Inline costs context isolation, not coverage. The Final Report now records subagent-or-inline per reviewer.
+
+### Changed — `MTK_HELPER_ROOT` now covers skill and reference reads, not just scripts
+
+The env var was honored by three script resolvers (`implement`, `workflow-artifacts`, `spec-driven-development`) but not by the `## MTK File Resolution` block every entry-point skill opens with, nor by the six other inline `learnings.sh` resolvers. With `$CLAUDE_PLUGIN_ROOT` unset, every script call needed a hardcoded path. `MTK_HELPER_ROOT` is now tier 1 of the resolution chain in all 9 File Resolution blocks and all script resolvers, so setting it once pins skills, references, and scripts to one checkout. CLAUDE.md's row rewritten to match the real coverage.
+
+### Fixed — `compress-monitor` nagged on every large output, twice
+
+The "pipe this through mtk-compress" tip fired on every Bash output over 5,000 chars for a whole session. It is now budgeted per session (default 1, tracked in TMPDIR by `session_id`), and the final allowed nag says it will not repeat. `MTK_COMPRESS_MAX_NAGS=N` tunes the budget; `0` silences without unwiring the hook.
+
+The doubling was a separate defect in `mtk_is_redundant_plugin_invocation`, which derived the project root from `git rev-parse` of the hook process's cwd. A hook is not guaranteed to run with cwd inside the repo; when it does not, the git probe falls back to `pwd`, the `settings.json` lookup misses, the guard fails open, and both the plugin and project copies fire. It now prefers `$CLAUDE_PROJECT_DIR`, which is cwd-independent — this benefits every hook using the guard, not just this one.
+
+## [7.30.0] - 2026-08-11
+
+Polyglot-monorepo support and a class of silent guard failures, both driven by field use of MTK in a mixed-stack repo (.NET root with a Vite/TypeScript subtree owning its own `docs/specs/` and `CLAUDE.md`).
+
+### Fixed — guards failed open under a path-spelling mismatch (security relevant)
+
+`scope-guard.sh`, `read-guard.sh`, `spec-approval-trigger.sh` and `rule-trigger.sh` each derived a repo-relative path with a plain `"${FILE_PATH#"$REPO_ROOT"/}"` string strip. `REPO_ROOT` comes from `git rev-parse --show-toplevel` (canonical case), while the payload path is spelled however the session was launched — and a case-insensitive filesystem serves the same checkout as both `/Users/x/Dev/repo` and `/Users/x/dev/repo` (`pwd -P` resolves symlinks but not case). The strip then silently no-opped, `REL_PATH` stayed absolute, every `case ... in docs/specs/*)` match missed, and the hook exited 0. **`scope-guard` treats a still-absolute path as "outside the repo", so it failed open on every edit.** New shared helper `mtk_repo_relative_path` compares by device+inode, so the result never depends on spelling; it also supersedes the ad-hoc lowercase retry that had been applied to `rule-trigger.sh` alone. Recorded as S1.17.
+
+### Fixed — `.claude/tech-stack.map` globs never matched under a symlinked root
+
+`resolve-tech-stack.sh` built its target directory with a logical `pwd` while the repo root came from git as a physical path. Under any symlinked root the prefix strip no-opped and **every `tech-stack.map` glob silently failed to match**, degrading to the root default with no diagnostic. Resolved with `pwd -P`.
+
+### Added — artifact-root resolution for polyglot repos
+
+`scripts/resolve-artifact-root.sh` resolves where `docs/specs/` and `docs/plans/` live for a given path: `$MTK_ARTIFACT_ROOT` → nearest `<dir>/.claude/artifact-root` marker → nearest directory strictly below the repo root holding **both** `CLAUDE.md` and `docs/specs/` → repo root. Closest declaration wins, and both signals are required so neither a stray `docs/specs/` nor a stray nested `CLAUDE.md` can hijack resolution. A repo with no qualifying subtree resolves to the repo root, so single-project repos are unaffected. Wired into `scope-guard`, `spec-approval-trigger`, `post-compact`, `verify-behavioral-diff`, `session-analytics`, `spec-archive.sh` and `repo-health-score.sh`, plus `spec-driven-development` and `batch-fix`. Recorded as S1.16.
+
+### Changed — polyglot tech-stack resolution is now actually wired up
+
+`resolve-tech-stack.sh` existed but had only two callers. Six sites still inlined a repo-root-only read and would hand `dotnet build` to a Vite subtree: `api-compat-check.sh`, `pre-commit-linters.sh`, `parse-build-diagnostics.sh`, `generate-tool-configs.sh`, `generate-agents-md.sh`, `repo-health-score.sh`. All now resolve through it (explicit `--stack` overrides still win), and seven skills carry the polyglot wording. `repo-health-score.sh` check 3 now scores whether a stack *resolves* rather than whether the root file exists — a correctly per-subtree-pinned repo previously scored "missing".
+
+### Added — `resolve-tech-stack.sh --check`
+
+Warns when the resolved stack disagrees with the extensions of the files being touched (resolves `dotnet`, but the targets are `.tsx`). Advisory only: never blocks, never changes the resolved value or exit code. Non-stack-bearing extensions (`.md`, `.json`, `.sh`) are ignored.
+
+### Fixed — analytics scattered across subtrees
+
+`session-analytics.sh` wrote to a bare `.claude/analytics.json`, so running commands with a subtree CWD minted a second analytics file; its spec and lesson counts were cwd-relative too. Now anchored to the project root (`analytics-report.sh` likewise), with spec counting anchored to the resolved artifact root.
+
+### Changed — batch-fix grouping and gate staleness
+
+- Batches past ~5 findings now group into labelled clusters with a checkpoint per group, and a budget stop must land on a group boundary rather than mid-group. Previously the skill only offered "checkpoint with `handoff`".
+- The approval gate now explicitly goes stale on a **material** change to the enumeration — a finding escalating out, narrowing, merging, or appearing — even when the original directive was explicit. Cosmetic changes (renumbering, sub-step splits) do not re-open it.
+- Dirty-tree overlap between the working-tree baseline and the batch's target files must be surfaced *at the gate*, with the choice to proceed, stash, or drop the overlapping findings.
+
+## [7.29.0] - 2026-07-21
+
+Maintenance driven by field use of MTK across kvika/moberghr repos.
+
+### Removed — MTK Staleness Check CI action
+
+The `templates/ci/mtk-staleness-check.yml` GitHub Actions workflow and the `setup-bootstrap` STEP 4 offer to install it are gone. The workflow ran `setup-refresh-plan.sh --check` on every PR and failed the build when MTK-generated docs drifted from source; teams did not want it as a blocking gate on their repos. The local check is unchanged — `/mtk-setup --check` (and `scripts/setup-refresh-plan.sh --check`) still run the same staleness plan on demand. The `pr-lint.yml` / `pr-review.yml` copy-install templates are unaffected.
+
+### Changed — context-budget & compress-monitor calibration (field feedback)
+
+- `context-budget.sh` now scales its file/mod/op nudges with the declared context window. `MTK_CONTEXT_WINDOW_TOKENS` (default 200000) rescales all four thresholds so a large-context (e.g. 1M) model is no longer nudged to checkpoint or hand off mid-task; per-threshold `MTK_CTX_FILES_WARN` / `MTK_CTX_MODS_WARN` / `MTK_CTX_OPS_WARN` overrides win outright. Defaults reproduce the historical 30/40/120 at a 200k window.
+- `compress-monitor.sh` no longer nags on read-only inspection commands (git diff/show/log/status/blame, grep/rg/ag, find, ls, tree) whose value is verbatim output and have no matching compress mode — cutting noise on review-heavy sessions.
+
+### Changed — batch-fix guardrails (field feedback)
+
+- The single approval gate is now explicitly *satisfied* (not skipped) when the engineer has already given an unambiguous go-ahead on the exact enumerated findings list — distinct from inferring approval from a vague request (Critical Rule 1 clarified).
+- The `.mtk/scope-guard-skip` pointer documents a Write-tool fallback for when a shell-permission classifier blocks the `>` redirect.
+- Proportional review is scoped to the batch's own changed files against a Phase-2 working-tree baseline, so pre-existing dirty-tree changes are not misattributed to the batch (no more false "missing test" findings for code the batch never touched).
+
+### Fixed — `learnings.sh` migrate title-hash dedup on quoted titles
+
+`jl_field` extracted JSON string values with a `"key":"([^"]*)"` regex that stopped at the first quote inside an escaped value and never reversed `json_escape`, so a lesson title containing `"` (e.g. `… trusting a "borrow" …`) round-tripped lossily. `migrate`'s title-hash dedup then re-added such a lesson on every marker-less re-feed, failing the `tests/hooks/test-learnings.sh` D regression (11 → 12). `jl_field` now walks the value honoring `\"` / `\\` / `\n` / `\r` / `\t` and stops only at an unescaped closing quote.
+
+## [7.28.2] - 2026-07-20
+
+### Fixed — `session-analytics.sh` cross-invocation temp-file collision
+
+Several copies of the analytics Stop hook fire per session (plugin-cache versions plus the dev-checkout settings wiring), and all wrote through one fixed temp path `.claude/analytics.json.tmp`. The first copy's `mv` consumed the file a later copy was about to `mv`, so every session surfaced a non-blocking `mv: .claude/analytics.json.tmp: No such file or directory` / `[mtk-hook:session-analytics.sh] exit 1`. Analytics were still written (the winning copy), but the error was constant noise.
+
+- `session-analytics.sh` now writes to a per-invocation `mktemp "${ANALYTICS}.XXXXXX"` instead of a shared `.tmp`, so concurrent copies race harmlessly on the final rename (last writer wins) rather than erroring. The deeper cause — multiple hook copies registered by a multi-version plugin cache — is tracked separately.
+
+## [7.28.1] - 2026-07-20
+
+Script-plumbing fixes from a field run of the full workflow against a repo where MTK ran from a *separate* checkout with `$CLAUDE_PLUGIN_ROOT` unset. The decision layer (routing, rigor scaling, gates, drift, review) behaved well; these fixes address the plumbing that assumed the toolkit runs from within the target repo.
+
+### Fixed — silent cross-repo write in `spec-archive.sh`
+
+- **`spec-archive.sh` wrote baseline artifacts into the wrong repo.** It resolved its output root from the *script's own* location (`dirname "$0"/..`) and `cd`'d there, so when MTK ran from a separate checkout it created `docs/specs/baseline/*` and appended to `CODE_INDEX.md` inside the **toolkit clone** — while printing a success banner naming the target's paths. It now resolves the **target** repo root via `${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel)}` (mirroring `workflow-artifact.sh` / `learnings.sh`), so output always lands in the project being archived. This also fixes the sibling symptom where a valid repo-relative spec path 404'd (the arg was checked *after* the wrong `cd`).
+- **`lint-ears.sh` broke on repo-relative spec paths.** It set a script-derived `ROOT_DIR` and `cd`'d there — but never used `ROOT_DIR` again; the `cd` only served to make repo-relative file args resolve against the toolkit instead of the target. Removed; the linter now resolves its args against the caller's CWD.
+
+### Added — `MTK_HELPER_ROOT` for running from a separate checkout
+
+- **`MTK_HELPER_ROOT` env var** pins skill script-path resolvers (`workflow-artifact.sh`, `learnings.sh`) to a chosen checkout **first**, before the project copy and the plugin cache. This makes dogfooding MTK from a separate clone deterministic when `$CLAUDE_PLUGIN_ROOT` is unset, and lets you pin one version out of a multi-version plugin cache. Documented in `CLAUDE.md`; the resolvers in `workflow-artifacts`, `implement`, and `spec-driven-development` gained the three-tier idiom.
+
+### Fixed — `implement` docs mis-showed the `phase_started` event call
+
+- **`implement/SKILL.md` documented `phase_started phase-0` as a positional**, but `workflow-artifact.sh event` takes the phase in `--data` (`event <uuid> phase_started --data '{"phase":"phase-0"}'`) — following the doc literally produced `unknown flag: phase-0`. Both spots now show the `--data` form the canonical `workflow-artifacts` skill already uses.
+
+## [7.28.0] - 2026-07-16
+
+A batch of `implement`-workflow hardening from a field run of the full build loop. Two themes plus four localized fixes: the workflow now treats *supplied inputs and parallel-session activity* as first-class, and the approval seal + scope-guard stop conflating an artifact's expected mutation/temp state with real drift.
+
+### Added — supplied plan/spec ingestion, worktree collision gate, plan↔code reconciliation
+
+The build loop assumed it authored everything, so a pre-written plan collided with the path the workflow writes to, a stale supplied plan got re-implemented, and a parallel session editing in-scope files was only caught *after* an implementer had started.
+
+- **First-class plan/spec ingestion (new Phase 0.7).** When the engineer supplies a spec or plan as the input — a path they hand you, or an existing `docs/specs|plans/*.md` the run is meant to execute — `implement` now *adopts* it as the source of truth instead of authoring a new one. No path collision, no `-impl`/`-v2` suffix workaround, never an overwrite of the engineer's file. `spec-driven-development` and `planning-and-task-breakdown` gained matching "adopt, don't recreate" branches.
+- **Plan↔code reconciliation (`prior-work-check` existing-plan mode).** A supplied plan may be stale — batches already implemented since it was written. Phase 0.7 runs `prior-work-check` in a new read-only reconciliation mode that classifies each batch `already-satisfied` / `partially-done` / `not-started` with `file:line` evidence; satisfied batches are marked done and ticked before the approval gate instead of being re-run.
+- **Worktree collision gate (Phase 0 pre-flight capture + new Phase 2.9).** Phase 0 snapshots the pre-existing dirty set; before the first batch, Phase 2.9 intersects the current `git status` against the change manifest and halts (interactive `AskUserQuestion`, or stop-and-report in autonomous mode) when an **in-scope** file is already modified by other work. The prior dirty-worktree step only flagged *out-of-manifest* paths as advisory risk; the in-scope parallel-session collision now gates before any edit.
+
+### Changed — approval seal binds spec + plan only (todo is progress state)
+
+The Phase 2.5 seal bound spec **+ plan + todo**, but `tasks/todo.md` is designed to mutate as batches complete — so the seal flipped STALE on the first checkbox tick, and `verification-before-completion` (fail-closed on STALE) then refused the completion. The seal cried wolf on expected progress.
+
+- `seal` now derives its default set from `results.spec_path` + `results.plan_path` only; `results.todo_path` is excluded (`scripts/workflow-artifact.sh`). `hooks/spec-approval-trigger.sh` no longer watches `tasks/todo.md`. Scope lives in spec + plan; progress lives in todo — a moved success-criterion goalpost is still caught (seal on the spec .md, plus the frozen-criteria diff). Existing seals recorded before this release still verify against whatever they sealed (back-compatible). Wording synced across `implement`, `spec-driven-development`, `verification-before-completion`, and the `approval-seal` pressure test, which gains a scenario asserting a checkbox tick must **not** trip the seal.
+
+### Changed — rigor score distinguishes external from internal-tooling contracts
+
+"Public contract" was a single external/internal axis, so an internal CLI flag or a handful of IaC/CDK config props scored +1 each just like a public HTTP endpoint — a ±4 swing that could flip HIGH↔MAX and change the reviewer set.
+
+- `public_contracts[]` gains an optional `surface: external | internal-tooling` field (`handoff.schema.json`, default `external` for back-compat). The `implement` Rigor Score now weights **external/wire contracts** +1 each (cap +4) but **internal-tooling contracts** (build/IaC/CLI knobs with no external consumer) +1 total regardless of count. `spec-driven-development` defines the two classes with CDK-props / internal-CLI-flag as the canonical internal example; when unsure, default to external.
+
+### Fixed — four localized implement-loop gaps
+
+- **Autonomous vs "ask which model" contradiction.** `subagent-implementation` said "ask once" for the implementer model; autonomous mode said "never ask in Phases 3-7". Resolved explicitly: the model ask is **interactive-only** — autonomous mode skips it and applies the Sonnet policy default (Opus for plan-flagged novel/tricky batches). Stated in `subagent-implementation`, `implement`, and `model-routing.md`.
+- **Script path resolution.** `implement` and `workflow-artifacts` now resolve `workflow-artifact.sh` once into `$WFA` (project-first, `${CLAUDE_PLUGIN_ROOT:-.}` fallback — the same idiom already used for `learnings.sh`) and call `"$WFA"` at every site, so a plugin-cache install with `$CLAUDE_PLUGIN_ROOT` unset no longer fails on a bare `scripts/…` path.
+- **scope-guard false positive on temp writes.** `hooks/scope-guard.sh` now exits early for out-of-repo paths (a still-absolute `REL_PATH` — session scratchpad, `/tmp`) and `.mtk/` workflow state, which can never be scope violations; it was warning on a scratchpad review artifact.
+- **`gate` help lists the valid set.** The `workflow-artifact.sh` usage/`--help` header now enumerates the five valid gate names (the runtime error already did as of 7.27.0).
+
+## [7.27.0] - 2026-07-16
+
+### Added — rigor re-scales when scope shrinks mid-run
+
+`implement`'s Rigor Score was computed once at Phase 2 and never revisited. A six-batch spec that scored MAX kept the MAX apparatus — subagent path, both reviewers plus `silent-failure-hunter` — even when the biggest batches were deferred mid-run and the work that actually shipped was LIGHT/STANDARD. Field feedback flagged the mismatch: engineers were right-sizing the review by hand.
+
+- **Recompute on scope reduction.** When the approved batch set shrinks at a phase boundary (a batch deferred during Phase 3, or the Phase 3.5 drift check — never mid-batch), the score and level are recomputed from the batches that remain, and the Phase 4 reviewer set + `MTK_AUTO_PROCEED` eligibility follow the recomputed level.
+- **Relax-only, floor-respecting.** A recompute never drops below the hard-trigger floor of the *remaining* work (≥ 3 batches, ≥ 6 non-mechanical files, or any surviving `security_impact` still hold the floor). A scope *increase* is never a silent recompute — it re-opens the Phase 2.5 gate as before; only a reduction auto-relaxes, because the engineer already approved the larger scope. The transition is logged to the workflow artifact (`results.rigor_recomputed`) and surfaced in one line. New `evals/rigor/eval-02` + grader coverage.
+
+### Added — per-directory tech-stack resolution for polyglot monorepos
+
+Closes the per-directory half of the 7.26.0 follow-up (1): `.claude/tech-stack` resolved repo-root-only, so a TypeScript subproject under a .NET root loaded the wrong stack's build/test commands until the engineer overrode it by hand.
+
+- **New `scripts/resolve-tech-stack.sh`** resolves the active stack for a given path — `MTK_STACK` env → nearest subproject `.claude/tech-stack` (closest-declaration-wins) → root `.claude/tech-stack.map` glob → repo-root `.claude/tech-stack` default. Coreutils + git only; empty output means "unconfigured", same as a missing file.
+- **Wiring.** `implement`'s *load the active tech stack* step and `context-engineering`'s Active Stack panel resolve through it (pass a subtree path from the change manifest to load the stack for the files being touched); `check-prerequisites.sh` and `repomap.sh` prefer it with a graceful fallback to the old root read. `setup-bootstrap` documents the `.claude/tech-stack.map` convention. Repo-wide generators (AGENTS.md, tool configs, repo-health) still use the primary stack — multi-stack *merged* command sets for a single repo-wide operation remain the open half of the follow-up.
+
+### Changed — a mechanical batch runs inline even under HIGH/MAX
+
+The subagent path was binary on rigor level: at HIGH/MAX every batch drew a fresh implementer subagent. A pure config/rename/formatting batch has no logic or contract to isolate, so the isolation bought only cold-load latency.
+
+- An **all-mechanical batch** (every entry mechanical per the existing Rigor Score definition; an entry touching any public contract is never mechanical) is now implemented **inline** by the orchestrator even inside an otherwise-HIGH/MAX run, with the drift micro-check, result persistence, and churn check still applied. Non-mechanical batches take the full dispatch path unchanged. The "orchestrator never edits source" invariant gains an explicit carve-out for this one case, and a new pressure-test scenario guards against *over*-applying it to a logic batch wearing a "mechanical" label.
+
+### Fixed — workflow-artifact gate error lists the valid set
+
+`workflow-artifact.sh gate` rejected an unknown gate name with only a pointer to a doc. It now lists the valid gate names inline (`must be one of: plan_trust_gate phase_exit_gate failure_stop_gate memory_sync_gate skill_precedence_gate`), mirroring the existing `criteria` status-validation idiom and giving the valid set a single source of truth in the function.
+
+## [7.26.0] - 2026-07-14
+
+### Added — `batch-fix` lane for corrective batches
+
+A new routed workflow skill sits between `fix` (1–3 files, one coherent change) and `implement` (new behavior/contract/architecture). It handles a corrective batch of multiple small **independent** fixes — applying review findings, several unrelated one-liners across more than three files — with no new public contract and no architectural re-planning. Previously such work fell into `implement` and inherited the full spec+plan+approval apparatus; `batch-fix` gives it proportional ceremony.
+
+- **Lightweight front-end.** Enumerate findings → short findings-list spec stub + `tasks/todo.md` → a **single** approval gate → per-finding TDD (mechanical findings skip) → **inline** implementation (no subagent-per-batch) → proportional review (pre-commit-review always; specialized reviewers only when a finding crosses a boundary) → verification. `MTK_AUTO_PROCEED`-eligible.
+- **Router wiring.** `/mtk` gains the lane across the decision graph, route table, disambiguation rows, the clarifying question, and help output. `fix`'s Scope Guard now reroutes *multiple independent trivial fixes* to `batch-fix` (marker `escalated from fix (batch)`) while genuine new-slice/contract/re-planning growth still escalates to `implement`. Marker matching is most-specific-first so `escalated from fix (batch)` never mis-binds to the generic `escalated from fix`.
+- **Escape hatch.** A single finding that turns out to need a new contract/slice escalates to `implement` via `escalated from batch-fix`. New router fixture, pressure test, and eval cover the lane.
+- **Resumed vs. new batch.** Phase 2 now reconciles the batch slug against any existing `*-batch.md` stub and the SessionStart recovery pointer before writing: matching findings resume the prior stub, differing findings mint a distinct slug (`-batch-2`) instead of overwriting. Field feedback hit this — a stale recovery pointer and an existing stub both pointed at a prior batch on the same feature, forcing a hand-minted slug.
+- **Proportionality + concurrency guidance.** A `When To Use` note steers a mostly-mechanical batch toward plain `fix` (the stub + gate ceremony earns its keep on behavioral/boundary findings, not cosmetic sweeps), and Phase 4 now tells the loop to re-read each target file immediately before editing rather than assuming a frozen tree (concurrent human edits, or an earlier finding touching the same file).
+
+### Changed — rigor ceremony no longer over-escalates on mechanical edits
+
+The `implement` rigor floor and size score now count only **non-mechanical** `change_manifest` entries. A mechanical entry changes no logic and no public contract (rename-only, formatting-only, generated, no-behavioral-change — the TDD `skip_when` vocabulary); an entry touching any public contract is never mechanical. A batch of pure renames no longer gets force-floored to HIGH (subagent fleet + both reviewers) purely on file count.
+
+- The hard-trigger floor (`>= 6` files), the size score (`+1 per 3 files`), the Phase 3 subagent-path fork, `subagent-implementation`'s trigger, and the dynamic-workflow decision node all count non-mechanical entries consistently. Mechanical entries are still implemented and verified — they just don't inflate ceremony.
+- The Phase 2.5 gate rendering surfaces the split (e.g. `Rigor: STANDARD (score 4 — 8 files, 6 mechanical)`) so the engineer can veto the discount. The optional per-entry `mechanical` boolean is documented in the spec JSON sidecar schema.
+- At rigor HIGH, `architecture-reviewer` now runs only when the boundary/slice condition holds (a pure rename / frontmatter-only batch skips it); `test-reviewer` still always runs, and MAX still runs both plus `silent-failure-hunter`.
+
+### Fixed — resolution robustness for split installs and cached versions
+
+- **Graceful degrade on missing tech stack.** `implement` Phase 0 no longer hard-stops when `.claude/tech-stack` is absent: it infers the stack via `scripts/setup-detect.sh --json` (read-only), loading the matching `tech-stack-{stack}` skill, and otherwise warns and proceeds with `CLAUDE.md`-only context. A partial setup no longer blocks a straightforward change.
+- **Project-anchored workflow state.** `workflow-artifact.sh`, `workflow-artifact-md.sh`, and `workflow-dashboard.sh` now resolve `.mtk/workflows/` under `$CLAUDE_PROJECT_DIR` (falling back to the git top-level, then cwd) instead of bare `$(pwd)`, so state lands in the target project when MTK skills live in a separate checkout. `.mtk/` is added to the File Resolution "always project-relative" allow-list.
+- **Deterministic version binding.** The File Resolution plugin-cache fallback uses `sort -V | tail -1` instead of `head -1`, so it binds the newest cached MTK version rather than whichever `find` happened to emit first.
+- **Split-brain caveat.** The File Resolution block now warns that skills and scripts must resolve from the same root; a split (skills from a local dev checkout, scripts from the plugin cache) risks version drift.
+
+- **Batch-fix scope-guard false positives + graceful degrade.** `scope-guard.sh` anchors to the most-recently-modified spec sidecar, so a manifest-less workflow like batch-fix had every edit checked against a *stale* spec's manifest (a real run hit 18 false "not in the approved spec" warnings). batch-fix now drops a freshness-windowed skip pointer (`.mtk/scope-guard-skip`, 4h TTL) and `scope-guard.sh` checks that pointer **before** any mtime-based spec selection and no-ops — batch-fix scopes by its findings list, not a file manifest. This replaces an interim "write a freshest JSON sidecar" marker that still mis-fired: a concurrent feature spec touched in the same session is legitimately newer than the batch stub, so the guard anchored to the wrong spec and warned on every edit anyway. The pointer is race-immune (it is not selected by timestamp), self-expiring (a crashed run's pointer ages out instead of disabling the guard forever), and anchored under `$CLAUDE_PROJECT_DIR` → git top-level → cwd so writer and hook agree on its location from a worktree or sub-dir cwd. batch-fix's Phase 0 also degrades on missing setup (infer stack via `setup-detect`, resolve references from the plugin cache, announce degraded mode), and it flags that batches beyond ~5 findings may warrant a `handoff` checkpoint.
+- **Workflow artifact `phase_cursor` now advances.** `phase_cursor` was written only at init (`phase-0`) and never moved — the skill emits `phase_started` as an event, but nothing updated the cursor field, so a resume driven off `phase_cursor` alone restarted at phase-0 even after reaching a later phase. `workflow-artifact.sh event` now derives the cursor from the event log: a `phase_started` event carrying a `phase` advances `phase_cursor` to it. No skill change is required (the `phase_started` emission already exists), and existing callers are fixed retroactively. Non-phase events leave the cursor untouched.
+- **Workflow artifact `set`/`event` confirm on success.** Both were silent on success, so state changes could only be confirmed by re-reading the JSON. They now print a one-line confirmation to stdout; internal callers (which already redirect stdout to `/dev/null`) stay quiet, so only top-level invocations surface it.
+- **Stop hooks aborted (exit 1) on absent optional fields.** `workflow-continuation.sh` and `capture-learnings.sh` extract fields with `VAR="$(grep … | … | head -1)"` under `set -euo pipefail`. A legitimate no-match makes `grep` exit 1, and `pipefail` propagated that through the assignment, aborting the hook **before** the guard written to handle the absent value (`[ -n "$TOTAL" ] || exit 0`; `[ -n "$REPEATED" ]`) — turning an intended silent no-op into a visible `Stop hook error … exit 1`. It surfaced specifically in `mtk:implement` sessions because that is the only scenario reaching those extractions: an active workflow whose batch accounting is not recorded yet (`workflow-artifact.sh` init writes no `batches_total`/`batches_completed`), and a substantial session whose `tasks/lessons.md` has ≥3 lessons but no `Rule:` lines. Both extractions now terminate in `|| true`, so a no-match yields empty output and exit 0 and the guards run as designed. Other hooks were scanned for the same shape; the remaining `$(…)` extractions use `awk`/`sed`, which exit 0 on no-match, so they are unaffected.
+
+> Known follow-ups (tracked separately): (1) per-directory resolution shipped in 7.27.0 (a subproject loads its own stack via `.claude/tech-stack.map` or a nested `.claude/tech-stack`); the open remainder is multi-stack *merged* command sets for a single repo-wide operation; (2) `learnings.sh query` returning zero matches silently — needs an explicit "0 matches" vs "error" signal and a `tasks/lessons.md` fallback; (3) `MTK_AUTO_PROCEED` keying off an explicit "fix all / just do it" in the invoking message when there are zero open decisions.
+
+## [7.25.1] - 2026-07-14
+
+### Added — Publish workflow outputs as a Claude Artifact
+
+Workflow skills persist their human-facing outputs (spec, plan, handoff, health report) to disk, and disk stays the source of truth — the machine pipeline (drift detection, approval seal, EARS lint, plan-gap review, session recovery, baseline archive) reads local files and cannot read a hosted page. This release **additively** publishes those outputs as one browsable Claude Artifact per workflow run, updated in place across phases, so the engineer gets a single always-current URL rendered for review outside the terminal.
+
+- **One artifact per workflow run.** Keyed to the existing `workflow_uuid`: `spec-driven-development` creates it (Spec section), then `planning-and-task-breakdown` (Plan), `handoff` (Handoff), and `repo-health` (Health report) re-publish the same file in place — reusing the recorded `results.artifact_url` rather than minting a new link — so one URL fills in as the workflow progresses.
+- **Additive and capability-gated.** Disk is written first and unconditionally; publishing never gates or replaces it. It happens only when the harness exposes the `Artifact` tool (Claude Code / claude.ai) and `MTK_ARTIFACT_PUBLISH` != `0`. On cursor/codex, or with the opt-out set, every skill behaves exactly as before — disk only, no error, no stall.
+- **Data-egress opt-out.** Because publishing transmits internal spec/plan content to claude.ai, `MTK_ARTIFACT_PUBLISH=0` disables it repo-wide for regulated contexts (documented in the CLAUDE.md skill-routing env table).
+- **New pieces.** `scripts/workflow-artifact-md.sh` deterministically assembles the rollup (`.mtk/workflows/<uuid>.artifact.md`) from whichever recorded source docs exist, skipping missing ones; `.claude/references/artifact-publishing.md` is the single canonical procedure the skills link to (thin navigation layer, S2.26); the workflow-artifact schema documents `results.artifact_url` and the source-path fields. `code-review-and-quality` publishing is deliberately deferred (forked subagent — the orchestrator writes artifacts, not the fork).
+
+## [7.25.0] - 2026-07-07
+
+### Added — Approval seal + executable lesson contracts
+
+Two borrows from a survey of trending AI-coding-agent tooling against MTK's existing machinery, both making a soft state *checkable* rather than asserted.
+
+- **Approval seal.** On Phase 2.5 approval, `implement` now records a SHA-256 **approval seal** over the approved spec/plan/todo bodies via new `scripts/workflow-artifact.sh seal` / `verify-seal` subcommands. The seal binds the exact approved bytes, so editing an approved artifact afterward is caught deterministically: `hooks/spec-approval-trigger.sh` re-queues the approval step (advisory), and `verification-before-completion` refuses a completion claim while the seal is STALE (blocking). The seal is derived from disk by the script and created only on the engineer's approval answer — it cannot be presented for a body other than the one on disk, and any re-seal is recorded as an `approval_sealed` event ("approve a state, not an intention"). `verify-seal` exits 0 (match) / 1 (stale, prints both hashes + the changed file) / 3 (no seal — older workflows fall back to the git-diff criteria tamper check). Backward-compatible.
+- **Executable lesson contract.** Lessons may now carry four OPTIONAL fields — `output_contract`, `prefinal_verification_checklist`, `confidence`, `source_evidence_refs` — that turn a prose lesson into a checkable one. `scripts/learnings.sh add` accepts `--output-contract` / `--prefinal-checklist` / `--confidence` / `--source-evidence-refs` (the JSON values are validated and compacted to a single line so a malformed contract can't corrupt the store), `regen-markdown` renders a Contract line only when present, and `mtk-doctor` gains a `LESSONS` category that WARNs on malformed contracts (never FAIL — the feature is optional). `golden-path-capture` and `promote-lesson` document when to attach one; `promote-lesson` reserves `confidence: high` for a verified path. Prose lessons are unchanged.
+
+## [7.24.0] - 2026-07-06
+
+### Added — Context-efficiency: `.claudeignore` at setup + doctor baseline
+
+Two low-friction token/context wins, drawn from a survey of context-saving tooling against MTK's existing machinery (output compression, on-demand loading, model routing were already covered). Complements the 7.23.0 token-optimization wave.
+
+- **Stack-aware `.claudeignore` at setup.** `setup-bootstrap` now generates a `.claudeignore` at the repo root (idempotent, never overwrites, committed) so Claude Code natively keeps dependency/build directories out of search and read results. The floor mirrors the built-in scan defaults in `hooks/lib/mtkignore.sh`; per-stack caches/outputs are appended for dotnet (`TestResults/`, `*.user`), python (`.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `*.egg-info/`), and typescript (`.next/`, `build/`, `coverage/`, `.turbo/`). Distinct from `.mtkignore`, which only MTK's own scans consume.
+- **`CONTEXT` baseline in `mtk-doctor`.** New report-only category surfacing the always-on install cost: the always-on context baseline (CLAUDE.md + `rules/INDEX.md` + `alwaysApply` references, in tokens/bytes), the MCP tool-schema count from `.mcp.json`, and the `ENABLE_TOOL_SEARCH` state. All checks stay PASS on a clean repo; the numbers live in the detail field. Appears in both human and `--json` output.
+
+## [7.23.0] - 2026-07-06
+
+### Added — Token optimization wave
+
+Five measures to lower MTK's context footprint and make its (largely already-real) savings visible to users. Baseline before this release: ~3.7K always-on tokens/session, ~86K tokens kept out of context by progressive disclosure.
+
+- **Skill-description budget enforced.** `validate-toolkit.sh` now caps each MTK skill `description` at 200 chars and the aggregate at 7000 chars (~1750 tokens), and prints the running total every run. Descriptions load into *every* session against Claude Code's ~1%-of-context skill-listing budget, so this protects routing quality on smaller-context models and stops the always-on floor drifting as skills are added (S2.6a). The 7 longest descriptions were trimmed to fit (6643 -> 6407 chars) with keywords preserved.
+- **`security-checklist.md` no longer always-on.** Its frontmatter (`alwaysApply: true`, glob `**/*`) was aligned to the security-scoped `applyTo` the manifest already carried, closing a split-brain where the MCP resolver treated it as path-scoped but the frontmatter/index/bash-fallback treated it as always-on. Every consumer already loads it explicitly and conditionally (`security-and-hardening` reads it unconditionally), so behaviour is unchanged; it just stops loading on non-security work in the fallback path.
+- **`mtk-savings.sh` - context footprint & savings report.** New script (`bash scripts/mtk-savings.sh`) reports the always-on floor, tokens deferred by progressive disclosure, review-agent bodies offloaded to isolated context, and real output-compression totals read from `.claude/observability/compression.jsonl`. Surfaced from `analytics-report.sh` and the `context-report` skill. Every figure is derived from installed files or the on-disk log - nothing fabricated.
+- **Prompt-cache-stable CLAUDE.md prefix.** The stale, per-release version banner in `CLAUDE.md` was replaced with a stable pointer to `CHANGELOG.md`, so the always-loaded prefix no longer changes every release (keeps prompt caching warm).
+- **Progressive disclosure of the fattest skill body (S2.26).** The literal Root CLAUDE.md template moved out of `setup-bootstrap` (924 -> 815 lines) into on-demand `references/root-claude-md-template.md`, read by STEP 3 only when generating. Deeper restructuring of the other large workflow skills, and the tech-stack scan-recipe split (cross-consumed by `setup-audit`), are deferred to their own reviewed change to avoid destabilizing skills changed in the recent 7.19-7.22 waves.
+
+## [7.22.0] - 2026-07-06
+
+### Added — Borrow wave 3: routing, memory & context
+
+Final borrow wave from the agent-cortex triage (`docs/plans/2026-07-03-agent-cortex-borrow-triage.md`). The batch-3 sources were research/reading lists with no vendorable code, so this wave takes file-implementable ideas and vocabulary only.
+
+- **Conflict-superseding lesson writes.** `learnings.sh add` gains `--supersedes <id>`; `learnings.sh query` derives the superseded set from those forward refs and drops any entry a newer one supersedes — so a reversed rule stops surfacing without deleting the audit trail (no line rewriting). `correction-capture` now captures a contradicting lesson with `--supersedes` instead of appending a second conflicting rule. (Borrow: IAAR-Shanghai conflict-driven forgetting.)
+- **Memory content-type tag.** New optional `memory_type` (`episodic | semantic | procedural`) on the learnings schema and `learnings.sh add --memory-type`, orthogonal to `source` provenance, to improve recall relevance. (Borrow: IAAR-Shanghai content-type taxonomy.)
+- **Named context operations.** `context-engineering` now opens with the **Write / Select / Compress / Isolate** taxonomy and a one-line definition of context, each mapped to the MTK machinery that already implements it. (Borrow: jihoo-kim / LangChain taxonomy.)
+- **Negative-example route disambiguation.** `/mtk` gained a "Route Disambiguation (negative boundaries)" table encoding the contested pairs (fix vs implement, research-context vs implement, pre-commit-review vs full review, context-report vs toolkit-health, capture vs handoff, promote-lesson vs lesson-mining, setup always → `/mtk-setup`). (Borrow: awesome-harness-engineering negative-example routing.)
+- **MCP shortlist additions.** `docs/recommended-tooling/shared.md` adds Sentry and a read-only Postgres MCP (with a read-only-role caveat) and strengthens the security note to prefer read-only roles / scoped tokens; `dotnet.md` adds Azure DevOps for ADO shops. (Borrow: wong2/awesome-mcp-servers, security-gated.)
+- **Competitor positioning.** README FAQ now distinguishes MTK from other AI setup/config-generator tools by its claim-verification loop (verified rules/commands, re-runnable refresh/converge/check), not just generation.
+
+
+
+### Added — Borrow wave 2: guardrails & generation
+
+Second borrow wave from the agent-cortex triage (`docs/plans/2026-07-03-agent-cortex-borrow-triage.md`). Focus: guardrails that travel with the capability, and cleaner generated output.
+
+- **Per-tool guardrails + no-delete fence in the implementer dispatch contract.** `subagent-implementation` now states each granted tool's boundary inline (Edit/Write: only `batch.files`; Bash: build/test/format/read-git only, no network or destructive commands) and forbids deletion (no `rm`/`git rm`; removals become a `deviation` for the orchestrator). Directly targets the out-of-scope-edit (v7.14) and destructive-deletion (v7.10.3) failure modes. (Borrow: dontriskit + EliFuzz — guardrails baked into the capability.)
+- **Terminology / LLM-tic lint is now enforced.** `verify-claims.sh` implements the previously documentation-only audit-grounding §4 denylist: tagged lines carrying LLM prose tics ("Additionally", "Furthermore", "Moreover", "Delve", "worth noting", "plays a crucial role") get a `terminology-needs-review` weak-claim entry with the matched term. Advisory, never auto-rewritten. (Borrow: yzhao062/agent-style field-observed tics.)
+- **Output-style section in generated CLAUDE.md.** `setup-bootstrap`'s CLAUDE.md template now emits an `## Output Style` block (no em-dash-as-punctuation, no filler transitions, no bullet inflation, no per-paragraph summary, back claims with file:line) so bootstrapped repos steer agent prose from day one. (Borrow: agent-style anti-patterns.)
+- **`paths` axis in the rule wake-up index.** `build-rule-index.sh` now surfaces each rule's `paths:` globs as a column in `.claude/rules/INDEX.md`, giving machine-scoped auto-attach (a rule whose glob matches a touched file is always relevant) alongside the decision/topic/scope axes; `git-workflow.md` gained the `paths:` it was missing. (Borrow: instructa/ai-prompts + awesome-copilot `applyTo` globs.)
+
+### Deferred
+
+- Idempotent import-marker merge in `generate-tool-configs.sh` (batch-2 #12): the copilot/windsurf/cursor generators are overwrite-guarded but not marker-merged. Deferred — it needs careful surgery across five output formats plus smoke tests; tracked in the triage doc.
+
+
+
+### Added — Borrow wave 1: skill & subagent authoring hardening
+
+First of three minor releases mining the `awesome-agent-cortex` neighborhood (triage in `docs/plans/2026-07-03-agent-cortex-borrow-triage.md`). Batch-1 finding: the ecosystem's *content* (persona agents, thin skills) is behind MTK, so this wave takes only conventions and validator capability — the reusable parts.
+
+- **Navigation-only SKILL.md rule (S2.26).** New rule states a SKILL.md is a navigation layer, not a payload — it holds decision logic and links to `.claude/references/**` rather than inlining detail. Mirrored into `writing-skills` Phase 2. (Borrow: wshobson/agents progressive-disclosure contract.)
+- **Least-privilege agent lint.** `validate-toolkit.sh` now advises (WARN, non-blocking) when a `.claude/agents/*.md` declares neither `required-toolsets` nor `allowed-tools`, or grants a mutating tool (`Edit`/`Write`/`MultiEdit`/`NotebookEdit`) to a read-only reviewer. (Borrow: VoltAgent tool-matrix-by-role.)
+- **Frontmatter enum sanity.** `validate-toolkit.sh` advises on unexpected `model:` (expected `opus|sonnet|haiku|inherit`) and `effort:` (`low|medium|high|max`) tiers in agent frontmatter, catching typo'd tiers early. (Borrow: awesome-copilot schema-validated frontmatter, adapted to bash/advisory.)
+- **Self quality-checklists in reviewer agents.** `compliance-reviewer`, `test-reviewer`, `architecture-reviewer`, and `silent-failure-hunter` each gained a `## Quality Checklist` the agent runs against its *own* output before returning (every finding cites file:line, no FP-class findings, verdict matches scores). (Borrow: 0xfurai embedded `## Quality Checklist`.)
+
+### Deferred
+
+- CLAUDE.md archetype seed skeletons (batch-1 #7): setup-bootstrap already generates bespoke CLAUDE.md from the audit; archetype fallback is low value and would inflate an already-large skill. Left as a note in the triage doc.
+
+## [7.19.0] - 2026-07-03
+
+### Added — Setup improvements wave
+
+A competitive analysis of the setup/bootstrap landscape plus a same-session local review surfaced 11 items: three local fixes, four Tier-2 borrows, and four Tier-3 borrows. This release ships all 11.
+
+- **`--update-guidelines` works from marketplace installs.** `mtk-setup` now resolves the coding-guidelines pin against `$CLAUDE_PLUGIN_ROOT` when present, and writes the updated pin to the repo-local `.claude/mtk-version.json` instead of the plugin cache; the report line states which file carries the update.
+- **Mechanized detection (`scripts/setup-detect.sh --json`).** Read-only script consolidating stack markers, package-manager lockfile priority, React Native/Expo markers, and monorepo classification (workspace globs, package counts, 20-package cap) into one tested entry point; `setup-bootstrap`/`setup-audit` shrink accordingly, reporting all detected stacks instead of just the first.
+- **Eval coverage for the setup family.** New `evals/setup-bootstrap/` (grader + clean-bootstrap and rerun-preservation scenarios), discoverable via `scripts/run-evals.sh`.
+- **`/mtk-setup --converge`.** New read-only `setup-converge` skill — the inverse of `--refresh` — treats `architecture-principles.md`/`conventions.md` as normative and reports where the codebase drifted as graded work items (blocking/flag/note), never auto-fixing; writes stay under `.claude/.mtk-cache/` unless the engineer explicitly approves a `tasks/todo.md` append.
+- **Adaptive interview from `[AMBIGUOUS]` findings.** `setup-audit` emits `.claude/.mtk-cache/ambiguities.json`; `setup-bootstrap` STEP 2.5 asks up to 3 additional questions ranked by hit count, persists resolutions under `resolved_ambiguities` in `setup-answers.json`, and never re-asks a resolved anchor.
+- **Migration-aware bootstrap.** New STEP 2.7 ingests existing `.cursorrules`/`.cursor/rules`/Copilot/Windsurf/Cline/Gemini/`AGENTS.md`/`CLAUDE.md` configs as interview-grade rule candidates anchored to their source path, deduped against scan findings with contradictions routed to Needs review.
+- **Verified-commands stamp.** New `scripts/verify-commands.sh` runs the build/test/format commands bootstrap is about to publish (timeboxed, list/collect-only test mode, check-mode formatting) and stamps CLAUDE.md's Tech Stack section verified/unverified; `--no-verify-commands` opts out and non-interactive runs never block on a failing command.
+- **Live file references over restated facts.** Generation rules now point at canonical machine-readable files (`package.json`, lockfiles, `Directory.Packages.props`) instead of restating version/dependency facts inline, shrinking the dependency-rescan staleness surface.
+- **Product-context artifacts.** New `.claude/references/product-context.md` plus bootstrap STEP 3.8 generate `product.md` (purpose/users/key flows/non-goals, ≤40 lines) and seed `decisions.md` (ADR-lite, append-only); both join the never-overwrite preservation set.
+- **CI staleness gate template.** New `templates/ci/mtk-staleness-check.yml` pins the toolkit checkout to the installed version and fails the job on drift; `setup-bootstrap` STEP 4 offers to install it on GitHub-hosted repos.
+- **Minimal mixed-stack support.** `secondary_stacks` recorded in `detected-tools.json`; bootstrap runs secondary-stack scan recipes for conventions and reference pruning, with the primary-stack-only workflow-skill limitation documented in both skills.
+
+### Tests
+
+- New `tests/hooks/test-setup-detect.sh` and `tests/hooks/test-verify-commands.sh` — fixture coverage for the new detection and command-verification scripts.
+- New `tests/pressure-tests/setup-converge.md` — adversarial scenarios pressing converge to rewrite docs, auto-append todos, or claim unanchored violations.
+
+### Hardened (dogfood findings from two production bootstrap runs)
+- secret-scan.sh detects URL-embedded credentials (`scheme://user:pass@host`) with placeholder exemptions + dedicated test
+- generate-agents-md.sh enforces its 60–120-line budget (headings + distillation + pointers; 140-line hard ceiling) + dedicated test
+- Cross-agent config generation is now opt-in: interactive question, AGENTS.md-only default under --non-interactive
+- Settings Merge defines the fresh-bootstrap path ($CLAUDE_PLUGIN_ROOT-relative hook paths) and a permission-blocked fallback (settings.json.mtk-proposed, Needs review)
+- tech-stack-dotnet: dotnet publish deny-only (was contradictorily allowed+denied); dotnet test --list-tests documented for command verification
+- verify-references.sh exempts known-optional boilerplate paths (settings.local.json etc.)
+- setup-audit/repomap: defer-to-mcp documented as per-file enrichment; unreachable LSP treated as fallback with Provenance disclosure
+
+### Hardened (wave 2)
+- verify-claims.sh: DOC_SLUG now derives from the repo-root-relative path (falling back to basename outside the repo) so same-basename docs in different directories — e.g. per-package CLAUDE.md files — no longer clobber each other's weak-claims cache; dedicated regression test
+- command-verification.md: new Tree-mutation guard — commands that mutate the tree as a side effect (e.g. a lockfile touched by `dotnet build`) are restored via `git checkout --` and reported in STEP 5
+- setup-detect.sh: RN/Expo detection now also scans monorepo package dirs and first-level sibling package.json files (maxdepth 2, excluding node_modules), not just the root package.json; dedicated regression fixture
+- tech-stack-dotnet: `dotnet test --list-tests` documentation is now conditional on `.sln` vs `.slnx`/Microsoft.Testing.Platform, matching the `--solution` flag Microsoft.Testing.Platform requires
+
+## [7.18.0] - 2026-07-03
+
+### Added — Setup refresh loop
+
+`/mtk-setup` was strong on first run but had no coherent re-run story: `--audit` refreshed only two docs, drift detection (`audit-drift-check.sh`) had no consumer, the re-run merge could silently blend engineer edits, interview answers dissolved into generated prose, and long scans didn't survive a crash. This release closes the loop — detect → preview → scoped regen → propose diffs → gate in CI — and hardens the first run.
+
+- **`/mtk-setup --refresh` (+ `--dry-run`).** New `setup-refresh` workflow skill: consults a per-artifact staleness plan, regenerates only what drifted (drift-scoped re-reads with a ~30% full-re-audit threshold), regenerates deterministic artifacts (AGENTS.md, tool configs, indexes), and routes every engineer-edited file through the diff-proposal contract. `--dry-run` prints the invalidation plan and writes nothing.
+- **`/mtk-setup --check` + `scripts/setup-refresh-plan.sh`.** Read-only CI staleness gate: per-artifact plan (stamped-doc drift, CLAUDE.md version + dependency rescan, detected-tools TTL, AGENTS.md regenerate-and-diff, dead path references) with `--json` output; `--check` exits 1 when anything is stale, making "are the generated docs still accurate?" a one-line CI job.
+- **Diff-proposal contract replaces union merge.** New `.claude/references/regen-diff-contract.md`: engineer-edited generated files are never overwritten or union-merged — the toolkit's own delta (cached ancestor template vs fresh template) is proposed hunk-by-hunk with a one-line reason each, applied only on approval; hunks that no longer apply land under Needs review with the conflicting region quoted. `setup-audit` STEP -1 and `setup-bootstrap` merge mode both delegate to it; `git merge-file --union` is gone.
+- **Persisted interview (`.claude/setup-answers.json`).** Bootstrap's post-scan interview now persists answers to a committed steering file (new question 6: definition of done). Re-runs reuse prior answers and only ask new gaps; rules sourced from answers cite the file as their evidence anchor, so the verify-claims pass never auto-downgrades engineer-stated rules; scan findings that contradict an answer become Needs review items instead of silent overrides.
+- **Resumable scan ledger.** `setup-audit` and `setup-bootstrap` record per-step progress (outputs + concrete summary) through `workflow-artifact.sh` (which now accepts `setup-audit`/`setup-bootstrap` types); an interrupted run under 24h old offers Resume/Start fresh/Cancel, older ones auto-archive. Large repos (>1000 tracked files) write findings to the ledger per scan category and keep only summaries in context.
+- **Verify-claims retry loop + Sync Impact stamp.** Downgraded claims get exactly one re-derivation attempt (fix the evidence anchor or delete the claim) before downgrades are accepted; every re-run/refresh stamp now records `previous-stamp`, `sections-changed`, and `claims-delta: +N ~M -K` — a machine-parsable audit trail of what the refresh actually changed.
+
+### Tests
+
+- New `tests/hooks/test-setup-refresh-plan.sh` — fixture-repo coverage for the staleness plan: all-fresh exit 0, drift flips `--check` to exit 1, `--json` shape, dependency-rescan detection.
+- New `tests/pressure-tests/setup-refresh-preservation.md` — adversarial scenarios pressing refresh to delete hand-authored files, silently overwrite engineer edits, or force-apply under non-interactive pressure.
+
+## [7.17.0] - 2026-07-01
+
+### Added — Borrowed capabilities, wave 3
+
+A third competitive scan of trending (last-30-day) Claude Code toolkits surfaced 6 candidates. Two — cross-platform config export and pre-execution visual review of agent loops — turned out to already exist (`scripts/generate-agents-md.sh`/`generate-tool-configs.sh`, and `implement`'s Phase 2.5 batch rendering) once checked against the codebase; the real gaps found on inspection are what shipped for those two. The other four are net-new deltas on existing infrastructure.
+
+- **Critical Rules in generated cross-tool configs.** `generate-agents-md.sh` and `generate-tool-configs.sh` (AGENTS.md, `.cursor/rules`, Copilot, Windsurf, Gemini, Cline) now extract the project's `CLAUDE.md` `## Critical Rules` section and lead every generated config with it — the highest-value content for a tool with no hook enforcement, previously dropped entirely.
+- **`browser` evidence channel gets a capture procedure.** New `.claude/references/evidence-capture.md` documents persisting screenshots/console logs/network requests (via Playwright MCP) under `docs/specs/<slug>.evidence/<criterion-id>/` for behavior verified in a browser, with an explicit textual-fallback path when Playwright MCP is unavailable. `verification-before-completion` cross-references it and requires the evidence path be cited in the completion table.
+- **`golden-path-capture` — live, in-session lesson harvesting.** New skill, distinct from `correction-capture` (engineer-issued corrections) and `lesson-mining` (after-the-fact transcript sweeps): fires when the agent itself fails the same sub-problem 2+ times and then finds a working approach, capturing the attempt immediately via the existing `learnings.sh`/`.claude/lessons/personal.md` path using the `wrong_turns`/`time_cost` fields that already existed for exactly this case.
+- **Optional cryptographic release signing.** `generate-checksums.sh --sign` signs `checksums.sha256` with an Ed25519 key (`MTK_RELEASE_SIGNING_KEY`) via `openssl pkeyutl`, producing `checksums.sha256.sig`; `mtk-doctor.sh` verifies it against `MTK_RELEASE_PUBLIC_KEY` when both are configured. Fully opt-in — an unsigned release remains valid, and an unconfigured signing setup is an informational PASS, never a FAIL.
+- **Gate-sequence preview at Phase 2.5.** `implement`'s approval-gate rendering now prints the full pipeline that will run against the approved batches (drift check → Stage 1 → Stage 2 reviewer set for the computed rigor level → cleanup → compound), not just the batch list.
+- **`query-code-index.sh` — grep-friendly CODE_INDEX companion.** New `find <keyword>` (searches CODE_INDEX.md rows with domain context) and `callers <symbol>` (textual `git grep` reference search, explicitly not a semantic call-graph) subcommands; `prior-work-check` and `code-simplification --audit-duplicates` now use it instead of ad hoc grepping.
+
+### Tests
+
+- New `tests/hooks/test-query-code-index.sh` — fixture-based coverage for `find` and `callers` modes, including regression guards for fixed-string (not regex) matching and the header-row-skip anchor.
+- New `tests/hooks/test-release-signing.sh` — Ed25519 sign/verify round-trip, tamper detection, and mismatched-key detection for the `--sign` opt-in.
+
+## [7.16.0] - 2026-06-29
+
+### Added — Borrowed capabilities, wave 2 (catalogue, dispatch, gates, context economy)
+
+Nine capabilities surfaced by a competitive scan of trending (last-30-day) Claude Code toolkits, each a delta on existing MTK infrastructure. Two strategic items (cross-vendor judge, proxy-fidelity eval gate) were deferred to a future release as they require eval-correlation infrastructure.
+
+- **Failure-modes catalogue extended to F1–F16.** New `F15 — Frozen-Replay / Non-Varying Evidence` (evidence that cannot fail, plus the read-only ground-truth instrument rule) and `F16 — Unverified Prose Claims` (README/changelog/sample claims, the prose-claim slice F12's doc-comment drift does not cover). Citations strengthened: F3 → USENIX'25 package-hallucination/slopsquatting, F4 → GitClear duplication data. `code-review-and-quality` reference updated F1–F14 → F1–F16.
+- **Subagent dispatch hardening.** `subagent-implementation` now writes large context bundles to a file and passes the path (never argv), binds `args` as real JSON (fixes the v7.14 args-unbound crash/stall), and compresses handoffs before dispatch. Prior-batch summaries emit a dense, line-counted block so a truncated handoff is detectable.
+- **Per-subagent usage envelope.** Optional `usage: {tokens, error_code}` on the batch result schema, rolled up to `results.usage` on the workflow artifact — a cost / loop-safety signal, never a gate input.
+- **Frozen success criteria + tamper check.** `success_criteria[]` (`id`/`observable`/`evidence_channel`) are frozen at Phase 2.5; `verification-before-completion` runs a `git diff` tamper check before any completion claim — a moved goalpost is fail-closed and re-opens Phase 2.5 (or trips `failure_stop_gate`). Reflected in `spec-driven-development` and `orchestration-gates.md`.
+- **Completion evidence table + first-verified-output baseline.** Completion is stated as a binary `criterion | verdict | evidence` table; criteria without automated tests persist a golden baseline under `docs/specs/<slug>.baselines/`.
+- **Less-code ladder + safety carve-outs.** `code-simplification` gains the YAGNI ladder and a never-simplify-away list (auth, secrets, validation, migrations, delete-guards, audit logging); mirrored as a never-compress carve-out in `output-compression.md`.
+- **Proactive context reset.** `context-engineering` adds a deliberate ~40%-boundary reset with a rot-symptom override (2+ of: re-reading, re-asking, contradicting a prior decision → reset now), complementing the existing 60% hard floor.
+- **Post-ship Retro mode.** `lesson-mining` gains a deliberate plan-vs-actual retro that classifies each miss to its durable surface (wrong premise → context file; blind spot → plan template) and routes survivors through the reject-by-default/suggest-only discipline.
+- **Provider tier slots.** `model-routing.md` adds `fast`/`default`/`strong` role slots over the concrete `haiku`/`sonnet`/`opus` tiers, so a model rename or backend swap is a one-line re-bind rather than a per-row edit.
+
+### Tests
+
+- New `tests/pressure-tests/verification-frozen-criteria.md` — adversarial scenarios for frozen criteria, the tamper check, and the binary completion table.
+
+## [7.15.0] - 2026-06-25
+
+### Added — Seven capabilities (cost discipline, context safety, loop safety, guard packs)
+
+Seven capabilities, each a delta on existing infrastructure. Disjoint from the v7.13/v7.14 work.
+
+- **Per-phase model routing.** New `.claude/references/model-routing.md` is the canonical tier policy — `opus` reserved for code that writes real logic and adversarial review; `sonnet`/`haiku` for discovery, planning, and structured comparison. `subagent-implementation` frames its model question with the policy default (Sonnet unless the batch is flagged novel); `context-engineering`, `planning-and-task-breakdown`, `code-review-and-quality`, and `research-context` cite it.
+- **Context-budget checkpoint.** `hooks/context-budget.sh` now nudges a deliberate reset/handoff once estimated consumption (read-bytes floor) passes `MTK_CONTEXT_BUDGET_PCT`% (default 60) of `MTK_CONTEXT_WINDOW_TOKENS` (default 200000). Documented in `handoff` and `context-engineering`. Advisory, fires once.
+- **Remediation circuit-breaker.** `scripts/workflow-artifact.sh remediation <uuid> <trigger> [--score N]` records fix-loop iterations and prints `ESCALATE` at `MTK_MAX_REMEDIATION_ITERS` (default 3) or on score plateau, else `CONTINUE`. Wired into `failure_stop_gate`, `code-review-and-quality`'s iteration cap, and `verification-before-completion`; new `results.remediation` artifact field and `remediation_escalated` event.
+- **`smoke-boot` evidence channel.** New strongest real-execution surface ("the artifact/service boots and responds live") added to the v7.14 evidence-channel taxonomy in `verification-before-completion` and `spec-driven-development`.
+- **Doc-drift linter pack.** New `hooks/linter-patterns/core/docdrift.txt` — heuristic, warning-level smells (absolute reliability claims, empty `<see cref="" />`, placeholders, empty/placeholder links, `[Obsolete]` without a message). Cross-referenced from `ai-failure-modes.md` F12/F3.
+- **Phase-locked tool limits.** `brainstorming` is now `required-toolsets: [read-only]`; `research-context`, `spec-driven-development`, and `planning-and-task-breakdown` carry a written Tool-discipline note (artifacts/web only, never source code — `scope-guard` backs it). S2.20 extended.
+- **Stack/domain guard packs.** Enriched `domain-finance` (anonymous endpoints, audited-record deletes, sensitive-data logging) and `stack-dotnet` (`new HttpClient`, weak hashes) packs; new `.claude/references/guard-packs.md` documents the guard-pack model as a shippable unit.
+
+### Tests
+
+- `tests/hooks/test-context-estimator.sh` extended with the 60%-checkpoint scenarios (SC8).
+- New `tests/hooks/test-remediation-tracker.sh` and `tests/hooks/test-docdrift-pack.sh`.
+
+## [7.14.0] - 2026-06-12
+
+### Added — Evidence and the closed loop (14 competitive-analysis borrows, 8 batches)
+
+- **Evidence contract.** Success criteria carry an `evidence_channel` + a binary `observable`, verified criterion-by-criterion. Any edit after verification **re-arms** all criteria (the `verify-completion` Stop hook emits a re-arm notice); behavior-shaped changes require a real execution surface, not tests alone. Named channels recorded on the workflow artifact (`criteria_status`).
+- **Input hygiene.** New `read-guard` PreToolUse hook blocks secret-file reads (exit 2) with an out-of-band human approval path (no agent-runnable self-approval) and a `MTK_READ_GUARD=advisory` rollout knob; noise-directory reads advise only.
+- **Claim provenance.** `[VERIFIED]`/`[ASSUMED]`/`[CITED]` tags on spec/research claims; an `[ASSUMED]` claim blocks `MTK_AUTO_PROCEED`.
+- **Package-legitimacy gate.** Dependency-intake criterion 0 verifies new deps against their registry with a human checkpoint before install; dirty-worktree paths recorded as risk and `plan-gap-reviewer` rejects overlaps.
+- **AI failure-modes catalogue.** F1–F14 (cited) wired into `code-review-and-quality` and `silent-failure-hunter`; new read-only `context-miner` review lane (git history, PR/issue threads, lessons) at HIGH/MAX rigor.
+- **Hardened subagent dispatch contract.** TASK/DELIVERABLE/SCOPE/VERIFY; an inconclusive result never counts as pass; respawn once.
+- **Closed-loop lessons.** Richer lesson template (`wrong_turns`/`time_cost`/`evolution_actions`); `learnings.sh add` optional write flags; `promote-lesson` offers a validated contribute-back PR (`validate-lesson-pr.yml` checks path/size/secret/injection and labels — humans merge, never auto-merge); new `lesson-mining` skill (reject-by-default transcript sweep, suggest-only).
+- **Workflow + brainstorming.** `workflow-continuation` Stop hook nudges on unfinished workflows (advisory); brainstorming divergence mode runs isolated parallel branches under distinct cognitive frames (incl. fintech) with a critic pass and a mandatory trap register.
+
+## [7.13.1] - 2026-06-10
+
+### Fixed — Skill-audit remediation (full-toolkit consistency pass)
+
+A five-reviewer audit of all 39 skills surfaced ~50 verified findings; this release fixes all of them.
+
+- **Routing contract:** `subagent-implementation` now also dispatches on rigor score ≥ 8 (HIGH/MAX), eliminating the dispatch ping-pong with `implement` Phase 3. AUTO_PROCEED plan-trust decisions are recorded via the `gate` subcommand so `gates.plan_trust_gate` no longer sticks at `pending`.
+- **`/mtk` router:** graph and route table now agree on precedence ("audit CLAUDE.md" → `claude-md-audit`); new routes for `mtk-doctor`, `promote-lesson`, `handoff`, and `pr-review-mining` (previously orphaned); `toolkit-health` keywords narrowed to usage/stats/analytics/adoption.
+- **Embedded bash:** fixed the brace-glob grep in `prior-work-check` (its core duplicate-detection query silently matched nothing), a `$PATH`-clobbering loop variable in `mtk-setup`, dead code and an incomplete hook-event grep in `context-report`, and 30 `find -o` precedence bugs across setup-audit and the three tech-stack skills.
+- **Spec model:** `docs/specs/baseline/` is now committed (gitignore covers working deltas only), matching the delta-spec model and repo-health asset #5; `handoff.schema.json` gains `baseline_area`/`delta`; EARS lint moved after spec persistence; spec verification checklist gains the Constitution/Claude-Ready/prior-work gates.
+- **Marketplace installs:** `setup-audit` and `setup-bootstrap` resolve the manifest via `${CLAUDE_PLUGIN_ROOT}` (with `mtk-version.json` fallback) instead of project-relative reads that broke re-run detection on client installs; setup-audit's re-run example no longer shows CLAUDE.md being overwritten; mining now precedes the verify-claims pass.
+- **`pre-commit-review`:** clean-pass template counts all 8 rules; check source points at generated `security.md`/`pre-commit-review-list.md` with the hardcoded items as labeled fallback; new pressure test (S2.7 gap closed).
+- **Stale meta-layer:** `writing-skills` and `docs/skill-anatomy.md` caught up with S2 (type field, triggers index rebuild, toolsets, S2.13 pointer, reciprocal-reference check); S2.2 now codifies the phase-structured anatomy the validator already accepted; new S2.25 documents advisory `trigger:`/`skip_when:` keys; CLAUDE.md and AGENTS.md routing brought current.
+- **Misc:** CLAUDE.md line-budget unified at 120 (context-engineering said 200), `feat/` branch prefix in using-git-worktrees, CSO single-sentence descriptions across six skills, false cross-skill integration claims corrected (research-context consumers, planning↔drift governing-constraints, prior-work-check "Phase 1.5"), residual third-party attributions removed, `analyzer-config.md` added to all three tech-stack Reference Files lists.
+
+### Added
+
+- **`scripts/lint-skill-bash.sh`** — lints fenced bash inside skills for three deterministic bug classes (grep brace-globs, `PATH` clobbering, ungrouped `find -o`); wired into `validate-toolkit.sh` as a fatal gate, plus a non-fatal multi-sentence-description WARN.
+- **`tests/pressure-tests/pre-commit-review-pressure.md`** — adversarial scenarios for the pre-commit security gate.
+
+## [7.13.0] - 2026-06-09
+
+### Added — Pre-implementation consistency, scaled ceremony, release integrity
+
+- **Cross-artifact consistency check in `plan-gap-reviewer`.** When the orchestrator passes the spec JSON sidecar and `tasks/todo.md` alongside the plan, the agent maps spec ↔ plan ↔ todo against each other in both directions: every manifest entry has a batch, every batch file is in the manifest, every success criterion maps to a batch and a test, no batch implements an out-of-scope item, and the todo matches the plan's batches. New `cross_artifact_inconsistencies` finding category — file-level mismatches, out-of-scope hits, and todo/plan divergence are BLOCKING. `planning-and-task-breakdown` step 11 now passes all three artifacts at dispatch. Pressure-test scenario 6 ("the artifacts quietly disagree") covers it.
+- **Interview mode at the spec ambiguity gate.** With three or more ambiguities — or a one-to-two-sentence request for clearly multi-file scope — `spec-driven-development` switches from batched questions to a Socratic interview: one question per round, highest-leverage ambiguity first, probing intent before offering options, re-deriving the remaining ambiguities after each answer, capped at 5 rounds with explicit defaulted assumptions for anything left open. Batched mode remains the default for one or two independent ambiguities.
+- **Rigor score — continuous ceremony scaling in `implement`.** A score computed from the JSON sidecar (batches, manifest size, security impact, public contracts, breaking-change scope) maps to LIGHT / STANDARD / HIGH / MAX and dials the Phase 3 path, the Stage 2 reviewer set (HIGH always runs `test-reviewer` + `architecture-reviewer`; MAX adds `silent-failure-hunter`), and `MTK_AUTO_PROCEED` eligibility (LIGHT/STANDARD only). The long-standing subagent hard triggers remain as a floor forcing at least HIGH — nothing got more lenient. The score and level are stated in the Phase 2.5 gate header so the engineer sees why the ceremony is sized the way it is.
+- **Archive folds shipped contracts into `CODE_INDEX.md`.** `scripts/spec-archive.sh` now appends newly shipped public contracts to an auto-generated "Recently Shipped" section of the capability index (append-only, idempotent per slug, only when `CODE_INDEX.md` exists) — completed delta specs become living documentation instead of just an audit trail, and the next prior-work check sees them.
+- **Release checksum manifest.** New `scripts/generate-checksums.sh` writes `checksums.sha256` — SHA-256 of every manifest-listed file — at release time; `--verify` recomputes and reports mismatches. `mtk-doctor.sh` verifies it when present (WARN-level: local dev changes legitimately drift; on a clean install a mismatch means the bytes are not the released bytes). New rule **S4.11** adds regeneration to the release checklist.
+
+## [7.10.3] - 2026-05-29
+
+### Fixed — setup-bootstrap non-destructive contract
+
+A bootstrap run under an aggressive "replace" wrapper deleted hand-authored files it did not generate (nested per-package `CLAUDE.md`, custom `.claude/commands/*`, a custom rule file) because the skill documented intent to *preserve* hand-authored files but had no explicit *deletion* protection, and the preservation note was scoped to the monorepo path only.
+
+- `setup-bootstrap` — added a prominent **File Preservation Policy (non-destructive contract)** at the top of the workflow: bootstrap is additive/merge-only, never `git rm`s a file it did not generate, and has no "replace mode" regardless of how it was invoked. Only MTK-owned files (provenance-stamped or known generated paths) may be overwritten in place; everything else — nested/`.claude/CLAUDE.md`, custom commands/rules/references, lockfiles, source, adopted AI configs — is preserved untouched.
+- Retiring a prior MTK-owned file is the one exception and must be reported loudly under "Retired prior MTK files" in the STEP 5 report — never silent.
+- Strengthened the STEP 4.5 "Not a monorepo" branch and the IMPORTANT bullet to forbid deletion (not just overwrite) of nested `CLAUDE.md` whether or not the repo is a monorepo.
+- Commit hygiene: stage only declared output (never `git add -A`); scratch/run-report/review artifacts must live outside the repo tree or be git-ignored, so eval artifacts can't leak into a commit.
+- STEP 5 report gains "Preserved hand-authored files" and "Retired prior MTK files" lines.
+
+## [7.10.2] - 2026-05-29
+
+### Changed — Opus 4.8 currency pass
+
+Verified MTK against Opus 4.8 and current Claude Code: no breakage. Agents pin model aliases (`opus`/`sonnet`), which resolve to Opus 4.8 automatically on the Anthropic API; `effort:` and `context: fork` frontmatter remain honored keys; the deprecated-model list is still accurate. Two stale items fixed plus the one real provider gap documented.
+
+- `docs/parallelism-patterns.md` — refreshed the example model list ("Opus 4.7, Sonnet 4.6" → "Opus 4.8, Sonnet 4.6 and later").
+- `scripts/mtk-doctor.sh` — the model-ID check now notes that `model:` aliases resolve to the latest model on the Anthropic API but to **older** versions on Bedrock/Vertex/Foundry, where `ANTHROPIC_DEFAULT_OPUS_MODEL` / `_SONNET_MODEL` / `_HAIKU_MODEL` should be pinned to a full model ID. No detection-logic change; advisory only.
+- `docs/specs/2026-05-29-opus-48-currency.md` — records the verification result and a forward-looking assessment of native Claude Code features MTK predates (Workflow tool, native `EnterWorktree`, `effort: xhigh`, background sessions / `/loop` / `/schedule`) for a later, deliberate adoption decision.
+
+## [7.10.1] - 2026-05-29
+
+### Fixed
+
+- `scripts/verify-references.sh` — the Check-1 path scan now strips a trailing `path:line` / `path:Symbol` citation suffix before resolving, so `architecture-principles.md` line citations and `CODE_INDEX.md` `path:Symbol` entries no longer false-positive as stale. Advisory-only check; no impact on committed docs.
+
+## [7.10.0] - 2026-05-29
+
+### Fixed — setup bootstrap/audit grounding (9-repo evaluation)
+
+Driven by a 9-repo bootstrap evaluation (6 C#, 3 TS) with per-repo adversarial fact-checking. The audit/bootstrap now grounds claims against code instead of asserting from thin or dead evidence:
+
+- **Counter-example gate before absolute rules** — `setup-bootstrap` and `setup-audit` must grep for counter-examples before emitting any `NEVER`/`ALWAYS`/`all`/`every`/`must` rule; if any exist, soften to `[CONVENTION]` rather than `[ENFORCED]`.
+- **Capability requires a usage site** — `setup-audit` must find an instantiation/call/registration, not a bare `using`/import/package ref, before asserting a capability or integration.
+- **Security-claim grounding** — never assert a sanitization/validation/audit/secret path *exists* unless imported AND called; absence is a GAP, not a convention.
+- **Reproducible counts + majority-verified conventions** — numeric claims carry the command that produced them; convention claims report the dominant form with its proportion (or `[AMBIGUOUS]`), never a cherry-picked minority.
+- **Versions verbatim from manifests**, including nested/secondary `package.json`.
+- **Confidence-tag grading** — directly-observable facts with a file:line citation are `[EXTRACTED]`, not under-tagged `[INFERRED]`; absence claims are `[EXTRACTED]` only with a cited zero-result command.
+- `scripts/verify-claims.sh` — skips the confidence-legend block (no longer corrupts its own tag definitions), tests all anchors on a line, resolves bare filenames / `a|b` alternations / dotted paths, preserves absence claims, and writes per-doc reports.
+- `scripts/repomap.sh` — scans the target repo (no longer `cd`s into its own plugin dir) and emits a stub JSON on fallback so downstream `json.load` never throws.
+- `CODE_INDEX.md` seeding — template example rows marked illustrative; bootstrap populates from the audit (every `path:Symbol` verified) or writes an explicitly-empty index, never ships ghost rows.
+- **React Native / Expo support** — detected in `setup-bootstrap`/`setup-audit`; `framework-patterns.md` and `performance-supplement.md` no longer pruned for RN/Expo repos and now carry RN-specific guidance; `tech-stack-typescript` covers RN/Expo markers and patterns.
+- `setup-bootstrap` — AGENTS.md size budget + `git check-ignore` warning; git pre-commit hook resolves an absolute `$CLAUDE_PLUGIN_ROOT` source and guards against dangling symlinks.
+- `.claude/manifest.json` — removed a duplicate `tests/hooks/test-context-estimator.sh` key.
+
+## [7.9.0] - 2026-05-29
+
+### Added — Session-learnings capture for CLAUDE.md
+
+- **`claude-md-capture` skill.** A session-end reflection loop that captures context `CLAUDE.md` was missing — discovered commands, gotchas, env/config quirks, and non-obvious codebase patterns — and proposes them as minimal, append-only additions. It shows each candidate as a diff with a one-line rationale, stops for approval before any edit, and uses `Edit` (never `Write`) to honor the S1.5 protected-file rule. It is distinct from `claude-md-audit` (which re-grades existing content against a rubric) and `correction-capture` (which records engineer corrections as lessons in `lessons.md`): capture adds *new project facts* to the prompt every session loads. Routed via `/mtk` ("save what we learned to CLAUDE.md", "update CLAUDE.md with this session"). Ships with `tests/pressure-tests/claude-md-capture-pressure.md` covering anti-manufacture, the approval gate, personal-vs-team routing, append-not-rewrite, the 120-line budget, and the no-CLAUDE.md redirect.
+- **`.claude.local.md` support in `setup-bootstrap`.** Bootstrap now adds the personal, opt-in `CLAUDE.md` companion to `.gitignore` (idempotent; never auto-created) so per-engineer preferences and machine-specific notes stay out of git. `claude-md-capture` writes personal learnings here.
+- **Bootstrap completion tip.** The setup completion summary now surfaces the `#` mid-session shortcut (append a learning to `CLAUDE.md` instantly) and `claude-md-capture`, so teams know how to keep project memory current over time.
+
+### Changed
+
+- `/mtk` router — new route-table row and decision-graph node for `claude-md-capture`; the "no" branch of the CLAUDE.md-audit diamond now flows to the capture diamond before falling through to help.
+- `setup-bootstrap/SKILL.md` — `.gitignore` step covers `.claude.local.md`; STEP 5 completion summary adds the keep-CLAUDE.md-fresh tip.
+- **`setup-bootstrap/SKILL.md` slimmed 1000 → 831 lines** via progressive disclosure (S2.10). Extracted the monorepo per-package template, generation rules, and root Monorepo Layout block to `.claude/references/monorepo-bootstrap.md` (read on-demand only when a monorepo is confirmed), and the three per-stack reference-customization tables to `.claude/references/bootstrap-customization.md`. Compressed the dotnet-claude-kit companion note, deduped the repeated 60–80/120-line budget rule, and removed the duplicate `mkdir`/`.claude/tech-stack` warning. Moved the per-stack pre-commit-review item lists into each tech-stack skill's new `## Pre-Commit Review Items` section (bootstrap now reads and filters by detected tool); the three stack-agnostic always-include items stay inline. Extracted STEP 3.5a's inline reference-existence checks (directory `test -d`, `.csproj` existence, framework dump, `.sln` membership-vs-disk) into the new `scripts/verify-references.sh` — STEP 3.5a now calls it and keeps the stale-handling policy and the "never infer disk presence" rule inline. No capability change — detection logic, gates, and grounding all stay inline.
+
+### Added — Bootstrap reference companions
+
+- `.claude/references/monorepo-bootstrap.md` and `.claude/references/bootstrap-customization.md` — on-demand companions for `setup-bootstrap`, registered in the manifest and distributed to target repos.
+- `scripts/verify-references.sh` — read-only checker that flags directories, `.csproj` projects, and `.sln` members referenced in generated docs that don't exist on disk (exit 3 if any stale). Distinct from `verify-claims.sh` (which downgrades zero-hit rule tags). The directory scan only considers path-like tokens inside backtick code spans (resolved against root, `src/`, and the git index), so prose tokens like `REST/`, `I/O`, or npm scopes don't false-positive.
+
+## [7.7.0] - 2026-05-18
+
+### Added — Decision provenance and end-to-end wiring verification
+
+- **Decision-origin tagging.** Every entry in the structured learnings store and every reviewer finding carries a `decision_origin` field with one of five values: `user-directed`, `claude-recommended-approved`, `claude-recommended-modified`, `claude-recommended-rejected`, `system-inferred`. The schema for learnings (`.claude/references/learnings-schema.md`) and the review finding schema (`.claude/references/review-finding-schema.md`) are both extended. Tagging is mandatory at capture time — entries without `decision_origin` are rejected by `scripts/learnings.sh add` and by the review-output validator.
+- **Sycophancy index (π).** New `scripts/learnings.sh metrics` computes `π = approved / (approved + modified + rejected)` over the last 30 days. A value ≥ 0.70 raises a warning that the model's recommendations are being accepted without enough pushback. Threshold is tunable via `.claude/review-config.json`. Surfaced in `toolkit-health` and in the weekly analytics report.
+- **Wiring check as Definition of Done.** `verification-before-completion` adds a `wiring` step that runs `bash scripts/validate-toolkit.sh --task-scoped <files>` and treats any unwired file as a hard fail. The new task-scoped mode verifies, for each touched skill / hook / agent / reference: frontmatter `name:` matches the directory; the file is registered in `manifest.json`; hooks are `chmod +x` and referenced from `settings.json`; agent files appear in `.claude-plugin/plugin.json`; reference files are in `.claude/references.index`. Authoring without wiring no longer counts as "done".
+
+### Changed
+
+- `verification-before-completion/SKILL.md` — adds the `wiring` step and a Red Flags entry for "authored but not wired".
+- `validate-toolkit.sh` — new `--task-scoped <file1,file2,...>` mode and `--strict-decision-origin` flag for learnings/review outputs.
+- `scripts/learnings.sh` — new `metrics` subcommand; `add` rejects entries missing `decision_origin`.
+- `.claude/review-config.json` — new `sycophancy_index.warn_threshold` (default `0.70`) and `decision_origin.required` (default `true`).
+- `toolkit-health/SKILL.md` — reports π alongside existing usage stats; warns at threshold.
+
+## [7.6.0] - 2026-05-18
+
+### Added — Claude-Ready spec gate, prior-work check, drift breadth
+
+- **INVEST+C Claude-Ready checklist.** New 16-item gate at `.claude/references/claude-ready-checklist.md` covers the classic INVEST story-quality dimensions plus a "+C" Claude-Ready dimension (concrete file paths, named pattern references, runnable verification commands, explicit out-of-scope, declared dependency intake, public-contract enumeration, etc.). `spec-driven-development` Phase 1 (step 8b) scores the draft against the list before the approval prompt; specs scoring ≤13/16 are sent back to draft and reviewers cite failing item numbers so revisions are targeted.
+- **`prior-work-check` skill.** Three deterministic queries — `search_prior_work`, `get_constraints`, `get_risk_profile` — run before spec approval and again at planning if the spec is stale. The skill greps source (and `CODE_INDEX.md` when present) for the capability under multiple keywords, reads `tasks/lessons.md` and `architecture-principles.md` for governing constraints, and classifies every path in the change manifest by risk category (`regulated`, `boundary`, `shared`, `isolated`). A mis-classified `security_impact` becomes a BLOCK finding rather than passing silently into review.
+- **Context fatigue signals.** Four lightweight signals added to `context-engineering`: token utilization (40%), scope scatter (25%), re-read ratio (20%), error density (15%). When two or more signals are elevated the skill prescribes a prune-then-re-summarize, or an escalation to `handoff`. The handoff template gains a `## Fatigue Signals` block so the next session knows which parts of the half-done state to mistrust.
+- **Drift breadth — three new axes in `spec-drift-detection`.** Ownership (cross-slice creep — warning, escalates to critical when the crossed slice is regulated), dependency-shift (undeclared package adds in lockfile / project file — critical), usage (renamed or removed public contract with surviving call-sites — critical). The dependency-shift axis cross-checks against the Claude-Ready +C #6 intake declaration.
+- **`CODE_INDEX.md`.** Capability-oriented index of the codebase, organized by what the code does rather than where it lives. Template at `.claude/references/code-index-template.md`. Seeded by `setup-bootstrap` from the audit scan and consumed by a new `code-simplification --audit-duplicates` mode that clusters near-duplicate entries for consolidation.
+
+### Changed
+
+- `spec-driven-development/SKILL.md` — adds steps 8b (Claude-Ready scoring) and 8c (prior-work invocation); spec output gains a `## Prior Work Check` section.
+- `planning-and-task-breakdown/SKILL.md` — step 1a re-runs `prior-work-check` if the spec's check is stale (different branch HEAD or different day).
+- `spec-drift-detection/SKILL.md` — adds ownership / dependency-shift / usage rows to the findings table, severity mappings, and verification checklist items.
+- `context-engineering/SKILL.md` — new `## Context Fatigue Signals` section above the budget tracker.
+- `handoff/SKILL.md` — step 1a reads fatigue signals; output template gains a `## Fatigue Signals` block.
+- `code-simplification/SKILL.md` — new `## Mode: --audit-duplicates` section consuming `CODE_INDEX.md`.
+- `setup-bootstrap/SKILL.md` — STEP 4.95 seeds `CODE_INDEX.md` from the audit scan.
+
+## [7.5.0] - 2026-05-08
+
+### Added — EARS+ANT requirements, scored review, dependency gate, structured learnings
+
+- **EARS notation + ANT test in spec authoring.** `spec-driven-development` now requires every requirement-bearing bullet under `## Requirements` to use EARS phrasing (Ubiquitous / Event-driven / State-driven / Optional / Unwanted) and pass the Anti-Null-Tautology check (a requirement that cannot be falsified carries no information). New `scripts/lint-ears.sh` runs as part of spec authoring and `spec-drift-detection` — flags non-EARS bullets and tautological phrasing ("be reliable", "follow best practices", "as needed").
+- **Scored adversarial evaluator in code review.** `compliance-reviewer` and `code-review-and-quality` now emit per-dimension 1–10 scores across `correctness`, `security`, `test_coverage`, `architecture_fit`, and `simplicity` with mandatory `file:line` evidence quotes. Auto-fail rules: any dimension < 7 → `NEEDS_CHANGES`; uniform scores → rejected as `non-discriminating`; missing evidence → score treated as 0. Remediation capped at 2 iterations on the same blocking dimension; third escalates to a human. Schema extended in `.claude/references/review-finding-schema.md` with a new `scores` block. Workflow artifact gains optional `results.review_scores.<dim>` and `results.review_iteration` fields.
+- **Dependency-introduction gate.** New `.claude/references/dependency-intake-checklist.md` defines a 5-criteria rubric — scope, maintenance, size, security, license — each scored Good / Acceptable / Poor with required evidence (CVE id, last-release date, license SPDX). Two `Poor` ratings on a single new dependency block; one `Poor` requires explicit override. Wired into `pre-commit-review` (detects `package.json`, `*.csproj`, `requirements.txt`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `Gemfile`, `composer.json` changes) and `security-and-hardening` (supply-chain step).
+- **Spec-linked structured learnings.** New `.mtk/learnings.jsonl` (gitignored, JSON Lines for pure-bash tooling per S3.3) is the machine-readable mirror of `tasks/lessons.md`. Schema in `.claude/references/learnings-schema.md`: `{id, spec_id, workflow_uuid, scope, source, captured_at, files, directories, phase, severity, validity, recurrence, title, body, rule, applies_when}`. New `scripts/learnings.sh` provides `add | query | regen-markdown | migrate | list`. The `query` subcommand applies a 5-layer retrieval filter (proximity / recurrence / severity / validity / phase) used at the start of `spec-driven-development` and `fix`. `correction-capture` and `promote-lesson` now write through `learnings.sh add` first, then regenerate the markdown view. The committed `tasks/lessons.md` remains the team-canonical store; manual edits are preserved across regen.
+
+### Changed
+
+- `spec-driven-development/SKILL.md` — added `## Requirements Format (EARS)` section, ANT self-check step, lessons retrieval via `learnings.sh query`, EARS lint verification line.
+- `spec-drift-detection/SKILL.md` — runs `lint-ears.sh` against the spec markdown; EARS / ANT violations emitted as `severity: warning`, `confidence: 100`, `source: "drift"` findings.
+- `code-review-and-quality/SKILL.md` and `compliance-reviewer.md` — new "Score the Five Dimensions" step with rubric, auto-fail rules, iteration cap, and workflow-artifact integration.
+- `pre-commit-review/SKILL.md` — new dependency-intake step (4.7) with manifest-file detection.
+- `security-and-hardening/SKILL.md` — new supply-chain step referencing the dependency-intake checklist.
+- `correction-capture/SKILL.md` — captures structured + markdown forms; structured form drives 5-layer retrieval.
+- `promote-lesson/SKILL.md` — appends through `learnings.sh add --scope team --source promotion`, regenerates markdown.
+- `fix/SKILL.md` — calls `learnings.sh query --phase implement` instead of flat lessons scan.
+- `tasks/lessons.md` — added mirror note pointing at `.mtk/learnings.jsonl`; existing entries preserved verbatim and seeded into the structured store.
+
+## [7.4.0] - 2026-05-07
+
+### Added — Durable orchestration and anti-anchored review
+
+- **Durable workflow artifacts.** New `workflow-artifacts` skill plus `scripts/workflow-artifact.sh` helper persist orchestration state under `.mtk/workflows/{uuid}.json` (overwritten in place) and `{uuid}.events.jsonl` (append-only). Schema in `.claude/references/workflow-artifact-schema.md`. State lives outside `.claude/` to escape Claude Code's sensitive-file gate. `.mtk/` added to `.gitignore`. Wired into `implement` Phase 0 (init/resume), spec/plan persistence (`results.spec_path`, `results.plan_path`), Phase 2.5 (`plan_trust_gate`), Phase 3 (`phase_exit_gate` + per-batch progress), and Phase 7 (`memory_sync_gate` + `status=completed`).
+- **Five named orchestration gates.** `.claude/references/orchestration-gates.md` defines `plan_trust_gate`, `phase_exit_gate`, `failure_stop_gate`, `memory_sync_gate`, `skill_precedence_gate` as fail-closed contracts the implement workflow records before advancing. Skipping a gate is treated the same as advancing on `fail`. Cited from `incremental-implementation`, `planning-and-task-breakdown`, `spec-drift-detection`.
+- **Anti-anchored plan reviewer.** New `plan-gap-reviewer` agent (`.claude/agents/plan-gap-reviewer.md`) is forbidden from loading `tasks/lessons.md`, prior reviewer output, or the workflow artifact — bias sources. Six finding categories (`repo_mismatches`, `missing_surfaces`, `execution_order_issues`, `hidden_assumptions`, `under_scoped_integrations`, `open_decisions_presented_as_settled`) with `BLOCKING` / `ADVISORY` severity. Wired into `planning-and-task-breakdown` step 11 before the Phase 2.5 gate. Pressure test covers persuasive prose, conflicting lessons, phase-order bugs, missing route registries, and tone contamination.
+- **Claim extraction in verification.** `verification-before-completion` now requires extracting every factual claim from upstream agents (builders, reviewers, integration verifiers), marking each `UNVERIFIED`, and reconciling to `VERIFIED` / `CONTRADICTED` / `UNVERIFIABLE` before completion. A claim that affects the verdict and stays `UNVERIFIED` is a stop condition. New pressure test scenario 5b exercises the rubber-stamp failure mode.
+- **JSON router-decision fixtures.** Six fixtures under `tests/fixtures/` (`build-happy-path`, `build-phase-blocked`, `plan-gap-found`, `failure-stop-triggered`, `auto-proceed-respects-decisions`, `resume-active-workflow`) exercise the orchestrator's documented decisions. `scripts/run-fixtures.sh` structurally validates each fixture: gate names must come from `orchestration-gates.md`, `next_action` must be one of six documented actions, `abort` requires `failure_stop_gate: fail`, every fixture needs a non-trivial rationale. Wired into `validate-toolkit.sh`.
+- **`MTK_AUTO_PROCEED` env knob.** Opt-in (off by default) lets the orchestrator default the recommended option on the Phase 2.5 approval gate only when ALL hold: spec has zero open decisions, no plan-gap-reviewer `BLOCKING` findings, `skill_precedence_gate` is `pass`, scope is not breaking change or high `security_impact`. Otherwise falls back to `AskUserQuestion`. Never overrides explicit user standards, open plan decisions, or `failure_stop_gate`. Documented in `setup-bootstrap`, root `CLAUDE.md` routing table, and the gates reference.
+
+### Changed
+
+- `implement/SKILL.md` Phase 0 inits or resumes a workflow artifact; Phase 1 records `results.spec_path`; Phase 2 records plan/todo paths; Phase 2.5 records `plan_trust_gate` decision and supports `MTK_AUTO_PROCEED`; Phase 3 records per-batch `phase_exit_gate`; Final Report closes `memory_sync_gate` and emits `workflow_completed`.
+- `validate-toolkit.sh` runs `scripts/run-fixtures.sh` whenever fixtures exist.
+- README "What's New" and "Skills" counts updated for the new skill and agent (32 skills, 4 reviewer agents).
+
+## [7.3.0] - 2026-05-07
+
+### Added — Subagent-driven implementation and decision graphs
+
+- **GraphViz `dot` decision graphs** added inside `mtk/`, `fix/`, and `spec-driven-development/` SKILL.md. Each graph encodes the exact branch points where models most often misroute (router ambiguity, fix scope-guard escalation, spec skip-vs-write + `security_impact` honesty), accompanied by a Red Flags rationalization table. Models follow visual decision flow more reliably than equivalent prose. Anatomy preserved per S2.2 — graphs live inside existing `## Workflow` / Route Table sections.
+- **`subagent-implementation` skill.** New per-batch implementer-subagent path for large features. Phase 3 of `implement` now forks: above the threshold (≥3 batches OR ≥6 files OR non-none `security_impact`) it dispatches the new skill; below threshold it stays on inline `incremental-implementation`. The new skill asks once via `AskUserQuestion` for implementer model (Sonnet/Opus), then loops one fresh subagent per batch with a structured JSON contract (`actual_files`, `build`, `tests`, `behavioral_diff`, `deviations`). Drift micro-check is orchestrator-side and synchronous: in-package extra files auto-amend the sidecar, cross-package or new-public-contract drift re-opens Phase 2.5. Phase 3.5 spec-drift and Phase 4 two-stage review run unchanged. Pressure test covers 10 adversarial scenarios.
+
+### Changed
+
+- `implement/SKILL.md` Phase 1 explicitly delegates ambiguity resolution to the spec skill's pre-draft gate — Phase 2.5 is a go/no-go on a fully-informed plan, not the place to surface new questions for the first time.
+- `spec-driven-development/SKILL.md` decision graph includes an explicit `ambig?` diamond before drafting; clarifying questions go through `AskUserQuestion` upfront.
+
+## [7.2.0] - 2026-04-27
+
+### Added — Ignore syntax, confidence-tagged audit, MCP expansion
+
+- **`.mtkignore`** at repo root — single source of truth for paths excluded from MTK scans. Same syntax as `.gitignore`. Loader at `hooks/lib/mtkignore.sh`; tree-sitter walker reads it directly. `setup-bootstrap` generates a starter file. New rule **S1.14**.
+- **Confidence-tagged audit principles.** `setup-audit` emits `[EXTRACTED]`, `[INFERRED:0.0–1.0]`, or `[AMBIGUOUS]` tags plus evidence pointers. `spec-drift-detection` uses tags as a severity gradient: EXTRACTED blocks, INFERRED ≥0.7 flags, INFERRED <0.7 / AMBIGUOUS notes. Merge mode downgrades on disagreement. Pressure test in `tests/pressure-tests/spec-drift-tags.md`. New rule **S1.15**.
+- **Shrink-guarded writes.** `hooks/lib/shrink-guard.sh` refuses rewrites that shrink targets >50% bytes or >20% lines (override: `MTK_SHRINK_GUARD_OVERRIDE=1`). Wired into `build-references-index.sh`, `setup-audit`, `correction-capture`. 17-case fixture test. New rule **S3.16**.
+- **MCP server expanded** to 7 tools (was 2). Added read-only `mtk_manifest`, `mtk_analytics`, `mtk_audit` (parses tagged principles), `mtk_references_index`, `mtk_active_stack`. Read-only enforced by validator grep gate. Server bumped to 0.2.0. `hooks/session-start` rebuild trigger now fires on `mcp/src/**` mtime change. Bash fallbacks documented in `docs/integrations/mtk-mcp.md` (S3.12).
+- **Post-commit auto-refresh.** `hooks/git-hooks/post-commit-refresh.sh` (opt-in) rebuilds derived artifacts via `scripts/refresh-derived.sh` when their inputs change. Silent on no-op, never blocks.
+
+### Added — Review schema hardening, silent-failure hunter, skill eval harness
+
+- **False-Positive Exclusion List** added to `.claude/references/review-finding-schema.md`. Seven explicit categories (pre-existing issues, linter-catchable items, unjustified style nits, justified silences, plausibly-intentional behavior shifts, generic concerns, unloaded-context guesses) that are dropped before confidence scoring rather than scored low. Wired into `code-review-and-quality` and `compliance-reviewer`. The 0–100 confidence rubric, threshold filtering, anti-inflation, and anti-sandbagging machinery already shipped in 7.0.x — this completes the picture.
+- **`silent-failure-hunter` reviewer agent.** New `.claude/agents/silent-failure-hunter.md` with explicit pattern catalogue (catch/promise/fallback/silenced-diagnostic/test-erosion), severity-by-path mapping (audited paths → Critical), and single-lens FP discipline. Dispatched conditionally from `code-review-and-quality` when the diff matches error-handling tokens (`catch`, `except`, `?.`, `??`, `eslint-disable`, `Skip =`, `it.skip`, etc.) — runs in parallel with `compliance-reviewer`. Pressure test ships with 7 adversarial scenarios.
+- **Skill eval harness** at `scripts/skill-eval/`. Pure-bash runner (`run-eval.sh`) invokes Claude Code non-interactively per prompt, then grades each response with a Haiku sub-agent against per-prompt assertions. `aggregate.sh` runs N iterations and reports pass-rate plus standard deviation. Starter eval set ships for `code-review-and-quality` (7 prompts covering FP discipline, confidence threshold, output schema, dispatch triggers). Results written to `evals/results/<skill>/` (gitignored).
+- **`claude-md-audit` skill.** New re-grade loop for existing `CLAUDE.md` files — six-criterion rubric (commands, architecture, gotchas, conciseness, currency, actionability), phase-2 currency cross-checks (broken commands and stale paths), append-only diffs gated on user approval. Distinct from `setup-bootstrap` (one-time creation) and `setup-audit` (architecture principles). Honors S1.5 — never `Write`-overwrites CLAUDE.md, never auto-deletes content, never produces wholesale rewrites. Routed via `/mtk` (`audit claude.md`, `is claude.md still good`, `memory rot`). Pressure test covers 7 scenarios including anti-sandbagging and refuse-rewrite.
+
+### Fixed
+
+- **`scripts/generate-agents-md.sh` no longer clobbers hand-curated `AGENTS.md`.** The generator now refuses to overwrite a file that does not carry its own `Auto-generated by MTK` marker, falls back to writing `AGENTS.generated.md` instead, and prints a warning. The toolkit's own root `AGENTS.md` is a curated routing guide (Mermaid tree, two-stage review model) that the generator was destroying on every run. New `--force` flag escapes the safety check.
+
+## [7.1.0] - 2026-04-23
+
+### Added — Versioned specs, context budget, footprint reporting
+
+- **Versioned specs.** `spec-driven-development` now detects existing specs with the same date+slug and writes `-v2`, `-v3`, etc. instead of overwriting. JSON sidecars, plan files, and handoff artifacts use the same version suffix. `context-report` lists all versions grouped by slug.
+- **Context load estimator.** `context-budget.sh` accumulates `bytes_read` for unique files read per session (capped at 100k/file). `session-analytics.sh` computes `estimated_context_tokens = bytes_read / 4` and persists both fields to `analytics.json`. `analytics-report.sh` surfaces estimated context tokens in its output.
+- **Context footprint reporting.** `context-engineering` now emits a per-phase footprint block after reference loading (lines + estimated tokens per file, totals row). Engineers can see the cost of what was loaded each phase.
+
+## [7.0.0] - 2026-04-23
+
+### Breaking
+
+- **`--audit` re-run contract changed.** Re-runs now perform a 3-way merge (`git merge-file --union`) between the previous template (cached in `.claude/.mtk-cache/v<version>/`), the freshly generated template, and the on-disk file. Scripts that relied on `--audit` clobbering local edits need to update. First v7.0.0 run on a pre-v7 repo prompts the engineer to classify existing files as `hand-edited` or `stock` before merging.
+- **Reference file frontmatter normalized.** Every `.claude/references/**/*.md` now requires `description` / `globs` / `alwaysApply` fields. Legacy `paths:` lists have been renamed to `globs:`. Any tooling that reads raw reference files needs to strip frontmatter or skip it.
+- **Manifest schema extended** with a top-level `coding-guidelines` object (`repo`, `sha`, `files`) pinning the `moberghr/coding-guidelines` revision. `setup-bootstrap` no longer fetches from `main` — it reads the pinned SHA from the manifest and verifies sha256 after download.
+
+### Added — reproducibility (G1)
+
+- **Pinned coding-guidelines SHA** in `.claude/manifest.json`. `setup-bootstrap` verifies sha256 and aborts on mismatch. CLAUDE.md emits a mandatory HTML-comment footer recording version, pinned SHA, and generation timestamp — consumed by the re-run merge logic.
+- **`/mtk-setup --update-guidelines`** — bumps the pinned SHA to current HEAD, refreshes sha256 hashes, prints a diff summary; does not auto-apply.
+
+### Added — output quality guards (G2, G3)
+
+- **`scripts/secret-scan.sh`** — pre-write grep-based detector with 10 patterns (AWS, Azure, GitHub, Slack, Anthropic, OpenAI, private keys, password assignments, IBAN, JWT). `setup-bootstrap` STEP 3.5c blocks any `Write` on match. `--self-test` asserts patterns against `tests/fixtures/known-secrets.txt`. Escape hatch: `MTK_SECRET_SCAN_SKIP=1`.
+- **`scripts/count-tokens.sh`** + preview table — preview shows per-file `LINES / ~TOKENS / STATUS` before writing. The 120-line CLAUDE.md hard cap is now enforced (previously documented-only) by both the skill and the validator.
+
+### Added — reference routing (G4)
+
+- **Reference frontmatter** — all 28 files under `.claude/references/` now carry `description`, `globs`, `alwaysApply`.
+- **`.claude/references.index`** — tab-separated index generated by `scripts/build-references-index.sh`; gitignored. `--check` mode validates sync.
+
+### Added — versioned re-runs (G5)
+
+- **`.claude/.mtk-cache/v<version>/`** — template snapshot layer seeded by `setup-bootstrap` STEP 4.8. Retention: last 2 versions.
+- **Versioned 3-way merge in `setup-audit`** STEP -1 — classifies runs, prompts on pre-v7 migration, merges per file, leaves conflict markers on conflicting paths (no silent overwrite). Protected files always skipped.
+
+### Added — deterministic audit input (G6)
+
+- **`scripts/repomap.sh`** + **`scripts/repomap-tree-sitter.py`** — symbol graph extractor with three-tier degradation (.NET csharp-lsp MCP → tree-sitter → LLM-only fallback). Rank by in-edge count; binary-search to fit a configurable token budget.
+- **Audit prompt changed** — instructs the LLM to cite at least one symbol per principle. Mandatory `## Provenance` section in `architecture-principles.md` records repomap fit tier, symbol count, and symbol-to-principle evidence table. When repomap falls back, provenance explicitly discloses the audit degraded to scan-recipes-only.
+
+### Added — pressure tests
+
+- **`tests/pressure-tests/mtk-setup-rerun.md`** — 8 adversarial scenarios covering re-run semantics and cache handling.
+
+### Changed
+
+- `scripts/validate-toolkit.sh` — new assertions: CLAUDE.md ≤120 lines, every reference has required frontmatter, `.claude/references.index` in sync.
+- `.gitignore` — adds `.claude/references.index` and `.claude/.mtk-cache/`.
+
+## [6.5.0] - 2026-04-22
+
+### Added — Toolset scoping, keyword triggers, typed handoffs
+
+- **Task-class toolset scoping** — new `.claude/toolsets/*.yaml` registry (`read-only`, `git-safe`, `code-edit`) with `extends:` inheritance. Skills and agents may declare `required-toolsets:` / `forbidden-toolsets:` in frontmatter; `/mtk` router expands them into `allowed-tools` on dispatch. `scripts/resolve-toolsets.sh` flattens the DAG (bash 3.2 compatible, no jq). Seeded on `compliance-reviewer`, `architecture-reviewer`, `test-reviewer`, and `spec-drift-detection`. New rules S2.19–21.
+- **Keyword-triggered skill hints** — skills may declare `triggers: [kw1, kw2]` in frontmatter. `scripts/build-triggers-index.sh` generates `.claude/triggers.index`; `hooks/lib/trigger-hints.sh` (sourced by the existing UserPromptSubmit dispatcher) grep-scans the prompt and surfaces `💡 consider skill: X (matched: kw)` nudges. Seeded on `security-and-hardening`, `debugging-and-error-recovery`, `test-driven-development`. New rules S2.22–24.
+- **Typed handoff artifacts** — new `.claude/schemas/handoff.schema.json` codifies the shared spec→plan→implement contract. `spec-driven-development` already emitted the spec sidecar; `planning-and-task-breakdown` and `incremental-implementation` now append typed `plan` and `implement` sections to the same `docs/specs/<date>-<slug>.json`. `scripts/validate-handoff.sh` performs deterministic file-level and security-impact drift detection (no jq, no git hard-dependency). `spec-drift-detection` now prefers this path over judgment-based diffs.
+
+### Changed
+
+- Validator (`scripts/validate-toolkit.sh`) now enforces: every `required-toolsets` / `forbidden-toolsets` reference resolves to a real `.claude/toolsets/*.yaml`, `.claude/triggers.index` is in sync with skill frontmatter, and all new scripts/hooks are present and executable.
+
+## [6.3.3] - 2026-04-23
+
+### Fixed
+- **Plugin manifest duplicate hooks entry** — removed `"hooks": "./hooks/hooks.json"` from `.claude-plugin/plugin.json`. Claude Code auto-loads `hooks/hooks.json` from the plugin root, so the explicit reference produced a `Duplicate hooks file detected` error on `/reload-plugins`. `manifest.hooks` is reserved for *additional* hook files only.
+
+## [6.3.1] - 2026-04-20
+
+### Added
+- **Recommended Tooling references** — new `.claude/references/recommended-tooling.md` (stack-agnostic) plus `{dotnet,python,typescript}/recommended-tooling.md`. Curated list of MCP servers (context7, playwright, csharp-lsp, microsoft-learn, github, atlassian, jetbrains, gitnexus), plugins (claude-mem, dotnet-claude-kit, pr-review-toolkit, visual-explainer, frontend-design), and editor integrations (Claude for Chrome, Claude Code IDE extensions, Pyright/Ruff/TS/Biome LSPs) that noticeably boost Claude Code productivity.
+- **`setup-bootstrap` prints recommended tooling** — new "Recommended Tooling" sub-block in STEP 4 prints the shared + stack-specific references verbatim during bootstrap. **Recommend-only** — MTK never auto-installs MCPs or plugins on behalf of the engineer.
+- **Tech-stack skills link to recommended tooling** — `tech-stack-dotnet`, `tech-stack-python`, and `tech-stack-typescript` each gain a `## Recommended Tooling` section pointing at their stack-specific reference.
+
+## [6.3.0] - 2026-04-17
+
+### Added (Opus 4.7 modernization)
+- **Parallelism patterns** — new `docs/parallelism-patterns.md` reference documenting parallel reference loading, reviewer fan-out, and deferred-tool batch hydration. `implement`, `fix`, and `context-engineering` skills now explicitly direct parallel loading in their load-context phases.
+- **Parallel Stage 2 review** — `/mtk implement` Phase 4 Stage 2 now spawns `test-reviewer` and `architecture-reviewer` in a single message, halving wall-clock review time.
+- **`fix` self-escalation** — `fix` Scope Guard now self-invokes `/mtk implement` when scope grows beyond 3 files (via escalation marker), instead of stopping silently. Router recognizes `escalated from fix` as a fast-path to `implement`.
+- **Cache-stable prefixes** — new `## Cache-Stable Prefixes` section in `writing-skills` documents invariants-first ordering for prompt caching. The three reviewer agents (`compliance`, `test`, `architecture`) now declare `context: fork` and carry a stable preface comment, for consistent isolation and higher cache hit rate across sessions.
+- **`toolkit-health` skill** — new read-only diagnostic that reads `.claude/analytics.json` and reports session trends, specs/lessons ratios, and anomaly flags with suggested actions. Includes pressure test (`tests/pressure-tests/toolkit-health-pressure.md`) covering corrupt analytics, stale data, empty state, and noise-to-anomaly pressure. Routed via `/mtk health` / `/mtk usage stats`.
+- **Route priority** — `/mtk` router now routes unambiguous inputs silently (no disambiguation question), with a new row for `toolkit-health` and a fast-path row for fix→implement escalations.
+- **Manifest version sync** — `.claude/manifest.json` bumped 6.2.0 → 6.3.0 to match `plugin.json` and `marketplace.json` (fixes pre-existing drift that `validate-toolkit.sh` now catches consistently).
+
+### Changed (breaking for muscle memory, not for functionality)
+- **Consolidated to two user-invocable entry points:** `/mtk` (natural-language router) and `/mtk-setup` (bootstrap + audit dispatcher). Previous slash commands (`/mtk:implement`, `/mtk:fix`, `/mtk:pre-commit-review`, `/mtk:setup-bootstrap`, `/mtk:setup-audit`) are now workflow skills reached through the `/mtk` router — e.g., `/mtk fix the null check`, `/mtk review before commit`.
+- `setup-bootstrap` and `setup-audit` merged behind the new `/mtk-setup` entry point (`--audit` flag re-runs audit, `--merge` unifies multi-repo audits).
+- Pre-commit git hook still works unchanged — it invokes the linter directly, not the skill.
+
+### Removed
+- **`/mtk:setup-update` skill** — updates now flow through the Claude Code plugin manager, not an in-repo command. Removed associated pressure test.
+
+### Migration
+- Old: `/mtk:setup-bootstrap` → new: `/mtk-setup`
+- Old: `/mtk:setup-audit [--merge]` → new: `/mtk-setup --audit [--merge]`
+- Old: `/mtk:implement <feature>` → new: `/mtk <feature>`
+- Old: `/mtk:fix <description>` → new: `/mtk fix <description>`
+- Old: `/mtk:pre-commit-review` → new: `/mtk review before commit`
+- Old: `/mtk:setup-update` → use the plugin marketplace to upgrade
+
+## [Unreleased]
+
+### Added
+- **Deterministic analysis layer** (Wave 4): Roslyn/ruff/tsc analyzer configuration references, build output parser (`hooks/parse-build-diagnostics.sh`), severity mapping files. Four finding sources now merge uniformly: linter, analyzer, ai, drift.
+- **Distribution & updates** (Wave 5): Version stamps (`.claude/mtk-version.json`), settings.json merge script, version drift detection in session-start.
+- **MCP codebase intelligence** (Wave 6): Optional MCP server for deterministic reference resolution and solution structure awareness. Bash fallbacks for all MCP tools.
+- **Cross-agent portability** (Wave 2): `scripts/generate-agents-md.sh` generates portable AGENTS.md for Cursor, Copilot, Gemini, Codex.
+- **CI pipeline** (Wave 3): GitHub Actions workflow for automated validation on PRs.
+- **Strengthened reviewers** (Wave 1): test-reviewer and architecture-reviewer now have confidence scoring, anti-rationalization tables, and anti-inflation rules matching compliance-reviewer rigor.
+- Stale evidence threshold in verification-before-completion (timestamp-based, not gut feel)
+- Behavioral diff advisory hook
+- Pressure tests for test-reviewer and architecture-reviewer
+
+## [6.1.3] - 2026-04-14
+
+### Fixed
+- Use user-invocable frontmatter to control skill visibility
+- Improve setup-bootstrap precision and limit user-invocable skills to 6
+- Remove duplicate hooks key from plugin.json
+
+## [6.1.0] - 2026-04-13
+
+### Changed
+- Commands merged into skills per Claude Code v2.1.101
+- All entry points now live in `.claude/skills/`

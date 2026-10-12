@@ -1,0 +1,36 @@
+{
+  "name": "mtk",
+  "description": "MTK (Moberg Toolkit) — AI-assisted development toolkit with pluggable tech stacks (.NET, Python, TypeScript). Language-agnostic workflow skills, review agents, and compliance-first workflows.",
+  "version": "8.0.1",
+  "author": {
+    "name": "Moberg d.o.o.",
+    "url": "https://www.moberg.hr"
+  },
+  "homepage": "https://github.com/moberghr/mtk-agent-toolkit",
+  "repository": "https://github.com/moberghr/mtk-agent-toolkit",
+  "license": "MIT",
+  "keywords": [
+    "dotnet",
+    "python",
+    "typescript",
+    "react",
+    "nextjs",
+    "tauri",
+    "serious-software",
+    "regulated-software",
+    "compliance",
+    "code-review",
+    "implementation-workflow",
+    "skills",
+    "tech-stack"
+  ],
+  "skills": "./.claude/skills",
+  "agents": [
+    "./.claude/agents/architecture-reviewer.md",
+    "./.claude/agents/compliance-reviewer.md",
+    "./.claude/agents/test-reviewer.md",
+    "./.claude/agents/silent-failure-hunter.md",
+    "./.claude/agents/plan-gap-reviewer.md",
+    "./.claude/agents/context-miner.md"
+  ]
+}

@@ -1,0 +1,7 @@
+name: git-safe
+description: Read-only plus non-destructive git staging. No push, no reset, no branch deletion.
+extends: read-only
+tools:
+  - Bash(git add:*)
+  - Bash(git restore --staged:*)
+  - Bash(git stash list:*)

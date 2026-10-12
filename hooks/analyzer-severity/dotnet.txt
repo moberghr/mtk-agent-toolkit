@@ -1,0 +1,14 @@
+# .NET Roslyn analyzer severity mappings
+# Format: RULE_ID<TAB>severity<TAB>description
+EF1001	critical	Client-side evaluation detected by EF Core analyzer
+CA2100	critical	SQL injection vulnerability in raw query
+CA2000	warning	Dispose objects before losing scope
+CA1816	warning	Dispose pattern implementation issue
+CA2007	warning	Missing ConfigureAwait on awaited task
+VSTHRD100	critical	Async void method (should be async Task)
+CA1848	suggestion	Use LoggerMessage delegates for high-performance logging
+MA0004	warning	Use ConfigureAwait(false) in library code
+RCS1090	warning	Add call to ConfigureAwait
+CS8600	warning	Converting null literal to non-nullable type
+CS8602	warning	Dereference of a possibly null reference
+CS8604	warning	Possible null reference argument

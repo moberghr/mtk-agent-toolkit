@@ -1,0 +1,205 @@
+---
+name: code-review-and-quality
+description: Use after implementation is verified and before merge, or when reviewing a PR, to check correctness, security, architecture, and test quality against project standards.
+type: skill
+license: MIT
+compatibility:
+  - claude-code
+  - codex
+trigger: post-implementation|pr-review|merge-safety-check|quality-audit
+skip_when: no-behavioral-diff|pre-implementation-phase
+effort: max
+context: fork
+user-invocable: false
+---
+
+# Code Review And Quality
+
+> **Model tier:** the `compliance-reviewer` agent is pinned to `opus` (highest stakes); `architecture-reviewer`, `test-reviewer`, and `silent-failure-hunter` to `sonnet`. See `.claude/references/model-routing.md`.
+
+## Current Diff Context
+
+```!
+echo "--- Branch ---"
+git branch --show-current 2>/dev/null || echo "(detached)"
+echo "--- Tech Stack ---"
+cat .claude/tech-stack 2>/dev/null || echo "(not set)"
+echo "--- Diff stat ---"
+git diff --stat HEAD 2>/dev/null || git diff --stat --cached 2>/dev/null || echo "(no diff)"
+```
+
+## Overview
+
+Review changed code as an adversary, not a collaborator. The review must prioritize real risks over style and decide whether the change improves overall code health.
+
+This skill is read-only except for workflow-artifact recording via `scripts/workflow-artifact.sh` — a deliberate exception to the S2.20 read-only guidance for review skills.
+
+## When To Use
+
+- After implementation and verification
+- For PR review or merge-safety checks
+- When a change touches audited state, auth, data integrity, or infra
+- After bug fixes, including review of the regression test
+
+### When NOT To Use
+
+- Before the implementation has a coherent behavioral diff or verification story
+
+## Workflow
+
+### CI Context (if available)
+
+If reviewing a PR or branch with CI runs, check CI status before starting the numbered steps:
+1. Run `bash hooks/ci-status.sh` to get check run results
+2. If CI failed, note which checks failed — the review should focus on those areas
+3. If CI passed, note any warnings from the build output (`.mtk/analyzer-output.json`)
+4. If `hooks/ci-status.sh` is not available or `gh` is not installed, proceed without CI context
+
+### Review Steps
+
+1. Load standards:
+   - `CLAUDE.md`
+   - The active stack via `bash scripts/resolve-tech-stack.sh --check <changed file paths>` — polyglot-aware (subproject `.claude/tech-stack` → root `.claude/tech-stack.map` glob → root file), and `--check` warns when the resolved stack disagrees with the files under review, which would otherwise mean reviewing a subtree against the wrong guidelines. Then `.claude/skills/tech-stack-{stack}/SKILL.md` for stack-specific reference paths
+   - The coding guidelines and other reference files listed in the tech stack's `## Reference Files` section
+   - `.claude/references/security-checklist.md`
+   - `.claude/references/testing-patterns.md`
+   - `.claude/references/performance-checklist.md`
+   - `.claude/references/ai-failure-modes.md` — the catalogue of researched LLM-specific failure modes (F1–F16). When a finding matches one, cite its F-code in the finding's `failure_mode` field (see step 5) so failure-mode patterns aggregate across reviews.
+   - If a domain supplement exists (e.g. `.claude/references/domain-finance.md`), load it for domain-specific rationalizations
+2. Read the behavioral diff if provided.
+3. Review across these axes:
+   - correctness — including **stub detection** per `.claude/references/stub-detection.md` (empty bodies, `NotImplementedException`, suspect `return null`/`[]`/`{}`, mock data in production paths, unwired handlers)
+   - readability and simplicity
+   - architectural fit
+   - security and compliance
+   - performance and scaling risk
+   - test quality and verification strength
+4. Route specialized review when needed:
+   - `compliance-reviewer` for security/compliance-sensitive work
+   - `test-reviewer` for coverage and verification quality
+   - `architecture-reviewer` for boundary and slice integrity concerns
+   - `silent-failure-hunter` when the diff touches error handling — dispatch
+     when `git diff` matches any of `\b(catch|except|finally)\b`,
+     `\.catch\(`, `\?\?`, `\|\|`, or adds `// eslint-disable`, `# noqa`,
+     `@ts-ignore`, `@ts-expect-error`, `Skip =`, `it\.skip`, `xit\(`.
+     Run in parallel with `compliance-reviewer`; merge findings, dedupe by
+     `(file, line, rule)`. The hunter emits `category: "error-handling"`
+     so dedupe is straightforward.
+   - `context-miner` when the rigor level is **HIGH or MAX** (per `implement`
+     Rigor Score). This is the organizational-memory lane: it mines `git log` /
+     `git blame` of the touched paths, linked GitHub issues and PR-thread
+     discussions (`gh pr list`/`gh issue list`/`gh pr view`), and prior lessons
+     (`scripts/learnings.sh query`) for context the implementation may have
+     missed — a prior revert of the same code, a related open issue, a decision
+     recorded in a PR thread, a lesson that applies. Read-only. Dispatch it in
+     **parallel** with the other Stage 2 reviewers (single message, multiple
+     `Agent` calls). It emits `source: "context"` findings per the review-finding
+     schema; merge and dedupe like the others. At LIGHT/STANDARD rigor it is
+     skipped (the diff is small enough that organizational context rarely
+     changes the verdict).
+4b. **Account for every dispatched lane before reading any findings.**
+    Build the roster first — one row per reviewer you dispatched in step 4, with its
+    outcome: `PASS`, `NEEDS_CHANGES`, `ABSTAINED`, or `NO_RESPONSE`. See
+    **Lane Accounting** in `.claude/references/review-finding-schema.md`.
+
+    - A lane dispatched but returning nothing (crashed, returned null, timed out,
+      emitted unparseable output) is `NO_RESPONSE`, which counts as `ABSTAINED`.
+      **Silence is not assent.**
+    - **The overall verdict cannot be `PASS` while any lane is `ABSTAINED` or
+      `NO_RESPONSE`** — the aggregate becomes `NEEDS_HUMAN_REVIEW`. The change may
+      well be fine; this review did not establish that.
+    - Report the roster alongside the findings. "3 reviewers, 0 findings" is not a
+      reportable result when one of the three never came back.
+    - When lanes overlap, corroboration outranks volume: a finding raised
+      independently by two lanes ranks above one raised loudly by one lane.
+
+    Do this *before* aggregating findings. Counting findings first and reconciling
+    lanes afterwards is how an unrun lane becomes an implicit pass.
+
+5. Categorize findings per the schema in `.claude/references/review-finding-schema.md`:
+    - Apply the **False-Positive Exclusion List** in that schema before
+      scoring confidence — drop candidates that match an FP category rather
+      than scoring them low
+    - `critical`, `warning`, `suggestion` severities
+    - `confidence` score 0–100 per the rubric
+    - Optional top-level fields only when they add real signal: `internet_facing`
+      for boundary exposure and `needs_human_review` for axes the AI cannot
+      honestly clear from the diff alone
+6. **Score the five dimensions (1–10).**
+   Assign one score per dimension and cite at least one **file:line evidence quote** per score (high or low):
+   - `correctness` — does the code do what the spec said? Edge cases? Invariants?
+   - `security` — auth, secrets, input validation, audit, supply chain
+   - `test_coverage` — public behaviors tested? error paths exercised? assertions meaningful?
+   - `architecture_fit` — slices, boundaries, patterns honored?
+   - `simplicity` — fewer files / abstractions / moving parts feasible?
+
+   **Score rubric:** 9–10 exemplary · 7–8 acceptable · 4–6 blocks merge · 1–3 severe.
+
+   **Auto-fail rules:**
+   - Any dimension < 7 → verdict `NEEDS_CHANGES` regardless of finding count.
+   - Uniform scores across all five dimensions → require a one-line written justification per dimension explaining why that score genuinely applies.
+   - A score without a `file:line` evidence quote → treated as 0 (auto-fail).
+
+   **Iteration cap (circuit-breaker).** Drive the fix loop through `scripts/workflow-artifact.sh remediation "$MTK_WF_UUID" review_<dimension> --score <n>`: it returns `ESCALATE` when iterations reach `MTK_MAX_REMEDIATION_ITERS` (default 3) or the dimension's score plateaus (did not improve over the prior iteration), else `CONTINUE`. On `ESCALATE`, **stop and escalate to a human** — automated remediation has stopped converging; report the dimension, iteration count, and remaining findings (see `.claude/references/orchestration-gates.md` → `failure_stop_gate`).
+
+7. Emit output in the canonical format:
+    - Markdown table of surfaced findings (confidence >= threshold from `.claude/review-config.json`, default 80)
+    - **Scores table** — 5 dimensions × {score, evidence file:line, one-line rationale}
+    - Fenced JSON block with the full structured result (verdict, summary, findings, **scores object**, below_threshold_rationale)
+8. If `findings[]` has fewer than 2 entries, populate `below_threshold_rationale` explicitly stating what axes were checked and why the code is genuinely clean. Silent empty reviews are invalid.
+9. If a workflow artifact is active (`MTK_WF_UUID` set), record all five scores and the iteration in **one** call — `"$WFA" set "$MTK_WF_UUID" results.review_scores.correctness=<n> results.review_scores.security=<n> results.review_scores.test_coverage=<n> results.review_scores.architecture_fit=<n> results.review_scores.simplicity=<n> results.review_iteration=<n>` — appended to the remediation call from step 6 when one runs.
+
+### Defect-class sweep (after a finding is confirmed)
+
+A confirmed finding is a sample, not the population. When a finding is
+**confirmed** — not merely suspected — spend one grep asking whether the same
+mistake exists elsewhere, before moving on:
+
+1. Name the *pattern*, not the instance: not "this handler reads the cookie
+   header", but "handlers that read a forbidden header name from an intercepted
+   request".
+2. Grep the repo for it. Report each hit as **confirmed**, **not-applicable**
+   (with the reason it is safe here), or **needs-check** (could not settle it
+   from reading).
+3. Fix what is in scope; record the rest as follow-up findings with paths.
+
+A sweep that finds nothing is worth one line saying so. What this rule exists to
+prevent is the review that ends "worth a look at the sibling handlers" and then
+does not look — the sweep is owed at the moment the finding is confirmed, when
+the pattern is already in mind, and it costs one command. Sibling code whose
+tests pass is exactly where this pays: passing tests are why nobody looked.
+
+## Rules
+
+- Real risks first, style second.
+- Missing tests on mutation paths are substantive findings.
+- Mismatch between behavioral diff and actual code is a critical finding.
+- Security-sensitive changes need explicit scrutiny, not a passing glance.
+- Approve changes that improve overall code health even if they are not perfect.
+
+## Common Rationalizations
+
+See `.claude/references/workflow-rationalizations.md` for the shared MTK rationalization table. Review-specific traps: authors are blind to their own assumptions (self-review isn't review), "mostly style" is a dodge (real review starts with correctness and risk), and soft-pedaling a real production risk to avoid blocking progress is a review failure.
+
+## Red Flags
+
+- Review with no severity ordering
+- Security-sensitive diff with no security-focused findings or explicit clear statement
+- No verification story for the implementation
+- Large unreviewable change accepted as-is instead of flagged
+
+## Verification
+
+- [ ] Every dispatched lane is accounted for as PASS / NEEDS_CHANGES / ABSTAINED / NO_RESPONSE
+- [ ] Verdict is not PASS if any lane abstained or never returned
+- [ ] Findings are actionable and severity-ordered
+- [ ] Review references governing rules or checklists
+- [ ] Testing gaps are explicitly called out or explicitly cleared
+- [ ] Review verdict matches the actual risk level of the change
+- [ ] Output follows `.claude/references/review-finding-schema.md` (markdown table + fenced JSON)
+- [ ] Confidence scores follow the rubric; no inflation to hit finding-count bars
+- [ ] False-Positive Exclusion List was applied before scoring (no pre-existing-issue, linter-catchable, or unjustified-stylistic items in `findings[]`)
+- [ ] `below_threshold_rationale` is populated when fewer than 2 findings surface
+- [ ] All five dimensions are scored 1–10 with a file:line evidence quote each
+- [ ] No uniform-score review; verdict is `NEEDS_CHANGES` when any dimension < 7
+- [ ] Iteration cap respected — third < 7 on the same dimension escalates to human

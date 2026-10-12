@@ -1,0 +1,20 @@
+{
+  "name": "moberghr",
+  "description": "Marketplace for Moberg d.o.o. serious engineering Claude plugins",
+  "owner": {
+    "name": "Moberg HR",
+    "url": "https://github.com/moberghr"
+  },
+  "plugins": [
+    {
+      "name": "mtk",
+      "description": "MTK (Moberg Toolkit) — command entry points backed by reusable skills, review agents, and compliance-first workflows for teams building serious software across .NET, Python, and TypeScript",
+      "version": "8.0.1",
+      "source": "./",
+      "author": {
+        "name": "Moberg HR",
+        "url": "https://github.com/moberghr"
+      }
+    }
+  ]
+}

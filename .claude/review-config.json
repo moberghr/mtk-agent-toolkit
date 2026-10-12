@@ -1,0 +1,24 @@
+{
+  "$doc": "Review configuration for MTK. Controls confidence thresholds and verdict rules across pre-commit-review, code-review-and-quality, and compliance-reviewer. See .claude/references/review-finding-schema.md. Per-engineer overrides go in .claude/review-config.local.json (gitignored).",
+  "thresholds": {
+    "default": 80,
+    "preCommit": 80,
+    "fullReview": 80,
+    "linter": 100
+  },
+  "verdict": {
+    "anyCriticalAboveThreshold": "NEEDS_CHANGES",
+    "otherwise": "PASS"
+  },
+  "minSurfacedFindings": 2,
+  "belowThresholdRationaleRequired": true,
+  "decision_origin": {
+    "required": true,
+    "$doc": "When true, reviewer findings and learnings entries must carry a decision_origin field. Enforced by scripts/learnings.sh add and by review-output validators."
+  },
+  "sycophancy_index": {
+    "warn_threshold": 0.70,
+    "window_days": 30,
+    "$doc": "π = approved / (approved + modified + rejected) over the last window_days. Status flips to warn when pi >= warn_threshold. Surfaced by toolkit-health and scripts/learnings.sh metrics."
+  }
+}

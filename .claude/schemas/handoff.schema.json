@@ -1,0 +1,219 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/moberghr/mtk-agent-toolkit/schemas/handoff.schema.json",
+  "title": "MTK Handoff Artifact",
+  "description": "Typed handoff artifact between spec-driven-development, planning-and-task-breakdown, incremental-implementation, and spec-drift-detection (MetaGPT-pattern). Lives at docs/specs/<date>-<slug>.json. Each phase appends its section; later sections must reference earlier ones deterministically so drift detection becomes a diff rather than a judgment call.",
+  "type": "object",
+  "required": ["slug", "date", "scope", "change_manifest", "success_criteria", "security_impact"],
+  "properties": {
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "scope": { "enum": ["new-feature", "internal-refactoring", "breaking-change"] },
+    "change_manifest": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "action", "purpose"],
+        "properties": {
+          "path": { "type": "string" },
+          "action": { "enum": ["create", "modify", "delete"] },
+          "purpose": { "type": "string" }
+        }
+      }
+    },
+    "public_contracts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "signature", "change"],
+        "properties": {
+          "kind": { "enum": ["endpoint", "handler", "method", "event", "cli-flag", "schema"] },
+          "signature": { "type": "string" },
+          "change": { "enum": ["new", "modified", "removed"] },
+          "surface": {
+            "enum": ["external", "internal-tooling"],
+            "description": "Who consumes this contract. 'external' (default when absent) = a wire/API/published-library surface that callers or external consumers depend on. 'internal-tooling' = a repo-internal build/IaC/CLI knob (e.g. CDK config props, an internal CLI flag, a build-script option) with no external consumer. Drives rigor weighting in implement/SKILL.md: external contracts score +1 each (cap +4); internal-tooling contracts do not swing the score the way external ones do."
+          }
+        }
+      }
+    },
+    "success_criteria": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "description", "verification"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^SC[0-9]+$" },
+          "description": { "type": "string" },
+          "verification": { "type": "string" },
+          "evidence_channel": {
+            "enum": ["test-run", "build-output", "http-probe", "cli-stdout", "db-state-diff", "browser", "smoke-boot", "log-capture", "script-output"],
+            "description": "Named evidence channel through which the criterion is verified. Required for new specs; optional for back-compat with existing artifacts."
+          },
+          "observable": {
+            "type": "string",
+            "description": "One-line binary-observable result declared before execution (e.g. 'exit 0 with field accepted'). Present when evidence_channel is set."
+          }
+        }
+      }
+    },
+    "test_manifest": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "covers"],
+        "properties": {
+          "path": { "type": "string" },
+          "covers": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "out_of_scope": { "type": "array", "items": { "type": "string" } },
+    "security_impact": {
+      "enum": ["none", "requires-audit-trail", "new-auth-path", "secrets-change", "pii-exposure", "iam-change"]
+    },
+    "assumptions": { "type": "array", "items": { "type": "string" } },
+    "risks": { "type": "array", "items": { "type": "string" } },
+    "baseline_area": {
+      "type": "string",
+      "description": "Slice/subsystem this delta belongs to (e.g. payments). Required to participate in the per-area baseline at docs/specs/baseline/ — see .claude/references/delta-spec-model.md."
+    },
+    "delta": {
+      "type": "object",
+      "description": "Optional explicit delta vs the area baseline. If absent, scripts/spec-archive.sh folds the whole change_manifest and public_contracts into the baseline; removals are never inferred and must be listed in delta.removes.",
+      "properties": {
+        "adds": { "type": "array", "items": { "type": "string" } },
+        "modifies": { "type": "array", "items": { "type": "string" } },
+        "removes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "plan": {
+      "type": "object",
+      "description": "Appended by planning-and-task-breakdown after spec approval.",
+      "required": ["batches"],
+      "properties": {
+        "batches": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "files", "acceptance", "verification", "depends"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^B[0-9]+$" },
+              "files": { "type": "array", "items": { "type": "string" } },
+              "acceptance": { "type": "string" },
+              "verification": { "type": "string" },
+              "boundary": { "type": "string" },
+              "depends": {
+                "type": "array",
+                "items": { "type": "string", "pattern": "^B[0-9]+$" },
+                "description": "Batch ids this batch assumes complete. Required. Two batches sharing a file must carry an edge; edge-free batches are scheduled into the same wave and run concurrently."
+              },
+              "depends_rationale": {
+                "type": "string",
+                "description": "Required when depends is empty: why this batch is independent (no shared files, reads no type another batch creates)."
+              },
+              "wave": {
+                "type": "integer", "minimum": 0,
+                "description": "Derived: topological level from depends. Readback only; the scheduler recomputes it."
+              },
+              "parallel_safe": { "type": "boolean", "default": false, "description": "Deprecated: superseded by depends/wave." }
+            },
+            "if": { "properties": { "depends": { "maxItems": 0 } } },
+            "then": { "required": ["depends_rationale"] }
+          }
+        }
+      }
+    },
+
+    "coverage_claims": {
+      "type": "array",
+      "description": "Claims that one call site/hook/event covers several callers, with every write site enumerated. An entry with verified:false or an empty write_sites is an [ASSUMED] claim: it counts as an open decision and blocks MTK_AUTO_PROCEED. spec-drift-detection re-greps these against the implemented code.",
+      "items": {
+        "type": "object",
+        "required": ["claim", "write_sites"],
+        "properties": {
+          "claim": { "type": "string" },
+          "write_sites": {
+            "type": "array",
+            "description": "Every site that writes the entity or raises the event, as file:line.",
+            "items": { "type": "string" }
+          },
+          "verified": { "type": "boolean" }
+        }
+      }
+    },
+
+    "conditional_descopes": {
+      "type": "array",
+      "description": "Reductions the spec pre-authorises. A fired entry is a scope reduction: it re-scores rigor and does not re-open the approval gate. fired:true without evidence is silent drift and spec-drift-detection treats it as critical.",
+      "items": {
+        "type": "object",
+        "required": ["condition", "action"],
+        "properties": {
+          "condition": { "type": "string" },
+          "action": { "type": "string" },
+          "fired": { "type": "boolean" },
+          "evidence": { "type": "string", "description": "What made the condition true. Required in practice once fired is true." }
+        }
+      }
+    },
+
+    "baseline": {
+      "type": "object",
+      "description": "Suite state captured at implement Phase 2.9, before the first edit, so a later failure is attributable. Counts are verbatim runner output, never an intention.",
+      "required": ["commit"],
+      "properties": {
+        "commit": { "type": "string" },
+        "build": { "type": "string" },
+        "tests": { "type": "string" },
+        "typecheck": { "type": "string" },
+        "e2e": { "type": "string" },
+        "known_failures": {
+          "type": "array",
+          "description": "Tests already red at this commit. Inherited, not this run's regressions.",
+          "items": { "type": "string" }
+        }
+      }
+    },
+
+    "dispatch_capability": {
+      "description": "Whether this session can dispatch implementer subagents at all, probed at implement Phase 2.9 before Phase 3 promises a path. forbidden|unavailable at HIGH/MAX selects the inline-MAX profile; it never lowers the rigor level.",
+      "enum": ["available", "forbidden", "unavailable"]
+    },
+
+    "gate_scope": {
+      "type": "array",
+      "description": "Spec slugs a single Phase 2.5 answer covered. A standing approval expires when a later slice's rigor level or security_impact exceeds the gated slice's.",
+      "items": { "type": "string" }
+    },
+
+    "implement": {
+      "type": "object",
+      "description": "Appended by incremental-implementation after all batches complete.",
+      "required": ["actual_files", "completed_batches"],
+      "properties": {
+        "actual_files": {
+          "type": "array",
+          "description": "Output of `git diff --name-only <base>..HEAD` at completion.",
+          "items": { "type": "string" }
+        },
+        "completed_batches": { "type": "array", "items": { "type": "string" } },
+        "deviations": {
+          "type": "array",
+          "description": "Files touched that were NOT in change_manifest, or contracts added that were NOT in public_contracts. Must be populated honestly; spec-drift-detection diffs against this.",
+          "items": {
+            "type": "object",
+            "required": ["kind", "detail", "justification"],
+            "properties": {
+              "kind": { "enum": ["extra-file", "missing-file", "extra-contract", "missing-contract", "scope-creep"] },
+              "detail": { "type": "string" },
+              "justification": { "type": "string" }
+            }
+          }
+        },
+        "behavioral_diff": { "type": "string" }
+      }
+    }
+  }
+}

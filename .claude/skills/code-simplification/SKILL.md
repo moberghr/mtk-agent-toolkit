@@ -1,0 +1,126 @@
+---
+name: code-simplification
+description: Use after a feature or fix is verified and passing to reduce complexity, remove dead code, and improve clarity without changing behavior.
+type: skill
+license: MIT
+compatibility:
+  - claude-code
+  - cursor
+  - codex
+trigger: post-verification|cleanup-pass|heavy-abstractions
+skip_when: pre-correctness|unrelated-refactor
+user-invocable: false
+---
+
+# Code Simplification
+
+## Overview
+
+Simplify only after behavior is proven. The goal is to reduce complexity, remove dead weight, and improve clarity without broadening scope or changing behavior.
+
+## When To Use
+
+- After a feature or fix is working
+- During a cleanup pass
+- When abstractions are heavier than the current use case needs
+
+### When NOT To Use
+
+- Before correctness is established
+- As cover for a broad refactor unrelated to the task
+
+## Workflow
+
+1. Start from verified working code.
+2. Identify the smallest simplifications that improve readability or reduce dead code.
+3. Remove debug artifacts, dead code, and redundant indirection where safe.
+4. Collapse premature abstractions that are not earning their cost.
+5. If dead code is ambiguous or ownership is unclear, ask before deleting.
+6. Re-run build and tests after the cleanup pass.
+
+## Mode: `--audit-duplicates`
+
+Optional audit that scans the repo for near-duplicate capabilities so
+they can be consolidated before they multiply. Use the "check before
+you write" reflex during spec writing; this mode is the periodic sweep
+that catches duplicates that slipped past it.
+
+1. Read `CODE_INDEX.md` at the repo root (template:
+   `.claude/references/code-index-template.md`). If absent, skip
+   index-guided scanning and note CODE_INDEX.md missing in the report
+   (it is generated during `setup-bootstrap`).
+2. Extract ALL capability rows from the file you already read in step 1 —
+   this audit needs the full table, so do not enumerate it through
+   per-keyword queries. Use `bash scripts/query-code-index.sh find
+   "<keyword>"` (prints each matching row prefixed with its `## <Domain>`
+   section) only for targeted follow-up lookups, and fall back to
+   `grep -i CODE_INDEX.md` if the script is absent (repo bootstrapped
+   before v7.17). Group near-duplicates by stem (verb + noun) using simple
+   normalization: lowercase, drop suffixes like `Async` / `_v2` / `Impl`.
+3. For each cluster of 2+ entries, emit:
+   - the capability name
+   - all entry points (path:symbol)
+   - a one-line recommendation (consolidate / keep separate because …)
+4. Cross-check with the active stack's coding guidelines — the canonical
+   implementation is usually the one that follows local idioms.
+5. Output is a findings list, not edits. The engineer decides which
+   clusters to consolidate; consolidation runs through the normal spec
+   flow if it crosses files.
+
+Trigger this mode when:
+- The team has migrated multiple legacy modules into one repo.
+- A reviewer flagged duplication.
+- `CODE_INDEX.md` is older than 30 days and the repo had >50 commits since.
+
+## The less-code ladder (YAGNI)
+
+The cheapest code is the code you do not write. When simplifying — or when reviewing whether a block should exist at all — walk this ladder and **stop at the first rung that satisfies the requirement**:
+
+1. **Does it need to exist?** Delete the requirement before writing the code. Most "just in case" branches never fire.
+2. **Standard library / language built-in?** Prefer it over a hand-rolled helper.
+3. **A capability the codebase already has?** Reuse it (see `--audit-duplicates`) rather than adding a parallel one.
+4. **An existing dependency?** Use it before adding a new one (and clear any new dep through `dependency-intake-checklist.md`).
+5. **One line?** Prefer it over a multi-line abstraction.
+6. **The minimum block that reads clearly?** Stop there — do not generalize for callers that do not exist.
+
+This is the antidote to defensive-guard bloat (F5) and dead-code accretion (F10): every rung climbed is volume a future reader has to carry.
+
+## Safety carve-outs (never simplify away)
+
+Aggressive simplification has a hard boundary. **Never** remove, collapse, or "tidy away" the following just because they look redundant — `lazy ≠ broken`:
+
+- Authentication / authorization checks
+- Secret handling, redaction, and key management
+- Input validation and sanitization at trust boundaries
+- Database migrations and their guards
+- Delete / destructive-operation guards and confirmations
+- Audit-trail and compliance logging
+
+A guard in one of these categories is presumed load-bearing. If you believe one is genuinely dead, that is a `security-and-hardening` question, not a cleanup call — surface it, do not delete it.
+
+## Rules
+
+- Preserve behavior.
+- Keep cleanup scoped to the task area.
+- Prefer deleting complexity over moving it around.
+- Walk the less-code ladder; stop at the first rung that satisfies the requirement.
+- Never simplify away a safety carve-out — auth, secrets, validation, migrations, delete-guards, audit logging are presumed load-bearing.
+- Ask before removing uncertain dead code.
+
+## Common Rationalizations
+
+See `.claude/references/workflow-rationalizations.md` for the shared table. Simplification-specific traps: "now that I'm here, I should refactor the whole module" (cleanup is not permission for a hidden rewrite — stay scoped), and "the dead code is probably still needed somewhere" (probably is a reason to verify or ask, not to leave clutter in place).
+
+## Red Flags
+
+- Cleanup that changes behavior
+- Broad refactor hidden inside feature work
+- Dead code left in place because nobody verified ownership
+
+## Verification
+
+- [ ] Behavior is unchanged
+- [ ] Build and tests still pass
+- [ ] Cleanup stayed within scope
+- [ ] No safety carve-out (auth, secrets, validation, migrations, delete-guards, audit logging) was removed or collapsed
+- [ ] Any uncertain deletion was explicitly surfaced

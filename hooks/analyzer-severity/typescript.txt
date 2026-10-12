@@ -1,0 +1,8 @@
+# TypeScript tsc/biome severity mappings
+# Format: RULE_ID<TAB>severity<TAB>description
+TS7006	warning	Implicit any parameter
+TS2345	warning	Argument of type X is not assignable to type Y
+TS2322	warning	Type X is not assignable to type Y
+noExplicitAny	critical	Use of any type bypasses type safety
+noDangerouslySetInnerHtml	critical	XSS vulnerability via dangerouslySetInnerHTML
+noConsoleLog	warning	Console output in production code

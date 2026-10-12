@@ -1,0 +1,1860 @@
+{
+  "version": "8.0.1",
+  "updated": "2026-09-28",
+  "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
+  "source": "https://github.com/moberghr/mtk-agent-toolkit",
+  "coding-guidelines": {
+    "repo": "moberghr/coding-guidelines",
+    "sha": "4043387ca2c70ed0cd76e005861f5c471908c3bb",
+    "files": {
+      "CodingStyle.md": "sha256:006df483a80bc503fedab94ec27c0aa8b8f6e4afec31caecedad3cc852ed2445"
+    }
+  },
+  "files": {
+    "skills/implement/SKILL.md": {
+      "source": ".claude/skills/implement/SKILL.md",
+      "target": ".claude/skills/implement/SKILL.md",
+      "action": "sync",
+      "description": "Full feature implementation workflow — orchestrates planning, batching, review, and verification skills"
+    },
+    "skills/setup-bootstrap/SKILL.md": {
+      "source": ".claude/skills/setup-bootstrap/SKILL.md",
+      "target": ".claude/skills/setup-bootstrap/SKILL.md",
+      "action": "sync",
+      "description": "One-time setup: detect tech stack, audit codebase, generate CLAUDE.md"
+    },
+    "skills/setup-audit/SKILL.md": {
+      "source": ".claude/skills/setup-audit/SKILL.md",
+      "target": ".claude/skills/setup-audit/SKILL.md",
+      "action": "sync",
+      "description": "Audit architecture principles, or with --merge unify audits from multiple repos"
+    },
+    "skills/batch-fix/SKILL.md": {
+      "source": ".claude/skills/batch-fix/SKILL.md",
+      "target": ".claude/skills/batch-fix/SKILL.md",
+      "action": "sync",
+      "description": "Corrective-batch workflow: multiple small independent fixes across >3 files with no new contract; broader than fix, lighter than implement"
+    },
+    "skills/fix/SKILL.md": {
+      "source": ".claude/skills/fix/SKILL.md",
+      "target": ".claude/skills/fix/SKILL.md",
+      "action": "sync",
+      "description": "Lightweight bug-fix workflow — debugging, targeted tests, scope-guarded verification"
+    },
+    "skills/pre-commit-review/SKILL.md": {
+      "source": ".claude/skills/pre-commit-review/SKILL.md",
+      "target": ".claude/skills/pre-commit-review/SKILL.md",
+      "action": "sync",
+      "description": "Fast security-focused review of staged changes; run before every commit"
+    },
+    "agents/compliance-reviewer.md": {
+      "source": ".claude/agents/compliance-reviewer.md",
+      "target": ".claude/agents/compliance-reviewer.md",
+      "action": "sync",
+      "description": "Adversarial code reviewer that loads stack-specific guidelines from the active tech stack"
+    },
+    "agents/test-reviewer.md": {
+      "source": ".claude/agents/test-reviewer.md",
+      "target": ".claude/agents/test-reviewer.md",
+      "action": "sync",
+      "description": "Focused reviewer for test completeness and verification quality"
+    },
+    "agents/architecture-reviewer.md": {
+      "source": ".claude/agents/architecture-reviewer.md",
+      "target": ".claude/agents/architecture-reviewer.md",
+      "action": "sync",
+      "description": "Focused reviewer for architectural fit and slice boundaries"
+    },
+    "agents/silent-failure-hunter.md": {
+      "source": ".claude/agents/silent-failure-hunter.md",
+      "target": ".claude/agents/silent-failure-hunter.md",
+      "action": "sync",
+      "description": "Focused reviewer for silent failures, swallowed errors, and unjustified diagnostic silences in error-handling diffs"
+    },
+    "settings.json": {
+      "source": ".claude/settings.json",
+      "target": ".claude/settings.json",
+      "action": "sync",
+      "description": "Generic permissions, hooks, and tool configuration. Protected — never overwritten during update."
+    },
+    "references/review-finding-schema.md": {
+      "source": ".claude/references/review-finding-schema.md",
+      "target": ".claude/references/review-finding-schema.md",
+      "action": "sync",
+      "description": "Canonical output schema for all review entry points (markdown table + fenced JSON with confidence scores)"
+    },
+    "references/implement-rigor-scoring.md": {
+      "source": ".claude/references/implement-rigor-scoring.md",
+      "target": ".claude/references/implement-rigor-scoring.md",
+      "action": "sync",
+      "description": "Rigor Score detail for implement — signal/points table, contract-surface rule, mechanical definition, and scope-reduction recompute guardrails"
+    },
+    "references/implement-approval-gate.md": {
+      "source": ".claude/references/implement-approval-gate.md",
+      "target": ".claude/references/implement-approval-gate.md",
+      "action": "sync",
+      "description": "Phase 2.5 approval-gate detail for implement — inline rendering spec, full MTK_AUTO_PROCEED preconditions, gate_scope and seal semantics"
+    },
+    "references/implement-preflight.md": {
+      "source": ".claude/references/implement-preflight.md",
+      "target": ".claude/references/implement-preflight.md",
+      "action": "sync",
+      "description": "Phase 2.9 pre-flight detail for implement — collision check, dispatch-capability probe, inline-MAX compensations, and baseline evidence capture"
+    },
+    "references/implement-review-lanes.md": {
+      "source": ".claude/references/implement-review-lanes.md",
+      "target": ".claude/references/implement-review-lanes.md",
+      "action": "sync",
+      "description": "Phase 4 review detail for implement — two-stage procedure, reviewer lane selection, and lane accounting when subagents are unavailable"
+    },
+    "references/implement-archive-receipt.md": {
+      "source": ".claude/references/implement-archive-receipt.md",
+      "target": ".claude/references/implement-archive-receipt.md",
+      "action": "sync",
+      "description": "Phase 7.5 archive detail for implement — delta sync-back procedure and the opt-in tracked run receipt field list"
+    },
+    "references/model-routing.md": {
+      "source": ".claude/references/model-routing.md",
+      "target": ".claude/references/model-routing.md",
+      "action": "sync",
+      "description": "Per-phase model-tier policy (haiku/sonnet/opus) reserving the expensive tier for code writing and adversarial review"
+    },
+    "references/guard-packs.md": {
+      "source": ".claude/references/guard-packs.md",
+      "target": ".claude/references/guard-packs.md",
+      "action": "sync",
+      "description": "How linter guard packs are structured, discovered, and authored as shippable deterministic review units"
+    },
+    "review-config.json": {
+      "source": ".claude/review-config.json",
+      "target": ".claude/review-config.json",
+      "action": "sync",
+      "description": "Review threshold and verdict configuration. Per-engineer overrides go in .claude/review-config.local.json (gitignored)."
+    },
+    "references/env-knobs.md": {
+      "source": ".claude/references/env-knobs.md",
+      "target": ".claude/references/env-knobs.md",
+      "action": "sync",
+      "description": "Full table of every MTK_* environment knob, its default and effect, split out of AGENTS.md so the always-loaded constitution carries routing decisions rather than a reference table."
+    },
+    "references/testing-patterns.md": {
+      "source": ".claude/references/testing-patterns.md",
+      "target": ".claude/references/testing-patterns.md",
+      "action": "sync",
+      "applyTo": [
+        "**/tests/**",
+        "**/*.Tests/**",
+        "**/*Tests.cs",
+        "**/*Test.cs",
+        "**/test_*.py",
+        "**/*_test.py",
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx"
+      ],
+      "description": "Generic testing guidance — load alongside the active stack's testing supplement"
+    },
+    "references/security-checklist.md": {
+      "source": ".claude/references/security-checklist.md",
+      "target": ".claude/references/security-checklist.md",
+      "action": "sync",
+      "applyTo": [
+        "**/auth/**",
+        "**/authentication/**",
+        "**/authorization/**",
+        "**/payments/**",
+        "**/transfers/**",
+        "**/audit/**",
+        "**/secrets/**",
+        "**/infra/**",
+        "**/iam/**",
+        "**/*Auth*.cs",
+        "**/*Auth*.py",
+        "**/*Auth*.ts",
+        "**/appsettings*.json",
+        "**/*.env*",
+        "**/settings.py",
+        "**/config/*.ts"
+      ],
+      "description": "Shared, language-agnostic security checklist for serious software"
+    },
+    "references/domain-finance.md": {
+      "source": ".claude/references/domain-finance.md",
+      "target": ".claude/references/domain-finance.md",
+      "action": "sync",
+      "description": "Finance domain supplement — concrete examples of regulated state, sensitive data, and audit requirements for fintech codebases"
+    },
+    "references/performance-checklist.md": {
+      "source": ".claude/references/performance-checklist.md",
+      "target": ".claude/references/performance-checklist.md",
+      "action": "sync",
+      "description": "Generic performance checklist — load alongside the active stack's performance supplement"
+    },
+    "references/dependency-intake-checklist.md": {
+      "source": ".claude/references/dependency-intake-checklist.md",
+      "target": ".claude/references/dependency-intake-checklist.md",
+      "action": "sync",
+      "applyTo": [
+        "**/package.json",
+        "**/*.csproj",
+        "**/Directory.Packages.props",
+        "**/requirements.txt",
+        "**/pyproject.toml",
+        "**/Pipfile",
+        "**/poetry.lock",
+        "**/go.mod",
+        "**/Cargo.toml",
+        "**/Gemfile",
+        "**/composer.json"
+      ],
+      "description": "Five-criteria gate (scope/maintenance/size/security/license) for any new third-party dependency"
+    },
+    "references/learnings-schema.md": {
+      "source": ".claude/references/learnings-schema.md",
+      "target": ".claude/references/learnings-schema.md",
+      "action": "sync",
+      "description": "Schema for structured learnings stored at .mtk/learnings.jsonl — machine-readable mirror of tasks/lessons.md with 5-layer retrieval"
+    },
+    "references/claude-ready-checklist.md": {
+      "source": ".claude/references/claude-ready-checklist.md",
+      "target": ".claude/references/claude-ready-checklist.md",
+      "action": "sync",
+      "description": "INVEST+C spec-quality checklist — 16-item Claude-Ready gate used by spec-driven-development before approval"
+    },
+    "references/code-index-template.md": {
+      "source": ".claude/references/code-index-template.md",
+      "target": ".claude/references/code-index-template.md",
+      "action": "sync",
+      "description": "Capability-index template for CODE_INDEX.md — seeded by setup-bootstrap, consumed by code-simplification --audit-duplicates"
+    },
+    "skills/prior-work-check/SKILL.md": {
+      "source": ".claude/skills/prior-work-check/SKILL.md",
+      "target": ".claude/skills/prior-work-check/SKILL.md",
+      "action": "sync",
+      "description": "Three deterministic queries (search_prior_work / get_constraints / get_risk_profile) run before spec approval and before planning to prevent duplicate work and mis-classified risk"
+    },
+    "docs/recommended-tooling/shared.md": {
+      "source": "docs/recommended-tooling/shared.md",
+      "target": "docs/recommended-tooling/shared.md",
+      "action": "sync",
+      "distribute": false,
+      "description": "Stack-agnostic recommended MCPs/plugins/editor integrations. Per-user preference, not per-repo — setup-bootstrap PRINTS the contents during onboarding but does NOT copy this file into target repos."
+    },
+    "references/dotnet/coding-guidelines.md": {
+      "source": ".claude/references/dotnet/coding-guidelines.md",
+      "target": ".claude/references/dotnet/coding-guidelines.md",
+      "action": "sync",
+      "stack": "dotnet",
+      "description": "Moberg C# coding style guide"
+    },
+    "references/dotnet/ef-core-checklist.md": {
+      "source": ".claude/references/dotnet/ef-core-checklist.md",
+      "target": ".claude/references/dotnet/ef-core-checklist.md",
+      "action": "sync",
+      "stack": "dotnet",
+      "applyTo": [
+        "**/*DbContext.cs",
+        "**/Entities/**",
+        "**/Migrations/**",
+        "**/*Entity.cs",
+        "**/*Configuration.cs",
+        "**/Persistence/**",
+        "**/Repositories/**"
+      ],
+      "description": "EF Core review and implementation checklist"
+    },
+    "references/dotnet/mediatr-slice-patterns.md": {
+      "source": ".claude/references/dotnet/mediatr-slice-patterns.md",
+      "target": ".claude/references/dotnet/mediatr-slice-patterns.md",
+      "action": "sync",
+      "stack": "dotnet",
+      "applyTo": [
+        "**/Handlers/**",
+        "**/Commands/**",
+        "**/Queries/**",
+        "**/Features/**",
+        "**/*Handler.cs",
+        "**/*Command.cs",
+        "**/*Query.cs"
+      ],
+      "description": "MediatR/CQRS slice conventions for .NET"
+    },
+    "references/dotnet/testing-supplement.md": {
+      "source": ".claude/references/dotnet/testing-supplement.md",
+      "target": ".claude/references/dotnet/testing-supplement.md",
+      "action": "sync",
+      "stack": "dotnet",
+      "applyTo": [
+        "**/*.Tests/**",
+        "**/tests/**",
+        "**/*Tests.cs",
+        "**/*Test.cs"
+      ],
+      "description": ".NET-specific testing guidance (EF Core providers, xUnit/NUnit conventions)"
+    },
+    "references/dotnet/performance-supplement.md": {
+      "source": ".claude/references/dotnet/performance-supplement.md",
+      "target": ".claude/references/dotnet/performance-supplement.md",
+      "action": "sync",
+      "stack": "dotnet",
+      "description": ".NET-specific performance rules (EF Core, HttpClient, Lambda cold starts)"
+    },
+    "docs/recommended-tooling/dotnet.md": {
+      "source": "docs/recommended-tooling/dotnet.md",
+      "target": "docs/recommended-tooling/dotnet.md",
+      "action": "sync",
+      "distribute": false,
+      "stack": "dotnet",
+      "description": ".NET recommended MCPs/plugins/editor integrations (csharp-lsp, dotnet-claude-kit, microsoft-learn, JetBrains MCP). Per-user preference — setup-bootstrap prints but does not copy into target repos."
+    },
+    "references/python/coding-guidelines.md": {
+      "source": ".claude/references/python/coding-guidelines.md",
+      "target": ".claude/references/python/coding-guidelines.md",
+      "action": "sync",
+      "stack": "python",
+      "description": "Python coding style guide (placeholder — to be authored when first Python project starts)"
+    },
+    "references/python/sqlalchemy-checklist.md": {
+      "source": ".claude/references/python/sqlalchemy-checklist.md",
+      "target": ".claude/references/python/sqlalchemy-checklist.md",
+      "action": "sync",
+      "stack": "python",
+      "applyTo": [
+        "**/models.py",
+        "**/models/*.py",
+        "**/migrations/**",
+        "**/alembic/**",
+        "**/db/**",
+        "**/database/**",
+        "**/*_repository.py"
+      ],
+      "description": "SQLAlchemy review and implementation checklist"
+    },
+    "references/python/fastapi-patterns.md": {
+      "source": ".claude/references/python/fastapi-patterns.md",
+      "target": ".claude/references/python/fastapi-patterns.md",
+      "action": "sync",
+      "stack": "python",
+      "applyTo": [
+        "**/routers/**",
+        "**/api/**",
+        "**/endpoints/**",
+        "**/views.py",
+        "**/urls.py",
+        "**/main.py"
+      ],
+      "description": "FastAPI and Django structural conventions"
+    },
+    "references/python/testing-supplement.md": {
+      "source": ".claude/references/python/testing-supplement.md",
+      "target": ".claude/references/python/testing-supplement.md",
+      "action": "sync",
+      "stack": "python",
+      "applyTo": [
+        "**/tests/**",
+        "**/test_*.py",
+        "**/*_test.py",
+        "**/conftest.py"
+      ],
+      "description": "pytest patterns, fixtures, mocking, async tests"
+    },
+    "references/python/performance-supplement.md": {
+      "source": ".claude/references/python/performance-supplement.md",
+      "target": ".claude/references/python/performance-supplement.md",
+      "action": "sync",
+      "stack": "python",
+      "description": "Python performance rules (async, connection pooling, GIL, Lambda)"
+    },
+    "docs/recommended-tooling/python.md": {
+      "source": "docs/recommended-tooling/python.md",
+      "target": "docs/recommended-tooling/python.md",
+      "action": "sync",
+      "distribute": false,
+      "stack": "python",
+      "description": "Python recommended MCPs/plugins/editor integrations (context7, Pyright/basedpyright, Ruff LSP). Per-user preference — setup-bootstrap prints but does not copy into target repos."
+    },
+    "references/typescript/coding-guidelines.md": {
+      "source": ".claude/references/typescript/coding-guidelines.md",
+      "target": ".claude/references/typescript/coding-guidelines.md",
+      "action": "sync",
+      "stack": "typescript",
+      "description": "TypeScript coding style guide (placeholder — defaults to strict tsconfig + Biome until team authors its own)"
+    },
+    "references/typescript/data-layer-checklist.md": {
+      "source": ".claude/references/typescript/data-layer-checklist.md",
+      "target": ".claude/references/typescript/data-layer-checklist.md",
+      "action": "sync",
+      "stack": "typescript",
+      "applyTo": [
+        "**/prisma/**",
+        "**/drizzle/**",
+        "**/db/**",
+        "**/schema.ts",
+        "**/schema.prisma",
+        "**/queries/**",
+        "**/*.query.ts",
+        "**/use*Query.ts"
+      ],
+      "description": "Prisma / Drizzle / TanStack Query review and implementation checklist"
+    },
+    "references/typescript/framework-patterns.md": {
+      "source": ".claude/references/typescript/framework-patterns.md",
+      "target": ".claude/references/typescript/framework-patterns.md",
+      "action": "sync",
+      "stack": "typescript",
+      "applyTo": [
+        "**/app/**/page.tsx",
+        "**/app/**/layout.tsx",
+        "**/app/**/route.ts",
+        "**/pages/**",
+        "**/routes/**",
+        "**/components/**",
+        "**/src-tauri/**"
+      ],
+      "description": "React / Next.js / Tauri / Node backend structural conventions"
+    },
+    "references/typescript/testing-supplement.md": {
+      "source": ".claude/references/typescript/testing-supplement.md",
+      "target": ".claude/references/typescript/testing-supplement.md",
+      "action": "sync",
+      "stack": "typescript",
+      "applyTo": [
+        "**/tests/**",
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx",
+        "**/e2e/**"
+      ],
+      "description": "Vitest / Jest / Playwright / RTL / MSW patterns and TanStack Query test setup"
+    },
+    "references/typescript/performance-supplement.md": {
+      "source": ".claude/references/typescript/performance-supplement.md",
+      "target": ".claude/references/typescript/performance-supplement.md",
+      "action": "sync",
+      "stack": "typescript",
+      "description": "Bundle size, rendering, SSR, Node I/O, serverless cold-start, and Tauri IPC performance rules"
+    },
+    "docs/recommended-tooling/typescript.md": {
+      "source": "docs/recommended-tooling/typescript.md",
+      "target": "docs/recommended-tooling/typescript.md",
+      "action": "sync",
+      "distribute": false,
+      "stack": "typescript",
+      "description": "TypeScript recommended MCPs/plugins/editor integrations (context7, playwright, editor LSPs, frontend-design plugin). Per-user preference — setup-bootstrap prints but does not copy into target repos."
+    },
+    "skills/spec-driven-development/SKILL.md": {
+      "source": ".claude/skills/spec-driven-development/SKILL.md",
+      "target": ".claude/skills/spec-driven-development/SKILL.md",
+      "action": "sync",
+      "description": "Language-agnostic planning skill for substantial changes"
+    },
+    "skills/planning-and-task-breakdown/SKILL.md": {
+      "source": ".claude/skills/planning-and-task-breakdown/SKILL.md",
+      "target": ".claude/skills/planning-and-task-breakdown/SKILL.md",
+      "action": "sync",
+      "description": "Reusable task breakdown and batching skill"
+    },
+    "skills/incremental-implementation/SKILL.md": {
+      "source": ".claude/skills/incremental-implementation/SKILL.md",
+      "target": ".claude/skills/incremental-implementation/SKILL.md",
+      "action": "sync",
+      "description": "Language-agnostic batched implementation discipline"
+    },
+    "skills/subagent-implementation/SKILL.md": {
+      "source": ".claude/skills/subagent-implementation/SKILL.md",
+      "target": ".claude/skills/subagent-implementation/SKILL.md",
+      "action": "sync",
+      "description": "Per-batch subagent-driven implementation for large features (3+ batches, 6+ non-mechanical files, or non-none security_impact); orchestrator-side drift checks"
+    },
+    "skills/debugging-and-error-recovery/SKILL.md": {
+      "source": ".claude/skills/debugging-and-error-recovery/SKILL.md",
+      "target": ".claude/skills/debugging-and-error-recovery/SKILL.md",
+      "action": "sync",
+      "description": "Reusable bug-fix and debugging workflow skill"
+    },
+    "skills/code-review-and-quality/SKILL.md": {
+      "source": ".claude/skills/code-review-and-quality/SKILL.md",
+      "target": ".claude/skills/code-review-and-quality/SKILL.md",
+      "action": "sync",
+      "description": "Reusable review workflow skill for serious software"
+    },
+    "skills/test-driven-development/SKILL.md": {
+      "source": ".claude/skills/test-driven-development/SKILL.md",
+      "target": ".claude/skills/test-driven-development/SKILL.md",
+      "action": "sync",
+      "description": "Language-agnostic test-driven development discipline"
+    },
+    "skills/context-engineering/SKILL.md": {
+      "source": ".claude/skills/context-engineering/SKILL.md",
+      "target": ".claude/skills/context-engineering/SKILL.md",
+      "action": "sync",
+      "description": "Reusable context loading and re-anchoring skill"
+    },
+    "skills/security-and-hardening/SKILL.md": {
+      "source": ".claude/skills/security-and-hardening/SKILL.md",
+      "target": ".claude/skills/security-and-hardening/SKILL.md",
+      "action": "sync",
+      "description": "Reusable security and hardening workflow for serious software"
+    },
+    "skills/source-driven-development/SKILL.md": {
+      "source": ".claude/skills/source-driven-development/SKILL.md",
+      "target": ".claude/skills/source-driven-development/SKILL.md",
+      "action": "sync",
+      "description": "Reusable framework verification and source-grounding skill"
+    },
+    "skills/research-context/SKILL.md": {
+      "source": ".claude/skills/research-context/SKILL.md",
+      "target": ".claude/skills/research-context/SKILL.md",
+      "action": "sync",
+      "description": "Research current external best-practices grounded in named project files; defers heavy questions to /deep-research and returns a cited brief"
+    },
+    "skills/code-simplification/SKILL.md": {
+      "source": ".claude/skills/code-simplification/SKILL.md",
+      "target": ".claude/skills/code-simplification/SKILL.md",
+      "action": "sync",
+      "description": "Reusable behavior-preserving cleanup and simplification skill"
+    },
+    "skills/instructions-audit/SKILL.md": {
+      "source": ".claude/skills/instructions-audit/SKILL.md",
+      "target": ".claude/skills/instructions-audit/SKILL.md",
+      "action": "sync",
+      "description": "Re-grade loop for the constitution (AGENTS.md, then CLAUDE.md shims) — six-criterion rubric, currency cross-checks, append-only diffs"
+    },
+    "skills/instructions-capture/SKILL.md": {
+      "source": ".claude/skills/instructions-capture/SKILL.md",
+      "target": ".claude/skills/instructions-capture/SKILL.md",
+      "action": "sync",
+      "description": "Capture session learnings into AGENTS.md — reflect at session end, propose minimal append-only additions, apply only with approval"
+    },
+    "scripts/skill-eval/run-eval.sh": {
+      "source": "scripts/skill-eval/run-eval.sh",
+      "target": "scripts/skill-eval/run-eval.sh",
+      "action": "sync",
+      "description": "Runs eval prompts for a single skill, grades each response with a sub-agent, writes per-run JSON results"
+    },
+    "scripts/skill-eval/aggregate.sh": {
+      "source": "scripts/skill-eval/aggregate.sh",
+      "target": "scripts/skill-eval/aggregate.sh",
+      "action": "sync",
+      "description": "Runs N iterations of run-eval.sh and reports per-prompt pass-rate plus standard deviation"
+    },
+    "scripts/skill-eval/grader-prompt.md": {
+      "source": "scripts/skill-eval/grader-prompt.md",
+      "target": "scripts/skill-eval/grader-prompt.md",
+      "action": "sync",
+      "description": "Sub-agent system prompt used by the eval grader — strict three-grade scale with single-line JSON output"
+    },
+    "skills/verification-before-completion/SKILL.md": {
+      "source": ".claude/skills/verification-before-completion/SKILL.md",
+      "target": ".claude/skills/verification-before-completion/SKILL.md",
+      "action": "sync",
+      "description": "Reusable verification discipline — no completion claims without fresh evidence"
+    },
+    "skills/spec-drift-detection/SKILL.md": {
+      "source": ".claude/skills/spec-drift-detection/SKILL.md",
+      "target": ".claude/skills/spec-drift-detection/SKILL.md",
+      "action": "sync",
+      "description": "Compare the implementation against the spec's JSON sidecar manifest; surface divergence before review"
+    },
+    "skills/brainstorming/SKILL.md": {
+      "source": ".claude/skills/brainstorming/SKILL.md",
+      "target": ".claude/skills/brainstorming/SKILL.md",
+      "action": "sync",
+      "description": "Reusable design exploration skill — divergent thinking before spec commitment"
+    },
+    "skills/using-git-worktrees/SKILL.md": {
+      "source": ".claude/skills/using-git-worktrees/SKILL.md",
+      "target": ".claude/skills/using-git-worktrees/SKILL.md",
+      "action": "sync",
+      "description": "Reusable worktree setup and teardown with safety checks"
+    },
+    "skills/writing-skills/SKILL.md": {
+      "source": ".claude/skills/writing-skills/SKILL.md",
+      "target": ".claude/skills/writing-skills/SKILL.md",
+      "action": "sync",
+      "description": "Meta-skill for authoring new skills with TDD discipline and CSO principle"
+    },
+    "skills/correction-capture/SKILL.md": {
+      "source": ".claude/skills/correction-capture/SKILL.md",
+      "target": ".claude/skills/correction-capture/SKILL.md",
+      "action": "sync",
+      "description": "Reusable correction capture and compounding skill"
+    },
+    "skills/golden-path-capture/SKILL.md": {
+      "source": ".claude/skills/golden-path-capture/SKILL.md",
+      "target": ".claude/skills/golden-path-capture/SKILL.md",
+      "action": "sync",
+      "description": "Live self-driven lesson capture when you struggle with the same sub-problem 2+ times then find a working approach — no engineer correction required"
+    },
+    "skills/handoff/SKILL.md": {
+      "source": ".claude/skills/handoff/SKILL.md",
+      "target": ".claude/skills/handoff/SKILL.md",
+      "action": "sync",
+      "description": "Model-invoked session handoff — capture state into a recovery artifact when context is tight or work is paused"
+    },
+    "skills/tech-stack-dotnet/SKILL.md": {
+      "source": ".claude/skills/tech-stack-dotnet/SKILL.md",
+      "target": ".claude/skills/tech-stack-dotnet/SKILL.md",
+      "action": "sync",
+      "stack": "dotnet",
+      "description": ".NET tech stack: build/test commands, EF Core guidance, MediatR patterns, scan recipes"
+    },
+    "skills/tech-stack-python/SKILL.md": {
+      "source": ".claude/skills/tech-stack-python/SKILL.md",
+      "target": ".claude/skills/tech-stack-python/SKILL.md",
+      "action": "sync",
+      "stack": "python",
+      "description": "Python tech stack: pytest, ruff, SQLAlchemy/Django guidance, FastAPI patterns, scan recipes"
+    },
+    "skills/tech-stack-typescript/SKILL.md": {
+      "source": ".claude/skills/tech-stack-typescript/SKILL.md",
+      "target": ".claude/skills/tech-stack-typescript/SKILL.md",
+      "action": "sync",
+      "stack": "typescript",
+      "description": "TypeScript tech stack: package manager auto-detect (bun/pnpm/yarn/npm), React/Next.js/Tauri/Node patterns, Prisma/Drizzle/TanStack Query guidance, scan recipes"
+    },
+    "hooks/session-start": {
+      "source": "hooks/session-start",
+      "target": "hooks/session-start",
+      "action": "sync",
+      "description": "Multi-platform session initialization hook"
+    },
+    "hooks/hooks.json": {
+      "source": "hooks/hooks.json",
+      "target": "hooks/hooks.json",
+      "action": "sync",
+      "description": "Hook configuration for session-start event"
+    },
+    "hooks/verify-completion": {
+      "source": "hooks/verify-completion",
+      "target": "hooks/verify-completion",
+      "action": "sync",
+      "description": "Stop hook flagging completion claims without command output evidence"
+    },
+    "hooks/pre-commit-linters.sh": {
+      "source": "hooks/pre-commit-linters.sh",
+      "target": "hooks/pre-commit-linters.sh",
+      "action": "sync",
+      "description": "Deterministic static-check pass: scans staged diff for known-bad patterns, emits findings with source:linter and confidence:100"
+    },
+    "hooks/format-on-edit.sh": {
+      "source": "hooks/format-on-edit.sh",
+      "target": "hooks/format-on-edit.sh",
+      "action": "sync",
+      "description": "Formats the turn's edited files without racing the model: queues tool_input.file_path at PostToolUse, then with --flush at Stop dispatches each queued path to biome/prettier/ruff/black by extension and batches .cs per nearest .csproj for dotnet format"
+    },
+    "hooks/security-gate.sh": {
+      "source": "hooks/security-gate.sh",
+      "target": "hooks/security-gate.sh",
+      "action": "sync",
+      "description": "PreToolUse hook that blocks destructive Bash commands (DB drops, force-push to main, broad rm)"
+    },
+    "hooks/interactive-guard.sh": {
+      "source": "hooks/interactive-guard.sh",
+      "target": "hooks/interactive-guard.sh",
+      "action": "sync",
+      "description": "PreToolUse hook that blocks Bash commands able to hang on an interactive prompt (S4.12): gh pr merge with no delete-branch decision, and prompt-capable commands piped through tail/head"
+    },
+    "hooks/config-guard.sh": {
+      "source": "hooks/config-guard.sh",
+      "target": "hooks/config-guard.sh",
+      "action": "sync",
+      "description": "PreToolUse hook that hard-denies Edit/Write changes weakening a linter, analyzer or formatter config (added suppression codes, rules switched off, new ignore-file lines) unless the engineer listed the path in .mtk/config-guard-allow within 24h"
+    },
+    "hooks/fact-force-guard.sh": {
+      "source": "hooks/fact-force-guard.sh",
+      "target": "hooks/fact-force-guard.sh",
+      "action": "sync",
+      "description": "PostToolUse/PreToolUse hook pair that records the session's searches and nudges once per existing code file edited without any search mentioning its name, with an opt-in one-time deny"
+    },
+    "hooks/mcp-health.sh": {
+      "source": "hooks/mcp-health.sh",
+      "target": "hooks/mcp-health.sh",
+      "action": "sync",
+      "description": "PreToolUse/PostToolUse/PostToolUseFailure hook on mcp__ tools that tracks failing MCP servers with per-server exponential backoff, warns (or with enforce, denies) calls during backoff, and clears on success"
+    },
+    "hooks/cost-tracker.sh": {
+      "source": "hooks/cost-tracker.sh",
+      "target": "hooks/cost-tracker.sh",
+      "action": "sync",
+      "description": "Async Stop hook that records per-session token usage deltas with an API-equivalent cost estimate to .mtk/metrics/costs.jsonl via scripts/session-cost.sh, failing silent when the transcript cannot be parsed"
+    },
+    "hooks/post-compact.sh": {
+      "source": "hooks/post-compact.sh",
+      "target": "hooks/post-compact.sh",
+      "action": "sync",
+      "description": "Post-compaction hook (SessionStart matcher compact) that re-injects tech stack, in-progress specs, plans, task state, and active workflow artifacts (.mtk/workflows/) after auto-compaction"
+    },
+    "hooks/pre-compact-snapshot.sh": {
+      "source": "hooks/pre-compact-snapshot.sh",
+      "target": "hooks/pre-compact-snapshot.sh",
+      "action": "sync",
+      "description": "PreCompact hook that stashes uncommitted work before auto-compaction so context loss never costs in-flight changes"
+    },
+    "skills/promote-lesson/SKILL.md": {
+      "source": ".claude/skills/promote-lesson/SKILL.md",
+      "target": ".claude/skills/promote-lesson/SKILL.md",
+      "action": "sync",
+      "description": "Promote a personal lesson from .claude/lessons/personal.md to the team-wide tasks/lessons.md"
+    },
+    "scripts/mtk-recover.sh": {
+      "source": "scripts/mtk-recover.sh",
+      "target": "scripts/mtk-recover.sh",
+      "action": "sync",
+      "description": "Interactive recovery for PreCompact snapshots — lists saved stashes and applies the chosen one"
+    },
+    "scripts/mtk-doctor.sh": {
+      "source": "scripts/mtk-doctor.sh",
+      "target": "scripts/mtk-doctor.sh",
+      "action": "sync",
+      "description": "Health check across core files, components, hooks, integrity, and environment fit (context-window calibration, hook basename collisions, formatter availability). Supports --json/--fix/--strict."
+    },
+    "scripts/generate-checksums.sh": {
+      "source": "scripts/generate-checksums.sh",
+      "target": "scripts/generate-checksums.sh",
+      "action": "sync",
+      "description": "Release integrity manifest — writes checksums.sha256 (SHA-256 of every manifest-listed file) at release time; --verify recomputes and reports drift"
+    },
+    "scripts/resolve-tech-stack.sh": {
+      "source": "scripts/resolve-tech-stack.sh",
+      "target": "scripts/resolve-tech-stack.sh",
+      "action": "sync",
+      "description": "Polyglot-aware tech-stack resolver — resolves the active stack for a path via MTK_STACK, a nested .claude/tech-stack, a root .claude/tech-stack.map glob, then the repo-root default"
+    },
+    "scripts/resolve-constitution.sh": {
+      "source": "scripts/resolve-constitution.sh",
+      "target": "scripts/resolve-constitution.sh",
+      "action": "sync",
+      "description": "Single source of truth for which file is the repo's agent constitution — AGENTS.md when it exists, is not generator-marked, and CLAUDE.md is absent, the same file, or an @AGENTS.md shim; --loaded answers the separate context-accounting question"
+    },
+    "scripts/resolve-artifact-root.sh": {
+      "source": "scripts/resolve-artifact-root.sh",
+      "target": "scripts/resolve-artifact-root.sh",
+      "action": "sync",
+      "description": "Polyglot-aware artifact-root resolver — resolves where docs/specs and docs/plans live for a path via MTK_ARTIFACT_ROOT, a .claude/artifact-root marker, the nearest subtree holding both a constitution (AGENTS.md or CLAUDE.md) and docs/specs, then the repo root"
+    },
+    "scripts/query-code-index.sh": {
+      "source": "scripts/query-code-index.sh",
+      "target": "scripts/query-code-index.sh",
+      "action": "sync",
+      "description": "Structured text-query front door for CODE_INDEX.md — find <keyword> and callers <symbol> (textual reference search, not a semantic call-graph)"
+    },
+    "skills/mtk-doctor/SKILL.md": {
+      "source": ".claude/skills/mtk-doctor/SKILL.md",
+      "target": ".claude/skills/mtk-doctor/SKILL.md",
+      "action": "sync",
+      "description": "Entry-point skill wrapping mtk-doctor.sh — categorized health check for MTK installation"
+    },
+    "hooks/git-hooks/pre-commit": {
+      "source": "hooks/git-hooks/pre-commit",
+      "target": "hooks/git-hooks/pre-commit",
+      "action": "sync",
+      "description": "Git pre-commit hook that runs the deterministic linter and blocks commits on critical findings"
+    },
+    "hooks/linter-patterns/core/secrets.txt": {
+      "source": "hooks/linter-patterns/core/secrets.txt",
+      "target": "hooks/linter-patterns/core/secrets.txt",
+      "action": "sync",
+      "description": "Core lint pack — language-agnostic secret detection (API keys, JWTs, connection strings)"
+    },
+    "hooks/linter-patterns/core/slopwatch.txt": {
+      "source": "hooks/linter-patterns/core/slopwatch.txt",
+      "target": "hooks/linter-patterns/core/slopwatch.txt",
+      "action": "sync",
+      "description": "Core lint pack — LLM reward hacking patterns (disabled tests, empty catches, always-pass assertions)"
+    },
+    "hooks/linter-patterns/core/docdrift.txt": {
+      "source": "hooks/linter-patterns/core/docdrift.txt",
+      "target": "hooks/linter-patterns/core/docdrift.txt",
+      "action": "sync",
+      "description": "Core lint pack — comment/doc-drift smells (absolute claims, empty cref, placeholders, empty links, Obsolete without message)"
+    },
+    "hooks/linter-patterns/stack-dotnet/patterns.txt": {
+      "source": "hooks/linter-patterns/stack-dotnet/patterns.txt",
+      "target": "hooks/linter-patterns/stack-dotnet/patterns.txt",
+      "action": "sync",
+      "stack": "dotnet",
+      "description": "Stack lint pack — .NET patterns (raw SQL interpolation, console output, empty catches, new HttpClient, weak hashes)"
+    },
+    "hooks/linter-patterns/stack-python/patterns.txt": {
+      "source": "hooks/linter-patterns/stack-python/patterns.txt",
+      "target": "hooks/linter-patterns/stack-python/patterns.txt",
+      "action": "sync",
+      "stack": "python",
+      "description": "Stack lint pack — Python patterns (raw SQL in execute, bare except, print debugging)"
+    },
+    "hooks/linter-patterns/stack-typescript/patterns.txt": {
+      "source": "hooks/linter-patterns/stack-typescript/patterns.txt",
+      "target": "hooks/linter-patterns/stack-typescript/patterns.txt",
+      "action": "sync",
+      "stack": "typescript",
+      "description": "Stack lint pack — TypeScript/JS patterns (SQL template literals, console output, any type)"
+    },
+    "hooks/linter-patterns/domain-finance/patterns.txt": {
+      "source": "hooks/linter-patterns/domain-finance/patterns.txt",
+      "target": "hooks/linter-patterns/domain-finance/patterns.txt",
+      "action": "sync",
+      "description": "Domain lint pack — finance patterns (float money, hardcoded currencies/rates, unrounded division, anonymous endpoints, audited-record deletes, sensitive-data logging)"
+    },
+    "AGENTS.md": {
+      "source": "AGENTS.md",
+      "target": "AGENTS.md",
+      "action": "sync",
+      "description": "Canonical constitution read by every harness (Claude Code, Codex, Cursor, Copilot, Windsurf) — authored by setup-bootstrap, imported by the CLAUDE.md shim, protected during update"
+    },
+    "docs/skill-anatomy.md": {
+      "source": "docs/skill-anatomy.md",
+      "target": "docs/skill-anatomy.md",
+      "action": "sync",
+      "description": "Authoring anatomy for reusable skills (workflow + tech stack types)"
+    },
+    "scripts/validate-toolkit.sh": {
+      "source": "scripts/validate-toolkit.sh",
+      "target": "scripts/validate-toolkit.sh",
+      "action": "sync",
+      "description": "Validation script for toolkit integrity (stack-aware)"
+    },
+    "scripts/secret-scan.sh": {
+      "source": "scripts/secret-scan.sh",
+      "target": "scripts/secret-scan.sh",
+      "action": "sync",
+      "description": "Grep-based pre-write secret detector called by setup-bootstrap before any Write"
+    },
+    "scripts/count-tokens.sh": {
+      "source": "scripts/count-tokens.sh",
+      "target": "scripts/count-tokens.sh",
+      "action": "sync",
+      "description": "Approximate line and token counter used by setup-bootstrap preview to enforce the CLAUDE.md size ceiling"
+    },
+    "scripts/build-references-index.sh": {
+      "source": "scripts/build-references-index.sh",
+      "target": "scripts/build-references-index.sh",
+      "action": "sync",
+      "description": "Emit .claude/references.index from reference frontmatter; --check mode used by validator"
+    },
+    "scripts/repomap.sh": {
+      "source": "scripts/repomap.sh",
+      "target": "scripts/repomap.sh",
+      "action": "sync",
+      "description": "Deterministic symbol-graph extractor feeding setup-audit; delegates to csharp-lsp MCP / tree-sitter / fallback"
+    },
+    "scripts/repomap-tree-sitter.py": {
+      "source": "scripts/repomap-tree-sitter.py",
+      "target": "scripts/repomap-tree-sitter.py",
+      "action": "sync",
+      "description": "Tree-sitter AST walker with PageRank-ish ranking and binary-search token-budget fit"
+    },
+    "scripts/migrate-reference-frontmatter.py": {
+      "source": "scripts/migrate-reference-frontmatter.py",
+      "target": "scripts/migrate-reference-frontmatter.py",
+      "action": "sync",
+      "description": "One-shot migration script — ensures every reference file has description/globs/alwaysApply frontmatter"
+    },
+    "scripts/run-evals.sh": {
+      "source": "scripts/run-evals.sh",
+      "target": "scripts/run-evals.sh",
+      "action": "sync",
+      "description": "Eval pipeline runner: lists scenarios, supports manual or automated execution (via EVAL_EXECUTOR / EVAL_GRADER env hooks)"
+    },
+    "hooks/verify-behavioral-diff.sh": {
+      "source": "hooks/verify-behavioral-diff.sh",
+      "target": "hooks/verify-behavioral-diff.sh",
+      "action": "sync",
+      "description": "Advisory hook that warns when a recent spec is missing a behavioral_diff field"
+    },
+    "hooks/scope-guard.sh": {
+      "source": "hooks/scope-guard.sh",
+      "target": "hooks/scope-guard.sh",
+      "action": "sync",
+      "description": "PreToolUse hook that warns when editing files not in the active spec's change_manifest — anti-rationalization scope guard"
+    },
+    "hooks/context-budget.sh": {
+      "source": "hooks/context-budget.sh",
+      "target": "hooks/context-budget.sh",
+      "action": "sync",
+      "description": "PostToolUse hook that tracks session activity and warns when context budget is getting heavy"
+    },
+    "hooks/lib/hook-io.sh": {
+      "source": "hooks/lib/hook-io.sh",
+      "target": "hooks/lib/hook-io.sh",
+      "action": "sync",
+      "description": "Shared hook helpers for parsing Claude Code payloads and persisting session-scoped state"
+    },
+    "hooks/lib/shrink-guard.sh": {
+      "source": "hooks/lib/shrink-guard.sh",
+      "target": "hooks/lib/shrink-guard.sh",
+      "action": "sync",
+      "description": "Shrink-guarded write helper — refuses to truncate protected artifacts by >50% bytes or >20% lines (S3.16)"
+    },
+    "hooks/lib/mtkignore.sh": {
+      "source": "hooks/lib/mtkignore.sh",
+      "target": "hooks/lib/mtkignore.sh",
+      "action": "sync",
+      "description": "Loader for .mtkignore patterns used by MTK scans (S1.14)"
+    },
+    "hooks/git-hooks/post-commit-refresh.sh": {
+      "source": "hooks/git-hooks/post-commit-refresh.sh",
+      "target": "hooks/git-hooks/post-commit-refresh.sh",
+      "action": "sync",
+      "description": "Opt-in git post-commit hook that rebuilds derived MTK artifacts when their inputs change"
+    },
+    "scripts/refresh-derived.sh": {
+      "source": "scripts/refresh-derived.sh",
+      "target": "scripts/refresh-derived.sh",
+      "action": "sync",
+      "description": "Single entry point that rebuilds derived MTK artifacts on demand (references, triggers, manifest validation)"
+    },
+    "docs/integrations/mtk-mcp.md": {
+      "source": "docs/integrations/mtk-mcp.md",
+      "target": "docs/integrations/mtk-mcp.md",
+      "action": "sync",
+      "description": "Integration guide for the mtk-context MCP server — tool inventory, bash fallbacks, .mcp.json registration"
+    },
+    ".mtkignore": {
+      "source": ".mtkignore",
+      "target": ".mtkignore",
+      "action": "sync",
+      "description": "Single source of truth for paths excluded from MTK scans (S1.14)"
+    },
+    "mcp/src/tools/state.ts": {
+      "source": "mcp/src/tools/state.ts",
+      "target": "mcp/src/tools/state.ts",
+      "action": "sync",
+      "description": "MCP read-only tools — manifest, analytics, audit, references_index, active_stack"
+    },
+    "hooks/capture-learnings.sh": {
+      "source": "hooks/capture-learnings.sh",
+      "target": "hooks/capture-learnings.sh",
+      "action": "sync",
+      "description": "Stop hook that reminds agent to capture learnings after substantial sessions and suggests CLAUDE.md promotion for repeated patterns"
+    },
+    "hooks/check-prerequisites.sh": {
+      "source": "hooks/check-prerequisites.sh",
+      "target": "hooks/check-prerequisites.sh",
+      "action": "sync",
+      "description": "Checks for recommended development tools per tech stack during setup-bootstrap"
+    },
+    "hooks/session-analytics.sh": {
+      "source": "hooks/session-analytics.sh",
+      "target": "hooks/session-analytics.sh",
+      "action": "sync",
+      "description": "Stop hook that persists session stats to .claude/analytics.json for team adoption tracking"
+    },
+    "scripts/run-benchmarks.sh": {
+      "source": "scripts/run-benchmarks.sh",
+      "target": "scripts/run-benchmarks.sh",
+      "action": "sync",
+      "description": "Deterministic effectiveness benchmarks for linter patterns, security gate, scope guard, and verification hooks"
+    },
+    "scripts/analytics-report.sh": {
+      "source": "scripts/analytics-report.sh",
+      "target": "scripts/analytics-report.sh",
+      "action": "sync",
+      "description": "Prints a formatted summary of MTK usage stats from .claude/analytics.json"
+    },
+    "benchmarks/fixtures/known-bad.diff": {
+      "source": "benchmarks/fixtures/known-bad.diff",
+      "target": "benchmarks/fixtures/known-bad.diff",
+      "action": "sync",
+      "description": "Known-bad code fixture for benchmark testing — contains secrets, SQL injection, disabled tests, float money"
+    },
+    "benchmarks/fixtures/known-good.diff": {
+      "source": "benchmarks/fixtures/known-good.diff",
+      "target": "benchmarks/fixtures/known-good.diff",
+      "action": "sync",
+      "description": "Known-good code fixture for benchmark testing — clean code that should produce zero false positives"
+    },
+    "hooks/rule-trigger.sh": {
+      "source": "hooks/rule-trigger.sh",
+      "target": "hooks/rule-trigger.sh",
+      "action": "sync",
+      "description": "PreToolUse hook that delivers a .claude/rules/ rule at the moment a tool call matches its trigger, with SessionStart(compact) re-arm"
+    },
+    ".claude/references/rule-frontmatter.md": {
+      "source": ".claude/references/rule-frontmatter.md",
+      "target": ".claude/references/rule-frontmatter.md",
+      "action": "sync",
+      "description": "Contract for the trigger/strength frontmatter on rule files that hooks/rule-trigger.sh consumes"
+    },
+    ".claude/rules/triggers.index": {
+      "source": ".claude/rules/triggers.index",
+      "target": ".claude/rules/triggers.index",
+      "action": "sync",
+      "description": "Generated tab-separated rule-trigger index (name, tool, pattern, path, strength, source) read by hooks/rule-trigger.sh"
+    },
+    "benchmarks/README.md": {
+      "source": "benchmarks/README.md",
+      "target": "benchmarks/README.md",
+      "action": "sync",
+      "description": "Benchmark methodology — what the published numbers measure and, explicitly, what they exclude"
+    },
+    "benchmarks/results.json": {
+      "source": "benchmarks/results.json",
+      "target": "benchmarks/results.json",
+      "action": "sync",
+      "description": "Published measured benchmark results (schema mtk.benchmarks.v1) — per-section pass/fail counts, run_complete flag, and declared exclusions"
+    },
+    "scripts/generate-agents-md.sh": {
+      "source": "scripts/generate-agents-md.sh",
+      "target": "scripts/generate-agents-md.sh",
+      "action": "sync",
+      "description": "Generates a portable AGENTS.md for cross-agent compatibility (Cursor, Copilot, Gemini, Codex)"
+    },
+    "scripts/generate-tool-configs.sh": {
+      "source": "scripts/generate-tool-configs.sh",
+      "target": "scripts/generate-tool-configs.sh",
+      "action": "sync",
+      "description": "Generates native config files for non-Claude AI tools (Cursor MDC rules, Copilot instructions, Windsurf, Gemini, Cline)"
+    },
+    "references/dotnet/analyzer-config.md": {
+      "source": ".claude/references/dotnet/analyzer-config.md",
+      "target": ".claude/references/dotnet/analyzer-config.md",
+      "action": "sync",
+      "stack": "dotnet",
+      "description": "Recommended Roslyn analyzer NuGet packages and .editorconfig rules for .NET"
+    },
+    "references/python/analyzer-config.md": {
+      "source": ".claude/references/python/analyzer-config.md",
+      "target": ".claude/references/python/analyzer-config.md",
+      "action": "sync",
+      "stack": "python",
+      "description": "Recommended ruff rules, mypy strict config, and bandit security checks for Python"
+    },
+    "references/typescript/analyzer-config.md": {
+      "source": ".claude/references/typescript/analyzer-config.md",
+      "target": ".claude/references/typescript/analyzer-config.md",
+      "action": "sync",
+      "stack": "typescript",
+      "description": "Recommended tsconfig strict settings and biome lint rules for TypeScript"
+    },
+    "hooks/parse-build-diagnostics.sh": {
+      "source": "hooks/parse-build-diagnostics.sh",
+      "target": "hooks/parse-build-diagnostics.sh",
+      "action": "sync",
+      "description": "Parses build tool diagnostics (dotnet build, ruff, tsc, biome) into review-finding-schema JSON with source:analyzer"
+    },
+    "hooks/analyzer-severity/dotnet.txt": {
+      "source": "hooks/analyzer-severity/dotnet.txt",
+      "target": "hooks/analyzer-severity/dotnet.txt",
+      "action": "sync",
+      "stack": "dotnet",
+      "description": ".NET Roslyn analyzer rule-to-severity mappings (EF1001→critical, CA2007→warning, etc.)"
+    },
+    "hooks/analyzer-severity/python.txt": {
+      "source": "hooks/analyzer-severity/python.txt",
+      "target": "hooks/analyzer-severity/python.txt",
+      "action": "sync",
+      "stack": "python",
+      "description": "Python ruff/bandit rule-to-severity mappings (S101→critical, B006→warning, etc.)"
+    },
+    "hooks/analyzer-severity/typescript.txt": {
+      "source": "hooks/analyzer-severity/typescript.txt",
+      "target": "hooks/analyzer-severity/typescript.txt",
+      "action": "sync",
+      "stack": "typescript",
+      "description": "TypeScript tsc/biome rule-to-severity mappings"
+    },
+    "hooks/merge-settings.sh": {
+      "source": "hooks/merge-settings.sh",
+      "target": "hooks/merge-settings.sh",
+      "action": "sync",
+      "description": "Merges two settings.json files by unioning arrays (allowedTools, deny, hooks) without clobbering"
+    },
+    "CHANGELOG.md": {
+      "source": "CHANGELOG.md",
+      "target": "CHANGELOG.md",
+      "action": "sync",
+      "description": "Keep-a-changelog format documenting MTK version history and upgrade notes"
+    },
+    "checksums.sha256": {
+      "source": "checksums.sha256",
+      "target": "checksums.sha256",
+      "action": "sync",
+      "description": "Release checksum manifest generated by scripts/generate-checksums.sh — verified by mtk-doctor.sh so installs can prove their bytes match the published release"
+    },
+    ".mcp.json": {
+      "source": ".mcp.json",
+      "target": ".mcp.json",
+      "action": "sync",
+      "description": "MCP server declaration for mtk-context (reference resolution, solution structure)"
+    },
+    "mcp/package.json": {
+      "source": "mcp/package.json",
+      "target": "mcp/package.json",
+      "action": "sync",
+      "description": "MCP server package manifest — dependencies and build script for mtk-context"
+    },
+    "mcp/package-lock.json": {
+      "source": "mcp/package-lock.json",
+      "target": "mcp/package-lock.json",
+      "action": "sync",
+      "description": "Pinned dependency lockfile for the MCP server — consumed by `npm ci` in scripts/build-mcp.sh for reproducible, transitive-pinned installs"
+    },
+    "mcp/tsconfig.json": {
+      "source": "mcp/tsconfig.json",
+      "target": "mcp/tsconfig.json",
+      "action": "sync",
+      "description": "TypeScript config for MCP server compilation"
+    },
+    "mcp/build.mjs": {
+      "source": "mcp/build.mjs",
+      "target": "mcp/build.mjs",
+      "action": "sync",
+      "description": "Cross-platform esbuild runner — invokes esbuild's JS API so the shebang banner passes through cmd.exe, bash, and zsh without shell-quoting pitfalls"
+    },
+    "mcp/src/index.ts": {
+      "source": "mcp/src/index.ts",
+      "target": "mcp/src/index.ts",
+      "action": "sync",
+      "description": "MCP server entry point — registers tools and starts stdio transport"
+    },
+    "mcp/src/tools/resolve-references.ts": {
+      "source": "mcp/src/tools/resolve-references.ts",
+      "target": "mcp/src/tools/resolve-references.ts",
+      "action": "sync",
+      "description": "MCP tool — matches changed files against manifest globs to resolve relevant reference docs"
+    },
+    "mcp/src/tools/solution-structure.ts": {
+      "source": "mcp/src/tools/solution-structure.ts",
+      "target": "mcp/src/tools/solution-structure.ts",
+      "action": "sync",
+      "description": "MCP tool — parses .sln/csproj/pyproject.toml/package.json into unified project structure"
+    },
+    "scripts/build-mcp.sh": {
+      "source": "scripts/build-mcp.sh",
+      "target": "scripts/build-mcp.sh",
+      "action": "sync",
+      "description": "Build script for the MCP server — runs esbuild to produce dist/mtk-mcp-server.cjs"
+    },
+    "dist/mtk-mcp-server.cjs": {
+      "source": "dist/mtk-mcp-server.cjs",
+      "target": "dist/mtk-mcp-server.cjs",
+      "action": "sync",
+      "description": "Prebuilt, tracked MCP server bundle (S3.12) — the only runtime artifact; ships so plugin installs never run npm at runtime"
+    },
+    "hooks/ci-status.sh": {
+      "source": "hooks/ci-status.sh",
+      "target": "hooks/ci-status.sh",
+      "action": "sync",
+      "description": "Bash helper wrapping gh CLI for CI status — outputs structured JSON for review skills"
+    },
+    "hooks/api-compat-check.sh": {
+      "source": "hooks/api-compat-check.sh",
+      "target": "hooks/api-compat-check.sh",
+      "action": "sync",
+      "description": "API backward compatibility checker — detects removed routes, changed DTOs, removed public properties"
+    },
+    "skills/mtk/SKILL.md": {
+      "source": ".claude/skills/mtk/SKILL.md",
+      "target": ".claude/skills/mtk/SKILL.md",
+      "action": "sync",
+      "description": "Unified entry point — routes natural language to the right MTK workflow skill (fix, implement, review, status)"
+    },
+    "skills/mtk-setup/SKILL.md": {
+      "source": ".claude/skills/mtk-setup/SKILL.md",
+      "target": ".claude/skills/mtk-setup/SKILL.md",
+      "action": "sync",
+      "description": "Unified setup entry point — dispatches to bootstrap (first-time) or audit (re-scan) workflow skills"
+    },
+    "skills/context-report/SKILL.md": {
+      "source": ".claude/skills/context-report/SKILL.md",
+      "target": ".claude/skills/context-report/SKILL.md",
+      "action": "sync",
+      "description": "Diagnostic snapshot of active MTK configuration — tech stack, linter packs, domains, hooks, references"
+    },
+    "skills/toolkit-health/SKILL.md": {
+      "source": ".claude/skills/toolkit-health/SKILL.md",
+      "target": ".claude/skills/toolkit-health/SKILL.md",
+      "action": "sync",
+      "description": "Historical usage-pulse report from .claude/analytics.json with anomaly flags and suggested actions"
+    },
+    "docs/parallelism-patterns.md": {
+      "source": "docs/parallelism-patterns.md",
+      "target": "docs/parallelism-patterns.md",
+      "action": "sync",
+      "description": "Reference for parallel tool-call patterns (ref loading, reviewer fan-out, deferred-tool batch) used by entry skills"
+    },
+    "scripts/ci-lint.sh": {
+      "source": "scripts/ci-lint.sh",
+      "target": "scripts/ci-lint.sh",
+      "action": "sync",
+      "description": "CI wrapper for deterministic linter — emits GitHub Actions annotations and step summary"
+    },
+    "templates/ci/pr-lint.yml": {
+      "source": "templates/ci/pr-lint.yml",
+      "target": "templates/ci/pr-lint.yml",
+      "action": "sync",
+      "description": "GitHub Actions template — deterministic lint on every PR (no API keys needed)"
+    },
+    "templates/ci/pr-review.yml": {
+      "source": "templates/ci/pr-review.yml",
+      "target": "templates/ci/pr-review.yml",
+      "action": "sync",
+      "description": "GitHub Actions template — deterministic lint + Claude Code AI review on PRs (requires ANTHROPIC_API_KEY)"
+    },
+    "docs/assets/foundations.png": {
+      "source": "docs/assets/foundations.png",
+      "target": "docs/assets/foundations.png",
+      "action": "sync",
+      "description": "Foundations diagram used in the README Architecture section (the site copy lives on gh-pages)"
+    },
+    "docs/assets/pipeline-diagram.png": {
+      "source": "docs/assets/pipeline-diagram.png",
+      "target": "docs/assets/pipeline-diagram.png",
+      "action": "sync",
+      "description": "Pipeline hero diagram used at the top of the README (the site copy lives on gh-pages)"
+    },
+    "hooks/lib/skill-queue.sh": {
+      "source": "hooks/lib/skill-queue.sh",
+      "target": "hooks/lib/skill-queue.sh",
+      "action": "sync",
+      "description": "Tier-2 skill-invocation queue primitive — atomic queue_skill writer, drain helpers, kill-switch, analytics counters"
+    },
+    "hooks/lib/prompt-nudges.sh": {
+      "source": "hooks/lib/prompt-nudges.sh",
+      "target": "hooks/lib/prompt-nudges.sh",
+      "action": "sync",
+      "description": "Tier-1 prompt nudges sourced by the dispatcher — correction-keyword detection with agreement filter"
+    },
+    "hooks/userprompt-dispatch.sh": {
+      "source": "hooks/userprompt-dispatch.sh",
+      "target": "hooks/userprompt-dispatch.sh",
+      "action": "sync",
+      "description": "UserPromptSubmit hook — merges tier-1 nudges and tier-2 queue drain into one additionalContext payload"
+    },
+    "hooks/spec-approval-trigger.sh": {
+      "source": "hooks/spec-approval-trigger.sh",
+      "target": "hooks/spec-approval-trigger.sh",
+      "action": "sync",
+      "description": "PostToolUse hook (Edit|Write) that queues planning-and-task-breakdown when a spec transitions to status: approved"
+    },
+    ".claude/toolsets/read-only.yaml": {
+      "source": ".claude/toolsets/read-only.yaml",
+      "target": ".claude/toolsets/read-only.yaml",
+      "action": "sync",
+      "description": "Read-only toolset — inspection-only tool surface for review, audit, and drift-detection skills (S2.19)"
+    },
+    ".claude/toolsets/git-safe.yaml": {
+      "source": ".claude/toolsets/git-safe.yaml",
+      "target": ".claude/toolsets/git-safe.yaml",
+      "action": "sync",
+      "description": "Git-safe toolset — read-only plus non-destructive staging (no push/reset/branch-delete)"
+    },
+    ".claude/toolsets/code-edit.yaml": {
+      "source": ".claude/toolsets/code-edit.yaml",
+      "target": ".claude/toolsets/code-edit.yaml",
+      "action": "sync",
+      "description": "Standard implementation toolset — read/write/edit code, run build and test commands"
+    },
+    ".claude/toolsets/README.md": {
+      "source": ".claude/toolsets/README.md",
+      "target": ".claude/toolsets/README.md",
+      "action": "sync",
+      "description": "Toolset registry docs — schema, usage in skill frontmatter, and built-in toolset table (S2.19–21)"
+    },
+    "scripts/resolve-toolsets.sh": {
+      "source": "scripts/resolve-toolsets.sh",
+      "target": "scripts/resolve-toolsets.sh",
+      "action": "sync",
+      "description": "Resolves named toolsets into a flat allowed-tools list (bash 3.2 compatible, no jq)"
+    },
+    "scripts/build-triggers-index.sh": {
+      "source": "scripts/build-triggers-index.sh",
+      "target": "scripts/build-triggers-index.sh",
+      "action": "sync",
+      "description": "Scans skill frontmatter `triggers:` and emits .claude/triggers.index (S2.22–24)"
+    },
+    "hooks/lib/trigger-hints.sh": {
+      "source": "hooks/lib/trigger-hints.sh",
+      "target": "hooks/lib/trigger-hints.sh",
+      "action": "sync",
+      "description": "Keyword-triggered skill hint emitter — sourced by userprompt-dispatch.sh (OpenHands microagents pattern)"
+    },
+    "hooks/lib/model-pricing.tsv": {
+      "source": "hooks/lib/model-pricing.tsv",
+      "target": "hooks/lib/model-pricing.tsv",
+      "action": "sync",
+      "description": "Per-model token price table (USD per million tokens by token class, with an as-of date) that scripts/session-cost.sh uses to estimate API-equivalent session cost"
+    },
+    ".claude/triggers.index": {
+      "source": ".claude/triggers.index",
+      "target": ".claude/triggers.index",
+      "action": "sync",
+      "description": "Generated keyword → skill index; rebuild via scripts/build-triggers-index.sh"
+    },
+    ".claude/schemas/handoff.schema.json": {
+      "source": ".claude/schemas/handoff.schema.json",
+      "target": ".claude/schemas/handoff.schema.json",
+      "action": "sync",
+      "description": "JSON schema for the typed handoff artifact shared across spec/plan/implement phases (MetaGPT pattern)"
+    },
+    "scripts/validate-handoff.sh": {
+      "source": "scripts/validate-handoff.sh",
+      "target": "scripts/validate-handoff.sh",
+      "action": "sync",
+      "description": "Deterministic file-level and security-impact drift check against a handoff JSON artifact"
+    },
+    "skills/workflow-artifacts/SKILL.md": {
+      "source": ".claude/skills/workflow-artifacts/SKILL.md",
+      "target": ".claude/skills/workflow-artifacts/SKILL.md",
+      "action": "sync",
+      "description": "Create, update, and read durable workflow state under .mtk/workflows/ so orchestration survives compaction and restart"
+    },
+    "references/workflow-artifact-schema.md": {
+      "source": ".claude/references/workflow-artifact-schema.md",
+      "target": ".claude/references/workflow-artifact-schema.md",
+      "action": "sync",
+      "description": "Schema and lifecycle for durable workflow artifacts under .mtk/workflows/"
+    },
+    "references/orchestration-gates.md": {
+      "source": ".claude/references/orchestration-gates.md",
+      "target": ".claude/references/orchestration-gates.md",
+      "action": "sync",
+      "description": "Five named fail-closed gates the implement workflow records on the workflow artifact before advancing"
+    },
+    "references/artifact-publishing.md": {
+      "source": ".claude/references/artifact-publishing.md",
+      "target": ".claude/references/artifact-publishing.md",
+      "action": "sync",
+      "description": "Additive, capability-gated procedure for publishing workflow outputs (spec/plan/handoff/health) as a single in-place-updated Claude Artifact"
+    },
+    "references/evidence-capture.md": {
+      "source": ".claude/references/evidence-capture.md",
+      "target": ".claude/references/evidence-capture.md",
+      "action": "sync",
+      "description": "Capture procedure for the browser evidence channel — persist Playwright MCP screenshot/console/network artifacts, with an explicit degraded fallback"
+    },
+    "scripts/workflow-artifact.sh": {
+      "source": "scripts/workflow-artifact.sh",
+      "target": "scripts/workflow-artifact.sh",
+      "action": "sync",
+      "description": "Helper for init/event/set/read/list/gate/seal operations against .mtk/workflows/{uuid}.json; batch applies several ops in one invocation and event --ts replays runtime-captured timestamps"
+    },
+    "scripts/workflow-dashboard.sh": {
+      "source": "scripts/workflow-dashboard.sh",
+      "target": "scripts/workflow-dashboard.sh",
+      "action": "sync",
+      "description": "Render a read-only HTML dashboard from .mtk/workflows/ artifacts; --watch serves it over HTTP"
+    },
+    "scripts/workflow-artifact-md.sh": {
+      "source": "scripts/workflow-artifact-md.sh",
+      "target": "scripts/workflow-artifact-md.sh",
+      "action": "sync",
+      "description": "Assemble a single markdown rollup of a workflow's on-disk outputs (spec/plan/handoff/health) for publishing as a Claude Artifact"
+    },
+    "scripts/learnings.sh": {
+      "source": "scripts/learnings.sh",
+      "target": "scripts/learnings.sh",
+      "action": "sync",
+      "description": "Manage structured learnings (.mtk/learnings.jsonl) — add | query | regen-markdown | migrate. Drives 5-layer retrieval at start of spec/fix."
+    },
+    "scripts/lint-ears.sh": {
+      "source": "scripts/lint-ears.sh",
+      "target": "scripts/lint-ears.sh",
+      "action": "sync",
+      "description": "Structural EARS + ANT lint over the Requirements section of spec markdown"
+    },
+    "agents/plan-gap-reviewer.md": {
+      "source": ".claude/agents/plan-gap-reviewer.md",
+      "target": ".claude/agents/plan-gap-reviewer.md",
+      "action": "sync",
+      "description": "Anti-anchored fresh review of a saved plan against the current codebase — does not load lessons or prior reviewer output"
+    },
+    "scripts/lint-skill-bash.sh": {
+      "source": "scripts/lint-skill-bash.sh",
+      "target": "scripts/lint-skill-bash.sh",
+      "action": "sync",
+      "description": "Deterministic lint for fenced bash blocks inside skills — flags grep brace-glob includes, PATH clobbering, and ungrouped find -o expressions"
+    },
+    "scripts/poison-lint.sh": {
+      "source": "scripts/poison-lint.sh",
+      "target": "scripts/poison-lint.sh",
+      "action": "sync",
+      "description": "Poison-floor supply-chain lint — scans shipped skills/agents/hook config for prompt-injection, credential-exfil, and hidden-Unicode red flags (assay-borrow)"
+    },
+    "scripts/run-fixtures.sh": {
+      "source": "scripts/run-fixtures.sh",
+      "target": "scripts/run-fixtures.sh",
+      "action": "sync",
+      "description": "Validates router-decision fixtures under tests/fixtures/ — structural check, asserts gate names and action consistency without running Claude"
+    },
+    "scripts/mtk-compress.sh": {
+      "source": "scripts/mtk-compress.sh",
+      "target": "scripts/mtk-compress.sh",
+      "action": "sync",
+      "description": "Pipe-friendly token compressor for tool output (json/logs/tests/html/auto modes) with session analytics"
+    },
+    "scripts/mtk-savings.sh": {
+      "source": "scripts/mtk-savings.sh",
+      "target": "scripts/mtk-savings.sh",
+      "action": "sync",
+      "description": "Reports MTK's context-token footprint and savings — always-on floor, deferred references, review offload, and on-disk output-compression totals"
+    },
+    "scripts/mtk-verify-run.sh": {
+      "source": "scripts/mtk-verify-run.sh",
+      "target": "scripts/mtk-verify-run.sh",
+      "action": "sync",
+      "description": "Verification evidence wrapper — full output to a citable .mtk/evidence log, exit code + bounded tail in context, exit code preserved"
+    },
+    "scripts/lesson-anchors.sh": {
+      "source": "scripts/lesson-anchors.sh",
+      "target": "scripts/lesson-anchors.sh",
+      "action": "sync",
+      "description": "Deterministic stale-anchor check for lesson stores — verifies cited paths/symbols exist, suggests renames, skips external examples, WARN-only"
+    },
+    "scripts/lesson-score.sh": {
+      "source": "scripts/lesson-score.sh",
+      "target": "scripts/lesson-score.sh",
+      "action": "sync",
+      "description": "Suggest-only staleness and confidence score per lesson in .mtk/learnings.jsonl from recurrence, reconfirmation, recall history and stale anchors, used by lesson-refresh to order its triage"
+    },
+    "scripts/session-cost.sh": {
+      "source": "scripts/session-cost.sh",
+      "target": "scripts/session-cost.sh",
+      "action": "sync",
+      "description": "Records per-session token deltas with API-equivalent cost estimates from Claude Code transcripts (record) and sums them over a time window for the implement run receipt (window)"
+    },
+    "scripts/rule-enforcement-map.sh": {
+      "source": "scripts/rule-enforcement-map.sh",
+      "target": "scripts/rule-enforcement-map.sh",
+      "action": "sync",
+      "description": "Rule enforcement map — classifies every numbered rule WIRED/BROKEN/PROSE by whether a live enforcer backs it, plus undocumented-hook reverse check"
+    },
+    "scripts/growth-gate.sh": {
+      "source": "scripts/growth-gate.sh",
+      "target": "scripts/growth-gate.sh",
+      "action": "sync",
+      "description": "Relative-growth gate for machine-proposed rewrites — refuses a proposal growing the artifact past --max-pct so always-loaded context stays flat"
+    },
+    "hooks/compress-monitor.sh": {
+      "source": "hooks/compress-monitor.sh",
+      "target": "hooks/compress-monitor.sh",
+      "action": "sync",
+      "description": "PostToolUse hook that flags large Bash outputs that did not go through mtk-compress.sh"
+    },
+    "references/output-compression.md": {
+      "source": ".claude/references/output-compression.md",
+      "target": ".claude/references/output-compression.md",
+      "action": "sync",
+      "description": "When and how to compress long tool output via scripts/mtk-compress.sh"
+    },
+    "references/verification-evidence-contract.md": {
+      "source": ".claude/references/verification-evidence-contract.md",
+      "target": ".claude/references/verification-evidence-contract.md",
+      "action": "sync",
+      "description": "Verification evidence contract — full output persisted to a citable disk log, exit code + bounded tail in context, log path cited in completion reports"
+    },
+    "references/stub-detection.md": {
+      "source": ".claude/references/stub-detection.md",
+      "target": ".claude/references/stub-detection.md",
+      "action": "sync",
+      "description": "Grep patterns to catch stub implementations, placeholder code, mock data, and unwired components in code review"
+    },
+    "skills/repo-health/SKILL.md": {
+      "source": ".claude/skills/repo-health/SKILL.md",
+      "target": ".claude/skills/repo-health/SKILL.md",
+      "action": "sync",
+      "description": "Periodic AI-readiness report combining the 12-asset scorecard and PR review mining"
+    },
+    "skills/pr-review-mining/SKILL.md": {
+      "source": ".claude/skills/pr-review-mining/SKILL.md",
+      "target": ".claude/skills/pr-review-mining/SKILL.md",
+      "action": "sync",
+      "description": "Mine repeated reviewer-feedback phrases from recent merged PRs and surface them as suggest-only [MINED:feedback] candidates"
+    },
+    "scripts/pr-review-mine.sh": {
+      "source": "scripts/pr-review-mine.sh",
+      "target": "scripts/pr-review-mine.sh",
+      "action": "sync",
+      "description": "Fetch recent merged PR review threads via gh and cluster repeated reviewer-feedback phrases"
+    },
+    "scripts/repo-health-score.sh": {
+      "source": "scripts/repo-health-score.sh",
+      "target": "scripts/repo-health-score.sh",
+      "action": "sync",
+      "description": "Score a repo against 12 named AI-readiness assets across 3 buckets and emit a medal"
+    },
+    "scripts/monorepo-ripple.sh": {
+      "source": "scripts/monorepo-ripple.sh",
+      "target": "scripts/monorepo-ripple.sh",
+      "action": "sync",
+      "description": "Detect monorepo type and list cross-package ripples for input files; no-op on non-monorepos"
+    },
+    "references/repo-health-assets.md": {
+      "source": ".claude/references/repo-health-assets.md",
+      "target": ".claude/references/repo-health-assets.md",
+      "action": "sync",
+      "description": "Canonical 12-asset checklist with pass/partial/fail rubric and medal thresholds for the repo-health scorecard"
+    },
+    "references/pr-mining-patterns.md": {
+      "source": ".claude/references/pr-mining-patterns.md",
+      "target": ".claude/references/pr-mining-patterns.md",
+      "action": "sync",
+      "description": "Heuristics, denylist, and output schema for mining recurring reviewer-feedback phrases from PRs"
+    },
+    "scripts/verify-claims.sh": {
+      "source": "scripts/verify-claims.sh",
+      "target": "scripts/verify-claims.sh",
+      "action": "sync",
+      "description": "Grep-verify cited evidence anchors in generated docs; downgrade zero-hit tags in place; emit weak-claims report"
+    },
+    "scripts/verify-references.sh": {
+      "source": "scripts/verify-references.sh",
+      "target": "scripts/verify-references.sh",
+      "action": "sync",
+      "description": "Check directories, .csproj projects, and .sln members referenced in generated docs exist on disk; print STALE advisories (exit 3 if any)"
+    },
+    "scripts/audit-drift-check.sh": {
+      "source": "scripts/audit-drift-check.sh",
+      "target": "scripts/audit-drift-check.sh",
+      "action": "sync",
+      "description": "Compare a stamped audit doc against current HEAD; flag cited paths that have changed since the stamped SHA"
+    },
+    "references/audit-grounding.md": {
+      "source": ".claude/references/audit-grounding.md",
+      "target": ".claude/references/audit-grounding.md",
+      "action": "sync",
+      "description": "Rules generators must follow when emitting CLAUDE.md and architecture-principles.md — rule tags, transient ban, partial-list policy, terminology denylist, SHA stamp"
+    },
+    "references/monorepo-bootstrap.md": {
+      "source": ".claude/references/monorepo-bootstrap.md",
+      "target": ".claude/references/monorepo-bootstrap.md",
+      "action": "sync",
+      "description": "Per-package CLAUDE.md template, generation rules, and root Monorepo Layout block — read on-demand by setup-bootstrap STEP 4.5"
+    },
+    "references/bootstrap-customization.md": {
+      "source": ".claude/references/bootstrap-customization.md",
+      "target": ".claude/references/bootstrap-customization.md",
+      "action": "sync",
+      "description": "Per-stack reference-file customization tables for setup-bootstrap — generic placeholder to concrete replacement, per category"
+    },
+    "references/root-agents-md-template.md": {
+      "source": ".claude/references/root-agents-md-template.md",
+      "target": ".claude/references/root-agents-md-template.md",
+      "action": "sync",
+      "applyTo": [
+        ".claude/skills/setup-bootstrap/**"
+      ],
+      "description": "Root AGENTS.md generation template emitted by setup-bootstrap STEP 3 — canonical-constitution skeleton plus the companion CLAUDE.md shim template that imports it"
+    },
+    "references/config-ingestion.md": {
+      "source": ".claude/references/config-ingestion.md",
+      "target": ".claude/references/config-ingestion.md",
+      "action": "sync",
+      "description": "Detection list, evidence-anchor convention, and dedup/conflict rules for ingesting existing AI-assistant configs — read on-demand by setup-bootstrap STEP 2.7"
+    },
+    "references/command-verification.md": {
+      "source": ".claude/references/command-verification.md",
+      "target": ".claude/references/command-verification.md",
+      "action": "sync",
+      "description": "Command verification (F7) for setup-bootstrap — assemble build/test/format commands, run verify-commands.sh, apply verified/failed/skipped/unavailable outcomes"
+    },
+    "references/preview-gate.md": {
+      "source": ".claude/references/preview-gate.md",
+      "target": ".claude/references/preview-gate.md",
+      "action": "sync",
+      "description": "Preview Gate for setup-bootstrap --preview — plan-summary table, ASCII example, and the AskUserQuestion confirmation flow"
+    },
+    "references/subagent-dynamic-workflow.md": {
+      "source": ".claude/references/subagent-dynamic-workflow.md",
+      "target": ".claude/references/subagent-dynamic-workflow.md",
+      "action": "sync",
+      "applyTo": [
+        ".claude/skills/subagent-implementation/**"
+      ],
+      "description": "Dynamic-workflow dispatch for subagent-implementation — decision graph and step-by-step runtime path, read when the Workflow tool is available"
+    },
+    "references/subagent-implementer-prompt.md": {
+      "source": ".claude/references/subagent-implementer-prompt.md",
+      "target": ".claude/references/subagent-implementer-prompt.md",
+      "action": "sync",
+      "applyTo": [
+        ".claude/skills/subagent-implementation/**"
+      ],
+      "description": "Implementer prompt template (TASK/DELIVERABLE/SCOPE/VERIFY contract) plus the canonical batch-result JSON schema for subagent-implementation — read before building each batch's context bundle"
+    },
+    "references/audit-rerun-migration.md": {
+      "source": ".claude/references/audit-rerun-migration.md",
+      "target": ".claude/references/audit-rerun-migration.md",
+      "action": "sync",
+      "applyTo": [
+        ".claude/skills/setup-audit/**"
+      ],
+      "description": "Migration Path (pre-v7 to v7+), Re-Run Merge Logic, and the generated-doc stamp-block format with re-run-only delta fields — read on-demand by setup-audit at STEP -1 (migration/re-run) and STEP 3.7 (stamp)"
+    },
+    "references/audit-convention-scans.md": {
+      "source": ".claude/references/audit-convention-scans.md",
+      "target": ".claude/references/audit-convention-scans.md",
+      "action": "sync",
+      "applyTo": [
+        ".claude/skills/setup-audit/**"
+      ],
+      "description": "The five STEP 2.5 convention-extraction scan blocks, the conventions.md output template, and the STEP 2.6 detected-tools.json schema — read on-demand by setup-audit at STEP 2.5 and STEP 2.6"
+    },
+    "references/audit-output-templates.md": {
+      "source": ".claude/references/audit-output-templates.md",
+      "target": ".claude/references/audit-output-templates.md",
+      "action": "sync",
+      "applyTo": [
+        ".claude/skills/setup-audit/**"
+      ],
+      "description": "Verbatim setup-audit output templates — architecture-principles.md skeleton, confidence line-format example and legend, ambiguities.json schema, Provenance section, and STEP 4 results block; read once at STEP 3 start"
+    },
+    "references/audit-merge-mode.md": {
+      "source": ".claude/references/audit-merge-mode.md",
+      "target": ".claude/references/audit-merge-mode.md",
+      "action": "sync",
+      "applyTo": [
+        ".claude/skills/setup-audit/**"
+      ],
+      "description": "The entire setup-audit MERGE MODE (--merge) branch — STEP 0-3 flow, Confidence Tag Merge Rules, unified-document template, and read-only invariants; read only when invoked with --merge"
+    },
+    "references/bootstrap-interview.md": {
+      "source": ".claude/references/bootstrap-interview.md",
+      "target": ".claude/references/bootstrap-interview.md",
+      "action": "sync",
+      "applyTo": [
+        ".claude/skills/setup-bootstrap/**"
+      ],
+      "description": "STEP 2.5 post-scan interview for setup-bootstrap — question set, adaptive-ambiguity protocol, answer routing, and the setup-answers.json schema; read on-demand at STEP 2.5"
+    },
+    "references/bootstrap-supporting-files.md": {
+      "source": ".claude/references/bootstrap-supporting-files.md",
+      "target": ".claude/references/bootstrap-supporting-files.md",
+      "action": "sync",
+      "applyTo": [
+        ".claude/skills/setup-bootstrap/**"
+      ],
+      "description": "Once-consulted setup-bootstrap supporting-file procedures (git hook, CI gate, skills/agents, review list, tasks dir, ignore files, analyzer, companion plugin, tooling, version stamp, cross-agent) plus STEP 3.6 stack-reference pruning and the typescript package-manager note; read on-demand at STEP 4, STEP 3.6, and STEP 0"
+    },
+    "references/bootstrap-template-cache.md": {
+      "source": ".claude/references/bootstrap-template-cache.md",
+      "target": ".claude/references/bootstrap-template-cache.md",
+      "action": "sync",
+      "applyTo": [
+        ".claude/skills/setup-bootstrap/**"
+      ],
+      "description": "STEP 4.8 template-cache snapshot spec for setup-bootstrap — files to snapshot, cache layout, copy implementation, and retention; read on-demand at STEP 4.8"
+    },
+    "references/bootstrap-report.md": {
+      "source": ".claude/references/bootstrap-report.md",
+      "target": ".claude/references/bootstrap-report.md",
+      "action": "sync",
+      "applyTo": [
+        ".claude/skills/setup-bootstrap/**"
+      ],
+      "description": "The STEP 5 verbatim MTK INIT COMPLETE report template for setup-bootstrap that ~15 earlier steps route their report lines into and verify-claims.sh consumes; read on-demand at STEP 5"
+    },
+    "scripts/spec-archive.sh": {
+      "source": "scripts/spec-archive.sh",
+      "target": "scripts/spec-archive.sh",
+      "action": "sync",
+      "description": "Sync a feature spec delta back into its area baseline and append an audit record (delta-spec model); idempotent, refuses non-PASS drift"
+    },
+    "scripts/constitution-digest.sh": {
+      "source": "scripts/constitution-digest.sh",
+      "target": "scripts/constitution-digest.sh",
+      "action": "sync",
+      "description": "Emit the project constitution (Critical Rules + tagged principles) as a compact citable list for spec/plan Constitution Checks"
+    },
+    "scripts/host-load-probe.sh": {
+      "source": "scripts/host-load-probe.sh",
+      "target": "scripts/host-load-probe.sh",
+      "action": "sync",
+      "description": "One-line host-load verdict (1-minute load per core vs MTK_HOST_LOAD_MAX) so implement pre-flight and killed-mid-batch recovery route to inline-MAX instead of dispatching implementers onto an overloaded host"
+    },
+    "scripts/build-rule-index.sh": {
+      "source": "scripts/build-rule-index.sh",
+      "target": "scripts/build-rule-index.sh",
+      "action": "sync",
+      "description": "Generate the token-budgeted rule wake-up index (.claude/rules/INDEX.md) from rule axes; --check fails on staleness"
+    },
+    "scripts/skill-eval/coverage.sh": {
+      "source": "scripts/skill-eval/coverage.sh",
+      "target": "scripts/skill-eval/coverage.sh",
+      "action": "sync",
+      "description": "Behavioral-eval coverage and description-overlap sprawl report across all skills; advisory, --json for CI"
+    },
+    "references/delta-spec-model.md": {
+      "source": ".claude/references/delta-spec-model.md",
+      "target": ".claude/references/delta-spec-model.md",
+      "action": "sync",
+      "description": "Delta-spec model: feature specs as deltas against a living per-area baseline, synced back on archive into an auditable trail"
+    },
+    "templates/workflows/subagent-implementation.workflow.js": {
+      "source": "templates/workflows/subagent-implementation.workflow.js",
+      "target": "templates/workflows/subagent-implementation.workflow.js",
+      "action": "sync",
+      "description": "Reference dynamic-workflow script for the subagent-implementation per-batch loop"
+    },
+    "agents/context-miner.md": {
+      "source": ".claude/agents/context-miner.md",
+      "target": ".claude/agents/context-miner.md",
+      "action": "sync",
+      "description": "Read-only review lane that mines organizational memory (git history, PR/issue threads, prior lessons) for context the diff missed"
+    },
+    "references/ai-failure-modes.md": {
+      "source": ".claude/references/ai-failure-modes.md",
+      "target": ".claude/references/ai-failure-modes.md",
+      "action": "sync",
+      "description": "Catalogue of researched LLM-specific failure modes (F1–F14) with citations and bad/good examples; loaded by code-review-and-quality and silent-failure-hunter"
+    },
+    "references/divergence-frames.md": {
+      "source": ".claude/references/divergence-frames.md",
+      "target": ".claude/references/divergence-frames.md",
+      "action": "sync",
+      "description": "Cognitive frames (incl. fintech: regulator, fraudster, auditor) for brainstorming divergence mode"
+    },
+    "references/lesson-mining-rubric.md": {
+      "source": ".claude/references/lesson-mining-rubric.md",
+      "target": ".claude/references/lesson-mining-rubric.md",
+      "action": "sync",
+      "description": "Reject-by-default rubric for lesson-mining — admit/reject rules (including R7, already-in-native-memory) and transcripts-are-untrusted note"
+    },
+    "skills/lesson-mining/SKILL.md": {
+      "source": ".claude/skills/lesson-mining/SKILL.md",
+      "target": ".claude/skills/lesson-mining/SKILL.md",
+      "action": "sync",
+      "description": "Mine past session transcripts for durable lesson/memory candidates, suggest-only with a reject-by-default rubric"
+    },
+    "skills/lesson-refresh/SKILL.md": {
+      "source": ".claude/skills/lesson-refresh/SKILL.md",
+      "target": ".claude/skills/lesson-refresh/SKILL.md",
+      "action": "sync",
+      "description": "Lesson lifecycle audit — stale-anchor pre-pass then Keep/Update/Consolidate/Retire triage, suggest-only, retirement always human-ruled"
+    },
+    "hooks/read-guard.sh": {
+      "source": "hooks/read-guard.sh",
+      "target": "hooks/read-guard.sh",
+      "action": "sync",
+      "description": "PreToolUse Read/Grep/Glob gate — blocks secret-file reads (exit 2), advises on noise-dir reads; MTK_READ_GUARD=advisory rollout knob"
+    },
+    "hooks/workflow-continuation.sh": {
+      "source": "hooks/workflow-continuation.sh",
+      "target": "hooks/workflow-continuation.sh",
+      "action": "sync",
+      "description": "Stop-hook advisory nudge when an active workflow has unfinished batches; never blocks, never auto-continues; tier-2 gated"
+    },
+    "lessons/contributed/README.md": {
+      "source": "lessons/contributed/README.md",
+      "target": "lessons/contributed/README.md",
+      "action": "sync",
+      "description": "Intake/curation contract for team-wide contributed lessons (validated by validate-lesson-pr.yml, human-merged)"
+    },
+    "skills/setup-refresh/SKILL.md": {
+      "source": ".claude/skills/setup-refresh/SKILL.md",
+      "target": ".claude/skills/setup-refresh/SKILL.md",
+      "action": "sync",
+      "description": "Drift-scoped refresh of all generated setup artifacts — staleness plan, scoped regeneration, diff proposals for engineer-edited files"
+    },
+    "references/regen-diff-contract.md": {
+      "source": ".claude/references/regen-diff-contract.md",
+      "target": ".claude/references/regen-diff-contract.md",
+      "action": "sync",
+      "description": "Normative contract for re-running generation over engineer-edited files: ancestor/current/fresh classification, per-hunk diff proposals, cache rules"
+    },
+    "scripts/setup-refresh-plan.sh": {
+      "source": "scripts/setup-refresh-plan.sh",
+      "target": "scripts/setup-refresh-plan.sh",
+      "action": "sync",
+      "description": "Read-only per-artifact staleness plan for generated setup docs; --json output, --check CI gate (exit 1 on staleness)"
+    },
+    "scripts/setup-detect.sh": {
+      "source": "scripts/setup-detect.sh",
+      "target": "scripts/setup-detect.sh",
+      "action": "sync",
+      "description": "Read-only mechanized detection for setup-bootstrap/setup-audit — stack markers, package-manager lockfile priority, RN/Expo markers, and monorepo classification, with --json output"
+    },
+    "scripts/verify-commands.sh": {
+      "source": "scripts/verify-commands.sh",
+      "target": "scripts/verify-commands.sh",
+      "action": "sync",
+      "description": "Runs named build/test/format commands under a timeout and reports verified/failed/skipped status as JSON for the bootstrap verified-commands stamp"
+    },
+    "skills/setup-converge/SKILL.md": {
+      "source": ".claude/skills/setup-converge/SKILL.md",
+      "target": ".claude/skills/setup-converge/SKILL.md",
+      "action": "sync",
+      "description": "Judges the codebase against agreed architecture-principles.md/conventions.md and reports drift as graded, read-only work items — never auto-fixes"
+    },
+    "references/product-context.md": {
+      "source": ".claude/references/product-context.md",
+      "target": ".claude/references/product-context.md",
+      "action": "sync",
+      "description": "Templates and generation rules for product.md and decisions.md, read on-demand by setup-bootstrap STEP 3.8"
+    },
+    "scripts/manifest-preflight.sh": {
+      "source": "scripts/manifest-preflight.sh",
+      "target": "scripts/manifest-preflight.sh",
+      "action": "sync",
+      "description": "Pre-seal check that every change_manifest destination exists, sits where the codebase's conventions put it, and does not presume a pattern the repo never uses"
+    },
+    "hooks/collateral-guard.sh": {
+      "source": "hooks/collateral-guard.sh",
+      "target": "hooks/collateral-guard.sh",
+      "action": "sync",
+      "description": "Flags churn that is not the change you made: whitespace/EOL-only rewrites, undeclared generated artifacts, and wholesale asset regeneration"
+    },
+    "scripts/build-context-pack.sh": {
+      "source": "scripts/build-context-pack.sh",
+      "target": "scripts/build-context-pack.sh",
+      "action": "sync",
+      "description": "Writes the per-run context pack (.mtk/workflows/<uuid>/context-pack.md) — build/test/format commands, CLAUDE.md critical rules, manifest-selected coding-guideline sections, EXTRACTED principles, matching lessons — that implementer and reviewer subagents read instead of the full standards library"
+    },
+    "references/review-finding-examples.md": {
+      "source": ".claude/references/review-finding-examples.md",
+      "target": ".claude/references/review-finding-examples.md",
+      "action": "sync",
+      "applyTo": [
+        ".claude/agents/**",
+        ".claude/skills/writing-skills/**"
+      ],
+      "description": "Long-form rationale, worked examples, and edge-case rules behind review-finding-schema.md — read when authoring or tuning a reviewer, not when running one"
+    },
+    "references/agent-routing-guide.md": {
+      "source": ".claude/references/agent-routing-guide.md",
+      "target": ".claude/references/agent-routing-guide.md",
+      "action": "sync",
+      "description": "Detailed agent routing behind AGENTS.md — decision tree, routed-workflow composition table, model-invoked skills, two-stage review graph, review-output schema, eval pipeline, path-scoped reference loading"
+    },
+    "references/mtk-file-resolution.md": {
+      "source": ".claude/references/mtk-file-resolution.md",
+      "target": ".claude/references/mtk-file-resolution.md",
+      "action": "sync",
+      "description": "Canonical MTK root resolution (MTK_HELPER_ROOT → CLAUDE_PLUGIN_ROOT → project → plugin-cache find) that entry-point skills point at instead of repeating the block"
+    },
+    "references/spec-sidecar-manifest.md": {
+      "source": ".claude/references/spec-sidecar-manifest.md",
+      "target": ".claude/references/spec-sidecar-manifest.md",
+      "action": "sync",
+      "applyTo": [
+        "docs/specs/**"
+      ],
+      "description": "Full field reference for the spec's JSON sidecar (docs/specs/<date>-<slug>.json) — allowed values, coverage claims, conditional descopes, downstream plan/implement sections — read by spec-driven-development when authoring or amending a sidecar"
+    },
+    "references/workflow-rationalizations.md": {
+      "source": ".claude/references/workflow-rationalizations.md",
+      "target": ".claude/references/workflow-rationalizations.md",
+      "action": "sync",
+      "description": "Shared rationalization table plus every skill's full Common Rationalizations / Red Flags content — loaded at rigor MAX or on a repeated ceremony reduction, not inline in each skill"
+    }
+  },
+  "protected": [
+    ".claude/settings.json",
+    ".claude/settings.local.json",
+    ".claude/review-config.local.json",
+    ".claude/tech-stack",
+    ".claude/tech-stack-pm",
+    "CLAUDE.md",
+    "AGENTS.md",
+    "tasks/lessons.md",
+    "tasks/todo.md",
+    ".claude/references/architecture-principles.md",
+    ".claude/references/pre-commit-review-list.md",
+    ".claude/references/product.md",
+    ".claude/references/decisions.md",
+    ".claude/domains"
+  ]
+}
