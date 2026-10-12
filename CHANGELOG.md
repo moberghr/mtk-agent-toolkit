@@ -4,6 +4,13 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [8.0.3] - 2026-10-12
+
+Publishes the slim `plugin` branch from a version that passes directory validation. The
+`v8.0.2` tag and GitHub release were cut by hand at `eefdac6` without a version bump, so the
+manifest still read 8.0.1 and the release workflow rebuilt `plugin` from `v8.0.1`, which
+predates the `argument-hint` fix. 8.0.3 carries everything listed under v8.0.2 as well.
+
 ### Added — Claude directory release branch
 
 - `scripts/build-plugin-branch.sh` and a release-workflow step publish a slim `plugin` branch
