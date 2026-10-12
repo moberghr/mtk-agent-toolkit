@@ -4,6 +4,33 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [8.1.1] - 2026-10-12
+
+### Changed — real behavioural evals
+
+- `evals/` is now a native `claude plugin eval` suite of 8 cases:
+  - `verification-evidence`
+  - `no-false-done`
+  - `pre-commit-secret`
+  - `force-push-guard`
+  - `silent-failure-finance`
+  - `fix-scope-escalation`
+  - `router-fix`
+  - `implement-stops-for-approval`
+
+  Each case runs in a scaffolded throwaway repo and is scored by graders the agent under test
+  cannot see. Each run has two arms, with and without the plugin, so the score shows what MTK adds
+  over bare Claude.
+- The old static scenarios are removed, together with `scripts/run-evals.sh` and
+  `scripts/skill-eval/`. The old runner handed the executor the expected signals and grading
+  rubric, and exited 0 whatever the pass rate. Three pressure tests now covered by eval cases
+  are removed too: verification, pre-commit-review and silent-failure-hunter.
+- `release.yml` gates the release on the `core` suite: Sonnet 5.5, Haiku 5.5 judge, threshold
+  0.8, $20 cost ceiling. `validate.yml` now runs `run-fixtures.sh`.
+- `run-benchmarks.sh` reads its destructive-SQL probe from
+  `benchmarks/fixtures/destructive-sql-command.txt`. The script itself no longer contains a
+  literal the security gate blocks, which had stopped benchmarks running since 2026-08-11.
+
 ## [8.1.0] - 2026-10-12
 
 Correctness release from the October value-vs-noise audit, which ran across four lanes plus
