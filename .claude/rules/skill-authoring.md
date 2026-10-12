@@ -10,7 +10,7 @@ axes:
   scope: global
 trigger:
   tool: "Edit|Write"
-  path: "^\.claude/skills/.*SKILL\.md$|^tests/pressure-tests/|^evals/"
+  path: ^\.claude/skills/.*SKILL\.md$|^tests/pressure-tests/|^evals/
 strength: inject
 ---
 

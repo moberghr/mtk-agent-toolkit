@@ -275,6 +275,45 @@ if grep -nE '"applyTo":[[:space:]]*[^\[]' .claude/manifest.json | grep -v '"appl
   fail "manifest.json has an 'applyTo' entry that is not an array. Use [\"glob1\", \"glob2\"] form."
 fi
 
+# Frontmatter must be valid YAML: an unquoted flow sequence followed by more text
+# (e.g. `argument-hint: [--json] [--fix]`) breaks the parse and Anthropic's directory
+# validator blocks on it. `key: [a, b]` alone is fine; quote the whole value otherwise.
+# The awk scans each `key: [` value tracking bracket depth and quoted strings, finds
+# the `]` that closes the sequence, and flags only non-comment text after it. A
+# trailing CR is stripped first so CRLF files are checked too. Runs before the
+# `^---$` presence check so a CRLF file reports this, the more specific finding.
+while IFS= read -r file; do
+  bad_line="$(awk -v sq="'" -v dq='"' '
+    { sub(/\r$/, "") }
+    NR==1 && $0 !~ /^---[[:space:]]*$/ {exit}
+    /^---[[:space:]]*$/ {c++; if (c==2) exit; next}
+    c==1 && match($0, /^[A-Za-z0-9_.-]+:[[:space:]]*\[/) {
+      v = substr($0, RLENGTH); n = length(v)
+      depth = 0; q = ""; prev = ""; close_at = 0
+      for (i = 1; i <= n; i++) {
+        ch = substr(v, i, 1)
+        if (q != "") {
+          if (q == dq && ch == "\\") { i++; continue }
+          if (ch == q) {
+            if (q == sq && substr(v, i + 1, 1) == sq) { i++; continue }
+            q = ""; prev = ch
+          }
+          continue
+        }
+        if ((ch == sq || ch == dq) && (prev == "[" || prev == "," || prev == ":" || prev == "{")) { q = ch; continue }
+        if (ch == "[") depth++
+        else if (ch == "]") { depth--; if (depth == 0) { close_at = i; break } }
+        if (ch !~ /[[:space:]]/) prev = ch
+      }
+      if (close_at) {
+        rest = substr(v, close_at + 1)
+        if (rest !~ /^[[:space:]]*($|#)/) { print NR ": " $0; exit }
+      }
+    }
+  ' "$file")"
+  [ -z "$bad_line" ] || fail "invalid YAML frontmatter in $file line $bad_line — unquoted flow sequence followed by more text; quote the whole value (e.g. argument-hint: \"[--a] [--b]\")"
+done < <({ find .claude/agents -name '*.md'; printf '%s\n' "${manifest_skill_paths[@]+"${manifest_skill_paths[@]}"}"; } | sort -u)
+
 # Frontmatter check on agents and manifest-tracked skills only.
 # (Third-party skill plugins under .claude/skills/ are not MTK-managed.)
 while IFS= read -r file; do

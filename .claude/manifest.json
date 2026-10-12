@@ -1,6 +1,6 @@
 {
-  "version": "8.0.1",
-  "updated": "2026-09-28",
+  "version": "8.0.3",
+  "updated": "2026-10-12",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -717,6 +717,12 @@
       "action": "sync",
       "description": "Release integrity manifest — writes checksums.sha256 (SHA-256 of every manifest-listed file) at release time; --verify recomputes and reports drift"
     },
+    "scripts/build-plugin-branch.sh": {
+      "source": "scripts/build-plugin-branch.sh",
+      "target": "scripts/build-plugin-branch.sh",
+      "action": "sync",
+      "description": "Builds the slim plugin release branch the Claude directory tracks — exports a ref, drops dev-only paths, trims the manifest, regenerates checksums, appends one commit (never pushes or forces)"
+    },
     "scripts/resolve-tech-stack.sh": {
       "source": "scripts/resolve-tech-stack.sh",
       "target": "scripts/resolve-tech-stack.sh",
@@ -1199,6 +1205,18 @@
       "target": "docs/assets/foundations.png",
       "action": "sync",
       "description": "Foundations diagram used in the README Architecture section (the site copy lives on gh-pages)"
+    },
+    ".claude-plugin/icon.svg": {
+      "source": ".claude-plugin/icon.svg",
+      "target": ".claude-plugin/icon.svg",
+      "action": "sync",
+      "description": "Square Moberg icon shown on the Claude plugin directory listing"
+    },
+    ".claude-plugin/icon.png": {
+      "source": ".claude-plugin/icon.png",
+      "target": ".claude-plugin/icon.png",
+      "action": "sync",
+      "description": "1024px PNG of the Moberg icon, the format the Claude plugin directory listing accepts"
     },
     "docs/assets/pipeline-diagram.png": {
       "source": "docs/assets/pipeline-diagram.png",

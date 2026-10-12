@@ -4,6 +4,39 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [8.0.3] - 2026-10-12
+
+Publishes the slim `plugin` branch from a version that passes directory validation. The
+`v8.0.2` tag and GitHub release were cut by hand at `eefdac6` without a version bump, so the
+manifest still read 8.0.1 and the release workflow rebuilt `plugin` from `v8.0.1`, which
+predates the `argument-hint` fix. 8.0.3 carries everything listed under v8.0.2 as well.
+
+### Added — Claude directory release branch
+
+- `scripts/build-plugin-branch.sh` and a release-workflow step publish a slim `plugin` branch
+  (only the runtime payload, ~290 files, with a trimmed manifest and its own checksums). The
+  Claude plugin directory tracks it, because validating the whole repo (~475 files) times out
+  in the directory portal. The step runs on every push to `main` and builds from the current
+  version's tag; the build is idempotent and the push a no-op when nothing changed, so a failed
+  publish heals on the next run. Release runs share a concurrency group, so overlapping runs
+  queue instead of racing. Development stays on `main`; `moberg-plugins` installs are unchanged.
+- `.claude-plugin/icon.svg` for the directory listing, plus `.claude-plugin/icon.png` (1024px):
+  the directory accepts only a 512–2048px PNG or JPEG, so the SVG alone left the "No icon"
+  warning in place.
+
+### Fixed
+
+- `toolkit-structure`, `skill-authoring` and `verification-and-proof` rule frontmatter: the
+  `trigger.path` regexes were double-quoted, and YAML rejects `\.` inside double quotes as an
+  unknown escape, which blocked directory validation. They are now plain scalars, where a
+  backslash is literal; the generated `triggers.index` is byte-identical.
+
+- `mtk-doctor` and `mtk-setup` frontmatter: `argument-hint` values like `[--json] [--fix]` were
+  invalid YAML (a value starting with `[` parses as a list); they are now quoted, and
+  `validate-toolkit.sh` fails on an unquoted flow sequence followed by more text (CRLF files
+  included; nested lists, quoted brackets and trailing comments pass). Regression test:
+  `tests/hooks/test-validate-frontmatter-yaml.sh`.
+
 ## [8.0.1] - 2026-09-28
 
 Prepares MTK for Anthropic's Claude plugin directory (#112) and folds in the prompt-audit cleanup.
