@@ -39,9 +39,6 @@ Icon
 # Project-local linter patterns (each target repo adds its own)
 hooks/linter-patterns/project/*.txt
 
-# Third-party plugin artifacts (local dev only)
-.claude/skills/gitnexus/
-
 # Claude Code native worktrees (local dev only)
 .claude/worktrees/
 

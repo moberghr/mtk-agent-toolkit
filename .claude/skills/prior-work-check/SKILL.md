@@ -47,8 +47,8 @@ Look for an existing implementation of the capability under any name.
      section) rather than a raw `grep`. If the script is absent (repo
      bootstrapped before v7.17) or the keyword may live outside table rows
      (domain headings, prose), fall back to `grep -i "<keyword>" CODE_INDEX.md`.
-   - If an MCP code-index tool is available (e.g. `mcp__gitnexus__query`,
-     `mcp__ast-index__*`), prefer it over raw grep.
+   - If an MCP code-index tool is available (e.g. `mcp__ast-index__*`), prefer
+     it over raw grep.
 3. For each hit, report:
    - file:line
    - one-line summary of what it does
