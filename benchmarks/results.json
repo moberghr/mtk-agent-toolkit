@@ -1,8 +1,8 @@
 {
   "schema": "mtk.benchmarks.v1",
-  "generated_at": "2026-10-12T19:22:24Z",
-  "commit": "0faf426",
-  "toolkit_version": "8.2.0",
+  "generated_at": "2026-10-13T14:53:02Z",
+  "commit": "2fa693f",
+  "toolkit_version": "9.0.1",
   "runner": "scripts/run-benchmarks.sh",
   "run_complete": true,
   "totals": {
