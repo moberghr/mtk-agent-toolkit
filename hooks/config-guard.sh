@@ -32,7 +32,9 @@ trap _mtk_hook_diag EXIT
 # disk contents -> content; Write to a missing file is allowed (new config).
 #
 # Engineer approval list: .mtk/config-guard-allow (repo-relative path per line),
-# honoured only when modified within the last 24h. The deny message tells the
+# honoured only when modified within the last 24h. "Repo" is the edited file's
+# own git work tree, so a nested worktree (.claude/worktrees/<name>/) has its own
+# list and paths are relative to the worktree root. The deny message tells the
 # model to STOP and ask — it never prints how to approve, and an
 # Edit/Write to the list itself is always denied (matched by file identity after
 # ./ ../ normalisation, so case variants and dot segments are caught; the
@@ -96,6 +98,20 @@ normalize_path() {
   printf '%s' "${out:-/}"
 }
 NORM_PATH="$(normalize_path "$FILE_PATH")"
+
+# The edited file belongs to its own git work tree, which is not always the
+# session's project: a worktree nested under it (.claude/worktrees/<name>/) is a
+# separate checkout. Resolve the root from the file's nearest existing directory,
+# so the reported path and the approval list (and its protection) are that work
+# tree's. Outside git, keep the project root.
+file_work_tree() {
+  local d="${NORM_PATH%/*}"
+  while [ -n "$d" ] && [ ! -d "$d" ]; do d="${d%/*}"; done
+  [ -n "$d" ] || d="/"
+  git -C "$d" rev-parse --show-toplevel 2>/dev/null
+}
+FILE_ROOT="$(file_work_tree || true)"
+[ -n "$FILE_ROOT" ] && REPO_ROOT="$FILE_ROOT"
 
 # Spelling-robust repo-relative path (S1.17): never a bare prefix strip.
 REL_PATH="$(mtk_repo_relative_path "$NORM_PATH" "$REPO_ROOT" 2>/dev/null || printf '%s' "$NORM_PATH")"

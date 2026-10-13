@@ -291,6 +291,41 @@ expect "approval list denied before .mtk exists (../ segment)" 2 "$(run_guard "$
   "$P/src/../.mtk/config-guard-allow" "Directory.Build.props")")"
 mkdir -p "$P/.mtk"
 
+# ============================ SC4: nested git worktree =========================
+# A file in a worktree under the project (.claude/worktrees/<name>/) belongs to
+# that worktree: its path is reported relative to the worktree root, and the
+# approval list is the worktree's own .mtk/config-guard-allow. Before the fix the
+# guard took the root from CLAUDE_PROJECT_DIR (the main checkout), so the
+# approval had to name ".claude/worktrees/<name>/..." in the main checkout.
+if command -v git >/dev/null 2>&1; then
+  ( cd "$P" && git init -q . && git -c user.email=t@t -c user.name=t commit -q --allow-empty -m init )
+  ( cd "$P" && git worktree add -q .claude/worktrees/wt -b wt-branch )
+  WT="$P/.claude/worktrees/wt"
+  printf '<Project><PropertyGroup><NoWarn></NoWarn></PropertyGroup></Project>\n' > "$WT/Directory.Build.props"
+  wt_edit="$(edit_payload "$WT/Directory.Build.props" '<NoWarn></NoWarn>' '<NoWarn>CS1591;CA1707</NoWarn>')"
+
+  expect "worktree: weakening edit denied" 2 "$(run_guard "$wt_edit")"
+  wt_msg="$("$GUARD" <<<"$wt_edit" 2>&1 || true)"
+  case "$wt_msg" in
+    *"weakens Directory.Build.props"*) printf '  PASS  %s\n' "worktree: path reported relative to the worktree root" ;;
+    *) printf 'FAIL: worktree path not worktree-relative: %s\n' "$wt_msg" >&2; fails=$((fails + 1)) ;;
+  esac
+
+  mkdir -p "$WT/.mtk"
+  printf 'Directory.Build.props\n' > "$WT/.mtk/config-guard-allow"
+  expect "worktree: approval in the worktree's own .mtk allows" 0 "$(run_guard "$wt_edit")"
+  rm -f "$WT/.mtk/config-guard-allow"
+
+  printf '.claude/worktrees/wt/Directory.Build.props\n' > "$P/.mtk/config-guard-allow"
+  expect "worktree: approval in the main checkout does not leak into the worktree" 2 "$(run_guard "$wt_edit")"
+  rm -f "$P/.mtk/config-guard-allow"
+
+  expect "worktree: the worktree's approval list itself is protected" 2 "$(run_guard "$(write_payload \
+    "$WT/.mtk/config-guard-allow" "Directory.Build.props")")"
+else
+  printf '  SKIP  nested-worktree assertions (git not available)\n'
+fi
+
 killed="$(MTK_CONFIG_GUARD=0 "$GUARD" >/dev/null 2>&1 \
   <<<"$(edit_payload "$P/Directory.Build.props" '<NoWarn></NoWarn>' '<NoWarn>CS1591</NoWarn>')" \
   && echo 0 || echo $?)"
