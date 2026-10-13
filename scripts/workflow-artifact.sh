@@ -23,7 +23,7 @@ set -euo pipefail
 #   gate <uuid> <gate_name> <pass|fail> [--reason "<text>"]
 #                                    gate_name one of: plan_trust_gate |
 #                                    phase_exit_gate | failure_stop_gate |
-#                                    memory_sync_gate | skill_precedence_gate.
+#                                    memory_sync_gate.
 #                                    Record gate decision as event + status update
 #   criteria <uuid> <SCn=status>...  Set per-criterion verification status
 #                                    Status values: pending | verified | re-armed
@@ -32,11 +32,20 @@ set -euo pipefail
 #                                    ESCALATE when iterations >= MTK_MAX_REMEDIATION_ITERS
 #                                    (default 3) or the score plateaus, else CONTINUE
 #   seal <uuid> <path>...            Record a SHA-256 approval seal over the given
-#                                    artifact bodies (spec/plan) at approval time
-#   verify-seal <uuid>               Re-check the recorded seal; exit 0 match,
-#                                    1 stale (prints sealed=/current=), 2 uncheckable
-#                                    (unexpected error), 3 no seal
+#                                    artifact bodies (spec/plan) at approval time,
+#                                    plus a hash of the spec sidecar's frozen
+#                                    success_criteria block (id/observable/
+#                                    evidence_channel) when the sidecar exists
+#   verify-seal <uuid>               Re-check the recorded seal and criteria hash;
+#                                    exit 0 match, 1 stale (prints sealed=/current=),
+#                                    2 uncheckable (unexpected error), 3 no seal
 #   abandon <uuid> [--reason "<text>"]  Mark workflow abandoned
+#   prune --older-than <days> [--dry-run] [--force]
+#                                    Delete workflows of any status not updated
+#                                    within <days> (minimum 1; 0 needs --force),
+#                                    with their event log, .artifact.md and
+#                                    per-uuid directory. Never touches an active
+#                                    workflow updated within <days>.
 #   trap add <uuid> --title "<t>" [--body "<b>"] [--phase p] [--severity warn|high]
 #                                    Record a carried-forward trap (a written,
 #                                    specific gotcha) in results.trap_list —
@@ -112,8 +121,7 @@ cmd_init() {
     "plan_trust_gate": "pending",
     "phase_exit_gate": "pending",
     "failure_stop_gate": "pending",
-    "memory_sync_gate": "pending",
-    "skill_precedence_gate": "pending"
+    "memory_sync_gate": "pending"
   },
   "results": {},
   "remediation_history": []
@@ -401,7 +409,10 @@ cmd_gate() {
   shift 3 || true
   [ -n "$uuid" ] && [ -n "$gate" ] && [ -n "$result" ] || fail "gate requires <uuid> <gate_name> <pass|fail>"
   case "$result" in pass|fail) ;; *) fail "gate result must be 'pass' or 'fail'" ;; esac
-  local valid_gates="plan_trust_gate phase_exit_gate failure_stop_gate memory_sync_gate skill_precedence_gate"
+  # skill_precedence_gate was dropped: no skill ever recorded it. Old artifacts
+  # that still carry the key load fine (nothing validates gates on read); it
+  # just cannot be written any more.
+  local valid_gates="plan_trust_gate phase_exit_gate failure_stop_gate memory_sync_gate"
   case " $valid_gates " in
     *" $gate "*) ;;
     *) fail "unknown gate: $gate — must be one of: $valid_gates (see .claude/references/orchestration-gates.md)" ;;
@@ -552,9 +563,37 @@ for p in paths:
 digest = combined.hexdigest()
 with open(artifact) as f:
     doc = json.load(f)
-doc.setdefault("results", {})["approval_seal"] = {
-    "hash": digest, "algo": "sha256", "files": files, "sealed_at": now
-}
+seal = {"hash": digest, "algo": "sha256", "files": files, "sealed_at": now}
+# Criteria seal: target repos gitignore docs/specs/* (only baseline/ is tracked),
+# so there is no committed sidecar to diff. Hash just the frozen
+# success_criteria fields of the sidecar (id, observable, evidence_channel); the rest of the
+# sidecar (the change manifest, amended in Phase 3.5) stays free to change.
+def criteria_digest(body):
+    crit = json.loads(body).get("success_criteria")
+    if not isinstance(crit, list):
+        return None, 0
+    frozen = sorted(
+        ({k: c.get(k) for k in ("id", "observable", "evidence_channel")} for c in crit if isinstance(c, dict)),
+        key=lambda c: str(c.get("id")))
+    canon = json.dumps(frozen, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canon.encode("utf-8")).hexdigest(), len(frozen)
+spec_candidates = [doc.get("results", {}).get("spec_path")] + [p for p in paths if p.endswith(".md")]
+for sp in spec_candidates:
+    if not sp or not sp.endswith(".md"):
+        continue
+    sidecar = sp[:-3] + ".json"
+    sfp = os.path.join(root, sidecar)
+    if not os.path.isfile(sfp):
+        continue
+    try:
+        with open(sfp, "rb") as fh:
+            cdig, count = criteria_digest(fh.read())
+    except (ValueError, OSError):
+        continue
+    if cdig:
+        seal["criteria"] = {"path": sidecar, "sha256": cdig, "count": count}
+        break
+doc.setdefault("results", {})["approval_seal"] = seal
 doc["updated_at"] = now
 with open(artifact, "w") as f:
     json.dump(doc, f, indent=2)
@@ -606,8 +645,28 @@ def run():
         combined.update(body); combined.update(b"\0")
     current = combined.hexdigest()
     sealed = seal.get("hash", "")
+    crit = seal.get("criteria")
+    crit_note = ""
+    if crit:
+        cp = crit.get("path", "")
+        cfp = os.path.join(root, cp)
+        if not os.path.isfile(cfp):
+            changed.append("success_criteria (%s missing)" % cp)
+        else:
+            with open(cfp) as fh:
+                items = json.load(fh).get("success_criteria")
+            frozen = sorted(
+                ({k: c.get(k) for k in ("id", "observable", "evidence_channel")} for c in (items or []) if isinstance(c, dict)),
+                key=lambda c: str(c.get("id")))
+            canon = json.dumps(frozen, sort_keys=True, separators=(",", ":"))
+            if hashlib.sha256(canon.encode("utf-8")).hexdigest() != crit.get("sha256"):
+                changed.append("success_criteria (%s)" % cp)
+            else:
+                crit_note = ", %d frozen criteria intact" % len(frozen)
+    else:
+        crit_note = ", success_criteria not sealed"
     if current == sealed and not changed:
-        print("verify-seal: OK (%d file(s) match seal)" % len(seal.get("files", [])))
+        print("verify-seal: OK (%d file(s) match seal%s)" % (len(seal.get("files", [])), crit_note))
         sys.exit(0)
     print("verify-seal: STALE — approval no longer matches the approved bytes")
     print("  sealed=%s" % sealed)
@@ -709,8 +768,76 @@ for t in traps:
 PY
 }
 
+# prune — workflow expiry. Without it .mtk/workflows/ keeps one JSON + one
+# event log per run forever, and `list` / compaction recovery wade through
+# every finished run. A workflow is prunable only when its updated_at (file
+# mtime if absent) is older than <days> — whatever its status. Finished runs are
+# not deleted on sight: implement runs prune before every init, and a run that
+# finished an hour ago is still the receipt the engineer reviews. <days> must be
+# at least 1; `--older-than 0` (delete everything) needs --force. Each pruned
+# uuid is also printed to stderr, so a caller that discards stdout still leaves
+# a trace. Only files whose workflow_uuid matches their own name are
+# considered, so unrelated files under .mtk/workflows/ (e.g. dashboard/) survive.
+cmd_prune() {
+  local days="" dry=0 force=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --older-than) days="${2:-}"; [ $# -ge 2 ] && shift 2 || shift ;;
+      --dry-run) dry=1; shift ;;
+      --force) force=1; shift ;;
+      *) fail "unknown flag: $1" ;;
+    esac
+  done
+  case "$days" in ''|*[!0-9]*) fail "prune requires --older-than <days> (a whole number of days, at least 1)" ;; esac
+  if [ "$days" -lt 1 ] && [ "$force" -ne 1 ]; then
+    fail "prune --older-than $days would delete every workflow; use at least 1, or add --force"
+  fi
+  if [ ! -d "$WF_DIR" ]; then
+    printf 'workflow-artifact: pruned 0 workflow(s) (no %s)\n' "$WF_DIR"
+    return 0
+  fi
+
+  python3 - "$WF_DIR" "$days" "$dry" <<'PY'
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3
+import datetime, glob, json, os, shutil
+wf_dir, days, dry = sys.argv[1], int(sys.argv[2]), sys.argv[3] == "1"
+now = datetime.datetime.now(datetime.timezone.utc)
+cutoff = now - datetime.timedelta(days=days)
+pruned = 0
+for path in sorted(glob.glob(os.path.join(wf_dir, "*.json"))):
+    stem = os.path.basename(path)[:-5]
+    try:
+        with open(path) as f:
+            d = json.load(f)
+    except (OSError, ValueError) as e:
+        print(f"workflow-artifact: prune: skipping unreadable {os.path.basename(path)}: {e}", file=sys.stderr)
+        continue
+    if not isinstance(d, dict) or d.get("workflow_uuid") != stem:
+        continue
+    status = d.get("status", "")
+    try:
+        updated = datetime.datetime.strptime(d.get("updated_at", ""), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
+    except (TypeError, ValueError):
+        updated = datetime.datetime.fromtimestamp(os.path.getmtime(path), datetime.timezone.utc)
+    if updated >= cutoff:
+        continue
+    why = f"{status or 'unknown'}, not updated for {(now - updated).days} day(s)"
+    print(f"{'would prune' if dry else 'pruned'} {stem} ({why})")
+    print(f"workflow-artifact: {'would prune' if dry else 'pruned'} {stem} ({why})", file=sys.stderr)
+    pruned += 1
+    if dry:
+        continue
+    for extra in (path, os.path.join(wf_dir, stem + ".events.jsonl"), os.path.join(wf_dir, stem + ".artifact.md")):
+        if os.path.isfile(extra):
+            os.remove(extra)
+    if os.path.isdir(os.path.join(wf_dir, stem)):
+        shutil.rmtree(os.path.join(wf_dir, stem))
+print(f"workflow-artifact: {'would prune' if dry else 'pruned'} {pruned} workflow(s)")
+PY
+}
+
 usage() {
-  sed -n '4,50p' "$0"
+  sed -n '4,58p' "$0"
 }
 
 main() {
@@ -730,6 +857,7 @@ main() {
     remediation) cmd_remediation "$@" ;;
     trap)     cmd_trap "$@" ;;
     abandon)  cmd_abandon "$@" ;;
+    prune)    cmd_prune "$@" ;;
     ""|-h|--help) usage ;;
     *) fail "unknown subcommand: $sub" ;;
   esac

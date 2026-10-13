@@ -84,7 +84,7 @@ Expected: `WARN` lines for `L-BAD` (confidence not in enum; checklist[0] missing
 
 **Setup:** A lesson is promoted with `confidence: high` but its golden path was never actually verified (no passing check).
 
-**Expected behavior:** This is a **discipline** failure, not a lint failure — `promote-lesson` reserves `high` for a verified path. The lint checks well-formedness only; the skill and reviewer guard the semantics. The reviewer/engineer should downgrade to `low`/`medium`.
+**Expected behavior:** This is a **discipline** failure, not a lint failure — `lessons promote` reserves `high` for a verified path. The lint checks well-formedness only; the skill and reviewer guard the semantics. The reviewer/engineer should downgrade to `low`/`medium`.
 
 **Failure mode:** Treating `confidence` as decoration — stamping `high` on unverified advice, defeating the point of a contract.
 

@@ -1,0 +1,27 @@
+{
+  "id": "router-consolidated-skills",
+  "fixture_type": "router-mapping",
+  "description": "Phrases that used to reach the cut or merged skills (correction-capture, promote-lesson, lesson-mining, lesson-refresh, instructions-audit, instructions-capture, toolkit-health, context-report, pr-review-mining, setup-converge) still route to their replacements under first-match-wins precedence.",
+  "cases": [
+    { "prompt": "capture this lesson", "expected_skill": "lessons" },
+    { "prompt": "promote lesson to the team", "expected_skill": "lessons" },
+    { "prompt": "mine lessons", "expected_skill": "lessons" },
+    { "prompt": "refresh lessons", "expected_skill": "lessons" },
+    { "prompt": "audit lessons for stale anchors", "expected_skill": "lessons" },
+    { "prompt": "audit CLAUDE.md", "expected_skill": "instructions" },
+    { "prompt": "audit AGENTS.md", "expected_skill": "instructions" },
+    { "prompt": "capture instructions from this session", "expected_skill": "instructions" },
+    { "prompt": "toolkit health", "expected_skill": "mtk-doctor" },
+    { "prompt": "show usage stats", "expected_skill": "mtk-doctor" },
+    { "prompt": "context report", "expected_skill": "mtk-doctor" },
+    { "prompt": "what's loaded?", "expected_skill": "mtk-doctor" },
+    { "prompt": "is the install broken?", "expected_skill": "mtk-doctor" },
+    { "prompt": "mine PR reviews", "expected_skill": "repo-health" },
+    { "prompt": "converge", "expected_skill": "mtk-setup" },
+    { "prompt": "this test is broken", "expected_skill": "fix" }
+  ],
+  "expected": {
+    "next_action": "route",
+    "rationale": "The consolidation removed ten skills; each old phrase must still land on its replacement (lessons modes, instructions modes, mtk-doctor and --usage, repo-health's PR mining, /mtk-setup --check) and a bare 'broken' must still mean fix."
+  }
+}

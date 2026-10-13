@@ -15,16 +15,14 @@ Resolve MTK skill/reference/script paths per `.claude/references/mtk-file-resolu
 
 ## Overview
 
-A lightweight loop for a **corrective batch** — several small, INDEPENDENT fixes applied together (e.g. "apply these 5 review findings", "fix these things"). It sits between `fix` (1-3 files, one coherent change) and `implement` (new behavior, public contract, or architecture).
+A lightweight loop for a **corrective batch** — several small, independent fixes applied together (e.g. "apply these 5 review findings", "fix these things"). It sits between `fix` (1-3 files, one coherent change) and `implement` (new behavior, public contract, or architecture).
 
-`batch-fix` is deliberately NOT an `implement` rigor tier: `implement` makes the full spec/plan/approval apparatus mandatory at every level, so lightweight mode lives here as a sibling. The lightness is fixed: a short findings-list **spec stub** + `tasks/todo.md`, **one** approval gate on the list, inline execution (no subagent-per-batch), no `docs/plans/` plan file, and proportional review. Any finding that grows into a new slice, contract, or re-planning escalates **that finding** to `implement` (see Scope Guard).
+`batch-fix` is deliberately not an `implement` rigor tier: `implement` makes the full spec/plan/approval apparatus mandatory at every level, so lightweight mode lives here as a sibling. The lightness is fixed: a short findings-list **spec stub** + `tasks/todo.md`, **one** approval gate on the list, inline execution (no subagent-per-batch), no `docs/plans/` plan file, and proportional review. Any finding that grows into a new slice, contract, or re-planning escalates **that finding** to `implement` (see Scope Guard).
 
 Source of truth for the composed workflow:
 
 - `.claude/skills/context-engineering/SKILL.md`
-- `.claude/skills/debugging-and-error-recovery/SKILL.md` — for each behavioral finding
-- `.claude/skills/test-driven-development/SKILL.md` — when a finding changes behavior
-- `.claude/skills/source-driven-development/SKILL.md` — when framework behavior is uncertain
+- `.claude/skills/fix/SKILL.md` → *Execute The Fix Workflow* — reproduce, failing test first, and the test policy, for each behavioral finding
 - `.claude/skills/security-and-hardening/SKILL.md` — when a finding touches auth, audited state, secrets, or infra
 - `.claude/skills/pre-commit-review/SKILL.md` — always, before completion
 - `.claude/skills/verification-before-completion/SKILL.md` — before reporting done
@@ -36,11 +34,11 @@ Source of truth for the composed workflow:
 - A corrective batch of several distinct, unrelated small fixes ("fix these 5 things")
 - Cleanup sweeps that touch more than 3 files but introduce no new behavior
 
-Use `batch-fix` when the work is **more than `fix`** (>3 files OR multiple distinct fixes) but **less than `implement`** (introduces NO new public contract and needs NO architectural re-planning).
+Use `batch-fix` when the work is **more than `fix`** (>3 files OR multiple distinct fixes) but **less than `implement`** (introduces no new public contract and needs no architectural re-planning).
 
-**Proportionality check.** If, after enumeration, the batch is almost entirely mechanical (renames, formatting, i18n/string deletes, comment moves) with no behavioral or boundary-crossing finding, the stub + gate scaffolding buys little. Prefer plain `fix` for the low-risk cosmetic sweep even if it stretches past 3 files, or keep the stub to one line per finding — the full ceremony earns its keep on batches where at least one finding is behavioral or crosses a boundary.
+**Proportionality check (mechanical mode).** If, after enumeration, the batch is almost entirely mechanical (renames, formatting, i18n/string deletes, comment moves) with no behavioral or boundary-crossing finding, the stub + gate scaffolding buys little, so run it in mechanical mode: one line per finding in the stub, one gate on the list, the pre-commit gate as the only review (Phase 5). This is the single rule for multi-file cosmetic sweeps. A sweep past 3 files stays here, never in `fix`, whose 3-file limit has no exception. The full ceremony earns its keep on batches where at least one finding is behavioral or crosses a boundary.
 
-Do NOT use it when:
+Do not use it when:
 
 - The whole change is one coherent edit in 1-3 files → that's `fix`.
 - Any finding needs a new handler/entity/slice, a new/changed public contract, or architectural re-planning → that finding goes to `implement` (Scope Guard).
@@ -49,67 +47,6 @@ Do NOT use it when:
 ## Workflow
 
 Follow the phases in order. Each phase loads only what it needs.
-
-### Decision Graph
-
-The per-finding scope guard is the part that gets skipped most. This graph makes escalation explicit — any `yes` on a red diamond means STOP editing that finding and escalate it, not "expand quietly."
-
-```dot
-digraph batch_fix_flow {
-  rankdir=TB;
-  node [shape=box, style=rounded, fontname="Helvetica"];
-  edge [fontname="Helvetica", fontsize=10];
-
-  start  [label="batch requested"];
-  load   [label="load context\n(CLAUDE.md, tech stack,\nrelevant refs only)"];
-  enum   [label="enumerate INDEPENDENT\nfindings (numbered list)"];
-  single [label="really one\ncoherent 1-3 file\nchange?", shape=diamond];
-  tofix  [label="hand to fix\n(Skill 'mtk', '<desc>')",
-          style="rounded,filled", fillcolor="#e8f0ff"];
-  stub   [label="write findings spec stub\n+ tasks/todo.md"];
-  gate   [label="ONE approval gate\n(AskUserQuestion;\nAUTO_PROCEED-eligible)"];
-
-  pick   [label="next finding"];
-  contract [label="new slice /\ncontract /\nre-planning?", shape=diamond, style="filled", fillcolor="#ffe0e0"];
-  esc    [label="STOP this finding — escalate:\nSkill('mtk', '<finding> —\nescalated from batch-fix: <reason>')",
-          style="rounded,filled", fillcolor="#ff9090"];
-  mech   [label="mechanical\n(rename/format/\ncomment)?", shape=diamond];
-  tdd    [label="add/update failing test\nfirst (TDD)"];
-  editf  [label="edit in scope;\nmatch codebase pattern"];
-  more   [label="more\nfindings?", shape=diamond];
-
-  review [label="proportional review\n(pre-commit-review always;\nspecialized reviewers if a\nfinding crossed a boundary)"];
-  verify [label="verify: build +\ntargeted tests\n(verification-before-completion)"];
-  report [label="final report:\nfindings, files, tests,\nescalations, build/test result",
-          style="rounded,filled", fillcolor="#e0f0e0"];
-
-  start -> load -> enum -> single;
-  single -> tofix [label="yes"];
-  single -> stub  [label="no — multiple / >3 files"];
-  stub -> gate -> pick -> contract;
-  contract -> esc  [label="yes"];
-  contract -> mech [label="no"];
-  esc -> more;
-  mech -> editf [label="yes — skip TDD"];
-  mech -> tdd   [label="no"];
-  tdd  -> editf -> more;
-  more -> pick   [label="yes"];
-  more -> review [label="no"];
-  review -> verify -> report;
-}
-```
-
-**Red flags inside the loop:**
-
-| Rationalization | Reality |
-|---|---|
-| "It's just another small fix, I'll add the new endpoint too" | A new contract/slice is not a fix. Escalate THAT finding to implement. |
-| "The batch is approved, I'll add finding #6 I just noticed" | The gate approved a list. New findings re-open the list — amend the stub + todo, don't smuggle. |
-| "They said fix all, so the escalation/merge doesn't need re-asking" | Approval attaches to the *enumeration*. Escalating, narrowing, or merging a finding changes the deliverable — re-ask on the amended list (Phase 3). |
-| "These files were already dirty, I'll just edit on top" | Pre-existing edits in a target file are a gate input. Name them and let the engineer choose — after the fact, nothing separates their work from yours. |
-| "This finding changes behavior but it's tiny, skip the test" | Only mechanical findings (rename/format/comment) skip TDD. Behavioral findings get a failing test first. |
-| "All of these actually need contracts" | Then it's not a corrective batch — route the whole thing to implement. |
-| "It's really one change in two files" | Then it's `fix`, not `batch-fix`. Hand it down. |
 
 **Op-cost:** each behavioral finding is roughly 3 tool ops (read test → edit test → edit source).
 
@@ -124,18 +61,14 @@ If grouping shows the findings cannot be separated into independently-verifiable
 
 ### Phase 1: Load Context (Progressive Disclosure)
 
-1. Follow `.claude/skills/context-engineering/SKILL.md`.
-2. Read `CLAUDE.md`. If missing, stop and tell the engineer to run `/mtk-setup`.
-3. Load the active tech stack: resolve it with `bash scripts/resolve-tech-stack.sh --check <all target file paths>` — **polyglot-monorepo aware** (subproject `.claude/tech-stack` → root `.claude/tech-stack.map` glob → root file), so a batch touching a differently-stacked subtree gets that subtree's commands. `--check` additionally warns when the resolved stack disagrees with the files the batch will touch (e.g. resolves `dotnet` but the findings are all `.tsx`); the warning is advisory — if it fires, declare the subtree rather than pushing on with the wrong build/test commands. Then read `.claude/skills/tech-stack-{stack}/SKILL.md` (build/test commands, stack reference paths). If nothing resolves, do not halt: infer via `bash scripts/setup-detect.sh --json` (read-only) and load the matching `tech-stack-{stack}` skill; if inference is empty, announce **degraded mode** (stack build/test commands unavailable) and proceed with `CLAUDE.md`-only context.
-4. Read only what the batch needs — the coding guidelines always; the ORM checklist if a finding touches the data layer; `.claude/references/security-checklist.md` if a finding touches auth/secrets/financial; `.claude/references/testing-patterns.md` when adding tests; `.claude/references/pre-commit-review-list.md` before commit. Resolve each via the File Resolution block (project → `$CLAUDE_PLUGIN_ROOT` → plugin cache); if a needed reference resolves nowhere, announce degraded mode for that check rather than skipping it silently — in particular, if `pre-commit-review-list.md` is absent the pre-commit gate still runs, AI-review-only (degraded), and must say so.
-5. Resolve and scan relevant lessons. Prefer the structured query when present:
+1. Follow `.claude/skills/context-engineering/SKILL.md`, resolving the stack with `--check <all target file paths>` so a batch touching a differently-stacked subtree gets that subtree's commands; if the check warns, declare the subtree rather than pushing on with the wrong build/test commands. If no stack resolves or infers, announce **degraded mode** (stack build/test commands unavailable). If neither `AGENTS.md` nor `CLAUDE.md` exists, stop and tell the engineer to run `/mtk-setup`.
+2. Read only what the batch needs — the coding guidelines always; the tech-stack skill's `## ORM & Data Layer Guidance` if a finding touches the data layer; `.claude/references/domain-finance.md` (finance and security supplement) if a finding touches auth/secrets/financial; the stack's testing supplement when adding tests; `.claude/references/pre-commit-review-list.md` before commit. Resolve each via the File Resolution block (project → `${CLAUDE_PLUGIN_ROOT}` → plugin cache); if a needed reference resolves nowhere, announce degraded mode for that check rather than skipping it silently — in particular, if `pre-commit-review-list.md` is absent the pre-commit gate still runs, AI-review-only (degraded), and must say so.
+3. Resolve and scan relevant lessons. Prefer the structured query when present:
    ```bash
-   LS="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/learnings.sh" || ([ -f scripts/learnings.sh ] && echo scripts/learnings.sh || echo "${CLAUDE_PLUGIN_ROOT:-.}/scripts/learnings.sh"))"
+   LS="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/learnings.sh" || ([ -f scripts/learnings.sh ] && echo scripts/learnings.sh || echo "${CLAUDE_PLUGIN_ROOT}/scripts/learnings.sh"))"
    bash "$LS" query --phase implement --files "<all target file paths>" --max 8
    ```
    Falls back to scanning `tasks/lessons.md` when the script is absent.
-
-**Parallel loading:** independent reference reads go out in one message. See `docs/parallelism-patterns.md`.
 
 ### Phase 2: Enumerate Findings + Write Stub
 
@@ -153,7 +86,7 @@ If grouping shows the findings cannot be separated into independently-verifiable
 
 **Baseline the working tree before editing.** Snapshot what is *already* dirty so review can tell your work apart from it: run `git status --porcelain` (read-only) and record the files already modified/untracked that this batch does **not** touch. When the tree starts dirty, `git diff HEAD` is *not* "this batch's changes" — pre-existing edits would otherwise be attributed to the batch and draw false "missing test / missing X" findings for code you did not write (Phase 5 scopes review to the batch's own files using this baseline).
 
-### Phase 3: Single Approval Gate (STOP HERE)
+### Phase 3: Single Approval Gate (stop here)
 
 Exactly **one** gate for the whole batch. Render the findings list and `tasks/todo.md` inline in the terminal (don't just cite paths), then ask via `AskUserQuestion`:
 
@@ -184,7 +117,7 @@ If `AskUserQuestion` is deferred, load it with `ToolSearch select:AskUserQuestio
 Work the findings **inline** in the main context — no subagent-per-batch. batch-fix does not assume a frozen tree: **re-read each target file immediately before editing it** — a concurrent human edit, or an earlier finding touching the same file, may have moved it since Phase 2. For each finding, in order:
 
 1. **Scope Guard first** (see below). If the finding needs a new slice/contract/re-planning, escalate it and move on — do not edit it here.
-2. **Behavioral finding:** follow `.claude/skills/debugging-and-error-recovery/SKILL.md` to confirm the cause, then `.claude/skills/test-driven-development/SKILL.md` — write the failing test first, then the fix.
+2. **Behavioral finding:** follow `fix` → *Execute The Fix Workflow*: reproduce and confirm the cause, write the failing test first, then the fix.
 3. **Mechanical finding** (rename, format, comment, dead-code removal with no behavior change): skip TDD; make the edit and rely on the existing suite + build.
 4. Match the local codebase pattern; do not gold-plate unrelated code.
 5. Check the finding off in `tasks/todo.md`.
@@ -219,7 +152,7 @@ For each finding, if any of these become true, **escalate THAT finding to `/mtk 
    ```
    Skill(skill: "mtk", args: "<finding description> — escalated from batch-fix: <short reason>")
    ```
-3. Do NOT edit that finding here. Record it in the stub/todo as `escalated → implement` and continue the remaining findings.
+3. Do not edit that finding here. Record it in the stub/todo as `escalated → implement` and continue the remaining findings.
 4. If MOST findings need contracts/slices, the work is not a corrective batch — escalate the **whole** batch to implement rather than piecemeal.
 
 De-escalation: if the batch collapses to one coherent 1-3 file change, hand it to `fix` instead (see Phase 2 step 2).
@@ -247,7 +180,7 @@ Report briefly:
 ## Critical Rules
 
 1. One approval gate on the findings list before any edit — never infer approval from a vague request. The gate is *satisfied* (not skipped) only when the engineer has already given an explicit go-ahead on the exact enumerated list, and a **material** change to that list (escalation, narrowing, merge, new finding) re-opens it; see Phase 3.
-2. Findings must be INDEPENDENT; interdependent steps of one feature are `implement`.
+2. Findings must be independent; interdependent steps of one feature are `implement`.
 3. A finding that needs a new slice/contract/re-planning escalates to implement — it is never "just another small fix."
 4. Behavioral findings get a failing test first; only mechanical findings skip TDD.
 5. Read before editing; match the codebase pattern; do not gold-plate.

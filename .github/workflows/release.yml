@@ -6,6 +6,8 @@ name: Release on Version Bump
 # pulled from the matching CHANGELOG.md section. Pushes that don't bump the
 # version create no tag or release (the tag already exists); every run still
 # rebuilds the slim plugin branch from that tag, which is a no-op when unchanged.
+# A version bump is tagged only after the `eval` job (native `claude plugin eval`,
+# tag `core`, needs the ANTHROPIC_API_KEY secret) passes its threshold.
 
 on:
   push:
@@ -21,8 +23,70 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Behavioural gate: the native plugin-eval suite (evals/, tag `core`) must reach the
+  # threshold before a version is tagged. It runs only when this push bumps the version
+  # (no tag yet), so ordinary merges to main do not pay for a full eval run; on those the
+  # job succeeds without running cases and the release job only rebuilds the plugin
+  # branch from the already-gated tag.
+  eval:
+    name: Plugin eval suite (core)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    env:
+      CLAUDE_CODE_VERSION: "2.1.296"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # tags, to tell a version bump from an ordinary push
+
+      - name: Check whether this push is a release
+        id: check
+        run: |
+          V=$(grep -m1 '"version"' .claude/manifest.json | tr -d ' ",' | sed 's/version://')
+          if git rev-parse "v$V" >/dev/null 2>&1; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "Tag v$V already exists: no release on this push, eval skipped."
+          else
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "No tag for v$V yet: running the eval gate."
+          fi
+
+      - name: Install Claude Code and sandbox prerequisites
+        if: steps.check.outputs.release == 'true'
+        run: |
+          # Granting Bash to eval runs requires the OS sandbox: bubblewrap + socat on Linux.
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap socat
+          # Ubuntu 24.04 blocks unprivileged user namespaces by default, which bubblewrap needs.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
+          claude --version
+          git --version
+
+      - name: Run plugin eval suite
+        if: steps.check.outputs.release == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude plugin eval . --tag core --scaffold --allow-tools Bash Write Edit \
+            --model claude-sonnet-5-5 --judge-model claude-haiku-5-5 \
+            --threshold 0.8 --max-cost-usd 20 \
+            --no-publish --trust-plugin --json eval-results.json
+
+      - name: Upload eval results
+        if: always() && steps.check.outputs.release == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-eval-results
+          path: eval-results.json
+          if-no-files-found: warn
+
   release:
     name: Tag and release on version bump
+    needs: eval
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

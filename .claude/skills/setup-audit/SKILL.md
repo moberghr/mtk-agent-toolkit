@@ -34,16 +34,20 @@ Before regenerating anything, resolve whether this is a re-run and whether a pre
 
 1. **Read current manifest version.** The full manifest lives at the plugin root (marketplace installs have no project-local `.claude/manifest.json`); target repos carry the slim `.claude/mtk-version.json` written by `setup-bootstrap`:
    ```bash
-   PM="${CLAUDE_PLUGIN_ROOT:-.}/.claude/manifest.json"
+   PM="${CLAUDE_PLUGIN_ROOT}/.claude/manifest.json"
    [ -f "$PM" ] || PM=".claude/mtk-version.json"
    CURRENT_VERSION=$(python3 -c "import json; print(json.load(open('$PM'))['version'])")
    ```
 
-2. **Read previous version from existing CLAUDE.md footer:**
+2. **Read previous version from the existing constitution footer.** Bootstrap stamps the footer on `AGENTS.md`; `CLAUDE.md` is only the import shim, so read `AGENTS.md` first and fall back to `CLAUDE.md` for legacy (pre-inversion) repos:
    ```bash
-   PREVIOUS_VERSION=$(grep -oE 'mtk-setup: v[0-9.]+' CLAUDE.md 2>/dev/null | head -1 | awk '{print $2}' | sed 's/^v//')
+   PREVIOUS_VERSION=""
+   for CONST_DOC in AGENTS.md CLAUDE.md; do
+     PREVIOUS_VERSION=$(grep -oE 'mtk-setup: v[0-9.]+' "$CONST_DOC" 2>/dev/null | head -1 | awk '{print $2}' | sed 's/^v//')
+     [ -n "$PREVIOUS_VERSION" ] && break
+   done
    ```
-   If CLAUDE.md is absent or has no footer, `PREVIOUS_VERSION` is empty.
+   If neither file exists or neither has a footer, `PREVIOUS_VERSION` is empty.
 
 3. **Locate previous template cache:**
    ```bash
@@ -54,11 +58,11 @@ Before regenerating anything, resolve whether this is a re-run and whether a pre
 
    | Case | Condition | Action |
    |---|---|---|
-   | **First v7+ run on an existing repo** | CLAUDE.md exists but no footer OR cache missing | Go to **Migration Path** below |
+   | **First v7+ run on an existing repo** | `AGENTS.md` or `CLAUDE.md` exists but neither has a footer, OR cache missing | Go to **Migration Path** below |
    | **Clean re-run** | Footer present and `$PREV_CACHE` exists | Go to **Re-Run Merge Logic** below |
-   | **Fresh bootstrap** | CLAUDE.md absent | Proceed directly to STEP 0 — no merge needed |
+   | **Fresh bootstrap** | `AGENTS.md` and `CLAUDE.md` both absent | Proceed directly to STEP 0 — no merge needed |
 
-The **Migration Path** and **Re-Run Merge Logic** procedures (including the re-run summary table) live in `.claude/references/audit-rerun-migration.md`. When the classification above is a migration or a clean re-run, read that file now (path per `## MTK File Resolution`) and follow it; do not paraphrase it from memory. On a fresh bootstrap (CLAUDE.md absent), skip it and proceed to STEP 0.
+The **Migration Path** and **Re-Run Merge Logic** procedures (including the re-run summary table) live in `.claude/references/audit-rerun-migration.md`. When the classification above is a migration or a clean re-run, read that file now (path per `## MTK File Resolution`) and follow it; do not paraphrase it from memory. On a fresh bootstrap (`AGENTS.md` and `CLAUDE.md` both absent), skip it and proceed to STEP 0.
 
 ## STEP 0: Determine The Tech Stack
 
@@ -147,7 +151,7 @@ For each block, sample 2-3 representative files in detail to understand intent �
 
 **Verbatim version extraction.** Framework and runtime versions in `architecture-principles.md`, `CLAUDE.md`, and `detected-tools.json` are quoted verbatim from the manifest file — not paraphrased, rounded, or restated from training-data knowledge, because `verify-claims.sh` re-checks them against the manifest. Read and cite:
 
-- TypeScript / Node: `cat package.json | jq '.dependencies.next, .dependencies.react, .devDependencies.typescript, .engines.node'` (or `grep -E '"(next|react|typescript|node)"'` if `jq` unavailable). Quote the actual range string (e.g., `next: ^15.0.3` → write "Next.js 15", NOT "Next.js 16").
+- TypeScript / Node: `cat package.json | jq '.dependencies.next, .dependencies.react, .devDependencies.typescript, .engines.node'` (or `grep -E '"(next|react|typescript|node)"'` if `jq` unavailable). Quote the actual range string (e.g., `next: ^15.0.3` → write "Next.js 15", not "Next.js 16").
 - Python: `grep -E '^\s*(python|django|fastapi|flask|sqlalchemy)\s*=' pyproject.toml` (or the `[project] dependencies` block).
 - .NET: `grep -hE '<TargetFramework[s]?>|<PackageReference Include=' **/*.csproj` — quote both `TargetFramework(s)` (e.g., `net9.0`) and the explicit `Version=` on each `PackageReference`.
 
@@ -200,8 +204,8 @@ Based on everything you found, create `.claude/references/architecture-principle
 - Don't skip sections — if you found nothing for a section, say "Not found in this codebase"
 - **Counter-example gate before absolute language.** Before writing any principle using `NEVER`, `ALWAYS`, `all`, `every`, or `must`, grep for counter-examples. A pattern seen *somewhere* is not a law. Real failures: "all API handlers validate with Yup" (only 1 of 9); "never use `DateTime.UtcNow`" (used in 2 files). If ANY counter-example exists, do not state it as absolute — soften to "most"/"prefer", report the dominant form with its proportion, and tag `[INFERRED:N]` or `[AMBIGUOUS]` (never `[EXTRACTED]`). Reserve absolute language + `[EXTRACTED]` for genuinely zero-counter-example facts.
 - **Reproducible numeric claims.** Every numeric claim (project counts, file censuses, "N of M" proportions) must carry the exact shell command that produced it, runnable from the repo root, so `verify-claims` can re-run it. Real failures: "18 projects" (actual 17, propagated to 4 lines); grep counts that don't reproduce. If you cannot produce a reproducible command, drop the number and state the fact qualitatively ("several projects") instead of guessing one.
-- **Capability requires a usage site, not just an import.** Do NOT assert a capability or integration exists from an import/using/package-reference alone. Real failures: "CDK provisions EC2/VPC" inferred from a dead `using Amazon.CDK.AWS.EC2;` (zero VPC/Subnet/SG in code); a dead `AWSSQSResource` (0 references) presented as active "SQS access". Require a USAGE SITE — instantiation, call, or DI registration — before claiming the capability. If only an import exists with no usage, omit it or explicitly mark it `dead/unused reference`.
-- **Security-claim grounding.** NEVER assert that a sanitization / validation / audit / secret-handling path EXISTS unless a usage site is found (imported AND called). Real failures: "use the existing dompurify/sanitize-html path" while dompurify is imported nowhere; "never log raw event XML" framed as an existing invariant while code logs raw XML + MQ creds. If the protection is ABSENT, state it as a GAP ("no input sanitization found on X — add it"), not as an existing convention to follow.
+- **Capability requires a usage site, not just an import.** Do not assert a capability or integration exists from an import/using/package-reference alone. Real failures: "CDK provisions EC2/VPC" inferred from a dead `using Amazon.CDK.AWS.EC2;` (zero VPC/Subnet/SG in code); a dead `AWSSQSResource` (0 references) presented as active "SQS access". Require a USAGE SITE — instantiation, call, or DI registration — before claiming the capability. If only an import exists with no usage, omit it or explicitly mark it `dead/unused reference`.
+- **Security-claim grounding.** Never assert that a sanitization / validation / audit / secret-handling path exists unless a usage site is found (imported and called). Real failures: "use the existing dompurify/sanitize-html path" while dompurify is imported nowhere; "never log raw event XML" framed as an existing invariant while code logs raw XML + MQ creds. If the protection is ABSENT, state it as a GAP ("no input sanitization found on X — add it"), not as an existing convention to follow.
 - **Interview answers are authoritative.** When `.claude/setup-answers.json` exists, its contents are authoritative human input, not a scan hypothesis. Principles or rules sourced from it cite it as their evidence anchor (e.g. `Evidence: engineer interview — .claude/setup-answers.json (hard_nevers)`) and are never dropped or reworded by regeneration. If a fresh scan contradicts an interview answer, do not silently pick a side — emit a "Needs review" item describing the conflict instead.
 
 ### Confidence Tagging (S1.15)
@@ -214,7 +218,7 @@ Every principle (or sub-bullet) the audit emits must carry a **confidence tag** 
 
 **Every tagged line must cite evidence** — file:line, a path glob with a hit count, or a commit SHA. No tag without evidence.
 
-**Grade tags by evidence, not vibes (eval fix):** a directly-observable fact with a file:line citation is `[EXTRACTED]` — do NOT under-tag it `[INFERRED:0.5]` (e.g. EF Core at `Program.cs:61 UseSqlServer` is EXTRACTED). An **absence** claim ("no raw SQL", "no test project") is `[EXTRACTED]` only when you cite the zero-result command that proves it; otherwise tag it `[INFERRED]`.
+**Grade tags by evidence, not vibes (eval fix):** a directly-observable fact with a file:line citation is `[EXTRACTED]` — do not under-tag it `[INFERRED:0.5]` (e.g. EF Core at `Program.cs:61 UseSqlServer` is EXTRACTED). An **absence** claim ("no raw SQL", "no test project") is `[EXTRACTED]` only when you cite the zero-result command that proves it; otherwise tag it `[INFERRED]`.
 
 Format each principle line per the line-format example in `.claude/references/audit-output-templates.md`, and prepend that file's confidence legend block to the top of `architecture-principles.md` (right after the header).
 
@@ -253,7 +257,7 @@ Before reporting completion, every generated doc (`architecture-principles.md`, 
 
 ### Stamp
 
-The stamp-block format — including the re-run-only `previous-stamp` / `sections-changed` / `claims-delta` delta fields and the `CLAUDE.md` footer variant — lives in `.claude/references/audit-rerun-migration.md`. Read it now (path per `## MTK File Resolution`) and copy the block verbatim; do not paraphrase it from memory.
+The stamp-block format — including the re-run-only `previous-stamp` / `sections-changed` / `claims-delta` delta fields and the constitution (`AGENTS.md`) footer variant — lives in `.claude/references/audit-rerun-migration.md`. Read it now (path per `## MTK File Resolution`) and copy the block verbatim; do not paraphrase it from memory.
 
 **Rule tags:** every prescriptive rule line in `architecture-principles.md` carries `[ENFORCED]` / `[CONVENTION]` / `[ASPIRATIONAL]` with an evidence anchor; untagged rules are quarantined into a `## Untagged (review)` section — full ruleset in `.claude/references/audit-grounding.md` §1.
 
@@ -297,7 +301,7 @@ The verbatim results block to print is in `.claude/references/audit-output-templ
 ---
 
 ## Audit mode invariants
-- This mode is READ-ONLY except for writing the output document
+- This mode is read-only except for writing the output document
 - Never modify source code during an audit
 - If `.claude/references/architecture-principles.md` already exists, use AskUserQuestion before overwriting
 - Create `.claude/references/` directory if it doesn't exist

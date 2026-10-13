@@ -245,11 +245,6 @@ assemble_all_content() {
     printf 'Project-specific overrides: `.claude/rules/coding-style.md`.\n\n'
   fi
 
-  # Core references
-  emit_section "Security Requirements" "$REFS_DIR/security-checklist.md"
-  emit_section "Testing Expectations" "$REFS_DIR/testing-patterns.md"
-  emit_section "Performance Guidelines" "$REFS_DIR/performance-checklist.md"
-
   # Stack-specific supplements
   if [ -n "$stack" ] && [ -d "$REFS_DIR/${stack}" ]; then
     local display_stack
@@ -350,31 +345,6 @@ generate_cursor_rules() {
     write_mdc "$REFS_DIR/${stack}/coding-guidelines.md" \
       ".cursor/rules/mtk-coding-guidelines.mdc" \
       "$stack coding guidelines and conventions"
-  fi
-
-  # Always-apply: security checklist
-  if [ -f "$REFS_DIR/security-checklist.md" ]; then
-    write_mdc "$REFS_DIR/security-checklist.md" \
-      ".cursor/rules/mtk-security.mdc" \
-      "Security checklist — auth, secrets, PII, SQL injection"
-  fi
-
-  # Glob-scoped: testing patterns
-  if [ -f "$REFS_DIR/testing-patterns.md" ]; then
-    local globs
-    globs="$(extract_apply_to ".claude/references/testing-patterns.md")"
-    [ -z "$globs" ] && globs='"**/tests/**", "**/*.test.*", "**/*.spec.*", "**/*Test*"'
-    write_mdc "$REFS_DIR/testing-patterns.md" \
-      ".cursor/rules/mtk-testing.mdc" \
-      "Testing patterns and conventions" \
-      "$globs"
-  fi
-
-  # On-demand: performance checklist (no globs — manually loaded)
-  if [ -f "$REFS_DIR/performance-checklist.md" ]; then
-    write_mdc "$REFS_DIR/performance-checklist.md" \
-      ".cursor/rules/mtk-performance.mdc" \
-      "Performance checklist — load when optimizing"
   fi
 
   # Stack-specific supplements with applyTo globs

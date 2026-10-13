@@ -306,10 +306,10 @@ expect "non-Edit/Write tool ignored" 0 "$(run_guard \
   "{\"tool_name\":\"Read\",\"tool_input\":{\"file_path\":\"$P/.editorconfig\"}}")"
 
 # ============================ T4: wiring =========================================
-# hooks.json + .claude/settings.json parsed as JSON, exact event key + matcher: a
+# hooks.json (the only hook registration) parsed as JSON, exact event key + matcher: a
 # typo'd event key must fail this.
 if command -v python3 >/dev/null 2>&1; then
-  for wf in hooks/hooks.json .claude/settings.json; do
+  for wf in hooks/hooks.json; do
     got="$(python3 - "$REPO_ROOT/$wf" PreToolUse 'Edit|Write' config-guard.sh <<'PY'
 import json, sys
 path, event, matcher, base = sys.argv[1:5]

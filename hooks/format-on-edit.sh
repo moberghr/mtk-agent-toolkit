@@ -7,11 +7,21 @@ trap _mtk_hook_diag EXIT
 
 # Format the files Claude edited this turn — QUEUE at PostToolUse, FORMAT at Stop.
 #
-# Two modes, selected by argument (same shape as `rule-trigger.sh --rearm`):
+# Three modes, selected by argument:
 #
-#   (no argument)  PostToolUse  -> record the edited path in a per-session queue
-#   --flush        Stop /       -> format every queued path, once, then clear
-#                  SubagentStop
+#   (no argument)          PostToolUse Edit|Write -> record the edited path in a
+#                                                    per-session queue
+#   --flush-before-verify  PreToolUse Bash        -> when the command is a
+#                                                    verification command, format
+#                                                    the queue first, so the tree
+#                                                    that gets verified is the
+#                                                    formatted tree; otherwise
+#                                                    exit at once
+#   --flush                Stop                   -> fallback: format whatever is
+#                                                    still queued, then clear
+#
+# Not SubagentStop: that fires mid-turn, while the parent still has the queued
+# files open, and formatting them there makes the parent's next Edit fail.
 #
 # WHY THE SPLIT. Formatting inside PostToolUse rewrites a file Claude has
 # already read, so its next Edit against that file fails with "File has been
@@ -21,8 +31,8 @@ trap _mtk_hook_diag EXIT
 # bare PostToolUse mutation, and it is why BOTH hooks below must be wired — with
 # only the PostToolUse half, files are queued and never formatted.
 #
-# Wired from the PLUGIN's hooks/hooks.json — PostToolUse (Edit|Write), Stop
-# (--flush) and SubagentStop (--flush). NOT from a project .claude/settings.json:
+# Wired from the PLUGIN's hooks/hooks.json — PostToolUse (Edit|Write),
+# PreToolUse Bash (--flush-before-verify) and Stop (--flush). NOT from a project .claude/settings.json:
 # ${CLAUDE_PLUGIN_ROOT} is only defined for hooks a plugin declares itself, so the
 # same command in a project file expands to `bash /hooks/format-on-edit.sh` and
 # fails on every single edit (measured: 4,552 failures across 7 repos, with
@@ -37,11 +47,14 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
 
-# This hook is wired from the plugin's own hooks/hooks.json, which is the only
-# scope where ${CLAUDE_PLUGIN_ROOT} is defined. A repo bootstrapped before that
-# change may still wire the same basename from its .claude/settings.json; the
-# redundancy guard keeps the two registrations from double-firing.
-mtk_is_redundant_plugin_invocation "$0" && exit 0
+# PreToolUse Bash entry: record the session baseline before anything else —
+# before the opt-in check, because verify-completion needs it in every repo.
+# This runs on every Bash call, so the common path is one ledger grep.
+PRE_INPUT=""
+if [ "${1:-}" = "--flush-before-verify" ]; then
+  PRE_INPUT="$(mtk_read_payload)"
+  mtk_ensure_session_baseline "$PRE_INPUT"
+fi
 
 # Project opt-in. Plugin-scope registration means this hook is reachable in every
 # repo the plugin is active in, including ones that never adopted MTK. Formatting
@@ -55,7 +68,10 @@ case "${MTK_FORMAT_ON_EDIT:-}" in
 esac
 
 MODE="collect"
-[ "${1:-}" = "--flush" ] && MODE="flush"
+case "${1:-}" in
+  --flush) MODE="flush" ;;
+  --flush-before-verify) MODE="pre-verify" ;;
+esac
 
 log_warn() {
   printf 'mtk format-on-edit: %s\n' "$1" >&2
@@ -82,7 +98,7 @@ queue_file() {
   printf '%s/mtk-format-queue-%s-%s\n' "${TMPDIR:-/tmp}" "$project_id" "$session"
 }
 
-INPUT="$(mtk_read_payload)"
+if [ "$MODE" = "pre-verify" ]; then INPUT="$PRE_INPUT"; else INPUT="$(mtk_read_payload)"; fi
 QUEUE="$(queue_file "$INPUT")"
 
 # ---------------------------------------------------------------- collect ----
@@ -99,6 +115,12 @@ fi
 # ------------------------------------------------------------------ flush ----
 
 [ -s "$QUEUE" ] || exit 0
+
+# Pre-verify: runs on every Bash call, so leave unless this one verifies.
+if [ "$MODE" = "pre-verify" ]; then
+  PRE_CMD="$(mtk_extract_command "$INPUT" 2>/dev/null || true)"
+  [ -n "$PRE_CMD" ] && mtk_command_is_verification "$PRE_CMD" || exit 0
+fi
 
 # Dedupe, and drop anything deleted or moved since it was queued. Clear the
 # queue before formatting so a formatter that hangs or crashes cannot leave
@@ -195,18 +217,17 @@ flush_dotnet() {
 # which matches, and dotnet format then formats nothing and exits 0 — the exact
 # silent no-op this function exists to fix. Verified on dotnet 10.0.100.
 #
-# Only the `whitespace` and `style` subcommands run. Bare `dotnet format` also
-# runs the `analyzers` pass, which applies third-party/CA code fixes — in a
+# Only `whitespace --folder` runs. `--folder` formats the files as plain files,
+# without loading the project into MSBuild, so it stays fast. The `style` and
+# `analyzers` passes both load the workspace — slow enough to overrun the Stop
+# hook's 30 s timeout — and `analyzers` applies third-party/CA code fixes: in a
 # 2026-09 field run a CA1001 auto-fix rewrote a test class and broke the build
-# four times across implementers. Analyzer fixes are a reviewed change, not a
-# formatting side effect of an edit.
+# four times across implementers. Style and analyzer fixes are a reviewed
+# change, not a formatting side effect of an edit.
 dotnet_format_in() {
   local dir="$1"; shift
-  local sub
-  for sub in whitespace style; do
-    ( cd "$dir" && dotnet format "$sub" --include "$@" --verbosity quiet ) >/dev/null 2>&1 \
-      || log_warn "dotnet format ${sub} failed in ${dir} ($*)"
-  done
+  ( cd "$dir" && dotnet format whitespace --folder --include "$@" --verbosity quiet ) >/dev/null 2>&1 \
+    || log_warn "dotnet format whitespace failed in ${dir} ($*)"
 }
 
 format_one() {
@@ -220,8 +241,9 @@ format_one() {
       ;;
     py)
       if command -v ruff >/dev/null 2>&1; then
+        # Formatting only. `ruff check --fix` is a lint autofix that can change
+        # behaviour (unused-import removal, rewrites) — not an edit side effect.
         run_formatter "ruff format ${f}" ruff format "$f" || true
-        run_formatter "ruff check --fix ${f}" ruff check --fix "$f" || true
       elif command -v black >/dev/null 2>&1; then
         run_formatter "black ${f}" black --quiet "$f" || true
       fi

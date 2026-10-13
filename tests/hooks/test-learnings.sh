@@ -153,7 +153,7 @@ ok "F1: unseeded store with no lessons.md is diagnosed"
 
 # F2: no store, but tasks/lessons.md exists — the gap that made every query in a
 # bootstrapped repo return empty forever (seed only ran in setup-bootstrap, so a
-# repo bootstrapped before that shipped never got one; beacon 2026-09: 30 lessons,
+# repo bootstrapped before that shipped never got one; a 2026-09 field run: 30 lessons,
 # 0 reachable). query now seeds the store itself, store-only: it must never
 # rewrite tasks/lessons.md from a read path. stderr names what happened and the
 # `migrate` command that also regenerates the markdown view.
@@ -216,5 +216,27 @@ rm -rf "$R/.mtk"
 : > "$R/.mtk/learnings.jsonl"
 ( cd "$R" && bash "$LS" query >/dev/null 2>&1 ) || fail "F5: query exited non-zero on empty store"
 ok "F5: exit code stays 0 across all empty-result states"
+
+# M1-M3: metrics never reports warn on a small n. All-approved recommendations
+# give pi = 1.0, which crosses the 0.70 threshold, but below min_n (10) the
+# status must be insufficient-data; at n = 10 it may flip to warn.
+R="$(new_repo)"
+for i in 1 2 3 4 5 6 7 8 9; do
+  ( cd "$R" && bash "$LS" add --source manual --decision-origin claude-recommended-approved \
+      --title "Approved rec $i" >/dev/null )
+done
+out="$( cd "$R" && bash "$LS" metrics )"
+case "$out" in *'"n":9,'*) : ;; *) fail "M1: expected n=9 in metrics, got: $out" ;; esac
+case "$out" in *'"status":"insufficient-data"'*) : ;; *) fail "M1: n=9 with pi=1.0 must be insufficient-data, got: $out" ;; esac
+ok "M1: metrics holds back warn below min_n"
+( cd "$R" && bash "$LS" add --source manual --decision-origin claude-recommended-approved \
+    --title "Approved rec 10" >/dev/null )
+out="$( cd "$R" && bash "$LS" metrics )"
+case "$out" in *'"status":"warn"'*) : ;; *) fail "M2: n=10 with pi=1.0 must warn, got: $out" ;; esac
+ok "M2: metrics warns once n reaches min_n"
+R="$(new_repo)"
+out="$( cd "$R" && bash "$LS" metrics )"
+case "$out" in *'"n":0,'*'"status":"insufficient-data"'*) : ;; *) fail "M3: empty store must be n=0 insufficient-data, got: $out" ;; esac
+ok "M3: empty store reports insufficient-data, not ok"
 
 echo "ALL LEARNINGS TESTS PASSED"

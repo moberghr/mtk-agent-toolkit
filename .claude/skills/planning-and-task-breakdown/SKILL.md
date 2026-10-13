@@ -7,8 +7,6 @@ compatibility:
   - claude-code
   - cursor
   - codex
-trigger: spec-approved|multi-file-implementation|batch-planning
-skip_when: single-file-fix|quick-fix-scope
 user-invocable: false
 ---
 
@@ -35,12 +33,6 @@ Convert the approved plan into small, executable tasks that can be verified one 
 ## Workflow
 
 1. Start from the approved change manifest and test manifest.
-1a. **Prior-work freshness check.** If the spec's `## Prior Work Check`
-   section is missing OR was generated more than one session ago (different
-   branch HEAD, different day), re-run `prior-work-check` against the
-   current branch state. Risk profiles and lessons can shift between
-   approval and planning. A BLOCK verdict here means planning stops until
-   the spec is amended and re-approved.
 2. Break work into batches of 2-4 related files, dependency-ordered. Two batches that list the same file in `files` **must** carry a dependency edge between them (later depends on earlier) — this is what lets the scheduler run edge-free batches concurrently without two implementers editing one file. Files that many batches touch by nature — DI registration (`Program.cs`, `*Startup*`, `DependencyInjection*`, `ServiceRegistration*`), project/solution files (`*.csproj`, `*.sln*`, `package.json`, `pyproject.toml`), and migration snapshots — are **serialize-if-touched**: every batch that touches one of them depends on the previous batch that did.
 3. For each task, write:
    - task description
@@ -65,15 +57,15 @@ Convert the approved plan into small, executable tasks that can be verified one 
      migration, a vendored artifact), and then say why it is frozen.
    - **Depends (mandatory):** the batch ids this batch assumes are complete (e.g., "B1 — needs the entity to exist"). An empty list is a claim of independence and must say why (`depends_rationale: "independent: no shared files, reads no type another batch creates"`). The scheduler runs edge-free batches in the same wave, so a missing edge is a concurrency bug, not a style nit.
    - **Governing constraints:** the Critical Rule / principle ids that constrain
-     this batch, cited from the spec's Constitution Check (run
-     `bash scripts/constitution-digest.sh` if absent).
+     this batch — from the spec's Constitution Check in extended mode, otherwise
+     from `bash scripts/constitution-digest.sh`.
      Each batch states which rules it must satisfy, not just what it builds —
      recorded in the plan so the implementer and human reviewers see, per
      batch, exactly which rules constrain it.
      An empty list is allowed only with an explicit "no rule constrains this
      batch" note.
 4. Prefer vertical slices where possible so each batch leaves the system in a working state.
-4b. **Package-legitimacy gate for new dependencies.** If any batch introduces a third-party package **not already present** in the repo's dependency manifests — especially one an AI assistant, blog post, or the spec's research brief recommended — do NOT plan a bare install step. Instead:
+4b. **Package-legitimacy gate for new dependencies.** If any batch introduces a third-party package **not already present** in the repo's dependency manifests — especially one an AI assistant, blog post, or the spec's research brief recommended — do not plan a bare install step. Instead:
    - Run the stack's registry-verification command (from `.claude/references/dependency-intake-checklist.md` criterion 0, also listed in the active tech-stack skill) to confirm the package exists and is the real one (not a typosquat / hallucination).
    - Tag the package `[ASSUMED]` in the plan until verified, and insert an explicit `checkpoint:human-verify` step **before** the install task. This checkpoint is one of the conditions that blocks `MTK_AUTO_PROCEED` at the `implement` Phase 2.5 gate, so an unverified package can never be installed autonomously.
    - A criterion-0 Poor (not found / dead repo / typosquat signal) blocks the dependency outright — re-plan without it.
@@ -87,10 +79,9 @@ Convert the approved plan into small, executable tasks that can be verified one 
    - **If the plan was supplied by the engineer as input** (adopted by
      `implement` Phase 0.7 — the file already exists at the plan path): do **not**
      author a new plan or version-bump the engineer's file. Adopt the supplied
-     path as-is, validate its `plan.batches` against the JSON sidecar schema, and
-     run `prior-work-check`'s *existing-plan reconciliation mode* so
-     already-implemented batches are marked done before the approval gate rather
-     than re-run. Skip the authoring sub-steps below.
+     path as-is and validate its `plan.batches` against the JSON sidecar schema;
+     Phase 0.7 has already reconciled it against current code (`prior-work-check`
+     runs once per run). Skip the authoring sub-steps below.
    - Use the **full filename stem of the active spec**, including any version suffix (e.g., `-v2`, `-v3`). If the spec was written as `docs/specs/2026-04-23-foo-v2.md`, the plan is `docs/plans/2026-04-23-foo-v2.md`.
    - If no spec path is available (standalone planning run), use `YYYY-MM-DD-<feature-slug>.md` with no suffix.
    - Create `docs/plans/` if it does not exist.
@@ -121,30 +112,15 @@ Convert the approved plan into small, executable tasks that can be verified one 
 9. Keep the task list synchronized with reality. If a new file is needed, re-plan before continuing.
 10. Record the plan/todo paths on the workflow artifact and leave `plan_trust_gate` at `pending` — only the engineer's Phase 2.5 approval flips it to `pass`. See `.claude/references/orchestration-gates.md`.
 10.5. **Update the workflow artifact (additive, capability-gated).** With `plan_path`/`todo_path` recorded, follow `.claude/references/artifact-publishing.md` to add the Plan section to the workflow's Claude Artifact. Because the artifact is keyed to the workflow uuid, this **updates the existing URL in place** (passing the recorded `results.artifact_url`) — it does not mint a new link. Silent no-op when the tool is unavailable or `MTK_ARTIFACT_PUBLISH=0`.
-11. **Anti-anchored gap check.** Before surfacing the plan to the engineer, dispatch the `plan-gap-reviewer` agent with the original user request and the saved plan path — plus, when they exist, the spec markdown path, the spec JSON sidecar path, and `tasks/todo.md`. Passing the sidecar and todo activates the agent's **cross-artifact consistency check**: spec ↔ plan ↔ todo are mapped against each other in both directions (manifest entries ↔ batches, success criteria ↔ tests, out-of-scope ↔ batch contents) so disagreement between the artifacts is caught before the approval gate, not after implementation. The agent runs in a forked context and is forbidden from reading lessons, prior reviewer output, or the workflow artifact — its job is to challenge the plan against the repo with no anchors. Surface every `BLOCKING` finding back to the planner and revise before the approval gate. Surface `ADVISORY` findings unchanged at the approval gate so the engineer decides.
+11. **Anti-anchored gap check.** Before surfacing the plan to the engineer, dispatch the `plan-gap-reviewer` agent with the original user request and the saved plan path — plus, when they exist, the spec markdown path, the spec JSON sidecar path, and `tasks/todo.md`. Passing the sidecar and todo activates the agent's **cross-artifact consistency check**: spec ↔ plan ↔ todo are mapped against each other in both directions (manifest entries ↔ batches, success criteria ↔ tests, out-of-scope ↔ batch contents) so disagreement between the artifacts is caught before the approval gate, not after implementation. The agent runs in a forked context and is forbidden from reading lessons, prior reviewer output, or the workflow artifact — its job is to challenge the plan against the repo with no anchors. Surface every `BLOCKING` finding back to the planner and revise before the approval gate. Surface `ADVISORY` findings unchanged at the approval gate so the engineer decides. A plan-gap `PASS` does not replace engineer approval: the gate still runs.
 
 ## Rules
 
-- Every hand-written file touched must already exist in the change manifest. **Derived artifacts are the exception** — lockfiles, snapshots, generated sources, and files whose own header says they are generated stay out of it. Name the regenerator in the batch's verification step instead (`then run scripts/build-rule-index.sh`); `validate-handoff.sh` classifies the output as collateral, so an unlisted one is never drift.
+- Every hand-written file touched must already exist in the change manifest. **Derived artifacts are the exception** — lockfiles, snapshots, generated sources, and files whose own header says they are generated stay out of it. Name the regenerator in the batch's verification step instead (`then run scripts/build-references-index.sh`); `validate-handoff.sh` classifies the output as collateral, so an unlisted one is never drift.
 - Every batch must be buildable.
 - Every behavior change must have an associated test task.
 - No task should require changing more than a small handful of files without justification.
 - Re-planning is mandatory if the task grows beyond the approved manifest.
-
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared table. Planning-specific traps: "I'll just keep the tasks in my head" (hidden plans drift fastest — write the list so implementation and review can check reality against it), "this batch is a bit large, but it saves time" (oversized batches hide breakage and make checkpoints meaningless), and "I'll add verification steps later" (a task without verification is not a task, it's a wish).
-
-## Red Flags
-
-- Batches too large to verify quickly
-- Checkpoints omitted
-- `tasks/todo.md` drifting from actual implementation
-- Tasks ordered by convenience rather than dependency
-- Missing Boundary or Depends annotations — without them, task scope is ambiguous
-- A Boundary written as a bare file prohibition with no invariant behind it — the implementer routes around the file instead of honoring the intent
-- A verification command composed from memory rather than quoted from the tech-stack skill or its references
-- Circular dependencies between tasks
 
 ## Verification
 

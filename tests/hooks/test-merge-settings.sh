@@ -25,12 +25,15 @@ trap 'rm -rf "$TMP"' EXIT
 cat > "$TMP/source.json" <<'EOF'
 {
   "permissions": {
-    "allowedTools": [
+    "allow": [
       "Read",
       "Bash(git diff:*)",
       "Bash(git status:*)"
     ],
-    "deny": []
+    "deny": [],
+    "ask": [
+      "Bash(git reset --hard:*)"
+    ]
   },
   "hooks": {
     "PreToolUse": [
@@ -68,10 +71,17 @@ cat > "$TMP/target.json" <<'EOF'
   "permissions": {
     "allowedTools": [
       "Read",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(python:*)"
+    ],
+    "allow": [
+      "Bash(make:*)"
     ],
     "deny": [
       "Bash(rm -rf:*)"
+    ],
+    "ask": [
+      "Bash(git clean -f:*)"
     ]
   },
   "hooks": {
@@ -99,8 +109,8 @@ cat > "$TMP/target.json" <<'EOF'
 }
 EOF
 
-OUT_BASH="$(bash "$TARGET_SH" "$TMP/source.json" "$TMP/target.json")"
-OUT_BIN="$(/bin/bash "$TARGET_SH" "$TMP/source.json" "$TMP/target.json")"
+OUT_BASH="$(bash "$TARGET_SH" "$TMP/source.json" "$TMP/target.json" 2>/dev/null)"
+OUT_BIN="$(/bin/bash "$TARGET_SH" "$TMP/source.json" "$TMP/target.json" 2>"$TMP/fold.err")"
 
 # 1) byte-valid JSON via json.tool round-trip
 if printf '%s' "$OUT_BIN" | python3 -m json.tool >/dev/null 2>&1; then
@@ -124,11 +134,20 @@ d = json.load(sys.stdin)
 def out(label, ok):
     print(("PASS" if ok else "FAIL") + "\t" + label)
 
-allowed = d["permissions"]["allowedTools"]
+perms = d["permissions"]
+# Claude Code has no permissions.allowedTools key, so that list was never in
+# effect: only narrow build/test/lint entries move into allow; broad ones stay
+# in allowedTools (still inert) for a manual decision.
+allowed = perms["allow"]
+out("broad legacy Bash(python:*) NOT activated", "Bash(python:*)" not in allowed)
+out("broad legacy entries stay inert in allowedTools", "Bash(python:*)" in perms.get("allowedTools", []))
 # union with dedup: Read appears once; both distinctive tools present
-out("allowedTools union dedups Read", allowed.count("Read") == 1)
-out("allowedTools keeps target-only Bash(npm test:*)", "Bash(npm test:*)" in allowed)
-out("allowedTools adds source-only Bash(git diff:*)", "Bash(git diff:*)" in allowed)
+out("allow union dedups Read", allowed.count("Read") <= 1)
+out("allow keeps target-only Bash(make:*)", "Bash(make:*)" in allowed)
+out("allow absorbs legacy target allowedTools Bash(npm test:*)", "Bash(npm test:*)" in allowed)
+out("allow adds source-only Bash(git diff:*)", "Bash(git diff:*)" in allowed)
+ask = perms["ask"]
+out("ask union keeps target and source entries", ask == ["Bash(git clean -f:*)", "Bash(git reset --hard:*)"])
 # value with spaces/parens/colon preserved verbatim (the old awk gsub bug)
 out("value with spaces preserved verbatim", "Bash(git status:*)" in allowed)
 
@@ -164,6 +183,26 @@ while IFS=$'\t' read -r verdict label; do
     FAILS+=("$label (JSON: $OUT_BIN)")
   fi
 done <<< "$assertions"
+
+# fold reports every activated and every left-over entry on stderr
+if grep -qF 'activated: ' "$TMP/fold.err" && grep -qF '"Bash(npm test:*)"' "$TMP/fold.err" \
+  && grep -qF '"Bash(python:*)" needs a manual decision' "$TMP/fold.err"; then
+  echo "  PASS  fold prints activated and left-inert entries"
+else
+  FAILS+=("fold did not report its decisions: $(cat "$TMP/fold.err")")
+fi
+
+# a non-list allow next to allowedTools is an error, never replaced with []
+printf '{"permissions":{"allow":"Read","allowedTools":["Bash(pytest:*)"]}}\n' > "$TMP/scalar.json"
+set +e
+scalar_out="$(/bin/bash "$TARGET_SH" "$TMP/source.json" "$TMP/scalar.json" 2>/dev/null)"
+rc=$?
+set -e
+if [ "$rc" -eq 2 ] && [ -z "$scalar_out" ]; then
+  echo "  PASS  non-list allow -> exit 2, no merge"
+else
+  FAILS+=("non-list allow: expected exit 2 and no stdout, got rc=$rc stdout='$scalar_out'")
+fi
 
 # N+1) empty target -> source echoed verbatim
 : > "$TMP/empty.json"

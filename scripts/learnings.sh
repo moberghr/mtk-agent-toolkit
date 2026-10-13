@@ -230,7 +230,7 @@ cmd_add() {
   fi
 
   # v7.25 executable lesson-contract fields. output_contract / prefinal_checklist
-  # are caller-authored JSON (the golden-path-capture / promote-lesson skills build
+  # are caller-authored JSON (the lessons skill's capture / promote modes build
   # them); embedded verbatim with a light brace/bracket guard. mtk-doctor runs the
   # deep well-formedness lint. Keeps learnings.sh JSON-parser-free (S3.3).
   if [ -n "$confidence" ]; then
@@ -354,7 +354,7 @@ cmd_query() {
 
   # Lazy seed. The bootstrap-time `migrate` only reaches repos bootstrapped after
   # it shipped; every earlier repo answered "no lessons" on every query, forever
-  # (beacon 2026-09: 30 lessons in tasks/lessons.md, 0 reachable). Seed here,
+  # (a 2026-09 field run: 30 lessons in tasks/lessons.md, 0 reachable). Seed here,
   # STORE-ONLY: a read path must never rewrite the engineer's markdown, so the
   # regen half of `migrate` is deliberately not run. Title-hash dedup makes a
   # repeat harmless; `.mtk/` is gitignored state. MTK_LEARNINGS_AUTOSEED=0 opts out.
@@ -682,6 +682,9 @@ cmd_list() {
 # metrics — sycophancy index (π) plus decision_origin totals over a rolling window.
 # Default window = 30 days. Override with --window-days N.
 # Threshold read from .claude/review-config.json (sycophancy_index.warn_threshold), default 0.70.
+# A ratio over a handful of recommendations is noise, so status stays
+# "insufficient-data" until n (approved + modified + rejected) reaches
+# sycophancy_index.min_n (default 10); only then can it flip to "warn".
 cmd_metrics() {
   ensure_store
   local window_days=30
@@ -692,12 +695,14 @@ cmd_metrics() {
     esac
   done
 
-  local threshold="0.70"
+  local threshold="0.70" min_n=10
   if [ -f .claude/review-config.json ]; then
-    # Best-effort extraction; tolerate missing key.
+    # Best-effort extraction; tolerate missing keys.
     local extracted
-    extracted="$(sed -nE 's/.*"warn_threshold"[[:space:]]*:[[:space:]]*([0-9]+(\.[0-9]+)?).*/\1/p' .claude/review-config.json | head -1)"
+    extracted="$(sed -nE 's/.*"warn_threshold"[[:space:]]*:[[:space:]]*([0-9]+(\.[0-9]+)?).*/\1/p' .claude/review-config.json | awk 'NR==1')"
     [ -n "$extracted" ] && threshold="$extracted"
+    extracted="$(sed -nE 's/.*"min_n"[[:space:]]*:[[:space:]]*([0-9]+).*/\1/p' .claude/review-config.json | awk 'NR==1')"
+    [ -n "$extracted" ] && min_n="$extracted"
   fi
 
   local cutoff_epoch
@@ -729,12 +734,14 @@ cmd_metrics() {
     pi="$(awk -v a="$cra" -v d="$denom" 'BEGIN { printf("%.3f", a / d) }')"
   fi
   local status="ok"
-  if awk -v p="$pi" -v t="$threshold" 'BEGIN { exit (p >= t ? 0 : 1) }'; then
-    [ "$denom" -gt 0 ] && status="warn"
+  if [ "$denom" -lt "$min_n" ]; then
+    status="insufficient-data"
+  elif awk -v p="$pi" -v t="$threshold" 'BEGIN { exit (p >= t ? 0 : 1) }'; then
+    status="warn"
   fi
 
-  printf '{"window_days":%d,"totals":{"user-directed":%d,"claude-recommended-approved":%d,"claude-recommended-modified":%d,"claude-recommended-rejected":%d,"system-inferred":%d},"pi":%s,"warn_threshold":%s,"status":"%s"}\n' \
-    "$window_days" "$ud" "$cra" "$crm" "$crr" "$si" "$pi" "$threshold" "$status"
+  printf '{"window_days":%d,"totals":{"user-directed":%d,"claude-recommended-approved":%d,"claude-recommended-modified":%d,"claude-recommended-rejected":%d,"system-inferred":%d},"n":%d,"min_n":%d,"pi":%s,"warn_threshold":%s,"status":"%s"}\n' \
+    "$window_days" "$ud" "$cra" "$crm" "$crr" "$si" "$denom" "$min_n" "$pi" "$threshold" "$status"
 }
 
 main() {

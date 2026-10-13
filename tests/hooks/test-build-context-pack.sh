@@ -5,7 +5,7 @@ set -euo pipefail
 # manifest file declares and the files that reference them — so reviewer lanes
 # read one call graph instead of each re-deriving it.
 #
-# WHY. In a 2026-09 field run (beacon) three of four reviewer lanes rebuilt the
+# WHY. In a 2026-09 field run three of four reviewer lanes rebuilt the
 # same cross-source call graph of the touched symbols; roughly a third of all
 # reviewer tokens was that duplicated work. The pack is built once per run and
 # every lane already reads it, so it is the one place the graph belongs.
@@ -23,7 +23,7 @@ trap 'rm -rf "$PROJ"' EXIT
 mkdir -p "$PROJ/src/Gates" "$PROJ/src/Handlers" "$PROJ/tests" "$PROJ/docs/specs" "$PROJ/lib"
 
 cat > "$PROJ/src/Gates/SqlExecutionGate.cs" <<'CS'
-namespace Beacon.Gates;
+namespace Acme.Gates;
 public interface ISqlExecutionGate { bool Validate(string sql); }
 public sealed class SqlExecutionGate : ISqlExecutionGate
 {
@@ -32,7 +32,7 @@ public sealed class SqlExecutionGate : ISqlExecutionGate
 }
 CS
 cat > "$PROJ/src/Handlers/RunQueryHandler.cs" <<'CS'
-namespace Beacon.Handlers;
+namespace Acme.Handlers;
 public class RunQueryHandler
 {
     private readonly ISqlExecutionGate _gate;
@@ -71,6 +71,16 @@ OUT="$PROJ/.mtk/pack.md"
     bash "$SCRIPT" test-uuid docs/specs/2026-09-09-gate.json --stack dotnet --out "$OUT" >"$PROJ/run.out" 2>"$PROJ/run.err" ) \
   || fail "build-context-pack exited non-zero: $(cat "$PROJ/run.err")"
 [ -f "$OUT" ] || fail "pack not written at $OUT"
+
+# 0. Stack field rules: the tech-stack skill's ORM/data-layer and framework
+#    sections are in the pack, including the field-learned post-projection rule
+#    (it lived in a deleted reference file, so the pack must carry it now).
+grep -q '^## ORM & Data Layer Guidance' "$OUT" || fail "no '## ORM & Data Layer Guidance' section in the pack"
+grep -q '^## Framework Patterns' "$OUT" || fail "no '## Framework Patterns' section in the pack"
+grep -q 'Order and filter on the entity, not on a projected member' "$OUT" \
+  || fail "post-projection OrderBy/Where rule missing from the pack"
+grep -q 'AsNoTracking' "$OUT" || fail "AsNoTracking rule missing from the pack"
+ok "stack ORM and framework rules (incl. post-projection ordering) are in the pack"
 
 # 1. Section present.
 grep -q '^## Change map' "$OUT" || fail "no '## Change map' section in the pack"
@@ -196,5 +206,26 @@ O="$D/pack.md"; run_const_pack "$D" "$O"
 grep -q '^## AGENTS.md — Critical Rules' "$O" || fail "late marker: heading not sourced from AGENTS.md"
 grep -q 'C9.1' "$O" || fail "late marker: AGENTS.md rule body missing"
 ok "the marker string below line 10 does not demote a hand-authored AGENTS.md"
+
+# 8. Applicable rules: a reviewer reads only the rule files that are global
+#    (no `paths:`) or whose `paths:` globs match a manifest path — not every
+#    rule file (~39k tokens per compliance dispatch in large consumer repos).
+D="$(make_const_proj rules)"
+mkdir -p "$D/.claude/rules/nested"
+printf '# Global rule\n\n- G1 applies everywhere.\n' > "$D/.claude/rules/global.md"
+printf -- '---\npaths:\n  - "src/**"\n---\n# Src rule\n' > "$D/.claude/rules/src-rule.md"
+printf -- '---\npaths: ["docs/**/*.md", "hooks/*.sh"]\n---\n# Docs rule\n' > "$D/.claude/rules/docs-rule.md"
+printf -- '---\npaths:\n  - "**/*.{py,pyi}"\n---\n# Python rule\n' > "$D/.claude/rules/nested/py-rule.md"
+O="$D/pack.md"; run_const_pack "$D" "$O"
+sect="$(awk '/^## Applicable rules/{f=1;next} f&&/^## /{exit} f' "$O")"
+[ -n "$sect" ] || fail "rules: no '## Applicable rules' section"
+applies="$(printf '%s\n' "$sect" | awk '/^Not matched/{exit} {print}')"
+unmatched="$(printf '%s\n' "$sect" | awk '/^Not matched/{f=1;next} f')"
+case "$applies" in *'.claude/rules/global.md` — global'*) ;; *) fail "rules: global rule not listed as applicable" ;; esac
+case "$applies" in *'.claude/rules/src-rule.md` — matches `src/mod.py`'*) ;; *) fail "rules: src/** rule not matched to src/mod.py" ;; esac
+case "$applies" in *'nested/py-rule.md` — matches'*) ;; *) fail "rules: nested **/*.{py,pyi} rule not matched" ;; esac
+case "$applies" in *docs-rule.md*) fail "rules: docs rule wrongly listed as applicable" ;; esac
+case "$unmatched" in *'docs-rule.md` — `docs/**/*.md`, `hooks/*.sh`'*) ;; *) fail "rules: unmatched docs rule not listed with its globs" ;; esac
+ok "applicable rules selected by paths: frontmatter (global, matched, nested, brace globs; unmatched listed with globs)"
 
 echo "test-build-context-pack: all checks passed"

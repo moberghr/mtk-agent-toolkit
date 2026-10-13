@@ -2,14 +2,6 @@
 paths:
   - "hooks/**"
   - "scripts/**"
-axes:
-  decision: process
-  topic: hooks
-  scope: global
-trigger:
-  tool: "Edit|Write"
-  path: "^(hooks|scripts)/"
-strength: inject
 ---
 
 # Hooks & Scripts (S3)
@@ -21,22 +13,15 @@ strength: inject
 - **S3.1** All bash scripts must start with `#!/usr/bin/env bash` and `set -euo pipefail`.
 - **S3.2** Hook scripts must be executable (`chmod +x`).
 - **S3.3** No external dependencies beyond coreutils, grep, sed, awk, find, git. The toolkit must work on a fresh macOS or Linux machine. Opt-in features may probe for an extra tool (e.g. openssl for release signing) but must degrade gracefully — never a hard failure — when it is absent or lacks the needed capability (stock macOS LibreSSL has no Ed25519). python3 is part of the accepted baseline (macOS and mainstream Linux ship it); scripts may hard-require it with a clear exit-2 message.
-- **S3.12** MCP server code (`mcp/` directory) is exempt from S3.3 — it may use Node.js dependencies. However, the pre-built bundle (`dist/mtk-mcp-server.cjs`) is the only runtime artifact. Users never run `npm install`. The MCP server is optional; all skills must have bash fallback paths.
 - **S3.4** Use `"${VAR:-}"` for optional environment variables to avoid unbound variable errors under `set -u`.
 
 ## Hook Configuration
 
 - **S3.5** Plugin hooks are defined in `hooks/hooks.json` under the `hooks` key. Settings hooks are in `.claude/settings.json` under `hooks`.
-- **S3.6** Plugin hooks (`hooks.json`) carry the full enforcement suite (security gate, scope/read guards, context budget, verify-completion, compaction snapshot/recovery, prompt dispatch, learnings/analytics/workflow Stop hooks) with `${CLAUDE_PLUGIN_ROOT}` paths so it runs in plugin-installed repos. Settings hooks (`settings.json`) wire the same hooks for this dev checkout; the double-run guard in `hooks/lib/hook-io.sh` makes the plugin-invoked copy exit early when the project wires the same hook basename.
-- **S3.7** The verify-completion Stop hook reads the Stop payload from stdin and checks the transcript's final completion claim for evidence keywords. On a gap it blocks the stop once (`decision: "block"` with a VERIFICATION GAP reason) so the model restates fresh evidence; it never blocks when `stop_hook_active` is set, and stays silent otherwise.
+- **S3.6** Plugin hooks (`hooks/hooks.json`) are the whole runtime, with `${CLAUDE_PLUGIN_ROOT}` paths so it runs in plugin-installed repos. Exactly these are registered: `SessionStart` (`startup|clear|compact|resume`) → `session-start`; `PreToolUse` `Bash` → `security-gate.sh` (destructive commands, plus the S4.12 interactive-prompt check) and `format-on-edit.sh --flush-before-verify`; `PreToolUse` `Edit|Write` → `scope-guard.sh` and `config-guard.sh`; `PostToolUse` `Edit|Write|Bash` → `evidence-ledger.sh`; `PostToolUse` `Edit|Write` → `spec-approval-trigger.sh` and `format-on-edit.sh`; `Stop` → `verify-completion` and `format-on-edit.sh --flush`, plus the async `workflow-continuation.sh` and `cost-tracker.sh` (session cost and `.claude/analytics.json`). No hook runs on `UserPromptSubmit`, `PreCompact`, Read/Grep/Glob or MCP calls — any matcher naming `mcp__` counts — and `validate-toolkit` and `mtk-doctor` both FAIL if one is added, through one shared classifier (`hooks/lib/hot_path_matchers.py`); model-visible text goes out as `additionalContext`, since stdout/stderr on exit 0 is not shown to the model. The plugin is their only registration: `.claude/settings.json` wires no MTK hooks, including in this dev checkout, which runs the working tree as the plugin via `claude --plugin-dir .`. Wiring a hook in both places makes it fire twice per event, and there is no in-hook guard against that. Everything else under `hooks/` is on-demand, never registered: the scripts `ci-status`, `collateral-guard`, `check-prerequisites`, `parse-build-diagnostics`, `pre-commit-linters` and `merge-settings`; the data directories `analyzer-severity/` (read by `parse-build-diagnostics`) and `linter-patterns/` (read by `pre-commit-linters`); `git-hooks/` (installed into a repo's own git hooks by setup); and the sourced helpers in `lib/`.
+- **S3.7** The verify-completion Stop hook reads the Stop payload from stdin and checks the transcript's final completion claim for evidence keywords. It skips a completion claim only when it positively knows nothing changed: no recorded edit, and the working-tree fingerprint still equals the baseline recorded before the session's first tool call. A missing ledger, baseline or `session_id`, or a fingerprint that cannot be computed, falls through to the gap checks (fail closed). Evidence is bound to the verified tree: `evidence-ledger.sh` stores a tree fingerprint with each verification command, and a different fingerprint at Stop re-arms the gap however the files changed (outside git it falls back to edit/verification sequence numbers). Ledger state is keyed on the payload's `session_id`. On a gap it blocks the stop once (`decision: "block"` with a VERIFICATION GAP reason) so the model restates fresh evidence; it never blocks when `stop_hook_active` is set, and stays silent otherwise.
 - **S3.8** Session-start hook must support multiple platforms: Claude Code, Cursor, Copilot CLI, Gemini CLI.
-- **S3.11** `hooks/post-compact.sh` re-injects on-disk state (tech stack, active specs/plans, incomplete tasks, handoff artifacts) after auto-compaction. There is no `PostCompact` hook event — it is wired as a `SessionStart` hook with matcher `compact` (the documented channel that regains model-visible context after compaction) in both `hooks/hooks.json` and `.claude/settings.json`. It emits a `SessionStart` `hookSpecificOutput.additionalContext` envelope — no blocking, no side effects.
-
-## Hook Tiers
-
-- **S3.13** Hooks are classified into two tiers. Tier 1 (text-nudging) emits advisory `additionalContext`/`context` or blocks (exit 2) — used when the action is obvious and the main thread has enough context. Tier 2 (skill-invoking) writes a queue entry under `.claude/queue/` that the `UserPromptSubmit` dispatcher surfaces next turn — used when the action should defer, survive session boundaries, or trigger from a non-prompt event. Tier 2 must never modify source code.
-- **S3.14** Tier-2 queue entries follow the schema in `hooks/lib/skill-queue.sh`: `queued_at`, `queued_epoch`, `skill`, `reason`, `context.excerpt`, `ttl_hours` (default 24), `source_hook`. Writes are atomic (tmp-then-rename). Drain collapses duplicates by `skill + source_hook`, caps surfaced entries at 3 per turn, and deletes expired files.
-- **S3.15** Every tier-2 hook must respect `MTK_HOOKS_TIER2` (default `1`). When `0`, writers return early and the dispatcher exits silently. The env var is declared in `.claude/settings.json` under `env`; engineers override per-machine via `.claude/settings.local.json`.
+- **S3.11** On a `compact` SessionStart (the payload's `source`), `hooks/session-start` re-injects on-disk state the compacted conversation lost: tech stack, active spec/plan, incomplete tasks, a recent handoff artifact and at most one workflow. Paths resolve against the project root (specs and plans against the artifact root, S1.16), never the hook's cwd. Only the newest workflow whose status is `active` and whose `updated_at` is within 7 days (`MTK_WORKFLOW_REINJECT_DAYS`) is re-injected. The block rides in the same `SessionStart` `hookSpecificOutput.additionalContext` envelope as the session context, framed as reference, not instruction — no blocking, no side effects. Other sources (`startup`, `clear`, `resume`) get no recovery block.
 
 ## Shrink-Guarded Writes
 
@@ -45,6 +30,10 @@ strength: inject
 ## SIGPIPE Under Pipefail
 
 - **S3.17** Never pipe into an early-exiting consumer (`grep -q`, `head`, `grep -m`) under `set -euo pipefail`: the consumer exits on its first match/line, the producer takes SIGPIPE (exit 141), and pipefail turns that *success* into a failure that blames a random innocent input per run — or, inside `$(…)` under `set -e`, kills the script exactly when the branch is needed. Five live instances were found and fixed in Aug 2026 (validate-toolkit reference scan, test-interactive-guard #17, generate-agents-md ×2, test-query-code-index). Use `grep -q PATTERN <(producer …)` (process-substitution exit is ignored), `awk 'NR<=n'` instead of `| head`, or a bash `case` match on a captured variable. Piping into a consumer that reads all input (`wc`, `sort`, `awk` without `exit`) is safe.
+
+## Security-Gate Floor
+
+- **S3.18** `hooks/lib/gate-backstop.sh` is a floor. It holds the 8.0.3 destructive-command patterns, which run before the token checks, and a deny from either layer wins. Never weaken or remove a backstop pattern to fix a false positive. Strip the false-positive text instead (only git/gh message values and the heredocs that feed them are stripped). `tests/hooks/test-security-gate-superset.sh` fails on any probe the 8.0.3 gate denied and the current gate allows, so add a probe to `tests/hooks/fixtures/security-gate-superset.cases` for every new bypass found. The gate is a drift control against accidental destructive commands, not a sandbox; native `permissions.deny`/`ask` (bootstrap baseline) carry the hard boundaries.
 
 ## Validation Script
 

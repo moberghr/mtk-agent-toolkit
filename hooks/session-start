@@ -2,6 +2,13 @@
 # Session-start hook for Moberg toolkit
 # Detects platform and emits appropriate context format
 # Supports: Claude Code, Cursor, Copilot CLI, Gemini CLI
+#
+# Wired once in hooks/hooks.json for startup|clear|compact|resume. On `compact`
+# (the payload's "source") it also re-injects the on-disk state the compacted
+# conversation lost — tech stack, active spec/plan, open tasks, a recent handoff
+# and at most one live workflow — framed as reference, not instruction. That
+# branch was hooks/post-compact.sh; there is no PostCompact event whose output
+# reaches the model, so SessionStart(compact) is the channel.
 
 set -euo pipefail
 
@@ -10,55 +17,69 @@ _mtk_hook_diag() { local c=$?; [[ $c -ne 0 ]] && echo "[mtk-hook:$(basename "$0"
 trap _mtk_hook_diag EXIT
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PLUGIN_ROOT="${SCRIPT_DIR}/.."
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
 
-mtk_is_redundant_plugin_invocation "$0" && exit 0
-
-# Build MCP server on first use (silent, non-blocking)
-# Rebuilds when dist/ is missing OR when any mcp/src/** file is newer than the bundle.
-# MCP is optional — all skills have bash fallbacks (S3.12).
-if [ -d "$PLUGIN_ROOT/mcp" ] && command -v node >/dev/null 2>&1; then
-  needs_build=0
-  if [ ! -f "$PLUGIN_ROOT/dist/mtk-mcp-server.cjs" ]; then
-    needs_build=1
-  elif [ -n "$(find "$PLUGIN_ROOT/mcp/src" -newer "$PLUGIN_ROOT/dist/mtk-mcp-server.cjs" -print -quit 2>/dev/null)" ]; then
-    needs_build=1
-  fi
-  if [ "$needs_build" = "1" ]; then
-    bash "$PLUGIN_ROOT/scripts/build-mcp.sh" --quiet 2>/dev/null || true
+# Session ledger baseline for verify-completion: bind to the payload's
+# session_id and record the working-tree fingerprint before any tool runs, so a
+# Stop can tell whether this session changed files at all (Bash-made edits
+# included). Read only when a payload is piped in; an interactive stdin is never
+# waited on. A baseline is recorded only when the session's ledger has none and
+# no tool has run yet.
+SS_INPUT=""
+SS_SOURCE=""
+if [ ! -t 0 ]; then
+  SS_INPUT="$(mtk_read_payload 2 2>/dev/null || true)"
+fi
+if [ -n "$SS_INPUT" ]; then
+  SS_SOURCE="$(mtk_extract_json_string "$SS_INPUT" "source" 2>/dev/null || true)"
+  mtk_session_bind "$SS_INPUT"
+  if [ -n "${_MTK_SESSION_ID:-}" ]; then
+    SS_FP="$(mtk_tree_fingerprint 2>/dev/null)" || SS_FP=""
+    SS_FILE="$(mtk_session_file)"
+    mtk_session_lock_acquire "$SS_FILE"
+    mtk_load_session_state "$SS_FILE"
+    if [ -n "$SS_FP" ] && [ -z "${session_start_tree:-}" ] && [ "${event_seq:-0}" -eq 0 ]; then
+      session_start_base="${SS_FP%% *}"
+      session_start_tree="${SS_FP#* }"
+    fi
+    mtk_save_session_state "$SS_FILE"
+    mtk_session_lock_release "$SS_FILE"
   fi
 fi
 
-# Check for in-progress specs and plans (session recovery)
+# Check for in-progress specs and plans (session recovery). On compact the
+# anchored recovery block below covers the same ground, so this stays quiet.
 RECOVERY_MSG=""
-if [[ -d "docs/specs" ]]; then
-  RECENT_SPEC="$(find docs/specs -name '*.md' -mtime -1 2>/dev/null | head -1)"
-  if [[ -n "$RECENT_SPEC" ]]; then
-    RECOVERY_MSG="SESSION RECOVERY: Found recent spec at ${RECENT_SPEC}. You may have an in-progress feature. Read the spec to resume where you left off."
+if [ "$SS_SOURCE" != "compact" ]; then
+  if [[ -d "docs/specs" ]]; then
+    RECENT_SPEC="$(find docs/specs -name '*.md' -mtime -1 2>/dev/null | awk 'NR==1' || true)"
+    if [[ -n "$RECENT_SPEC" ]]; then
+      RECOVERY_MSG="SESSION RECOVERY: Found recent spec at ${RECENT_SPEC}. You may have an in-progress feature. Read the spec to resume where you left off."
+    fi
   fi
-fi
-if [[ -d "docs/plans" ]] && [[ -z "$RECOVERY_MSG" ]]; then
-  RECENT_PLAN="$(find docs/plans -name '*.md' -mtime -1 2>/dev/null | head -1)"
-  if [[ -n "$RECENT_PLAN" ]]; then
-    RECOVERY_MSG="SESSION RECOVERY: Found recent plan at ${RECENT_PLAN}. You may have an in-progress implementation. Read the plan and tasks/todo.md to resume."
+  if [[ -d "docs/plans" ]] && [[ -z "$RECOVERY_MSG" ]]; then
+    RECENT_PLAN="$(find docs/plans -name '*.md' -mtime -1 2>/dev/null | awk 'NR==1' || true)"
+    if [[ -n "$RECENT_PLAN" ]]; then
+      RECOVERY_MSG="SESSION RECOVERY: Found recent plan at ${RECENT_PLAN}. You may have an in-progress implementation. Read the plan and tasks/todo.md to resume."
+    fi
   fi
-fi
-if [[ -f "tasks/todo.md" ]] && [[ -z "$RECOVERY_MSG" ]]; then
-  if grep -q '\[ \]' tasks/todo.md 2>/dev/null; then
-    RECOVERY_MSG="SESSION RECOVERY: Found incomplete tasks in tasks/todo.md. Check for in-progress work before starting something new."
+  if [[ -f "tasks/todo.md" ]] && [[ -z "$RECOVERY_MSG" ]]; then
+    if grep -q '\[ \]' tasks/todo.md 2>/dev/null; then
+      RECOVERY_MSG="SESSION RECOVERY: Found incomplete tasks in tasks/todo.md. Check for in-progress work before starting something new."
+    fi
   fi
 fi
 
-# Version drift check (advisory only)
+# Version drift check (advisory only). setup-bootstrap writes the stamp into
+# target repos; the plugin's own manifest carries the shipped version.
 VERSION_MSG=""
 if [ -f .claude/mtk-version.json ]; then
-  INSTALLED_VERSION="$(grep -o '"version":"[^"]*"' .claude/mtk-version.json 2>/dev/null | sed 's/"version":"//;s/"//' || true)"
+  INSTALLED_VERSION="$(grep -o '"version":"[^"]*"' .claude/mtk-version.json 2>/dev/null | awk 'NR==1' | sed 's/"version":"//;s/"//' || true)"
   if [ -n "$INSTALLED_VERSION" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
     SOURCE_MANIFEST="${CLAUDE_PLUGIN_ROOT}/.claude/manifest.json"
     if [ -f "$SOURCE_MANIFEST" ]; then
-      SOURCE_VERSION="$(grep -o '"version": "[^"]*"' "$SOURCE_MANIFEST" | head -1 | sed 's/"version": "//;s/"//' || true)"
+      SOURCE_VERSION="$(grep -o '"version": "[^"]*"' "$SOURCE_MANIFEST" | awk 'NR==1' | sed 's/"version": "//;s/"//' || true)"
       if [ -n "$SOURCE_VERSION" ] && [ "$INSTALLED_VERSION" != "$SOURCE_VERSION" ]; then
         VERSION_MSG="MTK update available: ${INSTALLED_VERSION} → ${SOURCE_VERSION}. Use the Claude Code plugin manager to upgrade."
       fi
@@ -66,12 +87,107 @@ if [ -f .claude/mtk-version.json ]; then
   fi
 fi
 
-# Personal lessons (gitignored, per-engineer rules captured by correction-capture)
-PERSONAL_LESSONS_MSG=""
-if [ -f ".claude/lessons/personal.md" ] && [ -s ".claude/lessons/personal.md" ]; then
-  PL_COUNT="$(grep -c '^## ' .claude/lessons/personal.md 2>/dev/null || echo 0)"
-  if [ "$PL_COUNT" -gt 0 ]; then
-    PERSONAL_LESSONS_MSG="Personal lessons active: ${PL_COUNT} entries in .claude/lessons/personal.md (gitignored, individual rules). Read them when work touches their topics. Promote to tasks/lessons.md via /promote-lesson when they apply team-wide."
+# --- Post-compaction recovery (source = compact) ------------------------------
+# Every pointer is anchored, never cwd-relative: the hook's cwd can be any
+# subdirectory. Specs and plans live under the artifact root (S1.16);
+# tech-stack, tasks, handoffs and workflow state under the project root.
+COMPACT_MSG=""
+if [ "$SS_SOURCE" = "compact" ]; then
+  PC=""
+  ROOT="$(mtk_repo_root 2>/dev/null || pwd)"
+  MTK_ARTIFACT_DIR="$(mtk_artifact_root "$PWD" 2>/dev/null || printf '%s' "$ROOT")"
+  # Print a path relative to the project root when it is under it.
+  show() { mtk_repo_relative_path "$1" "$ROOT" 2>/dev/null || printf '%s' "$1"; }
+
+  if [ -f "$ROOT/.claude/tech-stack" ]; then
+    PC="Active tech stack: $(cat "$ROOT/.claude/tech-stack")."
+    if [ -f "$ROOT/.claude/tech-stack-pm" ]; then
+      PC="${PC} Package manager: $(cat "$ROOT/.claude/tech-stack-pm")."
+    fi
+  fi
+
+  # In-progress spec (JSON sidecar — critical for drift detection).
+  if [ -d "$MTK_ARTIFACT_DIR/docs/specs" ]; then
+    PC_SPEC=$(find "$MTK_ARTIFACT_DIR/docs/specs" -name '*.json' -mtime -1 2>/dev/null | awk 'NR==1' || true)
+    [ -n "${PC_SPEC:-}" ] && PC="${PC} Active spec: $(show "$PC_SPEC") — read before resuming implementation or review."
+  fi
+
+  if [ -d "$MTK_ARTIFACT_DIR/docs/plans" ]; then
+    PC_PLAN=$(find "$MTK_ARTIFACT_DIR/docs/plans" -name '*.md' -mtime -1 2>/dev/null | awk 'NR==1' || true)
+    [ -n "${PC_PLAN:-}" ] && PC="${PC} Active plan: $(show "$PC_PLAN") — check tasks/todo.md for batch progress."
+  fi
+
+  if [ -f "$ROOT/tasks/todo.md" ] && grep -q '\[ \]' "$ROOT/tasks/todo.md" 2>/dev/null; then
+    PC="${PC} Incomplete tasks in tasks/todo.md — check before starting new work."
+  fi
+
+  if [ -d "$ROOT/docs/handoffs" ]; then
+    PC_HANDOFF=$(find "$ROOT/docs/handoffs" -name '*.md' -mtime -1 2>/dev/null | awk 'NR==1' || true)
+    [ -n "${PC_HANDOFF:-}" ] && PC="${PC} Recent handoff: $(show "$PC_HANDOFF") — read to resume previous session state."
+  fi
+
+  # Active workflow artifact: at most ONE — the newest whose status is `active`
+  # (never failed/complete/abandoned) and whose updated_at is within
+  # MTK_WORKFLOW_REINJECT_DAYS (default 7). A finished or week-old workflow
+  # re-injected here reads as live work and restarts itself. python3 parses the
+  # JSON and the ISO timestamps (S3.3 baseline); without it no workflow is
+  # re-injected rather than a possibly stale one.
+  WF_DIR="$ROOT/.mtk/workflows"
+  if [ -d "$WF_DIR" ] && command -v python3 >/dev/null 2>&1; then
+    WF_LINE="$(python3 - "$WF_DIR" "${MTK_WORKFLOW_REINJECT_DAYS:-7}" <<'PY' 2>/dev/null || true
+import datetime, glob, json, os, sys
+wf_dir, days = sys.argv[1], float(sys.argv[2])
+now = datetime.datetime.now(datetime.timezone.utc)
+best = None
+for path in glob.glob(os.path.join(wf_dir, "*.json")):
+    try:
+        with open(path) as fh:
+            doc = json.load(fh)
+    except Exception:
+        continue
+    if not isinstance(doc, dict):
+        continue
+    if str(doc.get("status", "")).lower() != "active":
+        continue
+    try:
+        ts = datetime.datetime.strptime(str(doc.get("updated_at", "")), "%Y-%m-%dT%H:%M:%SZ")
+        ts = ts.replace(tzinfo=datetime.timezone.utc)
+    except ValueError:
+        continue
+    if (now - ts).total_seconds() > days * 86400:
+        continue
+    if best is None or ts > best[0]:
+        best = (ts, path, doc)
+if best:
+    _, path, doc = best
+    print("\t".join([path, str(doc.get("workflow_type") or "?"), str(doc.get("phase_cursor") or "?")]))
+PY
+)"
+    if [ -n "$WF_LINE" ]; then
+      ACTIVE_WF="${WF_LINE%%	*}"
+      WF_REST="${WF_LINE#*	}"
+      WF_TYPE="${WF_REST%%	*}"
+      WF_PHASE="${WF_REST#*	}"
+      WF_BASENAME=$(basename "$ACTIVE_WF" .json)
+      WF_EVENTS="$WF_DIR/${WF_BASENAME}.events.jsonl"
+      LAST_EVENT=""
+      if [ -f "$WF_EVENTS" ]; then
+        LAST_EVENT=$(tail -n 1 "$WF_EVENTS" 2>/dev/null | grep -o '"event_type"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"\([^"]*\)"$/\1/' || true)
+      fi
+      WF_MSG="Active workflow: ${WF_BASENAME} (type=${WF_TYPE}, phase=${WF_PHASE}"
+      [ -n "${LAST_EVENT:-}" ] && WF_MSG="${WF_MSG}, last_event=${LAST_EVENT}"
+      WF_MSG="${WF_MSG}) — read $(show "$ACTIVE_WF") before advancing; do not re-init."
+      PC="${PC} ${WF_MSG}"
+    fi
+  fi
+
+  # Anti-resurrection framing: recovered state is REFERENCE, not instruction.
+  # Without it, a task the user cancelled or superseded before compaction reads
+  # as live work and restarts itself — the summary outlives the decision that
+  # killed it.
+  if [ -n "${PC// /}" ]; then
+    FRAMING="These pointers are a HISTORICAL SNAPSHOT of pre-compaction state, for reference — not instructions to act on. The latest user message always wins over anything recovered here. If the user cancelled, paused, or superseded any of this work (stop / undo / roll back / never mind / a new direction), treat that item as closed — do not resume it. Before acting on any pointer, confirm it is still what the user wants now."
+    COMPACT_MSG="POST-COMPACTION RECOVERY (reference only): ${PC# } ${FRAMING}"
   fi
 fi
 
@@ -80,7 +196,7 @@ BASE_MSG="Moberg toolkit is active. Available entry points: /mtk and /mtk-setup.
 CONTEXT="$BASE_MSG"
 [[ -n "$RECOVERY_MSG" ]] && CONTEXT="${CONTEXT} ${RECOVERY_MSG}"
 [[ -n "$VERSION_MSG" ]] && CONTEXT="${CONTEXT} ${VERSION_MSG}"
-[[ -n "$PERSONAL_LESSONS_MSG" ]] && CONTEXT="${CONTEXT} ${PERSONAL_LESSONS_MSG}"
+[[ -n "$COMPACT_MSG" ]] && CONTEXT="${CONTEXT} ${COMPACT_MSG}"
 
 # Escape for JSON (bash parameter substitution — no external deps)
 json_escape() {

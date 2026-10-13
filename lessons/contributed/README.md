@@ -1,17 +1,17 @@
 # Contributed Lessons
 
 This directory is the intake queue for **team-wide lessons** shared from
-individual repos via the `promote-lesson` skill's contribute-back step. It turns
+individual repos via the contribute-back step of `/lessons promote`. It turns
 one engineer's hard-won lesson into a candidate every MTK-using repo can benefit
 from — with safety rails, and without a maintainer bottleneck for the *checking*
 (though a human still merges).
 
 ## How a lesson lands here
 
-1. An engineer runs `/promote-lesson`, promotes a personal lesson to their repo's
-   `tasks/lessons.md`, and accepts the optional contribute-back offer.
+1. An engineer runs `/lessons promote`, promotes a rule from native memory to their
+   repo's `tasks/lessons.md`, and accepts the optional contribute-back offer.
 2. The lesson is **anonymized** (per the checklist in
-   `.claude/skills/promote-lesson/SKILL.md`) and written to a single file here:
+   `.claude/skills/lessons/SKILL.md`, mode `promote`) and written to a single file here:
    `lessons/contributed/<YYYY-MM-DD>-<slug>.md`.
 3. A PR is opened touching **only** that file.
 4. `.github/workflows/validate-lesson-pr.yml` validates it:

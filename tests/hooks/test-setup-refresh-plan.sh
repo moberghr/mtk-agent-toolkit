@@ -71,6 +71,9 @@ cat > .claude/mtk-version.json <<'EOF'
 {"version":"1.0.0"}
 EOF
 
+# The all-stacks permission baseline, as setup-bootstrap merges it (row 8).
+bash "$REPO_ROOT/scripts/settings-baseline.sh" --merge .claude/settings.json
+
 cat > package.json <<'EOF'
 {
   "name": "fixture",

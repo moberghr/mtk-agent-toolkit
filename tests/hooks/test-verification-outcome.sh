@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Outcome-aware verification ledger: a verification that RAN is not a
-# verification that PASSED. context-budget.sh classifies the tool_response of
+# verification that PASSED. evidence-ledger.sh classifies the tool_response of
 # a verification command as pass|fail|unknown, and verify-completion blocks a
 # strong completion claim when the latest verification was observed failing.
 # `unknown` never blocks (fail-open on ambiguity).
@@ -49,7 +49,7 @@ classify() {
   || fail "empty output must classify as unknown"
 printf '  PASS  classifier: pass/fail/unknown shapes\n'
 
-# --- Part 2: context-budget.sh records the outcome column --------------------
+# --- Part 2: evidence-ledger.sh records the outcome column --------------------
 
 SESSION_FILE="$(TMPDIR="$TMPDIR_OVERRIDE" bash -c '
   source "'"$REPO_ROOT"'/hooks/lib/hook-io.sh"
@@ -58,7 +58,7 @@ SESSION_FILE="$(TMPDIR="$TMPDIR_OVERRIDE" bash -c '
 
 post_tool_use() {
   # $1 = command, $2 = stdout text placed in tool_response
-  python3 - "$1" "$2" <<'PY' | TMPDIR="$TMPDIR_OVERRIDE" bash "$REPO_ROOT/hooks/context-budget.sh" >/dev/null 2>&1 || true
+  python3 - "$1" "$2" <<'PY' | TMPDIR="$TMPDIR_OVERRIDE" bash "$REPO_ROOT/hooks/evidence-ledger.sh" >/dev/null 2>&1 || true
 import json, sys
 print(json.dumps({
     "hook_event_name": "PostToolUse",
@@ -78,7 +78,7 @@ rm -f "$SESSION_FILE"
 post_tool_use "pytest tests/" "===== 3 failed, 9 passed in 2.1s ====="
 [ "$(read_status)" = "fail" ] \
   || fail "failing pytest run must record last_verification_status=fail (got: $(read_status))"
-printf '  PASS  context-budget records fail outcome\n'
+printf '  PASS  evidence-ledger records fail outcome\n'
 
 post_tool_use "git status" "on branch main — 2 failed experiments mentioned in a commit message"
 [ "$(read_status)" = "fail" ] \

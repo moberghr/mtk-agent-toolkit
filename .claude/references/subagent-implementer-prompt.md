@@ -78,6 +78,9 @@ Rules:
    it cites, the pack wins — run that one, and report the discrepancy in `traps`. A hand-written
    `dotnet ef` line naming the wrong `--startup-project` cost a batch a failed run while the
    correct invocation sat in the stack's data-layer reference (2026-09 field run).
+10. Before trusting a call into a dependency (framework, SDK, package), read its real
+   exception/return surface from local source — decompiled package, SDK source, in-repo docs —
+   not memory. Name anything you could not verify in `traps`.
 
 VERIFY — before returning:
 - Run the build command and the relevant test command from the context pack.

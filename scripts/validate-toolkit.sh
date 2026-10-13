@@ -86,9 +86,8 @@ require_file "CONTRIBUTING.md"
 require_file "AGENTS.md"
 
 # Generic references — required regardless of stack
-require_file ".claude/references/testing-patterns.md"
-require_file ".claude/references/security-checklist.md"
-require_file ".claude/references/performance-checklist.md"
+require_file ".claude/references/domain-finance.md"
+require_file ".claude/references/implement-review-lanes.md"
 
 # Reviewer agents — the two-stage review model depends on these
 require_file ".claude/agents/compliance-reviewer.md"
@@ -98,17 +97,27 @@ require_file ".claude/agents/architecture-reviewer.md"
 # Settings sanity (ported from former doctor command)
 require_file ".claude/settings.json"
 grep -q '"deny"' .claude/settings.json || fail "settings.json missing permissions.deny — dangerous operations are not blocked"
-grep -q '"hooks"' .claude/settings.json || fail "settings.json missing hooks block — verify-completion / format hooks are not registered"
+# Claude Code's permission keys are allow / deny / ask. `permissions.allowedTools`
+# is not one (it is the --allowedTools CLI flag), so a list there is silently
+# ignored. scripts/migrate-settings-permissions.sh moves it into allow.
+bash scripts/migrate-settings-permissions.sh --check .claude/settings.json >/dev/null \
+  || fail "settings.json has permissions.allowedTools, which Claude Code ignores — run: bash scripts/migrate-settings-permissions.sh .claude/settings.json"
+# The dev checkout runs the repo's hooks as a plugin (`claude --plugin-dir .`),
+# from hooks/hooks.json. Wiring them in .claude/settings.json as well would run
+# every hook twice, so the project settings carry no hooks block at all.
+python3 - <<'MTKPY' || fail ".claude/settings.json declares hooks — the dev checkout loads hooks/hooks.json via 'claude --plugin-dir .'; remove the settings.json hooks block (CONTRIBUTING.md, Developing MTK)"
+import json, sys
+sys.exit(1 if "hooks" in json.load(open(".claude/settings.json")) else 0)
+MTKPY
 
 # Hook commands must be root-anchored, never relative (S3.5/S3.6).
 #
 # A relative "hooks/x.sh" resolves against the hook process's cwd, and a hook is
-# NOT guaranteed to run with cwd inside the repo — hooks/lib/hook-io.sh says so
-# in the comment above mtk_is_redundant_plugin_invocation, which exists because
-# of that exact assumption. When the cwd is elsewhere the command is simply not
-# found and the hook does not run: the guard is silently OFF rather than loudly
-# broken, the same failure mode S1.17 exists to prevent. settings.json anchors
-# on $CLAUDE_PROJECT_DIR, hooks.json on ${CLAUDE_PLUGIN_ROOT}.
+# NOT guaranteed to run with cwd inside the repo. When the cwd is elsewhere the
+# command is simply not found and the hook does not run: the guard is silently
+# OFF rather than loudly broken, the same failure mode S1.17 exists to prevent.
+# hooks.json anchors on ${CLAUDE_PLUGIN_ROOT}; the project settings.json wires no
+# hooks at all (checked above).
 #
 # The scan is spacing-tolerant and asserts it matched something. A check whose
 # input selector can silently return zero rows passes by inspecting nothing —
@@ -127,8 +136,6 @@ check_hook_anchor() { # $1=file  $2=required substring  $3=message
   [ "$count" -gt 0 ] || fail "$file: found 0 hook commands to check — the selector matched nothing, so this guard inspected nothing. Fix the selector, do not assume the file is clean."
 }
 
-check_hook_anchor .claude/settings.json '$CLAUDE_PROJECT_DIR' \
-  "settings.json hook command is not anchored on \$CLAUDE_PROJECT_DIR — a relative path resolves against the hook's cwd, which is not guaranteed to be the repo"
 check_hook_anchor hooks/hooks.json '${CLAUDE_PLUGIN_ROOT}' \
   "hooks.json hook command is not anchored on \${CLAUDE_PLUGIN_ROOT} — plugin-installed repos have no repo-relative hooks/ directory"
 
@@ -138,11 +145,14 @@ check_hook_anchor hooks/hooks.json '${CLAUDE_PLUGIN_ROOT}' \
 # expands to the empty string and the hook runs as `bash /hooks/<name>`, failing
 # on every invocation. That shipped: 4,552 such failures across 7 bootstrapped
 # repos, with formatting never once running. MTK hooks belong in hooks/hooks.json;
-# a tech-stack skill must never hand bootstrap one to write.
+# a tech-stack skill must never hand bootstrap one to write. Only the
+# `## Settings Additions` section is copied; elsewhere (a command the agent runs
+# itself, such as the build-diagnostics parser) the plugin-relative path is right.
 for stack_skill in .claude/skills/tech-stack-*/SKILL.md; do
   [ -f "$stack_skill" ] || continue
-  if grep -nE '\$\{?CLAUDE_PLUGIN_ROOT\}?/hooks/' "$stack_skill" >/dev/null 2>&1; then
-    fail "$stack_skill references \$CLAUDE_PLUGIN_ROOT/hooks/ — that variable is empty in a project settings.json, so every generated hook invocation fails. Declare the hook in hooks/hooks.json instead."
+  settings_additions="$(awk '/^## /{p=($0=="## Settings Additions")} p' "$stack_skill")"
+  if grep -qE '\$\{?CLAUDE_PLUGIN_ROOT(:-[^}]*)?\}?/hooks/' <<< "$settings_additions"; then
+    fail "$stack_skill ## Settings Additions references \$CLAUDE_PLUGIN_ROOT/hooks/ — that variable is empty in a project settings.json, so every generated hook invocation fails. Declare the hook in hooks/hooks.json instead."
   fi
 done
 
@@ -179,51 +189,160 @@ while IFS= read -r script; do
   grep -q 'set -euo pipefail' <(head -15 "$script") || fail "$script missing 'set -euo pipefail' — violates S3.1"
 done < <(find hooks/ scripts/ -type f \( -name '*.sh' -o -name 'pre-commit' -o -name 'session-start' -o -name 'verify-completion' \) | sort)
 
-# The git pre-commit hook and linter script must agree on supported flags.
-grep -q -- '--cached' hooks/pre-commit-linters.sh || fail "hooks/pre-commit-linters.sh must support --cached for git hooks"
+# The git pre-commit hook and linter script must agree on supported flags. The
+# linter is an on-demand script, not a wired hook, so it may live in hooks/ or
+# scripts/; check whichever copy exists rather than pinning one location.
+linters_found=0
+for linters in hooks/pre-commit-linters.sh scripts/pre-commit-linters.sh; do
+  [ -f "$linters" ] || continue
+  linters_found=1
+  grep -q -- '--cached' "$linters" || fail "$linters must support --cached for git hooks"
+done
+[ "$linters_found" -eq 1 ] || fail "pre-commit-linters.sh not found in hooks/ or scripts/ — hooks/git-hooks/pre-commit depends on it"
 
-# Tier-2 skill-invocation queue (S3.13–15)
-require_file "hooks/lib/skill-queue.sh"
-require_file "hooks/lib/prompt-nudges.sh"
-require_file "hooks/userprompt-dispatch.sh"
-require_file "hooks/spec-approval-trigger.sh"
-grep -q 'queue_skill' hooks/lib/skill-queue.sh || fail "skill-queue.sh missing queue_skill writer"
-grep -q 'MTK_HOOKS_TIER2' hooks/lib/skill-queue.sh || fail "skill-queue.sh missing MTK_HOOKS_TIER2 kill-switch gate"
-grep -q 'UserPromptSubmit' .claude/settings.json || fail "settings.json missing UserPromptSubmit hook entry for dispatcher"
-grep -q 'MTK_HOOKS_TIER2' .claude/settings.json || fail "settings.json missing MTK_HOOKS_TIER2 env declaration"
+# Every hook hooks.json wires must exist and be executable. Data-driven on
+# purpose: the check iterates what hooks.json actually registers, so renaming or
+# removing a hook needs no edit here, and a dangling registration (the script
+# deleted, the entry left behind) fails instead of erroring on every tool call.
+python3 - <<'MTKPY' || fail "hooks/hooks.json wires a hook command that does not resolve to an executable file"
+import json, os, shlex, sys
+d = json.load(open("hooks/hooks.json")).get("hooks", {})
+bad, seen = [], 0
+for ev, blocks in d.items():
+    for b in blocks:
+        for h in b.get("hooks", []):
+            cmd = h.get("command")
+            if not cmd:
+                continue
+            seen += 1
+            try:
+                exe = shlex.split(cmd)[0]
+            except ValueError:
+                bad.append(f"{ev}: unparseable command {cmd!r}")
+                continue
+            path = exe.replace("${CLAUDE_PLUGIN_ROOT}", ".")
+            if not os.path.isfile(path):
+                bad.append(f"{ev}: {exe} does not exist")
+            elif not os.access(path, os.X_OK):
+                bad.append(f"{ev}: {exe} is not executable")
+if seen == 0:
+    bad.append("found 0 hook commands — the selector matched nothing, so this check inspected nothing")
+for line in bad:
+    print(f"ERROR: hooks.json {line}", file=sys.stderr)
+sys.exit(1 if bad else 0)
+MTKPY
 
-# Keyword-triggered skill hints (S2.22–24)
-require_file "scripts/build-triggers-index.sh"
-require_file "hooks/lib/trigger-hints.sh"
-if [ -f ".claude/triggers.index" ]; then
-  # Index must be in sync with skill frontmatter. --check builds to a tempfile
-  # and diffs — it never rewrites the tracked file during validation.
-  bash scripts/build-triggers-index.sh --check >/dev/null 2>&1 || fail ".claude/triggers.index out of sync — run: bash scripts/build-triggers-index.sh"
-  # Every skill referenced in the index must exist.
-  while IFS=$'\t' read -r _ skill; do
-    [ -n "$skill" ] || continue
-    [ -f ".claude/skills/${skill}/SKILL.md" ] || fail "triggers.index references missing skill: $skill"
-  done < <(grep -v '^#' .claude/triggers.index)
+# Runtime diet lock. Read, Grep, Glob, MCP tool calls and user prompts carry zero
+# MTK hooks: each one is a process spawn on the hottest paths of every session, and
+# native Claude Code already covers what those hooks did (path-scoped rules via
+# `paths:`, skill routing via descriptions). Fail if hooks.json registers
+# UserPromptSubmit, or any tool-event matcher that covers Read, Grep, Glob or an
+# mcp__ tool. Matcher semantics follow Claude Code: empty or "*" matches every
+# tool; a plain `A|B` list matches those names exactly; anything else is a regex.
+# One classifier, shared with mtk-doctor: hooks/lib/hot_path_matchers.py (any
+# matcher naming mcp__ is MCP, however it is server-scoped).
+if ! DIET_OUT="$(python3 hooks/lib/hot_path_matchers.py hooks/hooks.json 2>&1)"; then
+  while IFS=$'\t' read -r where why; do
+    [ -n "$where" ] && printf 'ERROR: runtime diet: %s %s\n' "$where" "$why" >&2
+  done <<< "$DIET_OUT"
+  fail "hooks/hooks.json breaks the runtime diet — no hook may run on user prompts or on Read/Grep/Glob/MCP tool calls"
 fi
 
-# Toolset registry (S2.19–21)
-require_file ".claude/toolsets/read-only.yaml"
-require_file ".claude/toolsets/git-safe.yaml"
-require_file ".claude/toolsets/code-edit.yaml"
-require_file "scripts/resolve-toolsets.sh"
+for required_cmd in format-on-edit.sh; do
+  grep -q "$required_cmd" hooks/hooks.json \
+    || fail "hooks/hooks.json does not declare $required_cmd — it was removed from the tech-stack Settings Additions, so nothing wires it any more"
+done
 
-# Every toolset referenced in skill/agent frontmatter must resolve.
-while IFS= read -r ref_file; do
-  # Extract toolset names from `required-toolsets: [a, b]` or `forbidden-toolsets: [a, b]`
-  toolset_refs="$(grep -E '^(required|forbidden)-toolsets:' "$ref_file" 2>/dev/null | \
-    sed -E 's/^[a-z-]+:[[:space:]]*\[([^]]*)\].*/\1/' | \
-    tr ',' '\n' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//' || true)"
-  [ -z "$toolset_refs" ] && continue
-  while IFS= read -r ts; do
-    [ -n "$ts" ] || continue
-    [ -f ".claude/toolsets/${ts}.yaml" ] || fail "$ref_file references unknown toolset: $ts (no .claude/toolsets/${ts}.yaml) — violates S2.20"
-  done <<< "$toolset_refs"
-done < <(find .claude/skills .claude/agents -name '*.md' 2>/dev/null)
+# All shell scripts in hooks/ and scripts/ must be executable and follow S3.1
+while IFS= read -r script; do
+  [ -x "$script" ] || fail "$script is not executable (chmod +x) — violates S3.2"
+  # Some scripts have multi-line comment headers before pipefail; scan first 15 lines.
+  # <(head …) not head|grep: grep -q exits on match, head takes SIGPIPE (141), and
+  # pipefail would turn that success into a spurious failure on a random file.
+  grep -q 'set -euo pipefail' <(head -15 "$script") || fail "$script missing 'set -euo pipefail' — violates S3.1"
+done < <(find hooks/ scripts/ -type f \( -name '*.sh' -o -name 'pre-commit' -o -name 'session-start' -o -name 'verify-completion' \) | sort)
+
+# The git pre-commit hook and linter script must agree on supported flags. The
+# linter is an on-demand script, not a wired hook, so it may live in hooks/ or
+# scripts/; check whichever copy exists rather than pinning one location.
+linters_found=0
+for linters in hooks/pre-commit-linters.sh scripts/pre-commit-linters.sh; do
+  [ -f "$linters" ] || continue
+  linters_found=1
+  grep -q -- '--cached' "$linters" || fail "$linters must support --cached for git hooks"
+done
+[ "$linters_found" -eq 1 ] || fail "pre-commit-linters.sh not found in hooks/ or scripts/ — hooks/git-hooks/pre-commit depends on it"
+
+# Every hook hooks.json wires must exist and be executable. Data-driven on
+# purpose: the check iterates what hooks.json actually registers, so renaming or
+# removing a hook needs no edit here, and a dangling registration (the script
+# deleted, the entry left behind) fails instead of erroring on every tool call.
+python3 - <<'MTKPY' || fail "hooks/hooks.json wires a hook command that does not resolve to an executable file"
+import json, os, shlex, sys
+d = json.load(open("hooks/hooks.json")).get("hooks", {})
+bad, seen = [], 0
+for ev, blocks in d.items():
+    for b in blocks:
+        for h in b.get("hooks", []):
+            cmd = h.get("command")
+            if not cmd:
+                continue
+            seen += 1
+            try:
+                exe = shlex.split(cmd)[0]
+            except ValueError:
+                bad.append(f"{ev}: unparseable command {cmd!r}")
+                continue
+            path = exe.replace("${CLAUDE_PLUGIN_ROOT}", ".")
+            if not os.path.isfile(path):
+                bad.append(f"{ev}: {exe} does not exist")
+            elif not os.access(path, os.X_OK):
+                bad.append(f"{ev}: {exe} is not executable")
+if seen == 0:
+    bad.append("found 0 hook commands — the selector matched nothing, so this check inspected nothing")
+for line in bad:
+    print(f"ERROR: hooks.json {line}", file=sys.stderr)
+sys.exit(1 if bad else 0)
+MTKPY
+
+# Runtime diet lock. Read, Grep, Glob, MCP tool calls and user prompts carry zero
+# MTK hooks: each one is a process spawn on the hottest paths of every session, and
+# native Claude Code already covers what those hooks did (path-scoped rules via
+# `paths:`, skill routing via descriptions). Fail if hooks.json registers
+# UserPromptSubmit, or any tool-event matcher that covers Read, Grep, Glob or an
+# mcp__ tool. Matcher semantics follow Claude Code: empty or "*" matches every
+# tool; a plain `A|B` list matches those names exactly; anything else is a regex.
+python3 - <<'MTKPY' || fail "hooks/hooks.json breaks the runtime diet — no hook may run on user prompts or on Read/Grep/Glob/MCP tool calls"
+import json, os, re, shlex, sys
+d = json.load(open("hooks/hooks.json")).get("hooks", {})
+TOOL_EVENTS = {"PreToolUse", "PostToolUse", "PostToolUseFailure", "PermissionRequest"}
+PROBES = ["Read", "Grep", "Glob", "mcp__server__tool"]
+def covers(matcher, tool):
+    if matcher in (None, "", "*"):
+        return True
+    if re.fullmatch(r"[A-Za-z0-9_|]+", matcher):
+        return tool in matcher.split("|")
+    try:
+        return re.search(matcher, tool) is not None
+    except re.error:
+        return True  # an unparseable matcher cannot be proved narrow
+bad = []
+if d.get("UserPromptSubmit"):
+    bad.append("UserPromptSubmit is registered")
+for ev, blocks in d.items():
+    if ev not in TOOL_EVENTS:
+        continue
+    for b in blocks:
+        m = b.get("matcher")
+        hit = [t for t in PROBES if covers(m, t)]
+        if hit:
+            names = [os.path.basename(shlex.split(h["command"])[0]) if h.get("command") else "?"
+                     for h in b.get("hooks", [])]
+            bad.append(f"{ev} matcher {m!r} covers {', '.join(hit)} ({', '.join(names)})")
+for line in bad:
+    print(f"ERROR: runtime diet: {line}", file=sys.stderr)
+sys.exit(1 if bad else 0)
+MTKPY
 
 # Unified setup entry point must exist
 require_file ".claude/skills/mtk-setup/SKILL.md"
@@ -268,6 +387,95 @@ for t in tests/hooks/*.sh; do
   [ -e "$t" ] || continue
   grep -qF "\"$t\"" .claude/manifest.json || fail "Hook test not registered in manifest.json: $t (add a files entry — C0.2)"
 done
+
+# Disk -> manifest completeness for the whole repo (C0.2). The source-path loop
+# above only proves every manifest entry exists; this proves every file in the
+# repo (tracked, plus untracked files git does not ignore) has an entry, so a new
+# file cannot ship unregistered. The allow-list is the files that are not
+# distributed: the descriptors that define what ships, repo metadata, this
+# repo's own rules and lessons, specs/plans, and internal research notes.
+manifest_allowed_unlisted() {
+  case "$1" in
+    .claude/manifest.json|.claude-plugin/*) return 0 ;;
+    README.md|CONTRIBUTING.md|LICENSE|CLAUDE.md|.gitignore|*/.gitkeep) return 0 ;;
+    .github/*) return 0 ;;
+    .claude/rules/*|tasks/lessons.md|.claude/references/pre-commit-review-list.md) return 0 ;;
+    docs/specs/*|docs/plans/*) return 0 ;;
+    docs/competitive-analysis-*.md|docs/ecc-harness-adapters-*.md|docs/harness-support-matrix.md) return 0 ;;
+  esac
+  return 1
+}
+# Read once, guarded: a grep that matches nothing exits 1, and under pipefail
+# that would abort this script inside $(…) with no message at all.
+manifest_sources="$(grep -E '^[[:space:]]*"source":' .claude/manifest.json 2>/dev/null | sed -E 's/.*"source":[[:space:]]*"([^"]+)".*/\1/' || true)"
+[ -n "$manifest_sources" ] || fail ".claude/manifest.json lists no \"source\" entries — cannot check C0.2"
+# The disk -> manifest direction needs git to tell repo files from build output
+# and ignored files. Outside a work tree that check cannot run, and skipping it
+# silently would print "Toolkit validation passed" for an unchecked tree.
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  fail "not inside a git work tree — the disk -> manifest.json check (C0.2) cannot run; validate from a git checkout"
+else
+  unlisted=()
+  while IFS= read -r f; do
+    [ -n "$f" ] && [ -f "$f" ] || continue
+    manifest_allowed_unlisted "$f" && continue
+    grep -qxF -- "$f" <<< "$manifest_sources" || unlisted+=("$f")
+  done < <(git ls-files --cached --others --exclude-standard)
+  if [ "${#unlisted[@]}" -gt 0 ]; then
+    printf 'ERROR: not in manifest.json: %s\n' "${unlisted[@]}" >&2
+    fail "${#unlisted[@]} repo file(s) have no manifest.json files entry — register each one, or add it to manifest_allowed_unlisted in this script if it is not distributed (C0.2)"
+  fi
+fi
+
+# Internal project names must not ship. Every manifest-listed file is distributed
+# to other teams' repos, so a client or internal codename in a skill, reference,
+# hook or test leaks it. Specs, plans and the changelog are working history and
+# are excluded. The pattern uses a character class per name so this script does
+# not match itself.
+# Codenames that are ordinary English words elsewhere match as whole words only.
+INTERNAL_NAMES_RE='pay[f]ac|collection-[s]ystem|bn[p]l|(^|[^[:alnum:]_])(a[u]dur|b[e]acon|i[n]venthor)([^[:alnum:]_]|$)'
+leaks=()
+while IFS= read -r f; do
+  case "$f" in docs/specs/*|docs/plans/*|CHANGELOG.md) continue ;; esac
+  [ -f "$f" ] || continue
+  if grep -qiE "$INTERNAL_NAMES_RE" "$f"; then
+    leaks+=("$f")
+  fi
+done < <(grep -v '://' <<<"$manifest_sources" | sort -u)
+if [ "${#leaks[@]}" -gt 0 ]; then
+  for f in "${leaks[@]}"; do
+    grep -niE "$INTERNAL_NAMES_RE" "$f" | awk -v f="$f" '{ print "ERROR: internal name in " f ":" $0 }' >&2
+  done
+  fail "${#leaks[@]} shipped file(s) name an internal project — replace it with a neutral example"
+fi
+
+# Plugin-root spelling (S2.27). Claude Code substitutes only the braced form
+# ${CLAUDE_PLUGIN_ROOT} into skill and agent text at load time, and never exports
+# it to the Bash tool. A default-value form is left unsubstituted and degrades to
+# its fallback (usually "."), which breaks every plugin install outside this repo.
+# References are read with the Read tool, so nothing in them is substituted.
+plugin_root_bad=$(grep -rnE '\$\{CLAUDE_PLUGIN_ROOT:-' .claude/skills .claude/agents .claude/references 2>/dev/null || true)
+if [ -n "$plugin_root_bad" ]; then
+  printf '%s\n' "$plugin_root_bad" | awk '{ print "ERROR: " $0 }' >&2
+  fail "\${CLAUDE_PLUGIN_ROOT:-…} is never substituted — use \${CLAUDE_PLUGIN_ROOT} in skills/agents and \$MTK_ROOT in references (S2.27)"
+fi
+# The unbraced $CLAUDE_PLUGIN_ROOT/ is not substituted either, and in a fenced
+# bash block the model runs it verbatim: the Bash tool has no such variable, so
+# the path collapses to /scripts/… . Prose mentions in backticks are fine; only
+# fenced bash/sh/shell blocks are scanned.
+plugin_root_unbraced="$(find .claude/skills .claude/agents -name '*.md' -type f 2>/dev/null | sort | while IFS= read -r md; do
+  awk -v f="$md" '
+    /^[[:space:]]*```/ {
+      if (fence) { fence = 0 } else { fence = ($0 ~ /^[[:space:]]*```[[:space:]]*(bash|sh|shell|zsh)[[:space:]]*$/) ? 1 : 2 }
+      next
+    }
+    fence == 1 && /[$]CLAUDE_PLUGIN_ROOT\// { print f ":" NR ": " $0 }
+  ' "$md"
+done)"
+if [ -n "$plugin_root_unbraced" ]; then
+  printf '%s\n' "$plugin_root_unbraced" | awk '{ print "ERROR: " $0 }' >&2
+  fail "unbraced \$CLAUDE_PLUGIN_ROOT/ inside a fenced bash block is never substituted — write \${CLAUDE_PLUGIN_ROOT}/ (S2.27)"
+fi
 
 # applyTo values must be glob patterns (strings). Quick sanity: any applyTo line
 # must be an array opener or a quoted glob. Detect obvious errors (non-array value).
@@ -452,25 +660,6 @@ if [ -d tests/fixtures ] && ls tests/fixtures/*.json >/dev/null 2>&1; then
   bash scripts/run-fixtures.sh >/dev/null || fail "router-decision fixtures failed (run: bash scripts/run-fixtures.sh)"
 fi
 
-# Read-only enforcement for mcp/src/tools/ — no fs writes, no shell exec.
-# Agent-callable tools must not mutate state or spawn processes.
-if [ -d mcp/src/tools ]; then
-  if grep -rE 'fs\.(write|append|unlink|rm|mkdir|chmod|chown|symlink|rename|truncate)|child_process|execSync|[^a-zA-Z]spawn\(' mcp/src/tools/ >/dev/null 2>&1; then
-    grep -rEn 'fs\.(write|append|unlink|rm|mkdir|chmod|chown|symlink|rename|truncate)|child_process|execSync|[^a-zA-Z]spawn\(' mcp/src/tools/ >&2 || true
-    fail "mcp/src/tools/ must be read-only — write API or shell exec detected"
-  fi
-fi
-
-# Rule wake-up index must be fresh (S1/S3.10 — generated artifact kept in sync).
-if [ -x scripts/build-rule-index.sh ]; then
-  bash scripts/build-rule-index.sh --check >/dev/null 2>&1 || fail "rule index stale — run: bash scripts/build-rule-index.sh"
-fi
-
-# Skill-eval coverage (advisory, non-blocking — sprawl signal, never fails the build).
-if [ -x scripts/skill-eval/coverage.sh ]; then
-  bash scripts/skill-eval/coverage.sh 2>/dev/null | head -1 || true
-fi
-
 # Embedded-bash lint for skills — deterministic bug classes in fenced ```bash blocks.
 require_file "scripts/lint-skill-bash.sh"
 bash scripts/lint-skill-bash.sh || fail "skill bash lint failed (run: bash scripts/lint-skill-bash.sh)"
@@ -510,8 +699,7 @@ for skill in .claude/skills/*/SKILL.md; do
 done
 
 # Least-privilege for agents (S1.7). Claude Code enforces the `tools:` frontmatter key on
-# agent definitions — `allowed-tools:` is a skill-frontmatter key and MTK's own toolset
-# hint; an agent that only declares `allowed-tools` runs with EVERY tool, and its spawn
+# agent definitions — `allowed-tools:` is a skill-frontmatter key; an agent that only declares `allowed-tools` runs with EVERY tool, and its spawn
 # carries every tool schema, every MCP tool name, and the whole skill roster (~35k extra
 # tokens measured on a loaded machine). So `tools:` is REQUIRED on every agent and must not
 # grant a mutating tool, `Agent`, or `Skill` — reviewers are read-only and never re-dispatch.
@@ -525,8 +713,6 @@ for agent in .claude/agents/*.md; do
   if printf '%s' "$tools_line" | grep -qE '\b(Edit|Write|MultiEdit|NotebookEdit|Agent|Skill|Workflow)\b'; then
     fail "agent $agent_name grants a mutating or dispatching tool in tools: ($tools_line) — reviewers are read-only and never re-dispatch (S1.7)"
   fi
-  printf '%s\n' "$fm" | grep -qE '^(required-toolsets|allowed-tools):' \
-    || printf 'WARN: agent %s declares no required-toolsets/allowed-tools hint for the MTK router (S2.19)\n' "$agent_name"
 done
 
 # Advisory: frontmatter enum sanity on agents (borrow — schema-validated frontmatter).
@@ -537,7 +723,7 @@ for agent in .claude/agents/*.md; do
   model="$(awk -F: '/^model:/{gsub(/[[:space:]]/,"",$2);print $2;exit}' "$agent")"
   effort="$(awk -F: '/^effort:/{gsub(/[[:space:]]/,"",$2);print $2;exit}' "$agent")"
   case "${model:-}" in ''|opus|sonnet|haiku|fable|inherit) : ;; *) printf 'WARN: agent %s has unexpected model tier "%s" (expected opus|sonnet|haiku|fable|inherit)\n' "$agent_name" "$model" ;; esac
-  case "${effort:-}" in ''|low|medium|high|max) : ;; *) printf 'WARN: agent %s has unexpected effort "%s" (expected low|medium|high|max)\n' "$agent_name" "$effort" ;; esac
+  case "${effort:-}" in ''|low|medium|high|xhigh|max) : ;; *) printf 'WARN: agent %s has unexpected effort "%s" (expected low|medium|high|xhigh|max)\n' "$agent_name" "$effort" ;; esac
 done
 
 printf 'Toolkit validation passed.\n'

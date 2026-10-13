@@ -16,36 +16,32 @@ guidance intact. After substituting, stamp each modified reference file with the
 
 ## Customization table — dotnet
 
-| Category | File to patch | Generic pattern to find | Example replacement |
+| Category | Where | Generic pattern to find | Example replacement |
 |---|---|---|---|
-| Test framework | `{stack}/testing-supplement.md` | `xUnit, NUnit, or MSTest — match the project's existing choice.` | `xUnit only. Do not introduce NUnit or MSTest.` |
-| Mocking library | `{stack}/testing-supplement.md` | `Mocking: Moq, NSubstitute, or FakeItEasy — match existing.` | `Mocking: NSubstitute only. Do not introduce Moq or FakeItEasy.` |
-| Integration test base | `{stack}/testing-supplement.md` | `WebApplicationFactory<T> for ASP.NET Core, IClassFixture for shared setup` | Keep as-is (both are standard); but if TestContainers detected, append: `TestContainers is the standard integration test infrastructure in this repo.` |
-| ORM | `{stack}/ef-core-checklist.md` | No generic pattern (EF-only file) | If Dapper also detected alongside EF Core, add a note: `This repo also uses Dapper for [raw SQL / read-side queries]. Do not migrate Dapper queries to EF Core unless explicitly asked.` |
-| Validation | `{stack}/mediatr-slice-patterns.md` | `Validate requests using the project-standard approach.` | `Validate requests using FluentValidation.` (or `DataAnnotations`, or whatever was detected) |
+| Test framework | stack reference | `xUnit, NUnit, or MSTest — match the project's existing choice.` | `xUnit only. Do not introduce NUnit or MSTest.` |
+| Mocking library | stack reference | `Mocking: Moq, NSubstitute, or FakeItEasy — match existing.` | `Mocking: NSubstitute only. Do not introduce Moq or FakeItEasy.` |
+| Integration test base | stack reference | `` `WebApplicationFactory<T>` for ASP.NET Core, `IClassFixture` for shared setup `` | Keep as-is (both are standard); but if TestContainers detected, append: `TestContainers is the standard integration test infrastructure in this repo.` |
 
 ## Customization table — typescript
 
-| Category | File to patch | Generic pattern to find | Example replacement |
+| Category | Where | Generic pattern to find | Example replacement |
 |---|---|---|---|
-| Test framework | `{stack}/testing-supplement.md` | (Multiple frameworks listed in `## Test Framework`) | If Vitest only: remove Jest/Playwright guidance paragraphs. If Jest only: remove Vitest paragraphs. Leave both if both detected. |
-| Component testing | `{stack}/testing-supplement.md` | `@testing-library/react for React component tests` | If no React detected, remove this section entirely. |
-| Data fetching | `{stack}/testing-supplement.md` | `## TanStack Query in Tests` | If no TanStack Query detected, remove this section. |
-| State management | `{stack}/framework-patterns.md` | Generic state patterns | Narrow to detected library (Zustand, Redux, etc.) |
-| Data layer | `{stack}/data-layer-checklist.md` | Multi-ORM guidance | Narrow to detected ORM (Prisma, Drizzle, etc.) |
+| Test framework | stack reference | (Multiple frameworks listed in `## Test Framework`) | If Vitest only: remove Jest/Playwright guidance paragraphs. If Jest only: remove Vitest paragraphs. Leave both if both detected. |
+| Component testing | stack reference | `**@testing-library/react** for React component tests` | If no React detected, remove this section entirely. |
+| Data fetching | stack reference | `## TanStack Query in Tests` | If no TanStack Query detected, remove this section. |
 
 ## Customization table — python
 
-| Category | File to patch | Generic pattern to find | Example replacement |
+| Category | Where | Generic pattern to find | Example replacement |
 |---|---|---|---|
-| Test framework | `{stack}/testing-supplement.md` | `pytest is the default` | If unittest found instead: `unittest.TestCase is the standard in this repo. Do not introduce pytest without team approval.` |
-| Mocking | `{stack}/testing-supplement.md` | `Use respx for mocking HTTPX clients, vcrpy for recorded HTTP interactions.` | Narrow to detected library only. |
-| Database testing | `{stack}/testing-supplement.md` | `testcontainers-python with a Postgres container` | If the repo uses a different approach (e.g., `pytest-django --reuse-db`), narrow to that. |
+| Test framework | stack reference | `pytest is the default` | If unittest found instead: `unittest.TestCase is the standard in this repo. Do not introduce pytest without team approval.` |
+| Mocking | stack reference | `Use respx for mocking HTTPX clients, vcrpy for recorded HTTP interactions.` | Narrow to detected library only. |
+| Database testing | stack reference | `testcontainers-python with a Postgres container` | If the repo uses a different approach (e.g., `pytest-django --reuse-db`), narrow to that. |
 
 ## Procedure
 
 1. For each category in the active stack's table above, check whether the scan detected exactly one tool.
-2. If yes — read the target reference file, find the generic pattern, and replace it with the project-specific version using `Edit`.
+2. If yes — locate the file carrying the generic pattern (`grep -rlF '<pattern>' .claude/references/{stack}/`; file names change between releases, the pattern is the anchor) and replace it with the project-specific version using `Edit`.
 3. If the pattern isn't found (file was already customized or has different wording) — skip silently, do not force the replacement.
 4. After all substitutions, add a comment at the top of each modified reference file:
    ```markdown

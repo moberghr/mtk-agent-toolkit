@@ -16,8 +16,8 @@ set -euo pipefail
 # Resolve the repo/project root — memoized per process and keyed by PWD, so a
 # script that cd's between calls still resolves correctly while a hook (one
 # short-lived process) pays the cost once. Prefers $CLAUDE_PROJECT_DIR: the
-# harness sets it per session and it is cwd-independent — the same preference,
-# for the same reason, as mtk_is_redundant_plugin_invocation below. It is also
+# harness sets it per session and it is cwd-independent, so a hook whose cwd is
+# a subdirectory (or outside the repo) still resolves the project. It is also
 # ~20ms cheaper per call than spawning `git rev-parse`, which multiplied across
 # every hook on every tool call was the single largest avoidable latency in
 # the PreToolUse path. Physicalized via pwd -P (symlink/case lessons, S1.17).
@@ -58,12 +58,33 @@ mtk_repo_root() {
 #   payload". Fail-open hooks exit 0; security-gate.sh deliberately fails closed
 #   and blocks. That trade is intended — a visible block beats a silent
 #   multi-minute hang.
+# Stock macOS ships neither timeout nor gtimeout, so the third tier is a
+# python3 select() loop with the same deadline (python3 is S3.3 baseline). Only
+# with none of the three does the read go unbounded.
 mtk_read_payload() {
   local secs="${1:-4}"
   if command -v timeout >/dev/null 2>&1; then
     timeout "$secs" cat 2>/dev/null || true
   elif command -v gtimeout >/dev/null 2>&1; then
     gtimeout "$secs" cat 2>/dev/null || true
+  elif command -v python3 >/dev/null 2>&1; then
+    python3 -c '
+import os, select, sys, time
+deadline = time.time() + float(sys.argv[1])
+out = []
+while True:
+    left = deadline - time.time()
+    if left <= 0:
+        break
+    ready, _, _ = select.select([0], [], [], left)
+    if not ready:
+        break
+    chunk = os.read(0, 65536)
+    if not chunk:
+        break
+    out.append(chunk)
+sys.stdout.buffer.write(b"".join(out))
+' "$secs" 2>/dev/null || true
   else
     cat 2>/dev/null || true
   fi
@@ -114,7 +135,7 @@ mtk_emit_system_message() {
 # case-insensitive filesystem the same directory can present as both
 # `/Users/x/Dev/repo` and `/Users/x/dev/repo` depending on the casing the parent
 # process was launched with. A prefix test then reports "outside the project",
-# which flips the redundancy guard below into skipping the project's own hook.
+# which reads a path inside the project as outside it.
 # Fork-free: inputs are absolute normalised paths, so the parent is a suffix strip.
 # --- Deny ergonomics --------------------------------------------------------
 # Field-observed failure modes after a hard deny (exit 2): the agent treats
@@ -123,7 +144,8 @@ mtk_emit_system_message() {
 # and refuses everything after (cascade). Every deny therefore carries a
 # continuation suffix; an optional toggle hint teaches the off-switch at the
 # moment of friction. Pass an empty toggle when the guard has no self-service
-# off-switch by design (security-gate, read-guard's human-granted approval).
+# off-switch by design (security-gate's destructive checks, config-guard's
+# human-granted approval).
 #
 # Usage:  mtk_deny "reason text" ["toggle hint"]
 #         mtk_deny - ["toggle hint"] <<EOF   (reason on stdin, e.g. heredoc)
@@ -159,40 +181,6 @@ mtk_path_is_within() {
     dir="$parent"
     depth=$((depth + 1))
   done
-  return 1
-}
-
-# Promotion guard: when this hook is a plugin-install copy (its own directory is
-# outside the current project) AND the project also wires a hook of the same
-# basename in its .claude/settings.json, the plugin copy is redundant and must
-# not run — otherwise the hook fires twice. Returns 0 when the caller should
-# exit early. Cheap: git toplevel + one grep of settings.json.
-mtk_is_redundant_plugin_invocation() {
-  local self="${1:-}"
-  [ -n "$self" ] || return 1
-  local self_dir project_root base settings
-  self_dir="$(cd "$(dirname "$self")" 2>/dev/null && pwd -P)" || return 1
-  # Prefer $CLAUDE_PROJECT_DIR over the git toplevel of cwd. A hook process is
-  # not guaranteed to run with cwd inside the repo; when it doesn't, the git
-  # probe falls back to `pwd`, the settings.json lookup below misses, the guard
-  # fails open, and BOTH the plugin and project copies fire — the hook runs
-  # twice. $CLAUDE_PROJECT_DIR is set by the harness and is cwd-independent.
-  project_root="$(cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}" 2>/dev/null && pwd -P)" || return 1
-  # Physically inside the project → this IS the project copy; never skip. The
-  # string-prefix test is only the fast path for the common exact-spelling case;
-  # `mtk_path_is_within` is authoritative when the spellings differ.
-  case "$self_dir/" in
-    "$project_root"/*) return 1 ;;
-  esac
-  mtk_path_is_within "$self_dir" "$project_root" && return 1
-  base="$(basename "$self")"
-  settings="$project_root/.claude/settings.json"
-  [ -f "$settings" ] || return 1
-  grep -qF "hooks/$base" "$settings" 2>/dev/null || return 1
-  # Skip only when the project-wired copy actually resolves — a dangling
-  # settings entry (legacy bootstrap, no hooks/ dir) must not silence the
-  # plugin copy too, or the hook fires from neither place.
-  [ -f "$project_root/hooks/$base" ] && return 0
   return 1
 }
 
@@ -249,20 +237,137 @@ mtk_artifact_root() {
   mtk_repo_root
 }
 
+# Bind this hook process to the payload's session_id, so the session ledger
+# below is keyed on the session rather than on project+date. Without it, two
+# sessions open in the same repo on the same day share one ledger, and a
+# verification run in one satisfies the completion check of the other. Call it
+# once, right after reading the payload and before the first mtk_session_file.
+# A payload without session_id leaves the process unbound (project+date key).
+mtk_session_bind() {
+  local sid
+  sid="$(mtk_extract_json_string "${1:-}" "session_id" 2>/dev/null || true)"
+  sid="${sid//[^A-Za-z0-9._-]/_}"
+  _MTK_SESSION_ID="${sid:0:64}"
+}
+
 # Memoized per process: hooks call this repeatedly (lock acquire/release each
 # recompute it) and every call used to spawn a cksum|cut pipeline plus date.
-# Keyed by TMPDIR so tests that re-point TMPDIR within one process stay correct.
+# Keyed by TMPDIR and session id so tests that re-point TMPDIR within one
+# process stay correct. The key is the bound session id when there is one
+# (mtk_session_bind), otherwise the project+date key.
 mtk_session_file() {
-  local tmpdir="${TMPDIR:-/tmp}"
-  if [ -n "${_MTK_SESSION_FILE:-}" ] && [ "${_MTK_SESSION_FILE_TMPDIR:-}" = "$tmpdir" ]; then
+  local tmpdir="${TMPDIR:-/tmp}" sid="${_MTK_SESSION_ID:-}"
+  if [ -n "${_MTK_SESSION_FILE:-}" ] && [ "${_MTK_SESSION_FILE_TMPDIR:-}" = "$tmpdir" ] \
+    && [ "${_MTK_SESSION_FILE_SID-unset}" = "$sid" ]; then
     printf '%s\n' "$_MTK_SESSION_FILE"
     return 0
   fi
   local project_id
   project_id=$(mtk_repo_root | cksum | cut -d' ' -f1)
-  _MTK_SESSION_FILE="$(printf '%s/mtk-context-budget-%s-%s' "$tmpdir" "$project_id" "$(date +%Y%m%d)")"
+  if [ -n "$sid" ]; then
+    _MTK_SESSION_FILE="$(printf '%s/mtk-context-budget-%s-s-%s' "$tmpdir" "$project_id" "$sid")"
+  else
+    _MTK_SESSION_FILE="$(printf '%s/mtk-context-budget-%s-%s' "$tmpdir" "$project_id" "$(date +%Y%m%d)")"
+  fi
   _MTK_SESSION_FILE_TMPDIR="$tmpdir"
+  _MTK_SESSION_FILE_SID="$sid"
   printf '%s\n' "$_MTK_SESSION_FILE"
+}
+
+# Content fingerprint of the working tree relative to commit `base` (default
+# HEAD; the empty tree in a repo with no commits). Prints "<base> <hash>", or
+# returns 1 outside a git work tree.
+#
+# It hashes every path that differs from `base` (tracked changes, deletions and
+# untracked, non-ignored files) together with the blob hash of its current
+# content. Pass the base recorded with an earlier fingerprint to compare the
+# two: committing exactly the verified changes moves HEAD but keeps the working
+# tree, so diffing against the recorded base still yields the same hash, while
+# any content change (an Edit, a sed -i, a formatter pass) yields a new one.
+# GIT_OPTIONAL_LOCKS=0 keeps the index refresh from taking index.lock.
+mtk_tree_fingerprint() {
+  local root base path h i=0
+  root="$(mtk_repo_root)"
+  git -C "$root" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 1
+  base="${1:-}"
+  if [ -z "$base" ] || ! git -C "$root" cat-file -e "${base}^{tree}" 2>/dev/null; then
+    base="$(git -C "$root" rev-parse -q --verify HEAD 2>/dev/null || true)"
+    [ -n "$base" ] || base="4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+  fi
+  local -a paths=() present=() lines=()
+  while IFS= read -r -d '' path; do
+    paths+=("$path")
+  done < <(
+    {
+      GIT_OPTIONAL_LOCKS=0 git -C "$root" diff --no-renames --name-only -z "$base" -- 2>/dev/null || true
+      GIT_OPTIONAL_LOCKS=0 git -C "$root" ls-files -o --exclude-standard -z 2>/dev/null || true
+    } | LC_ALL=C sort -zu
+  )
+  for path in ${paths[@]+"${paths[@]}"}; do
+    if [ -f "$root/$path" ]; then
+      present+=("$path")
+    elif [ -e "$root/$path" ]; then
+      lines+=("$path	nonfile")
+    else
+      lines+=("$path	deleted")
+    fi
+  done
+  # One batched hash-object call. `--stdin-paths` stops at the first file it
+  # cannot read, so every later path would silently go unhashed: when the hash
+  # count does not match the path count, hash file by file, and record an
+  # unreadable file as a marker plus a non-zero return so callers fall back to
+  # the edit/verification seq comparison instead of trusting a blind hash.
+  local failed=0
+  if [ "${#present[@]}" -gt 0 ]; then
+    local -a hashes=()
+    while IFS= read -r h; do hashes+=("$h"); done < <(
+      cd "$root" && printf '%s\n' "${present[@]}" | git hash-object --stdin-paths 2>/dev/null || true
+    )
+    if [ "${#hashes[@]}" -ne "${#present[@]}" ]; then
+      hashes=()
+      for path in "${present[@]}"; do
+        h="$(cd "$root" && git hash-object -- "$path" 2>/dev/null)" || h=""
+        [ -n "$h" ] || { h="unreadable"; failed=1; }
+        hashes+=("$h")
+      done
+    fi
+    for path in "${present[@]}"; do
+      lines+=("$path	${hashes[$i]}")
+      i=$((i + 1))
+    done
+  fi
+  h="$(printf '%s\n' ${lines[@]+"${lines[@]}"} | LC_ALL=C sort | git hash-object --stdin 2>/dev/null)" || return 1
+  [ "$failed" -eq 0 ] || h="${h}-unreadable"
+  printf '%s %s\n' "$base" "$h"
+  return "$failed"
+}
+
+# Record the session's baseline fingerprint before its first tool runs.
+# Called from PreToolUse hooks (scope-guard for Edit|Write, format-on-edit
+# --flush-before-verify for Bash) so the baseline is the tree BEFORE the first
+# change; a PostToolUse baseline already contains the first tool's effect.
+# Only records when the ledger has no baseline and no event yet; otherwise a
+# mid-session baseline would read earlier Bash-made changes as "unchanged".
+# Fast path (baseline present): one grep of the ledger, no git.
+mtk_ensure_session_baseline() {
+  [ -n "${1:-}" ] && mtk_session_bind "$1"
+  local sf fp
+  sf="$(mtk_session_file)"
+  if [ -f "$sf" ] && grep -q "^session_start_tree='[0-9a-f]" "$sf" 2>/dev/null; then
+    return 0
+  fi
+  if [ -f "$sf" ] && ! grep -q '^event_seq=0$' "$sf" 2>/dev/null; then
+    return 0
+  fi
+  fp="$(mtk_tree_fingerprint 2>/dev/null)" || return 0
+  mtk_session_lock_acquire "$sf"
+  mtk_load_session_state "$sf"
+  if [ -z "${session_start_tree:-}" ] && [ "${event_seq:-0}" -eq 0 ]; then
+    session_start_base="${fp%% *}"
+    session_start_tree="${fp#* }"
+    mtk_save_session_state "$sf"
+  fi
+  mtk_session_lock_release "$sf"
 }
 
 # Extract the first string value for `key` from a JSON payload.
@@ -369,7 +474,7 @@ mtk_session_lock_acquire() {
   # A live holder keeps this lock for single-digit milliseconds (load state →
   # update counters → save). So a lock older than a couple of seconds is not
   # contention, it is a corpse: the harness SIGTERMs a hook that overruns its
-  # `timeout` (context-budget.sh runs under `timeout: 3`), and SIGTERM does not
+  # `timeout` (evidence-ledger.sh runs under `timeout: 3`), and SIGTERM does not
   # run the EXIT trap, so the directory outlives the process that made it.
   # Without stealing it, every later hook pays the full spin below — 100 × 50ms
   # of dead wall-clock on the next tool call, for a counter nobody blocks on.
@@ -403,13 +508,8 @@ mtk_init_session_state() {
   [ -f "$session_file" ] && return 0
 
   cat > "$session_file" <<'EOF'
-reads=0
-files=''
 mods=0
 ops=0
-warned_files=0
-warned_mods=0
-warned_ops=0
 scope_guard_warnings=0
 benchmarks_run=0
 benchmark_last_score=''
@@ -422,8 +522,10 @@ last_verification_command=''
 last_verification_summary=''
 last_verification_status='unknown'
 last_verification_scope='full'
-bytes_read=0
-warned_ctxpct=0
+last_verification_base=''
+last_verification_tree=''
+session_start_base=''
+session_start_tree=''
 EOF
 }
 
@@ -433,13 +535,8 @@ mtk_load_session_state() {
   # shellcheck disable=SC1090
   . "$session_file"
 
-  reads=${reads:-0}
-  files=${files:-}
   mods=${mods:-0}
   ops=${ops:-0}
-  warned_files=${warned_files:-0}
-  warned_mods=${warned_mods:-0}
-  warned_ops=${warned_ops:-0}
   scope_guard_warnings=${scope_guard_warnings:-0}
   benchmarks_run=${benchmarks_run:-0}
   benchmark_last_score=${benchmark_last_score:-}
@@ -452,8 +549,10 @@ mtk_load_session_state() {
   last_verification_summary=${last_verification_summary:-}
   last_verification_status=${last_verification_status:-unknown}
   last_verification_scope=${last_verification_scope:-full}
-  bytes_read=${bytes_read:-0}
-  warned_ctxpct=${warned_ctxpct:-0}
+  last_verification_base=${last_verification_base:-}
+  last_verification_tree=${last_verification_tree:-}
+  session_start_base=${session_start_base:-}
+  session_start_tree=${session_start_tree:-}
 }
 
 # Write the session state via escaped-single-quoted values and an atomic
@@ -462,20 +561,14 @@ mtk_load_session_state() {
 mtk_save_session_state() {
   local session_file="$1"
   local tmp="${session_file}.tmp.$$"
-  local files_esc bench_esc cmd_esc sum_esc
-  files_esc=$(mtk_sq_escape "${files:-}")
+  local bench_esc cmd_esc sum_esc
   bench_esc=$(mtk_sq_escape "${benchmark_last_score:-}")
   cmd_esc=$(mtk_sq_escape "${last_verification_command:-}")
   sum_esc=$(mtk_sq_escape "${last_verification_summary:-}")
 
   {
-    printf "reads=%s\n" "${reads:-0}"
-    printf "files='%s'\n" "$files_esc"
     printf "mods=%s\n" "${mods:-0}"
     printf "ops=%s\n" "${ops:-0}"
-    printf "warned_files=%s\n" "${warned_files:-0}"
-    printf "warned_mods=%s\n" "${warned_mods:-0}"
-    printf "warned_ops=%s\n" "${warned_ops:-0}"
     printf "scope_guard_warnings=%s\n" "${scope_guard_warnings:-0}"
     printf "benchmarks_run=%s\n" "${benchmarks_run:-0}"
     printf "benchmark_last_score='%s'\n" "$bench_esc"
@@ -488,8 +581,11 @@ mtk_save_session_state() {
     printf "last_verification_summary='%s'\n" "$sum_esc"
     printf "last_verification_status='%s'\n" "${last_verification_status:-unknown}"
     printf "last_verification_scope='%s'\n" "${last_verification_scope:-full}"
-    printf "bytes_read=%s\n" "${bytes_read:-0}"
-    printf "warned_ctxpct=%s\n" "${warned_ctxpct:-0}"
+    # Base commit and tree hash from mtk_tree_fingerprint: hex, no escaping needed.
+    printf "last_verification_base='%s'\n" "${last_verification_base:-}"
+    printf "last_verification_tree='%s'\n" "${last_verification_tree:-}"
+    printf "session_start_base='%s'\n" "${session_start_base:-}"
+    printf "session_start_tree='%s'\n" "${session_start_tree:-}"
   } > "$tmp"
   mv "$tmp" "$session_file"
 }
@@ -501,33 +597,139 @@ mtk_trim_whitespace() {
   printf '%s\n' "$value"
 }
 
-# Recognise common build/test/validate invocations as "verification commands".
-# Matches tokens anywhere in the command so real-world shapes like
-# `cd services/api && dotnet test`, `env CI=1 pytest`, or `docker compose run
-# --rm tests pytest` register correctly. Without this, the fresh-evidence check
-# fired VERIFICATION GAP on commands that were clearly verifying.
+# Recognise build/test/validate invocations as "verification commands".
+#
+# A runner counts only in COMMAND POSITION: at the start of the command or of a
+# segment after && || ; | ( or a backtick, behind the wrappers a real
+# invocation uses — `VAR=x`, `env [-i] [-u N] VAR=x`, `time`, `timeout <dur>`,
+# `docker compose run|exec [flags] <svc>`, `uv/poetry run`, `npx`,
+# `python -m`, `bash <script>`. `cd <dir> && …` needs no special case: `&&`
+# starts a new segment. As an argument (`echo dotnet test`, `grep dotnet test
+# README`), inside a quoted string (`git commit -m "run pytest"`) or in a
+# heredoc body it never counts — matching it anywhere stamped the ledger as
+# verified on commands that ran nothing.
+#
+# Quoted text is kept as a single opaque word (marked with \002) so a quoted
+# script path still resolves (`bash "${CLAUDE_PLUGIN_ROOT}/scripts/
+# mtk-verify-run.sh" -- …`) while a quoted runner name never matches.
+# POSIX awk only (macOS awk has no gawk extensions).
 mtk_command_is_verification() {
-  local command
-  command=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')
-
-  local pattern='(^|[[:space:]|&;(`])('
-  pattern+='dotnet[[:space:]]+(build|test)'
-  pattern+='|pytest'
-  pattern+='|ruff[[:space:]]+check'
-  pattern+='|mypy'
-  pattern+='|tsc'
-  pattern+='|npm[[:space:]]+(test|run[[:space:]]+(test|build))'
-  pattern+='|pnpm[[:space:]]+(test|run[[:space:]]+(test|build))'
-  pattern+='|yarn[[:space:]]+(test|build|run[[:space:]]+(test|build))'
-  pattern+='|bun[[:space:]]+(test|run[[:space:]]+(test|build))'
-  pattern+='|make[[:space:]]+(test|check)'
-  pattern+='|go[[:space:]]+test'
-  pattern+='|cargo[[:space:]]+(test|build|check)'
-  pattern+='|bash[[:space:]]+scripts/(validate-toolkit|run-benchmarks)\.sh'
-  pattern+='|scripts/mtk-verify-run\.sh'
-  pattern+=')'
-
-  printf '%s' "$command" | grep -qE "$pattern"
+  awk '
+    function clean(t) { gsub(/\002/, "", t); return t }
+    function base(t,   b) { b = clean(t); sub(/^.*\//, "", b); return b }
+    function is_flag(t) { return substr(t, 1, 1) == "-" }
+    function runner(w, a1, a2,   b) {
+      if (index(w, "\002") == 0) {
+        b = base(w)
+        if (b == "pytest" || b == "py.test" || b == "mypy" || b == "tsc") return 1
+        if (b == "ruff" && a1 == "check") return 1
+        if (b == "dotnet" && (a1 == "build" || a1 == "test")) return 1
+        if ((b == "npm" || b == "pnpm" || b == "bun") && (a1 == "test" || (a1 == "run" && a2 ~ /^(test|build)/))) return 1
+        if (b == "yarn" && (a1 == "test" || a1 == "build" || (a1 == "run" && a2 ~ /^(test|build)/))) return 1
+        if (b == "make" && a1 ~ /^(test|check)/) return 1
+        if (b == "go" && a1 == "test") return 1
+        if (b == "cargo" && (a1 == "test" || a1 == "build" || a1 == "check")) return 1
+      }
+      if (clean(w) ~ /(^|\/)scripts\/(validate-toolkit|run-benchmarks|mtk-verify-run)\.sh$/) return 1
+      return 0
+    }
+    function judge(seg,   n, t, k, w) {
+      n = split(seg, t, /[ \t]+/)
+      k = 1
+      while (k <= n && t[k] == "") k++
+      while (k <= n) {
+        w = t[k]
+        if (w ~ /^[a-z_][a-z0-9_]*=/ || w == "time" || w == "command" || w == "exec" || w == "nice" || w == "nohup" || w == "then" || w == "do" || w == "else" || w == "elif" || w == "if" || w == "while" || w == "until" || w == "!" || w == "sudo") { k++; continue }
+        if (w == "env") {
+          k++
+          while (k <= n && (is_flag(t[k]) || t[k] ~ /^[a-z_][a-z0-9_]*=/)) { if (t[k] == "-u") k++; k++ }
+          continue
+        }
+        if (w == "timeout" || w == "gtimeout") {
+          k++
+          while (k <= n && is_flag(t[k])) { if (t[k] == "-k" || t[k] == "-s") k++; k++ }
+          k++
+          continue
+        }
+        if ((w == "docker" && t[k+1] == "compose") || w == "docker-compose") {
+          k += (w == "docker") ? 2 : 1
+          if (t[k] != "run" && t[k] != "exec") return 0
+          k++
+          while (k <= n && is_flag(t[k])) {
+            if (t[k] ~ /^(-e|--env|-w|--workdir|-u|--user|-v|--volume|--entrypoint|--name|-p|--publish|-l|--label)$/) k++
+            k++
+          }
+          k++
+          continue
+        }
+        if ((w == "uv" || w == "poetry" || w == "pipenv" || w == "pdm" || w == "hatch") && t[k+1] == "run") {
+          k += 2
+          while (k <= n && is_flag(t[k])) k++
+          continue
+        }
+        if (w == "npx" || w == "bunx" || w == "pnpx") {
+          k++
+          while (k <= n && is_flag(t[k])) k++
+          continue
+        }
+        if ((w == "pnpm" && (t[k+1] == "exec" || t[k+1] == "dlx")) || (w == "yarn" && t[k+1] == "dlx")) { k += 2; continue }
+        if ((w ~ /^python[0-9.]*$/ || w == "py") && t[k+1] == "-m") { k += 2; continue }
+        if (w == "bash" || w == "sh" || w == "zsh") {
+          k++
+          while (k <= n && is_flag(t[k]) && t[k] != "-c") k++
+          if (t[k] == "-c") return 0
+          continue
+        }
+        break
+      }
+      if (k > n) return 0
+      if (!runner(t[k], t[k+1], t[k+2])) return 0
+      # A runner asked to list, describe or print its version runs no test:
+      # `pytest --collect-only`, `dotnet test --list-tests`, `--help`, `--version`.
+      for (x = k + 1; x <= n; x++)
+        if (t[x] ~ /^(--collect-only|--co|--help|-h|--version|--list-tests)(=.*)?$/) return 0
+      return 1
+    }
+    {
+      line = tolower($0)
+      if (hd != "") {
+        tl = line; gsub(/^[ \t]+|[ \t]+$/, "", tl)
+        if (tl == hd) { hd = ""; hbody = "" } else hbody = hbody "\n" line
+        next
+      }
+      if (match(line, /<<-?[ \t]*["\047]?[a-z0-9_]+["\047]?/) && substr(line, RSTART - 1, 1) != "<") {
+        w = substr(line, RSTART, RLENGTH)
+        sub(/^<<-?[ \t]*/, "", w); gsub(/["\047]/, "", w)
+        hd = w
+        line = substr(line, 1, RSTART - 1) " " substr(line, RSTART + RLENGTH)
+      }
+      buf = buf "\n" line
+    }
+    END {
+      # An unterminated delimiter is not a heredoc: its "body" is still command
+      # text, so it is judged like any other line (same rule as security-gate).
+      if (hd != "") buf = buf hbody
+      out = ""; q = ""; n = length(buf)
+      for (i = 1; i <= n; i++) {
+        c = substr(buf, i, 1)
+        if (q == "") {
+          if (c == "\\") { out = out "_"; i++; continue }
+          if (c == "\047" || c == "\"") { q = c; out = out "\002"; continue }
+          out = out c
+        } else {
+          if (q == "\"" && c == "\\") { out = out "_"; i++; continue }
+          if (c == q) { q = ""; continue }
+          if (c ~ /[a-z0-9_.\/$:+-]/) out = out c; else out = out "_"
+        }
+      }
+      gsub(/\$\{[a-z0-9_]*\}/, "$v", out)
+      gsub(/&&|\|\|/, "\n", out)
+      gsub(/[;|&(){}`]/, "\n", out)
+      m = split(out, segs, "\n")
+      for (s = 1; s <= m; s++) if (judge(segs[s])) exit 0
+      exit 1
+    }
+  ' <<<"${1:-}"
 }
 
 # Can this command's exit status be attributed to the verification command
@@ -539,6 +741,28 @@ mtk_command_is_verification() {
 #              non-zero exit may belong to an earlier link, so only a pass
 #              is attributable
 #   no         operators mask the exit; trust output text only
+# Does a (non-verification) Bash command write files? Used only for the
+# edit-seq fallback, which decides staleness when no tree fingerprint is
+# available (outside git, or an unreadable file), so a Bash-made edit after the
+# last verification re-arms the gap there too. Deliberately broad: a false
+# "wrote" only asks for one more verification run. Matches sed -i, perl -i,
+# `>`/`>>` to anything but /dev/*, tee to a file, mv, cp, rm, patch, git apply,
+# git checkout -- …, git restore.
+mtk_command_writes_files() {
+  local c="${1:-}"
+  [ -n "$c" ] || return 1
+  grep -qE '(^|[;&|(`[:space:]])(mv|cp|rm|patch)([[:space:]]|$)' <<<"$c" && return 0
+  grep -qE '(^|[;&|(`[:space:]])sed[[:space:]]+([^|;&]*[[:space:]])?(-[A-Za-z]*i|--in-place)' <<<"$c" && return 0
+  grep -qE '(^|[;&|(`[:space:]])perl[[:space:]]+([^|;&]*[[:space:]])?-[A-Za-z]*i' <<<"$c" && return 0
+  grep -qE '(^|[;&|(`[:space:]])git[[:space:]]+([^|;&]*[[:space:]])?(apply|restore)([[:space:]]|$)' <<<"$c" && return 0
+  grep -qE '(^|[;&|(`[:space:]])git[[:space:]]+([^|;&]*[[:space:]])?checkout[[:space:]]([^|;&]*[[:space:]])?--([[:space:]]|$)' <<<"$c" && return 0
+  grep -qE '(^|[;&|(`[:space:]])tee[[:space:]]+(-[a-z]+[[:space:]]+)*[^-/[:space:]]' <<<"$c" && return 0
+  grep -qE '(^|[;&|(`[:space:]])tee[[:space:]]+(-[a-z]+[[:space:]]+)*/([^d]|d[^e]|de[^v])' <<<"$c" && return 0
+  # A redirect to a path: `>`/`>>` not part of `2>&1`/`>&2`, and not to /dev/*.
+  grep -qE '(^|[^0-9&<>])>>?[[:space:]]*([^&[:space:]/>]|/([^d[:space:]]|d[^e]|de[^v]))' <<<"$c" && return 0
+  return 1
+}
+
 mtk_verification_exit_attributable() {
   local cmd="${1:-}"
   [ -n "$cmd" ] || { printf 'no\n'; return 0; }
@@ -643,15 +867,15 @@ mtk_classify_verification_outcome() {
   # harness's own verdict before trusting any text. Fail is checked before
   # pass at every tier.
   if [ "$attr" = "yes" ]; then
-    if printf '%s' "$output" | grep -qE '"(exit_code|returncode)"[[:space:]]*:[[:space:]]*[1-9][0-9]*'; then
+    if grep -qE '"(exit_code|returncode)"[[:space:]]*:[[:space:]]*[1-9][0-9]*' <<<"$output"; then
       printf 'fail\n'; return 0
     fi
-    if printf '%s' "$output" | grep -qE '"success"[[:space:]]*:[[:space:]]*false'; then
+    if grep -qE '"success"[[:space:]]*:[[:space:]]*false' <<<"$output"; then
       printf 'fail\n'; return 0
     fi
   fi
   if [ "$attr" != "no" ]; then
-    if printf '%s' "$output" | grep -qE '"(exit_code|returncode)"[[:space:]]*:[[:space:]]*0([^0-9]|$)'; then
+    if grep -qE '"(exit_code|returncode)"[[:space:]]*:[[:space:]]*0([^0-9]|$)' <<<"$output"; then
       printf 'pass\n'; return 0
     fi
   fi
@@ -661,12 +885,12 @@ mtk_classify_verification_outcome() {
   # the line itself, so it stays trustworthy regardless of surrounding
   # operators — but a masked non-zero line exit still gates the fail side.
   if [ "$attr" = "yes" ]; then
-    if printf '%s' "$output" | grep -qE '(^|[^A-Za-z0-9_])exit=[1-9][0-9]*([^0-9]|$)'; then
+    if grep -qE '(^|[^A-Za-z0-9_])exit=[1-9][0-9]*([^0-9]|$)' <<<"$output"; then
       printf 'fail\n'; return 0
     fi
   fi
   if [ "$attr" != "no" ]; then
-    if printf '%s' "$output" | grep -qE '(^|[^A-Za-z0-9_])exit=0([^0-9]|$)'; then
+    if grep -qE '(^|[^A-Za-z0-9_])exit=0([^0-9]|$)' <<<"$output"; then
       printf 'pass\n'; return 0
     fi
   fi
@@ -691,9 +915,9 @@ mtk_classify_verification_outcome() {
   pass_pattern+='|Success: no issues found'
   pass_pattern+=')'
 
-  if printf '%s' "$output" | grep -qE "$fail_pattern"; then
+  if grep -qE "$fail_pattern" <<<"$output"; then
     printf 'fail\n'
-  elif printf '%s' "$output" | grep -qE "$pass_pattern"; then
+  elif grep -qE "$pass_pattern" <<<"$output"; then
     printf 'pass\n'
   else
     printf 'unknown\n'

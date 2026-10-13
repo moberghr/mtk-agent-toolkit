@@ -50,10 +50,7 @@ trap cleanup EXIT
 FIXTURE_A="$TMPDIR_FIXTURES/a-bulky"
 mkdir -p "$FIXTURE_A/.claude/references/dotnet"
 echo "dotnet" > "$FIXTURE_A/.claude/tech-stack"
-cp "$REPO_ROOT/.claude/references/security-checklist.md" \
-   "$REPO_ROOT/.claude/references/testing-patterns.md" \
-   "$REPO_ROOT/.claude/references/performance-checklist.md" \
-   "$REPO_ROOT/.claude/references/domain-finance.md" \
+cp "$REPO_ROOT/.claude/references/domain-finance.md" \
    "$FIXTURE_A/.claude/references/"
 cp "$REPO_ROOT/.claude/references/dotnet/"*.md "$FIXTURE_A/.claude/references/dotnet/"
 cat > "$FIXTURE_A/.claude/references/architecture-principles.md" <<'EOF'
@@ -154,13 +151,13 @@ fi
 # --- (d) never inlines a full reference-file body ---------------------------
 FIXTURE_D="$TMPDIR_FIXTURES/d-no-full-body"
 mkdir -p "$FIXTURE_D/.claude/references"
-cat > "$FIXTURE_D/.claude/references/security-checklist.md" <<'EOF'
+cat > "$FIXTURE_D/.claude/references/domain-finance.md" <<'EOF'
 ---
-description: Baseline security checklist for any serious software change
+description: Finance domain supplement for money, audit and PII handling
 ---
-# Security Checklist
+# Domain — Finance
 
-Fast security and compliance reference for serious software.
+Fast finance-domain reference for serious software.
 
 ## Input And Auth
 
@@ -178,10 +175,10 @@ echo ""; echo "--- (d) full reference body is never inlined (headings/pointer on
 (cd "$FIXTURE_D" && bash "$GEN" >/dev/null 2>&1)
 if grep -q "UNIQUE_DEEP_BODY_MARKER_ZQX9" "$FIXTURE_D/AGENTS.md"; then
   FAILS+=("(d) full reference-file body leaked into AGENTS.md — deep body marker found verbatim")
-elif grep -q "See \`.claude/references/security-checklist.md\`" "$FIXTURE_D/AGENTS.md"; then
+elif grep -q "See \`.claude/references/domain-finance.md\`" "$FIXTURE_D/AGENTS.md"; then
   echo "  PASS  body not inlined; pointer to the source file present instead"
 else
-  FAILS+=("(d) expected a 'See \`.claude/references/security-checklist.md\`' pointer, got: $(cat "$FIXTURE_D/AGENTS.md")")
+  FAILS+=("(d) expected a 'See \`.claude/references/domain-finance.md\`' pointer, got: $(cat "$FIXTURE_D/AGENTS.md")")
 fi
 
 # --- (e) existing contracts: marker-refusal guard + --force -----------------
@@ -265,11 +262,11 @@ fi
 # regenerate its own output in every shim repo.
 FIXTURE_G="$TMPDIR_FIXTURES/g-marked-summary"
 mkdir -p "$FIXTURE_G/.claude/references"
-cat > "$FIXTURE_G/.claude/references/security-checklist.md" <<'EOF'
+cat > "$FIXTURE_G/.claude/references/domain-finance.md" <<'EOF'
 ---
-description: Baseline security checklist for any serious software change
+description: Finance domain supplement for money, audit and PII handling
 ---
-# Security Checklist
+# Domain — Finance
 
 ## Input And Auth
 

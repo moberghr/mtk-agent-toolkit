@@ -54,6 +54,8 @@ make_fixture() {
   printf 'echo t\n' > "$fx/tests/t.sh"
   printf '{}\n' > "$fx/evals/e.json"
   printf 'x\n' > "$fx/examples/x.md"
+  mkdir -p "$fx/.claude/skills/writing-skills"
+  printf -- '---\nname: writing-skills\n---\n' > "$fx/.claude/skills/writing-skills/SKILL.md"
   printf 'on: push\n' > "$fx/.github/workflows/w.yml"
   cp "$REPO_ROOT/scripts/generate-checksums.sh" "$fx/scripts/generate-checksums.sh"
   printf '# MTK release checksum manifest v1.2.3\n%064d  tests/t.sh\n%064d  evals/e.json\n' 0 0 \
@@ -63,6 +65,7 @@ import json, sys
 keyed = {"README.md": "README.md", "skills/a": "hooks/a.sh", "docs/keep.md": "docs/keep.md",
          "tests/t.sh": "tests/t.sh", "evals/e.json": "evals/e.json",
          "examples/x.md": "examples/x.md", ".github/workflows/w.yml": ".github/workflows/w.yml",
+         "skills/writing-skills/SKILL.md": ".claude/skills/writing-skills/SKILL.md",
          "scripts/generate-checksums.sh": "scripts/generate-checksums.sh"}
 files = {k: {"source": s, "target": s, "action": "sync", "description": "fixture file " + s}
          for k, s in keyed.items()}
@@ -123,14 +126,16 @@ tree_list="$(git -C "$FX" ls-tree -r --name-only plugin)"
 has() { grep -qxF "$1" <<<"$tree_list"; }
 has_prefix() { grep -q "^$1" <<<"$tree_list"; }
 
-for p in tests/ evals/ examples/ .github/ docs/specs/ docs/plans/; do
+for p in tests/ evals/ examples/ .github/ docs/specs/ docs/plans/ .claude/skills/writing-skills/; do
   ! has_prefix "$p" || fail "plugin tree still contains $p"
 done
 ! has docs/drop.md || fail "plugin tree still contains unlisted docs/drop.md"
 for p in docs/keep.md hooks/a.sh README.md scripts/generate-checksums.sh; do
   has "$p" || fail "plugin tree is missing $p"
 done
-ok "SC1: dev-only paths and unlisted docs dropped; listed docs, hooks, README, checksum script kept"
+grep -q 'writing-skills' <<<"$(blob_of plugin .claude/manifest.json)" \
+  && fail "trimmed manifest still lists the maintainer-only writing-skills skill"
+ok "SC1: dev-only paths (incl. maintainer-only writing-skills) and unlisted docs dropped; listed docs, hooks, README, checksum script kept"
 
 [ "$(git -C "$FX" ls-tree plugin hooks/a.sh | awk '{print $1}')" = "100755" ] \
   || fail "hooks/a.sh lost its executable bit on the plugin branch"

@@ -56,7 +56,7 @@ SESSION_FILE="$(TMPDIR="$TMPDIR_OVERRIDE" bash -c '
   mtk_session_file
 ')"
 post() {
-  python3 - "$1" "$2" <<'PY' | TMPDIR="$TMPDIR_OVERRIDE" bash "$REPO_ROOT/hooks/context-budget.sh" >/dev/null 2>&1 || true
+  python3 - "$1" "$2" <<'PY' | TMPDIR="$TMPDIR_OVERRIDE" bash "$REPO_ROOT/hooks/evidence-ledger.sh" >/dev/null 2>&1 || true
 import json, sys
 print(json.dumps({"hook_event_name": "PostToolUse", "tool_name": "Bash",
     "tool_input": {"command": sys.argv[1]},

@@ -58,13 +58,11 @@ graph TD
 
     subgraph Recommended
         WNTU["## When NOT To Use"]
-        CR["## Common Rationalizations"]
-        RF["## Red Flags"]
         RU["## Rules"]
     end
 
     FM --> OV --> WTU --> WF --> VER
-    VER -.-> WNTU -.-> CR -.-> RF -.-> RU
+    VER -.-> WNTU -.-> RU
 ```
 
 ### Required Sections
@@ -81,8 +79,6 @@ graph TD
 | Section | Purpose |
 |:---|:---|
 | `## When NOT To Use` | Prevents misapplication |
-| `## Common Rationalizations` | Why agents skip steps + sharp rebuttals |
-| `## Red Flags` | Signs the skill was not followed |
 | `## Rules` | Numbered rules that can be cited in review findings |
 
 ---
@@ -98,8 +94,8 @@ Steps the agent executes, not paragraphs it reads.
 ### 3. Evidence over assumption
 Every completion claim needs cited output.
 
-### 4. Anti-rationalization for any skippable step
-If an agent might rationalize skipping a step, add a Common Rationalizations entry.
+### 4. State each rule once, plainly, where it applies
+If an agent might skip a step, say what to do in that step in one plain sentence. Do not add rationalization tables, red-flag lists, or ALL-CAPS emphasis — current models follow instructions literally and over-trigger on pressure language.
 
 ### 5. Progressive disclosure
 Load shared checklist material from references when possible. Load references at the phase where they are first needed, not all upfront.

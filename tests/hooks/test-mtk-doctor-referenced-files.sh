@@ -5,8 +5,8 @@ set -euo pipefail
 # nowhere along the MTK resolution order, and WARN when it resolves only by
 # searching the plugin cache (inline script resolvers never look there).
 #
-# WHY. A 2026-09 field run (beacon) found security-checklist.md,
-# testing-patterns.md, review-config.json and the handoff schema "missing" only
+# WHY. A 2026-09 field run found the shared checklists (since folded into
+# domain-finance.md and the stack supplements), review-config.json and the handoff schema "missing" only
 # when a phase tried to read them. All four ship in the manifest — resolution had
 # failed, and nothing had said so up front.
 
@@ -33,7 +33,7 @@ run_doctor() { # extra env assignments as args
 # 1. Nothing resolvable: no env, no local copy, empty plugin cache → FAIL per file.
 out="$(run_doctor HOME="$SBX/home-empty")"
 grep -q 'referenced file unresolvable' <<<"$out" || fail "no FAIL for unresolvable referenced files. Output: $out"
-grep -q 'security-checklist.md' <<<"$out" || fail "security-checklist.md not named among unresolvable files"
+grep -q 'domain-finance.md' <<<"$out" || fail "domain-finance.md not named among unresolvable files"
 grep -q 'handoff.schema.json' <<<"$out" || fail "handoff.schema.json not named among unresolvable files"
 grep -q 'MTK_HELPER_ROOT' <<<"$out" || fail "remedy does not name MTK_HELPER_ROOT"
 ok "unresolvable referenced files FAIL, each named, remedy given"
@@ -50,8 +50,7 @@ ok "MTK_HELPER_ROOT resolves every referenced file → PASS"
 CACHE="$SBX/home-cache/.claude/plugins/cache/mtk/mtk/9.9.9"
 mkdir -p "$CACHE/.claude/skills/context-engineering"
 cp "$REPO_ROOT/.claude/skills/context-engineering/SKILL.md" "$CACHE/.claude/skills/context-engineering/SKILL.md"
-for f in .claude/references/security-checklist.md .claude/references/testing-patterns.md \
-         .claude/references/performance-checklist.md .claude/references/mtk-file-resolution.md \
+for f in .claude/references/domain-finance.md .claude/references/mtk-file-resolution.md \
          .claude/review-config.json .claude/schemas/handoff.schema.json \
          scripts/learnings.sh scripts/constitution-digest.sh scripts/workflow-artifact.sh \
          scripts/build-context-pack.sh scripts/resolve-tech-stack.sh scripts/mtk-verify-run.sh; do

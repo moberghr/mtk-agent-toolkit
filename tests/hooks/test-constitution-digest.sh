@@ -7,7 +7,7 @@ set -euo pipefail
 # AGENTS.md, and legacy CLAUDE.md-only repos must all name the right source file
 # in the digest heading and count the right rules (cases 5b-5e below).
 #
-# WHY. A 2026-09 field run (beacon) had its Critical Rules written as
+# WHY. A 2026-09 field run had its Critical Rules written as
 # `- **§0.1** …`. The digest's grep matched only `**C[0-9]`, printed an empty
 # Critical Rules section, and every spec Constitution Check downstream cited
 # nothing — silently, because the principles file kept the exit code at 0.
@@ -42,7 +42,7 @@ out="$(cd "$R" && CLAUDE_PROJECT_DIR="$R" bash "$SCRIPT")"
 grep -q 'Totals: 2 Critical Rules' <<<"$out" || fail "C0.x ids: expected 2 rules, got: $(grep Totals <<<"$out")"
 ok "C0.x ids still recognised"
 
-# 2. The beacon shape: section ids (§0.1). Previously 0 rules and no hint.
+# 2. The field-run shape: section ids (§0.1). Previously 0 rules and no hint.
 R="$(new_repo)"
 cat > "$R/CLAUDE.md" <<'MD'
 # Project

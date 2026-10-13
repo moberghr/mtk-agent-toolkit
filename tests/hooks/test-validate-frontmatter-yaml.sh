@@ -27,12 +27,17 @@ fail() { printf 'FAIL: %s\n' "$1" >&2; exit 1; }
 ok()   { printf 'PASS: %s\n' "$1"; }
 
 D="$(mktemp -d -t mtk-frontmatter-yaml-XXXXXX)"
-trap 'rm -rf "$D"' EXIT
+# Backups live outside the sandbox: inside it, the validator's disk -> manifest
+# check (C0.2) would flag them as unregistered repo files.
+B="$(mktemp -d -t mtk-frontmatter-yaml-bak-XXXXXX)"
+trap 'rm -rf "$D" "$B"' EXIT
 
 ( cd "$REPO_ROOT" && git ls-files -z --cached --others --exclude-standard | xargs -0 tar cf - ) | tar xf - -C "$D"
+# The validator's disk -> manifest check needs a git work tree.
+git -C "$D" init -q
 
 SKILL=".claude/skills/mtk-doctor/SKILL.md"
-ORIG="$D/skill.orig"
+ORIG="$B/skill.orig"
 cp "$D/$SKILL" "$ORIG"
 case "$(sed -n 6p "$ORIG")" in
   argument-hint:*) ;;
@@ -72,15 +77,15 @@ done
 # Agent frontmatter is scanned too (SC5: "skill or agent").
 cp "$ORIG" "$D/$SKILL"
 AGENT=".claude/agents/test-reviewer.md"
-cp "$D/$AGENT" "$D/agent.orig"
-awk 'NR==3 {print "argument-hint: [--a] [--b]"} {print}' "$D/agent.orig" > "$D/$AGENT"
+cp "$D/$AGENT" "$B/agent.orig"
+awk 'NR==3 {print "argument-hint: [--a] [--b]"} {print}' "$B/agent.orig" > "$D/$AGENT"
 expect_flag "agent file: argument-hint: [--a] [--b]" "invalid YAML frontmatter in $AGENT line 3"
-cp "$D/agent.orig" "$D/$AGENT"
+cp "$B/agent.orig" "$D/$AGENT"
 
 # CRLF: the whole file in CRLF, delimiters included, still checked.
 set_line6 'argument-hint: [--json] [--fix]'
-awk '{printf "%s\r\n", $0}' "$D/$SKILL" > "$D/skill.crlf"
-cp "$D/skill.crlf" "$D/$SKILL"
+awk '{printf "%s\r\n", $0}' "$D/$SKILL" > "$B/skill.crlf"
+cp "$B/skill.crlf" "$D/$SKILL"
 grep -q $'\r$' "$D/$SKILL" || fail "CRLF fixture has no CR line endings"
 expect_flag "CRLF file with an unquoted argument-hint"
 

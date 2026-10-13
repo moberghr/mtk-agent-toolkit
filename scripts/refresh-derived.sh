@@ -7,7 +7,6 @@
 # Reasons:
 #   references   rebuild .claude/references.index from frontmatter
 #   manifest     run validator quick-check
-#   triggers     rebuild .claude/triggers.index from skill frontmatter
 #
 # Output: silent on no-op; one line per rebuild on actual work.
 # Exit:   0 on success or no-op; non-zero only if a requested rebuild failed.
@@ -30,16 +29,6 @@ for reason in "$@"; do
       else
         printf 'mtk-refresh: FAILED to rebuild references.index\n' >&2
         rc=1
-      fi
-      ;;
-    triggers)
-      if [ -x scripts/build-triggers-index.sh ]; then
-        if bash scripts/build-triggers-index.sh >/dev/null 2>&1; then
-          printf 'mtk-refresh: rebuilt .claude/triggers.index (triggers)\n'
-        else
-          printf 'mtk-refresh: FAILED to rebuild triggers.index\n' >&2
-          rc=1
-        fi
       fi
       ;;
     manifest)

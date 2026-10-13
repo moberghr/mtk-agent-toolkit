@@ -10,15 +10,15 @@
     "anyCriticalAboveThreshold": "NEEDS_CHANGES",
     "otherwise": "PASS"
   },
-  "minSurfacedFindings": 2,
   "belowThresholdRationaleRequired": true,
   "decision_origin": {
-    "required": true,
-    "$doc": "When true, reviewer findings and learnings entries must carry a decision_origin field. Enforced by scripts/learnings.sh add and by review-output validators."
+    "required": false,
+    "$doc": "Optional on reviewer findings: emit it when the decision's author is known, omit it rather than guess (review-finding-schema.md). No review-output validator enforces it. Learnings entries are separate: scripts/learnings.sh add requires it for capture sources that imply a decision and defaults it to system-inferred otherwise."
   },
   "sycophancy_index": {
     "warn_threshold": 0.70,
     "window_days": 30,
-    "$doc": "π = approved / (approved + modified + rejected) over the last window_days. Status flips to warn when pi >= warn_threshold. Surfaced by toolkit-health and scripts/learnings.sh metrics."
+    "min_n": 10,
+    "$doc": "π = approved / (approved + modified + rejected) over the last window_days. Status is insufficient-data until that denominator reaches min_n, then flips to warn when pi >= warn_threshold. Surfaced by scripts/learnings.sh metrics and mtk-doctor --usage."
   }
 }

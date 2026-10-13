@@ -8,8 +8,8 @@ set -euo pipefail
 # per-package CLAUDE.md files) both slugged to `weak-claims-CLAUDE_md.json`
 # and clobbered each other's report. The fix derives the slug from the
 # repo-root-relative path instead, falling back to basename only when the
-# input lives outside the repo (setup-converge's scratch temp copies — see
-# setup-converge/SKILL.md STEP 1 — have no meaningful repo-relative form).
+# input lives outside the repo (setup-refresh --check's scratch temp copies — see
+# setup-refresh/SKILL.md ## Check Mode — have no meaningful repo-relative form).
 #
 # Assertions:
 #   (a) root CLAUDE.md keeps producing weak-claims-CLAUDE_md.json (relative
@@ -17,7 +17,7 @@ set -euo pipefail
 #   (b) backend/CLAUDE.md and frontend/CLAUDE.md produce DISTINCT report
 #       files instead of clobbering each other (the DF-9 bug)
 #   (c) a doc passed by an absolute path outside the repo (mirroring
-#       setup-converge's temp-copy pattern) falls back to basename-only
+#       setup-refresh --check's temp-copy pattern) falls back to basename-only
 #       slugging, unchanged from before this fix
 #
 # Exit-1-on-failure style (no subshell pass/fail counters — lesson 2026-04-23).
@@ -80,8 +80,8 @@ else
 fi
 
 # --- (c) doc outside the repo: falls back to basename-only slugging --------
-# Mirrors setup-converge's pattern of copying a stamped doc to a scratch temp
-# dir before verifying it (setup-converge/SKILL.md STEP 1) — there is no
+# Mirrors setup-refresh --check's pattern of copying a stamped doc to a scratch
+# temp dir before verifying it (setup-refresh/SKILL.md ## Check Mode) — there is no
 # meaningful repo-relative path for a file outside the repo, so the slug
 # must fall back to basename, exactly as before this fix.
 echo ""; echo "--- (c) doc outside the repo -> basename-only fallback ---"

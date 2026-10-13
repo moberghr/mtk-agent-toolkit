@@ -5,8 +5,6 @@ type: skill
 license: MIT
 compatibility:
   - claude-code
-trigger: large-multi-batch-implementation|context-isolation-needed
-skip_when: small-feature|fewer-than-three-batches|inline-implementation-fits
 user-invocable: false
 ---
 
@@ -36,36 +34,31 @@ Phase 3 of `implement/SKILL.md` invokes this skill when **any** of these are tru
 
 ## Workflow
 
-Companion files: this skill's detail payloads live in `.claude/references/subagent-implementer-prompt.md` and `.claude/references/subagent-dynamic-workflow.md` — resolve them under `$CLAUDE_PLUGIN_ROOT` when set (plugin-cache installs), else project-relative. If a companion cannot be resolved, stop the affected step and report the missing file — do not reconstruct its content from memory.
+Companion files: this skill's detail payloads live in `.claude/references/subagent-implementer-prompt.md` and `.claude/references/subagent-dynamic-workflow.md` — resolve them under `${CLAUDE_PLUGIN_ROOT}` on a plugin install, else project-relative. If a companion cannot be resolved, stop the affected step and report the missing file — do not reconstruct its content from memory.
 
-### Decision Graph
-
-The orchestrator never edits source. The implementer subagent never spawns further subagents. The drift check is fast and orchestrator-side — no reviewer agent per batch.
-
-The full decision graph lives in `.claude/references/subagent-dynamic-workflow.md` (under `$CLAUDE_PLUGIN_ROOT` when set). Read it when you need the branch/halt topology.
+Invariants: the orchestrator never edits source for a dispatched batch; the implementer never spawns subagents; the drift check is orchestrator-side, with no reviewer agent per batch.
 
 ### Execution paths
 
 There are two ways to run the per-batch loop. Both share the **same implementer prompt template, the same structured JSON result, and the same orchestrator-side drift / sidecar / churn / Phase-4 discipline.** Only the dispatch mechanism differs.
 
-- **Dynamic-workflow path (preferred when the `Workflow` tool is available).** The orchestrator generates a JavaScript orchestration script that runs the batches through Claude Code's native dynamic-workflow runtime in the background, with its built-in plan-approval gate. The runtime handles concurrency, retries, and structured-output validation. The orchestrator then does the drift micro-check and sidecar persistence **after** the run returns. See `.claude/references/subagent-dynamic-workflow.md`.
-- **Manual Agent-loop path (fallback).** When the `Workflow` tool is not exposed in this harness, dispatch one implementer subagent per batch by hand. See "Steps (manual Agent-loop path)" below.
-
+- **Manual Agent-loop path (default).** Dispatch one implementer subagent per batch by hand. See "Steps (manual Agent-loop path)" below.
+- **Dynamic-workflow path (opt-in only).** Take it only when the engineer explicitly asks for it in this session and the `Workflow` tool is exposed; the tool requires that opt-in, and tool availability alone is not one. Field runs of this path failed 5 of 5 (stalls, socket errors, crashes on large refactors), so it is never chosen by default. The orchestrator generates a JavaScript orchestration script that runs the batches through Claude Code's native dynamic-workflow runtime in the background, with its built-in plan-approval gate. The runtime handles concurrency, retries, and structured-output validation. The orchestrator then does the drift micro-check and sidecar persistence **after** the run returns. See `.claude/references/subagent-dynamic-workflow.md`.
 - **Inline-MAX path (when dispatch is forbidden or unavailable).** Neither of the two paths above can run if the harness exposes no subagent tools, or if a standing instruction forbids subagents the engineer did not ask for. That is a property of the session, and `implement`'s Phase 2.9 probe records it as `dispatch_capability=forbidden|unavailable` **before** Phase 3 promises a path. In that case run the batches inline under the **inline-MAX profile** (`implement/SKILL.md` Phase 2.9): the same per-batch order, the same sealed manifest, the same drift micro-check and churn check — with C1-C3 replacing what dispatch would have bought. Two rules make it a substitute rather than an excuse:
   - **Say it before the first batch, not in the report afterwards.** Record `results.phase3_path="inline-MAX (<reason>; C1-C3 applied)"`.
   - **Do not lower the rigor level to fit the path.** The level reflects the change's blast radius; the path reflects the session's tooling. Recomputing MAX down to STANDARD because dispatch is unavailable is a scope reduction that never happened.
 
   If this is the *second* run in the same repo to take this path for the same reason, Phase 7's repeat-reduction rule applies: propose `MTK_SUBAGENT_DISPATCH=0` (or a lesson naming the constraint) instead of recording the same reduction again.
 
-Pick the path once, at the top of Phase 3, based on tool availability **and** the Phase 2.9 dispatch probe. Do not mix them within one feature.
+Pick the path once, at the top of Phase 3, based on the Phase 2.9 dispatch probe and whether the engineer opted in to the dynamic-workflow path. Do not mix them within one feature.
 
-When the `Workflow` tool is available, take the dynamic-workflow path: read `.claude/references/subagent-dynamic-workflow.md` now and follow it. The manual Agent-loop path below is for sessions where `Workflow` is not exposed.
+Take the manual Agent-loop path below unless the engineer opted in to the dynamic-workflow path; only then read `.claude/references/subagent-dynamic-workflow.md` and follow it.
 
 ### Steps (manual Agent-loop path)
 
 1. **Threshold gate.** Read `docs/specs/<date>-<slug>.json`. Dispatch when any hard trigger is met **or** the rigor score is ≥ 8 (rigor HIGH/MAX). If neither holds → return control to `implement/SKILL.md` Phase 3 with the recommendation to use `incremental-implementation` instead. Do not silently fall through.
 2. **Pick implementer model.** The policy default is **Sonnet** — see `.claude/references/model-routing.md` (reserve Opus for batches the plan flags novel/tricky: concurrency, unfamiliar SDK, subtle invariants). Whether to *ask* depends on the Phase 2.5 mode:
-   - **Autonomous mode (Phase 2.5 returned `Approve & run until done`): do NOT ask.** An `AskUserQuestion` here would violate the autonomous "never call `AskUserQuestion` in Phases 3-7" rule (`implement/SKILL.md`) — the two rules only appear to conflict; the model ask is an interactive affordance, and autonomous mode resolves it by *not asking*. Default to the policy tier (Sonnet), escalate to Opus only for batches the plan flags novel/tricky, and emit one line: `Implementer model: Sonnet (autonomous default; Opus for plan-flagged novel/tricky batches).`
+   - **Autonomous mode (Phase 2.5 returned `Approve & run until done`): do not ask.** An `AskUserQuestion` here would violate the autonomous "never call `AskUserQuestion` in Phases 3-7" rule (`implement/SKILL.md`) — the two rules only appear to conflict; the model ask is an interactive affordance, and autonomous mode resolves it by *not asking*. Default to the policy tier (Sonnet), escalate to Opus only for batches the plan flags novel/tricky, and emit one line: `Implementer model: Sonnet (autonomous default; Opus for plan-flagged novel/tricky batches).`
    - **Interactive mode: invoke `AskUserQuestion` once** (load via `ToolSearch select:AskUserQuestion` if deferred):
      - Question: `Implementer subagent model? Affects per-batch cost and capability.`
      - Options:
@@ -79,7 +72,7 @@ When the `Workflow` tool is available, take the dynamic-workflow path: read `.cl
    1. **Build the context bundle.** Concatenate:
       - Spec sections relevant to this batch (`Summary`, `Architecture and design`, `Security and compliance impact` if non-none)
       - The single batch object from `plan.batches[]` (id, files, acceptance, verification, boundary, depends)
-      - **Prior-batch summary:** for every batch already in `sidecar.implement.completed_batches`, include `{id, actual_files, behavioral_diff}`. Do NOT include full prior diffs — just the summary. Emit it as a dense block (one batch per line: `id | n files | behavioral_diff`) and prefix it with the completed-batch count, e.g. `prior-batches: 3` — the implementer can checksum line count against that number and flag a truncated handoff rather than building on a silently-cut summary.
+      - **Prior-batch summary:** for every batch already in `sidecar.implement.completed_batches`, include `{id, actual_files, behavioral_diff}`. Do not include full prior diffs — just the summary. Emit it as a dense block (one batch per line: `id | n files | behavioral_diff`) and prefix it with the completed-batch count, e.g. `prior-batches: 3` — the implementer can checksum line count against that number and flag a truncated handoff rather than building on a silently-cut summary.
       - The path of the run's **context pack** (`results.context_pack`, built in `implement` Phase 2 by `scripts/build-context-pack.sh`). It carries the build/test/format commands, CLAUDE.md critical rules, the manifest-selected coding-guideline sections, `[EXTRACTED]` principles, matching lessons, and a **change map** (declared symbols per manifest file and their referrers) — the subagent reads it **instead of** CLAUDE.md, the tech-stack skill, and the guideline files, and starts any caller/callee question from the change map. Do not paste the pack body; pass the path. If the manifest was amended since the pack was built, rebuild it first.
       - The full `change_manifest` and `out_of_scope` arrays — the subagent must know its boundary.
       - **Carried traps:** paste `"$WFA" trap list "$MTK_WF_UUID"` into the brief's "Known traps" block so this batch inherits every gotcha earlier batches learned the hard way (stale generated contract, `format`-only analyzer, mis-seeding fixture). A trap left in a prior batch's result never reaches the next implementer (S5.2).
@@ -164,26 +157,20 @@ When the `Workflow` tool is available, take the dynamic-workflow path: read `.cl
       - **Record reported traps.** For each entry in the result's `traps[]`, add `trap add --title "<title>" --body "<body>" --phase "<batch_id>" --severity <warn|high>` as one more op in the same `"$WFA" batch` call that persists the result — this is the carry-forward the next batch's bundle (sub-step 1) reads back.
       - Run `bash scripts/validate-handoff.sh docs/specs/<date>-<slug>.json` (if available) to surface schema drift early.
       - Tick the batch row in `tasks/todo.md`.
-   7. **Cumulative churn check.** After every batch, run `git diff --stat <base>...HEAD` and count net **non-generated** lines since the last review (same exclusion list as `incremental-implementation` step 9). This path always runs at rigor HIGH/MAX, so the thresholds are the doubled defaults: ≥ `MTK_CHURN_REVIEW_LINES` (**600** here) without an intermediate review → trigger an early `pre-commit-review-list` pass; ≥ `MTK_CHURN_HALT_LINES` (**1000** here) without a review → halt and run `compliance-reviewer` before continuing, then reset the count. A field run with the flat 500-line rule ran four mid-loop compliance reviews before the two-stage review — each found real items, but review time roughly doubled for a run whose batches were already isolated and drift-checked.
+   7. **Cumulative churn check.** After every batch, run `git diff --stat <base>...HEAD` and count net **non-generated** lines since the last review (same exclusion list as `incremental-implementation` step 8). This path always runs at rigor HIGH/MAX, so the thresholds are the doubled defaults: ≥ `MTK_CHURN_REVIEW_LINES` (**600** here) without an intermediate review → trigger an early `pre-commit-review-list` pass; ≥ `MTK_CHURN_HALT_LINES` (**1000** here) without a review → halt and run `compliance-reviewer` before continuing, then reset the count. A field run with the flat 500-line rule ran four mid-loop compliance reviews before the two-stage review — each found real items, but review time roughly doubled for a run whose batches were already isolated and drift-checked.
 4. **After all batches:**
    - Write a final aggregated `behavioral_diff` to `sidecar.implement.behavioral_diff`.
    - Hand control back to `implement/SKILL.md` Phase 3.5 (whole-feature spec-drift) → Phase 4 (two-stage review). Both run unchanged. Per-batch micro-checks are supplemental, not a replacement.
 
 ### Dynamic-workflow path
 
-Steps 1-6 of the dynamic-workflow path and the "If the `Workflow` tool errors…" fallback rule live in `.claude/references/subagent-dynamic-workflow.md` (resolve under `$CLAUDE_PLUGIN_ROOT` when set). Read it now and follow it when the `Workflow` tool is available.
+Steps 1-6 of the dynamic-workflow path and the "If the `Workflow` tool errors…" fallback rule live in `.claude/references/subagent-dynamic-workflow.md` (resolve under `${CLAUDE_PLUGIN_ROOT}` on a plugin install). Read it now and follow it when the engineer opted in to this path.
 
 The **mechanical exception** applies here too: the orchestrator implements all-mechanical batches inline *before* generating the workflow, and the generated script covers only the non-mechanical batches (one `agent()` call each). Do not spawn an `agent()` for a batch that changes no logic and no contract.
 
-### Dispatch hardening (large prompts & args)
+### Dispatch hardening
 
-Large doc/code batches produce large context bundles, and the dynamic-workflow path has historically been fragile when those bundles are passed the wrong way — an unbound-`args` crash, or the runtime stalling on a multi-kilobyte prompt shoved through a single argument. Three rules make dispatch robust regardless of batch size:
-
-1. **Never pass a large prompt block as a positional/CLI argument.** The implementer prompt and context bundle can be tens of KB. Write the assembled bundle to a file under `.mtk/workflows/<uuid>/batch-<id>.prompt.md` and pass the **path** (the `agent()` prompt string reads it, or the manual `Agent` prompt references it). A prompt block in `argv` is what triggers the arg-length / stall failures.
-2. **Bind `args` as actual JSON, never a stringified blob.** When the generated workflow script reads `args`, pass it as a real JSON value in the `Workflow` call (`args: { batch: {...} }`), not a JSON-encoded string. A stringified list reaches the script as one string, so `args.batches.map(...)` throws — the "args-unbound" crash from the v7.14 dogfooding run. If the script needs no input, do not reference `args` at all.
-3. **Compress before you hand off.** Run the prior-batch summary and any pasted command output through `scripts/mtk-compress.sh` (see `.claude/references/output-compression.md`) before it enters the bundle — dense handoffs keep each batch's dispatch inside a safe size envelope.
-
-These are dispatch-mechanism rules only; the prompt *contract* (TASK/DELIVERABLE/SCOPE/VERIFY) and the orchestrator-side gates are unchanged.
+Never pass a large prompt block as a positional/CLI argument: write the assembled bundle to `.mtk/workflows/<uuid>/batch-<id>.prompt.md` and pass the **path** — prompt blocks in `argv` caused the arg-length and stall failures. Run the prior-batch summary and pasted command output through `scripts/mtk-compress.sh` before it enters the bundle. On the workflow path, bind `args` as real JSON, never a stringified blob (the v7.14 "args-unbound" crash).
 
 ### Implementer prompt template
 
@@ -202,33 +189,12 @@ The implementer prompt template is shared by both execution paths and is organiz
 - Drift micro-check is orchestrator-side and synchronous. No agent call per batch.
 - Phase 4 review (compliance, test, architecture, silent-failure-hunter) runs unchanged after the loop — sized from the **current** rigor level, which may have been recomputed lower if scope was reduced mid-loop (see next rule).
 - **Mid-loop scope reduction re-scores rigor.** If the approved batch set shrinks during the loop (a batch is deferred, dropped, or split to a follow-up), recompute the rigor level from the remaining batches (see `implement/SKILL.md` Rigor Score → *Recompute on scope reduction*) and record the transition on the workflow artifact. Batches already dispatched are unaffected; if the recomputed level drops below HIGH, remaining not-yet-started batches return to `implement` Phase 3 for the inline path.
-- **Dynamic-workflow path:** the workflow replaces only the inner dispatch loop. Drift micro-check, sidecar persistence, churn check, and Phase 4 are orchestrator-side and run **after** the workflow returns — never inside it. The native runtime's plan-approval gate does not replace MTK's Phase 2.5; it is a transparency checkpoint on an already-approved scope.
 - **Waves come from `depends`, and only from `depends`.** Batches at the same topological level run concurrently (width ≤ `MTK_BATCH_WAVE_MAX`, default 3); different levels run strictly in order. A later batch reading an earlier batch's files must carry an edge — if it does not, the plan is wrong: fix the edge, do not hand-serialize.
-
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared table. Subagent-implementation-specific traps:
-
-| Rationalization | Reality |
-|---|---|
-| "I'll just edit it myself, faster than dispatching" | That defeats the entire point. Context contamination is the cost you pay invisibly. Dispatch. |
-| "The implementer got killed by the rate limit — treat it as inconclusive and respawn with narrowed scope" | No. Its partial work is on disk; a narrowed respawn either redoes it or builds a second copy beside it. Inventory, build, and respawn to *finish* from the partial state (or revert the batch's own files and restart) on the fallback tier. Record the kill first. |
-| "These two batches touch the same file but the edits don't overlap, they can share a wave" | No. Two implementers writing one file race on the Edit tool's read-before-write check; one of them stalls or clobbers. Same file ⇒ edge, always. |
-
-Full table: `.claude/references/workflow-rationalizations.md` → subagent-implementation.
-
-## Red Flags
-
-- Orchestrator using `Edit` or `Write` on source files
-- Two batches in one wave whose `files` overlap (the plan is missing an edge)
-- A killed implementer handled as `inconclusive` (narrowed-scope respawn over partial work already on disk), or respawned on the same unavailable tier
-
-Full table: `.claude/references/workflow-rationalizations.md` → subagent-implementation.
 
 ## Verification
 
 - [ ] Threshold check ran and produced a documented yes/no
-- [ ] Execution path chosen once (dynamic-workflow when `Workflow` tool available, else manual Agent-loop) and not mixed mid-feature
+- [ ] Execution path chosen once (manual Agent-loop by default; dynamic-workflow only on the engineer's explicit opt-in) and not mixed mid-feature
 - [ ] Implementer model was asked once via `AskUserQuestion` (or defaulted with explicit notice)
 - [ ] One fresh subagent dispatched per batch (no reuse) — or one `agent()` call per batch in the generated script
 - [ ] Each batch returned a structured JSON result matching the schema (validated by the runtime on the workflow path)

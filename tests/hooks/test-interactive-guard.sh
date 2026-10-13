@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# interactive-guard.sh blocks Bash commands that can hang on an interactive prompt (S4.12).
+# The interactive-prompt check in security-gate.sh (formerly interactive-guard.sh, merged
+# so the Bash command is parsed once) blocks commands that can hang on a prompt (S4.12).
 # Origin: `gh pr merge 272 --squash 2>&1 | tail -5` ran to the Bash-tool timeout with
 # "(No output)" — gh blocked on its post-merge "Delete the branch?" prompt and tail
 # buffered the prompt out of sight. These cases pin both blocks plus the allow paths.
@@ -11,7 +12,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-GUARD="$REPO_ROOT/hooks/interactive-guard.sh"
+GUARD="$REPO_ROOT/hooks/security-gate.sh"
 
 fails=0
 
@@ -107,15 +108,29 @@ non_bash="$(printf '{"tool_name":"Read","tool_input":{"file_path":"gh pr merge"}
   | "$GUARD" >/dev/null 2>&1 && echo 0 || echo $?)"
 expect "non-Bash payload ignored" 0 "$non_bash"
 
-# 15. Unparseable payload fails OPEN by design — security-gate.sh is the fail-closed
-#     layer for Bash, so double-blocking one malformed input helps nobody.
+# 15. Unparseable payload: the gate fails CLOSED once (exit 2) — the interactive check
+#     never adds a second block, so the stderr carries exactly one BLOCKED line.
+unparseable_err="$(printf 'not json at all' | "$GUARD" 2>&1 >/dev/null || true)"
 unparseable="$(printf 'not json at all' | "$GUARD" >/dev/null 2>&1 && echo 0 || echo $?)"
-expect "unparseable payload fails open" 0 "$unparseable"
+expect "unparseable payload fails closed" 2 "$unparseable"
+blocked_lines="$(printf '%s\n' "$unparseable_err" | grep -c 'BLOCKED' || true)"
+expect "unparseable payload is blocked once, not twice" 1 "$blocked_lines"
 
-# 16. Kill-switch disables the guard entirely.
+# 16. Kill-switch disables the interactive check (the destructive checks stay on).
 killed="$(printf '{"tool_name":"Bash","tool_input":{"command":"gh pr merge 272 --squash"}}' \
   | MTK_INTERACTIVE_GUARD=0 "$GUARD" >/dev/null 2>&1 && echo 0 || echo $?)"
-expect "MTK_INTERACTIVE_GUARD=0 disables guard" 0 "$killed"
+expect "MTK_INTERACTIVE_GUARD=0 disables the interactive check" 0 "$killed"
+still_destructive="$(printf '{"tool_name":"Bash","tool_input":{"command":"git push --force origin main"}}' \
+  | MTK_INTERACTIVE_GUARD=0 "$GUARD" >/dev/null 2>&1 && echo 0 || echo $?)"
+expect "MTK_INTERACTIVE_GUARD=0 leaves the destructive checks on" 2 "$still_destructive"
+
+# 16b. The deny names its own off-switch (the destructive denies never do).
+toggle_msg="$(printf '{"tool_name":"Bash","tool_input":{"command":"gh pr merge 272 --squash"}}' \
+  | "$GUARD" 2>&1 >/dev/null || true)"
+case "$toggle_msg" in
+  *'disable this guard: MTK_INTERACTIVE_GUARD=0'*) printf '  PASS  interactive deny names MTK_INTERACTIVE_GUARD=0\n' ;;
+  *) printf 'FAIL: interactive deny must name its toggle. Got: %s\n' "$toggle_msg" >&2; fails=$((fails + 1)) ;;
+esac
 
 # 17. A block must explain the fix, not just refuse. Assert the remedy reaches stderr.
 # case-match, not `printf | grep -q`: grep's early exit SIGPIPEs the printf
@@ -133,4 +148,4 @@ if [ "$fails" -ne 0 ]; then
   printf '\n%s assertion(s) failed\n' "$fails" >&2
   exit 1
 fi
-printf '\ninteractive-guard: all assertions passed\n'
+printf '\nsecurity-gate interactive check: all assertions passed\n'

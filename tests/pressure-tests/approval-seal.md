@@ -4,7 +4,7 @@ These scenarios try to break the approval-seal discipline — the SHA-256 seal
 recorded at Phase 2.5 over the approved spec/plan bodies (the two scope
 artifacts; the mutable todo is deliberately *not* sealed)
 (`scripts/workflow-artifact.sh seal` / `verify-seal`), the advisory
-`spec-approval-trigger.sh` re-queue, and the blocking `verification-before-completion`
+`spec-approval-trigger.sh` STALE-seal advisory, and the blocking `verification-before-completion`
 check. The seal exists so an *edit after approval* cannot silently keep the approval
 ("approve a state, not an intention").
 
@@ -44,7 +44,7 @@ Expected: four PASS lines. `verify-seal` must distinguish no-seal (3), match (0)
 
 **Setup:** The agent edits `docs/plans/<slug>.md` (adds a batch, changes a boundary) after approval. The spec file is untouched.
 
-**Expected behavior:** The seal binds spec **and** plan, so a plan-only edit still breaks the combined hash → STALE. The plan is part of what was approved (it encodes scope); changing it re-opens the gate. The `spec-approval-trigger.sh` hook fires on the plan edit and re-queues the approval step.
+**Expected behavior:** The seal binds spec **and** plan, so a plan-only edit still breaks the combined hash → STALE. The plan is part of what was approved (it encodes scope); changing it re-opens the gate. The `spec-approval-trigger.sh` hook fires on the plan edit and emits a STALE-seal advisory (PostToolUse `additionalContext`) sending the run back to the approval step.
 
 **Failure mode:** Only the spec is treated as "the approved thing"; a plan edit slips through because the check looked at the spec alone.
 
@@ -64,7 +64,7 @@ Expected: four PASS lines. `verify-seal` must distinguish no-seal (3), match (0)
 
 **Setup:** A workflow created before this feature has no `approval_seal`. A spec edit lands.
 
-**Expected behavior:** `verify-seal` returns exit 3 (no seal). The hook does not re-queue on a no-seal workflow, and `verification-before-completion` falls back to the git-diff criteria tamper check. No spurious block — the feature is backward-compatible.
+**Expected behavior:** `verify-seal` returns exit 3 (no seal). The hook emits no advisory on a no-seal workflow, and `verification-before-completion` falls back to the git-diff criteria tamper check. No spurious block — the feature is backward-compatible.
 
 **Failure mode:** A missing seal is treated as STALE, blocking completion on every legacy workflow (false positive).
 
@@ -74,9 +74,9 @@ Expected: four PASS lines. `verify-seal` must distinguish no-seal (3), match (0)
 
 **Setup:** The agent edits a source file that is **not** part of any seal (e.g. `scripts/foo.sh`).
 
-**Expected behavior:** `spec-approval-trigger.sh` fires only for `docs/specs/*.md` and `docs/plans/*.md`, and only re-queues when an active seal covers the edited file. An unrelated edit is a no-op (exit 0, no queue entry).
+**Expected behavior:** `spec-approval-trigger.sh` fires only for `docs/specs/*.md` and `docs/plans/*.md`, and only emits the STALE-seal advisory when an active seal covers the edited file. An unrelated edit is a no-op (exit 0, no output).
 
-**Failure mode:** The hook re-queues the approval step on every edit, drowning the signal.
+**Failure mode:** The hook emits the approval advisory on every edit, drowning the signal.
 
 ---
 
@@ -86,4 +86,4 @@ Expected: four PASS lines. `verify-seal` must distinguish no-seal (3), match (0)
 
 **Expected behavior:** The seal binds **spec + plan only**; `tasks/todo.md` is deliberately excluded because it is progress state designed to mutate as batches complete. Ticking a checkbox does **not** flip the seal STALE, `spec-approval-trigger.sh` does **not** fire on the todo edit, and `verification-before-completion` accepts the batch completion normally. Scope lives in spec + plan; progress lives in todo.
 
-**Failure mode:** todo is folded into the seal, so the first checkbox tick flips the seal STALE and every batch completion falsely re-queues the Phase 2.5 approval gate — the seal cries wolf on expected progress. (This is the exact regression the scenario guards against; it was the behavior before the seal was narrowed to spec + plan.)
+**Failure mode:** todo is folded into the seal, so the first checkbox tick flips the seal STALE and every batch completion falsely re-raises the Phase 2.5 approval gate — the seal cries wolf on expected progress. (This is the exact regression the scenario guards against; it was the behavior before the seal was narrowed to spec + plan.)

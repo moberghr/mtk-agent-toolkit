@@ -1,14 +1,14 @@
 ---
-description: Five named fail-closed gates the implement workflow must record on the workflow artifact before advancing
+description: Four named fail-closed gates the implement workflow must record on the workflow artifact before advancing
 globs: ["**/*"]
 alwaysApply: false
 ---
 
 # Orchestration Gates
 
-These five named gates are the only legitimate places where `/mtk implement` is allowed to advance, retry, or stop. Every gate decision is persisted on the workflow artifact (`.mtk/workflows/{uuid}.json` plus an event in `{uuid}.events.jsonl`) via `scripts/workflow-artifact.sh gate`. Gates are **fail-closed** — `pending` means "have not evaluated yet", and only `pass` permits the next phase.
+These four named gates are the only legitimate places where `/mtk implement` is allowed to advance, retry, or stop. Every gate decision is persisted on the workflow artifact (`.mtk/workflows/{uuid}.json` plus an event in `{uuid}.events.jsonl`) via `scripts/workflow-artifact.sh gate`. Gates are **fail-closed** — `pending` means "have not evaluated yet", and only `pass` permits the next phase.
 
-The gate name is the contract. When skills, agents, and hooks reference a gate they MUST use one of the five names below.
+The gate name is the contract. When skills, agents, and hooks reference a gate they MUST use one of the four names below. (A fifth, `skill_precedence_gate`, was dropped: no skill ever recorded it. Old artifacts that still carry the key load fine; the helper no longer creates or accepts it.)
 
 ## 1. `plan_trust_gate`
 
@@ -34,7 +34,7 @@ The gate name is the contract. When skills, agents, and hooks reference a gate t
 
 **Pending:** Phase still in progress.
 
-**Skill responsible:** `incremental-implementation`, `subagent-implementation`, `code-review-and-quality`, `spec-drift-detection` — each owns the gate at its own phase boundary.
+**Skill responsible:** `incremental-implementation`, `subagent-implementation`, `implement-review-lanes.md` (review), `spec-drift-detection` — each owns the gate at its own phase boundary.
 
 ## 3. `failure_stop_gate`
 
@@ -64,19 +64,7 @@ On `ESCALATE`, stop the loop, record `failure_stop_gate fail`, and hand the trig
 
 **Pending:** Phase 7 not yet reached.
 
-**Skill responsible:** `implement` (Phase 7), with input from `correction-capture` and `promote-lesson`.
-
-## 5. `skill_precedence_gate`
-
-**When evaluated:** Phase 0, before any other phase logic runs, and re-evaluated whenever the orchestrator considers loading additional skills.
-
-**Pass:** The active skill set is the minimum required for the current phase, the active tech stack skill is loaded, and no skill outside MTK has hijacked routing for a workflow MTK owns (e.g., a third-party "plan" skill must not pre-empt `spec-driven-development`).
-
-**Fail:** A non-MTK skill or a deferred MTK skill is masking workflow orchestration. Stop, surface the conflict to the engineer, and either disable the conflicting skill for the session or hand the workflow to it explicitly.
-
-**Pending:** Default until Phase 0 completes.
-
-**Skill responsible:** `context-engineering` (loads context and detects conflicts) plus `implement` (records the gate).
+**Skill responsible:** `implement` (Phase 7), with input from the `lessons` skill (`capture` and `promote` modes).
 
 ## How to record a gate
 
@@ -97,12 +85,7 @@ Advancing a phase without recording the corresponding gate is treated the same a
 
 ## Interaction with `MTK_AUTO_PROCEED`
 
-When `MTK_AUTO_PROCEED=1` is set in `.claude/settings.local.json` `env`, the orchestrator MAY default the recommended option on `plan_trust_gate` only when ALL of:
-
-- The spec has zero open decisions
-- No `plan-gap-reviewer` `BLOCKING` findings are unresolved
-- `skill_precedence_gate` is `pass`
-- Scope is not classified as breaking change or high `security_impact`
+When `MTK_AUTO_PROCEED=1` is set in `.claude/settings.local.json` `env`, the orchestrator MAY default the recommended option on `plan_trust_gate` only when every precondition in the canonical list holds: `.claude/references/implement-approval-gate.md` → `MTK_AUTO_PROCEED` opt-in. That list is the single source; `scripts/run-fixtures.sh` evaluates it against the `auto-proceed-*` fixtures and fails if the list and its evaluator drift apart.
 
 Auto-proceed never overrides explicit user standards, open plan decisions, or `failure_stop_gate`. When applied, the orchestrator records the bypass via a `gate_decided` event with `reason: "AUTO_PROCEED — all preconditions met"` so audit can replay the decision.
 
