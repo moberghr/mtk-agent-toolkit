@@ -73,6 +73,13 @@ pins this.
 
 ### Fixed
 
+- **Coding guidelines re-pinned to `moberghr/coding-guidelines@0439976`.** That commit merges upstream #8, which corrects broken C# examples shipped to every .NET repo:
+  - the `x / 2 == 0` even filter (now `x % 2 == 0`);
+  - a dropped negation in the list-equality example;
+  - two non-compiling lambdas;
+  - the nested-lambda naming rule.
+
+  Re-run `/mtk-setup --refresh` (or `--update-guidelines`) in .NET repos to pick it up.
 - repo-health never searched AGENTS.md for build/test commands.
 - A guidelines pin bumped by `--update-guidelines` was overwritten on the next bootstrap.
 - The `/mtk` doctor row's bare `broken` keyword caught "this test is broken" before `fix`.

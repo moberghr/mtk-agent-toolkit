@@ -155,19 +155,19 @@ var personOib = 19876543210;
 
 Use letter `x` as parameter name for lambda expressions.
 
-If you have nested lambdas, in inner lambdas use letters `y` and `z`.
+If you have nested lambdas, or longer chained methods, use first letter of class being queried as the variable, especially if the variable changes in the pipeline.
+That makes it clearer to distinguish the record being operated on at first glance.
+For simple queries or when the type doesn't change, it's fine to use `x` as variable name.
 
 ```C#
 // bad
 var blogsWithPostRatingHigherThanThree = blogs
-    .Where(b => b.Posts
-        .Any(p => p.Rating > 3))
+    .Where(x => x.Posts.Any(y => y.Rating > 3))
     .ToList();
 
 // good
 var blogsWithPostRatingHigherThanThree = blogs
-    .Where(x => x.Posts
-        .Any(y => y.Rating > 3))
+    .Where(b => b.Posts.Any(p => p.Rating > 3))
     .ToList();
 ```
 
@@ -759,7 +759,7 @@ foreach(var number in numbers
 
 // good
 var filteredList = numbers
-    .Where(x => x / 2 == 0)
+    .Where(x => x % 2 == 0)
     .ToList();
 
 foreach(var number in filteredList)
@@ -857,11 +857,11 @@ foreach (var blog in blogs)
 
 // good
 var blogsData = blogs
-    .Select(x =>
+    .Select(b =>
         new BlogData
         {
-            Name = x.Name,
-            Rating = x.Rating
+            Name = b.Name,
+            Rating = b.Rating
         })
     .ToList();
 ```
