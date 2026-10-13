@@ -80,6 +80,7 @@ pins this.
   - the nested-lambda naming rule.
 
   Re-run `/mtk-setup --refresh` (or `--update-guidelines`) in .NET repos to pick it up.
+- `validate-lesson-pr.yml` failed every maintainer PR that also touched `lessons/contributed/`. It now tells contribute-back (lessons-only) PRs apart from mixed PRs, still scans the lesson files of mixed PRs, and catches quoted secret values.
 - repo-health never searched AGENTS.md for build/test commands.
 - A guidelines pin bumped by `--update-guidelines` was overwritten on the next bootstrap.
 - The `/mtk` doctor row's bare `broken` keyword caught "this test is broken" before `fix`.

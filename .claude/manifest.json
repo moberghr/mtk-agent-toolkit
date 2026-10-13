@@ -2104,7 +2104,7 @@
       "source": ".github/workflows/validate-lesson-pr.yml",
       "target": ".github/workflows/validate-lesson-pr.yml",
       "action": "sync",
-      "description": "Validates contribute-back lesson PRs (path whitelist, size caps, secret/injection scans), labels lesson-validated; never auto-merges"
+      "description": "Validates PRs touching lessons/contributed/: a lessons-only (contribute-back) PR gets the path whitelist, size caps, secret and injection scans and the lesson-validated label; a mixed maintainer PR gets the scans on its lesson files only; never merges"
     },
     "hooks/workflow-continuation.sh": {
       "source": "hooks/workflow-continuation.sh",
