@@ -4,6 +4,22 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [9.0.1] - 2026-10-13
+
+### Fixed
+
+- **mtk-doctor and `$CLAUDE_PLUGIN_ROOT` hooks in project settings.** The variable is set only for hooks a
+  plugin declares itself. In a project's `.claude/settings.json` it is empty, so
+  `bash $CLAUDE_PLUGIN_ROOT/hooks/format-on-edit.sh`, an entry earlier bootstraps wrote, runs as
+  `bash /hooks/format-on-edit.sh` and fails on every edit. The doctor used to substitute a guessed plugin root
+  and report these hooks as fine. It now FAILs on them in `settings.json` and `settings.local.json`, and
+  `--fix` removes only those entries; the plugin already wires the same hooks.
+- **config-guard in nested worktrees.** For a file in a git worktree under the project
+  (`.claude/worktrees/<name>/`), config-guard took the session's main checkout as the root. The approval path
+  then needed the worktree prefix, and the worktree's own `.mtk/config-guard-allow` was not protected from
+  agent edits. The guard now resolves the root from the edited file's own work tree.
+- **gitnexus references removed** from prior-work-check, the recommended-tooling list and `.gitignore`.
+
 ## [9.0.0] - 2026-10-12
 
 Prose diet and skill consolidation. The new native eval suite shows bare Sonnet 5.5 already
