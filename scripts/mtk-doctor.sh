@@ -362,8 +362,72 @@ in_project
 # Oct 2026). A key outside this list never fires, so a typo is a dead hook.
 KNOWN_EVENTS="SessionStart Setup UserPromptSubmit UserPromptExpansion PreToolUse PermissionRequest PermissionDenied PostToolUse PostToolUseFailure PostToolBatch Notification MessageDisplay SubagentStart SubagentStop TaskCreated TaskCompleted Stop StopFailure TeammateIdle InstructionsLoaded ConfigChange CwdChanged DirectoryAdded FileChanged WorktreeCreate WorktreeRemove PreCompact PostCompact PreModelSwitch PostModelSwitch Elicitation ElicitationResult SessionEnd"
 
+# $CLAUDE_PLUGIN_ROOT is set only for hooks a plugin declares in its own
+# hooks/hooks.json. In a project's settings file it expands to the empty string,
+# so `bash $CLAUDE_PLUGIN_ROOT/hooks/x.sh` runs as `bash /hooks/x.sh` and fails
+# on every matching tool call ("No such file or directory"). Earlier bootstraps
+# wrote exactly these entries; the plugin already wires the same hooks itself, so
+# removing them loses nothing. --fix strips them (other hooks are kept).
+for sf in .claude/settings.json .claude/settings.local.json; do
+  [ -f "$sf" ] || continue
+  command -v python3 >/dev/null 2>&1 || break
+  pr_mode=check; [ "$FIX" -eq 1 ] && pr_mode=fix
+  pr_out="$(python3 - "$sf" "$pr_mode" <<'PY' 2>/dev/null || true
+import json, os, sys, tempfile
+sys.stdout.reconfigure(newline="\n")
+path, mode = sys.argv[1], sys.argv[2]
+try:
+    doc = json.load(open(path))
+except (OSError, ValueError):
+    sys.exit(0)
+hooks = doc.get("hooks") if isinstance(doc, dict) else None
+if not isinstance(hooks, dict):
+    sys.exit(0)
+bad = []
+for event, groups in list(hooks.items()):
+    if not isinstance(groups, list):
+        continue
+    kept_groups = []
+    for g in groups:
+        hs = g.get("hooks", []) if isinstance(g, dict) else []
+        kept = [h for h in hs if "CLAUDE_PLUGIN_ROOT" not in str(h.get("command", ""))]
+        bad += ["%s: %s" % (event, h.get("command", "")) for h in hs if h not in kept]
+        if kept:
+            g["hooks"] = kept
+            kept_groups.append(g)
+    if kept_groups:
+        hooks[event] = kept_groups
+    else:
+        del hooks[event]
+if not bad:
+    sys.exit(0)
+if mode == "fix":
+    if not hooks:
+        del doc["hooks"]
+    target = os.path.realpath(path)
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(target))
+    with os.fdopen(fd, "w") as f:
+        json.dump(doc, f, indent=2)
+        f.write("\n")
+    os.chmod(tmp, os.stat(target).st_mode & 0o777)
+    os.replace(tmp, target)
+    print("fixed")
+for b in bad:
+    print(b)
+PY
+)"
+  [ -n "$pr_out" ] || continue
+  if [ "$(awk 'NR==1' <<<"$pr_out")" = "fixed" ]; then
+    record PASS hooks "removed broken \$CLAUDE_PLUGIN_ROOT hooks from $sf" "$(awk 'NR>1' <<<"$pr_out" | tr '\n' ';' | sed 's/;$//')"
+  else
+    record FAIL hooks "$sf wires hooks through \$CLAUDE_PLUGIN_ROOT" "$(tr '\n' ';' <<<"$pr_out" | sed 's/;$//') — that variable is empty outside plugin hooks, so these run as /hooks/… and fail on every call; the plugin already wires them. Run with --fix to remove them."
+  fi
+done
+
 while IFS= read -r line; do
   cmd="$(printf '%s' "$line" | sed 's/^.*"command": *"//; s/".*$//')"
+  # Reported by the $CLAUDE_PLUGIN_ROOT check above; never resolvable here.
+  case "$cmd" in *CLAUDE_PLUGIN_ROOT*) continue ;; esac
   # Strip $ARGUMENTS and similar suffixes
   script="$(printf '%s' "$cmd" | awk '{print $1}')"
   # `bash $CLAUDE_PLUGIN_ROOT/hooks/x.sh` is the form setup-bootstrap writes into

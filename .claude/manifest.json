@@ -1,6 +1,6 @@
 {
-  "version": "9.0.0",
-  "updated": "2026-10-12",
+  "version": "9.0.1",
+  "updated": "2026-10-13",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -11,6 +11,12 @@
     }
   },
   "files": {
+    "tests/hooks/test-mtk-doctor-plugin-root-hooks.sh": {
+      "source": "tests/hooks/test-mtk-doctor-plugin-root-hooks.sh",
+      "target": "tests/hooks/test-mtk-doctor-plugin-root-hooks.sh",
+      "action": "sync",
+      "description": "Verifies mtk-doctor FAILs on project hooks wired through $CLAUDE_PLUGIN_ROOT (empty outside plugin hooks, so they run as /hooks/...) in settings.json and settings.local.json, and --fix strips only those entries"
+    },
     "tests/fixtures/router-audit-duplicates.json": {
       "source": "tests/fixtures/router-audit-duplicates.json",
       "target": "tests/fixtures/router-audit-duplicates.json",
