@@ -248,6 +248,45 @@ if ! DIET_OUT="$(python3 hooks/lib/hot_path_matchers.py hooks/hooks.json 2>&1)";
   fail "hooks/hooks.json breaks the runtime diet — no hook may run on user prompts or on Read/Grep/Glob/MCP tool calls"
 fi
 
+# Liveness stamps (S3.6): every hook hooks.json registers must call
+# `mtk_hook_seen <its own file name>` on a non-comment line. mtk-doctor derives
+# the liveness set from hooks.json and looks for exactly that stamp name, so a
+# hook that never stamps (or stamps under another name) reads as "never fired"
+# in every repo. Same logic shape as tests/hooks/test-hooks-wiring.sh, which
+# also drives each hook to prove the call is reached.
+python3 - <<'MTKPY' || fail "a hook registered in hooks/hooks.json does not stamp its liveness (add \`mtk_hook_seen <its file name>\` right after sourcing hooks/lib/hook-io.sh)"
+import json, os, re, shlex, sys
+d = json.load(open("hooks/hooks.json")).get("hooks", {})
+names = []
+for blocks in d.values():
+    for b in blocks:
+        for h in b.get("hooks", []):
+            cmd = h.get("command")
+            if not cmd:
+                continue
+            try:
+                base = os.path.basename(shlex.split(cmd)[0])
+            except ValueError:
+                continue  # the executable check above already reports it
+            if base not in names:
+                names.append(base)
+bad = []
+if not names:
+    bad.append("found 0 registered hook scripts — the selector matched nothing, so this check inspected nothing")
+for n in names:
+    try:
+        lines = open(os.path.join("hooks", n)).read().splitlines()
+    except OSError as e:
+        bad.append(f"hooks/{n}: cannot read ({e})")
+        continue
+    call = re.compile(r"(^|[\s;&|(])mtk_hook_seen\s+[\"']?" + re.escape(n) + r"[\"']?(\s|;|$)")
+    if not any(call.search(l) for l in lines if not l.lstrip().startswith("#")):
+        bad.append(f"hooks/{n} has no `mtk_hook_seen {n}` call")
+for line in bad:
+    print(f"ERROR: liveness stamp: {line}", file=sys.stderr)
+sys.exit(1 if bad else 0)
+MTKPY
+
 for required_cmd in format-on-edit.sh; do
   grep -q "$required_cmd" hooks/hooks.json \
     || fail "hooks/hooks.json does not declare $required_cmd — it was removed from the tech-stack Settings Additions, so nothing wires it any more"
@@ -670,6 +709,12 @@ bash scripts/lint-skill-bash.sh || fail "skill bash lint failed (run: bash scrip
 # P-* FAIL finding; advisory WARN findings do not fail the build.
 require_file "scripts/poison-lint.sh"
 bash scripts/poison-lint.sh --quiet || fail "poison-floor lint failed (run: bash scripts/poison-lint.sh)"
+
+# Allow twins (S3.10): every code a hook passes to mtk_deny_gated needs both a
+# deny:<code> and an allow:<code> labelled `expect` case in tests/hooks/ — a
+# deny that is only tested for denying drifts into blocking the innocent case.
+require_file "scripts/check-guard-twins.sh"
+bash scripts/check-guard-twins.sh --quiet || fail "guard allow-twin check failed (run: bash scripts/check-guard-twins.sh)"
 
 # Advisory: multi-sentence skill descriptions hurt routing (S2.5) — warn only, never fail.
 for skill in .claude/skills/*/SKILL.md; do

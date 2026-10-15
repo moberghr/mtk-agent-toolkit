@@ -10,7 +10,8 @@ trap _mtk_hook_diag EXIT
 # active spec's change_manifest or test_manifest.
 #
 # Advisory only (exit 0) — warns once per file per session (opt-in enforce mode,
-# MTK_SCOPE_GUARD_ENFORCE=1, denies every time). No-op when there is no active
+# MTK_SCOPE_GUARD_ENFORCE=active or 1, denies every time; =shadow warns and logs
+# the would-be deny; =off is silent). No-op when there is no active
 # spec JSON sidecar. A sidecar is not active once it shipped: archived into
 # docs/specs/baseline/*.audit.jsonl, an archive receipt (<stem>.receipt.md)
 # beside it, or only finished workflow artifacts (complete/completed/archived/
@@ -19,6 +20,7 @@ trap _mtk_hook_diag EXIT
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
+mtk_hook_seen scope-guard.sh
 
 INPUT="$(mtk_read_payload)"
 # Before anything else: the session's baseline fingerprint must predate the
@@ -229,15 +231,22 @@ fi
 
 if [ "$MATCHED" -eq 0 ]; then
   SPEC_NAME=$(basename "$SPEC_JSON" .json)
-  # Enforcing mode (opt-in, borrow — kyzo allowlist guard, P0#1). Default is
-  # advisory (tier-1, exit 0): emit a warning, never block. When
-  # MTK_SCOPE_GUARD_ENFORCE is truthy (1/true/yes), a write to a file outside the
-  # approved change_manifest/test_manifest is a HARD DENY (exit 2) with a single
-  # named reason — deterministic scope enforcement instead of a persuadable nudge.
-  # Off by default so existing installs and manifest-less flows are unaffected.
-  case "${MTK_SCOPE_GUARD_ENFORCE:-0}" in
-    1|true|TRUE|yes|YES|on|ON)
-      mtk_deny "MTK_SCOPE_GUARD: DENY ${REL_PATH} — not in approved manifest (${SPEC_NAME}). Add it to the spec's change_manifest first, then re-issue this edit." "unset MTK_SCOPE_GUARD_ENFORCE (falls back to advisory warnings)"
+  # Mode from MTK_SCOPE_GUARD_ENFORCE (mtk_guard_mode). Default is advisory
+  # (tier-1, exit 0): emit a warning, never block.
+  #   active (also the legacy truthy 1/true/yes/on) — a write outside the
+  #     approved change_manifest/test_manifest is a HARD DENY (exit 2) with a
+  #     single named reason, every time.
+  #   shadow — the advisory below as usual, plus one line in
+  #     .mtk/metrics/enforcement-shadow.jsonl per would-be deny (every edit, not
+  #     deduped), to measure what active mode would block before turning it on.
+  #   off — silent.
+  # Off-by-default enforcement keeps existing installs and manifest-less flows
+  # unaffected.
+  SCOPE_MODE="$(mtk_guard_mode SCOPE_GUARD advisory)"
+  case "$SCOPE_MODE" in
+    off) exit 0 ;;
+    active|shadow)
+      mtk_deny_gated "$SCOPE_MODE" scope-guard SCOPE-OUT-OF-MANIFEST "MTK_SCOPE_GUARD: DENY ${REL_PATH} — not in approved manifest (${SPEC_NAME}). Add it to the spec's change_manifest first, then re-issue this edit." "unset MTK_SCOPE_GUARD_ENFORCE (falls back to advisory warnings)" "$REL_PATH"
       ;;
   esac
   # Advisory: once per file per session. The payload's session_id keys the

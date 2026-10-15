@@ -90,6 +90,28 @@ sys.stdout.buffer.write(b"".join(out))
   fi
 }
 
+# Same bounded read for hooks that must not spawn python (a python start is
+# ~30-60ms; hooks on frequent events cannot afford it on stock macOS, which has
+# no timeout binary). Tiers: timeout, gtimeout, then the bash builtin
+# `read -d '' -t <secs>`, which reads to EOF under the same deadline. bash 3.2
+# takes whole seconds only, so a fractional bound is rounded down (minimum 1).
+# On timeout the payload is empty, exactly as with mtk_read_payload.
+# mtk_read_payload itself stays unchanged: security-gate depends on it.
+mtk_read_payload_nopy() {
+  local secs="${1:-4}" buf=""
+  if command -v timeout >/dev/null 2>&1; then
+    timeout "$secs" cat 2>/dev/null || true
+  elif command -v gtimeout >/dev/null 2>&1; then
+    gtimeout "$secs" cat 2>/dev/null || true
+  else
+    secs="${secs%%.*}"
+    case "$secs" in ''|*[!0-9]*) secs=1 ;; esac
+    [ "$secs" -ge 1 ] 2>/dev/null || secs=1
+    IFS= read -r -d '' -t "$secs" buf 2>/dev/null || true
+    printf '%s' "$buf"
+  fi
+}
+
 # --- Hook output envelope helpers (Claude Code hooks contract) --------------
 # Model/user-visible output must use the documented JSON envelopes, not plain
 # stdout (which reaches neither on exit 0). See code.claude.com/docs/en/hooks.
@@ -168,6 +190,252 @@ mtk_deny() {
     fi
   } >&2
   exit 2
+}
+
+# --- Guard modes (off | advisory | shadow | active) -------------------------
+# A shadow-capable guard reads its mode from MTK_<NAME>_ENFORCE and passes it
+# EXPLICITLY to mtk_deny_gated — there is no env channel into the deny itself,
+# so mtk_deny (above) stays the unconditional floor that security-gate and the
+# config-guard allow-list protection call directly (S3.18): no MTK_*_ENFORCE
+# value can shadow them.
+#
+# Mode matrix (what mtk_deny_gated does when a guard's check fires):
+#   mode      deny (exit 2)?  shadow log line?  text from mtk_deny_gated
+#   off       no              no                none
+#   advisory  no              no                none
+#   shadow    no              yes, one line     none
+#   active    yes             no                mtk_deny reason + continuation suffix
+# Advisory text is the CALLER's job, never mtk_deny_gated's. Per guard today:
+#   scope-guard  (default advisory)  off → silent; advisory and shadow → its own
+#                additionalContext warning; active → deny.
+#   config-guard config class (default active) and test class (TEST_GUARD,
+#                default shadow) emit no advisory text: off and advisory both
+#                skip the check; shadow logs; active denies.
+#
+# Usage:  mode="$(mtk_guard_mode SCOPE_GUARD advisory)"
+# Prints one of off|advisory|shadow|active. Values are case-insensitive; an
+# unset or empty value prints the default. A non-empty unknown value prints the
+# default AND one stderr line naming the variable, so a typo is visible instead
+# of silently running the default. Back-compat:
+#   - SCOPE_GUARD keeps its pre-mode truthy set (1|true|TRUE|yes|YES|on|ON →
+#     active) and its pre-mode falsy set (0|false|FALSE|no|NO → the default,
+#     no warning): those were documented values before modes existed.
+# (config-guard's kill-switch MTK_CONFIG_GUARD=0 is not a mode: the hook exits
+# on it before it reads its mode.)
+mtk_guard_mode() { # $1=NAME  $2=default
+  local name="${1:-}" def="${2:-advisory}" var raw=""
+  case "$def" in off|advisory|shadow|active) ;; *) def="advisory" ;; esac
+  case "$name" in
+    ''|*[!A-Z0-9_]*) printf '%s\n' "$def"; return 0 ;;
+  esac
+  var="MTK_${name}_ENFORCE"
+  raw="${!var:-}"
+  # Bracket classes, not ${raw,,}: macOS ships bash 3.2, which has no case
+  # conversion, and a tr fork per hook call buys nothing here.
+  case "$raw" in
+    [Oo][Ff][Ff]) printf 'off\n'; return 0 ;;
+    [Aa][Dd][Vv][Ii][Ss][Oo][Rr][Yy]) printf 'advisory\n'; return 0 ;;
+    [Ss][Hh][Aa][Dd][Oo][Ww]) printf 'shadow\n'; return 0 ;;
+    [Aa][Cc][Tt][Ii][Vv][Ee]) printf 'active\n'; return 0 ;;
+  esac
+  if [ "$name" = "SCOPE_GUARD" ]; then
+    case "$raw" in
+      1|true|TRUE|yes|YES|on|ON) printf 'active\n'; return 0 ;;
+      0|false|FALSE|no|NO) printf '%s\n' "$def"; return 0 ;;
+    esac
+  fi
+  if [ -n "$raw" ]; then
+    raw="${raw//$'\n'/ }"
+    printf '[mtk] %s=%s not recognised; using %s\n' "$var" "${raw:0:80}" "$def" >&2 || true
+  fi
+  printf '%s\n' "$def"
+}
+
+# Mode-gated deny for shadow-capable guards. The mode is an explicit argument.
+#   active   → mtk_deny "$reason" "$toggle" (exit 2, unchanged deny ergonomics)
+#   shadow   → append one {"ts","hook","code","target"} JSON line to
+#              <repo root>/.mtk/metrics/enforcement-shadow.jsonl and return 0
+#              with no stdout/stderr (the model sees nothing from this call).
+#              `target` is the cksum of the optional 6th argument (the path or
+#              command the deny is about) — never the raw text.
+#   advisory | off | anything else → return 0; the caller emits any advisory.
+# A failed shadow write never breaks the hook: the log is telemetry, not a gate.
+# It still returns 0 with no stdout, but prints one stderr line
+# `[mtk] shadow log not written: <reason>` so the loss is not silent.
+# `code` must be a literal token at every call site: scripts/check-guard-twins.sh
+# requires a deny:<code> and an allow:<code> labelled test case for each one.
+#
+# Usage:  mtk_deny_gated <mode> <hook> <code> <reason> [toggle] [target]
+mtk_deny_gated() {
+  local mode="${1:-}" hook="${2:-}" code="${3:-}" reason="${4:-}" toggle="${5:-}" target="${6:-}"
+  case "$mode" in
+    active) mtk_deny "$reason" "$toggle" ;;
+    shadow) ;;
+    *) return 0 ;;
+  esac
+  local root ts tsum="" dir
+  root="$(mtk_repo_root 2>/dev/null)" || root=""
+  if [ -z "$root" ]; then
+    _mtk_shadow_not_written "no project root"
+    return 0
+  fi
+  ts="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)" || ts=""
+  if [ -n "$target" ]; then
+    tsum="$(printf '%s' "$target" | cksum 2>/dev/null | cut -d' ' -f1)" || tsum=""
+  fi
+  dir="$root/.mtk/metrics"
+  if ! { [ -d "$dir" ] || mkdir -p "$dir"; } 2>/dev/null; then
+    _mtk_shadow_not_written "cannot create $dir"
+    return 0
+  fi
+  if ! {
+    printf '{"ts":"%s","hook":"%s","code":"%s","target":"%s"}\n' \
+      "$(mtk_json_escape "$ts")" "$(mtk_json_escape "$hook")" \
+      "$(mtk_json_escape "$code")" "$(mtk_json_escape "$tsum")" \
+      >>"$dir/enforcement-shadow.jsonl"
+  } 2>/dev/null; then
+    _mtk_shadow_not_written "cannot append to $dir/enforcement-shadow.jsonl"
+  fi
+  return 0
+}
+
+# One stderr line when a shadow log line is lost. Stderr on exit 0 never reaches
+# the model, so this keeps shadow invisible to it while the loss stays visible in
+# hook output; a failed write to stderr is ignored. (Not the brace form: a
+# group's 2>/dev/null would apply before the inner >&2 and swallow the line.)
+_mtk_shadow_not_written() { # $1=reason
+  printf '[mtk] shadow log not written: %s\n' "${1:-unknown}" >&2 || true
+}
+
+# --- Hook liveness stamps ---------------------------------------------------
+# Directory of per-hook "last seen" stamps for this project:
+#   ${TMPDIR:-/tmp}/mtk-hook-seen-<uid>/<root, every char outside [A-Za-z0-9._-] → _>
+# Outside the repository on purpose, so a stamp never changes
+# mtk_tree_fingerprint and needs no .mtk/ creation rule. A missing directory
+# means "unknown", never "broken". `<dir>/.sessions` holds the number of
+# `startup` sessions seen since the directory was created (mtk_liveness_tick).
+#
+# Every hook calls mtk_hook_seen on every event, so the key is built with
+# parameter expansion only — no cksum/cut fork, no subshell. The root is
+# ${CLAUDE_PROJECT_DIR} when set (the harness sets it for hooks), else one
+# mtk_repo_root call; a reader (mtk-doctor) must key the same way, i.e. call
+# mtk_hook_seen_dir with the same CLAUDE_PROJECT_DIR the hooks saw. The
+# TMPDIR-inside-repo check is a string prefix on those two spellings.
+#
+# SHARED TEMP DIRECTORY (CWE-59/377). /tmp is shared by every local user and
+# the path is predictable, so another user could pre-plant it. Defences, all
+# builtins in the steady state:
+#   - the base is per user (mtk-hook-seen-$UID; `id -u` only if UID is empty);
+#   - the base and the per-root directory are each created with `mkdir -m 700`
+#     (one level at a time: `mkdir -p` would give intermediates the umask mode);
+#   - both must be a real directory, not a symlink, owned by this user
+#     (_mtk_hook_seen_owned_dir) or nothing is read or written — a planted
+#     symlink or someone else's directory turns liveness off ("unknown"), it is
+#     never followed;
+#   - inside, a stamp or .sessions that is a symlink, or exists and is not a
+#     regular file, is skipped, never followed or truncated.
+# The writes stay plain redirects after those checks (no temp file + mv: that
+# would fork on every event). Their check-then-write race is against this
+# user's own processes only: the directory is ours and 0700, so no other user
+# can create, swap or rename an entry in it between the check and the write.
+# A TMPDIR whose own ancestors another user controls is out of scope — TMPDIR
+# is the user's choice.
+
+# 0 when $1 is a real directory (not a symlink) owned by the current user.
+_mtk_hook_seen_owned_dir() {
+  [ -d "$1" ] && [ ! -L "$1" ] && [ -O "$1" ]
+}
+
+# _mtk_hook_seen_resolve [root] [create] sets _MTK_HOOK_SEEN_DIR and returns 0,
+# or sets it empty and returns 1: no root, root is `/`, TMPDIR is inside the
+# root, no user id, or a level of the directory fails _mtk_hook_seen_owned_dir.
+# With `create` (writers) each missing level is made with mode 700 and must then
+# pass the check. Without it (readers) a missing level is fine — the reader
+# finds no directory, i.e. "unknown" — and nothing is created; a level that
+# exists must still pass the check.
+_mtk_hook_seen_resolve() {
+  local root="${1:-}" create="${2:-}" tmp uid="${UID:-}" base dir
+  _MTK_HOOK_SEEN_DIR=""
+  if [ -z "$root" ]; then
+    root="${CLAUDE_PROJECT_DIR:-}"
+    [ -n "$root" ] || root="$(mtk_repo_root 2>/dev/null)" || root=""
+  fi
+  root="${root%/}"
+  [ -n "$root" ] || return 1
+  tmp="${TMPDIR:-/tmp}"
+  tmp="${tmp%/}"
+  [ -n "$tmp" ] || return 1
+  case "$tmp/" in
+    "$root"/*) return 1 ;;
+  esac
+  # Same check by file identity: on a case-insensitive volume a TMPDIR inside the
+  # repo can be spelled differently from the root (`.../caserepo/tmp` vs
+  # `.../CaseRepo`) and slip past the string prefix test above. Builtins only.
+  if [ -d "$tmp" ] && mtk_path_is_within "$tmp" "$root"; then return 1; fi
+  [ -n "$uid" ] || uid="$(id -u 2>/dev/null)" || uid=""
+  case "$uid" in ''|*[!0-9]*) return 1 ;; esac
+  base="$tmp/mtk-hook-seen-$uid"
+  dir="$base/${root//[^A-Za-z0-9._-]/_}"
+  if [ -n "$create" ]; then
+    if [ ! -e "$base" ] && [ ! -L "$base" ]; then mkdir -m 700 "$base" 2>/dev/null || true; fi
+    _mtk_hook_seen_owned_dir "$base" || return 1
+    if [ ! -e "$dir" ] && [ ! -L "$dir" ]; then mkdir -m 700 "$dir" 2>/dev/null || true; fi
+    _mtk_hook_seen_owned_dir "$dir" || return 1
+  elif [ -e "$base" ] || [ -L "$base" ]; then
+    _mtk_hook_seen_owned_dir "$base" || return 1
+    if [ -e "$dir" ] || [ -L "$dir" ]; then
+      _mtk_hook_seen_owned_dir "$dir" || return 1
+    fi
+  fi
+  _MTK_HOOK_SEEN_DIR="$dir"
+  return 0
+}
+
+# Print the stamp directory (optional $1 = root to key by). Returns 1 and prints
+# nothing when no stamp directory applies (see _mtk_hook_seen_resolve). Creates
+# nothing: a directory that does not exist yet is printed, and the caller finds
+# it absent.
+mtk_hook_seen_dir() { # [$1=root]
+  _mtk_hook_seen_resolve "${1:-}" || return 1
+  printf '%s\n' "$_MTK_HOOK_SEEN_DIR"
+}
+
+# Refresh the liveness stamp for hook `name`. Never fails, never prints, never
+# writes inside the repository, never follows a symlink. Steady state
+# (directory exists) is builtin tests plus one builtin redirect; mkdir runs only
+# the first time.
+mtk_hook_seen() { # $1=hook name
+  local name="${1:-}" f
+  name="${name//[^A-Za-z0-9._-]/_}"
+  case "$name" in ''|.*) return 0 ;; esac   # .sessions and friends are not hooks
+  _mtk_hook_seen_resolve "" create || return 0
+  f="$_MTK_HOOK_SEEN_DIR/$name"
+  if [ -L "$f" ] || { [ -e "$f" ] && [ ! -f "$f" ]; }; then return 0; fi
+  { : > "$f"; } 2>/dev/null || true
+  return 0
+}
+
+# Count one session: increment the integer in <stamp dir>/.sessions (created
+# as 1). session-start calls it once per `startup`, so mtk-doctor can tell "too
+# few sessions to judge" from "hook never fired". Builtins only after the first
+# mkdir; a missing, empty or non-numeric file restarts the count at 1. A
+# .sessions that is a symlink or not a regular file is left alone (no count).
+# Never fails, never prints.
+mtk_liveness_tick() {
+  local f line="" n=0
+  _mtk_hook_seen_resolve "" create || return 0
+  f="$_MTK_HOOK_SEEN_DIR/.sessions"
+  if [ -L "$f" ] || { [ -e "$f" ] && [ ! -f "$f" ]; }; then return 0; fi
+  if [ -f "$f" ]; then
+    { IFS= read -r line < "$f"; } 2>/dev/null || true
+  fi
+  case "$line" in
+    ''|*[!0-9]*) n=0 ;;
+    *) [ "${#line}" -le 9 ] && n=$((10#$line)) || n=0 ;;
+  esac
+  n=$((n + 1))
+  { printf '%s\n' "$n" > "$f"; } 2>/dev/null || true
+  return 0
 }
 
 mtk_path_is_within() {
@@ -285,6 +553,11 @@ mtk_session_file() {
 # tree, so diffing against the recorded base still yields the same hash, while
 # any content change (an Edit, a sed -i, a formatter pass) yields a new one.
 # GIT_OPTIONAL_LOCKS=0 keeps the index refresh from taking index.lock.
+#
+# `.mtk/` is excluded from both the tracked diff and the untracked listing:
+# it is MTK's own workflow state, and in a repo that does not gitignore it
+# (plugin-only install) a state write between baseline and Stop would
+# otherwise read as a working-tree change.
 mtk_tree_fingerprint() {
   local root base path h i=0
   root="$(mtk_repo_root)"
@@ -299,8 +572,8 @@ mtk_tree_fingerprint() {
     paths+=("$path")
   done < <(
     {
-      GIT_OPTIONAL_LOCKS=0 git -C "$root" diff --no-renames --name-only -z "$base" -- 2>/dev/null || true
-      GIT_OPTIONAL_LOCKS=0 git -C "$root" ls-files -o --exclude-standard -z 2>/dev/null || true
+      GIT_OPTIONAL_LOCKS=0 git -C "$root" diff --no-renames --name-only -z "$base" -- ':(exclude).mtk' 2>/dev/null || true
+      GIT_OPTIONAL_LOCKS=0 git -C "$root" ls-files -o --exclude-standard -z -- ':(exclude).mtk' 2>/dev/null || true
     } | LC_ALL=C sort -zu
   )
   for path in ${paths[@]+"${paths[@]}"}; do
