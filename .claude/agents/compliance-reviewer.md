@@ -5,7 +5,7 @@ description: >
   the rules that apply to the diff, the coding guidelines, architecture-principles.md, and
   existing codebase patterns. Adversarial persona — finds problems, doesn't approve easily.
 tools: Read, Glob, Grep, Bash
-model: opus
+model: sonnet
 effort: high
 ---
 
