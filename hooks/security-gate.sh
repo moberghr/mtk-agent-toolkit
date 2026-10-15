@@ -26,6 +26,7 @@ trap _mtk_hook_diag EXIT
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
+mtk_hook_seen security-gate.sh
 
 INPUT="$(mtk_read_payload)"
 

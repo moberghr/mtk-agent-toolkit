@@ -4,6 +4,98 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [9.1.0] - 2026-10-15
+
+Context for subagents, quieter lesson mining, branch-scoped handoffs, and guards that can be
+measured before they block. Every new deny ships in shadow mode first. No hook was added to the
+read path, MCP calls or prompts.
+
+### Hook processes per tool call
+
+Counted from `hooks/hooks.json` before and after, with the 8.2.0 method: the handlers whose
+matcher covers the tool, PreToolUse plus PostToolUse.
+
+| Tool call | 9.0.1 | 9.1.0 |
+|---|---|---|
+| Read / Grep / Glob | 0 | 0 |
+| MCP | 0 | 0 |
+| Prompt submit | 0 | 0 |
+| Bash | 3 | 3 |
+| Edit / Write | 5 | 5 |
+| Stop | 4 | 4 |
+| SubagentStart | 0 | 1 per subagent |
+
+### Added
+
+- **SubagentStart context (`hooks/subagent-context.sh`).** When an `mtk:` subagent starts, or any
+  subagent while a workflow is live, the hook adds the active workflow's context-pack path and the
+  constitution's critical-rule ids (`constitution-digest.sh --ids-only`). A subagent dispatched
+  outside `implement`, or by a brief that forgot the pack path, still gets them. The block is
+  capped at 4,000 characters, cut at a rule boundary with a count of omitted rules. Other
+  subagents get no output, and no python process is spawned for them. Context only, never blocks.
+  Off with `MTK_SUBAGENT_CONTEXT=0`.
+- **Lesson-mining state (`scripts/lesson-mine-state.sh`, under `.mtk/lessons/`):**
+  - a forward-only watermark per transcript, so `lessons mine` reads only new bytes;
+  - an append-only decision ledger, so a candidate already accepted or rejected is not proposed
+    again;
+  - an evidence floor: a candidate admitted only by rubric rule A2 or A3 needs verbatim quotes
+    that match decoded messages in at least two sessions.
+
+  `learnings.sh add` gains `--retire-when`.
+- **Handoff state (`scripts/handoff-state.sh`).** Handoff notes carry `state`
+  (open / accepted / expired), `branch` and `expires` frontmatter. A `startup` session appends one
+  `HANDOFF OFFER:` line when an open handoff names the current branch. It offers the note; it
+  never claims the work.
+- **Instruction-load check (`scripts/check-instruction-load.sh`).** Reports instruction files a
+  harness silently drops, truncates or ignores: an `AGENTS.md` chain over Codex's byte cap
+  (`CODEX-BYTES`, `MTK_CODEX_DOC_MAX_BYTES`, default 32768), an `AGENTS.md` that `CLAUDE.md`
+  shadows (`SHADOWED-AGENTS`), a Claude rule with Cursor's `globs:` and no `paths:`
+  (`GLOBS-NOT-PATHS`), and a `CLAUDE.local.md` git does not ignore (`LOCAL-UNIGNORED`). The
+  `instructions` audit and `setup-bootstrap` run it.
+- **Guard modes `off | advisory | shadow | active`** (`mtk_guard_mode`, `mtk_deny_gated` in
+  `hooks/lib/hook-io.sh`). In shadow mode a guard allows the call with no model-visible output and
+  logs the would-be deny (`ts`, `hook`, `code`, a checksum of the target, never the raw text) to
+  `.mtk/metrics/enforcement-shadow.jsonl`. `mtk_deny` itself is unchanged, and the security-gate
+  floor and config-guard's allow-list protection deny under every mode (S3.18).
+  - `scope-guard.sh`: `MTK_SCOPE_GUARD_ENFORCE=shadow` warns as before and logs
+    `SCOPE-OUT-OF-MANIFEST`.
+  - `config-guard.sh` config class: new `MTK_CONFIG_GUARD_ENFORCE`, default `active`, so today's
+    denies still fire. Their text now leads with the code (`W1-SUPPRESS`, `W2-DISABLED`,
+    `W3-IGNORE`), e.g. `(W2-DISABLED disabled values: 0→1)` instead of `(W2 disabled values: 0→1)`.
+    config-guard has no advisory mode: `advisory`, like any unknown value, falls back to the class
+    default (`active` for config, `shadow` for tests) with one stderr line.
+- **Test-tamper class in config-guard, shadow by default.** An Edit/Write to a test file (by
+  repo-relative path and code extension) that adds skip or focus markers (`T1-SKIP`) or
+  suppressions (`T2-SUPPRESS`), removes test declarations (`T3-FEWER-TESTS`) or assertions
+  (`T4-FEWER-ASSERTS`), or swaps a strong assertion for a weak one (`T5-WEAKENED`) is logged.
+  `MTK_TEST_GUARD_ENFORCE=active` denies it instead. Covers C#, Python and JS/TS.
+- **Hook liveness in `mtk-doctor`.** Every registered hook refreshes a stamp in
+  `$TMPDIR/mtk-hook-seen-<uid>/<sanitised project root>/`, outside the repo, with no process spawned
+  once the directory exists. Both levels are created mode 0700 and must be owned by the user and not
+  be symlinks; a symlinked stamp is never followed. `session-start` counts startups in that directory's `.sessions`. The hook
+  set comes from `hooks/hooks.json`; `test-hooks-wiring.sh` fails if a registered hook stops
+  stamping. Once 5 sessions have been counted, health mode WARNs on a per-call hook with no stamp,
+  or one more than 14 days older than the last session. `SubagentStart` hooks are info only, and
+  no stamp directory reads as "unknown", never a WARN. Each instruction-load finding is a WARN; a
+  sub-check that could not run reads "not checked". `--usage` adds the raw shadow-log counts per
+  hook and code.
+- **Allow-twin check (`scripts/check-guard-twins.sh`).** Every code passed to `mtk_deny_gated`
+  needs both a `deny:<code>` and an `allow:<code>` labelled test case; `validate-toolkit.sh` FAILs
+  otherwise (S3.10). A guard that is only tested for denying drifts into blocking the innocent
+  case.
+
+### Changed
+
+- **S3.6:** `SubagentStart` → `subagent-context.sh` is registered in `hooks/hooks.json` and the
+  wiring test's table.
+- **S3.11:** on `compact`, session-start re-injects only a handoff that is open, or accepted during
+  this session, and whose `branch` is the current branch. A note without frontmatter, or without
+  `branch:`, counts only when modified within 24 hours and is never offered on startup.
+- **`mtk_tree_fingerprint` ignores `.mtk/`**, so MTK's own state (shadow log, lesson ledger,
+  workflow artifacts) never reads as a working-tree change to `verify-completion`.
+- **`MTK_SCOPE_GUARD_ENFORCE=off` now silences scope-guard.** Unset stays `advisory`, and the
+  legacy truthy values (`1`, `true`, `yes`, `on`) still mean `active`.
+
 ## [9.0.1] - 2026-10-13
 
 ### Fixed

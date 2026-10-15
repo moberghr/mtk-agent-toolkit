@@ -108,6 +108,17 @@
           }
         ]
       }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/subagent-context.sh\"",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   }
 }

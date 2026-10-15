@@ -46,6 +46,9 @@ trap _mtk_hook_diag EXIT
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
+# Liveness stamp unless killed: the opt-in check below is not a kill-switch,
+# and this hook runs (baseline recording) in repos that never opted in.
+[ "${MTK_FORMAT_ON_EDIT:-}" = "0" ] || mtk_hook_seen format-on-edit.sh
 
 # PreToolUse Bash entry: record the session baseline before anything else —
 # before the opt-in check, because verify-completion needs it in every repo.

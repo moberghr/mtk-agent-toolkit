@@ -500,6 +500,7 @@ Hooks are deterministic — they fire every time, unlike advisory `CLAUDE.md` in
 | **verify-completion** | Stop | Rejects "done" claims lacking fresh, cited command output |
 | **workflow-continuation** | Stop (async) | One-line nudge when a session ends with an unfinished workflow |
 | **cost-tracker** | Stop (async) | Persists usage stats to `.claude/analytics.json` and token-cost estimates to `.mtk/metrics/costs.jsonl` |
+| **subagent-context** | SubagentStart | Hands an MTK subagent the active context-pack path and the critical-rule ids; context only, never blocks |
 
 ### Tech stacks
 
@@ -661,10 +662,11 @@ Everything the plugin executes on your machine, what it writes, and what it cont
 | PostToolUse (Edit\|Write\|Bash) | `evidence-ledger.sh` | Record edits and verification runs for `verify-completion` (silent) |
 | PostToolUse (Edit\|Write) | `spec-approval-trigger.sh`, `format-on-edit.sh` | Point to planning on spec approval; queue edited files for formatting |
 | Stop | `verify-completion`, `format-on-edit.sh --flush`, `workflow-continuation.sh` (async), `cost-tracker.sh` (async) | Check completion claims for evidence; run your project's own formatter (`dotnet format`, `ruff`/`black`, or `npx --no-install biome`/`prettier` — never installs anything) on edited files; nudge on an unfinished workflow; record local usage and token-cost estimates |
+| SubagentStart | `subagent-context.sh` | Hand an MTK subagent (or any subagent while a workflow is live) the context-pack path and critical-rule ids; never blocks |
 
 Hooks read the session transcript locally (completion evidence, cost estimates). They never change Claude Code's permission settings.
 
-**Files written in your repo:** `.claude/analytics.json` (usage counts), `.claude/observability/`, `.mtk/workflows/`, `.mtk/metrics/costs.jsonl`, and `.mtk/config-guard-allow` (only when you allow a config edit). Short-lived state goes to `$TMPDIR/mtk-*`. `/mtk-setup` writes `AGENTS.md`, the `CLAUDE.md` shim, `.claude/rules/`, `.claude/references/`, and merges recommended `permissions.allow`/`deny`/`ask` entries into `.claude/settings.json` — only when you run it.
+**Files written in your repo:** `.claude/analytics.json` (usage counts), `.claude/observability/`, `.mtk/workflows/`, `.mtk/lessons/` (lesson-mining state), `.mtk/metrics/costs.jsonl`, `.mtk/metrics/enforcement-shadow.jsonl` (would-be denies of guards in shadow mode), and `.mtk/config-guard-allow` (only when you allow a config edit). Short-lived state goes to `$TMPDIR/mtk-*`, including the hook liveness stamps in a per-user `$TMPDIR/mtk-hook-seen-<uid>/` (mode 0700) that `mtk-doctor` reads. `/mtk-setup` writes `AGENTS.md`, the `CLAUDE.md` shim, `.claude/rules/`, `.claude/references/`, and merges recommended `permissions.allow`/`deny`/`ask` entries into `.claude/settings.json` — only when you run it.
 
 **Network:** no hook makes a network request. `/mtk-setup` fetches the coding guidelines from `raw.githubusercontent.com/moberghr/coding-guidelines` at a pinned commit and verifies their sha256. Skills that need GitHub or the web (PR-review mining, CI status, `research-context`) ask Claude to run `gh` or web tools through its normal, permission-checked tools. MTK collects no telemetry.
 
