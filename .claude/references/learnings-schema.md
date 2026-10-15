@@ -48,6 +48,7 @@ Manual edits to `tasks/lessons.md` are preserved on next migrate (re-emitted as 
   "applies_when": "phase=implement AND files contain tasks/lessons.md",
 
   "time_cost": 12,
+  "retire_when": "the shrink-guard is removed from hooks/lib/",
 
   "confidence": "high",
   "output_contract": { "required_files": ["planning_note.md", "summary.json"], "json_fields": ["title", "status"] },
@@ -89,6 +90,7 @@ Manual edits to `tasks/lessons.md` are preserved on next migrate (re-emitted as 
 - **`validity.expired`** — set true after `expires_at` unless `reconfirmed_at` is fresher.
 - **`recurrence.count`** — incremented when the same root rule is captured again. ≥3 hits is the trigger to propose `CLAUDE.md` promotion.
 - **`time_cost`** *(optional integer, minutes)* — rough minutes lost due to the absence of this rule. Backs admit rule A4 in `lessons mine`. Null when not measurable.
+- **`retire_when`** *(optional string)* — the external condition that makes the lesson obsolete, e.g. `"Foo.Sdk >= 4.2 is pinned"` or `"src/Legacy/ is deleted"`. Set via `learnings.sh add --retire-when "<condition>"`; stored verbatim and rendered by `regen-markdown` as a `*Retire when:*` line. `lessons refresh` checks it: when the condition can be evaluated locally (a pinned version moved, a referenced file is gone) and holds, it proposes **Retire** citing that evidence. It never retires automatically. Absent = no known expiry condition.
 
 ### Retired fields
 
