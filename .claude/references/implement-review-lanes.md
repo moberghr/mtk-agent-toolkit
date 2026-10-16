@@ -22,6 +22,8 @@ lanes run on sonnet, in parallel (one message, several `Agent` calls).
 | `architecture-reviewer` | new slice/boundary/handler/cross-project | same condition | always | same condition |
 | `context-miner` | skip | always | always | on request |
 
+`finding-verifier` is a **verify stage** after the lanes, not a lane (see Review protocol).
+
 Size the set from the **current** rigor level — the one recomputed in Phase 3.5 if scope was
 reduced. At HIGH, a change that adds or moves no module and crosses no boundary (a pure rename,
 a frontmatter-only batch) skips `architecture-reviewer`.
@@ -59,6 +61,22 @@ never all of `.claude/rules/`. Outside implement there is no pack: resolve
   `findings[]` needs `below_threshold_rationale` saying what was checked. Output a markdown table
   plus the fenced JSON result. A mismatch between the behavioral diff and the code is critical.
 
+## Review protocol
+
+Run in this order; `$RUN` is `.mtk/workflows/$MTK_WF_UUID`, `$CHANGED` the changed-file list (one path per line, dirty baseline excluded).
+
+1. **Candidates.** Before dispatch, collect deterministic hits on the changed lines and write them to `$RUN/review/candidates.json` (array shape in `review-finding-schema.md`; `candidate_id` `C001`…, `source` = `linter`, `secret-scan` or `analyzer`). Sources:
+   - `bash hooks/pre-commit-linters.sh --range <base>...HEAD` (or `--head` for uncommitted work) → JSON `findings[]` of `file`, `line`, `rule`, `rationale`.
+   - `bash scripts/secret-scan.sh <changed files>` → `<file>:<line>: <pattern>` lines, exit 1 on a hit.
+   - build/lint output piped through `bash hooks/parse-build-diagnostics.sh [--format <msbuild|ruff|tsc|biome>] --file <output>` → JSON `findings[]`; keep only those on changed lines.
+
+   Pass the path to `compliance-reviewer`, which must dispose of every candidate (`candidates_disposed`). No hits ⇒ no file, no requirement.
+2. **Bind to the tree.** `"$WFA" review-input "$MTK_WF_UUID" --record` at lane dispatch; `--check` before aggregating. Exit 1 (tree changed) ⇒ re-dispatch the lanes whose files changed, **without** showing them earlier findings, and record again.
+3. **Coverage.** For each lane result: `bash scripts/review-coverage.sh <lane-result.json> "$CHANGED" [--candidates "$RUN/review/candidates.json"]`. Exit 1 ⇒ record the lane `ABSTAINED` with `abstention.reason` `incomplete: <what is missing>`; exit 2 ⇒ `NO_RESPONSE`.
+4. **Verify (HIGH/MAX only).** Dispatch `finding-verifier` once per top-level directory group of the merged findings (one message, parallel). Apply its verdicts as the schema table says: `rejected` and `immaterial` leave remediation, `pre_existing` goes to the follow-up list. A verifier that fails or returns nothing ⇒ that group is `unverified` and its findings stay as raised.
+5. **Iterate.** See Iteration cap.
+6. **Receipt.** On an overall `PASS` (every lane accounted, none `ABSTAINED`, or only by-policy per below): `bash scripts/review-receipt.sh write --lanes <csv of lanes that ran> --rigor <level> --verdict PASS`. Never on `NEEDS_CHANGES` or `NEEDS_HUMAN_REVIEW`.
+
 ## Defect-class sweep
 
 A confirmed finding is a sample, not the population. When a finding is **confirmed**, name the
@@ -85,9 +103,12 @@ Account for every dispatched lane **before** aggregating findings. One outcome p
   `ABSTAINED (by-policy: <reason>; compensations C1-C3)` and Phase 4 may pass — **only if** the
   inline-MAX compensations were applied and named, and the report says which lanes ran inline.
   Without them it is an ordinary `ABSTAINED` and still blocks.
+- `context-miner` records `search_status: ran | unavailable` per source (git log, lessons store, `gh`).
+  Git log or the lessons store `unavailable` ⇒ `ABSTAINED` with `abstention.reason`
+  `could-not-search: <source>`. `gh` unavailable is noted in the roster, not an abstention.
 - A `context-miner` run over a change with no usable history (only new files, a squashed import)
-  is a valid empty `PASS` with a `below_threshold_rationale`, not an abstention; record it as
-  `PASS` and say "no history" in the roster.
+  whose required sources `ran` is a valid empty `PASS` with a `below_threshold_rationale`, not an
+  abstention; record it as `PASS` and say "no history" in the roster.
 - Report the roster: lanes dispatched, outcome of each, reason for any abstention. Corroboration
   outranks volume: a finding raised independently by two lanes ranks above one raised loudly once.
 
@@ -95,5 +116,8 @@ Account for every dispatched lane **before** aggregating findings. One outcome p
 
 Drive the fix loop through `"$WFA" remediation "$MTK_WF_UUID" review` once per review iteration.
 It returns `ESCALATE` when iterations reach `MTK_MAX_REMEDIATION_ITERS` (default 3), else
-`CONTINUE`. On `ESCALATE`, stop and hand to a human with the iteration count and the open
+`CONTINUE`. Pass the merged findings JSON array (post-verify, remediation-relevant only) as
+`--findings <file>`, or the open count as `--open N`: the tracker reconciles finding UIDs as
+`FIXED` / `STILL_OPEN` / `NEW` and `ESCALATE`s with reason `stalled` when the open count stops
+falling, before the cap. On `ESCALATE`, stop and hand to a human with the iteration count and the open
 findings (`.claude/references/orchestration-gates.md` → `failure_stop_gate`).

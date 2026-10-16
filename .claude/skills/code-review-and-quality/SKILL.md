@@ -21,8 +21,8 @@ Adversarial review of a PR or diff that did not come through `implement` (implem
 
 1. Get the diff (`gh pr diff <n>` or `git diff <base>...HEAD`) and the changed-file set; exclude files that were already dirty before the change.
 2. Read `.claude/references/implement-review-lanes.md` and pick lanes from its **Outside implement** column: `compliance-reviewer` always; `silent-failure-hunter` when the trigger regex matches; `test-reviewer` when public behavior changed; `architecture-reviewer` on a new slice, boundary, or cross-project call.
-3. Dispatch them per **Dispatch rules** (inline when the Agent tool is unavailable), run the **Defect-class sweep** on every confirmed finding, and apply **Lane accounting** before aggregating.
-4. Emit the findings table and fenced JSON per `.claude/references/review-finding-schema.md`, with the lane roster.
+3. Dispatch them per **Dispatch rules** (inline when the Agent tool is unavailable) with deterministic `candidates.json` collected first, run `review-coverage.sh` on each lane result, run the **Defect-class sweep** on every confirmed finding, and apply **Lane accounting** before aggregating. `finding-verifier` is implement-only (HIGH/MAX).
+4. Emit the findings table and fenced JSON per `.claude/references/review-finding-schema.md`, with the lane roster. On a full-lane PASS, write the push receipt: `bash scripts/review-receipt.sh write --lanes <csv> --rigor <level> --verdict PASS`.
 
 ## Verification
 

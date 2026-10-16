@@ -40,9 +40,10 @@ The gate name is the contract. When skills, agents, and hooks reference a gate t
 
 **When evaluated:** Whenever an unrecoverable failure occurs — the remediation circuit-breaker trips (see below), scope expansion beyond the change manifest that the engineer has not approved, missing harness tooling, irreproducible test failures, or any safety violation (secret about to be committed, deletion of an unrelated file).
 
-**Remediation circuit-breaker.** Track each fix loop with `scripts/workflow-artifact.sh remediation <uuid> <trigger> [--score N]`. It increments `results.remediation.<trigger>.iterations` and prints `ESCALATE` when either condition holds, else `CONTINUE`:
+**Remediation circuit-breaker.** Track each fix loop with `scripts/workflow-artifact.sh remediation <uuid> <trigger> [--score N | --open N | --findings <file>]`. It increments `results.remediation.<trigger>.iterations` and prints `ESCALATE` when either condition holds, else `CONTINUE`:
 - **Iteration cap:** iterations reach `MTK_MAX_REMEDIATION_ITERS` (default 3) on the same trigger.
 - **Plateau:** the latest `--score` did not improve on the previous one (`score[-1] <= score[-2]`) — automated remediation has stopped converging, even before the cap.
+- **Stall:** `--open N` (open findings; lower is better) keeps its own `opens` series, and the call escalates with reason `stalled` when the last two did not decrease. `--findings <file>` computes N itself from the findings' UIDs and reconciles `FIXED` / `STILL_OPEN` / `NEW` against the previous iteration. Review loops pass one of these (`implement-review-lanes.md` → Iteration cap).
 
 On `ESCALATE`, stop the loop, record `failure_stop_gate fail`, and hand the trigger + iteration count + remaining findings to a human. The subcommand emits a `remediation_escalated` event for the audit trail.
 

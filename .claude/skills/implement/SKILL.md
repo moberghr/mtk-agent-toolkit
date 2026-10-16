@@ -248,6 +248,8 @@ not re-open it.
 
 Run `verification-before-completion` first, then **read `.claude/references/implement-review-lanes.md`** — the single source for the lane set at each rigor level, the dispatch inputs, the silent-failure trigger, the defect-class sweep, and lane accounting (`ABSTAINED`, `NO_RESPONSE`, by-policy). Stage 1 `compliance-reviewer` checks against the sealed spec; re-check the seal with `verify-seal` — a STALE seal **refuses completion**. Stage 2 runs only after Stage 1 has no Critical findings.
 
+Per that reference: collect deterministic `candidates.json` first (`compliance-reviewer` disposes of each); `review-input --record` at dispatch and `--check` before aggregating; `review-coverage.sh` on every lane result (incomplete ⇒ `ABSTAINED`); `finding-verifier` stage at HIGH/MAX only; on an overall PASS, `review-receipt.sh write --lanes <csv> --rigor <level> --verdict PASS`.
+
 ## Phase 5: Fix Review Findings
 
 Fix every critical issue and every warning unless you record a one-line waiver with a reason, then:
@@ -256,7 +258,7 @@ Fix every critical issue and every warning unless you record a one-line waiver w
 - run the pre-commit review list if present
 - re-run the necessary reviewer(s)
 
-Maximum 3 review iterations.
+Maximum 3 review iterations; pass the merged findings to `remediation … --findings` so a stall escalates early (`implement-review-lanes.md` → Iteration cap).
 
 ## Phase 6: Cleanup
 
