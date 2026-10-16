@@ -1,17 +1,27 @@
 #!/usr/bin/env bash
-# Git pre-commit hook — runs the MTK deterministic linter on staged changes.
-# Blocks the commit if any critical finding is detected.
-#
-# Installed by /mtk:setup-bootstrap as a symlink from .git/hooks/pre-commit.
-# Bypass with: git commit --no-verify
-
+# mtk-precommit-shim — MTK git pre-commit hook.
 set -euo pipefail
+#
+# A small, stable shim: /mtk:setup-bootstrap copies this file to
+# .git/hooks/pre-commit. It pins no plugin version. On every commit it resolves
+# the current MTK install, so a plugin upgrade or a plugin-cache cleanup never
+# leaves a dangling hook that git silently skips.
+#
+# Resolution order (first one that has hooks/pre-commit-linters.sh wins):
+#   1. $MTK_PLUGIN_ROOT, when set (used alone; no fallback).
+#   2. The newest installed version under
+#      ${CLAUDE_CONFIG_DIR:-~/.claude}/plugins/cache/*/mtk/*/ — versions the
+#      plugin manager marked `.orphaned_at` are used only when nothing else is left.
+#   3. The MTK checkout this file itself lives in (a local clone or a symlink).
+# No linter found: one-line notice, exit 0.
+#
+# Blocking by default: a critical finding (or a linter that fails to run) stops
+# the commit with exit 1. MTK_PRECOMMIT_BLOCK=0 makes both advisory — reported,
+# commit proceeds. Bypass entirely with: git commit --no-verify
+#
+# git runs this hook with cwd = the repo toplevel; the linter diffs that working
+# directory while loading its pattern packs from the resolved plugin root.
 
-# Resolve the linter relative to THIS hook's real location, not the repo being
-# committed to. Bootstrap installs .git/hooks/pre-commit as a symlink into the
-# plugin checkout, so the linter lives next to the resolved script — never in
-# the target repo. git runs this hook with cwd = the target repo toplevel, and
-# the linter diffs that working directory while loading patterns from the plugin.
 mtk_realpath() {
   if command -v python3 >/dev/null 2>&1; then
     python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$1"
@@ -29,38 +39,69 @@ mtk_realpath() {
   printf '%s/%s\n' "$(cd "$(dirname "$p")" && pwd)" "$(basename "$p")"
 }
 
-SELF="$(mtk_realpath "$0")"
-LINTER="$(cd "$(dirname "$SELF")/.." && pwd)/pre-commit-linters.sh"
+# Newest cached MTK version that ships the linter. Prints a root, or nothing.
+mtk_newest_cached_root() {
+  local cache="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache" tab d rank
+  [ -d "$cache" ] || return 0
+  tab="$(printf '\t')"
+  for d in "$cache"/*/mtk/*/; do
+    [ -f "${d}hooks/pre-commit-linters.sh" ] || continue
+    rank=1
+    [ -e "${d}.orphaned_at" ] && rank=0
+    printf '%s\t%s\t%s\n' "$rank" "$(basename "$d")" "${d%/}"
+  done | sort -t "$tab" -k1,1n -k2,2V | tail -1 | cut -f3
+}
 
-# If the linter genuinely can't be found, warn once and let the commit proceed.
-# A missing tooling dependency must never silently pass unnoticed, nor block a
-# commit — the AI review remains the enforcing gate.
-if [ ! -x "$LINTER" ]; then
-  printf 'MTK pre-commit: linter not found at %s — skipping deterministic lint.\n' "$LINTER" >&2
+ROOT=""
+if [ -n "${MTK_PLUGIN_ROOT:-}" ]; then
+  ROOT="$MTK_PLUGIN_ROOT"
+else
+  ROOT="$(mtk_newest_cached_root)"
+  if [ -z "$ROOT" ]; then
+    SELF_ROOT="$(cd "$(dirname "$(mtk_realpath "$0")")/../.." && pwd)"
+    [ -f "$SELF_ROOT/hooks/pre-commit-linters.sh" ] && ROOT="$SELF_ROOT"
+  fi
+fi
+
+LINTER="${ROOT:+$ROOT/hooks/pre-commit-linters.sh}"
+if [ -z "$LINTER" ] || [ ! -f "$LINTER" ]; then
+  printf 'MTK pre-commit: linter not found%s — skipping deterministic lint (set MTK_PLUGIN_ROOT, or reinstall the MTK plugin).\n' \
+    "${LINTER:+ at $LINTER}" >&2
   exit 0
 fi
 
-# Run the linter in JSON mode and capture output. A broken linter invocation is
-# safer as a blocked commit than a silent pass.
-if ! RESULT="$("$LINTER" --cached 2>&1)"; then
-  printf '\n'
-  printf '==============================================================\n'
-  printf '  MTK pre-commit: linter failed to run — commit blocked\n'
-  printf '==============================================================\n\n'
-  printf '%s\n' "$RESULT"
-  printf '\nFix the linter contract above, or bypass with: git commit --no-verify\n'
-  exit 1
+BLOCK="${MTK_PRECOMMIT_BLOCK:-1}"
+
+if ! RESULT="$(bash "$LINTER" --cached 2>&1)"; then
+  printf '\nMTK pre-commit: linter failed to run:\n%s\n' "$RESULT" >&2
+  if [ "$BLOCK" != "0" ]; then
+    printf 'Commit blocked. Fix the linter, set MTK_PRECOMMIT_BLOCK=0 to make this advisory, or bypass with: git commit --no-verify\n' >&2
+    exit 1
+  fi
+  printf 'Commit allowed (MTK_PRECOMMIT_BLOCK=0).\n' >&2
+  exit 0
 fi
 
-# Parse the verdict from JSON output.
-# Uses parameter expansion to avoid depending on jq.
-if printf '%s' "$RESULT" | grep -q '"verdict":"NEEDS_CHANGES"'; then
-  printf '\n'
-  printf '==============================================================\n'
-  printf '  MTK pre-commit: critical finding(s) detected — commit blocked\n'
-  printf '==============================================================\n\n'
+# A case match on the captured output, not `printf | grep -q` (SIGPIPE under pipefail, S3.17).
+case "$RESULT" in
+  *'"verdict":"NEEDS_CHANGES"'*) FINDINGS=1 ;;
+  *) FINDINGS=0 ;;
+esac
+
+if [ "$FINDINGS" = "1" ]; then
+  {
+    printf '\n'
+    printf '==============================================================\n'
+    printf '  MTK pre-commit: critical finding(s) detected\n'
+    printf '==============================================================\n\n'
+  } >&2
   # Re-run in human mode for readable output.
-  "$LINTER" --cached --human 2>/dev/null || true
-  printf '\nFix the issues above, or bypass with: git commit --no-verify\n'
-  exit 1
+  bash "$LINTER" --cached --human >&2 2>/dev/null || true
+  if [ "$BLOCK" != "0" ]; then
+    printf '\nCommit blocked. Fix the issues above, set MTK_PRECOMMIT_BLOCK=0 to make findings advisory, or bypass with: git commit --no-verify\n' >&2
+    exit 1
+  fi
+  printf '\nCommit allowed — findings are advisory (MTK_PRECOMMIT_BLOCK=0).\n' >&2
 fi
+
+exit 0

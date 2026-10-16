@@ -120,7 +120,7 @@ Full reference docs (read on-demand by skills and review agents):
 - `.claude/references/architecture-principles.md` — Architecture principles
 - `.claude/references/product.md` — Product purpose, users, key flows, non-goals
 - `.claude/references/decisions.md` — ADR-lite decision log (append-only)
-- `.claude/references/security-checklist.md` — Security checklist (shared)
+- `.claude/references/domain-finance.md` — Finance domain supplement, incl. the security baseline (when `.claude/domains` lists `finance`)
 - Stack-specific references listed in the `tech-stack-{stack}` skill's `## Reference Files` (MTK plugin)
 
 ## Output Style

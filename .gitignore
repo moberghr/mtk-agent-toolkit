@@ -3,7 +3,6 @@
 .mtk/
 .claude/settings.local.json
 .claude/review-config.local.json
-.claude/queue/
 .claude/references.index
 .claude/.mtk-cache/
 .claude/analytics.json
@@ -40,9 +39,6 @@ Icon
 # Project-local linter patterns (each target repo adds its own)
 hooks/linter-patterns/project/*.txt
 
-# Third-party plugin artifacts (local dev only)
-.claude/skills/gitnexus/
-
 # Claude Code native worktrees (local dev only)
 .claude/worktrees/
 
@@ -53,10 +49,6 @@ hooks/linter-patterns/project/*.txt
 .agents/skills/
 .codex/
 
+# Leftover install dir of the removed MCP server; drop this line once no
+# checkout still has it on disk.
 mcp/node_modules
-
-# MCP: the prebuilt bundle and its lockfile ship tracked (S3.12). package-lock.json
-# pins transitive deps for the reproducible `npm ci` in scripts/build-mcp.sh; the
-# bundle is the only runtime artifact. Ignore any other dist output.
-dist/*
-!dist/mtk-mcp-server.cjs

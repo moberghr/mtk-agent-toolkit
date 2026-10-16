@@ -1,0 +1,1 @@
+psql -c DROP TABLE users

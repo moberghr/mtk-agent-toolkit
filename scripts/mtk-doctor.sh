@@ -7,25 +7,46 @@ set -euo pipefail
 # The project being diagnosed is where the doctor was INVOKED, which in a plugin
 # install is not the script's own tree. Capture it before the cd below.
 DOCTOR_PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$PWD}"
+DOCTOR_PROJECT_DIR="$(cd "$DOCTOR_PROJECT_DIR" 2>/dev/null && pwd)" || DOCTOR_PROJECT_DIR="$PWD"
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$ROOT_DIR"
+
+# Two trees, two kinds of check. Toolkit checks (manifest, skills, agents, hook
+# scripts, checksums, validate-toolkit) describe the MTK install and run from
+# ROOT_DIR. Project checks (constitution, settings.json permissions and hooks,
+# .gitignore, lessons, context baseline, environment fit, tech stack) describe the
+# repo the doctor was run for and run from DOCTOR_PROJECT_DIR. In this dev
+# checkout the two are the same directory; in a plugin install they are not, and
+# running project checks from ROOT_DIR measured the plugin's own AGENTS.md and
+# settings instead of the repo's. Each section below switches explicitly.
+in_toolkit() { cd "$ROOT_DIR"; }
+in_project() { cd "$DOCTOR_PROJECT_DIR"; }
+in_toolkit
 
 # Args
 JSON=0
 FIX=0
 STRICT=0
+USAGE_MODE=0
 for arg in "$@"; do
   case "$arg" in
     --json) JSON=1 ;;
     --fix) FIX=1 ;;
     --strict) STRICT=1 ;;
+    --usage) USAGE_MODE=1 ;;
     -h|--help)
       cat <<USAGE
-Usage: mtk-doctor [--json] [--fix] [--strict]
+Usage: mtk-doctor [--json] [--fix] [--strict] [--usage]
 
   --json    Machine-readable output for CI dashboards
-  --fix     Auto-fix safe items (gitignore additions, chmod +x). Never fixes FAILs.
+  --fix     Auto-fix safe items: gitignore additions, chmod +x, moving the
+            invalid permissions.allowedTools key into permissions.allow, and
+            merging missing permission-baseline deny/ask rules into
+            .claude/settings.json. Any other FAIL is reported, never auto-fixed.
   --strict  Exit non-zero on WARN as well as FAIL
+  --usage   Report raw usage numbers instead of health checks: the
+            .claude/analytics.json counters (n = sessions), spec/plan/lesson
+            counts, learnings.sh decision-origin totals, and eval cases. No
+            thresholds, no verdicts. Read-only; combine with --json.
 USAGE
       exit 0
       ;;
@@ -33,18 +54,121 @@ USAGE
   esac
 done
 
-# Deprecated model IDs — update when Anthropic deprecates more.
+# ──────────────────────────────────────────────
+# USAGE MODE (--usage) — raw numbers, no thresholds
+# ──────────────────────────────────────────────
+# Healthy-range thresholds were never calibrated against real usage, so this
+# mode reports counts with their n and leaves the judgement to the reader. Read-only: it never writes a file.
+if [ "$USAGE_MODE" -eq 1 ]; then
+  if ! command -v python3 >/dev/null 2>&1; then
+    printf 'mtk-doctor --usage needs python3\n' >&2; exit 2
+  fi
+  in_project
+  METRICS_JSON=""
+  if [ -f "$ROOT_DIR/scripts/learnings.sh" ]; then
+    METRICS_JSON="$(bash "$ROOT_DIR/scripts/learnings.sh" metrics 2>/dev/null || true)"
+  fi
+  EVALS_DIR=""
+  [ -d "$ROOT_DIR/evals" ] && EVALS_DIR="$ROOT_DIR/evals"
+  python3 - "$JSON" "$METRICS_JSON" "$EVALS_DIR" <<'PY'
+import glob, json, os, re, sys
+sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3
+as_json, metrics_raw, evals_dir = sys.argv[1] == "1", sys.argv[2], sys.argv[3]
+out = {}
+a_path = ".claude/analytics.json"
+if not os.path.isfile(a_path):
+    out["analytics"] = {"status": "absent", "detail": "created by the Stop recorder after the first session"}
+else:
+    try:
+        with open(a_path, encoding="utf-8") as fh:
+            a = json.load(fh)
+        out["analytics"] = {"status": "ok", "n_sessions": a.get("sessions", 0)}
+        out["analytics"].update({k: v for k, v in a.items() if k != "sessions"})
+    except (OSError, ValueError) as e:
+        out["analytics"] = {"status": "unparseable", "detail": str(e)}
+lessons = 0
+if os.path.isfile("tasks/lessons.md"):
+    with open("tasks/lessons.md", encoding="utf-8", errors="replace") as fh:
+        lessons = sum(1 for line in fh if line.startswith("## "))
+out["artifacts"] = {"specs": len(glob.glob("docs/specs/*.md")), "plans": len(glob.glob("docs/plans/*.md")),
+                    "lessons_md_entries": lessons}
+if metrics_raw.strip():
+    try:
+        m = json.loads(metrics_raw)
+        t = m.get("totals", {})
+        n = sum(t.get(k, 0) for k in ("claude-recommended-approved", "claude-recommended-modified",
+                                      "claude-recommended-rejected"))
+        out["decision_origin"] = {"window_days": m.get("window_days"), "totals": t,
+                                  "n_recommendations": n, "pi": m.get("pi")}
+    except ValueError:
+        out["decision_origin"] = {"status": "unparseable"}
+else:
+    out["decision_origin"] = {"status": "unavailable"}
+if evals_dir:
+    tags = {}
+    cases = glob.glob(os.path.join(evals_dir, "*", "prompt.md"))
+    for c in cases:
+        with open(c, encoding="utf-8", errors="replace") as fh:
+            front = fh.read(4000).split("\n---", 1)[0]
+        for tag in sorted(set(re.findall(r"\b(smoke|core)\b", front))):
+            tags[tag] = tags.get(tag, 0) + 1
+    ev = {"cases": len(cases), "tags": tags}
+    runs = sorted(glob.glob(os.path.join(evals_dir, "results", "*", "aggregate-result.json")), key=os.path.getmtime)
+    if runs:
+        try:
+            with open(runs[-1], encoding="utf-8") as fh:
+                r = json.load(fh)
+            g = r.get("aggregates", {})
+            ev["latest_run"] = {"file": os.path.relpath(runs[-1], evals_dir), "overallScore": g.get("overallScore"),
+                                "casesPassed": g.get("casesPassed"), "casesTotal": g.get("casesTotal"),
+                                "meanDelta": g.get("meanDelta"), "partial": r.get("partial", g.get("partial"))}
+        except (OSError, ValueError):
+            ev["latest_run"] = {"status": "unparseable"}
+    out["evals"] = ev
+if as_json:
+    print(json.dumps(out, sort_keys=True))
+else:
+    for section, body in out.items():
+        print(section.upper())
+        for k, v in body.items():
+            print(f"  {k}: {json.dumps(v) if isinstance(v, (dict, list)) else v}")
+        print()
+    print("Raw counts with their n. A ratio over fewer than ~20 sessions or ~10 recommendations is noise.")
+PY
+  exit 0
+fi
+
+# Deprecated or retired model IDs (prefix match on an agent's `model:` value) —
+# update when Anthropic deprecates more. Source: the Anthropic models overview
+# (deprecated: Opus 4 / 4.1, Sonnet 4, Haiku 3; every other 3.x and 2.x model is
+# retired). Opus 4.5-4.8, Sonnet 4.5/4.6 and Haiku 4.5 are previous-generation
+# but still served, so they are listed as superseded (WARN), not deprecated (FAIL).
 # Note: agents pin aliases (model: opus|sonnet|haiku|fable), not version IDs. On the
-# Anthropic API an alias resolves to the latest in its family (opus -> Opus 5, the
-# current generation; see .claude/references/model-routing.md "Provider tier slots").
-# On Bedrock/Vertex/Foundry the same alias may resolve to an OLDER version; pin
+# Anthropic API an alias resolves to the latest in its family (opus -> Opus 5.5,
+# sonnet -> Sonnet 5.5, haiku -> Haiku 5.5, fable -> Fable 5.1; see
+# .claude/references/model-routing.md "Provider tier slots"). On Bedrock, Google
+# Cloud, Foundry and Claude Platform on AWS the same alias may resolve to an OLDER
+# version (haiku -> Haiku 4.5, sonnet -> Sonnet 4.5/4.6); pin
 # ANTHROPIC_DEFAULT_OPUS_MODEL / _SONNET_MODEL / _HAIKU_MODEL to a full ID there.
 DEPRECATED_MODELS=(
-  "claude-3-opus"
-  "claude-3-sonnet"
-  "claude-3-haiku"
+  "claude-3-"
+  "claude-3.5-"
   "claude-2"
   "claude-instant"
+  "claude-opus-4-0"
+  "claude-opus-4-1"
+  "claude-opus-4-2025"
+  "claude-sonnet-4-0"
+  "claude-sonnet-4-2025"
+)
+SUPERSEDED_MODELS=(
+  "claude-opus-4-5"
+  "claude-opus-4-6"
+  "claude-opus-4-7"
+  "claude-opus-4-8"
+  "claude-sonnet-4-5"
+  "claude-sonnet-4-6"
+  "claude-haiku-4-5"
 )
 
 # Result aggregation
@@ -89,6 +213,7 @@ else
 fi
 
 # Target-repo provenance file (single source of truth for installed version).
+in_project
 if [ -f ".claude/mtk-version.json" ]; then
   record PASS core ".claude/mtk-version.json present"
 fi
@@ -151,6 +276,7 @@ fi
 # ──────────────────────────────────────────────
 # COMPONENTS
 # ──────────────────────────────────────────────
+in_toolkit
 # Manifest version sync
 MANIFEST_VERSION=""
 if [ -n "$DOCTOR_MANIFEST" ]; then
@@ -203,13 +329,20 @@ fi
 
 # Deprecated models in agent frontmatter
 DEPRECATED_HITS=()
+SUPERSEDED_HITS=()
 while IFS= read -r agent_md; do
+  agent_model="$(awk '/^model:/ { sub(/^model:[[:space:]]*/, ""); print; exit }' "$agent_md" 2>/dev/null || true)"
+  [ -n "$agent_model" ] || continue
   for model in "${DEPRECATED_MODELS[@]}"; do
-    if grep -q "^model: *${model}" "$agent_md" 2>/dev/null; then
-      DEPRECATED_HITS+=("$agent_md → $model")
-    fi
+    case "$agent_model" in "$model"*) DEPRECATED_HITS+=("$agent_md → $agent_model") ;; esac
+  done
+  for model in "${SUPERSEDED_MODELS[@]}"; do
+    case "$agent_model" in "$model"*) SUPERSEDED_HITS+=("$agent_md → $agent_model") ;; esac
   done
 done < <(find .claude/agents -name '*.md' -type f 2>/dev/null)
+for h in "${SUPERSEDED_HITS[@]+"${SUPERSEDED_HITS[@]}"}"; do
+  record WARN components "previous-generation model pinned" "$h — still served, but the alias (opus|sonnet|haiku|fable) follows the current generation"
+done
 
 if [ "${#DEPRECATED_HITS[@]}" -eq 0 ]; then
   record PASS components "no deprecated model IDs" "checked ${#DEPRECATED_MODELS[@]} known-deprecated IDs; aliases resolve to latest on Anthropic API — pin ANTHROPIC_DEFAULT_*_MODEL on Bedrock/Vertex"
@@ -222,11 +355,79 @@ fi
 # ──────────────────────────────────────────────
 # HOOKS
 # ──────────────────────────────────────────────
-# All registered hook scripts in .claude/settings.json must exist and be executable.
-KNOWN_EVENTS="SessionStart PreToolUse PostToolUse PreCompact PostCompact UserPromptSubmit Stop SessionEnd Notification InstructionsLoaded SubagentStart SubagentStop TaskCompleted"
+# All registered hook scripts in the PROJECT's .claude/settings.json must exist
+# and be executable.
+in_project
+# The documented Claude Code hook events (code.claude.com/docs/en/hooks, checked
+# Oct 2026). A key outside this list never fires, so a typo is a dead hook.
+KNOWN_EVENTS="SessionStart Setup UserPromptSubmit UserPromptExpansion PreToolUse PermissionRequest PermissionDenied PostToolUse PostToolUseFailure PostToolBatch Notification MessageDisplay SubagentStart SubagentStop TaskCreated TaskCompleted Stop StopFailure TeammateIdle InstructionsLoaded ConfigChange CwdChanged DirectoryAdded FileChanged WorktreeCreate WorktreeRemove PreCompact PostCompact PreModelSwitch PostModelSwitch Elicitation ElicitationResult SessionEnd"
+
+# $CLAUDE_PLUGIN_ROOT is set only for hooks a plugin declares in its own
+# hooks/hooks.json. In a project's settings file it expands to the empty string,
+# so `bash $CLAUDE_PLUGIN_ROOT/hooks/x.sh` runs as `bash /hooks/x.sh` and fails
+# on every matching tool call ("No such file or directory"). Earlier bootstraps
+# wrote exactly these entries; the plugin already wires the same hooks itself, so
+# removing them loses nothing. --fix strips them (other hooks are kept).
+for sf in .claude/settings.json .claude/settings.local.json; do
+  [ -f "$sf" ] || continue
+  command -v python3 >/dev/null 2>&1 || break
+  pr_mode=check; [ "$FIX" -eq 1 ] && pr_mode=fix
+  pr_out="$(python3 - "$sf" "$pr_mode" <<'PY' 2>/dev/null || true
+import json, os, sys, tempfile
+sys.stdout.reconfigure(newline="\n")
+path, mode = sys.argv[1], sys.argv[2]
+try:
+    doc = json.load(open(path))
+except (OSError, ValueError):
+    sys.exit(0)
+hooks = doc.get("hooks") if isinstance(doc, dict) else None
+if not isinstance(hooks, dict):
+    sys.exit(0)
+bad = []
+for event, groups in list(hooks.items()):
+    if not isinstance(groups, list):
+        continue
+    kept_groups = []
+    for g in groups:
+        hs = g.get("hooks", []) if isinstance(g, dict) else []
+        kept = [h for h in hs if "CLAUDE_PLUGIN_ROOT" not in str(h.get("command", ""))]
+        bad += ["%s: %s" % (event, h.get("command", "")) for h in hs if h not in kept]
+        if kept:
+            g["hooks"] = kept
+            kept_groups.append(g)
+    if kept_groups:
+        hooks[event] = kept_groups
+    else:
+        del hooks[event]
+if not bad:
+    sys.exit(0)
+if mode == "fix":
+    if not hooks:
+        del doc["hooks"]
+    target = os.path.realpath(path)
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(target))
+    with os.fdopen(fd, "w") as f:
+        json.dump(doc, f, indent=2)
+        f.write("\n")
+    os.chmod(tmp, os.stat(target).st_mode & 0o777)
+    os.replace(tmp, target)
+    print("fixed")
+for b in bad:
+    print(b)
+PY
+)"
+  [ -n "$pr_out" ] || continue
+  if [ "$(awk 'NR==1' <<<"$pr_out")" = "fixed" ]; then
+    record PASS hooks "removed broken \$CLAUDE_PLUGIN_ROOT hooks from $sf" "$(awk 'NR>1' <<<"$pr_out" | tr '\n' ';' | sed 's/;$//')"
+  else
+    record FAIL hooks "$sf wires hooks through \$CLAUDE_PLUGIN_ROOT" "$(tr '\n' ';' <<<"$pr_out" | sed 's/;$//') — that variable is empty outside plugin hooks, so these run as /hooks/… and fail on every call; the plugin already wires them. Run with --fix to remove them."
+  fi
+done
 
 while IFS= read -r line; do
   cmd="$(printf '%s' "$line" | sed 's/^.*"command": *"//; s/".*$//')"
+  # Reported by the $CLAUDE_PLUGIN_ROOT check above; never resolvable here.
+  case "$cmd" in *CLAUDE_PLUGIN_ROOT*) continue ;; esac
   # Strip $ARGUMENTS and similar suffixes
   script="$(printf '%s' "$cmd" | awk '{print $1}')"
   # `bash $CLAUDE_PLUGIN_ROOT/hooks/x.sh` is the form setup-bootstrap writes into
@@ -240,8 +441,8 @@ while IFS= read -r line; do
   # Hook commands are anchored on $CLAUDE_PROJECT_DIR here and on
   # $CLAUDE_PLUGIN_ROOT in plugin-installed repos; resolve both so the existence
   # and +x checks below run against a real path.
-  script="${script//\$CLAUDE_PROJECT_DIR/$ROOT_DIR}"
-  script="${script//\$\{CLAUDE_PROJECT_DIR\}/$ROOT_DIR}"
+  script="${script//\$CLAUDE_PROJECT_DIR/$DOCTOR_PROJECT_DIR}"
+  script="${script//\$\{CLAUDE_PROJECT_DIR\}/$DOCTOR_PROJECT_DIR}"
   # $CLAUDE_PLUGIN_ROOT is only authoritative when the environment supplies it.
   # This checkout is a reasonable guess otherwise — but remember it was a guess,
   # because "I guessed and missed" must not be reported as "the hook is missing".
@@ -258,7 +459,7 @@ while IFS= read -r line; do
   case "$script" in
     *'$'*) record WARN hooks "hook path has an unresolved variable" "$cmd"; continue ;;
   esac
-  case "$script" in /*) ;; *) script="$ROOT_DIR/$script" ;; esac
+  case "$script" in /*) ;; *) script="$DOCTOR_PROJECT_DIR/$script" ;; esac
   if [ ! -f "$script" ]; then
     if [ "$plugin_guessed" -eq 1 ]; then
       record WARN hooks "hook path unresolvable" "$cmd — \$CLAUDE_PLUGIN_ROOT is unset and the hook is not under $ROOT_DIR either; set it to check plugin-installed hooks"
@@ -274,17 +475,115 @@ while IFS= read -r line; do
   fi
 done < <(grep -E '"command": *"[^"]*hooks/' .claude/settings.json 2>/dev/null || true)
 
-# Check that hook event names are valid
+# Check that hook event names are valid: the keys of the `hooks` object only, so
+# a capitalised key elsewhere in the file is not mistaken for an event.
+HOOK_EVENT_NAMES=""
+if [ -f .claude/settings.json ] && command -v python3 >/dev/null 2>&1; then
+  HOOK_EVENT_NAMES="$(python3 - .claude/settings.json <<'PY' 2>/dev/null || true
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
+import json
+hooks = json.load(open(sys.argv[1])).get("hooks", {})
+for k in sorted(hooks if isinstance(hooks, dict) else {}):
+    print(k)
+PY
+)"
+fi
 while IFS= read -r event; do
-  if ! printf ' %s ' "$KNOWN_EVENTS" | grep -q " $event "; then
-    record WARN hooks "unknown hook event" "$event"
-  fi
-done < <(grep -oE '"(SessionStart|PreToolUse|PostToolUse|PreCompact|PostCompact|UserPromptSubmit|Stop|SessionEnd|Notification|InstructionsLoaded|SubagentStart|SubagentStop|TaskCompleted|[A-Z][a-zA-Z]+)":' .claude/settings.json 2>/dev/null \
-        | sed 's/[":]//g' | sort -u)
+  [ -n "$event" ] || continue
+  case " $KNOWN_EVENTS " in
+    *" $event "*) ;;
+    *) record WARN hooks "unknown hook event" "$event" ;;
+  esac
+done <<< "$HOOK_EVENT_NAMES"
 
-record PASS hooks "settings.json hook block validated"
+SETTINGS_PARSE_OK=1
+if [ -f .claude/settings.json ] && command -v python3 >/dev/null 2>&1; then
+  python3 -c 'import json,sys; json.load(open(sys.argv[1]))' .claude/settings.json >/dev/null 2>&1 || SETTINGS_PARSE_OK=0
+fi
+if [ "$SETTINGS_PARSE_OK" -eq 1 ]; then
+  record PASS hooks "settings.json hook block validated"
+else
+  record FAIL hooks ".claude/settings.json is not valid JSON" "Claude Code cannot load it, so none of its hooks, permissions or env apply — fix the syntax (python3 -m json.tool .claude/settings.json shows where)"
+fi
+
+# Claude Code's permission keys are permissions.allow / deny / ask. There is no
+# permissions.allowedTools (that is the --allowedTools CLI flag), so a list
+# written under it is silently ignored and every command it meant to allow still
+# prompts. Earlier setup-bootstrap runs wrote exactly that key. --fix migrates it.
+DOCTOR_MIGRATE="$ROOT_DIR/scripts/migrate-settings-permissions.sh"
+[ -f "$DOCTOR_MIGRATE" ] || DOCTOR_MIGRATE="${CLAUDE_PLUGIN_ROOT:-.}/scripts/migrate-settings-permissions.sh"
+# The migration moves only narrow build/test/lint entries (they were never in
+# effect, so moving a broad one would silently switch it on). Exit codes of
+# --check: 0 nothing convertible (inert leftovers are listed), 1 convertible
+# entries remain, 2 cannot check. Only 1 is "uses allowedTools".
+for sf in .claude/settings.json .claude/settings.local.json; do
+  [ -f "$sf" ] || continue
+  grep -q '"allowedTools"' "$sf" 2>/dev/null || continue
+  if [ ! -f "$DOCTOR_MIGRATE" ]; then
+    record WARN permissions "$sf: allowedTools not checked" "migrate-settings-permissions.sh not found (looked in $ROOT_DIR/scripts and \${CLAUDE_PLUGIN_ROOT}/scripts)"
+    continue
+  fi
+  mig_rc=0
+  mig_out="$(bash "$DOCTOR_MIGRATE" --check "$sf" 2>&1)" || mig_rc=$?
+  if [ "$mig_rc" -eq 1 ] && [ "$FIX" -eq 1 ]; then
+    fix_rc=0
+    fix_out="$(bash "$DOCTOR_MIGRATE" "$sf" 2>&1)" || fix_rc=$?
+    if [ "$fix_rc" -eq 0 ]; then
+      record PASS permissions "$sf migrated" "$(grep -c '^activated: ' <<<"$fix_out" || true) narrow permissions.allowedTools entr(y/ies) activated in permissions.allow: $(grep '^activated: ' <<<"$fix_out" | sed 's/^activated: [^:]*: //' | tr '\n' ' ')"
+      mig_rc=0
+      mig_out="$fix_out"
+    else
+      record FAIL permissions "$sf migration failed" "migrate-settings-permissions.sh exited $fix_rc: $(awk 'NR==1' <<<"$fix_out")"
+      continue
+    fi
+  fi
+  case "$mig_rc" in
+    0) ;;
+    1) record FAIL permissions "$sf uses permissions.allowedTools" "Claude Code ignores that key, so these narrow entries never apply: $(grep '^convertible: ' <<<"$mig_out" | sed 's/^convertible: [^:]*: //' | tr '\n' ' ')— run with --fix, or: bash \${CLAUDE_PLUGIN_ROOT}/scripts/migrate-settings-permissions.sh $sf"
+       continue ;;
+    *) record WARN permissions "$sf: allowedTools check failed" "migrate-settings-permissions.sh --check exited $mig_rc: $(awk 'NR==1' <<<"$mig_out")"
+       continue ;;
+  esac
+  inert="$(grep 'needs a manual decision' <<<"$mig_out" | sed -E 's/^left inert: [^:]*: (.*) needs a manual decision.*/\1/' | tr '\n' ' ' || true)"
+  if [ -n "$inert" ]; then
+    record WARN permissions "$sf has inert broad permissions.allowedTools entries" "never in effect and not migrated automatically: ${inert}— move each to permissions.allow only if you want it on, then delete permissions.allowedTools"
+  fi
+done
+
+# Permission baseline (.claude/references/settings-baseline.md): the native
+# deny/ask rules that replaced read-guard.sh's secret-file denies. Repos
+# bootstrapped before 8.1.0 carry none of them, so a secret file is readable
+# there with no guard at all. WARN listing what is missing; --fix unions the
+# baseline into .claude/settings.json with merge-settings.sh (existing keys and
+# rules are kept).
+DOCTOR_BASELINE="$ROOT_DIR/scripts/settings-baseline.sh"
+[ -f "$DOCTOR_BASELINE" ] || DOCTOR_BASELINE="${CLAUDE_PLUGIN_ROOT:-.}/scripts/settings-baseline.sh"
+if [ ! -f "$DOCTOR_BASELINE" ]; then
+  record WARN permissions "permission baseline not checked" "settings-baseline.sh not found (looked in $ROOT_DIR/scripts and \${CLAUDE_PLUGIN_ROOT}/scripts)"
+else
+  bl_rc=0
+  bl_out="$(bash "$DOCTOR_BASELINE" --missing .claude/settings.json 2>&1)" || bl_rc=$?
+  if [ "$bl_rc" -eq 1 ] && [ "$FIX" -eq 1 ]; then
+    bl_n="$(grep -c "$(printf '\t')" <<<"$bl_out" || true)"
+    fix_rc=0
+    fix_out="$(bash "$DOCTOR_BASELINE" --merge .claude/settings.json 2>&1)" || fix_rc=$?
+    if [ "$fix_rc" -eq 0 ]; then
+      record PASS permissions "permission baseline merged" "${bl_n} missing deny/ask rule(s) added to .claude/settings.json via merge-settings.sh"
+      bl_rc=0
+      bl_out="$(bash "$DOCTOR_BASELINE" --missing .claude/settings.json 2>&1)" || bl_rc=$?
+    else
+      record FAIL permissions "permission baseline merge failed" "settings-baseline.sh --merge exited $fix_rc: $(awk 'NR==1' <<<"$fix_out")"
+    fi
+  fi
+  case "$bl_rc" in
+    0) record PASS permissions "permission baseline present" "every deny/ask rule in settings-baseline.md is in .claude/settings.json" ;;
+    1) record WARN permissions "missing baseline permission rules" "$(grep -c "$(printf '\t')" <<<"$bl_out" || true) rule(s) absent from .claude/settings.json: $(awk -F'\t' 'NF==2{printf "%s %s; ", $1, $2}' <<<"$bl_out")— run with --fix, or /mtk-setup --refresh to review them" ;;
+    *) record WARN permissions "permission baseline not checked" "settings-baseline.sh --missing exited $bl_rc: $(awk 'NR==1' <<<"$bl_out")" ;;
+  esac
+fi
 
 # All shell scripts in hooks/ must have set -euo pipefail (S3.1)
+in_toolkit
 PIPEFAIL_MISSING=()
 while IFS= read -r sh; do
   if ! head -15 "$sh" | grep -q 'set -euo pipefail'; then
@@ -298,6 +597,32 @@ else
   for s in "${PIPEFAIL_MISSING[@]}"; do
     record FAIL hooks "missing pipefail" "$s — violates S3.1"
   done
+fi
+
+# No hook on the hot path (S3.6): nothing on UserPromptSubmit, and no tool
+# matcher that fires on Read/Grep/Glob or on MCP calls. Each of those runs a
+# process on every prompt or read for advice current models do not need; the
+# runtime diet removed them all, and this keeps one from being re-added. A
+# matcher is judged as the regex Claude Code applies, so `Read|Edit`, `.*` and a
+# missing matcher (match-all) all count.
+# The classifier is shared with validate-toolkit (hooks/lib/hot_path_matchers.py),
+# so the two locks cannot disagree.
+HOT_PATH_LIB="hooks/lib/hot_path_matchers.py"
+if [ -f hooks/hooks.json ] && command -v python3 >/dev/null 2>&1; then
+  if [ ! -f "$HOT_PATH_LIB" ]; then
+    record WARN hooks "hot-path check skipped" "$HOT_PATH_LIB not found in $ROOT_DIR"
+  else
+    hp_rc=0
+    HOT_PATH="$(python3 "$HOT_PATH_LIB" hooks/hooks.json 2>&1)" || hp_rc=$?
+    if [ "$hp_rc" -eq 0 ]; then
+      record PASS hooks "no hot-path hooks registered" "hooks/hooks.json has no UserPromptSubmit hook and no Read/Grep/Glob/MCP matcher"
+    else
+      while IFS=$'\t' read -r where why; do
+        [ -n "$where" ] || continue
+        record FAIL hooks "hot-path hook registered" "${where} — ${why}; hooks/hooks.json must keep the read path, MCP calls and prompts hook-free (S3.6)"
+      done <<< "$HOT_PATH"
+    fi
+  fi
 fi
 
 # ──────────────────────────────────────────────
@@ -335,15 +660,13 @@ fi
 # Runtime-referenced MTK files resolve somewhere along the documented order
 # (.claude/references/mtk-file-resolution.md): MTK_HELPER_ROOT → CLAUDE_PLUGIN_ROOT
 # → this tree → the project → newest plugin-cache copy. Skills name these files
-# by path mid-run; a 2026-09 field run (beacon) discovered four of them missing
+# by path mid-run; a 2026-09 field run discovered four of them missing
 # only when a phase tried to read them, and its scripts' inline resolvers
 # (`${CLAUDE_PLUGIN_ROOT:-.}/scripts/…`) never look in the plugin cache at all.
 # FAIL when a file resolves nowhere; WARN when it resolves ONLY by cache search,
 # because then every inline resolver in the skills still misses it.
 REFERENCED_FILES=(
-  .claude/references/security-checklist.md
-  .claude/references/testing-patterns.md
-  .claude/references/performance-checklist.md
+  .claude/references/domain-finance.md
   .claude/references/mtk-file-resolution.md
   .claude/review-config.json
   .claude/schemas/handoff.schema.json
@@ -383,6 +706,7 @@ else
 fi
 
 # .gitignore coverage
+in_project
 GITIGNORE_MISSING=()
 GITIGNORE_REQUIRED=(
   ".claude/settings.local.json"
@@ -408,6 +732,7 @@ else
 fi
 
 # Rule enforcement map — which rules are load-bearing and which are hope.
+in_toolkit
 # WARN on broken refs (a rule naming an enforcer that does not exist reads as
 # enforced and is not) and on undocumented hooks (an enforcer nothing
 # documents is the same drift from the other side).
@@ -430,17 +755,18 @@ fi
 
 # Lesson anchor staleness — a lesson citing a path/symbol that no longer
 # exists reads as authority while pointing at nothing. WARN-only; retirement
-# is the lesson-refresh skill's job and always a human decision.
+# is `lessons refresh`'s job and always a human decision.
 if [ -f tasks/lessons.md ] && [ -f scripts/lesson-anchors.sh ]; then
   ANCHOR_SUMMARY="$(bash scripts/lesson-anchors.sh 2>/dev/null | tail -1 || true)"
   case "$ANCHOR_SUMMARY" in
     *' 0 stale'*) record PASS integrity "lesson anchors live" "$ANCHOR_SUMMARY" ;;
-    *stale*)      record WARN integrity "stale lesson anchors" "$ANCHOR_SUMMARY — run 'bash scripts/lesson-anchors.sh' for locations, then the lesson-refresh skill to triage" ;;
+    *stale*)      record WARN integrity "stale lesson anchors" "$ANCHOR_SUMMARY — run 'bash scripts/lesson-anchors.sh' for locations, then '/lessons refresh' to triage" ;;
     *)            record PASS integrity "lesson anchors unchecked" "no summary from lesson-anchors.sh" ;;
   esac
 fi
 
 # Analytics freshness
+in_project
 if [ -f .claude/analytics.json ]; then
   if find .claude/analytics.json -mtime +30 -print -quit 2>/dev/null | grep -q .; then
     record WARN integrity "analytics.json stale" "older than 30 days — toolkit may be unused"
@@ -452,6 +778,7 @@ else
 fi
 
 # Release checksum manifest (optional) — installed bytes match the release.
+in_toolkit
 if [ -f checksums.sha256 ] && [ -f scripts/generate-checksums.sh ]; then
   CHECKSUM_LINE="$(bash scripts/generate-checksums.sh --verify --quiet 2>/dev/null | grep '^checksums:' | tail -1 || true)"
   if printf '%s' "$CHECKSUM_LINE" | grep -q ' 0 mismatched, 0 missing'; then
@@ -505,6 +832,7 @@ fi
 # with no contract fields is fine, and malformed contracts are WARN (never FAIL),
 # so the check never blocks a repo that doesn't use contracts. See
 # .claude/references/learnings-schema.md → Executable lesson contract.
+in_project
 LEARN_FILE=".mtk/learnings.jsonl"
 if [ -f "$LEARN_FILE" ] && command -v python3 >/dev/null 2>&1; then
   LINT_OUT="$(python3 - "$LEARN_FILE" <<'PY'
@@ -595,6 +923,7 @@ fi
 # ──────────────────────────────────────────────
 # Scan shipped context-entering artifacts (skills/agents/hook config) for
 # prompt-injection / credential-exfil / hidden-Unicode red flags. See P0#5.
+in_toolkit
 if [ -f "scripts/poison-lint.sh" ]; then
   POISON_OUT="$(bash scripts/poison-lint.sh --quiet 2>&1 || true)"
   POISON_SUMMARY="$(printf '%s\n' "$POISON_OUT" | grep '^poison-lint:' | tail -1 || true)"
@@ -613,9 +942,10 @@ fi
 # CONTEXT
 # ──────────────────────────────────────────────
 # Always-on context cost: what loads into every session before the first prompt
-# (CLAUDE.md + the rules wake-up layer + alwaysApply references + MCP tool schemas).
+# (CLAUDE.md + a loaded AGENTS.md + alwaysApply references + the project's MCP tool schemas).
 # Report-only — surfaces the baseline so teams can keep it lean. These checks must
 # stay PASS on a clean repo (pressure-test S1); the numbers live in the detail string.
+in_project
 ctx_lines=0
 ctx_bytes=0
 add_ctx_file() {
@@ -647,7 +977,6 @@ if [ "$CTX_LOADED" = "AGENTS.md" ] && [ -f AGENTS.md ]; then
   add_ctx_file "AGENTS.md"
   CTX_AGENTS="AGENTS.md + "
 fi
-add_ctx_file ".claude/rules/INDEX.md"
 
 # alwaysApply=true references — the only refs that load unconditionally. Read the
 # generated TSV index (tab-separated: path, alwaysApply, description, globs).
@@ -666,10 +995,10 @@ if [ "$ctx_bytes" -gt 0 ]; then
   # ~13 tokens/line proxy, consistent with the context-engineering skill.
   ctx_tokens=$((ctx_lines * 13))
   record PASS context "always-on context baseline" \
-    "~${ctx_tokens} tokens (${ctx_lines} lines / ${ctx_bytes} bytes): CLAUDE.md + ${CTX_AGENTS}rules/INDEX.md + ${ALWAYSON_REFS} alwaysApply ref(s)"
+    "~${ctx_tokens} tokens (${ctx_lines} lines / ${ctx_bytes} bytes): CLAUDE.md + ${CTX_AGENTS}${ALWAYSON_REFS} alwaysApply ref(s)"
 else
   record PASS context "always-on context baseline" \
-    "no always-on files found (CLAUDE.md / AGENTS.md / rules/INDEX.md absent — likely the source repo)"
+    "no always-on files found (CLAUDE.md / AGENTS.md absent — likely the source repo)"
 fi
 
 # MCP schema overhead — every connected server loads its full tool schema at
@@ -701,46 +1030,10 @@ fi
 # file is present, every version matches, and the toolkit still misbehaves
 # because a knob is calibrated for someone else's setup or a binary is absent.
 
-# Read an env value MTK would see: process env wins, then settings.local.json
-# (per-machine), then settings.json (shared). No jq (S3.3) — the env block is
-# flat "KEY": "VALUE" pairs.
-env_setting() {
-  local key="$1" v f
-  v="$(printenv "$key" 2>/dev/null || true)"
-  if [ -n "$v" ]; then printf '%s' "$v"; return 0; fi
-  for f in .claude/settings.local.json .claude/settings.json; do
-    [ -f "$f" ] || continue
-    v="$(grep -o "\"${key}\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" "$f" 2>/dev/null | head -1 |
-         sed -E 's/.*:[[:space:]]*"([^"]*)"/\1/' || true)"
-    if [ -n "$v" ]; then printf '%s' "$v"; return 0; fi
-  done
-  return 0
-}
-
-# 1. Context-budget calibration. hooks/context-budget.sh scales its file/mod/op
-#    nudges off MTK_CONTEXT_WINDOW_TOKENS, default 1000000. On a 200k model
-#    (Haiku 4.5) the defaults fire too late; on a 1M model an old 200000 pin
-#    fires several times too early, which trains the engineer to ignore the one
-#    hook that tells them to checkpoint.
-CTX_WINDOW="$(env_setting MTK_CONTEXT_WINDOW_TOKENS)"
-MODEL_HINT="$(env_setting ANTHROPIC_MODEL)"
-[ -n "$MODEL_HINT" ] || MODEL_HINT="$(env_setting model)"
-if [ -n "$CTX_WINDOW" ]; then
-  record PASS environment "context budget calibrated" \
-    "MTK_CONTEXT_WINDOW_TOKENS=${CTX_WINDOW} — context-budget.sh thresholds scale from this, not the 1000000 default"
-elif printf '%s' "$MODEL_HINT" | grep -qiE 'haiku'; then
-  record WARN environment "context budget miscalibrated for this model" \
-    "model '${MODEL_HINT}' has a 200k window but MTK_CONTEXT_WINDOW_TOKENS is unset — context-budget.sh warns at 150 files / 200 mods / 600 ops, calibrated for a 1M window. Set MTK_CONTEXT_WINDOW_TOKENS=200000 in .claude/settings.local.json env"
-else
-  record PASS environment "context budget at default calibration" \
-    "MTK_CONTEXT_WINDOW_TOKENS unset — assuming a 1000000-token window (150 files / 200 mods / 600 ops). Set it if your model's window differs"
-fi
-
-# 2. Hook basename also wired in the user's global settings. Two different
+# 1. Hook basename also wired in the user's global settings. Two different
 #    scripts sharing a basename both fire, and their log lines are
-#    indistinguishable — a real debugging trap, not a correctness bug. The
-#    double-run guard in hook-io.sh deliberately reads only the PROJECT settings,
-#    so it does not (and should not) suppress this case.
+#    indistinguishable — a real debugging trap, not a correctness bug. Nothing
+#    suppresses either copy (MTK hooks have no double-run guard), so both run.
 USER_SETTINGS="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json"
 if [ -f "$USER_SETTINGS" ]; then
   # Compare against the basenames of hook commands the user actually WIRES, not
@@ -756,7 +1049,7 @@ if [ -f "$USER_SETTINGS" ]; then
   # MTK's hooks live in the project in this checkout and in the plugin root in an
   # install. Without either, there is nothing to compare — say so rather than
   # reporting "no collisions" for a comparison that never happened.
-  MTK_HOOK_DIR="hooks"
+  MTK_HOOK_DIR="$ROOT_DIR/hooks"
   [ -d "$MTK_HOOK_DIR" ] || MTK_HOOK_DIR="${CLAUDE_PLUGIN_ROOT:-}/hooks"
   SHADOWED=""
   MTK_HOOKS_SEEN=0
@@ -782,63 +1075,60 @@ else
   record PASS environment "no user-level settings.json to collide with"
 fi
 
-# 2b. Stop hooks registered twice: plugin hooks/hooks.json + project
-#    .claude/settings.json. "Ran 9 stop hooks" in the field (issue #60) was 5
-#    plugin entries plus 4 project entries — registration, not execution: every
-#    plugin copy of a basename the project also wires exits early through
-#    mtk_is_redundant_plugin_invocation. Show that arithmetic so the figure stops
-#    reading as a bug, and WARN for a doubly-wired Stop hook WITHOUT the guard,
-#    which really does run twice (and races itself on shared files).
+# 1b. Hooks registered twice: plugin hooks/hooks.json + project
+#    .claude/settings.json, for ANY event. The harness counts both ("Ran 9 stop
+#    hooks" in the field, issue #60 — 5 plugin + 4 project) and both copies run:
+#    there is no double-run guard. Show the Stop arithmetic, and WARN for every
+#    event+basename wired in both places — the project copy should be removed (a
+#    dev checkout runs the repo's hooks through `claude --plugin-dir .`).
 HOOKS_JSON="$ROOT_DIR/hooks/hooks.json"
 if [ -f "$HOOKS_JSON" ] && command -v python3 >/dev/null 2>&1; then
-  STOP_WIRING="$(python3 - "$HOOKS_JSON" ".claude/settings.json" <<'PY' 2>/dev/null || true
+  HOOK_WIRING="$(python3 - "$HOOKS_JSON" ".claude/settings.json" <<'PY' 2>/dev/null || true
 import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
 import json, os
-def stop_basenames(path):
+def basenames(path):
     try:
         doc = json.load(open(path))
     except Exception:
         return []
     hooks = doc.get("hooks", doc) if isinstance(doc, dict) else {}
     out = []
-    for entry in hooks.get("Stop", []) or []:
-        for h in entry.get("hooks", []) or []:
-            tok = str(h.get("command", "")).split()
-            if tok and tok[0] in ("bash", "sh", "zsh"):
-                tok = tok[1:]
-            if tok:
-                out.append(os.path.basename(tok[0].strip("\"'")))
+    for event, entries in (hooks.items() if isinstance(hooks, dict) else []):
+        for entry in entries if isinstance(entries, list) else []:
+            for h in (entry.get("hooks", []) if isinstance(entry, dict) else []) or []:
+                tok = str(h.get("command", "")).split()
+                if tok and tok[0] in ("bash", "sh", "zsh"):
+                    tok = tok[1:]
+                if tok:
+                    out.append((event, os.path.basename(tok[0].strip("\"'"))))
     return out
-for b in stop_basenames(sys.argv[1]): print("plugin\t" + b)
-for b in stop_basenames(sys.argv[2]): print("project\t" + b)
+for e, b in basenames(sys.argv[1]): print("plugin\t" + e + "\t" + b)
+for e, b in basenames(sys.argv[2]): print("project\t" + e + "\t" + b)
 PY
 )"
-  PLUGIN_STOP=0; PROJECT_STOP=0; SHARED_STOP=0; UNGUARDED_STOP=""
-  while IFS=$'\t' read -r src base; do
-    [ -n "$base" ] || continue
+  PLUGIN_STOP=0; PROJECT_STOP=0; DOUBLE_WIRED=""
+  while IFS=$'\t' read -r src event base; do
+    [ -n "$base" ] && [ "$event" = "Stop" ] || continue
     case "$src" in
       plugin)  PLUGIN_STOP=$((PLUGIN_STOP + 1)) ;;
       project) PROJECT_STOP=$((PROJECT_STOP + 1)) ;;
     esac
-  done <<< "$STOP_WIRING"
-  while IFS= read -r base; do
-    [ -n "$base" ] || continue
-    SHARED_STOP=$((SHARED_STOP + 1))
-    if ! grep -q 'mtk_is_redundant_plugin_invocation' "$ROOT_DIR/hooks/$base" 2>/dev/null; then
-      UNGUARDED_STOP="${UNGUARDED_STOP}${UNGUARDED_STOP:+, }${base}"
-    fi
-  done < <(printf '%s\n' "$STOP_WIRING" | awk -F'\t' '$1=="plugin"{p[$2]=1} $1=="project"{q[$2]=1} END{for (b in p) if (b in q) print b}')
+  done <<< "$HOOK_WIRING"
+  while IFS= read -r pair; do
+    [ -n "$pair" ] || continue
+    DOUBLE_WIRED="${DOUBLE_WIRED}${DOUBLE_WIRED:+, }${pair}"
+  done < <(awk -F'\t' '$1=="plugin"{p[$2" "$3]=1} $1=="project"{q[$2" "$3]=1} END{for (k in p) if (k in q) print k}' <<<"$HOOK_WIRING" | sort)
   STOP_TOTAL=$((PLUGIN_STOP + PROJECT_STOP))
   # The arithmetic is always worth showing; the WARN rides alongside it.
   record PASS environment "Stop hook registrations accounted for" \
-    "${STOP_TOTAL} = ${PLUGIN_STOP} plugin (hooks/hooks.json) + ${PROJECT_STOP} project (.claude/settings.json) — the harness reports this as 'Ran ${STOP_TOTAL} stop hooks'; ${SHARED_STOP} shared basename(s), and a guarded plugin copy exits before doing work"
-  if [ -n "$UNGUARDED_STOP" ]; then
-    record WARN environment "Stop hook wired twice without the double-run guard" \
-      "${UNGUARDED_STOP} — registered in hooks/hooks.json and .claude/settings.json but missing mtk_is_redundant_plugin_invocation, so both copies run on every Stop and race on shared files"
+    "${STOP_TOTAL} = ${PLUGIN_STOP} plugin (hooks/hooks.json) + ${PROJECT_STOP} project (.claude/settings.json) — the harness reports this as 'Ran ${STOP_TOTAL} stop hooks'"
+  if [ -n "$DOUBLE_WIRED" ]; then
+    record WARN environment "hook wired twice" \
+      "${DOUBLE_WIRED} — registered in hooks/hooks.json and .claude/settings.json, so both copies run on every such event and race on shared files; remove the .claude/settings.json entry (dev checkouts: run claude --plugin-dir .)"
   fi
 fi
 
-# 2c. Stale plugin-cache versions. installed_plugins.json records ONE installPath
+# 1c. Stale plugin-cache versions. installed_plugins.json records ONE installPath
 #    per plugin; older version directories beside it are upgrade leftovers. They
 #    cost disk, and any "newest cache copy" search (this doctor's own, or an
 #    engineer setting MTK_HELPER_ROOT by hand) can land on the wrong one. Name
@@ -883,7 +1173,7 @@ PY
   fi
 fi
 
-# 3. Formatter present for the active stack. format-on-edit.sh never blocks and
+# 2. Formatter present for the active stack. format-on-edit.sh never blocks and
 #    logs only to stderr, so a missing binary is invisible: edits look formatted
 #    and are not.
 STACK=""
@@ -906,6 +1196,48 @@ else
       "${FMT_WANT} not on PATH — format-on-edit.sh logs to stderr and never blocks, so edits will silently go unformatted"
   fi
 fi
+
+# ──────────────────────────────────────────────
+# CONFIG — what is active (the old /mtk status report)
+# ──────────────────────────────────────────────
+# Report-only except for two WARNs: a stack or domain the project names with no
+# skill or linter pack behind it silently loads nothing.
+in_project
+CFG_STACK=""
+[ -f ".claude/tech-stack" ] && CFG_STACK="$(tr -d '[:space:]' < .claude/tech-stack)"
+CFG_DOMAINS=""
+[ -f ".claude/domains" ] && CFG_DOMAINS="$(grep -v '^[[:space:]]*#' .claude/domains | tr -d '[:blank:]' | grep -v '^$' || true)"
+in_toolkit
+count_rules() { grep -c '^[^#[:space:]]' "$1" 2>/dev/null || true; }
+if [ -z "$CFG_STACK" ]; then
+  record PASS config "tech stack not set" "no .claude/tech-stack — run /mtk-setup"
+elif [ -f ".claude/skills/tech-stack-${CFG_STACK}/SKILL.md" ]; then
+  record PASS config "tech stack ${CFG_STACK}" "skill tech-stack-${CFG_STACK} present"
+else
+  record WARN config "tech stack ${CFG_STACK} has no skill" "no .claude/skills/tech-stack-${CFG_STACK}/SKILL.md, so no stack context loads"
+fi
+for pack_dir in hooks/linter-patterns/core ${CFG_STACK:+hooks/linter-patterns/stack-$CFG_STACK}; do
+  [ -d "$pack_dir" ] || continue
+  for f in "$pack_dir"/*.txt; do
+    [ -f "$f" ] && record PASS config "linter pack ${f#hooks/linter-patterns/}" "$(count_rules "$f") rules"
+  done
+done
+if [ -n "$CFG_DOMAINS" ]; then
+  while IFS= read -r d; do
+    if [ -d "hooks/linter-patterns/domain-$d" ]; then
+      for f in hooks/linter-patterns/domain-"$d"/*.txt; do
+        [ -f "$f" ] && record PASS config "linter pack ${f#hooks/linter-patterns/}" "$(count_rules "$f") rules"
+      done
+    else
+      record WARN config "domain ${d} has no linter pack" "listed in .claude/domains but hooks/linter-patterns/domain-${d}/ is missing"
+    fi
+  done <<< "$CFG_DOMAINS"
+fi
+for agent in .claude/agents/*.md; do
+  [ -f "$agent" ] || continue
+  a_model="$(grep -m1 '^model:' "$agent" | sed 's/model:[[:space:]]*//' || true)"
+  record PASS config "agent $(basename "$agent" .md)" "model: ${a_model:-inherit}"
+done
 
 # ──────────────────────────────────────────────
 # OUTPUT

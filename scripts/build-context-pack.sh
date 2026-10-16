@@ -16,10 +16,15 @@ set -euo pipefail
 #   1. header (uuid, generated-at, sidecar path, stack)
 #   2. build/test/format commands — the tech-stack skill's `## Build & Test Commands`
 #      and `## Format Command` sections, verbatim
+#   2b. stack field rules — the tech-stack skill's `## ORM & Data Layer Guidance` and
+#      `## Framework Patterns` sections, verbatim and always (see the comment at 2b)
 #   3. the resolved constitution file's `## Critical Rules` verbatim (AGENTS.md when it
 #      exists, is not generator-marked, and CLAUDE.md is absent or a shim importing it
 #      via `@AGENTS.md`; otherwise CLAUDE.md — same rule as constitution-digest.sh's
 #      constitution_file(), duplicated here in python); every other `##` heading as a one-line TOC
+#   3b. applicable rules — the `.claude/rules/**/*.md` files with no `paths:` (global) or
+#      whose `paths:` globs match a change_manifest path, listed by path; the unmatched
+#      ones are listed with their globs so a reviewer can re-check an off-manifest diff file
 #   4. coding guidelines — the sections whose headings match the KIND of files in the
 #      sidecar's change_manifest (handler/entity/test/api keyword table below), plus a
 #      TOC of every guideline heading with its path so a subagent can pull one on demand
@@ -140,6 +145,16 @@ if skill:
         h, b = section(skill, pref)
         if b:
             parts.append(f"## {h}\n\n{b}\n"); inventory.append(f"commands: {h} ({len(b)} chars)")
+    # 2b. stack field rules — the ORM/data-layer and framework sections hold the
+    # rules that bite at runtime (EF ordering after a projection, AsNoTracking,
+    # HttpClientFactory, CancellationToken, lazy init). Emitted ALWAYS, not gated
+    # on KIND_TABLE: both are short (~0.5-2.5k chars per stack), and the kind table
+    # keys on file names, which miss the files where these rules apply most
+    # (an OrderService.cs running an EF query, a Program.cs registering clients).
+    for pref in ("ORM & Data Layer Guidance", "Framework Patterns"):
+        h, b = section(skill, pref)
+        if b:
+            parts.append(f"## {h}  _(from `tech-stack-{stack}`)_\n\n{b}\n"); inventory.append(f"stack rules: {h} ({len(b)} chars)")
 else:
     parts.append("## Build & Test Commands\n\n_(tech stack unresolved — run `bash scripts/resolve-tech-stack.sh` or set `.claude/tech-stack`)_\n")
     inventory.append("commands: MISSING (stack unresolved)")
@@ -172,6 +187,72 @@ if const_text:
     inventory.append(f"{const_name} critical rules ({len(b)} chars) + TOC of {len(toc)} headings")
 else:
     inventory.append(f"{const_name}: MISSING")
+
+# 3b. project rules selected by their `paths:` frontmatter (rule-frontmatter.md).
+# A rule with no `paths:` is global; a path-scoped rule applies when one of its
+# globs matches a manifest path. Paths only, not bodies: the reviewer reads the
+# applicable files, and the unmatched list (with globs) lets it re-check a diff
+# file the manifest did not name without re-scanning every rule file.
+def glob_re(g):
+    out, i = "", 0
+    while i < len(g):
+        if g.startswith("**/", i): out += "(?:.*/)?"; i += 3
+        elif g.startswith("**", i): out += ".*"; i += 2
+        elif g[i] == "*": out += "[^/]*"; i += 1
+        elif g[i] == "?": out += "[^/]"; i += 1
+        elif g[i] == "{":
+            j = g.find("}", i)
+            if j < 0: out += re.escape(g[i]); i += 1; continue
+            out += "(?:" + "|".join(re.escape(a) for a in g[i+1:j].split(",")) + ")"; i = j + 1
+        else: out += re.escape(g[i]); i += 1
+    return re.compile("^" + out + "$")
+
+def rule_paths(text):
+    """Return the `paths:` globs of a rule file's frontmatter, or None when it has none."""
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---": return None
+    globs, in_paths = None, False
+    for line in lines[1:]:
+        if line.strip() == "---": break
+        m = re.match(r'^paths:\s*(.*)$', line)
+        if m:
+            globs, in_paths, rest = [], True, m.group(1).strip()
+            if rest.startswith("["):
+                globs += [x.strip().strip("'\"") for x in rest.strip("[]").split(",") if x.strip()]; in_paths = False
+            elif rest:
+                globs.append(rest.strip("'\"")); in_paths = False
+            continue
+        if in_paths:
+            im = re.match(r'^\s+-\s*(.+)$', line)
+            if im: globs.append(im.group(1).strip().strip("'\""))
+            elif line.strip(): in_paths = False
+    return globs
+
+rules_dir = os.path.join(root, ".claude", "rules")
+rule_files = []
+for dp, _, fns in os.walk(rules_dir):
+    rule_files += [os.path.join(dp, fn) for fn in fns if fn.endswith(".md")]
+if rule_files:
+    applies, unmatched = [], []
+    for rf in sorted(rule_files):
+        rel = os.path.relpath(rf, root)
+        globs = rule_paths(read(rf))
+        if not globs:
+            applies.append(f"- `{rel}` — global (no `paths:`)"); continue
+        pats = [(g, glob_re(g)) for g in globs]
+        hits = [p for p in paths if any(r.match(p) for _, r in pats)]
+        if hits:
+            shown = ", ".join(f"`{h}`" for h in hits[:3]) + (f" +{len(hits) - 3} more" if len(hits) > 3 else "")
+            applies.append(f"- `{rel}` — matches {shown}")
+        else:
+            unmatched.append(f"- `{rel}` — " + ", ".join(f"`{g}`" for g in globs))
+    body = "Read these rule files, and only these:\n\n" + ("\n".join(applies) if applies else "- _none_")
+    if unmatched:
+        body += "\n\nNot matched by the manifest; read one only if the diff touches a path its globs match:\n\n" + "\n".join(unmatched)
+    parts.append("## Applicable rules (selected by `paths:` frontmatter)\n\n" + body + "\n")
+    inventory.append(f"rules: {len(applies)} applicable, {len(unmatched)} not matched")
+else:
+    inventory.append("rules: no .claude/rules/ directory")
 
 # 4. coding guidelines, keyword-selected
 KIND_TABLE = [

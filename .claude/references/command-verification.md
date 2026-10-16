@@ -10,7 +10,7 @@ alwaysApply: false
 Read this companion from `setup-bootstrap` STEP 3.5a ("Command verification").
 Unless `--no-verify-commands` was passed (see `## Modes`), verify the exact
 commands you are about to publish in the Tech Stack section **before** writing
-CLAUDE.md.
+AGENTS.md (the constitution; `CLAUDE.md` is only the import shim).
 
 ## 1. Assemble the commands
 
@@ -29,11 +29,13 @@ From the tech stack skill's `## Build & Test Commands` section:
 ## 2. Run the verifier
 
 Pipe the assembled entries as `name<TAB>command` lines (path resolved per
-`## MTK File Resolution` — `scripts/` is always project-relative):
+`## MTK File Resolution` — `scripts/` is an MTK path, so it is prefixed with
+the resolved MTK root, `${CLAUDE_PLUGIN_ROOT}` on a plugin install; it is never
+project-relative, because a plugin install has no `scripts/` in the target repo):
 
 ```bash
 printf 'build\t%s\ntest\t%s\nformat\t%s\n' "$BUILD_CMD" "$TEST_CMD" "$FORMAT_CMD" | \
-  bash scripts/verify-commands.sh --timeout 300
+  bash "$MTK_ROOT/scripts/verify-commands.sh" --timeout 300
 ```
 
 Omit a `name<TAB>command` line entirely for any entry already marked `skipped`
@@ -65,7 +67,7 @@ When writing the Tech Stack section:
 - **`failed`** — still write the command line (never drop it), but append
   `[UNVERIFIED — <first line of detail from verify-commands.sh output>]` to
   it, and add a STEP 5 report line for that command. **A failed command must
-  NEVER appear in CLAUDE.md without this annotation.**
+  NEVER appear in AGENTS.md without this annotation.**
 - **`skipped`** — write the command line with no annotation; note the skip in
   the STEP 5 report.
 - **verifier unavailable** — if `scripts/verify-commands.sh` is missing or

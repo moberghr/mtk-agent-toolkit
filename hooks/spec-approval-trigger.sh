@@ -7,25 +7,20 @@ trap _mtk_hook_diag EXIT
 
 # PostToolUse hook for Edit|Write tools.
 # When a markdown spec under docs/specs/ transitions to "status: approved",
-# queue a tier-2 suggestion for planning-and-task-breakdown to run on the
-# next user prompt.
+# tell the model — as PostToolUse additionalContext, the channel it reads right
+# after this edit — that planning-and-task-breakdown is the next step. Same for
+# a sealed spec/plan edited after approval (stale seal). Nothing is queued.
 #
 # "Transition" = approved in the new content but NOT in the prior (HEAD)
 # version of the same file. This avoids re-firing on every subsequent edit
 # of an already-approved spec.
 #
 # Advisory only (exit 0). No-op if the spec path doesn't match, the marker
-# is absent, the file was already approved, or the tier-2 kill-switch is off.
+# is absent, or the file was already approved.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
-# shellcheck disable=SC1091
-source "${SCRIPT_DIR}/lib/skill-queue.sh"
-
-mtk_is_redundant_plugin_invocation "$0" && exit 0
-
-mtk_queue_enabled || exit 0
 
 INPUT="$(mtk_read_payload)"
 FILE_PATH="$(mtk_extract_file_path "$INPUT" 2>/dev/null || echo "")"
@@ -59,7 +54,7 @@ esac
 
 # --- Stale approval-seal detection (any sealed spec/plan) ---
 # If an ACTIVE workflow sealed this file at approval and the bytes no longer
-# match, the earlier approval is stale — re-queue the approval step. Advisory
+# match, the earlier approval is stale — re-run the approval step. Advisory
 # (exit 0). See scripts/workflow-artifact.sh seal/verify-seal.
 WF_DIR="${REPO_ROOT}/.mtk/workflows"
 if [ -d "$WF_DIR" ] && command -v python3 >/dev/null 2>&1; then
@@ -85,13 +80,10 @@ PY
     for u in $sealed_uuids; do
       rc=0
       ( cd "$REPO_ROOT" && bash "${SCRIPT_DIR}/../scripts/workflow-artifact.sh" verify-seal "$u" ) >/dev/null 2>&1 || rc=$?
-      # rc 1=stale (re-queue). 0=match, 2=uncheckable, 3=no-seal are all ignored —
+      # rc 1=stale. 0=match, 2=uncheckable, 3=no-seal are all ignored —
       # only a real mismatch fires the advisory, never a crash or a missing seal.
       if [ "$rc" -eq 1 ]; then
-        queue_skill "planning-and-task-breakdown" \
-          "approval seal STALE — ${REL_PATH} edited after approval (workflow ${u}); re-approve at Phase 2.5 before continuing" \
-          "spec-approval-seal-stale-${u}" \
-          "stale=${REL_PATH}"
+        mtk_emit_additional_context "PostToolUse" "SPEC APPROVAL: approval seal STALE — ${REL_PATH} was edited after approval (workflow ${u}). Re-approve it at Phase 2.5 (planning-and-task-breakdown) before continuing."
         exit 0
       fi
     done
@@ -131,13 +123,6 @@ if [ -n "$prior_content" ]; then
   fi
 fi
 
-SLUG="$(basename "$REL_PATH" .md)"
-REASON="spec ${REL_PATH} transitioned to status: approved"
-EXCERPT="spec=${SLUG}"
-
-# Dedup key: skill + source_hook means repeat approvals of different specs
-# collapse to one line. That's acceptable for Phase 1 — the drain line names
-# the spec in `reason`. If we need per-spec dedup later, encode slug in source_hook.
-queue_skill "planning-and-task-breakdown" "$REASON" "spec-approval-trigger-${SLUG}" "$EXCERPT"
+mtk_emit_additional_context "PostToolUse" "SPEC APPROVED: ${REL_PATH} transitioned to status: approved. Next step: run planning-and-task-breakdown on it (skip if the active workflow already planned it)."
 
 exit 0

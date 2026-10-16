@@ -92,7 +92,7 @@ one-line note and exits 0 without writing anything, and --force exits 1 rather
 than overwrite a hand-authored constitution with a generated summary. Both
 apply only to writes targeting AGENTS.md itself — pass an explicit output path
 and the summary is written there as usual. Edit AGENTS.md through
-setup-bootstrap or the instructions-audit skill instead.
+setup-bootstrap or the instructions skill (audit mode) instead.
 EOF
       exit 0
       ;;
@@ -129,7 +129,7 @@ if [ "$CONST_FILE" = "AGENTS.md" ]; then
 generate-agents-md.sh: REFUSING --force — AGENTS.md is this repo's canonical constitution
   (CLAUDE.md is absent or a shim importing it). Overwriting it with a generated
   references summary would destroy the hand-authored rules.
-  Edit it through `/mtk-setup` (setup-bootstrap) or the instructions-audit skill.
+  Edit it through `/mtk-setup` (setup-bootstrap) or the instructions skill.
   To write a legacy-style summary anyway, pass an explicit output path, e.g.
   `bash scripts/generate-agents-md.sh --force AGENTS.generated.md`.
 EOF
@@ -320,9 +320,8 @@ header_lines="$(count_lines "$header")"
 # sec_names / sec_content / sec_droppri run in parallel (bash 3.2 compatible —
 # no associative arrays). sec_droppri: 0 = never dropped (Critical Rules,
 # Architecture Principles, Coding Guidelines — DF-6's named "top priority"
-# sections); 10 = stack supplements (dropped first); 20-23 = shared
-# checklists (dropped second, lowest-value-first: Domain, Performance,
-# Testing, Security kept longest).
+# sections); 10 = stack supplements (dropped first); 20 = the domain
+# supplement (dropped second).
 
 sec_names=()
 sec_content=()
@@ -353,24 +352,6 @@ if [ -n "$stack" ] && [ -f "$REFS_DIR/${stack}/coding-guidelines.md" ]; then
   sec_droppri+=(0)
 fi
 
-if [ -f "$REFS_DIR/security-checklist.md" ]; then
-  sec_names+=("Security Requirements")
-  sec_content+=("$(build_summary_section "$REFS_DIR/security-checklist.md" "Security Requirements")")
-  sec_droppri+=(23)
-fi
-
-if [ -f "$REFS_DIR/testing-patterns.md" ]; then
-  sec_names+=("Testing Expectations")
-  sec_content+=("$(build_summary_section "$REFS_DIR/testing-patterns.md" "Testing Expectations")")
-  sec_droppri+=(22)
-fi
-
-if [ -f "$REFS_DIR/performance-checklist.md" ]; then
-  sec_names+=("Performance Guidelines")
-  sec_content+=("$(build_summary_section "$REFS_DIR/performance-checklist.md" "Performance Guidelines")")
-  sec_droppri+=(21)
-fi
-
 # Stack-specific supplements (dropped first — lowest priority tier).
 if [ -n "$stack" ] && [ -d "$REFS_DIR/${stack}" ]; then
   for supplement in "$REFS_DIR/${stack}/"*.md; do
@@ -388,8 +369,8 @@ if [ -n "$stack" ] && [ -d "$REFS_DIR/${stack}" ]; then
   done
 fi
 
-# Domain supplement (if present) — shared-checklist tier, dropped before the
-# other shared checklists (most niche of the four).
+# Domain supplement (if present) — shared tier, dropped after the stack
+# supplements.
 if [ -f "$REFS_DIR/domain-finance.md" ]; then
   sec_names+=("Domain — Finance")
   sec_content+=("$(build_summary_section "$REFS_DIR/domain-finance.md" "Domain — Finance")")

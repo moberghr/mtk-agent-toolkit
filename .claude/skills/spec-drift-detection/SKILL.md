@@ -6,14 +6,13 @@ license: MIT
 compatibility:
   - claude-code
   - codex
-trigger: post-implementation|pre-review|spec-approved|ship-gate
-skip_when: no-spec|typo-fix|single-line-change
 user-invocable: false
 effort: high
-required-toolsets: [read-only]
 ---
 
 # Spec-Drift Detection
+
+> **Tool discipline:** read-only — `Read`/`Grep`/`Glob` and read-only `Bash` (`git diff`, the drift scripts). Never `Edit`/`Write` code or the spec; report drift, never fix it.
 
 ## Overview
 
@@ -35,7 +34,7 @@ code, a compliance risk in regulated environments; detect divergence before revi
 1. **Locate the spec manifest.**
    - Default: the latest `docs/specs/*.json` on the current branch.
    - Override: accept an explicit path if the engineer supplies one.
-   - If no manifest exists, **STOP** and report `BLOCKED — no spec manifest
+   - If no manifest exists, **stop** and report `BLOCKED — no spec manifest
      found; drift cannot be checked. Either generate one via
      `spec-driven-development` or confirm this change is quick-fix scope.`
 
@@ -59,25 +58,25 @@ code, a compliance risk in regulated environments; detect divergence before revi
      for added/modified public contracts (controller routes, handler
      classes, exported functions, etc., per active tech stack).
 
-3a. **EARS / ANT structural lint of the spec itself.** Run
+3a. **EARS / ANT structural lint of the spec itself (extended-mode specs only).** When the spec header says `Spec mode: extended`, run
    `bash scripts/lint-ears.sh <spec.md>` (the markdown spec next to the JSON
    sidecar). EARS / ANT violations on the spec count as drift of the spec
    from its own contract — emit one finding per violation with
    `source: "drift"`, `severity: "warning"`, `confidence: 100`,
    `rule: "EARS / ANT"`. They do not block on their own (warning, not
    critical), but they signal a spec that should be tightened before the
-   next iteration. If `scripts/lint-ears.sh` is absent, skip with a one-line
-   note in the output.
+   next iteration. Standard-mode specs have no EARS section; skip this step. If
+   `scripts/lint-ears.sh` is absent, skip with a one-line note in the output.
 
 4. **Compare and emit findings** per
    `.claude/references/review-finding-schema.md`, with `source: "drift"`:
 
    | Axis | Finding criteria | Confidence band |
    |------|------------------|-----------------|
-   | File-list match | File touched that is NOT in change_manifest | 95–100 (deterministic) |
-   | File-list match | Derived artifact touched that is NOT in change_manifest | **not a finding** — see below |
-   | File-list match | File declared in change_manifest that was NOT touched | 95–100 |
-   | Public contract | Signature added that is NOT in public_contracts | 85–95 |
+   | File-list match | File touched that is not in change_manifest | 95–100 (deterministic) |
+   | File-list match | Derived artifact touched that is not in change_manifest | **not a finding** — see below |
+   | File-list match | File declared in change_manifest that was not touched | 95–100 |
+   | Public contract | Signature added that is not in public_contracts | 85–95 |
    | Public contract | Contract declared but not implemented | 90–100 |
    | Security impact | `security_impact: none` but auth/payments/audit files touched | 95+ |
    | Out-of-scope | Declared out_of_scope item that appears to be implemented | 80–90 |
@@ -170,8 +169,10 @@ code, a compliance risk in regulated environments; detect divergence before revi
 After comparing the manifest, also run a cross-package ripple check on the change manifest. This catches "one-package change with many-package impact" surprises.
 
 ```bash
-bash scripts/monorepo-ripple.sh $(git diff --name-only HEAD)
+bash scripts/monorepo-ripple.sh $(git diff --name-only <base>...HEAD)
 ```
+
+`<base>` is the same base as step 3 (the branch point of this change). A bare `HEAD` would only see uncommitted edits and miss every batch already committed.
 
 - Exits 0 on non-monorepo (no output) — no false positives.
 - On a monorepo, emits lines `RIPPLE <pkg>: affects <downstream>`.
@@ -206,19 +207,6 @@ If `architecture-principles.md` is missing or has no tags (legacy format),
 skip principle drift and continue with manifest drift only — emit a one-line
 note that principle drift was unavailable.
 
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared table. Drift-specific traps: "the extra file was just a helper, it's basically in scope" (if it wasn't in the change_manifest, the approval gate did not cover it — flag it), "security_impact was 'none' but this auth change is tiny" (if the diff touches auth, payments, or audit — even tiny — the field was wrong), and "this drift is minor, I'll just fix it silently" (silent drift is the exact compliance failure this skill exists to prevent — emit the finding).
-
-## Red Flags
-
-- Drift check run without a spec manifest on disk
-- Reviewer silently modifies the spec to match the implementation
-- Critical drift downgraded to warning because "it's close enough"
-- `security_impact` field ignored because the diff "looks small"
-- Out-of-scope items marked as acceptable scope expansion without engineer
-  confirmation
-
 ## Gate
 
 If the workflow artifact is active, drift findings flip the `phase_exit_gate` for the review phase. Critical drift → `phase_exit_gate fail` (triggers remediation). Spec amendment with engineer approval → re-evaluate `plan_trust_gate` from `pending`. See `.claude/references/orchestration-gates.md`.
@@ -232,4 +220,4 @@ If the workflow artifact is active, drift findings flip the `phase_exit_gate` fo
 - [ ] Collateral axis: `hooks/collateral-guard.sh` was run and its verdict reported
 - [ ] Findings follow `.claude/references/review-finding-schema.md` with `source: "drift"`; verdict matches the severity of the drift (critical → NEEDS_CHANGES)
 - [ ] No silent spec edits were made to suppress drift findings
-- [ ] `bash scripts/lint-ears.sh` was run against the spec markdown (or explicitly skipped with a note when the script is unavailable)
+- [ ] Extended-mode spec: `bash scripts/lint-ears.sh` was run against the spec markdown (or skipped with a note when the script is unavailable)

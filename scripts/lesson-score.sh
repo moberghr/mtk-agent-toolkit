@@ -6,7 +6,7 @@ set -euo pipefail
 # reconfirmation, recall history and stale anchors (scripts/lesson-anchors.sh).
 #
 # SUGGEST-ONLY, like lesson-anchors.sh: this script ranks. It never writes to
-# any lesson store and never decides a verdict — `lesson-refresh` triages,
+# any lesson store and never decides a verdict — `lessons refresh` triages,
 # using the score only to order which lessons get the deepest checks first.
 #
 # Score (base by recurrence.count, then adjustments, clamped to [0.05, 0.95]):

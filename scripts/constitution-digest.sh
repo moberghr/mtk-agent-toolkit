@@ -31,8 +31,8 @@ set -euo pipefail
 # the plugin cache as well as in target repos; anchoring on `dirname $0` made a
 # plugin-cache invocation digest the plugin's own CLAUDE.md instead of the
 # project's (observed in a 2026-09 field run). Same resolution as
-# build-rule-index.sh / lesson-anchors.sh: $CLAUDE_PROJECT_DIR, then the git
-# top level of the cwd, then the cwd itself.
+# lesson-anchors.sh: $CLAUDE_PROJECT_DIR, then the git top level of the cwd,
+# then the cwd itself.
 ROOT_DIR="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 cd "$ROOT_DIR"
 

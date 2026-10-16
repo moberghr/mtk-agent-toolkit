@@ -2,14 +2,6 @@
 paths:
   - ".claude/manifest.json"
   - ".claude-plugin/**"
-axes:
-  decision: structure
-  topic: manifest
-  scope: global
-trigger:
-  tool: "Edit|Write"
-  path: ^\.claude/manifest\.json$|^\.claude-plugin/
-strength: inject
 ---
 
 # Toolkit Structure (S1)

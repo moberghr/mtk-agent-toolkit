@@ -18,15 +18,15 @@
 | First-time repo setup | `/mtk-setup` | Bootstrap — detects tech stack, pulls guidelines, generates AGENTS.md (plus the CLAUDE.md shim) and the architecture-principles reference |
 | Re-run audit | `/mtk-setup --audit` | Refresh the generated architecture-principles reference after architectural change |
 | Merge multi-repo audits | `/mtk-setup --merge` | Unify per-repo audits in `.claude/references/audits/` into a team-wide doc |
-| Everything else | `/mtk <description>` | Natural language — routes to fix / implement / pre-commit-review / repo-health / context-report |
-| Periodic readiness check | `/mtk repo-health` or `bash scripts/repo-health-score.sh` | 12-asset scorecard + PR review mining (last 10 merged PRs) |
+| Everything else | `/mtk <description>` | Natural language — routes to fix / batch-fix / implement / pre-commit-review / repo-health / instructions / mtk-doctor |
+| Periodic readiness check | `/mtk repo-health` or `bash scripts/repo-health-score.sh` | 9-asset action checklist + PR review mining (last 10 merged PRs) |
 | Validate toolkit | `bash scripts/validate-toolkit.sh` | Before every commit — structural check of manifest, plugin.json, and skill anatomy |
-| Install health check | `/mtk-doctor` | PASS/WARN/FAIL diagnostics across core files, components, hooks, and environment fit; `--json` for CI, `--fix` for safe auto-repairs |
-| Promote a lesson | `/promote-lesson` | Promote a personal lesson from the personal lessons store **or Claude Code native memory** to team-wide `tasks/lessons.md`; optionally open a validated contribute-back PR to the toolkit |
-| Mine lessons from past sessions | `/mtk mine lessons` | Sweep recent session transcripts for durable lesson/memory candidates (reject-by-default rubric, suggest-only) |
+| Install health check | `/mtk-doctor` | PASS/WARN/FAIL diagnostics across core files, components, hooks, active config and environment fit; `--json` for CI, `--fix` for safe auto-repairs, `--usage` for raw usage counts |
+| Promote a lesson | `/lessons promote` | Promote a rule from Claude Code native memory to team-wide `tasks/lessons.md`; optionally open a validated contribute-back PR to the toolkit (`/promote-lesson` is a one-release alias) |
+| Mine lessons from past sessions | `/lessons mine` | Sweep recent session transcripts for durable lesson/memory candidates (reject-by-default rubric, suggest-only) |
 | Tune MTK behaviour (hooks, rigor, budgets, thresholds) | `MTK_*` environment variables | Full table of every knob, its default and effect: `.claude/references/env-knobs.md` |
 
-**Decision rule for `/mtk`:** Say what you want in plain English. The router picks the right workflow skill — fix / implement / pre-commit-review / repo-health / context-report / research-context / instructions-audit / instructions-capture / toolkit-health / mtk-doctor.
+**Decision rule for `/mtk`:** Say what you want in plain English. The router picks the right workflow skill — fix / batch-fix / implement / pre-commit-review / repo-health / research-context / instructions / lessons / mtk-doctor / handoff.
 
 **Updates:** MTK is a Claude Code plugin — use the plugin manager to upgrade. There is no in-repo update command.
 
@@ -36,7 +36,8 @@
 
 ```bash
 bash scripts/validate-toolkit.sh                            # structure + manifest (before every commit)
-bash scripts/run-fixtures.sh && bash scripts/run-evals.sh   # router fixtures + evals
+bash scripts/run-fixtures.sh                                # router + workflow fixtures
+claude plugin eval . --tag smoke --scaffold --allow-tools Bash Write Edit --trust-plugin   # behavioural evals (model calls; see evals/README.md)
 bash scripts/mtk-doctor.sh                                  # install health check (--json, --fix)
 ```
 
@@ -62,7 +63,7 @@ Releases regenerate `checksums.sha256` via `bash scripts/generate-checksums.sh` 
 ## Critical Rules (Always Apply)
 
 - **C0.1** Manifest versions must match: `.claude/manifest.json` version == `.claude-plugin/plugin.json` version == `.claude-plugin/marketplace.json` plugin entry version. Bump all three when releasing.
-- **C0.2** Every file in the repo must be listed in manifest.json `files` section. Every manifest path must exist on disk.
+- **C0.2** Every repo file must have a manifest.json `files` entry, except the short allow-list of non-shipped files in `validate-toolkit.sh` (`manifest_allowed_unlisted`). Every manifest path must exist on disk.
 - **C0.3** Skills follow the anatomy in `.claude/rules/skill-authoring.md` S2.2 (Overview / When To Use / Workflow / Verification for workflow skills; phase-structured and entry-point skills are exempt as listed there). Entry-point skills use `allowed-tools` and `argument-hint` in frontmatter. Skill directory name must match frontmatter `name:`.
 - **C0.4** Agents and skills must have `---` frontmatter blocks.
 - **C0.5** Hooks must be executable (`chmod +x`) and use `set -euo pipefail`.
@@ -74,13 +75,12 @@ Releases regenerate `checksums.sha256` via `bash scripts/generate-checksums.sh` 
 
 ## Standards Reference
 
-Detailed rules live in `.claude/rules/` (auto-loaded by Claude Code): `toolkit-structure.md` (S1.x,
-manifest/organization/naming), `skill-authoring.md` (S2.x), `hooks-and-scripts.md` (S3.x),
-`git-workflow.md` (S4.x), `verification-and-proof.md` (S5.x). `.claude/rules/INDEX.md` is the
-wake-up layer — read it first and pull a full rule file only when its axes match the task.
+Detailed rules live in `.claude/rules/`: `toolkit-structure.md` (S1.x, manifest/organization/naming),
+`skill-authoring.md` (S2.x), `hooks-and-scripts.md` (S3.x), `git-workflow.md` (S4.x), `verification-and-proof.md`
+(S5.x). Rules are path-scoped by their `paths:` frontmatter; Claude Code loads one when a matching file is touched.
 
-Reference docs are read on demand: shared ones in `.claude/references/` (`security-checklist.md`,
-`testing-patterns.md`, `performance-checklist.md`, `domain-finance.md`, `env-knobs.md`), and
+Reference docs are read on demand: shared ones in `.claude/references/` (`domain-finance.md`,
+`implement-review-lanes.md`, `env-knobs.md`), and
 per-stack ones under `.claude/references/{stack}/`, listed canonically in the active tech stack
 skill's `## Reference Files`.
 
@@ -92,11 +92,11 @@ This repository uses **skills** as both user-facing entry points and reusable wo
 **agents** as specialist reviewers. The routing decision tree, per-workflow composition, the
 model-invoked skill list, the two-stage review graph, the review-output schema, the eval pipeline,
 tech-stack loading and progressive/path-scoped reference loading all live in
-`.claude/references/agent-routing-guide.md` — read it whenever routing is not obvious.
+`docs/agent-routing-guide.md` — read it whenever routing is not obvious.
 
-Two skills are user-invocable: `/mtk-setup` (first-time setup; `--audit`, `--merge`, `--refresh`,
-`--check`, `--converge`) and `/mtk <description>` (the natural-language router). Everything else is
-a **routed workflow skill** reached through `/mtk`, or a **model-invoked skill** loaded
+Five skills are user-invocable: `/mtk-setup` (setup; `--audit`, `--merge`, `--refresh`, `--check`),
+`/mtk <description>` (the router), `/mtk-doctor`, `/lessons` and `/promote-lesson` (alias). Everything else
+is a **routed workflow skill** reached through `/mtk`, or a **model-invoked skill** loaded
 automatically when its trigger fires. The canonical route list is the `/mtk` decision rule above.
 
 The active tech stack is recorded in `.claude/tech-stack`; every entry-point skill and agent reads

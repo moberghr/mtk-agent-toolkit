@@ -9,7 +9,7 @@ alwaysApply: false
 Two-tier model:
 
 - **`tasks/lessons.md`** — committed, team-canonical, human-readable. Source of truth for cross-machine sharing. `learnings.sh regen-markdown` renders **only `scope: "team"` entries** here — `personal` entries stay in the gitignored store and never leak into the committed team file.
-- **`.mtk/learnings.jsonl`** — local-only (gitignored), machine-readable JSON Lines (one entry per line), indexed for retrieval. Updated by `correction-capture` / `promote-lesson`. JSONL is used (rather than a single JSON array) so pure-bash tooling can append and grep without an external JSON parser, per S3.3. The store is anchored to the **invoking repo** (git toplevel of the current directory, else cwd), so a plugin-path invocation of `learnings.sh` writes into the caller's repo, never the shared plugin cache.
+- **`.mtk/learnings.jsonl`** — local-only (gitignored), machine-readable JSON Lines (one entry per line), indexed for retrieval. Written by the `lessons` skill (`capture`, `promote`, `refresh`) through `learnings.sh add`. JSONL is used (rather than a single JSON array) so pure-bash tooling can append and grep without an external JSON parser, per S3.3. The store is anchored to the **invoking repo** (git toplevel of the current directory, else cwd), so a plugin-path invocation of `learnings.sh` writes into the caller's repo, never the shared plugin cache.
 
 Manual edits to `tasks/lessons.md` are preserved on next migrate (re-emitted as entries with `source: "manual"`).
 
@@ -30,7 +30,6 @@ Manual edits to `tasks/lessons.md` are preserved on next migrate (re-emitted as 
   "phase": "spec | plan | implement | review | postmortem | any",
 
   "severity": "info | warn | block | incident",
-  "memory_type": "episodic | semantic | procedural",
   "supersedes": null,
   "validity": {
     "expires_at": "2027-05-08T00:00:00Z",
@@ -48,12 +47,7 @@ Manual edits to `tasks/lessons.md` are preserved on next migrate (re-emitted as 
   "rule": "Before regen-markdown, check current line count and use mtk_guarded_write.",
   "applies_when": "phase=implement AND files contain tasks/lessons.md",
 
-  "wrong_turns": [
-    "Attempted direct overwrite without checking size — failed shrink-guard on first try.",
-    "Tried append-only path but missed the Auto-generated section boundary."
-  ],
   "time_cost": 12,
-  "evolution_actions": "hook",
 
   "confidence": "high",
   "output_contract": { "required_files": ["planning_note.md", "summary.json"], "json_fields": ["title", "status"] },
@@ -68,21 +62,21 @@ Manual edits to `tasks/lessons.md` are preserved on next migrate (re-emitted as 
 
 - **`id`** — `L-YYYY-MM-DD-NNN`. Monotonic per day. Allocated by `learnings.sh add`.
 - **`spec_id`** / **`workflow_uuid`** — at least one MUST be set. If the lesson is captured outside a workflow (manual entry), use `workflow_uuid: "manual"`.
-- **`scope`** — `personal` (only loaded by the engineer who captured it) vs `team` (loaded for everyone). `promote-lesson` flips `personal` → `team`.
+- **`scope`** — `personal` (only loaded by the engineer who captured it) vs `team` (loaded for everyone). The `lessons` skill writes `team` entries only; personal recall belongs to Claude Code's native memory. `personal` is still accepted and stays out of `tasks/lessons.md`.
 - **`source`** — provenance:
   - `correction` — engineer redirected the agent mid-session.
-  - `promotion` — promoted from personal to team via `promote-lesson`.
+  - `promotion` — promoted from Claude Code native memory to team via `lessons promote`.
   - `manual` — preserved verbatim from `tasks/lessons.md` markdown additions.
   - `review-finding` — a recurring review finding got escalated.
   - `incident` — postmortem-derived lesson.
-  - `golden-path` — self-driven struggle-then-success within a session, no engineer correction involved (`golden-path-capture` skill). Distinct from `correction`, which requires an engineer-issued redirect.
+  - `golden-path` — self-driven struggle-then-success within a session, no engineer correction involved (`lessons capture`). Distinct from `correction`, which requires an engineer-issued redirect.
 - **`decision_origin`** — provenance of the decision that produced this lesson:
   - `user-directed` — engineer dictated the decision.
   - `claude-recommended-approved` — model proposed, engineer accepted unchanged.
   - `claude-recommended-modified` — model proposed, engineer accepted with edits.
   - `claude-recommended-rejected` — model proposed, engineer rejected; lesson captures the rejected path.
   - `system-inferred` — emerged from a deterministic gate or lint, not from a human or model decision.
-  Required at emit time — entries missing the field are rejected by `learnings.sh add`. Aggregated by `learnings.sh metrics` into the sycophancy index π = approved / (approved + modified + rejected).
+  Required at emit time — entries missing the field are rejected by `learnings.sh add`.
 - **`files`** / **`directories`** — used by the proximity layer of retrieval. Either or both may be empty.
 - **`phase`** — when this lesson should fire. `any` is valid but discouraged — narrow when possible.
 - **`severity`**:
@@ -90,14 +84,15 @@ Manual edits to `tasks/lessons.md` are preserved on next migrate (re-emitted as 
   - `warn` — should follow.
   - `block` — must follow; violation should fail review.
   - `incident` — derived from a real incident; outranks all other sources.
-- **`memory_type`** *(optional, one of: `episodic` | `semantic` | `procedural`)* — content nature, orthogonal to `source` (which is provenance). `episodic` = a specific session event ("this run tripped the shrink-guard"); `semantic` = an abstracted fact/preference ("the team pins DbContext scoped"); `procedural` = an action pattern/skill ("before regen, check line count"). Improves recall relevance. Absent in pre-v7.22 entries; treated as unset. (Borrow: IAAR-Shanghai/Awesome-AI-Memory content-type taxonomy.)
 - **`supersedes`** *(optional string, an entry `id`)* — conflict-driven superseding. When a new lesson contradicts an existing one, capture the new lesson with `supersedes: "<old-id>"` rather than appending a duplicate. `learnings.sh query` derives the superseded set from these forward refs and drops any entry a newer one supersedes — so the old fact stops surfacing without deleting the audit trail. Absent = supersedes nothing. (Borrow: IAAR-Shanghai conflict-driven forgetting.)
 - **`validity.expires_at`** — default = `captured_at + 12 months`. Lessons go stale; re-confirm or let them expire.
 - **`validity.expired`** — set true after `expires_at` unless `reconfirmed_at` is fresher.
 - **`recurrence.count`** — incremented when the same root rule is captured again. ≥3 hits is the trigger to propose `CLAUDE.md` promotion.
-- **`wrong_turns`** *(optional array of strings)* — dead ends tried during the session, each with a one-line explanation of why it was wrong. Back-compat: absent in pre-v7.14 entries. `learnings.sh add` accepts the field as pass-through; no parser change needed.
-- **`time_cost`** *(optional integer, minutes)* — rough minutes lost due to the absence of this rule. Used by lesson-mining to satisfy admit rule A4. Null when not measurable.
-- **`evolution_actions`** *(optional string, one of: `routing` | `claude_md` | `reference` | `hook` | `none`)* — which toolkit asset was updated as a result of this lesson. Forced decision at promote time: `none` is allowed but must be accompanied by a stated reason. Absent in pre-v7.14 entries (treated as `none`).
+- **`time_cost`** *(optional integer, minutes)* — rough minutes lost due to the absence of this rule. Backs admit rule A4 in `lessons mine`. Null when not measurable.
+
+### Retired fields
+
+`wrong_turns`, `evolution_actions` and `memory_type` were filled in only a handful of field entries and are no longer part of the schema. Entries that carry them stay valid. `query` and `regen-markdown` ignore them, and `learnings.sh add` still accepts `--wrong-turns`, `--evolution-actions` and `--memory-type` for backward compatibility. Nothing requires them. Put dead ends in `body` instead.
 
 ### Executable lesson contract (optional, v7.25)
 
@@ -162,25 +157,3 @@ tasks/lessons.md         ← markdown view; `## Auto-generated` (team-scope only
 Migration is idempotent two ways: (1) once the file carries the auto-generated marker it short-circuits with "Already migrated"; (2) even against a marker-less re-feed, each block's title is hashed (`cksum`) and a block whose hash already exists in the store is skipped — so re-running never duplicates. After ingesting, migrate regenerates the markdown view (`regen-markdown --force`), which is an intentional prose→summary rewrite (full bodies live in the store) and therefore bypasses the shrink-guard. `migrate --store-only` runs the ingest half only and leaves `tasks/lessons.md` byte-for-byte untouched.
 
 **Lazy seed on query.** The bootstrap-time seed only reaches repos bootstrapped after it shipped; a repo set up earlier answered every lesson query with nothing, forever (a 2026-09 field run had 30 lessons in `tasks/lessons.md` and 0 reachable). `learnings.sh query` therefore seeds an empty or missing store itself when `tasks/lessons.md` has `## ` heading blocks — **store-only**, exactly the `migrate --store-only` path, because a read command must never rewrite the engineer's markdown. It reports `auto-seeded N entries … (store-only; run learnings.sh migrate to also regenerate the markdown view)` on stderr once; title-hash dedup makes later queries silent. `MTK_LEARNINGS_AUTOSEED=0` restores the diagnose-only behaviour.
-
-## Sycophancy Index (π)
-
-`bash scripts/learnings.sh metrics` aggregates `decision_origin` across the last 30 days (configurable via `--window-days`) and emits:
-
-```json
-{
-  "window_days": 30,
-  "totals": {
-    "user-directed": 12,
-    "claude-recommended-approved": 18,
-    "claude-recommended-modified": 6,
-    "claude-recommended-rejected": 3,
-    "system-inferred": 4
-  },
-  "pi": 0.667,
-  "warn_threshold": 0.70,
-  "status": "ok | warn"
-}
-```
-
-`pi = approved / (approved + modified + rejected)`. Excludes `user-directed` and `system-inferred` (they are not model recommendations). `status: "warn"` when `pi >= warn_threshold`. Threshold tunable via `.claude/review-config.json → sycophancy_index.warn_threshold`. Surfaced by `toolkit-health`.

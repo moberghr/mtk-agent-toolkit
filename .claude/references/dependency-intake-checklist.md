@@ -36,45 +36,19 @@ Run the appropriate registry verification command before scoring any other crite
 
 **Immediate block.** A Poor on criterion 0 blocks regardless of other scores. Do not install the package; report the finding with the exact registry output. If the package was AI-recommended, mark it `[ASSUMED]` in the plan and insert a `checkpoint:human-verify` step before any install.
 
-### 1. Scope — does this dep solve a problem we could not solve in <50 LOC ourselves?
+### Criteria 1–5
 
-| Score | Meaning |
-|---|---|
-| **Good** | Non-trivial domain (cryptography, parsing, protocol impl, OS abstraction). Reimplementation would be wrong-headed. |
-| **Acceptable** | Real value but possibly overkill — a lighter approach exists. |
-| **Poor** | Wrapper, micro-utility, or three-line "is-odd"-class package. |
+Score each **Good / Acceptable / Poor**. The Poor column is what blocks; Good and Acceptable are the judgment between.
 
-### 2. Maintenance — is the project alive?
+| # | Criterion | Good | Poor |
+|---|---|---|---|
+| 1 | **Scope** — beyond what we would write in <50 LOC? | Non-trivial domain (crypto, parsing, protocols, OS abstraction) | Wrapper, micro-utility, "is-odd"-class package |
+| 2 | **Maintenance** — is it alive? | Release < 6 months, ≥2 active maintainers | Release > 18 months, no maintainer activity, critical issues unanswered |
+| 3 | **Size** — footprint proportionate? | < 500 KB, ≤ 5 transitives, no native build | > 5 MB, > 20 transitives, pulls compilers/heavy SDKs, install fails on CI |
+| 4 | **Security** — supply-chain posture? | No CVE at the pinned version, signed/provenance, 2FA maintainers | Open critical/high CVE at the pinned version, malicious-release history, arbitrary postinstall scripts |
+| 5 | **License** — compatible with distribution? | MIT, Apache-2.0, BSD, ISC, 0BSD, Unlicense, MPL-2.0 | GPL/AGPL in a non-GPL product, SSPL, source-available non-OSI, unclear or absent |
 
-| Score | Meaning |
-|---|---|
-| **Good** | Last release < 6 months. ≥2 active maintainers. Clear roadmap or recent PRs landing. |
-| **Acceptable** | Last release 6–18 months OR sole maintainer who is still responsive to issues. |
-| **Poor** | Last release > 18 months. No maintainer activity. Open critical issues unanswered. |
-
-### 3. Size — is install + transitive footprint proportionate to value?
-
-| Score | Meaning |
-|---|---|
-| **Good** | Adds < 500 KB; ≤ 5 transitive deps; no native build step. |
-| **Acceptable** | Adds 500 KB – 5 MB; 5–20 transitive deps; or modest native build. |
-| **Poor** | > 5 MB on disk; > 20 transitives; pulls in compilers/heavy SDKs; install reliably fails on CI. |
-
-### 4. Security — supply-chain posture?
-
-| Score | Meaning |
-|---|---|
-| **Good** | No open CVEs at the pinned version; package signed (npm provenance, sigstore, NuGet signing); maintainer 2FA-enforced; reproducible builds. |
-| **Acceptable** | No known CVEs but missing signing or 2FA evidence; or low-severity advisory with available patch. |
-| **Poor** | Open critical/high CVE at pinned version; recent typosquat/malicious-release history in the registry; install runs arbitrary postinstall scripts. |
-
-### 5. License — compatible with our distribution?
-
-| Score | Meaning |
-|---|---|
-| **Good** | MIT / Apache-2.0 / BSD-2/3-Clause / ISC / 0BSD / Unlicense / MPL-2.0 (file-level copyleft is acceptable for libraries). |
-| **Acceptable** | LGPL with dynamic linking; commercial license that engineering already owns. |
-| **Poor** | GPL / AGPL in non-GPL product; SSPL; "source-available" non-OSI; license unclear or absent. |
+Acceptable sits between: release 6–18 months or a responsive sole maintainer; 500 KB–5 MB; no CVE but no signing evidence; LGPL dynamically linked or a commercial license engineering already owns.
 
 ## Block Logic
 

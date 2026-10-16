@@ -11,7 +11,7 @@ MTK skills, shared references, hooks, and scripts live either in the project (lo
 ## Resolution order
 
 1. If `$MTK_HELPER_ROOT` is set, prefix MTK-owned reads (`.claude/skills/`, `.claude/references/`, `hooks/`, `scripts/`, `.claude/review-config.json`) with it — a pinned checkout wins over every other source.
-2. Otherwise, if `$CLAUDE_PLUGIN_ROOT` is set, prefix them with that.
+2. Otherwise, on a plugin install, use the plugin root the entry skill received. Claude Code substitutes the braced `${CLAUDE_PLUGIN_ROOT}` into skill and agent text when it loads them, so the model sees an absolute path. The variable is never set in the Bash tool's environment. Neither the unbraced `$CLAUDE_PLUGIN_ROOT` nor a default-value form (`:-` inside the braces) is substituted, and neither is anything in a file read with the Read tool. References therefore write `$MTK_ROOT`, and the caller prefixes the command with `MTK_ROOT=<the stated path>`.
 3. Otherwise, if the probe file exists locally → project-relative paths work as-is. Probe: `.claude/skills/context-engineering/SKILL.md` (skill-family callers) or `hooks/pre-commit-linters.sh` (`pre-commit-review`, which needs hooks rather than skills).
 4. Otherwise, fall back to the newest plugin-cache copy:
 

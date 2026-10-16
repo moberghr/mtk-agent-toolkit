@@ -6,7 +6,8 @@ set -euo pipefail
 # it surfaces one line so the engineer (or next turn) decides: continue, hand
 # off, or abandon.
 #
-# Tier-2 (skill-invoking class): respects MTK_HOOKS_TIER2. When 0, silent.
+# Kill-switch: MTK_HOOKS_TIER2=0 silences it (the name outlived the retired
+# tier-1/tier-2 hook classes; settings.json still declares it).
 # Debounced: fires at most once per (workflow, batches_completed) so it does not
 # repeat on every Stop in a burst, but re-notifies after real progress.
 
@@ -14,14 +15,12 @@ set -euo pipefail
 _mtk_hook_diag() { local c=$?; [[ $c -ne 0 ]] && echo "[mtk-hook:$(basename "$0")] exit $c" >&2 2>/dev/null || true; return 0; }
 trap _mtk_hook_diag EXIT
 
-# Tier-2 opt-out.
+# Opt-out.
 [ "${MTK_HOOKS_TIER2:-1}" = "0" ] && exit 0
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
-
-mtk_is_redundant_plugin_invocation "$0" && exit 0
 
 REPO_ROOT="$(mtk_repo_root 2>/dev/null || pwd)"
 WF_DIR="${REPO_ROOT}/.mtk/workflows"

@@ -1,5 +1,5 @@
 ---
-description: Phase 7.5 archive detail for implement — delta sync-back procedure and the opt-in tracked run receipt field list
+description: Phase 7.5 archive detail for implement — delta sync-back procedure and the opt-in run receipt field list
 globs: []
 alwaysApply: false
 ---
@@ -33,16 +33,21 @@ bash scripts/spec-archive.sh docs/specs/<date>-<slug>.json --verdict PASS
 - Skip (with a one-line note) when the spec has no `baseline_area`, or when drift
   did not pass. Never archive drifted work.
 
-### Run receipt (opt-in, tracked)
+### Run receipt (opt-in)
 
-The workflow artifact and its evidence logs live under `.mtk/`, which is
-gitignored: after the session, the only tracked residue of a run is whatever
-landed in `tasks/lessons.md` and the spec itself. That is fine for most runs and
-wrong for the ones someone will ask about later — an audited change, a release, a
-run whose numbers end up in a report.
+The workflow artifact and its evidence logs live under `.mtk/`, and the per-feature
+spec, sidecar and evidence under `docs/specs/` (all but `docs/specs/baseline/`).
+Both are gitignored working artifacts: after the session, the only tracked residue
+of a run is whatever landed in `tasks/lessons.md` and what the sync-back above
+archived into `docs/specs/baseline/`. That is fine for most runs and wrong for the
+ones someone will ask about later — an audited change, a release, a run whose
+numbers end up in a report.
 
-When `MTK_RUN_RECEIPT=1`, write `docs/specs/<date>-<slug>.receipt.md` — a tracked
-sibling of the spec — containing only facts already recorded on the artifact:
+When `MTK_RUN_RECEIPT=1`, write `docs/specs/<date>-<slug>.receipt.md` — a sibling
+of the spec and, like it, an ignored working artifact. It outlives `.mtk/` pruning
+but not a clean checkout; to keep it in history, the engineer adds it explicitly
+(`git add -f`) or pastes it into the PR description. It contains only facts
+already recorded on the artifact:
 
 - base commit and the Phase 2.9 `baseline` (with `known_failures` named as inherited)
 - the final evidence figures, **as a delta against that baseline**

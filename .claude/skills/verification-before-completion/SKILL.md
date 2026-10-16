@@ -7,8 +7,6 @@ compatibility:
   - claude-code
   - cursor
   - codex
-trigger: reporting-done|closing-task|handing-off|claiming-success
-skip_when: mid-exploration|research-phase
 effort: high
 user-invocable: false
 ---
@@ -34,32 +32,20 @@ No completion claim is valid without fresh evidence from an actual command execu
 
 The `success_criteria[]` definitions (`id`, `observable`, `evidence_channel`) are **frozen at Phase 2.5 approval**. They are the goalposts; the run is not allowed to move them. The criteria are read-only ground truth during implementation — the same invariant F15 (Frozen-Replay / Non-Varying Evidence) names: *editing what measures you to move the number defeats the gate.*
 
-Before accepting any completion claim, run the **tamper check**: confirm the frozen criteria block has not changed since approval. The spec sidecar is committed at Phase 2.5, so the cheapest check is a diff of the criteria block against the approved version:
+Before accepting any completion claim, run the **tamper check**: confirm the frozen criteria have not changed since approval. Spec sidecars are gitignored working artifacts (`spec-driven-development` ignores `docs/specs/*` except `baseline/`), so there is no committed version to diff. Instead, the implement Phase 2.5 gate records an **approval seal** on the workflow artifact: a SHA-256 over the approved spec and plan bodies, plus a hash of the sidecar's frozen `success_criteria` fields (`id`, `observable`, `evidence_channel`). `verify-seal` re-derives both from disk and compares:
 
 ```bash
-# Tamper check: did success_criteria change since the spec was approved?
-git diff --no-color <approval-ref>..HEAD -- docs/specs/<date>-<slug>.json \
-  | grep -E '"(id|observable|evidence_channel)"' || echo "criteria intact"
+"$WFA" verify-seal "$MTK_WF_UUID"   # $WFA resolved per workflow-artifacts step 1
 ```
 
-- **Intact** → proceed with verification.
-- **Changed** → a goalpost moved. This is **fail-closed**: do NOT verify against the new definition. Re-open Phase 2.5 for explicit re-approval of the amended criteria (an unapproved criteria change is unapproved scope — `failure_stop_gate` territory if it slipped in to force a pass). Record the tamper finding; never silently accept the edited criterion.
+- **exit 0** → the approved spec/plan bytes and the frozen criteria are intact; proceed. If the OK line says `success_criteria not sealed` (no sidecar existed at approval), the criteria are not proved frozen: say so in the Not-Proved ledger.
+- **exit 1 (STALE)** → a goalpost moved, or a sealed spec/plan changed after approval. The printed `changed=` names which (`success_criteria (<sidecar>)` for a criteria edit). This is **fail-closed**: do not verify against the new definition and do not accept the completion claim. Re-open Phase 2.5 for explicit re-approval; the gate re-seals (`workflow-artifact.sh seal`). An unapproved criteria change is unapproved scope, `failure_stop_gate` territory if it slipped in to force a pass. Record the printed `sealed=`/`current=` hashes and the changed file in the block finding; never silently accept the edited criterion.
+- **exit 2** → uncheckable (corrupt artifact). Treat as STALE until the artifact is repaired.
+- **exit 3 (no seal)** → an older workflow, or a run that never passed the gate. The criteria cannot be proved frozen: compare them by hand against the approved spec the engineer saw, and record the tamper check as Not-Proved.
+
+The sidecar's other fields (the change manifest, amended in Phase 3.5) are not sealed, so a recorded manifest amendment never trips the check. The todo is progress state and is not sealed either, so ticking a completed batch off never trips it.
 
 A criterion the implementer rewrote to match what the code happens to do is not a verified criterion — it is a laundered one.
-
-### Approval-seal check (authoritative when a seal is recorded)
-
-When the workflow artifact carries an `approval_seal` (recorded by the implement Phase 2.5 gate over the approved spec/plan bodies — the todo is progress state and is not sealed), run it **before** the criteria diff — it is a stronger, whole-artifact check the criteria-block diff cannot game:
-
-```bash
-scripts/workflow-artifact.sh verify-seal "$MTK_WF_UUID"
-```
-
-- **exit 0** → the approved bytes are intact; proceed.
-- **exit 1 (STALE)** → a sealed artifact (spec or plan) changed after approval. **Fail-closed:** do NOT accept the completion claim. The edit re-opens Phase 2.5 — the engineer re-approves and the gate re-seals (`workflow-artifact.sh seal`). Record the printed `sealed=`/`current=` hashes and the named changed file in the block finding.
-- **exit 3 (no seal)** → older workflow with no seal recorded; fall back to the criteria-block tamper check above.
-
-The seal supersedes the git-diff tamper check because it binds the exact approved bytes of both scope artifacts (spec + plan), not just the criteria block — a laundered criterion or a quietly-edited plan breaks the hash. The todo is progress state and is intentionally *not* sealed, so ticking a completed batch off never trips it; a moved success-criterion goalpost is caught by the criteria diff below regardless.
 
 ## When To Use
 
@@ -140,8 +126,10 @@ The `evidence_channel` field on each success criterion names the surface where t
    `last_edit_seq` vs `last_verification_seq` and emits a re-arm notice when
    stale. Do not claim completion while any criterion is `re-armed` — re-run
    verification from step 1 after the edit.
-10. **Wiring check.** For every skill, hook, agent, or reference touched in
-   this task, run:
+10. **Wiring check (MTK toolkit repo only).** Skip this step unless
+   `scripts/validate-toolkit.sh` exists in the project — it ships with the
+   toolkit source, not with target repos. When it exists, for every skill,
+   hook, agent, or reference touched in this task, run:
    ```bash
    bash scripts/validate-toolkit.sh --task-scoped <comma-separated paths>
    ```
@@ -158,7 +146,7 @@ The `evidence_channel` field on each success criterion names the surface where t
 
 ## Claim Extraction (When Verifying Upstream Agent Work)
 
-When the work being verified came from a prior agent — a builder subagent, a reviewer, an integration verifier — do NOT trust their summary. Extract their factual claims and reconcile each one independently before stating completion.
+When the work being verified came from a prior agent — a builder subagent, a reviewer, an integration verifier — do not trust their summary. Extract their factual claims and reconcile each one independently before stating completion.
 
 **Procedure:**
 
@@ -203,11 +191,10 @@ When the work being verified came from a prior agent — a builder subagent, a r
 - Success criteria are frozen at approval. Run the tamper check before any
   completion claim; a changed `observable`/`evidence_channel`/`id` is fail-closed
   and re-opens Phase 2.5. Never verify against a goalpost the run moved.
-- When the workflow carries an `approval_seal`, `verify-seal` is the authoritative
-  pre-completion check. A STALE seal (exit 1) is fail-closed — the approved
-  spec/plan bytes changed after approval (the todo is progress state and is not
-  sealed); re-open Phase 2.5 and re-seal before any completion claim. Never
-  complete against a stale seal.
+- `verify-seal` is the tamper check. A STALE seal (exit 1) is fail-closed: the
+  approved spec/plan bytes or the frozen criteria changed after approval (the
+  todo is progress state and is not sealed); re-open Phase 2.5 and re-seal
+  before any completion claim. Never complete against a stale seal.
 - State completion as the `criterion | verdict | evidence` table. A prose
   "all good" without the table is not a completion claim.
 - When re-verification keeps failing the same criterion, do not loop forever:
@@ -215,25 +202,12 @@ When the work being verified came from a prior agent — a builder subagent, a r
   (`scripts/workflow-artifact.sh remediation`) and escalate to a human on
   `ESCALATE` — iteration cap or plateau (see `.claude/references/orchestration-gates.md`).
 
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` — the shared MTK rationalization table covers the universal shortcuts. Skill-specific traps to watch for here: running tests a few minutes ago (stale once you touched code), treating build success as test success (different claims, different evidence), and assuming compilation proves behavior (it proves syntax only).
-
-## Red Flags
-
-- Completion reported without any command output cited
-- Claiming done while any criterion is `re-armed` (edit landed after verification)
-- Completion stated as prose instead of the `criterion | verdict | evidence` table
-- A behavior-shaped completion with no Not-Proved ledger, or with an empty Not-Proved column
-
-Full table: `.claude/references/workflow-rationalizations.md` → verification-before-completion.
-
 ## Signal-Based Enforcement
 
-This skill is enforced via hooks in `settings.json`:
+This skill is enforced via the plugin hooks in `hooks/hooks.json`:
 
 - **Stop hook:** When the agent finishes responding, a prompt hook checks whether completion claims cite specific command output. If not, the agent is reminded to run verification and cite evidence.
-- **Freshness check:** `hooks/context-budget.sh` records the latest edit time and
+- **Freshness check:** `hooks/evidence-ledger.sh` records the latest edit time and
   the latest verification command run in the session. `hooks/verify-completion`
   compares those timestamps and warns with `VERIFICATION GAP:` when the evidence
   is stale or missing.
@@ -262,5 +236,5 @@ Forcing past a stuck state produces garbage output. Admitting difficulty is alwa
 - [ ] Every success criterion was verified individually, citing its `observable`
 - [ ] Behavior-shaped changes cite a real execution surface (`smoke-boot`, `http-probe`, `db-state-diff`, `cli-stdout`, `browser`), not only `test-run` / `build-output`; a `browser` criterion cites its `docs/specs/<slug>.evidence/<criterion-id>/` path or a no-MCP fallback note (see `.claude/references/evidence-capture.md`); and the completion carries a Not-Proved ledger (mocked-only integrations, unpinned configs/branches, single-fixture limits)
 - [ ] Upstream agent claims were each reconciled to `VERIFIED` / `CONTRADICTED` / `UNVERIFIABLE` — none left `UNVERIFIED`
-- [ ] Frozen-criteria tamper check ran (no `success_criteria` `id`/`observable`/`evidence_channel` changed since Phase 2.5) and, when an `approval_seal` exists, `verify-seal` returned exit 0 (not STALE)
+- [ ] Frozen-criteria tamper check ran: `verify-seal` returned exit 0 (not STALE), or, with no seal or no sealed criteria, the tamper check is recorded as Not-Proved
 - [ ] Completion stated as the `criterion | verdict | evidence` table, every verdict binary

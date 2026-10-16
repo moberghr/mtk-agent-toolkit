@@ -32,8 +32,10 @@ trap _mtk_hook_diag EXIT
 # disk contents -> content; Write to a missing file is allowed (new config).
 #
 # Engineer approval list: .mtk/config-guard-allow (repo-relative path per line),
-# honoured only when modified within the last 24h. The deny message tells the
-# model to STOP and ask — like read-guard it never prints how to approve, and an
+# honoured only when modified within the last 24h. "Repo" is the edited file's
+# own git work tree, so a nested worktree (.claude/worktrees/<name>/) has its own
+# list and paths are relative to the worktree root. The deny message tells the
+# model to STOP and ask — it never prints how to approve, and an
 # Edit/Write to the list itself is always denied (matched by file identity after
 # ./ ../ normalisation, so case variants and dot segments are caught; the
 # approval lookup uses the same normalised path). A Bash write to the list is out
@@ -50,8 +52,6 @@ trap _mtk_hook_diag EXIT
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
-
-mtk_is_redundant_plugin_invocation "$0" && exit 0
 
 [ "${MTK_CONFIG_GUARD:-1}" = "0" ] && exit 0
 
@@ -98,6 +98,20 @@ normalize_path() {
   printf '%s' "${out:-/}"
 }
 NORM_PATH="$(normalize_path "$FILE_PATH")"
+
+# The edited file belongs to its own git work tree, which is not always the
+# session's project: a worktree nested under it (.claude/worktrees/<name>/) is a
+# separate checkout. Resolve the root from the file's nearest existing directory,
+# so the reported path and the approval list (and its protection) are that work
+# tree's. Outside git, keep the project root.
+file_work_tree() {
+  local d="${NORM_PATH%/*}"
+  while [ -n "$d" ] && [ ! -d "$d" ]; do d="${d%/*}"; done
+  [ -n "$d" ] || d="/"
+  git -C "$d" rev-parse --show-toplevel 2>/dev/null
+}
+FILE_ROOT="$(file_work_tree || true)"
+[ -n "$FILE_ROOT" ] && REPO_ROOT="$FILE_ROOT"
 
 # Spelling-robust repo-relative path (S1.17): never a bare prefix strip.
 REL_PATH="$(mtk_repo_relative_path "$NORM_PATH" "$REPO_ROOT" 2>/dev/null || printf '%s' "$NORM_PATH")"
@@ -258,5 +272,5 @@ if [ -f "$ALLOW_FILE" ] \
 fi
 
 # Deliberately no toggle hint and no approval recipe: the approval is the
-# ENGINEER's decision, made out-of-band (read-guard precedent).
+# ENGINEER's decision, made out-of-band.
 mtk_deny "CONFIG-GUARD: this edit weakens ${REL_PATH} (${SIGNAL}). Fix the code the analyzer flags instead of silencing it. If the engineer explicitly asked for this suppression, STOP and ask them to approve it — do not work around this guard." ""

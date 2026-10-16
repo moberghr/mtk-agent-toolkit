@@ -9,7 +9,7 @@ alwaysApply: false
 
 Read this companion from `setup-bootstrap` STEP 2.5 ("Post-Scan Interview"). The `--non-interactive` skip/reuse gates and the re-run reuse rule stay in SKILL.md; the question set, adaptive-ambiguity protocol, answer routing, and `setup-answers.json` schema live here.
 
-Auto-detection captures WHAT is in the codebase. It cannot capture the team's implicit knowledge — the things that make CLAUDE.md actually useful. Ask **3–7 focused questions** via `AskUserQuestion`. These answers feed directly into the Critical Rules and `project-specific.md`.
+Auto-detection captures WHAT is in the codebase. It cannot capture the team's implicit knowledge — the things that make AGENTS.md actually useful. Ask **3–7 focused questions** via `AskUserQuestion`. These answers feed directly into the Critical Rules and `project-specific.md`.
 
 **Rules for the interview:**
 - Keep it short. 7 static questions max, plus up to 3 adaptive questions from audit ambiguities (10 total ceiling). If the engineer pushes back or seems unsure, accept "skip" as a valid answer.
@@ -29,7 +29,7 @@ Auto-detection captures WHAT is in the codebase. It cannot capture the team's im
 
 5. **Compliance / regulatory constraints** (always ask for regulated domains) — "Are there compliance constraints that should surface in reviews? (e.g., PII handling, audit log requirements, SOC2 scope, PCI scope)"
 
-6. **Definition of done** — "What must be true before a change in this repo counts as done? (build + tests green, review passed, manual QA, deploy verification, docs updated …)" Answers feed CLAUDE.md verification guidance and `.claude/rules/project-specific.md`.
+6. **Definition of done** — "What must be true before a change in this repo counts as done? (build + tests green, review passed, manual QA, deploy verification, docs updated …)" Answers feed AGENTS.md verification guidance and `.claude/rules/project-specific.md`.
 
 7. **Product purpose** — "One sentence: what does this product do, and for whom?" Skippable like the rest. Feeds `.claude/references/product.md` (STEP 3.8).
 
@@ -46,7 +46,7 @@ Phrasing pattern: "The codebase splits on `<claim>`: `<form A>` (N/M) vs `<form 
 - Each `top failure mode` → rule in the relevant `.claude/rules/` file (e.g., failure about EF queries → `data-layer.md`).
 - Each `invisible convention` → `project-specific.md`.
 - Compliance answers → fold into `security.md` with `§1.x` numbering.
-- Definition-of-done answers → CLAUDE.md's verification guidance (what "done" means for this repo) and `.claude/rules/project-specific.md`.
+- Definition-of-done answers → AGENTS.md's verification guidance (what "done" means for this repo) and `.claude/rules/project-specific.md`.
 - Product purpose answer → persisted under answer key `product_purpose`; seeds `.claude/references/product.md` (STEP 3.8).
 - **Evidence anchor (every rule sourced from an answer):** cite the steering file as the rule's evidence, e.g. `Evidence: engineer interview — .claude/setup-answers.json (hard_nevers)`. `scripts/verify-claims.sh` resolves real paths before content-grep, so these anchors always hit — engineer-stated rules are never auto-downgraded by the verify pass.
 

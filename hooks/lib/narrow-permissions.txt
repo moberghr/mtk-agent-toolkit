@@ -1,0 +1,38 @@
+# Narrow Bash permissions that may move from the inert permissions.allowedTools
+# key into permissions.allow automatically. Read by
+# scripts/migrate-settings-permissions.sh and hooks/merge-settings.sh — this is
+# the only copy of the list.
+#
+# One command prefix per line. An entry qualifies when it is exactly
+#   Bash(<prefix>)  or  Bash(<prefix>:*)  or  Bash(<prefix> <args>)
+# with single spaces only, no shell metacharacters (; & | $ < > ` ( )), and no
+# trailing newline. Everything else stays inert for a manual decision: moving a
+# broad rule (Bash(python:*), Bash(npx:*), Write, Bash(*)) would silently switch
+# on a permission nobody ever ran with.
+dotnet build
+dotnet test
+dotnet format
+npm test
+npm run test
+npm run build
+npm run lint
+pnpm test
+pnpm build
+pnpm lint
+pnpm run test
+pnpm run build
+pnpm run lint
+yarn test
+yarn build
+yarn lint
+yarn run test
+yarn run build
+yarn run lint
+pytest
+ruff check
+ruff format
+mypy
+tsc
+git status
+git diff
+git log

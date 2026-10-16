@@ -5,8 +5,6 @@ license: MIT
 compatibility:
   - claude-code
   - codex
-trigger: tech-stack-context
-skip_when: never-skip-when-active-stack
 type: tech-stack
 user-invocable: false
 ---
@@ -15,7 +13,7 @@ user-invocable: false
 
 ## Overview
 
-This tech stack skill provides .NET/C#-specific context for the generic workflow skills (`spec-driven-development`, `incremental-implementation`, `test-driven-development`) and for review agents. It is loaded when `.claude/tech-stack` contains `dotnet`.
+.NET/C# context for the workflow skills and review agents: commands, detection markers, the Moberg EF/MediatR rules, the analyzer wall, settings and scan recipes.
 
 ## When To Use
 
@@ -31,7 +29,7 @@ Loaded automatically by commands and skills when the active tech stack is `dotne
 - **Test (list-only):** enumerates discovered tests without executing them — the F7/command-verification list variant used to verify `dotnet test` is runnable without paying for a full suite run. Conditional on the solution format:
   - `.sln`: `dotnet test <sln> --list-tests`
   - `.slnx` (or `global.json` sets `"test": {"runner": "Microsoft.Testing.Platform"}`): `dotnet test --solution <slnx> --list-tests` — a bare `dotnet test <slnx> --list-tests` fails with `"Specifying a solution for 'dotnet test' should be via '--solution'"` under Microsoft.Testing.Platform.
-- **Format:** `dotnet format --verbosity quiet` (project-wide). Edited-file formatting is wired via `hooks/format-on-edit.sh`, which **queues** paths at PostToolUse and **formats** them at Stop — both halves must be wired or nothing is formatted. `--include` takes paths relative to the workspace directory, so the flush pass groups files by their nearest `.csproj` and runs from that directory; an absolute `--include` silently matches nothing and still exits 0. Do NOT reference `$CLAUDE_FILE` — it is not a Claude Code env var; hook input arrives via stdin.
+- **Format:** whitespace + style only, never a bare `dotnet format` (see the Format Command section).
 
 ## File Extensions & Markers
 
@@ -51,133 +49,83 @@ find . \( -name "*.sln" -o -name "*.slnx" -o -name "*.csproj" \) -not -path "*/b
 
 ## ORM & Data Layer Guidance
 
-**EF Core rules (when EF Core is detected):**
+The single copy of the EF Core rules (the coding guidelines restate a few; the stack supplements do not):
 
-- Add `AsNoTracking()` for read-only queries.
-- Prefer `.Select()` projection to `Include()` for DTO reads.
-- Keep filtering in the database, not after materialization.
-- Use async query methods (`ToListAsync`, `FirstOrDefaultAsync`).
-- Keep mutation logic explicit and easy to trace.
-- Avoid multiple `SaveChanges` calls in one handler unless clearly justified.
-- Keep transaction boundaries clear when audit data or multiple aggregates are involved.
-
-**Test provider rules:**
-
-- Do not default to `UseInMemoryDatabase` when relational behavior matters (arrays, JSONB, timestamps, transactions).
-- Prefer SQLite or project-standard integration infrastructure when query translation matters.
-- Verify projections, filtering, pagination, and transaction behavior with realistic providers.
-
-**Reference:** `.claude/references/dotnet/ef-core-checklist.md`
+- `.Select()` projection over `Include()` for DTO reads, and no `.Include()` at all when the query ends in a `Select(new ...)`: the projection already loads what it names.
+- `AsNoTracking()` on read-only queries; async query methods; filter in the database, not after materialization.
+- **Order and filter on the entity, not on a projected member.** Once `.Select()` has produced a record, `OrderBy`/`Where` on one of *its* members is untranslatable, and EF abandons the whole query instead of sorting in memory. Put them before the projection, or order by the entity property the member came from. It fails at runtime, so only a test catches it.
+- One `SaveChanges` per handler; the transaction boundary covers audit writes and multi-aggregate changes (see `domain-finance.md`).
+- Migrations use the `dotnet ef` form in `## Build & Test Commands`; review the generated migration before applying it.
+- Non-ORM access the scan found (Dapper, RDS Data API, raw `SqlCommand`) stays as it is; do not migrate it to EF unless asked.
 
 ## Framework Patterns
 
-**MediatR/CQRS (when MediatR is detected):**
+**MediatR / CQRS (when detected):** `Request`, `Response` and `Handler` in one file; `Command`/`Query` suffixes; folder layout matching the neighboring slices; one `SaveChanges` per handler; validation through the project-standard mechanism (FluentValidation, DataAnnotations, whichever the scan found).
 
-- Keep `Request`, `Response`, and `Handler` together when the project follows that pattern.
-- Use `Command` and `Query` suffixes consistently.
-- Match the folder layout used by neighboring slices.
-- Handlers orchestrate application logic; they should not become dumping grounds for unrelated concerns.
-- Validate requests using the project-standard approach.
-- Keep side effects explicit.
-- One `SaveChanges` per handler.
-
-**Reference:** `.claude/references/dotnet/mediatr-slice-patterns.md`
+**Runtime:** `HttpClient` through `IHttpClientFactory`; `CancellationToken` propagated through async chains. In AWS Lambda, lazy-init heavy clients and secrets and keep `DbContext` scoped to the invocation.
 
 ## Test Level Guidance
 
-- **Unit tests:** pure logic, validators, mapping, branching rules.
-- **Integration tests:** handlers, API endpoints, persistence, authorization, serialization, EF Core behavior.
-- **End-to-end tests:** only when the project already uses them and the behavior crosses major boundaries.
-- Use the project-standard provider for EF-sensitive behavior. Do not default to `UseInMemoryDatabase` when relational behavior matters.
-- Test assertions should be meaningful — not just "does not throw".
-- Match existing project test naming and fixture patterns.
+- Handlers, endpoints, persistence, authorization and EF behavior get integration tests; pure logic, validators and mapping get unit tests.
+- Never default to `UseInMemoryDatabase` when relational behavior matters (arrays, JSONB, timestamps, transactions, raw SQL). Provider and framework rules: `.claude/references/dotnet/testing-supplement.md`.
 
 ## Coding Style Reference
 
 Path: `.claude/references/dotnet/coding-guidelines.md`
 
-Source: `https://raw.githubusercontent.com/moberghr/coding-guidelines/main/CodingStyle.md`
+Source: `https://raw.githubusercontent.com/moberghr/coding-guidelines/<sha>/CodingStyle.md`, where `<sha>` is the commit pinned in the plugin manifest (`coding-guidelines.sha` in `${CLAUDE_PLUGIN_ROOT}/.claude/manifest.json`, with the expected sha256 under `coding-guidelines.files`). `setup-bootstrap` STEP 1 fetches that revision and verifies the hash. Never fetch from `main`.
 
-Key conventions enforced by the coding guidelines (summary for reviewers):
-- Lambda params: `x`, nested: `y`, `z`
-- LINQ: chained methods on separate lines, multiple conditions as multiple `.Where()` calls
-- `Select()` projections from DB, not `Include()`
-- File-scoped namespaces, `var` for all locals, early return over `else`
-- MediatR: one `SaveChanges` per handler, Handler+Request+Response in same file
-- Braces on all control flow, even single-line
+Reviewer summary: lambda params `x` (nested `y`, `z`); chained LINQ on separate lines, one condition per `.Where()`; file-scoped namespaces; `var` for locals; early return over `else`; braces on all control flow.
 
 ## Analyzer Configuration
 
-See `.claude/references/dotnet/analyzer-config.md` for recommended Roslyn analyzer packages and `.editorconfig` rules. Key packages: `Microsoft.EntityFrameworkCore.Analyzers`, `Meziantou.Analyzer`, `Roslynator.Analyzers`.
+`.claude/references/dotnet/analyzer-config.md` carries the packages, the `.editorconfig` severities and **the analyzer wall**: in a warnings-as-errors repo, StyleCop (`SA*`), Sonar (`S*`) and Meziantou (`MA*`) cause most build-gate failures, not MTK's rules. Read it before the first build of a batch. Two of its facts matter on every run:
 
-Build with analyzer capture:
+- **SA1512/SA1514 collide** on a `//` banner placed directly above a `///` doc comment; no blank-line choice satisfies both. Never stack them.
+- A green `dotnet build` does not imply a green `dotnet format --verify-no-changes`; they run different rule sets. Gate on both.
+
+Build with analyzer capture. Log to a file, never `tee /dev/tty` (agent shells have no controlling terminal):
 ```bash
-dotnet build 2>&1 | tee /dev/tty | hooks/parse-build-diagnostics.sh > .mtk/analyzer-output.json
+mkdir -p .mtk
+dotnet build 2>&1 | tee .mtk/build.log
+bash "${CLAUDE_PLUGIN_ROOT}/hooks/parse-build-diagnostics.sh" --file .mtk/build.log > .mtk/analyzer-output.json
 ```
 
 ## Companion Plugin: dotnet-claude-kit
 
-If `codewithmukesh/dotnet-claude-kit` is installed, its 15 Roslyn MCP tools are available for deeper analysis. These tools load the actual MSBuild workspace and provide semantic code intelligence that MTK's file-based analysis cannot match.
-
-**Key tools to use in MTK workflows:**
-- `DetectAntiPatterns` — call during pre-commit or batch review for deterministic anti-pattern findings (AsyncVoid, BroadCatch, EfCoreNoTracking, HttpClientInstantiation, MissingCancellationToken, SyncOverAsync). Treat results as `source: "analyzer"`, `confidence: 100`.
-- `GetProjectGraph` / `GetDependencyGraph` — call to scope builds to affected projects on large solutions. Feed results to `incremental-implementation` for targeted build/test commands.
-- `FindDeadCode` / `DetectCircularDependencies` — call during architecture review for structural findings.
-- `GetDiagnostics` — call for compiler and analyzer warnings on specific files, more targeted than full `dotnet build`.
-- `GetTestCoverageMap` — call during test review to verify coverage claims.
-
-**Graceful degradation:** If dotnet-claude-kit is not installed, all MTK skills fall back to build output parsing (`hooks/parse-build-diagnostics.sh`) and AI-based review. The workflow is the same; the deterministic layer is thinner.
+If `codewithmukesh/dotnet-claude-kit` is installed, use its Roslyn MCP tools: `DetectAntiPatterns` in pre-commit and batch review (treat results as `source: "analyzer"`, `confidence: 100`), `GetProjectGraph`/`GetDependencyGraph` to scope builds on large solutions, `FindDeadCode`/`DetectCircularDependencies` in architecture review, `GetDiagnostics` for per-file warnings, `GetTestCoverageMap` to check coverage claims. Without it, skills fall back to `parse-build-diagnostics.sh` and AI review.
 
 ## Recommended Tooling
 
-See `docs/recommended-tooling/dotnet.md` for MCP servers, plugins, and editor integrations that noticeably improve Claude Code productivity on .NET projects — notably `csharp-lsp` (Roslyn semantic navigation), `dotnet-claude-kit` (Roslyn analyzer pack), and `microsoft-learn` (official Azure/.NET docs). Paired with the stack-agnostic `docs/recommended-tooling/shared.md`. `setup-bootstrap` prints both during onboarding; install is manual.
+`docs/recommended-tooling/dotnet.md` (with `docs/recommended-tooling/shared.md`): `csharp-lsp`, `dotnet-claude-kit`, `microsoft-learn`. `setup-bootstrap` prints both; install is manual.
 
 ## Reference Files
 
-These files are loaded by commands and review agents when the active stack is `dotnet`:
+Loaded by commands and review agents when the active stack is `dotnet`:
 
-- `.claude/references/dotnet/coding-guidelines.md` — Moberg C# coding style guide
-- `.claude/references/dotnet/ef-core-checklist.md` — EF Core review and implementation checklist
-- `.claude/references/dotnet/mediatr-slice-patterns.md` — MediatR/CQRS slice conventions
-- `.claude/references/dotnet/testing-supplement.md` — .NET-specific testing guidance (EF Core providers)
-- `.claude/references/dotnet/performance-supplement.md` — .NET-specific performance rules
-- `.claude/references/dotnet/analyzer-config.md` — Recommended Roslyn analyzer packages and `.editorconfig` rules
-- `docs/recommended-tooling/dotnet.md` — Recommended MCPs / plugins / editor integrations for .NET
+- `.claude/references/dotnet/coding-guidelines.md` — Moberg C# coding style guide (upstream-pinned)
+- `.claude/references/dotnet/testing-supplement.md` — test frameworks and EF Core test providers
+- `.claude/references/dotnet/analyzer-config.md` — analyzer packages, `.editorconfig` severities, the analyzer wall
+- `docs/recommended-tooling/dotnet.md` — recommended MCPs, plugins and editor integrations
+
+The EF Core, MediatR and runtime rules live in this skill (`## ORM & Data Layer Guidance`, `## Framework Patterns`).
 
 ## Settings Additions
 
-Merge these into the project's `.claude/settings.json` during `setup-bootstrap`:
+`setup-bootstrap` merges these, after `.claude/references/settings-baseline.md`, into the project's `permissions.allow` / `permissions.deny` (never an `allowedTools` key).
 
-### allowedTools (merge: union)
+### allow (merge: union)
 - `Bash(dotnet build:*)`
 - `Bash(dotnet test:*)`
 - `Bash(dotnet format:*)`
 
 ### deny (merge: union)
 - `Read(**/appsettings.Production.json)`
-- `Bash(dotnet publish:*)` — deny-only; publish is a deploy-adjacent action bootstrap should not pre-authorize. When a pattern appears in both `allowedTools` and `deny`, deny wins, so it is listed here only.
+- `Bash(dotnet publish:*)` — deny-only; publish is a deploy-adjacent action bootstrap should not pre-authorize. When a pattern appears in both `allow` and `deny`, deny wins, so it is listed here only.
 
 ### hooks (do NOT add)
 
-`format-on-edit.sh` is wired by the **plugin**, in MTK's own `hooks/hooks.json`
-(PostToolUse `Edit|Write` to queue, Stop + SubagentStop `--flush` to format).
-Bootstrap must NOT copy it into the target's `.claude/settings.json`.
-
-`$CLAUDE_PLUGIN_ROOT` is only defined for hooks a plugin declares itself. Written
-into a project settings file it expands to the empty string, so the command runs
-as `bash /hooks/format-on-edit.sh` and fails on *every* edit — 4,552 such failures
-were measured across 7 bootstrapped repos, with formatting never once running.
-
-The project's opt-in signal is the `.claude/tech-stack` marker bootstrap already
-writes; the hook checks it and no-ops in repos that never adopted MTK.
-`MTK_FORMAT_ON_EDIT=0` opts a bootstrapped repo back out.
-
-Both halves matter and the plugin wires both: PostToolUse only **queues** the
-edited path, `--flush` at Stop is what formats. Queue-only formats nothing;
-mutating at PostToolUse instead rewrites a file Claude has already read, and its
-next Edit fails with "File has been modified since read". Matchers are regexes on
-**tool name** only — `Write(*.cs)` is not valid syntax and silently never fires;
-file-extension dispatch happens inside the hook.
+`format-on-edit.sh` is wired by the plugin's own `hooks/hooks.json`. Bootstrap never copies an MTK hook into the target's `settings.json`; `setup-bootstrap` Settings Merge says why.
 
 ## Format Command
 
@@ -188,13 +136,15 @@ file-extension dispatch happens inside the hook.
 dotnet format whitespace --verbosity quiet && dotnet format style --verbosity quiet
 ```
 
-At flush the wrapper groups the turn's edited `.cs` files by their nearest `.csproj` (falling back to `.sln`/`.slnx`) and runs `dotnet format whitespace` then `dotnet format style`, each as one `--include <relative paths> --verbosity quiet` call per workspace, from that workspace directory. The `analyzers` pass is deliberately excluded: bare `dotnet format` applies CA/third-party code fixes (a CA1001 auto-fix broke a test class repeatedly in a field run), and those are a reviewed change, not a formatting side effect. Both details matter: `--include` matches only paths relative to the invocation directory — given an absolute path it matches nothing and still exits 0 — and `dotnet format` loads the whole workspace before filtering, so one run per file is pathological. A `.cs` file with no `.csproj`/`.sln` above it is skipped rather than triggering a repo-wide format. Failures log to stderr but never block.
+At flush the hook groups the turn's edited `.cs` files by their nearest `.csproj` (else `.sln`/`.slnx`) and runs `dotnet format whitespace` then `dotnet format style`, one `--include <relative paths>` call per workspace, from that workspace directory. The field facts behind that shape:
+
+- `--include` matches only paths relative to the invocation directory; an absolute path matches nothing and still exits 0.
+- The `analyzers` pass is excluded: bare `dotnet format` applies CA/third-party code fixes (a CA1001 fix broke a test class repeatedly; another run rewrote every `DbSet<T>` as nullable). Those are reviewed changes, not formatting.
+- `dotnet format` loads the whole workspace before filtering, so one run per file is pathological. A `.cs` file with no project above it is skipped. Failures log to stderr and never block.
 
 ## Pre-Commit Review Items
 
-Conditional, tool-keyed items for the generated `pre-commit-review-list.md`.
-`setup-bootstrap` selects items whose trigger tool was detected in the scan,
-adds the three stack-agnostic always-include items, and caps the list at 10.
+Tool-keyed items for the generated `pre-commit-review-list.md`; `setup-bootstrap` keeps those whose tool the scan detected.
 
 - [EF Core] `AsNoTracking` on reads, `Select()` over `Include()`, `CancellationToken` propagated, `DbContext` scoped/disposed correctly
 - [MediatR] one `SaveChanges` per handler, validate request
@@ -202,17 +152,15 @@ adds the three stack-agnostic always-include items, and caps the list at 10.
 
 ## Scan Recipes
 
-These bash commands are used by `setup-audit.md` when auditing a .NET repository.
+Used by `setup-audit` when auditing a .NET repository.
 
 ### Dependency Registry Verification
 
-Before planning the install of any NuGet package not already referenced — especially one recommended by an AI assistant, blog post, or research brief — verify it exists and is the real package (criterion 0 of `.claude/references/dependency-intake-checklist.md`):
+Before planning the install of any NuGet package not already referenced, verify it exists and is the real one (criterion 0 of `.claude/references/dependency-intake-checklist.md`). Not found, or a typosquat-like name, is an immediate block; an unverified AI-recommended package is tagged `[ASSUMED]` with a `checkpoint:human-verify` step before any install.
 
 ```bash
 dotnet package search <id> --exact-match --source https://api.nuget.org/v3/index.json
 ```
-
-A package not found, or one whose name closely resembles a popular package with different scope (typosquat signal), is an immediate block. `planning-and-task-breakdown` tags an unverified AI-recommended package `[ASSUMED]` and inserts a `checkpoint:human-verify` step before any install.
 
 ### Project Structure
 ```bash
@@ -224,63 +172,42 @@ grep -rh "PackageReference" --include="*.csproj" | sed 's/.*Include="//' | sed '
 
 ### Patterns In Use
 ```bash
-# MediatR / CQRS
 grep -rl "IRequest\|IRequestHandler\|IMediator" --include="*.cs" | head -20
 find . \( -path "*/Commands/*" -o -path "*/Queries/*" \) | head -20
-# Result pattern
 grep -rl "Result<\|Result\.Success\|Result\.Failure" --include="*.cs" | head -10
-# Domain events
 grep -rl "IDomainEvent\|DomainEvent\|INotification" --include="*.cs" | head -10
-# FluentValidation
 grep -rl "AbstractValidator\|IRuleBuilder" --include="*.cs" | head -10
-# AutoMapper / Mapster
 grep -rl "IMapper\|CreateMap\|TypeAdapterConfig" --include="*.cs" | head -10
-# EF Core
 grep -rl "DbContext\|DbSet\|OnModelCreating" --include="*.cs" | head -10
 ```
 
 ### Data Layer
 ```bash
-# EF Core configuration
 find . -name "*Configuration*.cs" -not -path "*/bin/*" | head -10
 grep -rl "IEntityTypeConfiguration\|modelBuilder\.\|HasKey\|HasIndex" --include="*.cs" | head -5
-# Raw SQL
 grep -rn "FromSqlRaw\|ExecuteSqlRaw\|SqlQuery" --include="*.cs" | head -5
-# AsNoTracking usage
 grep -rn "AsNoTracking" --include="*.cs" | head -5
-# Select vs Include
 grep -rc "\.Include(" --include="*.cs" | grep -v ":0" | head -5
 grep -rc "\.Select(" --include="*.cs" | grep -v ":0" | head -5
-# Connection strings
 grep -rn "ConnectionString\|UseNpgsql\|UseSqlServer\|UseInMemory" --include="*.cs" | head -5
-# Non-ORM data access
 grep -rl "DataApiHelper\|IAmazonRDSDataService\|Dapper\|SqlCommand" --include="*.cs" | head -5
 ```
 
 ### Infrastructure
 ```bash
-# AWS services
 grep -rh "Amazon\.\|AWS\.\|AWSSDK" --include="*.cs" --include="*.csproj" | sort -u | head -20
-# CDK/IaC
 find . -name "*.csproj" \( -path "*cdk*" -o -path "*Cdk*" \) | head -5
-# Lambda
 grep -rl "ILambdaContext\|FunctionHandler\|LambdaSerializer" --include="*.cs" | head -5
-# VPC/networking
 grep -rn "Vpc\|SubnetType\|SecurityGroup\|NatGateway" --include="*.cs" | head -10
-# Docker
 find . \( -name "Dockerfile" -o -name "docker-compose*" \)
-# SQS/SNS/messaging
 grep -rl "IAmazonSQS\|IAmazonSNS\|SendMessageAsync\|SQSEvent" --include="*.cs" | head -5
-# Secrets Manager
 grep -rl "SecretsManager\|GetSecretValue\|SecretResolver" --include="*.cs" | head -5
 ```
 
 ### Naming Conventions
 ```bash
-# Sample handler/controller files for route patterns and naming
 find . -name "*Controller*.cs" -not -path "*/bin/*" | head -10
 find . -name "*Handler*.cs" -not -path "*/bin/*" -not -path "*Test*" | head -10
-# Check for common DI patterns
 grep -rn "AddSingleton\|AddScoped\|AddTransient\|AddDbContext" --include="*.cs" | head -10
 ```
 

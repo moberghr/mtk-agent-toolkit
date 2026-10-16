@@ -9,16 +9,21 @@ trap _mtk_hook_diag EXIT
 # Detects scope creep by checking if the file being modified is listed in the
 # active spec's change_manifest or test_manifest.
 #
-# Advisory only (exit 0) — prints a warning, never blocks.
-# No-op when there is no active spec JSON sidecar.
+# Advisory only (exit 0) — warns once per file per session (opt-in enforce mode,
+# MTK_SCOPE_GUARD_ENFORCE=1, denies every time). No-op when there is no active
+# spec JSON sidecar. A sidecar is not active once it shipped: archived into
+# docs/specs/baseline/*.audit.jsonl, an archive receipt (<stem>.receipt.md)
+# beside it, or only finished workflow artifacts (complete/completed/archived/
+# abandoned) referencing it.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
 
-mtk_is_redundant_plugin_invocation "$0" && exit 0
-
 INPUT="$(mtk_read_payload)"
+# Before anything else: the session's baseline fingerprint must predate the
+# first Edit/Write (verify-completion's "did this session change anything").
+mtk_ensure_session_baseline "$INPUT"
 
 # Extract file_path from the tool input JSON
 FILE_PATH=$(mtk_extract_file_path "$INPUT" 2>/dev/null || echo "")
@@ -28,7 +33,9 @@ FILE_PATH=$(mtk_extract_file_path "$INPUT" 2>/dev/null || echo "")
 # plain string strip no-ops when the payload spells the root differently than
 # git does (case-insensitive FS, symlinked root), which lands in the `/*` case
 # below and FAILS THE GUARD OPEN on every edit. See mtk_repo_relative_path.
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+# mtk_repo_root prefers $CLAUDE_PROJECT_DIR, so a hook whose cwd is outside the
+# repo still resolves the project instead of failing open.
+REPO_ROOT="$(mtk_repo_root)"
 REL_PATH="$(mtk_repo_relative_path "$FILE_PATH" "$REPO_ROOT" 2>/dev/null || printf '%s' "$FILE_PATH")"
 
 # Out-of-repo and workflow-state writes can never be scope violations, so they
@@ -51,7 +58,7 @@ esac
 # Anchor .mtk/ the same way workflow state does ($CLAUDE_PROJECT_DIR -> git
 # top-level -> cwd) so the pointer is found even from a worktree/sub-dir cwd,
 # where the writing workflow anchors it identically.
-MTK_STATE_ROOT="${CLAUDE_PROJECT_DIR:-$REPO_ROOT}"
+MTK_STATE_ROOT="$REPO_ROOT"
 if [ -n "$(find "${MTK_STATE_ROOT}/.mtk" -maxdepth 1 -name scope-guard-skip -mmin -240 2>/dev/null || true)" ]; then
   exit 0
 fi
@@ -63,6 +70,37 @@ fi
 ARTIFACT_ROOT="$(mtk_artifact_root "$FILE_PATH" 2>/dev/null || printf '%s' "$REPO_ROOT")"
 SPEC_DIR="$ARTIFACT_ROOT/docs/specs"
 SPEC_JSON=""
+WF_DIR="${MTK_STATE_ROOT}/.mtk/workflows"
+
+# True when the sidecar $1 has shipped or was given up on, so it must not anchor
+# the guard. Field run: a new branch got "not in the approved spec" on every
+# edit against a spec an earlier, finished feature left inside the 7-day window.
+#   - an archive receipt <stem>.receipt.md beside it (implement Phase 7.5)
+#   - workflow artifacts that reference it (results.spec_path, same stem) and are
+#     all finished; one ACTIVE reference keeps it live
+# grep, not python3: this runs per candidate on every Edit/Write.
+spec_is_finished() {
+  local cand="$1" stem dir wf line st live=0 done_ref=0
+  stem="$(basename "$cand" .json)"
+  dir="$(dirname "$cand")"
+  [ -f "$dir/$stem.receipt.md" ] && return 0
+  [ -d "$WF_DIR" ] || return 1
+  for wf in "$WF_DIR"/*.json; do
+    [ -f "$wf" ] || continue
+    line="$(grep -m1 -E '"spec_path"[[:space:]]*:' "$wf" 2>/dev/null || true)"
+    case "$line" in
+      *"/$stem."*|*"\"$stem."*) ;;
+      *) continue ;;
+    esac
+    st="$(grep -m1 -oE '"status"[[:space:]]*:[[:space:]]*"[^"]*"' "$wf" 2>/dev/null | sed 's/.*"\([^"]*\)"$/\1/' || true)"
+    case "$st" in
+      complete|completed|archived|abandoned) done_ref=1 ;;
+      *) live=1 ;;
+    esac
+  done
+  [ "$live" -eq 0 ] && [ "$done_ref" -eq 1 ]
+}
+
 if [ -d "$SPEC_DIR" ]; then
   # Candidates newest-first, sidecars only: -maxdepth 1 keeps out
   # docs/specs/baseline/*.json (spec-archive.sh snapshots) and anything under
@@ -81,6 +119,7 @@ if [ -d "$SPEC_DIR" ]; then
     if [ -n "$slug" ] && grep -qsF "\"slug\":\"$slug\"" "$SPEC_DIR"/baseline/*.audit.jsonl 2>/dev/null; then
       continue
     fi
+    spec_is_finished "$cand" && continue
     SPEC_JSON="$cand"
     break
   done < <(find "$SPEC_DIR" -maxdepth 1 -name '*.json' -type f -mtime -7 2>/dev/null | while read -r f; do
@@ -107,23 +146,42 @@ CACHE_FILE="$CACHE_DIR/mtk-scope-cache-$CACHE_KEY"
 if [ -f "$CACHE_FILE" ]; then
   ALLOWED_FILES=$(cat "$CACHE_FILE")
 else
-  # Extract all file paths from change_manifest and test_manifest.
-  # Looks for "path": "..." patterns within those sections.
-  ALLOWED_FILES=$(awk '
-    /"(change_manifest|test_manifest)"/ { in_section=1 }
-    in_section && /\]/ { in_section=0 }
-    in_section {
-      if (match($0, /"path"[[:space:]]*:[[:space:]]*"([^"]+)"/, a)) {
-        print a[1]
-      }
-    }
-  ' "$SPEC_JSON" 2>/dev/null || true)
-
-  # If awk match with groups fails (older awk), fall back to grep
+  # Extract all file paths from change_manifest and test_manifest. python3
+  # parses the JSON (entries may be objects with "path" or bare strings); the
+  # fallback is POSIX awk — match() + RSTART/RLENGTH, never gawk's 3-arg
+  # match(s, re, arr), which BSD/macOS awk rejects as a syntax error.
+  ALLOWED_FILES=""
+  if command -v python3 >/dev/null 2>&1; then
+    ALLOWED_FILES="$(python3 - "$SPEC_JSON" <<'PYEOF' 2>/dev/null || true
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
+import json
+try:
+    doc = json.load(open(sys.argv[1]))
+except Exception:
+    sys.exit(0)
+for key in ("change_manifest", "test_manifest"):
+    for e in (doc.get(key) or []) if isinstance(doc, dict) else []:
+        p = e.get("path") if isinstance(e, dict) else e
+        if isinstance(p, str) and p:
+            print(p)
+PYEOF
+)"
+  fi
   if [ -z "$ALLOWED_FILES" ]; then
-    ALLOWED_FILES=$(awk '/"(change_manifest|test_manifest)"/,/\]/' "$SPEC_JSON" \
-      | grep -o '"path"[[:space:]]*:[[:space:]]*"[^"]*"' \
-      | sed 's/.*: *"//;s/"$//' 2>/dev/null || true)
+    ALLOWED_FILES="$(awk '
+      /"(change_manifest|test_manifest)"/ { in_section=1 }
+      in_section {
+        line = $0
+        while (match(line, /"path"[[:space:]]*:[[:space:]]*"[^"]+"/)) {
+          m = substr(line, RSTART, RLENGTH)
+          line = substr(line, RSTART + RLENGTH)
+          sub(/^"path"[[:space:]]*:[[:space:]]*"/, "", m)
+          sub(/"$/, "", m)
+          print m
+        }
+      }
+      in_section && /\]/ { in_section=0 }
+    ' "$SPEC_JSON" 2>/dev/null || true)"
   fi
 
   # Always allow spec/plan/task files themselves
@@ -140,22 +198,37 @@ fi
 # No manifest entries found — spec might be empty or malformed, don't warn
 [ -z "$ALLOWED_FILES" ] && exit 0
 
-# Check if the relative path matches any allowed path (prefix or exact match)
+# Match on exact path or directory prefix only. An entry ending in `/` is a
+# directory; any other entry matches itself exactly or as a directory
+# (`src/dir` covers `src/dir/x`, never `src/dir2/x`). The old two-way substring
+# test let `lib/src/a.cs`, `src/a.cs.bak` and even a bare `a.cs` through for an
+# `src/a.cs` entry. Paths are compared relative to the repo root and, when it
+# differs, to the artifact root (a subtree's manifest is written against it).
+ART_REL=""
+if [ "$ARTIFACT_ROOT" != "$REPO_ROOT" ]; then
+  ART_REL="$(mtk_repo_relative_path "$FILE_PATH" "$ARTIFACT_ROOT" 2>/dev/null || true)"
+fi
+path_allowed() { # $1 = relative path to test
+  local rel="$1" allowed
+  [ -n "$rel" ] || return 1
+  while IFS= read -r allowed; do
+    allowed="${allowed#./}"
+    [ -n "$allowed" ] || continue
+    case "$allowed" in
+      */) case "$rel" in "$allowed"*) return 0 ;; esac ;;
+      *)  [ "$rel" = "$allowed" ] && return 0
+          case "$rel" in "$allowed"/*) return 0 ;; esac ;;
+    esac
+  done <<< "$ALLOWED_FILES"
+  return 1
+}
 MATCHED=0
-while IFS= read -r allowed; do
-  [ -z "$allowed" ] && continue
-  case "$REL_PATH" in
-    "$allowed"*) MATCHED=1; break ;;
-    *"$allowed"*) MATCHED=1; break ;;
-  esac
-  case "$allowed" in
-    *"$REL_PATH"*) MATCHED=1; break ;;
-  esac
-done <<< "$ALLOWED_FILES"
+if path_allowed "$REL_PATH" || path_allowed "$ART_REL"; then
+  MATCHED=1
+fi
 
 if [ "$MATCHED" -eq 0 ]; then
   SPEC_NAME=$(basename "$SPEC_JSON" .json)
-  mtk_record_scope_guard_warning
   # Enforcing mode (opt-in, borrow — kyzo allowlist guard, P0#1). Default is
   # advisory (tier-1, exit 0): emit a warning, never block. When
   # MTK_SCOPE_GUARD_ENFORCE is truthy (1/true/yes), a write to a file outside the
@@ -167,6 +240,15 @@ if [ "$MATCHED" -eq 0 ]; then
       mtk_deny "MTK_SCOPE_GUARD: DENY ${REL_PATH} — not in approved manifest (${SPEC_NAME}). Add it to the spec's change_manifest first, then re-issue this edit." "unset MTK_SCOPE_GUARD_ENFORCE (falls back to advisory warnings)"
       ;;
   esac
+  # Advisory: once per file per session. The payload's session_id keys the
+  # store (bound by mtk_ensure_session_baseline above); without one there is no
+  # session to scope to, so every edit warns as before.
+  if [ -n "${_MTK_SESSION_ID:-}" ]; then
+    WARNED_FILE="$(mtk_session_file).scope-warned"
+    grep -qxF -- "$REL_PATH" "$WARNED_FILE" 2>/dev/null && exit 0
+    printf '%s\n' "$REL_PATH" >> "$WARNED_FILE" 2>/dev/null || true
+  fi
+  mtk_record_scope_guard_warning
   mtk_emit_additional_context "PreToolUse" "SCOPE GUARD: ${REL_PATH} is not in the approved spec (${SPEC_NAME}). If this change is necessary, update the spec's change_manifest first. Undeclared file modifications are the #1 source of spec drift."
 fi
 

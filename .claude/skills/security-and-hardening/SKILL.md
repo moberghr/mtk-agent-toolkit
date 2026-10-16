@@ -6,9 +6,6 @@ license: MIT
 compatibility:
   - claude-code
   - codex
-trigger: auth-change|secrets-change|audited-state|audit-trail|infrastructure|external-input
-skip_when: internal-refactoring|no-data-flow|no-boundary-change
-triggers: [auth, password, access-token, auth-token, jwt, secret, oauth, credentials, encryption, pii, hardcoded]
 effort: max
 context: fork
 user-invocable: false
@@ -39,8 +36,8 @@ Treat security and compliance as design constraints, not final review polish. Ch
 
 ## Workflow
 
-1. Read `CLAUDE.md` and `.claude/references/security-checklist.md` first.
-2. If a domain supplement exists (e.g. `.claude/references/domain-finance.md`), load it for domain-specific rationalizations and review questions.
+1. Read the domain and security supplement (`.claude/references/domain-finance.md`, or the team's `domain-<name>.md`) for regulated state, sensitive data, audit invariants and review questions.
+2. Read the stack skill's `## Framework Patterns` for framework-level auth and validation idioms.
 3. Identify trust boundaries:
    - user input
    - external service input
@@ -59,18 +56,7 @@ Treat security and compliance as design constraints, not final review polish. Ch
 - No unaudited state mutation where the domain requires audit trails.
 - No trust in external input without validation.
 - No wildcard IAM/resource access without explicit justification.
-- No new third-party dep that fails the 5-criteria intake gate (`.claude/references/dependency-intake-checklist.md`).
-
-## Common Rationalizations
-
-See `.claude/references/workflow-rationalizations.md` for the shared table. Security-specific traps: "this is an internal endpoint" (internal boundaries move — security requirements don't disappear because something feels internal), and "this doesn't look like regulated data" (if it affects audited state, reporting, audit records, or downstream consumers, it is in scope — check the domain supplement).
-
-## Red Flags
-
-- New endpoint with no obvious auth path
-- State mutation with no audit story
-- PII or secrets appearing in logs or exception messages
-- Broad IAM or secret access added casually
+- No new third-party dep that fails the six-criteria intake gate (`.claude/references/dependency-intake-checklist.md`).
 
 ## Verification
 

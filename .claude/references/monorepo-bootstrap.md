@@ -13,11 +13,12 @@ what to write into each package and how to update the root file.
 
 ## Generate per-package CLAUDE.md
 
-**For each package**, create `<package-path>/CLAUDE.md` **only if it doesn't
-already exist** (never overwrite — these may be hand-authored).
+**For each package**, create `<package-path>/CLAUDE.md` **only if neither it nor
+`<package-path>/AGENTS.md` already exists** (never overwrite — these may be
+hand-authored, and a subproject may carry only `AGENTS.md`).
 
 Each file targets **15–30 lines**. It should contain the **local delta** — what
-Claude needs to know here that isn't already in root CLAUDE.md. No repeated
+Claude needs to know here that isn't already in root AGENTS.md. No repeated
 rules, no general guidance.
 
 Template:
@@ -25,7 +26,7 @@ Template:
 ```markdown
 # [Package Name] — Local Context
 
-> This package lives in a monorepo. See root `CLAUDE.md` for team-wide standards.
+> This package lives in a monorepo. See root `AGENTS.md` for team-wide standards.
 > This file only documents what's specific to this package.
 
 ## What this is
@@ -62,15 +63,15 @@ Template:
   ```markdown
   # [Name] — Local Context
 
-  > See root `CLAUDE.md`. No package-specific conventions beyond the root standards.
+  > See root `AGENTS.md`. No package-specific conventions beyond the root standards.
   ```
 - Never duplicate rules from root. If a rule appears in root, do not re-state it locally.
 - Never overwrite an existing per-package `CLAUDE.md` — skip with a note.
 
-## Update root CLAUDE.md
+## Update root AGENTS.md
 
-Add a short **Monorepo Layout** block to the root CLAUDE.md (inside the 120-line
-cap — this earns its place because it helps Claude navigate):
+Add a short **Monorepo Layout** block to the root AGENTS.md — the constitution,
+not the `CLAUDE.md` shim (inside the 120-line cap — this earns its place because it helps Claude navigate):
 
 ```markdown
 ## Monorepo Layout
