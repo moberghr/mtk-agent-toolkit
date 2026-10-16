@@ -4,6 +4,14 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Changed
+
+- **`compliance-reviewer` runs on Sonnet.** It was the only review lane on Opus, and in field use the
+  costliest: one owner's last 30 days show ~4.4k Opus calls from it, while every other lane ran on Sonnet.
+  The 9.0 evals already score Sonnet 5.5 at 1.0 on the review cases, and the lane keeps `effort: high`.
+  `model-routing.md` now says when to pass `model: "opus"` on the spawn instead: a diff that is mostly
+  security or financial-state logic.
+
 ## [9.1.0] - 2026-10-15
 
 Context for subagents, quieter lesson mining, branch-scoped handoffs, and guards that can be

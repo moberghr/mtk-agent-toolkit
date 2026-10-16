@@ -36,7 +36,7 @@ when that phase dominates the work; an agent row is the value already pinned in 
 | Spec-drift detection | `sonnet` | Structured comparison |
 | Research (`research-context`) | `sonnet` | Synthesis of external sources into a cited brief |
 | Pre-commit review | `sonnet` | Fast, bounded scope |
-| Compliance review (agent) | `opus` | Security, financial state, audit trails — highest stakes |
+| Compliance review (agent) | `sonnet` | Rule-by-rule check of a diff against a sealed spec; `effort: high` carries the depth. Pass `model: "opus"` on the spawn for a diff that is mostly security or financial-state logic |
 | Security & hardening | `opus` | Security decisions cannot be shallow |
 | Architecture review (agent) | `sonnet` | Pattern-matching against known rules |
 | Test review (agent) | `sonnet` | Assertion quality, coverage gaps |
