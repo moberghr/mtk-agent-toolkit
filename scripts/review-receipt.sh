@@ -16,15 +16,16 @@ set -euo pipefail
 #              user's git config cannot change the id. Any new commit or amended
 #              content yields a new id; a message-only amend does not (same diff).
 #
-# Only committed content is covered: uncommitted edits are not part of the
-# range. Once a branch has an upstream, the range is the unpushed commits only,
-# so new commits after the first push need a new review.
+# Only committed content is covered: `write` refuses while tracked files differ
+# from HEAD (untracked files are ignored — they are not pushed), so a review of
+# a dirty tree never mints a receipt for commits the lanes did not read. Once a
+# branch has an upstream, the range is the unpushed commits only, so new commits
+# after the first push need a new review.
 #
 # Receipts live at ~/.mtk/receipts/<sha256(repo realpath)>/<change_id>.json.
-# Qualifying reviews only: a PASS from implement Phase 4 or from
-# code-review-and-quality with every lane run. pre-commit-review never writes
-# one — it is a fast staged-diff check with no push range. The script refuses
-# any verdict other than PASS.
+# Which reviews may write one: .claude/references/implement-review-lanes.md
+# §Review protocol, step "Receipt" (the single source). The script refuses any
+# verdict other than PASS.
 #
 # Security: the receipts directories are created 0700 and receipt files are
 # written 0600 (umask 077) through a temp file in the same directory and a
@@ -50,7 +51,9 @@ set -euo pipefail
 #      is empty) · id: printed
 #   1  check: no receipt covers the current range
 #   2  error: usage, not a git repository, no commit, no resolvable base,
-#      python3 missing, or an ownership/symlink check refused
+#      python3 missing, an ownership/symlink check refused, uncommitted tracked
+#      changes (write), or an internal error (stderr `review-receipt: internal
+#      error: …`). An internal error is never reported as exit 1.
 
 usage() {
   # Render the header from `# Usage:` to the blank line that ends it (a
@@ -119,6 +122,20 @@ fi
 MB="$(git merge-base "$BASE_REF" "$HEAD_SHA" 2>/dev/null)" || die "no merge-base between $BASE_REF and HEAD"
 [ -n "$MB" ] || die "no merge-base between $BASE_REF and HEAD"
 
+# write binds the committed range: tracked files that differ from HEAD (staged
+# or not) mean the lanes may have read content no commit holds. Untracked files
+# are ignored — they are not pushed.
+if [ "$SUB" = "write" ]; then
+  drc=0
+  git diff --quiet --no-ext-diff --no-textconv --ignore-submodules=none HEAD -- \
+    >/dev/null 2>&1 || drc=$?
+  case "$drc" in
+    0) ;;
+    1) die "uncommitted tracked changes — commit the reviewed tree, then write the receipt" ;;
+    *) die "could not compare the work tree with HEAD (git diff exit $drc)" ;;
+  esac
+fi
+
 # Pinned diff: every option that config or attributes could otherwise change.
 CHANGE_ID="$(
   git -c diff.noprefix=false -c diff.mnemonicPrefix=false -c diff.relative=false \
@@ -149,14 +166,17 @@ fi
 [ -n "${HOME:-}" ] || die "HOME is not set"
 
 # --- Receipt store (python: lstat-based ownership/symlink checks) ---------
-umask 077
-rc=0
-python3 -I - "$SUB" "${HOME%/}" "$REPO_REAL" "$CHANGE_ID" "$MB" "$HEAD_SHA" "$BASE_REF" \
-  "$LANES" "$RIGOR" "$VERDICT" <<'PY' || rc=$?
+# Exit-code contract of the store (internal, mapped below): 0 stored/covered,
+# 3 no receipt covers (check only), 2 refused or internal error (message on
+# stderr). Any other code — an interpreter that died without running the
+# wrapper — is an internal error too, never "missing". A function, not a
+# heredoc inside $( ): bash 3.2 mis-parses quotes in a heredoc there.
+receipt_store() {
+  python3 -I - "$SUB" "${HOME%/}" "$REPO_REAL" "$CHANGE_ID" "$MB" "$HEAD_SHA" "$BASE_REF" \
+    "$LANES" "$RIGOR" "$VERDICT" <<'PY'
 import hashlib, json, os, stat, sys, tempfile, time
 
-sub, home, repo, change_id, mb, head, base_ref, lanes, rigor, verdict = sys.argv[1:11]
-uid = os.getuid()
+MISSING = 3
 
 
 def refuse(msg):
@@ -164,7 +184,7 @@ def refuse(msg):
     sys.exit(2)
 
 
-def owned_dir(path, create):
+def owned_dir(path, create, uid):
     """Return True when path is a real directory owned by us (created 0700 if
     create and absent), False when absent and not create; refuse otherwise."""
     try:
@@ -188,85 +208,112 @@ def owned_dir(path, create):
     return True
 
 
-repo_key = hashlib.sha256(repo.encode()).hexdigest()
-levels = [os.path.join(home, ".mtk"), os.path.join(home, ".mtk", "receipts"),
-          os.path.join(home, ".mtk", "receipts", repo_key)]
-target = os.path.join(levels[-1], change_id + ".json")
+def main():
+    sub, home, repo, change_id, mb, head, base_ref, lanes, rigor, verdict = sys.argv[1:11]
+    uid = os.getuid()
+    repo_key = hashlib.sha256(repo.encode()).hexdigest()
+    levels = [os.path.join(home, ".mtk"), os.path.join(home, ".mtk", "receipts"),
+              os.path.join(home, ".mtk", "receipts", repo_key)]
+    target = os.path.join(levels[-1], change_id + ".json")
 
-if sub == "write":
+    if sub == "write":
+        for d in levels:
+            owned_dir(d, True, uid)
+        # The two inner levels are ours alone: tighten them if they predate us.
+        for d in levels[1:]:
+            if stat.S_IMODE(os.lstat(d).st_mode) != 0o700:
+                os.chmod(d, 0o700)
+        try:
+            st = os.lstat(target)
+            if stat.S_ISLNK(st.st_mode):
+                refuse("%s is a symlink" % target)
+            if not stat.S_ISREG(st.st_mode):
+                refuse("%s is not a regular file" % target)
+        except FileNotFoundError:
+            pass
+        receipt = {
+            "schema": 1,
+            "change_id": change_id,
+            "merge_base": mb,
+            "head": head,
+            "base_ref": base_ref,
+            "lanes": [x for x in lanes.split(",") if x],
+            "rigor": rigor.upper(),
+            "verdict": verdict,
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        }
+        fd, tmp = tempfile.mkstemp(prefix=".receipt-", suffix=".tmp", dir=levels[-1])
+        try:
+            os.fchmod(fd, 0o600)
+            with os.fdopen(fd, "w") as fh:
+                json.dump(receipt, fh, indent=2, sort_keys=True)
+                fh.write("\n")
+                fh.flush()
+                os.fsync(fh.fileno())
+            os.replace(tmp, target)
+        except BaseException:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
+        print(target)
+        sys.exit(0)
+
+    # check: a receipt counts only through owned, non-symlink levels, as a
+    # regular owned file whose content names this change id with a PASS verdict.
     for d in levels:
-        owned_dir(d, True)
-    # The two inner levels are ours alone: tighten them if they predate us.
-    for d in levels[1:]:
-        if stat.S_IMODE(os.lstat(d).st_mode) != 0o700:
-            os.chmod(d, 0o700)
+        if not owned_dir(d, False, uid):
+            sys.exit(MISSING)
     try:
         st = os.lstat(target)
-        if stat.S_ISLNK(st.st_mode):
-            refuse("%s is a symlink" % target)
-        if not stat.S_ISREG(st.st_mode):
-            refuse("%s is not a regular file" % target)
     except FileNotFoundError:
-        pass
-    receipt = {
-        "schema": 1,
-        "change_id": change_id,
-        "merge_base": mb,
-        "head": head,
-        "base_ref": base_ref,
-        "lanes": [x for x in lanes.split(",") if x],
-        "rigor": rigor.upper(),
-        "verdict": verdict,
-        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-    }
-    fd, tmp = tempfile.mkstemp(prefix=".receipt-", suffix=".tmp", dir=levels[-1])
+        sys.exit(MISSING)
+    if stat.S_ISLNK(st.st_mode):
+        refuse("%s is a symlink" % target)
+    if not stat.S_ISREG(st.st_mode) or st.st_uid != uid:
+        refuse("%s is not a regular file owned by the current user" % target)
     try:
-        os.fchmod(fd, 0o600)
-        with os.fdopen(fd, "w") as fh:
-            json.dump(receipt, fh, indent=2, sort_keys=True)
-            fh.write("\n")
-            fh.flush()
-            os.fsync(fh.fileno())
-        os.replace(tmp, target)
-    except BaseException:
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-        raise
-    print(target)
+        with open(target, "r") as fh:
+            data = json.load(fh)
+    except (OSError, ValueError):
+        sys.exit(MISSING)
+    if not isinstance(data, dict) or data.get("change_id") != change_id or data.get("verdict") != "PASS":
+        sys.exit(MISSING)
     sys.exit(0)
 
-# check: a receipt counts only through owned, non-symlink levels, as a regular
-# owned file whose content names this change id with a PASS verdict.
-for d in levels:
-    if not owned_dir(d, False):
-        sys.exit(1)
+
 try:
-    st = os.lstat(target)
-except FileNotFoundError:
-    sys.exit(1)
-if stat.S_ISLNK(st.st_mode):
-    refuse("%s is a symlink" % target)
-if not stat.S_ISREG(st.st_mode) or st.st_uid != uid:
-    refuse("%s is not a regular file owned by the current user" % target)
-try:
-    with open(target, "r") as fh:
-        data = json.load(fh)
-except (OSError, ValueError):
-    sys.exit(1)
-if not isinstance(data, dict) or data.get("change_id") != change_id or data.get("verdict") != "PASS":
-    sys.exit(1)
-sys.exit(0)
+    main()
+except SystemExit:
+    raise
+except BaseException as e:
+    sys.stderr.write("review-receipt: internal error: %s: %s\n" % (type(e).__name__, e))
+    sys.exit(2)
 PY
+}
+
+umask 077
+rc=0
+STORED="$(receipt_store)" || rc=$?
 
 case "$rc" in
   0) ;;
-  1) ;;
-  *) exit 2 ;;
+  2) exit 2 ;; # the store already printed the refusal or the internal error
+  3) [ "$SUB" = "check" ] || die "internal error: receipt store reported no receipt during $SUB" ;;
+  *) die "internal error: receipt store exited $rc" ;;
 esac
 
 if [ "$SUB" = "write" ]; then
+  # Exit 0 only for a receipt that is really on disk where the store said.
+  case "$STORED" in
+    /*.json) ;;
+    *) die "internal error: receipt store printed no receipt path" ;;
+  esac
+  if [ -L "$STORED" ] || [ ! -f "$STORED" ]; then
+    die "internal error: receipt not found after write: $STORED"
+  fi
+  printf '%s\n' "$STORED"
   exit 0
 fi
 

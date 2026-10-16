@@ -50,6 +50,18 @@ echo "--- nothing recorded ---"
 check 2 "--check before --record is uncheckable"
 
 echo ""
+echo "--- error paths exit 2, never 1 (1 means the tree changed) ---"
+rc=0; out="$("$WF" review-input "wf-does-not-exist" --check 2>&1)" || rc=$?
+[ "$rc" -eq 2 ] && pass "missing artifact exits 2" || bad "missing artifact: expected exit 2, got $rc — $out"
+UC="$("$WF" init BUILD --goal "corrupt artifact" | tail -1)"
+"$WF" review-input "$UC" --record >/dev/null
+printf '{not json' > ".mtk/workflows/$UC.json"
+rc=0; out="$("$WF" review-input "$UC" --check 2>&1)" || rc=$?
+[ "$rc" -eq 2 ] && pass "corrupt artifact JSON exits 2 (--check)" || bad "corrupt artifact --check: expected exit 2, got $rc — $out"
+rc=0; out="$("$WF" review-input "$UC" --record 2>&1)" || rc=$?
+[ "$rc" -eq 2 ] && pass "corrupt artifact JSON exits 2 (--record)" || bad "corrupt artifact --record: expected exit 2, got $rc — $out"
+
+echo ""
 echo "--- record then check ---"
 rec="$("$WF" review-input "$U" --record)"
 case "$rec" in "review-input: recorded "[0-9a-f]*" "[0-9a-f]*) pass "--record prints the fingerprint" ;; *) bad "--record output: $rec" ;; esac
@@ -124,7 +136,8 @@ fi
 
 echo ""
 echo "--- bad usage ---"
-if "$WF" review-input "$U" >/dev/null 2>&1; then bad "review-input without a mode should fail"; else pass "mode is required"; fi
+rc=0; "$WF" review-input "$U" >/dev/null 2>&1 || rc=$?
+[ "$rc" -eq 2 ] && pass "mode is required (exit 2)" || bad "review-input without a mode: expected exit 2, got $rc"
 
 echo ""
 echo "========================================"

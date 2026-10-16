@@ -499,9 +499,8 @@ max_iters = int(max_iters)
 
 # Finding UID = F- + sha1(file|rule|normalised snippet)[:10]. The line number is
 # deliberately left out, so a finding keeps its UID when unrelated edits move it.
-# Snippet: the first non-empty of snippet/evidence/code (linters and analyzers
-# emit these); review-finding-schema.md has no snippet field, so AI findings fall
-# back to rationale (then description/title/message).
+# Snippet rule: see review-finding-schema.md (`snippet`). This reads the fields in
+# the order listed below, takes the first non-empty string and collapses whitespace.
 SNIPPET_FIELDS = ("snippet", "evidence", "code", "rationale", "description", "title", "message")
 def finding_uid(f):
     snippet = next((f[k] for k in SNIPPET_FIELDS if isinstance(f.get(k), str) and f[k].strip()), "")
@@ -558,7 +557,7 @@ if "opens" in entry:
     # Only a trigger that ever reported an open count carries the stall flag, so
     # score-only artifacts keep their exact old shape.
     opens = [o for o in entry["opens"] if isinstance(o, int)]
-    stalled = len(opens) >= 2 and opens[-1] >= opens[-2]
+    stalled = len(opens) >= 2 and opens[-1] > 0 and opens[-1] >= opens[-2]
     entry["stalled"] = stalled
 
 escalate = entry["iterations"] >= max_iters or plateau or stalled
@@ -626,10 +625,12 @@ review_fingerprint() {
 
 cmd_review_input() {
   local uuid="${1:-}" mode="${2:-}"
-  [ -n "$uuid" ] || fail "review-input requires <uuid>"
-  [ -f "${WF_DIR}/${uuid}.json" ] || fail "no artifact for $uuid"
-  case "$mode" in --record|--check) ;; *) fail "review-input requires --record or --check" ;; esac
-  [ $# -le 2 ] || fail "review-input: unexpected argument: $3"
+  # Every error here exits 2: exit 1 is reserved for "the tree changed".
+  review_input_err() { printf 'workflow-artifact: review-input: %s\n' "$1" >&2; }
+  [ -n "$uuid" ] || { review_input_err "requires <uuid>"; return 2; }
+  [ -f "${WF_DIR}/${uuid}.json" ] || { review_input_err "no artifact for $uuid"; return 2; }
+  case "$mode" in --record|--check) ;; *) review_input_err "requires --record or --check"; return 2 ;; esac
+  [ $# -le 2 ] || { review_input_err "unexpected argument: $3"; return 2; }
 
   if ! load_hook_io; then
     printf 'workflow-artifact: review-input: hooks/lib/hook-io.sh not found (looked beside this script and under CLAUDE_PLUGIN_ROOT) — cannot fingerprint the tree\n' >&2
@@ -643,7 +644,7 @@ cmd_review_input() {
       printf 'workflow-artifact: review-input: cannot fingerprint %s (not a git work tree, or a file is unreadable)\n' "$ROOT_DIR" >&2
       return 2
     fi
-    python3 - "${WF_DIR}/${uuid}.json" "$(iso_now)" "$fp" <<'PY'
+    python3 - "${WF_DIR}/${uuid}.json" "$(iso_now)" "$fp" <<'PY' || { review_input_err "artifact for $uuid is not readable JSON"; return 2; }
 import json, sys
 path, now, fp = sys.argv[1:4]
 with open(path) as f: doc = json.load(f)
@@ -659,14 +660,14 @@ PY
   fi
 
   local recorded
-  recorded="$(python3 - "${WF_DIR}/${uuid}.json" <<'PY'
+  recorded="$(python3 - "${WF_DIR}/${uuid}.json" 2>/dev/null <<'PY'
 import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
 import json
 review = json.load(open(sys.argv[1])).get("results", {}).get("review", {})
 fp = review.get("input_fingerprint") if isinstance(review, dict) else None
 print(fp if isinstance(fp, str) else "")
 PY
-)"
+)" || { review_input_err "artifact for $uuid is not readable JSON"; return 2; }
   if [ -z "$recorded" ]; then
     printf 'workflow-artifact: review-input: no input fingerprint recorded for %s (run --record at lane dispatch)\n' "$uuid" >&2
     return 2

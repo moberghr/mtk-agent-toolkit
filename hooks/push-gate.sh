@@ -35,14 +35,20 @@ trap _mtk_hook_diag EXIT
 #             id per session (mtk_advise_gated)
 #   shadow    the same advisory, plus one enforcement-shadow.jsonl line
 #   active    deny, code PUSH-UNREVIEWED
-# The hook writes no state of its own; receipts live under ~/.mtk/receipts/ and
-# are written only by a qualifying review (see scripts/review-receipt.sh). The
-# advisory and deny text never print the receipt-write command: a receipt is the
-# review's output, not something to create in order to push.
+# off is silent: it exits before any note below. The hook writes no state of its
+# own; receipts live under ~/.mtk/receipts/ and are written only by a qualifying
+# review (which ones: .claude/references/implement-review-lanes.md §Review
+# protocol, step "Receipt"). The advisory and deny text never print the
+# receipt-write command: a receipt is the review's output, not something to
+# create in order to push.
 #
-# Fails OPEN: empty/unparseable payload, python3 or review-receipt.sh absent, or
-# a receipt check that errors (not a repo, no base) — the last one with a
-# one-line note so the unchecked push is visible.
+# Fails OPEN, visibly where it can: an empty/unparseable payload or a non-Bash
+# tool passes silently; a command shlex cannot split (an unterminated quote,
+# e.g. an apostrophe in an unquoted heredoc body) that mentions push gets the
+# not-mapped note; python3 absent or the classifier failing gets one
+# "could not classify the command; receipt not checked" note; a receipt check
+# that errors (not a repo, no base) gets a "receipt not checked" note;
+# review-receipt.sh absent gets one stderr line.
 #
 # Kill-switch: MTK_PUSH_GATE=0
 
@@ -75,7 +81,14 @@ esac
 MODE="$(mtk_guard_mode PUSH_GATE advisory)"
 [ "$MODE" = "off" ] && exit 0
 
-command -v python3 >/dev/null 2>&1 || exit 0
+# Fail open when the command cannot be classified, with one model-visible note.
+unclassified() {
+  mtk_emit_additional_context PreToolUse \
+    "MTK push gate could not classify the command; receipt not checked."
+  exit 0
+}
+
+command -v python3 >/dev/null 2>&1 || unclassified
 
 # Run git in the directory the Bash call runs in, when the payload names one.
 CWD="$(mtk_extract_json_string "$INPUT" "cwd" 2>/dev/null || echo "")"
@@ -99,7 +112,9 @@ try:
     lex.whitespace_split = True
     tokens = list(lex)
 except ValueError:
-    print("none")
+    # Unsplittable (e.g. an unterminated quote): never a silent pass when the
+    # text mentions push — the caller prints the not-mapped note.
+    print("unmapped" if "push" in cmd else "none")
     sys.exit(0)
 
 # shlex groups a run of punctuation into one token: one holding < or > is a
@@ -228,16 +243,17 @@ if ":" in r:
 else:
     ok = r in (mine | {"HEAD"})
 print("check" if ok else "unmapped")
-' "$BRANCH" <<<"$CMD" 2>/dev/null)" || exit 0
+' "$BRANCH" <<<"$CMD" 2>/dev/null)" || unclassified
 
 case "$VERDICT" in
   check) ;;
+  none) exit 0 ;;
   unmapped)
     mtk_emit_additional_context PreToolUse \
       "MTK push gate: push target not mapped — receipt not checked."
     exit 0
     ;;
-  *) exit 0 ;;
+  *) unclassified ;;
 esac
 
 # review-receipt.sh: this checkout first, then the installed plugin; absent ⇒ fail open.
@@ -278,7 +294,7 @@ RANGE="${FIRST#*range=}"; RANGE="${RANGE%% *}"
 NCOMMITS="${FIRST#*commits=}"; NCOMMITS="${NCOMMITS%% *}"
 case "$CHANGE_ID" in ''|*[!0-9a-f]*) CHANGE_ID="" ;; esac
 
-HOW="Get a receipt by running the full review on this branch — implement Phase 4, or code-review-and-quality with every lane — which records one when all lanes PASS. pre-commit-review does not count."
+HOW="Run the full review (implement Phase 4 or code-review-and-quality); a passing review records the receipt."
 TEXT="MTK push gate: no review receipt covers ${RANGE} (${NCOMMITS} commit(s) not covered by a PASS review):
 ${COMMITS}
 ${HOW}"

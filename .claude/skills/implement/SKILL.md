@@ -248,7 +248,7 @@ not re-open it.
 
 Run `verification-before-completion` first, then **read `.claude/references/implement-review-lanes.md`** — the single source for the lane set at each rigor level, the dispatch inputs, the silent-failure trigger, the defect-class sweep, and lane accounting (`ABSTAINED`, `NO_RESPONSE`, by-policy). Stage 1 `compliance-reviewer` checks against the sealed spec; re-check the seal with `verify-seal` — a STALE seal **refuses completion**. Stage 2 runs only after Stage 1 has no Critical findings.
 
-Per that reference: collect deterministic `candidates.json` first (`compliance-reviewer` disposes of each); `review-input --record` at dispatch and `--check` before aggregating; `review-coverage.sh` on every lane result (incomplete ⇒ `ABSTAINED`); `finding-verifier` stage at HIGH/MAX only; on an overall PASS, `review-receipt.sh write --lanes <csv> --rigor <level> --verdict PASS`.
+Per that reference's **Review protocol** (scripts run as `bash "$MTK_ROOT/…"`, with `MTK_ROOT` per *MTK File Resolution*): collect deterministic `candidates.json` first (`compliance-reviewer` disposes of each); `review-input --record` at dispatch and `--check` before aggregating; `review-coverage.sh` on every lane result (incomplete or engine failure ⇒ `ABSTAINED`); `finding-verifier` at HIGH/MAX only; write the receipt only as its **Receipt** step qualifies.
 
 ## Phase 5: Fix Review Findings
 

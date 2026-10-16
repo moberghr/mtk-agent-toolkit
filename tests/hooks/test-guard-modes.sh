@@ -501,6 +501,21 @@ out="$(TMPDIR="$SANDBOX/ro" _MTK_SESSION_ID=s-ro bash -c \
 chmod 700 "$SANDBOX/ro"
 expect "advise: unwritable dedup store → still emits, rc 0" "$EMITTED" "$rc|$out"
 
+# …and the failed append leaks nothing to stderr (no "Permission denied").
+mkdir -p "$SANDBOX/ro2"
+chmod 500 "$SANDBOX/ro2"
+rc=0
+err="$(TMPDIR="$SANDBOX/ro2" _MTK_SESSION_ID=s-ro2 bash -c \
+  '. "$1"; . "$2"; mtk_advise_gated advisory PreToolUse k1 "advice text" >/dev/null' \
+  _ "$HOOK_IO" "$GUARD_MODE_LIB" 2>&1)" || rc=$?
+chmod 700 "$SANDBOX/ro2"
+expect "advise: unwritable dedup store → stderr stays empty" "0|" "$rc|$err"
+
+# Keys match as whole lines: a key that is a prefix of a stored key is new.
+expect "advise: scope-guard:src/a.cs.bak emits" "$EMITTED" "$(advise s-prefix advisory scope-guard:src/a.cs.bak)"
+expect "advise: then scope-guard:src/a.cs (a prefix of the stored key) still emits" \
+  "$EMITTED" "$(advise s-prefix advisory scope-guard:src/a.cs)"
+
 # The split: hook-io.sh alone has no gated helpers; security-gate never sources
 # guard-mode.sh (S3.18 floor).
 rc=0

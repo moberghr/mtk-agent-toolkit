@@ -55,7 +55,7 @@ never all of `.claude/rules/`. Outside implement there is no pack: resolve
   security and compliance; architectural fit; test strength; performance risk. Cite an F-code from
   `.claude/references/ai-failure-modes.md` in `failure_mode` when a finding matches one. Load a
   domain supplement (e.g. `domain-finance.md`) when present. With CI runs available,
-  `bash hooks/ci-status.sh` names failed checks to focus on.
+  `bash "$MTK_ROOT/hooks/ci-status.sh"` names failed checks to focus on.
 - **Findings:** apply the schema's False-Positive Exclusion List before scoring confidence; surface
   findings at or above the `.claude/review-config.json` threshold (default 80); an empty
   `findings[]` needs `below_threshold_rationale` saying what was checked. Output a markdown table
@@ -63,19 +63,19 @@ never all of `.claude/rules/`. Outside implement there is no pack: resolve
 
 ## Review protocol
 
-Run in this order; `$RUN` is `.mtk/workflows/$MTK_WF_UUID`, `$CHANGED` the changed-file list (one path per line, dirty baseline excluded).
+Run in this order. `$MTK_ROOT` is the root stated per `mtk-file-resolution.md`; every script below runs as `bash "$MTK_ROOT/<path>"`. `$CHANGED` is the changed-file list (one path per line, dirty baseline excluded). `$WFA`, `$RUN` (`.mtk/workflows/$MTK_WF_UUID`) and `$MTK_WF_UUID` exist only in implement; outside it (`code-review-and-quality`) there is no workflow artifact, so skip steps 2 and 4's persistence, keep candidates and coverage in a scratch dir, and say in the report that the review is not bound to the tree.
 
-1. **Candidates.** Before dispatch, collect deterministic hits on the changed lines and write them to `$RUN/review/candidates.json` (array shape in `review-finding-schema.md`; `candidate_id` `C001`…, `source` = `linter`, `secret-scan` or `analyzer`). Sources:
-   - `bash hooks/pre-commit-linters.sh --range <base>...HEAD` (or `--head` for uncommitted work) → JSON `findings[]` of `file`, `line`, `rule`, `rationale`.
-   - `bash scripts/secret-scan.sh <changed files>` → `<file>:<line>: <pattern>` lines, exit 1 on a hit.
-   - build/lint output piped through `bash hooks/parse-build-diagnostics.sh [--format <msbuild|ruff|tsc|biome>] --file <output>` → JSON `findings[]`; keep only those on changed lines.
+1. **Candidates.** Before dispatch, collect deterministic hits on the changed lines into `$RUN/review/candidates.json` (array shape in `review-finding-schema.md`; `candidate_id` `C001`…, `source` = `linter`, `secret-scan` or `analyzer`). Sources:
+   - `bash "$MTK_ROOT/hooks/pre-commit-linters.sh" --range <base>...HEAD` (or `--head` for uncommitted work) → JSON `findings[]` of `file`, `line`, `rule`, `rationale`.
+   - `bash "$MTK_ROOT/scripts/secret-scan.sh" <changed files>` → `<file>:<line>: <pattern>` lines, exit 1 on a hit (exit 0 = clean; any other code = crashed).
+   - build/lint output piped through `bash "$MTK_ROOT/hooks/parse-build-diagnostics.sh" [--format <msbuild|ruff|tsc|biome>] --file <output>` → JSON `findings[]`; keep only those on changed lines.
 
-   Pass the path to `compliance-reviewer`, which must dispose of every candidate (`candidates_disposed`). No hits ⇒ no file, no requirement.
-2. **Bind to the tree.** `"$WFA" review-input "$MTK_WF_UUID" --record` at lane dispatch; `--check` before aggregating. Exit 1 (tree changed) ⇒ re-dispatch the lanes whose files changed, **without** showing them earlier findings, and record again.
-3. **Coverage.** For each lane result: `bash scripts/review-coverage.sh <lane-result.json> "$CHANGED" [--candidates "$RUN/review/candidates.json"]`. Exit 1 ⇒ record the lane `ABSTAINED` with `abstention.reason` `incomplete: <what is missing>`; exit 2 ⇒ `NO_RESPONSE`.
-4. **Verify (HIGH/MAX only).** Dispatch `finding-verifier` once per top-level directory group of the merged findings (one message, parallel). Apply its verdicts as the schema table says: `rejected` and `immaterial` leave remediation, `pre_existing` goes to the follow-up list. A verifier that fails or returns nothing ⇒ that group is `unverified` and its findings stay as raised.
+   Pass the path to `compliance-reviewer`, which must dispose of every candidate (`candidates_disposed`). No hits ⇒ no file. **A collector that crashed or is absent is not "no hits"**: record it and tell the compliance lane the candidate set is partial.
+2. **Bind to the tree (implement).** `"$WFA" review-input "$MTK_WF_UUID" --record` at dispatch; `--check` before aggregating. Exit 0 ⇒ bound. Exit 1 (tree changed) ⇒ re-dispatch the lanes whose files changed, **without** showing them earlier findings, and record again. Exit 2 or any other code ⇒ the review is **unbound**: record it, report `NEEDS_HUMAN_REVIEW`, never claim a bound PASS.
+3. **Coverage.** For each lane result: `bash "$MTK_ROOT/scripts/review-coverage.sh" <lane-result.json> "$CHANGED" [--candidates "$RUN/review/candidates.json"]`. Exit 0 ⇒ complete. Exit 1 ⇒ lane `ABSTAINED` with `abstention.reason` `incomplete: <what is missing>`. Exit 2, 127 or any other non-zero ⇒ `NO_RESPONSE` / `ABSTAINED incomplete: coverage engine unavailable`; never `PASS`.
+4. **Verify (HIGH/MAX only).** Dispatch `finding-verifier` once per top-level directory group of the merged findings (one message, parallel). Apply its verdicts as the schema table says: `rejected` and `immaterial` leave remediation, `pre_existing` goes to the follow-up list. A verifier that fails, returns nothing or returns `ABSTAINED` ⇒ that group is `unverified` and its findings stay as raised.
 5. **Iterate.** See Iteration cap.
-6. **Receipt.** On an overall `PASS` (every lane accounted, none `ABSTAINED`, or only by-policy per below): `bash scripts/review-receipt.sh write --lanes <csv of lanes that ran> --rigor <level> --verdict PASS`. Never on `NEEDS_CHANGES` or `NEEDS_HUMAN_REVIEW`.
+6. **Receipt.** Qualifies only when all hold: overall `PASS` with every lane accounted (by-policy abstentions allowed, no other `ABSTAINED` / `NO_RESPONSE`); `review-input --check` exit 0 (implement); the reviewed tree is committed (the script refuses a dirty tracked tree). Then `bash "$MTK_ROOT/scripts/review-receipt.sh" write --lanes <csv of lanes that ran> --rigor <level> --verdict PASS`. Never on `NEEDS_CHANGES` or `NEEDS_HUMAN_REVIEW`. A non-zero exit from the script ⇒ tell the engineer: the verdict stands but no receipt was recorded; never claim one.
 
 ## Defect-class sweep
 

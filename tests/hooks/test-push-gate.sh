@@ -136,7 +136,8 @@ n=10
 for cmd in 'git push origin' 'git push -u origin feature' 'git push origin HEAD' \
   'git push --set-upstream origin refs/heads/feature' 'git push origin HEAD:feature' \
   'git add a.txt && git push' 'GIT_TRACE=0 git push -q origin feature 2>&1' \
-  'git push --force-with-lease origin feature'; do
+  'git push --force-with-lease origin feature' 'command git push' 'nohup git push' \
+  'git -c user.name=x push' 'git push origin +feature'; do
   n=$((n + 1))
   expect "mapped: $cmd → allowed" 0 "$(gate "$(payload "$cmd" "s$n")")"
   out_has "mapped: $cmd → receipt checked (advisory)" "no review receipt covers"
@@ -154,6 +155,62 @@ n=$((n + 1))
 expect "unmapped in active mode is still allowed" 0 \
   "$(gate "$(payload 'git push origin HEAD:other' "s$n")" MTK_PUSH_GATE_ENFORCE=active)"
 out_has "unmapped in active mode → not-mapped line" "push target not mapped"
+
+# An unterminated quote (an apostrophe in an unquoted heredoc body) cannot be
+# split; a command that mentions push still gets the not-mapped note.
+HEREDOC_PUSH="cat <<EOF >notes.txt
+it's a note
+EOF
+git push"
+n=$((n + 1))
+expect "unsplittable command with git push → allowed" 0 "$(gate "$(payload "$HEREDOC_PUSH" "s$n")")"
+out_has "unsplittable command with git push → not-mapped line" "push target not mapped — receipt not checked"
+
+# Detached HEAD: no branch to map the push to.
+git checkout -q --detach
+n=$((n + 1))
+expect "detached HEAD → allowed" 0 "$(gate "$(payload 'git push origin HEAD' "s$n")")"
+out_has "detached HEAD → not-mapped line" "push target not mapped"
+n=$((n + 1))
+expect "detached HEAD in active mode → allowed" 0 \
+  "$(gate "$(payload 'git push' "s$n")" MTK_PUSH_GATE_ENFORCE=active)"
+out_has "detached HEAD in active mode → not-mapped line" "push target not mapped"
+git checkout -q feature
+
+# A classifier that cannot run: python3 broken for isolated (-I) calls only, so
+# the payload read still works and the classifier is what fails.
+REAL_PY="$(command -v python3)"
+mkdir -p "$SANDBOX/brokenpy"
+cat >"$SANDBOX/brokenpy/python3" <<SH
+#!/usr/bin/env bash
+if [ "\${1:-}" = "-I" ]; then echo "python3: broken" >&2; exit 1; fi
+exec "$REAL_PY" "\$@"
+SH
+chmod +x "$SANDBOX/brokenpy/python3"
+CLASSIFY_NOTE="could not classify the command; receipt not checked"
+n=$((n + 1))
+expect "classifier fails → allowed" 0 "$(gate "$(payload 'git push' "s$n")" PATH="$SANDBOX/brokenpy:$PATH")"
+out_has "classifier fails → could-not-classify note" "$CLASSIFY_NOTE"
+n=$((n + 1))
+expect "classifier fails in active mode → allowed" 0 \
+  "$(gate "$(payload 'git push' "s$n")" PATH="$SANDBOX/brokenpy:$PATH" MTK_PUSH_GATE_ENFORCE=active)"
+out_has "classifier fails in active mode → could-not-classify note" "$CLASSIFY_NOTE"
+
+# off is fully silent: no not-mapped, could-not-classify or check-error note.
+err_empty() {
+  if [ ! -s "$ERR_F" ]; then pass "$1"; else fail "$1 — expected no stderr, got: $(cat "$ERR_F")"; fi
+}
+for cmd in 'git push origin HEAD:other' "$HEREDOC_PUSH"; do
+  n=$((n + 1))
+  expect "off: unmapped push → allowed" 0 "$(gate "$(payload "$cmd" "s$n")" MTK_PUSH_GATE_ENFORCE=off)"
+  out_empty "off: unmapped push → no stdout"
+  err_empty "off: unmapped push → no stderr"
+done
+n=$((n + 1))
+expect "off: classifier broken → allowed" 0 \
+  "$(gate "$(payload 'git push' "s$n")" PATH="$SANDBOX/brokenpy:$PATH" MTK_PUSH_GATE_ENFORCE=off)"
+out_empty "off: classifier broken → no stdout"
+err_empty "off: classifier broken → no stderr"
 
 # --- Not a push: silent ------------------------------------------------------
 for cmd in 'ls -la' 'echo git push' 'grep -rn "git push" .' 'git status' 'git log --oneline'; do
@@ -199,6 +256,11 @@ if grep -qF "MTK_PUSH_GATE_ENFORCE" "$ERR_F" && grep -qF "feat: alpha unreviewed
 else
   fail "deny text: $(cat "$ERR_F")"
 fi
+if grep -qF "review-receipt.sh write" "$ERR_F"; then
+  fail "deny must not print the receipt-write command"
+else
+  pass "deny does not teach the receipt-write command"
+fi
 
 bash "$RECEIPT" write --lanes compliance,test,architecture --rigor HIGH >/dev/null
 n=$((n + 1))
@@ -216,6 +278,27 @@ commit b.txt "beta" "feat: beta after review"
 n=$((n + 1))
 expect "commit after the receipt → allowed (advisory)" 0 "$(gate "$(payload 'git push' "s$n")")"
 out_has "commit after the receipt → advisory names it" "feat: beta after review"
+
+# One session, two different unreviewed changes: each gets its advisory (the
+# dedup key is the change id, not the session).
+expect "session sF4, first change → allowed" 0 "$(gate "$(payload 'git push' sF4)")"
+out_has "session sF4, first change → advisory" "feat: beta after review"
+commit c.txt "gamma" "feat: gamma, a second change"
+expect "session sF4, new commit → allowed" 0 "$(gate "$(payload 'git push' sF4)")"
+out_has "session sF4, new commit → a second advisory" "feat: gamma, a second change"
+
+# The hook runs git where the Bash call runs (payload cwd), not where the hook
+# process happens to start: start it inside another repository.
+git clone -q "$SANDBOX/remote.git" "$SANDBOX/other"
+(cd "$SANDBOX/other" && git checkout -q -b elsewhere && commit o.txt "o" "feat: other repo commit")
+expect "hook started in another repo, payload cwd = work → allowed" 0 \
+  "$(cd "$SANDBOX/other" && gate "$(payload 'git push' sF7 Bash "$WORK")")"
+out_has "payload cwd decides the repo → advisory names the work repo's commit" "feat: gamma, a second change"
+if grep -qF "feat: other repo commit" "$OUT_F"; then
+  fail "advisory named the hook process's repo instead of the payload cwd"
+else
+  pass "advisory does not name the hook process's repo"
+fi
 
 # --- Fail open ---------------------------------------------------------------
 # review-receipt.sh absent: a copy of the hook with no scripts/ beside it.
@@ -242,6 +325,11 @@ n=$((n + 1))
 expect "receipt check error → allowed even in active mode" 0 \
   "$(gate "$(payload 'git push' "s$n" Bash "$SANDBOX/nobase")" MTK_PUSH_GATE_ENFORCE=active CLAUDE_PROJECT_DIR="$SANDBOX/nobase")"
 out_has "receipt check error → one note" "receipt not checked"
+n=$((n + 1))
+expect "off: receipt check error → allowed" 0 \
+  "$(gate "$(payload 'git push' "s$n" Bash "$SANDBOX/nobase")" MTK_PUSH_GATE_ENFORCE=off CLAUDE_PROJECT_DIR="$SANDBOX/nobase")"
+out_empty "off: receipt check error → no stdout"
+err_empty "off: receipt check error → no stderr"
 cd "$WORK"
 
 if [ "$fails" -ne 0 ]; then

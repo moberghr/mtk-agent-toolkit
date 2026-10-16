@@ -10,7 +10,7 @@ set -euo pipefail
 # --- Guard modes (off | advisory | shadow | active) -------------------------
 # A shadow-capable guard reads its mode from MTK_<NAME>_ENFORCE and passes it
 # EXPLICITLY to mtk_deny_gated — there is no env channel into the deny itself,
-# so mtk_deny (above) stays the unconditional floor that security-gate and the
+# so mtk_deny (hook-io.sh) stays the unconditional floor that security-gate and the
 # config-guard allow-list protection call directly (S3.18): no MTK_*_ENFORCE
 # value can shadow them.
 #
@@ -124,7 +124,10 @@ _mtk_shadow_not_written() { # $1=reason
 
 # Advisory emitter for shadow-capable guards: emit <text> as additionalContext
 # for <event> at most once per <key> per session, when <mode> is advisory or
-# shadow. Callers namespace keys (e.g. scope-guard:<path>).
+# shadow. Callers MUST namespace keys as <hook>:<key> (e.g. scope-guard:<path>,
+# push-gate:<change id>): every guard shares one .advised store per session and
+# a key matches only as a whole line, so an un-namespaced key could suppress
+# another guard's advisory.
 #   mode off | active | unknown → nothing emitted, return 1.
 #   session id set (_MTK_SESSION_ID) → keys are remembered one per line in
 #     "$(mtk_session_file).advised"; a repeat key is suppressed (return 1).
@@ -144,7 +147,9 @@ mtk_advise_gated() {
     if grep -qxF -- "$key" "$store" 2>/dev/null; then
       return 1
     fi
-    printf '%s\n' "$key" >>"$store" 2>/dev/null || true
+    # Brace group: a bare `>>"$store" 2>/dev/null` opens the store before the
+    # stderr redirect applies, so an open error would leak to stderr.
+    { printf '%s\n' "$key" >>"$store"; } 2>/dev/null || true
   fi
   mtk_emit_additional_context "$event" "$text"
   return 0

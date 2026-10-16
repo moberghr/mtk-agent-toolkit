@@ -107,14 +107,13 @@ Implementations may add fields under `results` and `intent` without breaking sch
 `results.remediation.<trigger>` is the circuit-breaker state written by `remediation <uuid> <trigger>`. It keeps two independent series:
 
 - `scores` (`--score N`, higher is better). `plateau` is true when the last two did not increase.
-- `opens` (`--open N`, the open-finding count, lower is better). `stalled` is true when the last two did not decrease (`opens[-1] >= opens[-2]`). `stalled` is written only for a trigger that has reported an open count.
+- `opens` (`--open N`, the open-finding count, lower is better). `stalled` is true when the last open count is above 0 and the last two did not decrease (`opens[-1] > 0 and opens[-1] >= opens[-2]`), so two successive zeros are success, not a stall. `stalled` is written only for a trigger that has reported an open count.
 
 Either flag, or `iterations >= MTK_MAX_REMEDIATION_ITERS` (default 3), prints `ESCALATE`, else `CONTINUE`. The verdict is always line 1 of the output. A stall adds a `reason: stalled` line after it.
 
 `--findings <file.json>` takes a JSON array of findings, or a lane result object with `findings[]` (`review-finding-schema.md`). It cannot be combined with `--open`, because it supplies N itself as the number of distinct open findings. Each finding gets a UID `F-` + the first 10 hex of `sha1(file|rule|snippet)`:
 
-- `snippet` is the first non-empty field of `snippet`, `evidence` or `code`, which linter and analyzer findings may carry.
-- `review-finding-schema.md` defines no snippet field, so an AI finding falls back to `rationale`, then `description`, `title` or `message`.
+- The snippet is chosen by the rule in `review-finding-schema.md` (`snippet`, with its fallback field order).
 - Whitespace in the snippet is collapsed and stripped.
 - The line number is never part of the UID, so a finding keeps its UID when edits move it.
 - A reworded `rationale` reads as a new finding: one `FIXED` plus one `NEW`.

@@ -209,6 +209,155 @@ json.dump(d, open(p, "w"))
 run check
 expect "a receipt whose verdict is not PASS does not cover" 1 "$RC"
 
+# A PASS receipt at this id's path whose content names another change id.
+python3 -c '
+import json, sys
+p = sys.argv[1]
+d = json.load(open(p)); d["verdict"] = "PASS"; d["change_id"] = "0" * 64
+json.dump(d, open(p, "w"))
+' "$KEYDIR/$ID_NOW.json"
+run check
+expect "a receipt naming another change_id does not cover" 1 "$RC"
+
+# --- Permissions predating the script are tightened on write ---------------
+chmod 755 "$HOME/.mtk/receipts" "$KEYDIR"
+run write --lanes compliance --rigor HIGH
+expect "write with loosened receipt dirs" 0 "$RC"
+for d in "$HOME/.mtk/receipts" "$KEYDIR"; do
+  [ "$(mode_of "$d")" = "700" ] && pass "write re-tightens ${d#"$HOME"/} to 0700" || fail "dir $d left at $(mode_of "$d")"
+done
+
+# --- write refuses a dirty tracked tree; untracked files do not count -------
+rm -f "$KEYDIR/$ID_NOW.json"
+printf 'alpha, edited\n' >a.txt
+run write --lanes compliance --rigor HIGH
+expect "write with an unstaged tracked change exits 2" 2 "$RC"
+case "$OUT" in
+  *"uncommitted tracked changes — commit the reviewed tree, then write the receipt"*) pass "dirty-tree refusal names the fix" ;;
+  *) fail "dirty-tree refusal text: $OUT" ;;
+esac
+[ ! -e "$KEYDIR/$ID_NOW.json" ] && pass "dirty tree: no receipt written" || fail "dirty tree: receipt written"
+git add a.txt
+run write --lanes compliance --rigor HIGH
+expect "write with a staged tracked change exits 2" 2 "$RC"
+git reset -q --hard HEAD
+printf 'scratch\n' >untracked.txt
+run write --lanes compliance --rigor HIGH
+expect "write with only an untracked file exits 0" 0 "$RC"
+rm -f untracked.txt
+
+# --- Internal errors are exit 2, never "missing" ----------------------------
+# A python3 shim injects a fault into the receipt store only (python3 -I -);
+# every other python3 call reaches the real interpreter.
+REAL_PY="$(command -v python3)"
+mkdir -p "$SANDBOX/shim"
+cat >"$SANDBOX/shim/python3" <<SH
+#!/usr/bin/env bash
+if [ "\${1:-}" = "-I" ] && [ "\${2:-}" = "-" ]; then
+  case "\${MTK_TEST_FAULT:-}" in
+    exit1) cat >/dev/null; exit 1 ;;
+    raise)
+      { printf '%s\n' 'import json' 'def _boom(*a, **k): raise RuntimeError("injected")' \
+          'json.dump = json.load = _boom'; cat; } | "$REAL_PY" "\$@"
+      exit \$? ;;
+  esac
+fi
+exec "$REAL_PY" "\$@"
+SH
+chmod +x "$SANDBOX/shim/python3"
+fault() { # $1=fault  $2…=review-receipt args
+  local f="$1"
+  shift
+  PATH="$SANDBOX/shim:$PATH" MTK_TEST_FAULT="$f" run "$@"
+}
+rm -f "$KEYDIR/$ID_NOW.json"
+fault raise write --lanes compliance --rigor HIGH
+expect "write: exception in the store → exit 2" 2 "$RC"
+case "$OUT" in *"review-receipt: internal error: RuntimeError"*) pass "write: internal error is named" ;; *) fail "write internal error text: $OUT" ;; esac
+[ ! -e "$KEYDIR/$ID_NOW.json" ] && pass "write: no receipt after an internal error" || fail "receipt written despite the error"
+leftover="$(find "$KEYDIR" -name '.receipt-*' | wc -l | tr -d ' ')"
+[ "$leftover" = 0 ] && pass "write: internal error leaves no temp file" || fail "$leftover temp file(s) left"
+fault exit1 write --lanes compliance --rigor HIGH
+expect "write: store dies with exit 1 → exit 2 (not a silent exit 0)" 2 "$RC"
+case "$OUT" in *"internal error"*) pass "write: store exit 1 reported as an internal error" ;; *) fail "write store-exit-1 text: $OUT" ;; esac
+run write --lanes compliance --rigor HIGH
+expect "write without a fault (receipt for the check faults)" 0 "$RC"
+fault raise check
+expect "check: exception in the store → exit 2" 2 "$RC"
+case "$OUT" in
+  *"receipt: missing"*) fail "check reported an internal error as missing: $OUT" ;;
+  *"review-receipt: internal error: RuntimeError"*) pass "check: internal error is named, not missing" ;;
+  *) fail "check internal error text: $OUT" ;;
+esac
+fault exit1 check
+expect "check: store dies with exit 1 → exit 2" 2 "$RC"
+case "$OUT" in
+  *"receipt: missing"*) fail "check reported a dead store as missing: $OUT" ;;
+  *"internal error"*) pass "check: a dead store is an internal error, not missing" ;;
+  *) fail "check dead-store text: $OUT" ;;
+esac
+run check
+expect "check without a fault still covers" 0 "$RC"
+
+# --- The id binds the merge-base, not the base branch's tip -----------------
+mkdir "$SANDBOX/mb"
+cd "$SANDBOX/mb"
+git init -q
+commit base.txt "base" "base"
+git checkout -q -b x
+commit z.txt "zz" "feat: z on x"
+ID_X="$(change_id)"
+run write --lanes compliance --rigor HIGH
+expect "mb repo: receipt for branch x" 0 "$RC"
+git checkout -q main
+commit other.txt "other" "main moves on"
+git checkout -q x
+[ "$(change_id)" = "$ID_X" ] && pass "a commit on main after forking keeps the id" || fail "main moving changed the id"
+run check
+expect "a commit on main after forking: the earlier receipt still covers" 0 "$RC"
+git checkout -q -b y main
+commit z.txt "zz" "feat: z on y"
+ID_Y="$(change_id)"
+DIFF_X="$(git diff "$(git merge-base main x)" x | cksum)"
+DIFF_Y="$(git diff "$(git merge-base main y)" y | cksum)"
+[ "$DIFF_X" = "$DIFF_Y" ] && pass "x and y carry byte-identical diffs (precondition)" || fail "x and y diffs differ"
+[ "$ID_X" != "$ID_Y" ] && pass "identical diffs off different merge-bases get different ids" || fail "ids collide across merge-bases"
+
+# --- A hostile git config cannot change the id -------------------------------
+mkdir "$SANDBOX/hostile"
+cd "$SANDBOX/hostile"
+git init -q
+for n in $(seq 1 20); do printf 'line %s of a file that gets renamed\n' "$n"; done >r.txt
+printf '%s\n' x a a a y >p.txt
+git add r.txt p.txt
+git commit -q -m "base"
+git checkout -q -b feat
+git mv r.txt r2.txt
+printf '%s\n' y a a a x >p.txt
+git add p.txt
+git commit -q -m "feat: rename and reorder"
+printf '#!/bin/sh\necho JUNK FROM EXTERNAL DIFF\n' >"$SANDBOX/junk-diff.sh"
+chmod +x "$SANDBOX/junk-diff.sh"
+cp "$GIT_CONFIG_GLOBAL" "$SANDBOX/gitconfig-hostile"
+cat >>"$SANDBOX/gitconfig-hostile" <<CFG
+[color]
+	ui = always
+[diff]
+	external = $SANDBOX/junk-diff.sh
+	renames = copies
+	algorithm = patience
+	noprefix = true
+CFG
+ID_CLEAN="$(change_id)"
+plain_clean="$(git diff main HEAD | cksum)"
+plain_hostile="$(GIT_CONFIG_GLOBAL="$SANDBOX/gitconfig-hostile" git diff main HEAD | cksum)"
+[ "$plain_clean" != "$plain_hostile" ] && pass "the hostile config does change a plain git diff (precondition)" \
+  || fail "hostile config left a plain git diff unchanged"
+ID_HOSTILE="$(GIT_CONFIG_GLOBAL="$SANDBOX/gitconfig-hostile" change_id)"
+[ -n "$ID_CLEAN" ] && [ "$ID_CLEAN" = "$ID_HOSTILE" ] && pass "hostile git config (colour, external diff, copies, patience, noprefix) keeps the id" \
+  || fail "hostile git config changed the id: $ID_CLEAN vs $ID_HOSTILE"
+cd "$WORK"
+
 # --- Not a git repository ----------------------------------------------------
 mkdir "$SANDBOX/plain"
 cd "$SANDBOX/plain"

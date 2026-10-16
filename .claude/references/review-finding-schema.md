@@ -68,7 +68,9 @@ findings-only fragments merged into this envelope. Worked examples and long-form
 | `immaterial` | Needs all three: it can happen, it matters, the fix is worth its reach. Fails any one. |
 | `pre_existing` | Not introduced by this change: follow-up list, not remediation. |
 
-A failed verifier leaves its group `unverified`; it never drops findings.
+By design the verify stage reads lane findings (the anti-anchoring bar on other lanes' output does not apply to it). One call per top-level directory group; output:
+`{"verify_status": "complete|ABSTAINED", "group": "<dir>", "verdicts": [{"id", "verdict": "confirmed|refined|rejected|immaterial|pre_existing", "reason", "cited": "file:line"}], "follow_up": [...]}`.
+Every input finding appears once. `verify_status` is not a lane verdict and never enters lane accounting. Verdicts persist at the workflow artifact's `results.review.verify`. A failed, empty or `ABSTAINED` group is `unverified`; it never drops findings.
 
 ## Markdown table
 
@@ -121,6 +123,7 @@ Every agent in `.claude/agents/` follows this section; the agent file adds only 
 - **Anti-anchoring.** Judge from evidence: the diff, the code, the spec/sidecar and the pack.
   Do not read other lanes' output, earlier review iterations, or planner rationale; if the
   orchestrator passes any, treat it as a pointer to verify, never as a conclusion.
+- **Coverage.** Emit `coverage` over the changed-file list you were given; files outside your lane's remit go in `skipped` with reason "outside <lane> remit".
 - **ABSTAINED.** If you cannot finish (empty diff, unreadable input, a needed file missing, too
   little context to judge), set `"verdict": "ABSTAINED"` in the JSON with `abstention.reason`
   naming the blocker and what you would need, `abstention.stage`, and `abstention.checked`

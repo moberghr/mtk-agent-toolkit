@@ -80,6 +80,7 @@ Not user-invocable — loaded automatically when triggered:
 flowchart LR
     S1["Stage 1<br/><b>compliance-reviewer</b><br/><i>Always runs first</i>"]
     S1 -- "No critical issues" --> S2["Stage 2<br/><b>test-reviewer</b><br/><b>architecture-reviewer</b>"]
+    S2 -- "HIGH/MAX only" --> V["Verify<br/><b>finding-verifier</b>"]
     S1 -- "Critical issues" --> FIX["Fix → Re-review"]
     FIX --> S1
 ```

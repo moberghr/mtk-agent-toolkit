@@ -134,6 +134,16 @@ d2o=$("$WF" remediation "$U" review --open 1)
 [ "$(field "$U" review stalled)" = "false" ] || die "T9: expected stalled: false"
 pass "decreasing open count continues"
 
+echo ""
+echo "--- T9b: --open 0 then --open 0 → CONTINUE (zero open is success, not a stall) ---"
+U=$(new_wf)
+z1=$(verdict "$WF" remediation "$U" review --open 0)
+z2=$("$WF" remediation "$U" review --open 0)
+[ "$z1" = "CONTINUE" ] || die "T9b: first --open 0 expected CONTINUE, got $z1"
+[ "$z2" = "CONTINUE" ] || die "T9b: --open 0→0 expected exactly CONTINUE, got: $z2"
+[ "$(field "$U" review stalled)" = "false" ] || die "T9b: expected stalled: false"
+pass "two successive zero open counts do not stall"
+
 # --- T10: --score series and plateau unchanged when --open is also used ---
 echo ""
 echo "--- T10: --score behaviour unchanged alongside --open ---"

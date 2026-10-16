@@ -385,7 +385,7 @@ native eval suites in `evals/` against scaffolded repos, with and without the pl
 |:---|:---|:---|
 | **7 benchmark suites** | Linters catch secrets / SQLi / disabled tests / float money; security-gate blocks `DROP TABLE`, `rm -rf`, force-push to main; scope-guard warns on out-of-spec edits; verify-completion rejects evidence-less "done" | **30/30 assertions passing** |
 | **8 plugin-eval cases** | Native `claude plugin eval` cases in scaffolded repos: fresh test evidence before "done", no edits on a pure question, a staged secret blocks the commit, no unconfirmed force-push to `main`, a swallowed ledger-write exception ranks critical, scope escalation on a "small fix", `/mtk` routing, implement stops for approval | Scored with and without the plugin; the `core` suite gates every release |
-| **26 pressure tests** | Adversarial behavioral tests that try to talk skills out of doing their job | Part of the release gate |
+| **27 pressure tests** | Adversarial behavioral tests that try to talk skills out of doing their job | Part of the release gate |
 | **16 AI failure modes (F1–F16)** | Research-cited catalogue — hallucinated packages, stubbed-success returns, frozen-replay evidence — that reviewers cite by code so patterns aggregate across your codebase | `.claude/references/ai-failure-modes.md` |
 | **37 linter rules** | Hierarchical packs (core / stack / domain / project), zero dependencies beyond coreutils | `hooks/linter-patterns/` |
 
@@ -480,9 +480,9 @@ ENTRY POINTS (5 user-invocable skills)
 59 REFERENCES  — 50 shared (finance + security baseline, review lanes, AI failure modes, review schema, …)
                  + 3 per stack × 3 stacks (coding-guidelines, testing supplement, analyzer config)
       ↓ enforced by
-10 HOOKS across 4 lifecycle events  — SessionStart (incl. compact) · PreToolUse · PostToolUse · Stop
+12 HOOKS across 5 lifecycle events  — SessionStart (incl. compact) · PreToolUse · PostToolUse · Stop · SubagentStart
       ↓ validated by
-7 BENCHMARK SUITES (30/30) · 9 PLUGIN-EVAL CASES · 26 PRESSURE TESTS
+7 BENCHMARK SUITES (30/30) · 9 PLUGIN-EVAL CASES · 27 PRESSURE TESTS
 ```
 
 ### Hooks & enforcement
