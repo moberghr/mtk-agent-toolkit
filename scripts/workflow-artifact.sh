@@ -28,9 +28,27 @@ set -euo pipefail
 #   criteria <uuid> <SCn=status>...  Set per-criterion verification status
 #                                    Status values: pending | verified | re-armed
 #                                    --rearm-all  Reset all verified → re-armed
-#   remediation <uuid> <trigger> [--score N]  Record a remediation attempt; prints
-#                                    ESCALATE when iterations >= MTK_MAX_REMEDIATION_ITERS
-#                                    (default 3) or the score plateaus, else CONTINUE
+#   remediation <uuid> <trigger> [--score N] [--open N | --findings <file.json>]
+#                                    Record a remediation attempt; line 1 is always
+#                                    the verdict: ESCALATE when iterations >=
+#                                    MTK_MAX_REMEDIATION_ITERS (default 3), the
+#                                    score plateaus (higher is better), or the
+#                                    open-finding count stalls (--open N, lower is
+#                                    better: two calls without a decrease add a
+#                                    "reason: stalled" line), else CONTINUE.
+#                                    --findings reads a JSON array of findings or a
+#                                    lane result with findings[], gives each a
+#                                    stable F-<10 hex> UID (file|rule|snippet),
+#                                    prints FIXED / STILL_OPEN / NEW lines against
+#                                    the previous call and feeds its open count as N.
+#                                    Unparseable --findings file: exit 2.
+#   review-input <uuid> --record|--check
+#                                    Bind a review to the tree it read: --record
+#                                    stores the working-tree fingerprint (.mtk/
+#                                    excluded); --check exits 0 unchanged (also
+#                                    after committing that tree), 1 changed (prints
+#                                    recorded=/current=), 2 nothing recorded or
+#                                    fingerprint not computable
 #   seal <uuid> <path>...            Record a SHA-256 approval seal over the given
 #                                    artifact bodies (spec/plan) at approval time,
 #                                    plus a hash of the spec sidecar's frozen
@@ -442,28 +460,74 @@ cmd_remediation() {
   [ -n "$trigger" ] || fail "remediation requires <trigger>"
   [ -f "${WF_DIR}/${uuid}.json" ] || fail "no artifact for $uuid"
 
-  local score=""
+  local score="" open="" findings=""
   while [ $# -gt 0 ]; do
     case "$1" in
       --score)
         [ $# -ge 2 ] || fail "remediation: --score requires a value"
         score="$2"; shift 2 ;;
+      --open)
+        [ $# -ge 2 ] || fail "remediation: --open requires a value"
+        open="$2"; shift 2 ;;
+      --findings)
+        [ $# -ge 2 ] && [ -n "${2:-}" ] || fail "remediation: --findings requires a file"
+        findings="$2"; shift 2 ;;
       *) fail "unknown flag: $1" ;;
     esac
   done
   case "$score" in ''|*[!0-9]*) [ -z "$score" ] || fail "remediation: --score must be a non-negative integer" ;; esac
+  case "$open" in ''|*[!0-9]*) [ -z "$open" ] || fail "remediation: --open must be a non-negative integer" ;; esac
+  # --findings derives N itself; a second, hand-typed N could only disagree with it.
+  if [ -n "$open" ] && [ -n "$findings" ]; then
+    fail "remediation: --open and --findings are mutually exclusive (--findings computes the open count)"
+  fi
 
   local max_iters="${MTK_MAX_REMEDIATION_ITERS:-3}"
   case "$max_iters" in ''|*[!0-9]*) fail "MTK_MAX_REMEDIATION_ITERS must be a positive integer" ;; esac
 
-  # Record the attempt; decide ESCALATE when iterations hit the cap OR the score
-  # stopped improving (plateau). Higher score = better, so a non-increasing latest
-  # score means automated remediation is no longer converging.
-  local verdict
-  verdict="$(python3 - "${WF_DIR}/${uuid}.json" "$(iso_now)" "$trigger" "$score" "$max_iters" <<'PY'
+  # Record the attempt; decide ESCALATE when iterations hit the cap, the score
+  # stopped improving (plateau), or the open-finding count stopped falling
+  # (stalled). Two separate series: scores are higher-is-better, opens are
+  # lower-is-better, so a non-increasing score or a non-decreasing open count
+  # means automated remediation is no longer converging.
+  local verdict rc=0
+  verdict="$(python3 - "${WF_DIR}/${uuid}.json" "$(iso_now)" "$trigger" "$score" "$max_iters" "$open" "$findings" <<'PY'
 import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
-import json, sys
-path, now, trigger, score, max_iters = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], int(sys.argv[5])
+import hashlib, json
+path, now, trigger, score, max_iters, open_n, findings_path = sys.argv[1:8]
+max_iters = int(max_iters)
+
+# Finding UID = F- + sha1(file|rule|normalised snippet)[:10]. The line number is
+# deliberately left out, so a finding keeps its UID when unrelated edits move it.
+# Snippet: the first non-empty of snippet/evidence/code (linters and analyzers
+# emit these); review-finding-schema.md has no snippet field, so AI findings fall
+# back to rationale (then description/title/message).
+SNIPPET_FIELDS = ("snippet", "evidence", "code", "rationale", "description", "title", "message")
+def finding_uid(f):
+    snippet = next((f[k] for k in SNIPPET_FIELDS if isinstance(f.get(k), str) and f[k].strip()), "")
+    key = "%s|%s|%s" % (str(f.get("file") or "").strip(), str(f.get("rule") or "").strip(),
+                        " ".join(snippet.split()))
+    return "F-" + hashlib.sha1(key.encode("utf-8")).hexdigest()[:10]
+
+current = None
+if findings_path:
+    try:
+        with open(findings_path, encoding="utf-8") as fh:
+            raw = json.load(fh)
+    except (OSError, ValueError) as e:
+        print(f"workflow-artifact: remediation: cannot read --findings {findings_path}: {e}", file=sys.stderr)
+        sys.exit(2)
+    items = raw.get("findings") if isinstance(raw, dict) else raw
+    if not isinstance(items, list) or not all(isinstance(i, dict) for i in items):
+        print(f"workflow-artifact: remediation: --findings {findings_path} is not a JSON array of finding "
+              "objects or an object with findings[]", file=sys.stderr)
+        sys.exit(2)
+    current = []
+    for f in items:
+        u = finding_uid(f)
+        if u not in current:  # duplicates (same file/rule/snippet) are one open finding
+            current.append(u)
+
 with open(path) as f: doc = json.load(f)
 results = doc.setdefault("results", {})
 rem = results.setdefault("remediation", {})
@@ -475,25 +539,151 @@ if score != "":
 scores = [s for s in entry.get("scores", []) if isinstance(s, int)]
 plateau = len(scores) >= 2 and scores[-1] <= scores[-2]
 entry["plateau"] = plateau
-escalate = entry["iterations"] >= max_iters or plateau
+
+reconcile = None
+if current is not None:
+    prev = entry.get("findings", {}).get("open", []) if isinstance(entry.get("findings"), dict) else []
+    prev = prev if isinstance(prev, list) else []
+    reconcile = {
+        "FIXED": [u for u in prev if u not in current],
+        "STILL_OPEN": [u for u in current if u in prev],
+        "NEW": [u for u in current if u not in prev],
+    }
+    entry["findings"] = {"open": current, "last": reconcile}
+    open_n = str(len(current))
+if open_n != "":
+    entry.setdefault("opens", []).append(int(open_n))
+stalled = False
+if "opens" in entry:
+    # Only a trigger that ever reported an open count carries the stall flag, so
+    # score-only artifacts keep their exact old shape.
+    opens = [o for o in entry["opens"] if isinstance(o, int)]
+    stalled = len(opens) >= 2 and opens[-1] >= opens[-2]
+    entry["stalled"] = stalled
+
+escalate = entry["iterations"] >= max_iters or plateau or stalled
 doc["updated_at"] = now
 with open(path, "w") as f: json.dump(doc, f, indent=2)
 print("ESCALATE" if escalate else "CONTINUE")
 print(entry["iterations"])
 print("plateau" if plateau else "no-plateau")
+print("stalled" if stalled else "no-stalled")
+# Lines 5+ are passed through after the verdict line.
+if stalled:
+    print("reason: stalled")
+if reconcile is not None:
+    for k in ("FIXED", "STILL_OPEN", "NEW"):
+        print(" ".join([k, str(len(reconcile[k]))] + reconcile[k]))
 PY
-)"
-  local decision iters plat
+)" || rc=$?
+  # 2 = unreadable --findings (nothing was written); anything else is a crash.
+  [ "$rc" -ne 2 ] || exit 2
+  [ "$rc" -eq 0 ] || fail "remediation: tracker update failed (python exit $rc)"
+  local decision iters plat stall extra
   decision="$(printf '%s\n' "$verdict" | sed -n '1p')"
   iters="$(printf '%s\n' "$verdict" | sed -n '2p')"
   plat="$(printf '%s\n' "$verdict" | sed -n '3p')"
+  stall="$(printf '%s\n' "$verdict" | sed -n '4p')"
+  extra="$(printf '%s\n' "$verdict" | sed -n '5,$p')"
 
   if [ "$decision" = "ESCALATE" ]; then
-    local trigger_json
+    local trigger_json reason="cap" stalled_json="false"
     trigger_json="$(printf '%s' "$trigger" | json_escape)"
-    cmd_event "$uuid" "remediation_escalated" --data "{\"trigger\":${trigger_json},\"iterations\":${iters},\"plateau\":\"${plat}\"}" >/dev/null
+    [ "$plat" != "plateau" ] || reason="plateau"
+    if [ "$stall" = "stalled" ]; then reason="stalled"; stalled_json="true"; fi
+    cmd_event "$uuid" "remediation_escalated" --data "{\"trigger\":${trigger_json},\"iterations\":${iters},\"plateau\":\"${plat}\",\"stalled\":${stalled_json},\"reason\":\"${reason}\"}" >/dev/null
   fi
   printf '%s\n' "$decision"
+  [ -z "$extra" ] || printf '%s\n' "$extra"
+}
+
+# review-input — bind a review to the tree it read. --record stores the
+# working-tree fingerprint at lane dispatch; --check (before aggregating the
+# lanes) recomputes it against the RECORDED base commit, so committing exactly
+# the reviewed tree still reads as unchanged while any edit, deletion or new
+# untracked file does not. The fingerprint is hook-io's mtk_tree_fingerprint —
+# the same one the Stop hook binds evidence with — sourced lazily so no other
+# subcommand depends on hooks/lib being present. Exit: 0 unchanged, 1 changed,
+# 2 nothing recorded / hook-io absent / fingerprint not computable.
+load_hook_io() {
+  local self_dir d
+  self_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  for d in "$self_dir/../hooks/lib" "${CLAUDE_PLUGIN_ROOT:+${CLAUDE_PLUGIN_ROOT}/hooks/lib}"; do
+    [ -n "$d" ] && [ -f "$d/hook-io.sh" ] || continue
+    # shellcheck source=../hooks/lib/hook-io.sh
+    . "$d/hook-io.sh"
+    declare -F mtk_tree_fingerprint >/dev/null && return 0
+  done
+  return 1
+}
+
+# Fingerprint as seen from ROOT_DIR: hook-io resolves the root from
+# CLAUDE_PROJECT_DIR before git, so pin it to ours and drop any memoized root.
+review_fingerprint() {
+  _MTK_REPO_ROOT=""
+  CLAUDE_PROJECT_DIR="$ROOT_DIR" mtk_tree_fingerprint "$@"
+}
+
+cmd_review_input() {
+  local uuid="${1:-}" mode="${2:-}"
+  [ -n "$uuid" ] || fail "review-input requires <uuid>"
+  [ -f "${WF_DIR}/${uuid}.json" ] || fail "no artifact for $uuid"
+  case "$mode" in --record|--check) ;; *) fail "review-input requires --record or --check" ;; esac
+  [ $# -le 2 ] || fail "review-input: unexpected argument: $3"
+
+  if ! load_hook_io; then
+    printf 'workflow-artifact: review-input: hooks/lib/hook-io.sh not found (looked beside this script and under CLAUDE_PLUGIN_ROOT) — cannot fingerprint the tree\n' >&2
+    return 2
+  fi
+
+  local fp="" rc=0
+  if [ "$mode" = "--record" ]; then
+    fp="$(review_fingerprint)" || rc=$?
+    if [ "$rc" -ne 0 ] || [ -z "$fp" ]; then
+      printf 'workflow-artifact: review-input: cannot fingerprint %s (not a git work tree, or a file is unreadable)\n' "$ROOT_DIR" >&2
+      return 2
+    fi
+    python3 - "${WF_DIR}/${uuid}.json" "$(iso_now)" "$fp" <<'PY'
+import json, sys
+path, now, fp = sys.argv[1:4]
+with open(path) as f: doc = json.load(f)
+review = doc.setdefault("results", {}).setdefault("review", {})
+review["input_fingerprint"] = fp
+review["recorded_at"] = now
+doc["updated_at"] = now
+with open(path, "w") as f: json.dump(doc, f, indent=2)
+PY
+    cmd_event "$uuid" "review_input_recorded" --data "{\"input_fingerprint\":$(printf '%s' "$fp" | json_escape)}" >/dev/null
+    printf 'review-input: recorded %s\n' "$fp"
+    return 0
+  fi
+
+  local recorded
+  recorded="$(python3 - "${WF_DIR}/${uuid}.json" <<'PY'
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
+import json
+review = json.load(open(sys.argv[1])).get("results", {}).get("review", {})
+fp = review.get("input_fingerprint") if isinstance(review, dict) else None
+print(fp if isinstance(fp, str) else "")
+PY
+)"
+  if [ -z "$recorded" ]; then
+    printf 'workflow-artifact: review-input: no input fingerprint recorded for %s (run --record at lane dispatch)\n' "$uuid" >&2
+    return 2
+  fi
+  fp="$(review_fingerprint "${recorded%% *}")" || rc=$?
+  if [ "$rc" -ne 0 ] || [ -z "$fp" ]; then
+    printf 'workflow-artifact: review-input: cannot fingerprint %s (not a git work tree, or a file is unreadable)\n' "$ROOT_DIR" >&2
+    return 2
+  fi
+  if [ "$fp" = "$recorded" ]; then
+    printf 'review-input: unchanged (%s)\n' "$fp"
+    return 0
+  fi
+  printf 'review-input: CHANGED — the tree differs from the one the review read\n'
+  printf '  recorded=%s\n' "$recorded"
+  printf '  current=%s\n' "$fp"
+  return 1
 }
 
 # Approval seal — bind the approved SCOPE artifacts (spec + plan) to a
@@ -837,7 +1027,9 @@ PY
 }
 
 usage() {
-  sed -n '4,58p' "$0"
+  # Sentinel range, not fixed line numbers: print from line 4 to the first
+  # blank line, so adding header lines never truncates --help again.
+  sed -n '4,/^$/p' "$0"
 }
 
 main() {
@@ -855,6 +1047,7 @@ main() {
     verify-seal) cmd_verify_seal "$@" ;;
     criteria) cmd_criteria "$@" ;;
     remediation) cmd_remediation "$@" ;;
+    review-input) cmd_review_input "$@" ;;
     trap)     cmd_trap "$@" ;;
     abandon)  cmd_abandon "$@" ;;
     prune)    cmd_prune "$@" ;;

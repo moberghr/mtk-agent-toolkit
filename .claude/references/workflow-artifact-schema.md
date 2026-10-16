@@ -52,7 +52,19 @@ Durable orchestration state lives under `.mtk/workflows/`, outside `.claude/` so
     "batches_total": 4,
     "batches_completed": 2,
     "remediation": {
-      "build_failure": { "iterations": 2, "scores": [5, 7], "plateau": false }
+      "build_failure": { "iterations": 2, "scores": [5, 7], "plateau": false },
+      "review": {
+        "iterations": 2, "scores": [], "plateau": false,
+        "opens": [3, 2], "stalled": false,
+        "findings": {
+          "open": ["F-1a2b3c4d5e", "F-0f9e8d7c6b"],
+          "last": { "FIXED": ["F-5a6b7c8d9e"], "STILL_OPEN": ["F-1a2b3c4d5e"], "NEW": ["F-0f9e8d7c6b"] }
+        }
+      }
+    },
+    "review": {
+      "input_fingerprint": "<base commit sha> <tree hash>",
+      "recorded_at": "2026-05-07T14:30:00Z"
     },
     "usage": { "tokens_total": 0, "error_codes": [] },
     "dispatch_incidents": [
@@ -81,6 +93,39 @@ Implementations may add fields under `results` and `intent` without breaking sch
 `results.context_pack` is the path of the per-run context pack written by `scripts/build-context-pack.sh` after Phase 2 (normally `.mtk/workflows/{uuid}/context-pack.md`): the build/test/format commands, CLAUDE.md critical rules, manifest-selected coding-guideline sections, `[EXTRACTED]` principles, and matching lessons that every implementer and reviewer subagent reads **instead of** the files it was built from. Rebuilt when the manifest is amended; passed by path in every subagent prompt.
 
 `results.artifact_url` is the URL of the workflow's published Claude Artifact (the single browsable rollup of spec/plan/handoff/health, updated in place across phases). It is set only when artifact publishing is enabled and available — see `.claude/references/artifact-publishing.md`. The `*_path` fields (`spec_path`, `plan_path`, `todo_path`, `handoff_path`, `health_report_path`) are the on-disk source docs the assembler (`scripts/workflow-artifact-md.sh`) concatenates into `.mtk/workflows/{uuid}.artifact.md`. Disk remains the source of truth; the artifact is an additive rendered mirror.
+
+## Review input and remediation tracking
+
+`results.review.input_fingerprint` binds a review to the tree its lanes read. `review-input <uuid> --record` (at lane dispatch) stores the output of `mtk_tree_fingerprint` from `hooks/lib/hook-io.sh` — the same fingerprint the Stop hook binds evidence with, format `<base commit> <hash>` — plus `recorded_at`. `review-input <uuid> --check` (before aggregating the lanes) recomputes it against the **recorded** base commit and exits:
+
+| Exit | Meaning |
+|---|---|
+| `0` | Unchanged. A write under `.mtk/` and a commit of exactly the reviewed tree both stay `0`. |
+| `1` | Changed: a tracked file was edited or deleted, or an untracked, non-ignored file appeared. Prints `recorded=` and `current=`. Re-dispatch the lanes whose files changed. |
+| `2` | Uncheckable: nothing recorded, not a git work tree, an unreadable file, or `hook-io.sh` absent (it is looked up beside the script, then under `CLAUDE_PLUGIN_ROOT`). |
+
+`results.remediation.<trigger>` is the circuit-breaker state written by `remediation <uuid> <trigger>`. It keeps two independent series:
+
+- `scores` (`--score N`, higher is better). `plateau` is true when the last two did not increase.
+- `opens` (`--open N`, the open-finding count, lower is better). `stalled` is true when the last two did not decrease (`opens[-1] >= opens[-2]`). `stalled` is written only for a trigger that has reported an open count.
+
+Either flag, or `iterations >= MTK_MAX_REMEDIATION_ITERS` (default 3), prints `ESCALATE`, else `CONTINUE`. The verdict is always line 1 of the output. A stall adds a `reason: stalled` line after it.
+
+`--findings <file.json>` takes a JSON array of findings, or a lane result object with `findings[]` (`review-finding-schema.md`). It cannot be combined with `--open`, because it supplies N itself as the number of distinct open findings. Each finding gets a UID `F-` + the first 10 hex of `sha1(file|rule|snippet)`:
+
+- `snippet` is the first non-empty field of `snippet`, `evidence` or `code`, which linter and analyzer findings may carry.
+- `review-finding-schema.md` defines no snippet field, so an AI finding falls back to `rationale`, then `description`, `title` or `message`.
+- Whitespace in the snippet is collapsed and stripped.
+- The line number is never part of the UID, so a finding keeps its UID when edits move it.
+- A reworded `rationale` reads as a new finding: one `FIXED` plus one `NEW`.
+
+The UIDs are reconciled against the previous `--findings` call for the same trigger. The result is stored as `findings.open` (current UIDs) and `findings.last`, and printed after the verdict as three lines, `FIXED <n> <uid>…`, `STILL_OPEN <n> <uid>…` and `NEW <n> <uid>…`:
+
+- `FIXED` — was open, now absent.
+- `STILL_OPEN` — open in both calls.
+- `NEW` — first seen now.
+
+A findings file that is unreadable or has the wrong shape exits `2` and records nothing.
 
 ## criteria_status
 
@@ -124,7 +169,8 @@ Events are append-only. One line per event in `{uuid}.events.jsonl`.
 | `agent_returned` | A subagent finishes — or is killed (`verdict: killed`, `findings_count: 0`) | `agent`, `verdict`, `findings_count`, optional `source: workflow-replay` |
 | `remediation_started` | Loop entered to fix issues | `trigger` |
 | `remediation_resolved` | Loop exits successfully | `trigger`, `iterations` |
-| `remediation_escalated` | Circuit-breaker tripped (cap or plateau) | `trigger`, `iterations`, `plateau` |
+| `remediation_escalated` | Circuit-breaker tripped (cap, plateau or stall) | `trigger`, `iterations`, `plateau`, `stalled` (bool), `reason` (`stalled` \| `plateau` \| `cap`, first that holds) |
+| `review_input_recorded` | `review-input --record` stored the reviewed tree's fingerprint | `input_fingerprint` |
 | `workflow_completed` | Final phase done | `summary` |
 | `workflow_failed` | Failure-stop gate trips | `reason` |
 
@@ -156,6 +202,10 @@ scripts/workflow-artifact.sh gate "$UUID" plan_trust_gate pass --reason "enginee
 # Read state / list active workflows
 scripts/workflow-artifact.sh read "$UUID"
 scripts/workflow-artifact.sh list
+
+# Bind a review to its input tree; reconcile a review iteration's findings (line 1 = verdict)
+scripts/workflow-artifact.sh review-input "$UUID" --record      # later: --check → 0/1/2
+scripts/workflow-artifact.sh remediation "$UUID" review --findings lane-result.json
 
 # Expire workflows (any status) not updated within N days; N >= 1 unless --force; prints pruned uuids
 scripts/workflow-artifact.sh prune --older-than 30 [--dry-run]
