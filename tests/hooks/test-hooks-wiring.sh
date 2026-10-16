@@ -20,6 +20,8 @@ python3 - "$HJ" "$REPO_ROOT" <<'PY'
 import json, os, re, sys
 
 path, root = sys.argv[1], sys.argv[2]
+sys.path.insert(0, os.path.join(root, "hooks", "lib"))
+from hook_registry import handlers  # the one hooks.json handler parser
 hooks = json.load(open(path))["hooks"]
 fails = []
 
@@ -48,13 +50,8 @@ for ev in ("PreToolUse", "PostToolUse", "PostToolUseFailure"):
 # 3. exact expected table: (event, matcher) -> [hook basename + args]
 def table():
     out = {}
-    for ev, entries in hooks.items():
-        for entry in entries:
-            key = (ev, entry.get("matcher", ""))
-            for h in entry.get("hooks", []):
-                cmd = h["command"].replace('"', "")
-                name = cmd.split("/hooks/", 1)[1]
-                out.setdefault(key, []).append(name)
+    for h in handlers(path):
+        out.setdefault((h["event"], h["matcher"]), []).append((h["script"] + " " + h["args"]).strip())
     return out
 
 expected = {
@@ -81,11 +78,9 @@ for (ev, m), names in got.items():
             fails.append("%s/%s: %s is not executable" % (ev, m, script))
 
 # 5. the async Stop recorders stay async
-for entry in hooks.get("Stop", []):
-    for h in entry.get("hooks", []):
-        if h["command"].rstrip('"').endswith(("cost-tracker.sh", "workflow-continuation.sh")):
-            if h.get("async") is not True:
-                fails.append("%s must be async" % h["command"])
+for h in handlers(path):
+    if h["event"] == "Stop" and h["script"] in ("cost-tracker.sh", "workflow-continuation.sh") and not h["async"]:
+        fails.append("%s must be async" % h["script"])
 
 if fails:
     for f in fails:
@@ -100,16 +95,12 @@ PY
 # stamp_check <root>: exit 0 when every script registered in <root>/hooks/hooks.json
 # has the call, else prints one FAIL line per script and exits 1.
 stamp_check() {
-  python3 - "$1" <<'PY'
-import json, os, re, sys
+  python3 - "$1" "$REPO_ROOT" <<'PY'
+import os, re, sys
 root = sys.argv[1]
-names = []
-for entries in json.load(open(os.path.join(root, "hooks", "hooks.json")))["hooks"].values():
-    for entry in entries:
-        for h in entry.get("hooks", []):
-            base = os.path.basename(h["command"].split()[0].strip("\"'"))
-            if base not in names:
-                names.append(base)
+sys.path.insert(0, os.path.join(sys.argv[2], "hooks", "lib"))  # the real parser, even for a temp copy
+from hook_registry import handlers
+names = list(dict.fromkeys(h["script"] for h in handlers(os.path.join(root, "hooks", "hooks.json"))))
 bad = []
 for n in names:
     try:
@@ -167,15 +158,13 @@ git -C "$RT_PROJ" init -q >/dev/null 2>&1 || true
 # event|first tool of its matcher|script name|args (`|` is not IFS whitespace,
 # so an empty matcher or args field is kept, not collapsed)
 drive_plan() {
-  python3 - "$1" <<'PY'
-import json, os, shlex, sys
+  python3 - "$1" "$REPO_ROOT" <<'PY'
+import os, sys
 root = sys.argv[1]
-for ev, entries in json.load(open(os.path.join(root, "hooks", "hooks.json")))["hooks"].items():
-    for entry in entries:
-        tool = (entry.get("matcher") or "").split("|")[0]
-        for h in entry.get("hooks", []):
-            argv = shlex.split(h["command"])
-            print("|".join([ev, tool, os.path.basename(argv[0]), " ".join(argv[1:])]))
+sys.path.insert(0, os.path.join(sys.argv[2], "hooks", "lib"))  # the real parser, even for a temp copy
+from hook_registry import handlers
+for h in handlers(os.path.join(root, "hooks", "hooks.json")):
+    print("|".join([h["event"], h["matcher"].split("|")[0], h["script"], h["args"]]))
 PY
 }
 

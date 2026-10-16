@@ -662,9 +662,11 @@ fi
 # (mtk_hook_seen in hooks/lib/hook-io.sh; the directory comes from the same
 # helper, so the two cannot disagree on the path), and session-start counts each
 # `startup` in <stamp dir>/.sessions (mtk_liveness_tick). The hook set is every
-# command registered in hooks/hooks.json — no hand list to drift: SubagentStart
-# hooks are event-rare (info only), every other hook fires in nearly every
-# session. Once .sessions counts >= 5 sessions, a per-call hook with no stamp, or
+# command registered in hooks/hooks.json (read through hooks/lib/hook_registry.py)
+# — no hand list to drift: SubagentStart hooks and if-filtered handlers are
+# event-rare (info only; a script is rare only when every registration of it
+# is, so one per-call registration makes it per-call), every other hook fires in
+# nearly every session. Once .sessions counts >= 5 sessions, a per-call hook with no stamp, or
 # with a stamp more than 14 days older than the last session tick (the mtime of
 # .sessions — not "now", so an idle repo whose hooks all ran in its last session
 # is not stale), is WARNed — unregistered, crashing before its stamp, or
@@ -683,25 +685,18 @@ elif [ ! -f "$LIVE_HJ" ]; then
   live_why="$LIVE_HJ not found"
 else
   live_rc=0
-  LIVE_SET="$(python3 - "$LIVE_HJ" <<'PY' 2>&1
+  LIVE_SET="$(python3 - "$LIVE_HJ" "$ROOT_DIR/hooks/lib" <<'PY' 2>&1
 import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
-import json, os
-out, seen = [], set()
+sys.path.insert(0, sys.argv[2])
 try:
-    for event, entries in json.load(open(sys.argv[1]))["hooks"].items():
-        for entry in entries:
-            for h in entry.get("hooks", []):
-                tok = str(h.get("command", "")).split()
-                if tok and tok[0] in ("bash", "sh", "zsh"):
-                    tok = tok[1:]
-                base = os.path.basename(tok[0].strip("\"'")) if tok else ""
-                if base and base not in seen:
-                    seen.add(base)
-                    out.append(("rare" if event == "SubagentStart" else "per-call") + "\t" + base)
+    from hook_registry import handlers
+    kind = {}  # script -> "rare" only while every registration of it is rare
+    for h in handlers(sys.argv[1]):
+        kind[h["script"]] = "per-call" if h["rarity"] == "per-call" or kind.get(h["script"]) == "per-call" else "rare"
 except Exception as e:  # one readable line for the doctor, not a traceback
     print("%s: %s" % (type(e).__name__, e))
     sys.exit(1)
-print("\n".join(out))
+print("\n".join(k + "\t" + b for b, k in kind.items()))
 PY
 )" || live_rc=$?
   if [ "$live_rc" -ne 0 ]; then
@@ -778,7 +773,7 @@ PY
     record PASS hooks "hook stamp age not checked" "could not read stamp mtimes in $LIVE_DIR; stamps judged by presence only"
   fi
   if [ "${#LIVE_PER_CALL[@]}" -eq 0 ]; then
-    record PASS hooks "per-call hooks: none registered" "hooks/hooks.json registers only SubagentStart hooks"
+    record PASS hooks "per-call hooks: none registered" "hooks/hooks.json registers only event-rare hooks (SubagentStart or if-filtered)"
   elif [ "${#live_unseen[@]}" -eq 0 ] && [ "${#live_stale[@]}" -eq 0 ]; then
     record PASS hooks "per-call hooks alive" "all ${#live_seen[@]} per-call hooks registered in hooks/hooks.json left a liveness stamp in $LIVE_DIR within ${LIVE_STALE_DAYS} days of the last session"
   elif [ "$LIVE_SESSIONS" -ge 5 ]; then
@@ -792,7 +787,7 @@ PY
     record PASS hooks "per-call hooks not seen yet" "not seen: ${live_unseen[*]:-none}; stale (> ${LIVE_STALE_DAYS} days before the last session): ${live_stale[*]:-none} — but $LIVE_DIR/.sessions counts only ${LIVE_SESSIONS} session(s) (< 5), too few to judge"
   fi
   if [ "${#LIVE_RARE[@]}" -gt 0 ]; then
-    live_rare_note="seen: ${rare_seen[*]:-none}; not seen: ${rare_unseen[*]:-none} — SubagentStart hooks fire only when a subagent starts, so absence is not a failure"
+    live_rare_note="seen: ${rare_seen[*]:-none}; not seen: ${rare_unseen[*]:-none} — SubagentStart and if-filtered hooks fire only when their trigger does, so absence is not a failure"
     case " ${LIVE_RARE[*]} " in
       *" subagent-context.sh "*)
         live_rare_note="$live_rare_note. A subagent-context stamp proves the hook ran, not that the subagent saw its text: this check cannot tell 'not fired' from 'fired but invisible to the model' — confirm with the manual SubagentStart check in the PR that added subagent-context.sh" ;;

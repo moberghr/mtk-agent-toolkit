@@ -213,7 +213,7 @@ expect_has "stamped event-rare hook → seen" "seen: subagent-context;" "$(detai
 KIT="$SBX/kit"
 mkdir -p "$KIT/scripts" "$KIT/hooks/lib"
 cp "$DOCTOR" "$KIT/scripts/mtk-doctor.sh"
-cp "$HOOK_IO" "$REPO_ROOT/hooks/lib/shrink-guard.sh" "$KIT/hooks/lib/"
+cp "$HOOK_IO" "$REPO_ROOT/hooks/lib/shrink-guard.sh" "$REPO_ROOT/hooks/lib/hook_registry.py" "$KIT/hooks/lib/"
 python3 - "$REPO_ROOT/hooks/hooks.json" "$KIT/hooks/hooks.json" <<'PY'
 import json, sys
 d = json.load(open(sys.argv[1]))
@@ -235,6 +235,34 @@ out="$(checks hooks)"
 expect "kit: unparseable hooks.json → hook liveness not checked" 1 "$(count_lines $'^PASS\thook liveness not checked$' "$out")"
 expect "kit: unparseable hooks.json → no liveness WARN" 0 "$(count_lines $'^WARN\thook (not seen|stale)' "$out")"
 expect_has "kit: not-checked detail names the parse error" "JSONDecodeError" "$(detail_of 'hook liveness not checked')"
+cp "$REPO_ROOT/hooks/hooks.json" "$KIT/hooks/hooks.json"
+
+# An `if`-filtered handler is event-rare like SubagentStart: its stamp may never
+# appear (the filter rarely matches), so it is reported, never WARNed. A script
+# registered both with and without `if` fires per call, so per-call wins.
+python3 - "$REPO_ROOT/hooks/hooks.json" "$KIT/hooks/hooks.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+pre = d["hooks"]["PreToolUse"]
+pre.append({"matcher": "Bash", "hooks": [{"type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/if-only.sh\"", "if": "Bash(git push*)", "timeout": 5}]})
+# mixed-hook.sh: `if`-filtered first, plain second (the order must not matter)
+pre.append({"matcher": "Bash", "hooks": [{"type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/mixed-hook.sh\"", "if": "Bash(git push*)", "timeout": 5}]})
+pre.append({"matcher": "Edit|Write", "hooks": [{"type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/mixed-hook.sh\"", "timeout": 5}]})
+json.dump(d, open(sys.argv[2], "w"), indent=2)
+PY
+DOC="$KIT/scripts/mtk-doctor.sh"
+stamp cost-tracker.sh
+sessions 40
+out="$(checks hooks)"
+expect "kit: if-only handler never stamped, 40 sessions → not WARNed" 0 "$(count_lines $'^WARN\thook not seen: if-only$' "$out")"
+expect_has "kit: if-only handler is reported on the event-rare row" "not seen: " "$(detail_of 'event-rare hooks (info)')"
+expect_has "kit: the event-rare row names if-only" "if-only" "$(detail_of 'event-rare hooks (info)')"
+expect "kit: same script with and without if → per-call → WARN hook not seen: mixed-hook" 1 "$(count_lines $'^WARN\thook not seen: mixed-hook$' "$out")"
+expect "kit: exactly one liveness WARN (the mixed one)" 1 "$(count_lines $'^WARN\thook (not seen|stale)' "$out")"
+sessions 4
+out="$(checks hooks)"
+expect "kit: 4 sessions → no WARN for if-only or mixed" 0 "$(count_lines $'^WARN\thook (not seen|stale)' "$out")"
+sessions 40
 cp "$REPO_ROOT/hooks/hooks.json" "$KIT/hooks/hooks.json"
 DOC="$DOCTOR"
 stamp cost-tracker.sh

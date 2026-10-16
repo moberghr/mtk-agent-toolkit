@@ -165,11 +165,14 @@ done
 # blocking hook that times out fails OPEN (its decision never arrives), which is the
 # right trade: a missed advisory beats a frozen session.
 python3 - <<'MTKPY' || fail "hooks/hooks.json has a hook with no timeout"
-import json, sys
-d = json.load(open("hooks/hooks.json")).get("hooks", {})
-bad = [(ev, h.get("command", "?").split("/")[-1])
-       for ev, blocks in d.items() for b in blocks for h in b.get("hooks", [])
-       if "timeout" not in h]
+import sys
+sys.path.insert(0, "hooks/lib")
+from hook_registry import handlers
+try:
+    bad = [(h["event"], h["script"]) for h in handlers("hooks/hooks.json") if h["timeout"] == ""]
+except ValueError as e:
+    print(f"ERROR: {e}", file=sys.stderr)
+    sys.exit(1)
 for ev, name in bad:
     print(f"ERROR: hooks.json {ev} hook {name} declares no timeout", file=sys.stderr)
 sys.exit(1 if bad else 0)
@@ -252,24 +255,18 @@ fi
 # `mtk_hook_seen <its own file name>` on a non-comment line. mtk-doctor derives
 # the liveness set from hooks.json and looks for exactly that stamp name, so a
 # hook that never stamps (or stamps under another name) reads as "never fired"
-# in every repo. Same logic shape as tests/hooks/test-hooks-wiring.sh, which
+# in every repo. Both read hooks.json through hooks/lib/hook_registry.py; the wiring test
 # also drives each hook to prove the call is reached.
 python3 - <<'MTKPY' || fail "a hook registered in hooks/hooks.json does not stamp its liveness (add \`mtk_hook_seen <its file name>\` right after sourcing hooks/lib/hook-io.sh)"
-import json, os, re, shlex, sys
-d = json.load(open("hooks/hooks.json")).get("hooks", {})
-names = []
-for blocks in d.values():
-    for b in blocks:
-        for h in b.get("hooks", []):
-            cmd = h.get("command")
-            if not cmd:
-                continue
-            try:
-                base = os.path.basename(shlex.split(cmd)[0])
-            except ValueError:
-                continue  # the executable check above already reports it
-            if base not in names:
-                names.append(base)
+import os, re, sys
+sys.path.insert(0, "hooks/lib")
+from hook_registry import handlers
+try:
+    # a command that cannot be split is skipped here; the executable check above reports it
+    names = list(dict.fromkeys(h["script"] for h in handlers("hooks/hooks.json")))
+except ValueError as e:
+    print(f"ERROR: liveness stamp: {e}", file=sys.stderr)
+    sys.exit(1)
 bad = []
 if not names:
     bad.append("found 0 registered hook scripts — the selector matched nothing, so this check inspected nothing")

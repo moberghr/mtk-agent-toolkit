@@ -89,6 +89,7 @@ trap _mtk_hook_diag EXIT
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
+source "${SCRIPT_DIR}/lib/guard-mode.sh"
 
 [ "${MTK_CONFIG_GUARD:-1}" = "0" ] && exit 0
 mtk_hook_seen config-guard.sh

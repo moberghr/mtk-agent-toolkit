@@ -20,6 +20,7 @@ trap _mtk_hook_diag EXIT
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
+source "${SCRIPT_DIR}/lib/guard-mode.sh"
 mtk_hook_seen scope-guard.sh
 
 INPUT="$(mtk_read_payload)"
@@ -252,13 +253,10 @@ if [ "$MATCHED" -eq 0 ]; then
   # Advisory: once per file per session. The payload's session_id keys the
   # store (bound by mtk_ensure_session_baseline above); without one there is no
   # session to scope to, so every edit warns as before.
-  if [ -n "${_MTK_SESSION_ID:-}" ]; then
-    WARNED_FILE="$(mtk_session_file).scope-warned"
-    grep -qxF -- "$REL_PATH" "$WARNED_FILE" 2>/dev/null && exit 0
-    printf '%s\n' "$REL_PATH" >> "$WARNED_FILE" 2>/dev/null || true
+  # mtk_advise_gated owns that dedup; the warning is recorded only when emitted.
+  if mtk_advise_gated "$SCOPE_MODE" "PreToolUse" "scope-guard:${REL_PATH}" "SCOPE GUARD: ${REL_PATH} is not in the approved spec (${SPEC_NAME}). If this change is necessary, update the spec's change_manifest first. Undeclared file modifications are the #1 source of spec drift."; then
+    mtk_record_scope_guard_warning
   fi
-  mtk_record_scope_guard_warning
-  mtk_emit_additional_context "PreToolUse" "SCOPE GUARD: ${REL_PATH} is not in the approved spec (${SPEC_NAME}). If this change is necessary, update the spec's change_manifest first. Undeclared file modifications are the #1 source of spec drift."
 fi
 
 exit 0

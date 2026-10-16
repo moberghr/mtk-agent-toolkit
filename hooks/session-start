@@ -213,40 +213,12 @@ if [ "$SS_SOURCE" = "compact" ]; then
   # Active workflow artifact: at most ONE — the newest whose status is `active`
   # (never failed/complete/abandoned) and whose updated_at is within
   # MTK_WORKFLOW_REINJECT_DAYS (default 7). A finished or week-old workflow
-  # re-injected here reads as live work and restarts itself. python3 parses the
-  # JSON and the ISO timestamps (S3.3 baseline); without it no workflow is
-  # re-injected rather than a possibly stale one.
+  # re-injected here reads as live work and restarts itself. Selection lives in
+  # lib/active_workflow.py (shared with subagent-context.sh); without python3 no
+  # workflow is re-injected rather than a possibly stale one.
   WF_DIR="$ROOT/.mtk/workflows"
   if [ -d "$WF_DIR" ] && command -v python3 >/dev/null 2>&1; then
-    WF_LINE="$(python3 - "$WF_DIR" "${MTK_WORKFLOW_REINJECT_DAYS:-7}" <<'PY' 2>/dev/null || true
-import datetime, glob, json, os, sys
-wf_dir, days = sys.argv[1], float(sys.argv[2])
-now = datetime.datetime.now(datetime.timezone.utc)
-best = None
-for path in glob.glob(os.path.join(wf_dir, "*.json")):
-    try:
-        with open(path) as fh:
-            doc = json.load(fh)
-    except Exception:
-        continue
-    if not isinstance(doc, dict):
-        continue
-    if str(doc.get("status", "")).lower() != "active":
-        continue
-    try:
-        ts = datetime.datetime.strptime(str(doc.get("updated_at", "")), "%Y-%m-%dT%H:%M:%SZ")
-        ts = ts.replace(tzinfo=datetime.timezone.utc)
-    except ValueError:
-        continue
-    if (now - ts).total_seconds() > days * 86400:
-        continue
-    if best is None or ts > best[0]:
-        best = (ts, path, doc)
-if best:
-    _, path, doc = best
-    print("\t".join([path, str(doc.get("workflow_type") or "?"), str(doc.get("phase_cursor") or "?")]))
-PY
-)"
+    WF_LINE="$(python3 "$SCRIPT_DIR/lib/active_workflow.py" "$WF_DIR" "${MTK_WORKFLOW_REINJECT_DAYS:-7}" path type phase 2>/dev/null || true)"
     if [ -n "$WF_LINE" ]; then
       ACTIVE_WF="${WF_LINE%%	*}"
       WF_REST="${WF_LINE#*	}"

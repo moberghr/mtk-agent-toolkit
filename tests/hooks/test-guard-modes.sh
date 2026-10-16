@@ -53,7 +53,7 @@ expect() {
 # mode <NAME> <default> [VAR=value ...] — prints mtk_guard_mode's answer.
 mode() {
   local name="$1" def="$2"; shift 2
-  env "$@" bash -c '. "$1"; mtk_guard_mode "$2" "$3"' _ "$HOOK_IO" "$name" "$def"
+  env "$@" bash -c '. "$1"; . "${1%/*}/guard-mode.sh"; mtk_guard_mode "$2" "$3"' _ "$HOOK_IO" "$name" "$def"
 }
 
 # ============================ mode table =======================================
@@ -75,7 +75,7 @@ expect "SCOPE_GUARD=garbage → default" advisory "$(mode SCOPE_GUARD advisory M
 # mode_err <NAME> <default> [VAR=value ...] — prints only mtk_guard_mode's stderr.
 mode_err() {
   local name="$1" def="$2"; shift 2
-  env "$@" bash -c '. "$1"; mtk_guard_mode "$2" "$3"' _ "$HOOK_IO" "$name" "$def" 2>&1 >/dev/null
+  env "$@" bash -c '. "$1"; . "${1%/*}/guard-mode.sh"; mtk_guard_mode "$2" "$3"' _ "$HOOK_IO" "$name" "$def" 2>&1 >/dev/null
 }
 expect "unknown value: one stderr line naming the variable, value and default" \
   "[mtk] MTK_SCOPE_GUARD_ENFORCE=bogus not recognised; using advisory" \
@@ -139,7 +139,7 @@ expect "security-gate still allows git status" 0 "$(gate_rc 'git status')"
 LOG="$PROJ/.mtk/metrics/enforcement-shadow.jsonl"
 gated() { # $1 mode — runs mtk_deny_gated, prints "rc|stdout|stderr"
   local rc=0 out err
-  out="$(bash -c '. "$1"; mtk_deny_gated "$2" test-hook TEST-CODE "would deny" "toggle hint" "src/secret path.cs"' \
+  out="$(bash -c '. "$1"; . "${1%/*}/guard-mode.sh"; mtk_deny_gated "$2" test-hook TEST-CODE "would deny" "toggle hint" "src/secret path.cs"' \
     _ "$HOOK_IO" "$1" 2>"$SANDBOX/gated.err")" || rc=$?
   err="$(cat "$SANDBOX/gated.err")"
   printf '%s|%s|%s' "$rc" "$out" "$err"
@@ -466,6 +466,52 @@ fi
 rc=0
 out="$(CLAUDE_PROJECT_DIR="$ST" TMPDIR="$SANDBOX/notadir" bash -c 'cd "$2" && . "$1" && mtk_hook_seen x' _ "$HOOK_IO" "$ST" 2>&1)" || rc=$?
 expect "mtk_hook_seen: unwritable TMPDIR → exit 0, silent" "0|" "$rc|$out"
+
+# ============================ mtk_advise_gated =================================
+
+GUARD_MODE_LIB="$REPO_ROOT/hooks/lib/guard-mode.sh"
+# advise <sid> <mode> <key> — prints "rc|stdout"; sid "" means no session id.
+advise() {
+  local rc=0 out
+  out="$(_MTK_SESSION_ID="$1" bash -c \
+    '. "$1"; . "$2"; mtk_advise_gated "$3" PreToolUse "$4" "advice text"' \
+    _ "$HOOK_IO" "$GUARD_MODE_LIB" "$2" "$3" 2>/dev/null)" || rc=$?
+  printf '%s|%s' "$rc" "$out"
+}
+EMITTED='0|{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"advice text"}}'
+
+expect "advise advisory: first call emits (rc 0)" "$EMITTED" "$(advise s-adv advisory k1)"
+expect "advise advisory: same key, same session → suppressed (rc 1, silent)" "1|" "$(advise s-adv advisory k1)"
+expect "advise advisory: different key emits" "$EMITTED" "$(advise s-adv advisory k2)"
+expect "advise advisory: same key, other session emits" "$EMITTED" "$(advise s-other advisory k1)"
+expect "advise shadow: emits" "$EMITTED" "$(advise s-sh shadow k1)"
+expect "advise off: nothing, rc 1" "1|" "$(advise s-off off k1)"
+expect "advise active: nothing, rc 1" "1|" "$(advise s-act active k1)"
+expect "advise unknown mode: nothing, rc 1" "1|" "$(advise s-unk bogus k1)"
+expect "advise no session id: emits every call (1st)" "$EMITTED" "$(advise "" advisory k1)"
+expect "advise no session id: emits every call (2nd)" "$EMITTED" "$(advise "" advisory k1)"
+
+# A dedup store that cannot be written never breaks the hook: it still emits.
+mkdir -p "$SANDBOX/ro"
+chmod 500 "$SANDBOX/ro"
+rc=0
+out="$(TMPDIR="$SANDBOX/ro" _MTK_SESSION_ID=s-ro bash -c \
+  '. "$1"; . "$2"; mtk_advise_gated advisory PreToolUse k1 "advice text"' \
+  _ "$HOOK_IO" "$GUARD_MODE_LIB" 2>/dev/null)" || rc=$?
+chmod 700 "$SANDBOX/ro"
+expect "advise: unwritable dedup store → still emits, rc 0" "$EMITTED" "$rc|$out"
+
+# The split: hook-io.sh alone has no gated helpers; security-gate never sources
+# guard-mode.sh (S3.18 floor).
+rc=0
+bash -c '. "$1"; type mtk_deny_gated mtk_guard_mode mtk_advise_gated' _ "$HOOK_IO" >/dev/null 2>&1 || rc=$?
+expect "hook-io.sh alone does not define the guard-mode helpers" 1 "$rc"
+rc=0
+bash -c '. "$1"; . "$2"; type mtk_deny_gated mtk_guard_mode mtk_advise_gated' _ "$HOOK_IO" "$GUARD_MODE_LIB" >/dev/null 2>&1 || rc=$?
+expect "hook-io.sh + guard-mode.sh define the guard-mode helpers" 0 "$rc"
+rc=0
+grep -q 'guard-mode' "$GATE" || rc=$?
+expect "security-gate.sh does not reference guard-mode.sh" 1 "$rc"
 
 echo
 if [ "$fails" -eq 0 ]; then

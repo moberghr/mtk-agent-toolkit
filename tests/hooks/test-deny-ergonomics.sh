@@ -110,13 +110,13 @@ printf '  PASS  mtk_deny caps oversized reasons\n'
 
 sh_sandbox="$(mktemp -d)"
 rc=0
-err="$( (export CLAUDE_PROJECT_DIR="$sh_sandbox"; source hooks/lib/hook-io.sh; mtk_deny_gated active erg-test ERG-CODE "gated reason" "MTK_ERG_ENFORCE=off") 2>&1 >/dev/null )" || rc=$?
+err="$( (export CLAUDE_PROJECT_DIR="$sh_sandbox"; source hooks/lib/hook-io.sh; source hooks/lib/guard-mode.sh; mtk_deny_gated active erg-test ERG-CODE "gated reason" "MTK_ERG_ENFORCE=off") 2>&1 >/dev/null )" || rc=$?
 [ "$rc" -eq 2 ] || { rm -rf "$sh_sandbox"; fail "mtk_deny_gated active must exit 2 (got $rc)"; }
 case "$err" in *"$SUFFIX_MARK"*"$CASCADE_MARK"*"disable this guard: MTK_ERG_ENFORCE=off"*) : ;; *) rm -rf "$sh_sandbox"; fail "active gated deny must carry suffix + anti-cascade + toggle. Got: $err" ;; esac
 printf '  PASS  mtk_deny_gated active: suffix + anti-cascade + toggle hint\n'
 
 rc=0
-all="$( (export CLAUDE_PROJECT_DIR="$sh_sandbox"; source hooks/lib/hook-io.sh; mtk_deny_gated shadow erg-test ERG-CODE "gated reason" "MTK_ERG_ENFORCE=off" "some/path") 2>&1 )" || rc=$?
+all="$( (export CLAUDE_PROJECT_DIR="$sh_sandbox"; source hooks/lib/hook-io.sh; source hooks/lib/guard-mode.sh; mtk_deny_gated shadow erg-test ERG-CODE "gated reason" "MTK_ERG_ENFORCE=off" "some/path") 2>&1 )" || rc=$?
 log_n="$(wc -l 2>/dev/null < "$sh_sandbox/.mtk/metrics/enforcement-shadow.jsonl" | tr -d ' ' || true)"
 rm -rf "$sh_sandbox"
 [ "$rc" -eq 0 ] || fail "mtk_deny_gated shadow must exit 0 (got $rc)"

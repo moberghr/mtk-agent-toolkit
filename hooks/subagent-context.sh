@@ -29,7 +29,7 @@ trap _mtk_hook_diag EXIT
 #
 # Selection (python, only when the gate opened on a recent workflow file): the
 # newest workflow whose status is `active` and whose updated_at is within the
-# window — the session-start selection rule, copied, not shared. A non-`mtk:`
+# window — picked by hooks/lib/active_workflow.py, the selector session-start also uses. A non-`mtk:`
 # agent for which that selection finds NO active workflow gets no output: a
 # recent but finished workflow is not a live one. `mtk:` agents still get the
 # rules part without an active workflow.
@@ -100,48 +100,17 @@ fi
 [ "$IS_MTK_AGENT" -eq 1 ] || [ -n "$RECENT_WF" ] || exit 0
 
 # --- Active-workflow selection + pack line -----------------------------------
-# The selector prints `active` on its first line when it found an active
-# workflow in the window, then that workflow's context_pack (when it has one).
+# lib/active_workflow.py (shared with session-start) prints one `path<TAB>pack`
+# line when it found an active workflow in the window; pack may be empty.
 PACK_LINE=""
 HAVE_ACTIVE=0
 PACK=""
 if [ -n "$RECENT_WF" ] && command -v python3 >/dev/null 2>&1; then
-  SEL="$(python3 - "$WF_DIR" "$WF_DAYS_RAW" <<'PY' 2>/dev/null || true
-import datetime, glob, json, os, sys
-wf_dir, days = sys.argv[1], float(sys.argv[2])
-now = datetime.datetime.now(datetime.timezone.utc)
-best = None
-for path in glob.glob(os.path.join(wf_dir, "*.json")):
-    try:
-        with open(path) as fh:
-            doc = json.load(fh)
-    except Exception:
-        continue
-    if not isinstance(doc, dict):
-        continue
-    if str(doc.get("status", "")).lower() != "active":
-        continue
-    try:
-        ts = datetime.datetime.strptime(str(doc.get("updated_at", "")), "%Y-%m-%dT%H:%M:%SZ")
-        ts = ts.replace(tzinfo=datetime.timezone.utc)
-    except ValueError:
-        continue
-    if (now - ts).total_seconds() > days * 86400:
-        continue
-    if best is None or ts > best[0]:
-        best = (ts, path, doc)
-if best:
-    print("active")
-    results = best[2].get("results")
-    pack = results.get("context_pack") if isinstance(results, dict) else None
-    if isinstance(pack, str) and pack.strip() and "\n" not in pack:
-        print(pack.strip())
-PY
-)"
-  case "$SEL" in
-    active) HAVE_ACTIVE=1 ;;
-    active$'\n'*) HAVE_ACTIVE=1; PACK="${SEL#active$'\n'}" ;;
-  esac
+  SEL="$(python3 "$SCRIPT_DIR/lib/active_workflow.py" "$WF_DIR" "$WF_DAYS_RAW" path pack 2>/dev/null || true)"
+  if [ -n "$SEL" ]; then
+    HAVE_ACTIVE=1
+    PACK="${SEL#*$'\t'}"
+  fi
 fi
 
 # A recent workflow file opened the gate for a non-mtk agent, but none of them
