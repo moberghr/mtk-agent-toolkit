@@ -60,6 +60,11 @@ when the call matches the filter.
 
 ### Changed
 
+- **`compliance-reviewer` runs on Sonnet.** It was the only review lane on Opus, and in field use the
+  costliest: one owner's last 30 days show ~4.4k Opus calls from it, while every other lane ran on Sonnet.
+  The 9.0 evals already score Sonnet 5.5 at 1.0 on the review cases, and the lane keeps `effort: high`.
+  `model-routing.md` now says when to pass `model: "opus"` on the spawn instead: a diff that is mostly
+  security or financial-state logic.
 - **Guard-mode helpers moved to `hooks/lib/guard-mode.sh`**, sourced after `hook-io.sh` by the
   shadow-capable guards. `mtk_deny` stays in `hook-io.sh`, and security-gate still does not source
   the new file, so no `MTK_*_ENFORCE` value reaches it (S3.18).
