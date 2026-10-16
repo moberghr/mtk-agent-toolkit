@@ -21,6 +21,7 @@ import json, os, re, sys
 
 path, root = sys.argv[1], sys.argv[2]
 sys.path.insert(0, os.path.join(root, "hooks", "lib"))
+sys.dont_write_bytecode = True  # importing must not write hooks/lib/__pycache__
 from hook_registry import handlers  # the one hooks.json handler parser
 hooks = json.load(open(path))["hooks"]
 fails = []
@@ -56,7 +57,8 @@ def table():
 
 expected = {
     ("SessionStart", "startup|clear|compact|resume"): ["session-start"],
-    ("PreToolUse", "Bash"): ["security-gate.sh", "format-on-edit.sh --flush-before-verify"],
+    ("PreToolUse", "Bash"): ["security-gate.sh", "format-on-edit.sh --flush-before-verify",
+                            "push-gate.sh"],
     ("PreToolUse", "Edit|Write"): ["scope-guard.sh", "config-guard.sh"],
     ("PostToolUse", "Edit|Write|Bash"): ["evidence-ledger.sh"],
     ("PostToolUse", "Edit|Write"): ["spec-approval-trigger.sh", "format-on-edit.sh"],
@@ -67,6 +69,12 @@ expected = {
 got = table()
 if got != expected:
     fails.append("hook table drifted:\n  expected %r\n  got      %r" % (expected, got))
+
+# 3b. the table reads only `command`: pin the `if` filter that keeps push-gate
+# off every Bash call except `git push` (and no other handler carries one).
+ifs = {h["script"]: h["if"] for h in handlers(path) if h.get("if")}
+if ifs != {"push-gate.sh": "Bash(git push *)"}:
+    fails.append("`if` filters drifted: expected only push-gate.sh with Bash(git push *), got %r" % (ifs,))
 
 # 4. every registered script exists and is executable
 for (ev, m), names in got.items():
@@ -99,6 +107,7 @@ stamp_check() {
 import os, re, sys
 root = sys.argv[1]
 sys.path.insert(0, os.path.join(sys.argv[2], "hooks", "lib"))  # the real parser, even for a temp copy
+sys.dont_write_bytecode = True  # importing must not write hooks/lib/__pycache__
 from hook_registry import handlers
 names = list(dict.fromkeys(h["script"] for h in handlers(os.path.join(root, "hooks", "hooks.json"))))
 bad = []
@@ -162,6 +171,7 @@ drive_plan() {
 import os, sys
 root = sys.argv[1]
 sys.path.insert(0, os.path.join(sys.argv[2], "hooks", "lib"))  # the real parser, even for a temp copy
+sys.dont_write_bytecode = True  # importing must not write hooks/lib/__pycache__
 from hook_registry import handlers
 for h in handlers(os.path.join(root, "hooks", "hooks.json")):
     print("|".join([h["event"], h["matcher"].split("|")[0], h["script"], h["args"]]))

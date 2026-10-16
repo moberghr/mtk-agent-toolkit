@@ -32,6 +32,7 @@ evals/
 | `silent-failure-finance` | core | A review ranks an empty catch around a payment-ledger write as critical/high |
 | `fix-scope-escalation` | core | A "small fix" that spans seven modules is planned or confirmed, not silently applied |
 | `router-fix` | smoke, core | `/mtk fix …` routes to the fix workflow and the bug gets fixed |
+| `review-incomplete-blocks` | core | A review whose lane did not account for every changed file is reported incomplete, never as a clean PASS |
 | `implement-stops-for-approval` | core | `/mtk implement …` presents a spec/plan and stops before touching source |
 
 Each scaffold seeds a minimal bootstrapped repo (`AGENTS.md`, a `CLAUDE.md` shim and,

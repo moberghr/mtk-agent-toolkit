@@ -53,6 +53,7 @@ source "${SCRIPT_DIR}/lib/hook-io.sh"
 source "${SCRIPT_DIR}/lib/guard-mode.sh"
 
 [ "${MTK_PUSH_GATE:-1}" = "0" ] && exit 0
+mtk_hook_seen push-gate.sh
 
 INPUT="$(mtk_read_payload)"
 [ -n "$INPUT" ] || exit 0

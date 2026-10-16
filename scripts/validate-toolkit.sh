@@ -167,6 +167,7 @@ done
 python3 - <<'MTKPY' || fail "hooks/hooks.json has a hook with no timeout"
 import sys
 sys.path.insert(0, "hooks/lib")
+sys.dont_write_bytecode = True  # importing must not write hooks/lib/__pycache__
 from hook_registry import handlers
 try:
     bad = [(h["event"], h["script"]) for h in handlers("hooks/hooks.json") if h["timeout"] == ""]
@@ -260,6 +261,7 @@ fi
 python3 - <<'MTKPY' || fail "a hook registered in hooks/hooks.json does not stamp its liveness (add \`mtk_hook_seen <its file name>\` right after sourcing hooks/lib/hook-io.sh)"
 import os, re, sys
 sys.path.insert(0, "hooks/lib")
+sys.dont_write_bytecode = True  # importing must not write hooks/lib/__pycache__
 from hook_registry import handlers
 try:
     # a command that cannot be split is skipped here; the executable check above reports it

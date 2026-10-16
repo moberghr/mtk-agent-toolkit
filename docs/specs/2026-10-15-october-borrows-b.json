@@ -1,0 +1,670 @@
+{
+  "slug": "october-borrows-b",
+  "date": "2026-10-15",
+  "scope": "new-feature",
+  "baseline_area": "toolkit-workflow",
+  "security_impact": "none",
+  "change_manifest": [
+    {
+      "path": "hooks/lib/guard-mode.sh",
+      "action": "create",
+      "purpose": "guard-mode helpers moved out of hook-io.sh (mtk_guard_mode, mtk_deny_gated, _mtk_shadow_not_written) + new mtk_advise_gated (advisory/shadow text, deduped once per key per session)",
+      "mechanical": false
+    },
+    {
+      "path": "hooks/lib/hook-io.sh",
+      "action": "modify",
+      "purpose": "remove the moved guard-mode helpers; mtk_deny untouched (S3.18)",
+      "mechanical": false
+    },
+    {
+      "path": "hooks/scope-guard.sh",
+      "action": "modify",
+      "purpose": "source guard-mode.sh; advisory dedup via mtk_advise_gated",
+      "mechanical": false
+    },
+    {
+      "path": "hooks/config-guard.sh",
+      "action": "modify",
+      "purpose": "source guard-mode.sh",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-guard-modes.sh",
+      "action": "modify",
+      "purpose": "source guard-mode.sh; mtk_advise_gated cases (dedup per key, no session id, off/active silent)",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-deny-ergonomics.sh",
+      "action": "modify",
+      "purpose": "source guard-mode.sh for mtk_deny_gated cases",
+      "mechanical": true
+    },
+    {
+      "path": "hooks/lib/hook_registry.py",
+      "action": "create",
+      "purpose": "one hooks.json handler parser: event, matcher, if, script, args, timeout, async, rarity (rare = SubagentStart or an if-filtered handler); importable + TSV CLI",
+      "mechanical": false
+    },
+    {
+      "path": "scripts/validate-toolkit.sh",
+      "action": "modify",
+      "purpose": "liveness-stamp and timeout checks read the handler list from hook_registry.py",
+      "mechanical": false
+    },
+    {
+      "path": "scripts/mtk-doctor.sh",
+      "action": "modify",
+      "purpose": "liveness set and rarity from hook_registry.py; if-filtered hooks reported, never WARNed",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-hooks-wiring.sh",
+      "action": "modify",
+      "purpose": "stamp_check and drive_plan read hook_registry.py",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-hook-registry.sh",
+      "action": "create",
+      "purpose": "registry parse cases: shell prefix, quoted path, args, if => rare, SubagentStart => rare, malformed JSON exit code",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-mtk-doctor-liveness.sh",
+      "action": "modify",
+      "purpose": "an if-filtered handler with no stamp is reported, not WARNed",
+      "mechanical": false
+    },
+    {
+      "path": "hooks/lib/active_workflow.py",
+      "action": "create",
+      "purpose": "one active-workflow selector (newest active, updated_at within N days); prints requested fields as TSV",
+      "mechanical": false
+    },
+    {
+      "path": "hooks/session-start",
+      "action": "modify",
+      "purpose": "compact recovery uses active_workflow.py",
+      "mechanical": false
+    },
+    {
+      "path": "hooks/subagent-context.sh",
+      "action": "modify",
+      "purpose": "uses active_workflow.py; python still only after the find -mmin prefilter",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-active-workflow.sh",
+      "action": "create",
+      "purpose": "selector cases: status filter, window, newest wins, bad JSON/ts skipped, pack field, no match = empty",
+      "mechanical": false
+    },
+    {
+      "path": "scripts/workflow-artifact.sh",
+      "action": "modify",
+      "purpose": "review-input --record/--check (mtk_tree_fingerprint via hooks/lib/hook-io.sh), finding UIDs + remediation --findings reconcile (FIXED/STILL_OPEN/NEW), --open N stall series; usage header",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-remediation-tracker.sh",
+      "action": "modify",
+      "purpose": "--open stall + CONTINUE, --findings reconcile, UID stability, --score unchanged",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-review-input.sh",
+      "action": "create",
+      "purpose": "record/check: unchanged 0, tracked edit 1, untracked add 1, .mtk write 0, commit of reviewed tree 0",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/references/workflow-artifact-schema.md",
+      "action": "modify",
+      "purpose": "results.review.input_fingerprint, results.remediation.<trigger>.opens/findings",
+      "mechanical": false
+    },
+    {
+      "path": "scripts/review-receipt.sh",
+      "action": "create",
+      "purpose": "write/check diff-bound review receipts in ~/.mtk/receipts/<sha256(repo)>/<change_id>.json (0600)",
+      "mechanical": false
+    },
+    {
+      "path": "hooks/push-gate.sh",
+      "action": "create",
+      "purpose": "PreToolUse Bash: git push without a receipt -> advisory (default) / shadow / active deny PUSH-UNREVIEWED; unmapped refspec -> one advisory line",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-review-receipt.sh",
+      "action": "create",
+      "purpose": "0600 under fake HOME, same range passes, new commit fails, amend -> new id, upstream fallback chain",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-push-gate.sh",
+      "action": "create",
+      "purpose": "advisory, active deny:PUSH-UNREVIEWED + allow:PUSH-UNREVIEWED twins, HEAD:other not mapped, non-push silent",
+      "mechanical": false
+    },
+    {
+      "path": "scripts/review-coverage.sh",
+      "action": "create",
+      "purpose": "lane-result coverage + candidate disposition check: exit 0 complete, 1 incomplete, 2 unparseable",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-review-coverage.sh",
+      "action": "create",
+      "purpose": "complete / missing file / unparseable / candidates all disposed / one missing",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/references/review-finding-schema.md",
+      "action": "modify",
+      "purpose": "coverage, candidates_disposed, incomplete: abstention prefix; finding-verifier verdicts; 2-vs-3 iteration reconcile",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/references/implement-review-lanes.md",
+      "action": "modify",
+      "purpose": "candidates collection, review-input record/check, verify stage at HIGH/MAX, --open, receipt write",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/references/orchestration-gates.md",
+      "action": "modify",
+      "purpose": "circuit breaker documents --open stall",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/skills/implement/SKILL.md",
+      "action": "modify",
+      "purpose": "Phase 4 points at the lanes reference for candidates, review-input, verify stage, receipt write",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/skills/code-review-and-quality/SKILL.md",
+      "action": "modify",
+      "purpose": "candidates, coverage check, receipt write on PASS",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/agents/finding-verifier.md",
+      "action": "create",
+      "purpose": "verify-stage agent (Read/Glob/Grep), verdicts confirmed|refined|rejected|immaterial|pre_existing, ABSTAINED contract, <= 60 lines",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/agents/compliance-reviewer.md",
+      "action": "modify",
+      "purpose": "coverage + candidates_disposed required in output",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/agents/context-miner.md",
+      "action": "modify",
+      "purpose": "search_status per source; git log / lessons unavailable => ABSTAINED could-not-search",
+      "mechanical": false
+    },
+    {
+      "path": "tests/pressure-tests/reviewer-abstention.md",
+      "action": "modify",
+      "purpose": "6 -> 7 agents carry ABSTAINED",
+      "mechanical": false
+    },
+    {
+      "path": "tests/pressure-tests/finding-verifier.md",
+      "action": "create",
+      "purpose": "pressure test: cannot-verify keeps, pre_existing to follow-up, immaterial needs all three",
+      "mechanical": false
+    },
+    {
+      "path": "evals/review-incomplete-blocks/case.yaml",
+      "action": "create",
+      "purpose": "eval: a lane that skips a changed file must not yield PASS",
+      "mechanical": false
+    },
+    {
+      "path": "evals/review-incomplete-blocks/prompt.md",
+      "action": "create",
+      "purpose": "eval prompt",
+      "mechanical": false
+    },
+    {
+      "path": "evals/review-incomplete-blocks/scaffold.sh",
+      "action": "create",
+      "purpose": "eval scaffold",
+      "mechanical": false
+    },
+    {
+      "path": "evals/review-incomplete-blocks/graders/no-pass-on-incomplete.md",
+      "action": "create",
+      "purpose": "eval grader",
+      "mechanical": false
+    },
+    {
+      "path": "hooks/hooks.json",
+      "action": "modify",
+      "purpose": "PreToolUse Bash gains push-gate.sh with if Bash(git push *), timeout 5",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/rules/hooks-and-scripts.md",
+      "action": "modify",
+      "purpose": "S3.6 hook set: push-gate, hook_registry.py",
+      "mechanical": false
+    },
+    {
+      "path": ".claude-plugin/plugin.json",
+      "action": "modify",
+      "purpose": "agents list + finding-verifier; version 9.2.0",
+      "mechanical": false
+    },
+    {
+      "path": ".claude-plugin/marketplace.json",
+      "action": "modify",
+      "purpose": "version 9.2.0",
+      "mechanical": true
+    },
+    {
+      "path": ".claude/manifest.json",
+      "action": "modify",
+      "purpose": "entries for new files; version 9.2.0",
+      "mechanical": false
+    },
+    {
+      "path": "README.md",
+      "action": "modify",
+      "purpose": "agent count 6 -> 7, ~/.mtk/receipts/, push-gate in What MTK runs",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/references/env-knobs.md",
+      "action": "modify",
+      "purpose": "MTK_PUSH_GATE_ENFORCE",
+      "mechanical": false
+    },
+    {
+      "path": "docs/agent-routing-guide.md",
+      "action": "modify",
+      "purpose": "finding-verifier in the review graph",
+      "mechanical": false
+    },
+    {
+      "path": "CHANGELOG.md",
+      "action": "modify",
+      "purpose": "9.2.0 entry with measured hook process counts",
+      "mechanical": false
+    },
+    {
+      "path": "checksums.sha256",
+      "action": "modify",
+      "purpose": "regenerated last (S4.11)",
+      "mechanical": true
+    }
+  ],
+  "public_contracts": [
+    {
+      "kind": "hook",
+      "signature": "PreToolUse Bash if Bash(git push *) -> hooks/push-gate.sh (advisory by default; MTK_PUSH_GATE_ENFORCE)",
+      "change": "new",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "script",
+      "signature": "scripts/review-receipt.sh write|check",
+      "change": "new",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "script",
+      "signature": "scripts/review-coverage.sh <lane-result.json> <changed-files.txt> [--candidates <file>]",
+      "change": "new",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "script",
+      "signature": "scripts/workflow-artifact.sh review-input --record|--check; remediation --open N | --findings <file>",
+      "change": "extended",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "agent",
+      "signature": "mtk:finding-verifier",
+      "change": "new",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "schema",
+      "signature": "review-finding-schema: coverage, candidates_disposed",
+      "change": "extended",
+      "surface": "internal-tooling"
+    }
+  ],
+  "success_criteria": [
+    {
+      "id": "SC1",
+      "description": "guard-mode helpers split; mtk_advise_gated dedups; mtk_deny unchanged; security-gate floor unaffected",
+      "verification": "bash tests/hooks/test-guard-modes.sh && bash tests/hooks/test-deny-ergonomics.sh && bash tests/hooks/test-scope-guard-diet.sh && bash tests/hooks/test-config-guard.sh && bash tests/hooks/test-security-gate-superset.sh && bash scripts/check-guard-twins.sh",
+      "evidence_channel": "test-run",
+      "observable": "all listed tests exit 0"
+    },
+    {
+      "id": "SC2",
+      "description": "one hooks.json parser; if-filtered hooks are event-rare in the doctor",
+      "verification": "bash tests/hooks/test-hook-registry.sh && bash tests/hooks/test-hooks-wiring.sh && bash tests/hooks/test-mtk-doctor-liveness.sh",
+      "evidence_channel": "test-run",
+      "observable": "all listed tests exit 0"
+    },
+    {
+      "id": "SC3",
+      "description": "one active-workflow selector used by session-start and subagent-context",
+      "verification": "bash tests/hooks/test-active-workflow.sh && bash tests/hooks/test-subagent-context.sh && bash tests/hooks/test-session-start-compact-framing.sh",
+      "evidence_channel": "test-run",
+      "observable": "all listed tests exit 0"
+    },
+    {
+      "id": "SC4",
+      "description": "review-input fingerprint, finding UIDs + reconcile, --open stall detection",
+      "verification": "bash tests/hooks/test-remediation-tracker.sh && bash tests/hooks/test-review-input.sh",
+      "evidence_channel": "test-run",
+      "observable": "all listed tests exit 0"
+    },
+    {
+      "id": "SC5",
+      "description": "diff-bound review receipts and an advisory push gate (active denies PUSH-UNREVIEWED)",
+      "verification": "bash tests/hooks/test-review-receipt.sh && bash tests/hooks/test-push-gate.sh",
+      "evidence_channel": "test-run",
+      "observable": "all listed tests exit 0"
+    },
+    {
+      "id": "SC6",
+      "description": "review coverage + candidate disposition checker; protocol documented",
+      "verification": "bash tests/hooks/test-review-coverage.sh && bash scripts/run-fixtures.sh",
+      "evidence_channel": "test-run",
+      "observable": "all listed tests exit 0"
+    },
+    {
+      "id": "SC7",
+      "description": "finding-verifier agent within budget; context-miner search_status; eval case present",
+      "verification": "wc -l .claude/agents/*.md (reviewers <= 665 total excl. finding-verifier; finding-verifier <= 60) && bash scripts/run-fixtures.sh",
+      "evidence_channel": "test-run",
+      "observable": "budget met and fixtures exit 0"
+    },
+    {
+      "id": "SC8",
+      "description": "push gate wired with its if; 9.2.0; validator, full hook suite and fixtures green",
+      "verification": "rc=0; bash scripts/validate-toolkit.sh || rc=1; for t in tests/hooks/test-*.sh; do bash \"$t\" >/dev/null || { echo FAIL $t; rc=1; }; done; bash scripts/run-fixtures.sh || rc=1; exit $rc",
+      "evidence_channel": "script-output",
+      "observable": "prints Toolkit validation passed and exit 0"
+    }
+  ],
+  "test_manifest": [
+    {
+      "path": "tests/hooks/test-guard-modes.sh",
+      "covers": [
+        "SC1"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-deny-ergonomics.sh",
+      "covers": [
+        "SC1"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-hook-registry.sh",
+      "covers": [
+        "SC2"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-mtk-doctor-liveness.sh",
+      "covers": [
+        "SC2"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-hooks-wiring.sh",
+      "covers": [
+        "SC2",
+        "SC8"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-active-workflow.sh",
+      "covers": [
+        "SC3"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-remediation-tracker.sh",
+      "covers": [
+        "SC4"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-review-input.sh",
+      "covers": [
+        "SC4"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-review-receipt.sh",
+      "covers": [
+        "SC5"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-push-gate.sh",
+      "covers": [
+        "SC5"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-review-coverage.sh",
+      "covers": [
+        "SC6"
+      ]
+    },
+    {
+      "path": "tests/pressure-tests/reviewer-abstention.md",
+      "covers": [
+        "SC7"
+      ]
+    },
+    {
+      "path": "tests/pressure-tests/finding-verifier.md",
+      "covers": [
+        "SC7"
+      ]
+    },
+    {
+      "path": "evals/review-incomplete-blocks/case.yaml",
+      "covers": [
+        "SC7"
+      ]
+    }
+  ],
+  "out_of_scope": [
+    "PR-A items (shipped in #125)",
+    "P2-10 .. P2-17 from the research note",
+    "trace-derived review coverage via SubagentStop",
+    "read-only review mode; per-batch worktrees",
+    "promoting the push gate or test-tamper guard to active by default",
+    "gh-pages feature catalog (how-it-works.*)"
+  ],
+  "assumptions": [
+    "Claude Code honours the handler-level if field (Bash(git push *)); push-gate re-checks the command text in case a harness ignores it",
+    "python3 hashlib available (S3.3 baseline)"
+  ],
+  "risks": [
+    "moving guard helpers out of hook-io.sh breaks any caller that relied on hook-io alone (mitigated: grep callers, wiring runtime drive, full hook suite in B8)",
+    "parallel W0 implementers share one working tree; checkpoints run only their own tests",
+    "receipts live under HOME outside the repo; 0600 files, dir 0700, symlink-safe writes",
+    "reviewer agent line budget (9.0 diet) is tight: ~5 lines of headroom across compliance-reviewer + context-miner"
+  ],
+  "delta": {
+    "adds": [
+      "push gate + review receipts",
+      "review coverage + candidate disposition",
+      "finding-verifier stage",
+      "review-input fingerprint",
+      "finding UIDs",
+      "--open stall series",
+      "hook_registry.py",
+      "active_workflow.py",
+      "guard-mode.sh"
+    ],
+    "modifies": [
+      "S3.6 hook set",
+      "doctor liveness rarity",
+      "review protocol (lanes reference)",
+      "context-miner abstention"
+    ],
+    "removes": [
+      "duplicated hooks.json parsers",
+      "duplicated workflow selector"
+    ]
+  },
+  "plan": {
+    "batches": [
+      {
+        "id": "B1",
+        "files": [
+          "hooks/lib/guard-mode.sh",
+          "hooks/lib/hook-io.sh",
+          "hooks/scope-guard.sh",
+          "hooks/config-guard.sh",
+          "tests/hooks/test-guard-modes.sh",
+          "tests/hooks/test-deny-ergonomics.sh"
+        ],
+        "acceptance": "guard-mode helpers live only in hooks/lib/guard-mode.sh; scope/config-guard source it; security-gate does not; mtk_deny byte-identical; mtk_advise_gated tested",
+        "verification": "bash tests/hooks/test-guard-modes.sh && bash tests/hooks/test-deny-ergonomics.sh && bash tests/hooks/test-scope-guard-diet.sh && bash tests/hooks/test-config-guard.sh && bash tests/hooks/test-security-gate-superset.sh && bash scripts/check-guard-twins.sh",
+        "depends": [],
+        "depends_rationale": "W0: guard-mode files only"
+      },
+      {
+        "id": "B2",
+        "files": [
+          "hooks/lib/hook_registry.py",
+          "scripts/validate-toolkit.sh",
+          "scripts/mtk-doctor.sh",
+          "tests/hooks/test-hooks-wiring.sh",
+          "tests/hooks/test-hook-registry.sh",
+          "tests/hooks/test-mtk-doctor-liveness.sh"
+        ],
+        "acceptance": "one handler parser; validator, doctor and wiring test use it; if-filtered and SubagentStart handlers are rare",
+        "verification": "bash tests/hooks/test-hook-registry.sh && bash tests/hooks/test-hooks-wiring.sh && bash tests/hooks/test-mtk-doctor-liveness.sh",
+        "depends": [
+          "B1"
+        ]
+      },
+      {
+        "id": "B3",
+        "files": [
+          "hooks/lib/active_workflow.py",
+          "hooks/session-start",
+          "hooks/subagent-context.sh",
+          "tests/hooks/test-active-workflow.sh"
+        ],
+        "acceptance": "one selector; both hooks use it; existing subagent-context and compact-framing tests unchanged and green",
+        "verification": "bash tests/hooks/test-active-workflow.sh && bash tests/hooks/test-subagent-context.sh && bash tests/hooks/test-session-start-compact-framing.sh",
+        "depends": [],
+        "depends_rationale": "W0: selector files only; session-start/subagent-context touched by no other batch before B8"
+      },
+      {
+        "id": "B4",
+        "files": [
+          "scripts/workflow-artifact.sh",
+          "tests/hooks/test-remediation-tracker.sh",
+          "tests/hooks/test-review-input.sh",
+          ".claude/references/workflow-artifact-schema.md"
+        ],
+        "acceptance": "plan B8 tests pass (review-input, UIDs, reconcile, --open stall, --score unchanged)",
+        "verification": "bash tests/hooks/test-remediation-tracker.sh && bash tests/hooks/test-review-input.sh",
+        "depends": [],
+        "depends_rationale": "W0: workflow-artifact files only; sources hook-io.sh for mtk_tree_fingerprint, which B1 does not change"
+      },
+      {
+        "id": "B5",
+        "files": [
+          "scripts/review-receipt.sh",
+          "hooks/push-gate.sh",
+          "tests/hooks/test-review-receipt.sh",
+          "tests/hooks/test-push-gate.sh"
+        ],
+        "acceptance": "plan B7 tests pass; deny:/allow:PUSH-UNREVIEWED twins present",
+        "verification": "bash tests/hooks/test-review-receipt.sh && bash tests/hooks/test-push-gate.sh",
+        "depends": [
+          "B1"
+        ]
+      },
+      {
+        "id": "B6",
+        "files": [
+          "scripts/review-coverage.sh",
+          "tests/hooks/test-review-coverage.sh",
+          ".claude/references/review-finding-schema.md",
+          ".claude/references/implement-review-lanes.md",
+          ".claude/references/orchestration-gates.md",
+          ".claude/skills/implement/SKILL.md",
+          ".claude/skills/code-review-and-quality/SKILL.md"
+        ],
+        "acceptance": "plan B9 coverage/candidates tests pass; lanes reference documents candidates, review-input, verify stage, --open, receipt",
+        "verification": "bash tests/hooks/test-review-coverage.sh && bash scripts/run-fixtures.sh",
+        "depends": [
+          "B4",
+          "B5"
+        ]
+      },
+      {
+        "id": "B7",
+        "files": [
+          ".claude/agents/finding-verifier.md",
+          ".claude/agents/compliance-reviewer.md",
+          ".claude/agents/context-miner.md",
+          "tests/pressure-tests/reviewer-abstention.md",
+          "tests/pressure-tests/finding-verifier.md",
+          "evals/review-incomplete-blocks/case.yaml",
+          "evals/review-incomplete-blocks/prompt.md",
+          "evals/review-incomplete-blocks/scaffold.sh",
+          "evals/review-incomplete-blocks/graders/no-pass-on-incomplete.md"
+        ],
+        "acceptance": "agent budget held; abstention pressure test lists 7 agents; eval case scaffolds",
+        "verification": "wc -l .claude/agents/*.md (reviewers <= 665 total excl. finding-verifier; finding-verifier <= 60) && bash scripts/run-fixtures.sh",
+        "depends": [
+          "B6"
+        ]
+      },
+      {
+        "id": "B8",
+        "files": [
+          "hooks/hooks.json",
+          "hooks/push-gate.sh",
+          "tests/hooks/test-hooks-wiring.sh",
+          ".claude/rules/hooks-and-scripts.md",
+          ".claude-plugin/plugin.json",
+          ".claude-plugin/marketplace.json",
+          ".claude/manifest.json",
+          "README.md",
+          ".claude/references/env-knobs.md",
+          "docs/agent-routing-guide.md",
+          "CHANGELOG.md",
+          "checksums.sha256"
+        ],
+        "acceptance": "Toolkit validation passed; full hook suite + fixtures green; 9.2.0 x3; checksums last",
+        "verification": "rc=0; bash scripts/validate-toolkit.sh || rc=1; for t in tests/hooks/test-*.sh; do bash \"$t\" >/dev/null || { echo FAIL $t; rc=1; }; done; bash scripts/run-fixtures.sh || rc=1; exit $rc",
+        "depends": [
+          "B2",
+          "B3",
+          "B5",
+          "B7"
+        ]
+      }
+    ]
+  }
+}

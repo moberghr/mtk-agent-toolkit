@@ -4,6 +4,76 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [9.2.0] - 2026-10-16
+
+A review that proves what it covered, and a push that notices when it was not reviewed.
+Structural follow-ups to 9.1.0 come first, then the review protocol and the push gate. The push
+gate is advisory by default and sits behind an `if` filter, so only `git push` pays for it. No hook
+was added to the read path, MCP calls or prompts.
+
+### Hook processes per tool call
+
+Counted from `hooks/hooks.json` before and after, with the 8.2.0 method: the handlers whose
+matcher covers the tool, PreToolUse plus PostToolUse. `if`-filtered handlers are counted only
+when the call matches the filter.
+
+| Tool call | 9.1.0 | 9.2.0 |
+|---|---|---|
+| Read / Grep / Glob | 0 | 0 |
+| MCP | 0 | 0 |
+| Prompt submit | 0 | 0 |
+| Bash | 3 | 3 (4 on `git push`: `push-gate.sh`) |
+| Edit / Write | 5 | 5 |
+| Stop | 4 | 4 |
+| SubagentStart | 1 per subagent | 1 per subagent |
+
+### Added
+
+- **Diff-bound review receipts (`scripts/review-receipt.sh`).** A passing full review writes a
+  receipt to `~/.mtk/receipts/` (mode 0600), bound to the change it covered (the push range, a
+  merge-base against the upstream, the remote default branch or `main`, plus the diff), not to a
+  branch name or a timestamp. Any later change to the range makes the receipt stale.
+- **Push gate (`hooks/push-gate.sh`).** Registered on `PreToolUse` `Bash` with
+  `"if": "Bash(git push *)"`, and re-checked in the script. When the pushed range has no matching
+  receipt it says so once. `MTK_PUSH_GATE_ENFORCE=off|advisory|shadow|active` (default `advisory`):
+  `shadow` logs the would-be deny, `active` denies. `MTK_PUSH_GATE=0` turns it off. A push it
+  cannot map to the current branch (another refspec, `--all`, `git -C`, a `cd` earlier in the
+  command) is allowed with one "not mapped" line. Known edge: an empty push range, e.g. `main`
+  with no upstream and no `origin/HEAD`, counts as covered.
+- **Review coverage and candidate disposition (`scripts/review-coverage.sh`).** A reviewer lane
+  result must account for every changed file (`coverage.no_issues`, `coverage.skipped` with a
+  reason, or a finding) and, when the orchestrator passes `candidates.json`, dispose of every
+  deterministic candidate as `raised` or `dropped` with a cited `file:line`. A lane that fails the
+  check is recorded `ABSTAINED` with an `incomplete:` reason, so an incomplete review cannot read
+  as PASS. New eval case `review-incomplete-blocks`.
+- **`finding-verifier` agent.** The HIGH/MAX verify stage after Stage 2, not a lane. It re-checks
+  one directory group of findings against the code and records `confirmed`, `refined`,
+  `rejected`, `immaterial` or `pre_existing` per finding. It rejects only on evidence; "cannot
+  verify" keeps the finding, and a failed verifier leaves its group `unverified`.
+- **Review input fingerprint and finding UIDs (`workflow-artifact.sh`).** `review-input --record`
+  and `--check` detect a review run against changed input. A finding gets a stable
+  `F-<10 hex>` UID from file, rule and code snippet, so it keeps its UID when unrelated edits move
+  its line. `remediation --open N` (or `--findings`) makes the tracker escalate when the open
+  count stops falling, alongside the existing iteration cap and score plateau.
+- **`context-miner` reports `search_status: ran|unavailable`** for each source (git log, lessons
+  store, `gh`), so a source that could not be searched is not read as "nothing found".
+
+### Changed
+
+- **Guard-mode helpers moved to `hooks/lib/guard-mode.sh`**, sourced after `hook-io.sh` by the
+  shadow-capable guards. `mtk_deny` stays in `hook-io.sh`, and security-gate still does not source
+  the new file, so no `MTK_*_ENFORCE` value reaches it (S3.18).
+- **One reader of `hooks/hooks.json` handlers (`hooks/lib/hook_registry.py`)**, used by
+  `validate-toolkit`, `mtk-doctor` and the wiring test, so they cannot disagree on how a command
+  is split. It also classifies a handler as event-rare (`if`-filtered or `SubagentStart`);
+  `mtk-doctor` treats those as info, not a missing stamp.
+- **One active-workflow selector (`hooks/lib/active_workflow.py`)** shared by `session-start`
+  and `subagent-context` (newest active workflow within the re-injection window).
+- **S3.6** lists `push-gate.sh` in the registered set and names the shared handler parser. The
+  wiring test pins the `if` filter, which the table of commands does not read.
+- **Importing the hook registry writes no bytecode**, so `validate-toolkit`, `mtk-doctor` and the
+  tests leave no `hooks/lib/__pycache__/` in an installed plugin.
+
 ## [9.1.0] - 2026-10-15
 
 Context for subagents, quieter lesson mining, branch-scoped handoffs, and guards that can be

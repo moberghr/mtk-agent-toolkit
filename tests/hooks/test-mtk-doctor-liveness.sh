@@ -101,7 +101,7 @@ for ev, entries in json.load(open(sys.argv[1]))["hooks"].items():
     for entry in entries:
         for h in entry["hooks"]:
             b = os.path.basename(h["command"].split()[0].strip("\"'"))
-            if ((ev == "SubagentStart") == (sys.argv[2] == "rare")) and b not in out:
+            if ((ev == "SubagentStart" or bool(h.get("if"))) == (sys.argv[2] == "rare")) and b not in out:
                 out.append(b)
 print(" ".join(out))
 PY
@@ -110,7 +110,7 @@ PER_CALL="$(hook_set per-call)"
 RARE="$(hook_set rare)"
 n_per_call="$(wc -w <<<"$PER_CALL" | tr -d ' ')"
 expect_has "derived per-call set includes the async Stop recorders" "cost-tracker.sh" "$PER_CALL"
-expect "derived event-rare set is the SubagentStart hook" "subagent-context.sh" "$RARE"
+expect "derived event-rare set is the if-filtered and SubagentStart hooks" "push-gate.sh subagent-context.sh" "$RARE"
 
 # ============================ unknown: no stamp directory ======================
 analytics 12
@@ -191,6 +191,7 @@ expect "control: stamp 15 days older than .sessions → WARN hook stale: scope-g
 expect "control: exactly one liveness WARN" 1 "$(count_lines $'^WARN\thook (not seen|stale)' "$out")"
 # shellcheck disable=SC2086
 stamp $PER_CALL
+stamp push-gate.sh
 
 # ============================ event-rare hooks are info only ===================
 sessions 40
@@ -204,7 +205,7 @@ expect_has "info row says it cannot tell not-fired from invisible" "cannot tell 
 expect_has "info row points at the manual check" "manual SubagentStart check" "$detail"
 stamp subagent-context.sh
 checks hooks >/dev/null
-expect_has "stamped event-rare hook → seen" "seen: subagent-context;" "$(detail_of 'event-rare hooks (info)')"
+expect_has "stamped event-rare hook → seen" "seen: push-gate subagent-context;" "$(detail_of 'event-rare hooks (info)')"
 
 # ============================ the set comes from hooks.json ====================
 # A copy of the doctor whose hooks.json registers one extra per-call hook and one

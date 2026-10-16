@@ -689,6 +689,7 @@ else
 import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
 sys.path.insert(0, sys.argv[2])
 try:
+    sys.dont_write_bytecode = True  # importing must not write hooks/lib/__pycache__
     from hook_registry import handlers
     kind = {}  # script -> "rare" only while every registration of it is rare
     for h in handlers(sys.argv[1]):

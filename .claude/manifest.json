@@ -1,6 +1,6 @@
 {
-  "version": "9.1.0",
-  "updated": "2026-10-15",
+  "version": "9.2.0",
+  "updated": "2026-10-16",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -2117,6 +2117,114 @@
       "target": "templates/workflows/subagent-implementation.workflow.js",
       "action": "sync",
       "description": "Reference dynamic-workflow script for the subagent-implementation per-batch loop"
+    },
+    "agents/finding-verifier.md": {
+      "source": ".claude/agents/finding-verifier.md",
+      "target": ".claude/agents/finding-verifier.md",
+      "action": "sync",
+      "description": "Read-only verify stage (HIGH/MAX, after Stage 2) that re-checks one directory group of review findings against the code and records a verdict per finding; never drops a finding it cannot verify"
+    },
+    "hooks/lib/guard-mode.sh": {
+      "source": "hooks/lib/guard-mode.sh",
+      "target": "hooks/lib/guard-mode.sh",
+      "action": "sync",
+      "description": "Guard-mode helpers (off|advisory|shadow|active): mtk_guard_mode and mtk_deny_gated, sourced after hook-io.sh by the shadow-capable guards; the unshadowable mtk_deny floor stays in hook-io.sh"
+    },
+    "hooks/lib/hook_registry.py": {
+      "source": "hooks/lib/hook_registry.py",
+      "target": "hooks/lib/hook_registry.py",
+      "action": "sync",
+      "description": "The one reader of hooks/hooks.json handlers (script, args, matcher, if, timeout, async, rarity), shared by validate-toolkit, mtk-doctor and the wiring test"
+    },
+    "hooks/lib/active_workflow.py": {
+      "source": "hooks/lib/active_workflow.py",
+      "target": "hooks/lib/active_workflow.py",
+      "action": "sync",
+      "description": "Selects the one active workflow for hooks, shared by session-start and subagent-context"
+    },
+    "hooks/push-gate.sh": {
+      "source": "hooks/push-gate.sh",
+      "target": "hooks/push-gate.sh",
+      "action": "sync",
+      "description": "PreToolUse hook registered behind an `if` filter on the push command: checks the pushed range against a diff-bound review receipt; advisory by default, MTK_PUSH_GATE_ENFORCE=active blocks"
+    },
+    "scripts/review-receipt.sh": {
+      "source": "scripts/review-receipt.sh",
+      "target": "scripts/review-receipt.sh",
+      "action": "sync",
+      "description": "Diff-bound review receipts under ~/.mtk/receipts/ (0600): compute the change id of the push range, write a receipt after a PASS review, check it for the push gate"
+    },
+    "scripts/review-coverage.sh": {
+      "source": "scripts/review-coverage.sh",
+      "target": "scripts/review-coverage.sh",
+      "action": "sync",
+      "description": "Checks that a reviewer lane accounted for every changed file and disposed of every deterministic candidate; an incomplete lane cannot read as PASS"
+    },
+    "tests/hooks/test-active-workflow.sh": {
+      "source": "tests/hooks/test-active-workflow.sh",
+      "target": "tests/hooks/test-active-workflow.sh",
+      "action": "sync",
+      "description": "Test for hooks/lib/active_workflow.py: active-workflow selection and malformed or foreign workflow files"
+    },
+    "tests/hooks/test-hook-registry.sh": {
+      "source": "tests/hooks/test-hook-registry.sh",
+      "target": "tests/hooks/test-hook-registry.sh",
+      "action": "sync",
+      "description": "Test for hooks/lib/hook_registry.py: shlex splitting, shell prefix, quoted paths, if filter, rarity, error handling, importable API"
+    },
+    "tests/hooks/test-push-gate.sh": {
+      "source": "tests/hooks/test-push-gate.sh",
+      "target": "tests/hooks/test-push-gate.sh",
+      "action": "sync",
+      "description": "Hook test for push-gate.sh: push detection and non-invocations, receipt covered/uncovered, unmapped targets, guard modes and kill-switch"
+    },
+    "tests/hooks/test-review-coverage.sh": {
+      "source": "tests/hooks/test-review-coverage.sh",
+      "target": "tests/hooks/test-review-coverage.sh",
+      "action": "sync",
+      "description": "Test for scripts/review-coverage.sh: missing files, undisposed candidates, malformed lane results, exit codes"
+    },
+    "tests/hooks/test-review-input.sh": {
+      "source": "tests/hooks/test-review-input.sh",
+      "target": "tests/hooks/test-review-input.sh",
+      "action": "sync",
+      "description": "Test for the review input fingerprint, finding UIDs and stall detection on open findings in workflow-artifact.sh"
+    },
+    "tests/hooks/test-review-receipt.sh": {
+      "source": "tests/hooks/test-review-receipt.sh",
+      "target": "tests/hooks/test-review-receipt.sh",
+      "action": "sync",
+      "description": "Test for scripts/review-receipt.sh: change id, range selection, receipt write/check, permissions, tamper and staleness"
+    },
+    "tests/pressure-tests/finding-verifier.md": {
+      "source": "tests/pressure-tests/finding-verifier.md",
+      "target": "tests/pressure-tests/finding-verifier.md",
+      "action": "sync",
+      "description": "Adversarial test for the finding-verifier agent: it may remove a finding only on evidence, never to shrink the list"
+    },
+    "evals/review-incomplete-blocks/case.yaml": {
+      "source": "evals/review-incomplete-blocks/case.yaml",
+      "target": "evals/review-incomplete-blocks/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case review-incomplete-blocks: scaffold and execution settings"
+    },
+    "evals/review-incomplete-blocks/prompt.md": {
+      "source": "evals/review-incomplete-blocks/prompt.md",
+      "target": "evals/review-incomplete-blocks/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case review-incomplete-blocks: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/review-incomplete-blocks/scaffold.sh": {
+      "source": "evals/review-incomplete-blocks/scaffold.sh",
+      "target": "evals/review-incomplete-blocks/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case review-incomplete-blocks: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/review-incomplete-blocks/graders/no-pass-on-incomplete.md": {
+      "source": "evals/review-incomplete-blocks/graders/no-pass-on-incomplete.md",
+      "target": "evals/review-incomplete-blocks/graders/no-pass-on-incomplete.md",
+      "action": "sync",
+      "description": "Plugin-eval case review-incomplete-blocks: grader 'no-pass-on-incomplete'"
     },
     "agents/context-miner.md": {
       "source": ".claude/agents/context-miner.md",

@@ -64,7 +64,7 @@ expect "SubagentStart → rare" \
 expect "one line per handler" 6 "$(awk 'END { print NR }' <<<"$out")"
 
 # Importable API: the same records as dicts.
-py_scripts="$(python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); from hook_registry import handlers
+py_scripts="$(python3 -B -c 'import sys; sys.path.insert(0, sys.argv[1]); from hook_registry import handlers
 print(" ".join(h["script"] for h in handlers(sys.argv[2])))' "$REPO_ROOT/hooks/lib" "$TMPD/fixture.json")"
 expect "handlers() yields the same scripts in order" \
   "quoted.sh prefixed.sh filtered.sh no-timeout.sh recorder.sh sub.sh" "$py_scripts"
