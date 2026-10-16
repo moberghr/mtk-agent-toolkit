@@ -63,7 +63,7 @@ never all of `.claude/rules/`. Outside implement there is no pack: resolve
 
 ## Review protocol
 
-Run in this order. `$MTK_ROOT` is the root stated per `mtk-file-resolution.md`; every script below runs as `bash "$MTK_ROOT/<path>"`. `$CHANGED` is the changed-file list (one path per line, dirty baseline excluded). `$WFA`, `$RUN` (`.mtk/workflows/$MTK_WF_UUID`) and `$MTK_WF_UUID` exist only in implement; outside it (`code-review-and-quality`) there is no workflow artifact, so skip steps 2 and 4's persistence, keep candidates and coverage in a scratch dir, and say in the report that the review is not bound to the tree.
+Run in this order. `$MTK_ROOT` is the root stated per `mtk-file-resolution.md`; every script below runs as `bash "$MTK_ROOT/<path>"`. `$CHANGED` is the path of a file holding the changed-file list (one path per line, dirty baseline excluded). `$WFA`, `$RUN` (`.mtk/workflows/$MTK_WF_UUID`) and `$MTK_WF_UUID` exist only in implement; outside it (`code-review-and-quality`) there is no workflow artifact, so skip steps 2 and 4's persistence, keep candidates and coverage in a scratch dir, and say in the report that the review is not bound to the tree.
 
 1. **Candidates.** Before dispatch, collect deterministic hits on the changed lines into `$RUN/review/candidates.json` (array shape in `review-finding-schema.md`; `candidate_id` `C001`…, `source` = `linter`, `secret-scan` or `analyzer`). Sources:
    - `bash "$MTK_ROOT/hooks/pre-commit-linters.sh" --range <base>...HEAD` (or `--head` for uncommitted work) → JSON `findings[]` of `file`, `line`, `rule`, `rationale`.
@@ -75,7 +75,7 @@ Run in this order. `$MTK_ROOT` is the root stated per `mtk-file-resolution.md`; 
 3. **Coverage.** For each lane result: `bash "$MTK_ROOT/scripts/review-coverage.sh" <lane-result.json> "$CHANGED" [--candidates "$RUN/review/candidates.json"]`. Exit 0 ⇒ complete. Exit 1 ⇒ lane `ABSTAINED` with `abstention.reason` `incomplete: <what is missing>`. Exit 2, 127 or any other non-zero ⇒ `NO_RESPONSE` / `ABSTAINED incomplete: coverage engine unavailable`; never `PASS`.
 4. **Verify (HIGH/MAX only).** Dispatch `finding-verifier` once per top-level directory group of the merged findings (one message, parallel). Apply its verdicts as the schema table says: `rejected` and `immaterial` leave remediation, `pre_existing` goes to the follow-up list. A verifier that fails, returns nothing or returns `ABSTAINED` ⇒ that group is `unverified` and its findings stay as raised.
 5. **Iterate.** See Iteration cap.
-6. **Receipt.** Qualifies only when all hold: overall `PASS` with every lane accounted (by-policy abstentions allowed, no other `ABSTAINED` / `NO_RESPONSE`); `review-input --check` exit 0 (implement); the reviewed tree is committed (the script refuses a dirty tracked tree). Then `bash "$MTK_ROOT/scripts/review-receipt.sh" write --lanes <csv of lanes that ran> --rigor <level> --verdict PASS`. Never on `NEEDS_CHANGES` or `NEEDS_HUMAN_REVIEW`. A non-zero exit from the script ⇒ tell the engineer: the verdict stands but no receipt was recorded; never claim one.
+6. **Receipt.** Qualifies only when all hold: overall `PASS` with every lane accounted (by-policy abstentions allowed, no other `ABSTAINED` / `NO_RESPONSE`); the reviewed tree is committed (the script refuses a dirty tracked tree); then, in implement, `review-input --check` exit 0 run **after** that commit (committing exactly the reviewed tree still reads unchanged; anything edited after review does not). Order: commit → `--check` → `bash "$MTK_ROOT/scripts/review-receipt.sh" write --lanes <csv of lanes that ran> --rigor <level> --verdict PASS`. When the engineer owns the commit, hand them the `--check` and `write` commands to run after committing. Never on `NEEDS_CHANGES` or `NEEDS_HUMAN_REVIEW`. A non-zero exit from the script ⇒ tell the engineer: the verdict stands but no receipt was recorded; never claim one.
 
 ## Defect-class sweep
 
@@ -118,6 +118,6 @@ Drive the fix loop through `"$WFA" remediation "$MTK_WF_UUID" review` once per r
 It returns `ESCALATE` when iterations reach `MTK_MAX_REMEDIATION_ITERS` (default 3), else
 `CONTINUE`. Pass the merged findings JSON array (post-verify, remediation-relevant only) as
 `--findings <file>`, or the open count as `--open N`: the tracker reconciles finding UIDs as
-`FIXED` / `STILL_OPEN` / `NEW` and `ESCALATE`s with reason `stalled` when the open count stops
-falling, before the cap. On `ESCALATE`, stop and hand to a human with the iteration count and the open
+`FIXED` / `STILL_OPEN` / `NEW` and `ESCALATE`s with reason `stalled` when a non-zero open count
+stops falling, before the cap. On `ESCALATE`, stop and hand to a human with the iteration count and the open
 findings (`.claude/references/orchestration-gates.md` → `failure_stop_gate`).

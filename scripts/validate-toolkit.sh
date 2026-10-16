@@ -225,7 +225,13 @@ for w in warn.getvalue().splitlines():
     bad.append(f"unparseable command ({w})")
 for h in rows:
     seen += 1
-    path = os.path.join("hooks", h["script"])
+    # The registered path, plugin root mapped to this checkout, so a mistyped or
+    # relocated directory fails here instead of at runtime.
+    exe = h["exe"]
+    for root in ("${CLAUDE_PLUGIN_ROOT}", "$CLAUDE_PLUGIN_ROOT"):
+        if exe.startswith(root):
+            exe = "." + exe[len(root):]
+    path = os.path.normpath(exe)
     if not os.path.isfile(path):
         bad.append(f"{h['event']}: {h['script']} does not exist")
     elif not os.access(path, os.X_OK):

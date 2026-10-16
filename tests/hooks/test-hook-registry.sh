@@ -68,6 +68,11 @@ py_scripts="$(python3 -B -c 'import sys; sys.path.insert(0, sys.argv[1]); from h
 print(" ".join(h["script"] for h in handlers(sys.argv[2])))' "$REPO_ROOT/hooks/lib" "$TMPD/fixture.json")"
 expect "handlers() yields the same scripts in order" \
   "quoted.sh prefixed.sh filtered.sh no-timeout.sh recorder.sh sub.sh" "$py_scripts"
+# exe keeps the registered directory (the validator resolves it), shell prefix dropped.
+py_exe="$(python3 -B -c 'import sys; sys.path.insert(0, sys.argv[1]); from hook_registry import handlers
+print(" ".join(h["exe"] for h in handlers(sys.argv[2]))[:200])' "$REPO_ROOT/hooks/lib" "$TMPD/fixture.json")"
+expect "handlers() exe is the registered path, unexpanded" \
+  '${CLAUDE_PLUGIN_ROOT}/hooks/quoted.sh ${CLAUDE_PLUGIN_ROOT}/hooks/prefixed.sh' "${py_exe%% \$\{CLAUDE_PLUGIN_ROOT\}/hooks/filtered.sh*}"
 
 # Unshell-splittable command: skipped with a stderr warning, the rest still listed.
 cat > "$TMPD/badquote.json" <<'JSON'

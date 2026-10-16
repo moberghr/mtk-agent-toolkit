@@ -34,8 +34,9 @@ set -euo pipefail
 #                                    MTK_MAX_REMEDIATION_ITERS (default 3), the
 #                                    score plateaus (higher is better), or the
 #                                    open-finding count stalls (--open N, lower is
-#                                    better: two calls without a decrease add a
-#                                    "reason: stalled" line), else CONTINUE.
+#                                    better: two calls without a decrease, the
+#                                    last still above 0, add a "reason: stalled"
+#                                    line), else CONTINUE.
 #                                    --findings reads a JSON array of findings or a
 #                                    lane result with findings[], gives each a
 #                                    stable F-<10 hex> UID (file|rule|snippet),
@@ -489,7 +490,8 @@ cmd_remediation() {
   # stopped improving (plateau), or the open-finding count stopped falling
   # (stalled). Two separate series: scores are higher-is-better, opens are
   # lower-is-better, so a non-increasing score or a non-decreasing open count
-  # means automated remediation is no longer converging.
+  # above 0 means automated remediation is no longer converging (two zero
+  # counts are success, not a stall).
   local verdict rc=0
   verdict="$(python3 - "${WF_DIR}/${uuid}.json" "$(iso_now)" "$trigger" "$score" "$max_iters" "$open" "$findings" <<'PY'
 import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output

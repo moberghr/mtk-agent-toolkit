@@ -56,6 +56,7 @@ def handlers(path):
                     "matcher": str(block.get("matcher") or ""),
                     "if": cond,
                     "script": os.path.basename(argv[0]),
+                    "exe": argv[0],  # as registered, ${CLAUDE_PLUGIN_ROOT} unexpanded
                     "args": " ".join(argv[1:]),
                     "timeout": "" if timeout is None else str(timeout),
                     "async": h.get("async") is True,
