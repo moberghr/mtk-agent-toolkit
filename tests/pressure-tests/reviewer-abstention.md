@@ -20,7 +20,7 @@ grep -qi '## Lane accounting' .claude/references/review-finding-schema.md && ech
 
 # Every reviewer agent must instruct emitting it in JSON, not just prose.
 n=$(grep -lc 'ABSTAINED' .claude/agents/*.md | wc -l | tr -d ' ')
-[ "$n" -eq 6 ] && echo "PASS: all 6 agents carry ABSTAINED" || echo "FAIL: only $n/6 agents"
+[ "$n" -eq 7 ] && echo "PASS: all 7 agents carry ABSTAINED" || echo "FAIL: only $n/7 agents"
 
 # Both orchestrators must carry the accounting rule.
 grep -q 'NO_RESPONSE' .claude/references/implement-review-lanes.md && echo "PASS: review-lanes reference accounts for lanes"

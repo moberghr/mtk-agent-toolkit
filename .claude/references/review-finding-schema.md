@@ -16,6 +16,8 @@ findings-only fragments merged into this envelope. Worked examples and long-form
 {
   "verdict": "PASS | NEEDS_CHANGES | ABSTAINED",
   "abstention": { "reason": "required when ABSTAINED", "stage": "load-standards | get-diff | review | emit", "checked": [] },
+  "coverage": { "no_issues": ["relative/path.ext"], "skipped": [{ "file": "relative/path.ext", "reason": "why not reviewed" }] },
+  "candidates_disposed": [{ "candidate_id": "C001", "outcome": "raised | dropped", "reason": "why", "cited": "file:line" }],
   "threshold": 80,
   "summary": { "critical": 0, "warning": 0, "suggestion": 0, "filtered_below_threshold": 0 },
   "findings": [{
@@ -24,6 +26,7 @@ findings-only fragments merged into this envelope. Worked examples and long-form
     "rule_ref": "optional, e.g. OWASP A03:2021", "category": "optional", "gate": "optional, e.g. mandatory",
     "source": "ai | linter | drift | analyzer | context",
     "file": "relative/path.ext", "line": 42,
+    "snippet": "optional: the code the finding is about",
     "rationale": "one line: why this is a problem",
     "suggested_fix": "one line: the remediation",
     "decision_origin": "optional: user-directed | claude-recommended-approved | claude-recommended-modified | claude-recommended-rejected | system-inferred",
@@ -40,7 +43,34 @@ findings-only fragments merged into this envelope. Worked examples and long-form
 - `source`: `linter`/`analyzer` always carry `confidence: 100`; `ai` is reasoned; `drift` is spec-drift; `context` is mined history.
 - `rule` is the canonical citation; `rule_ref`, `category`, `gate`, `failure_mode`, `decision_origin`, `internet_facing`, `needs_human_review` are optional.
 - `decision_origin`, when present, must be one of the five values above (meanings: `docs/review-finding-examples.md`). Emit it when the reviewer knows who made the decision under review; omit it rather than guess.
+- `snippet` (optional): the code the finding is about. Finding UIDs (`F-` + sha1 of `file|rule|normalised snippet`, first 10 hex) are taken from the first of `snippet`, `evidence`, `code`, falling back to `rationale`, `description`, `title`, `message`, so a snippet keeps the UID stable when the wording changes.
 - There is no score block. Findings and the evidence behind them decide the verdict.
+
+## Coverage, candidates, abstention
+
+| Field | Required | Rule |
+|---|---|---|
+| `coverage` | verdict `PASS` / `NEEDS_CHANGES` | `no_issues` ∪ `skipped[].file` ∪ `findings[].file` must equal the changed-file set exactly: no file missed, none claimed outside it. Every `skipped` entry has a `reason`. |
+| `candidates_disposed` | when the orchestrator passed `candidates.json` | One entry per `candidate_id`: `outcome` `raised` (it became a finding) or `dropped`, a non-empty `reason`, and a `cited` `file:line`. |
+| `abstention.reason` prefix `incomplete:` | set by the orchestrator | A lane result failing `scripts/review-coverage.sh` is recorded `ABSTAINED` with `incomplete: <what is missing>`. `stage` enum unchanged. |
+
+`candidates.json` is a JSON array of `{ "candidate_id", "file", "line", "source", "rule", "message" }`, collected from the deterministic scripts for the changed lines. An `ABSTAINED` result carries no coverage.
+
+## Verify stage (HIGH/MAX)
+
+`finding-verifier` re-checks findings from the code and records one verdict per finding.
+
+| Verdict | Meaning |
+|---|---|
+| `confirmed` | The code shows the finding is right. |
+| `refined` | Real, but severity, line or fix needed correcting. |
+| `rejected` | Only when the code shows the finding is wrong. "Cannot verify" keeps the finding. |
+| `immaterial` | Needs all three: it can happen, it matters, the fix is worth its reach. Fails any one. |
+| `pre_existing` | Not introduced by this change: follow-up list, not remediation. |
+
+By design the verify stage reads lane findings (the anti-anchoring bar on other lanes' output does not apply to it). One call per top-level directory group; output:
+`{"verify_status": "complete|ABSTAINED", "group": "<dir>", "verdicts": [{"id", "verdict": "confirmed|refined|rejected|immaterial|pre_existing", "reason", "cited": "file:line"}], "follow_up": [...]}`.
+Every input finding appears once. `verify_status` is not a lane verdict and never enters lane accounting. Verdicts persist at the workflow artifact's `results.review.verify`. A failed, empty or `ABSTAINED` group is `unverified`; it never drops findings.
 
 ## Markdown table
 
@@ -70,7 +100,8 @@ concerns with no concrete vector, guesses needing unloaded context.
 3. Otherwise → `PASS`, which needs evidence: an empty `findings[]` **requires** `below_threshold_rationale` naming what was checked (`file:line` or the files and axes covered) and why nothing reached the threshold. A PASS without that evidence is not a PASS — the orchestrator records the lane as `ABSTAINED`.
 
 Warnings and suggestions never force `NEEDS_CHANGES`. Remediation on the same blocking finding is
-capped at 2 iterations; a third escalates to a human.
+capped by the tracker (`MTK_MAX_REMEDIATION_ITERS`, default 3 review iterations) and escalates to a
+human sooner when the open-finding count stalls (`remediation … --open N | --findings`).
 
 ## Reviewer contract
 
@@ -92,6 +123,7 @@ Every agent in `.claude/agents/` follows this section; the agent file adds only 
 - **Anti-anchoring.** Judge from evidence: the diff, the code, the spec/sidecar and the pack.
   Do not read other lanes' output, earlier review iterations, or planner rationale; if the
   orchestrator passes any, treat it as a pointer to verify, never as a conclusion.
+- **Coverage.** Emit `coverage` over the changed-file list you were given; files outside your lane's remit go in `skipped` with reason "outside <lane> remit".
 - **ABSTAINED.** If you cannot finish (empty diff, unreadable input, a needed file missing, too
   little context to judge), set `"verdict": "ABSTAINED"` in the JSON with `abstention.reason`
   naming the blocker and what you would need, `abstention.stage`, and `abstention.checked`

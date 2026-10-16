@@ -13,6 +13,10 @@ set -euo pipefail
 #   (d) matching is exact path or directory prefix — never substring either way
 #   (e) the project root comes from mtk_repo_root (CLAUDE_PROJECT_DIR first), so
 #       a hook whose cwd is outside the repo still guards instead of failing open
+#   (f) MTK_SCOPE_GUARD_ENFORCE modes: active (and the legacy truthy set) denies
+#       with today's text; shadow warns AND logs to .mtk/metrics; off is silent;
+#       advisory/unset is today's behaviour. deny:/allow: labels feed
+#       scripts/check-guard-twins.sh.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -84,13 +88,69 @@ warns "$third"  && pass "(a) a different file still warns" || fail "(a) a differ
 warns "$other_session" && pass "(a) another session warns afresh" || fail "(a) dedupe must be per session"
 n1="$(run src/nosid.cs '')"; n2="$(run src/nosid.cs '')"
 warns "$n1" && warns "$n2" && pass "(a) no session_id: keeps warning" || fail "(a) no session_id must not dedupe (got '$n1' / '$n2')"
-set +e
-rc1=0; printf '{"session_id":"s-e","tool_name":"Edit","tool_input":{"file_path":"%s"}}' "$FIX/src/enf.cs" \
-  | ( cd "$FIX" && CLAUDE_PROJECT_DIR="$FIX" MTK_SCOPE_GUARD_ENFORCE=1 bash "$HOOK" >/dev/null 2>&1 ) || rc1=$?
-rc2=0; printf '{"session_id":"s-e","tool_name":"Edit","tool_input":{"file_path":"%s"}}' "$FIX/src/enf.cs" \
-  | ( cd "$FIX" && CLAUDE_PROJECT_DIR="$FIX" MTK_SCOPE_GUARD_ENFORCE=1 bash "$HOOK" >/dev/null 2>&1 ) || rc2=$?
-set -e
-[ "$rc1" -eq 2 ] && [ "$rc2" -eq 2 ] && pass "(a) enforce mode denies every time" || fail "(a) enforce mode must deny each edit (got $rc1/$rc2)"
+# --- (f) guard modes: MTK_SCOPE_GUARD_ENFORCE via mtk_guard_mode -------------
+# Labels deny:<code> / allow:<code> are read by scripts/check-guard-twins.sh.
+enforce_rc() { # $1=file under $FIX  $2=session id  $3=MTK_SCOPE_GUARD_ENFORCE value; echoes exit code
+  local rc=0
+  printf '{"session_id":"%s","tool_name":"Edit","tool_input":{"file_path":"%s"}}' "$2" "$FIX/$1" \
+    | ( cd "$FIX" && CLAUDE_PROJECT_DIR="$FIX" MTK_SCOPE_GUARD_ENFORCE="$3" bash "$HOOK" >/dev/null 2>&1 ) || rc=$?
+  echo "$rc"
+}
+enforce_out() { # like run(), with MTK_SCOPE_GUARD_ENFORCE=$3; echoes stdout
+  local rc=0 out
+  out="$(printf '{"session_id":"%s","tool_name":"Edit","tool_input":{"file_path":"%s"}}' "$2" "$FIX/$1" \
+    | ( cd "$FIX" && CLAUDE_PROJECT_DIR="$FIX" MTK_SCOPE_GUARD_ENFORCE="$3" bash "$HOOK" 2>/dev/null ))" || rc=$?
+  printf '%s' "$out"
+  return "$rc"
+}
+log_lines() { if [ -f "$1" ]; then wc -l < "$1" | tr -d ' '; else echo 0; fi; }
+expect() { # $1 label  $2 want  $3 got
+  if [ "$3" = "$2" ]; then pass "$1"; else fail "$1 — expected $2, got $3"; fi
+}
+
+expect "deny:SCOPE-OUT-OF-MANIFEST enforce=1 denies the first out-of-scope edit" 2 "$(enforce_rc src/enf.cs s-e 1)"
+expect "deny:SCOPE-OUT-OF-MANIFEST enforce=1 denies the same file again (no dedupe)" 2 "$(enforce_rc src/enf.cs s-e 1)"
+expect "deny:SCOPE-OUT-OF-MANIFEST enforce=on (legacy truthy) denies" 2 "$(enforce_rc src/enf-on.cs s-e-on on)"
+expect "deny:SCOPE-OUT-OF-MANIFEST enforce=TRUE (legacy truthy) denies" 2 "$(enforce_rc src/enf-true.cs s-e-true TRUE)"
+expect "deny:SCOPE-OUT-OF-MANIFEST enforce=YES (legacy truthy) denies" 2 "$(enforce_rc src/enf-yes.cs s-e-yes YES)"
+expect "deny:SCOPE-OUT-OF-MANIFEST enforce=Active (mode name, any case) denies" 2 "$(enforce_rc src/enf-act.cs s-e-act Active)"
+expect "allow:SCOPE-OUT-OF-MANIFEST enforce=1 lets an in-manifest edit through" 0 "$(enforce_rc src/a.cs s-e-allow 1)"
+expect "allow:SCOPE-OUT-OF-MANIFEST enforce=active lets a directory-entry edit through" 0 "$(enforce_rc src/feature/x.cs s-e-allow active)"
+expect "allow:SCOPE-OUT-OF-MANIFEST enforce=0 stays advisory (exit 0)" 0 "$(enforce_rc src/enf-zero.cs s-e-zero 0)"
+
+err="$(printf '{"session_id":"s-e-msg","tool_name":"Edit","tool_input":{"file_path":"%s"}}' "$FIX/src/enf-msg.cs" \
+  | ( cd "$FIX" && CLAUDE_PROJECT_DIR="$FIX" MTK_SCOPE_GUARD_ENFORCE=active bash "$HOOK" 2>&1 >/dev/null ) || true)"
+case "$err" in
+  *"MTK_SCOPE_GUARD: DENY src/enf-msg.cs — not in approved manifest (2026-10-01-live)"*"disable this guard: unset MTK_SCOPE_GUARD_ENFORCE"*)
+    pass "(f) active deny keeps today's reason text and toggle hint" ;;
+  *) fail "(f) active deny text changed: $err" ;;
+esac
+
+SHADOW_LOG="$FIX/.mtk/metrics/enforcement-shadow.jsonl"
+rm -f "$SHADOW_LOG"
+rc=0; s1="$(enforce_out src/shadow.cs s-sh shadow)" || rc=$?
+expect "(f) shadow: out-of-scope edit is allowed (exit 0)" 0 "$rc"
+warns "$s1" && pass "(f) shadow: advisory text still emitted" || fail "(f) shadow must emit the advisory: '$s1'"
+n="$(log_lines "$SHADOW_LOG")"
+expect "(f) shadow: one log line for the would-be deny" 1 "$n"
+grep -q '"hook":"scope-guard","code":"SCOPE-OUT-OF-MANIFEST"' "$SHADOW_LOG" 2>/dev/null \
+  && pass "(f) shadow log line names hook and code" || fail "(f) shadow log line malformed: $(cat "$SHADOW_LOG" 2>/dev/null)"
+grep -qF 'src/shadow.cs' "$SHADOW_LOG" 2>/dev/null \
+  && fail "(f) shadow log must not carry the raw path" || pass "(f) shadow log carries a checksum, not the path"
+rc=0; s2="$(enforce_out src/shadow.cs s-sh shadow)" || rc=$?
+warns "$s2" && fail "(f) shadow: advisory must stay once per file per session" || pass "(f) shadow: repeat advisory deduped"
+n="$(log_lines "$SHADOW_LOG")"
+expect "(f) shadow: every would-be deny is logged (not deduped)" 2 "$n"
+rm -f "$SHADOW_LOG"
+enforce_out src/a.cs s-sh shadow >/dev/null || true
+[ ! -e "$SHADOW_LOG" ] && pass "(f) shadow: in-manifest edit logs nothing" || fail "(f) shadow logged an in-manifest edit"
+
+rc=0; o1="$(enforce_out src/off.cs s-off off)" || rc=$?
+expect "(f) off: exit 0" 0 "$rc"
+[ -z "$o1" ] && [ ! -e "$SHADOW_LOG" ] && pass "(f) off: silent, nothing logged" || fail "(f) off must be silent: '$o1'"
+
+rc=0; a1="$(enforce_out src/adv.cs s-adv advisory)" || rc=$?
+warns "$a1" && [ ! -e "$SHADOW_LOG" ] && pass "(f) advisory: warns, nothing logged" || fail "(f) advisory changed: '$a1'"
 
 # --- (e) cwd outside the repo --------------------------------------------------
 OUTSIDE="$WORK/outside"; mkdir -p "$OUTSIDE"

@@ -80,6 +80,7 @@ Not user-invocable — loaded automatically when triggered:
 flowchart LR
     S1["Stage 1<br/><b>compliance-reviewer</b><br/><i>Always runs first</i>"]
     S1 -- "No critical issues" --> S2["Stage 2<br/><b>test-reviewer</b><br/><b>architecture-reviewer</b>"]
+    S2 -- "HIGH/MAX only" --> V["Verify<br/><b>finding-verifier</b>"]
     S1 -- "Critical issues" --> FIX["Fix → Re-review"]
     FIX --> S1
 ```
@@ -91,6 +92,8 @@ flowchart LR
 - Test completeness or missing coverage → `test-reviewer`
 - Architecture or slice boundary concerns → `architecture-reviewer`
 - Error-handling diff (catch/except/`?.`/`??`/eslint-disable/Skip) → `silent-failure-hunter` (runs in parallel with `compliance-reviewer` in Stage 1 when triggered)
+
+**Verify stage (HIGH/MAX only):** After Stage 2, `finding-verifier` re-checks one directory group of findings against the code and records a verdict per finding. It is a stage, not a lane: it adds no findings, never drops one it cannot verify, and an incomplete or unverified review cannot read as PASS. Only a full PASS lets `scripts/review-receipt.sh` write a diff-bound receipt for the push gate.
 
 ---
 

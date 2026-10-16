@@ -221,6 +221,10 @@ mv "$TMP" "<target-path>"
 
 On a non-zero exit: print the offending `<file>:<line>: <pattern>` lines, abort the whole bootstrap, and point the engineer at the audit output or guidelines for the leak. `MTK_SECRET_SCAN_SKIP=1` bypasses the scan for a confirmed false positive only; log the bypass prominently in STEP 5.
 
+## STEP 3.5d: Instruction Load Check
+
+After `AGENTS.md`, the shim and the rules are written, run `bash scripts/check-instruction-load.sh`. Fix every finding before writing the PR; exit 2 or a missing script → report "instruction load not checked" in STEP 5.
+
 ## STEP 3.6: Prune Stack Reference Files Against Detected Tools
 
 The pruning procedure (`detected` union, per-file `tools:` intersection, override path, cache TTL) lives in `.claude/references/bootstrap-supporting-files.md`. Read it now and follow it.

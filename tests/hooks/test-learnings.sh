@@ -239,4 +239,22 @@ out="$( cd "$R" && bash "$LS" metrics )"
 case "$out" in *'"n":0,'*'"status":"insufficient-data"'*) : ;; *) fail "M3: empty store must be n=0 insufficient-data, got: $out" ;; esac
 ok "M3: empty store reports insufficient-data, not ok"
 
+# RW: --retire-when round-trips — stored verbatim (quotes escaped) in the JSONL
+# entry and rendered by regen-markdown; an entry without it renders no line.
+R="$(new_repo)"
+(
+  cd "$R"
+  bash "$LS" add --source manual --scope team --title "Pinned SDK workaround" \
+    --retire-when 'Foo.Sdk >= 4.2 is pinned in "Directory.Packages.props"' >/dev/null
+  bash "$LS" add --source manual --scope team --title "Plain lesson" >/dev/null
+  bash "$LS" regen-markdown >/dev/null
+) || fail "RW: add/regen-markdown exited non-zero"
+grep -qF '"retire_when":"Foo.Sdk >= 4.2 is pinned in \"Directory.Packages.props\""' "$R/.mtk/learnings.jsonl" \
+  || fail "RW: retire_when not stored in the JSONL entry: $(cat "$R/.mtk/learnings.jsonl")"
+grep -qF '  - *Retire when:* Foo.Sdk >= 4.2 is pinned in "Directory.Packages.props"' "$R/tasks/lessons.md" \
+  || fail "RW: retire_when not rendered by regen-markdown: $(cat "$R/tasks/lessons.md")"
+n="$(grep -c 'Retire when' "$R/tasks/lessons.md")"
+[ "$n" -eq 1 ] || fail "RW: expected exactly one Retire when line, got $n"
+ok "RW: --retire-when round-trips through add and regen-markdown"
+
 echo "ALL LEARNINGS TESTS PASSED"

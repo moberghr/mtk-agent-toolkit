@@ -42,7 +42,7 @@ Most teams respond by writing a big `CLAUDE.md` or `.cursor/rules`. But **instru
 MTK closes the 80% gap with four things working together:
 
 - **Workflow enforcement** — a real spec → plan → TDD → review → evidence-gate pipeline, not a single hopeful prompt.
-- **Adversarial review agents** — six specialist reviewers that hunt for real problems in isolated context, rewarded for finding issues, not for approving.
+- **Adversarial review agents** — seven specialist agents (six reviewers plus a finding verifier) that hunt for real problems in isolated context, rewarded for finding issues, not for approving.
 - **Deterministic linters** — 37 pattern rules that catch secrets, SQL injection, and LLM reward-hacking at confidence 100, before the AI review even starts.
 - **Evidence gates** — no "done" claim survives without cited build output, test counts, and exit codes produced *after* the last edit.
 
@@ -116,7 +116,7 @@ No network calls. All writes stay inside the working directory. Silence the end-
 
 ## Token Economics
 
-> **MTK ships 33 skills, 6 agents, and 59 reference documents — yet only ~3,805 tokens load into every session. The other ~129,000 tokens stay out of always-on context (~121K deferred behind progressive disclosure, ~8K of review offloaded to isolated subagents) until the exact moment they're relevant.**
+> **MTK ships 33 skills, 7 agents, and 59 reference documents — yet only ~3,846 tokens load into every session. The other ~134,500 tokens stay out of always-on context (~125K deferred behind progressive disclosure, ~9K of review offloaded to isolated subagents) until the exact moment they're relevant.**
 
 Most "big" AI toolkits pay for their power by inflating your context window: a giant `CLAUDE.md`, a wall of always-on rules, review logic that clutters the main thread. MTK is engineered the opposite way — to keep tokens **out** of context. See exactly where they go, computed from your own installed files:
 
@@ -132,12 +132,12 @@ Always-on — loaded into EVERY session:
   skill descriptions       4964 chars  ~  1241 tok  (33 skills)
   AGENTS.md                8465 chars  ~  2116 tok
   CLAUDE.md                 726 chars  ~   181 tok
-  agent descriptions       1066 chars  ~   266 tok  (6 agents)
-  ── always-on floor              ~  3805 tok
+  agent descriptions       1231 chars  ~   307 tok  (7 agents)
+  ── always-on floor              ~  3846 tok
 
 Kept OUT of always-on by progressive disclosure (load only when relevant):
-  references             315340 chars  ~ 78835 tok  (59 files, glob-gated)
-  rule bodies             24196 chars  ~  6049 tok  (path-gated)
+  references             330473 chars  ~ 82618 tok  (59 files, glob-gated)
+  rule bodies             25150 chars  ~  6287 tok  (path-gated)
   manifest.json          144112 chars  ~ 36028 tok  (read on demand, never inlined)
   ── deferred total               ~120912 tok  ← would be always-on if inlined into CLAUDE.md
 
@@ -156,7 +156,7 @@ The 33 skill *bodies* total ~90K tokens, but only **one loads when its skill act
 
 ### 2 · Review offloaded to isolated context
 
-The six review agents (~8,400 tokens of adversarial logic) run in **forked subagent context** (`context: fork`). They read the diff in their own window and return only structured findings. The heavy review and security machinery never touches your main conversation.
+The seven agents (~9,100 tokens of adversarial logic) run in **forked subagent context** (`context: fork`). They read the diff in their own window and return only structured findings. The heavy review and security machinery never touches your main conversation.
 
 ### 3 · On-demand output compression
 
@@ -385,7 +385,7 @@ native eval suites in `evals/` against scaffolded repos, with and without the pl
 |:---|:---|:---|
 | **7 benchmark suites** | Linters catch secrets / SQLi / disabled tests / float money; security-gate blocks `DROP TABLE`, `rm -rf`, force-push to main; scope-guard warns on out-of-spec edits; verify-completion rejects evidence-less "done" | **30/30 assertions passing** |
 | **8 plugin-eval cases** | Native `claude plugin eval` cases in scaffolded repos: fresh test evidence before "done", no edits on a pure question, a staged secret blocks the commit, no unconfirmed force-push to `main`, a swallowed ledger-write exception ranks critical, scope escalation on a "small fix", `/mtk` routing, implement stops for approval | Scored with and without the plugin; the `core` suite gates every release |
-| **26 pressure tests** | Adversarial behavioral tests that try to talk skills out of doing their job | Part of the release gate |
+| **27 pressure tests** | Adversarial behavioral tests that try to talk skills out of doing their job | Part of the release gate |
 | **16 AI failure modes (F1–F16)** | Research-cited catalogue — hallucinated packages, stubbed-success returns, frozen-replay evidence — that reviewers cite by code so patterns aggregate across your codebase | `.claude/references/ai-failure-modes.md` |
 | **37 linter rules** | Hierarchical packs (core / stack / domain / project), zero dependencies beyond coreutils | `hooks/linter-patterns/` |
 
@@ -440,6 +440,7 @@ flowchart TD
 | **test-reviewer** | Stage 2 — coverage gaps, weak assertions, wrong test providers, missing edge/error paths. |
 | **architecture-reviewer** | Stage 2 — dependency direction, layer splits, naming consistency, unjustified abstractions, cross-layer leaks. |
 | **context-miner** | Stage 2 (HIGH/MAX) — mines git history, PR/issue threads, and prior lessons for organizational context the diff missed: prior reverts, related open issues, recorded decisions. |
+| **finding-verifier** | Verify stage (HIGH/MAX, after Stage 2) — re-checks each finding against the code in a fresh, read-only context and records a verdict per finding; it may drop one only on evidence and never shrinks the list on a guess. |
 | **plan-gap-reviewer** | Pre-approval — anti-anchored plan critique, forbidden from reading lessons, prior reviewer output, or the planner's rationale, so it challenges the plan cold. |
 
 There is no score: findings plus missing evidence decide the verdict. A critical finding blocks the merge, and a clean result must name what was checked — a PASS with no evidence behind it is recorded as an abstention. All agents can also report **BLOCKED** (files missing) or **NEEDS_CONTEXT** (too complex to review) — a clear escalation beats a low-confidence rubber stamp.
@@ -474,14 +475,14 @@ ENTRY POINTS (5 user-invocable skills)
       ↓ orchestrate
 33 SKILLS  — language-agnostic workflows + 3 tech-stack packs + enabling skills
       ↓ route to
-6 REVIEW AGENTS  — compliance · silent-failure-hunter · test · architecture · context-miner · plan-gap
+7 AGENTS  — compliance · silent-failure-hunter · test · architecture · context-miner · plan-gap · finding-verifier
       ↓ backed by
 59 REFERENCES  — 50 shared (finance + security baseline, review lanes, AI failure modes, review schema, …)
                  + 3 per stack × 3 stacks (coding-guidelines, testing supplement, analyzer config)
       ↓ enforced by
-10 HOOKS across 4 lifecycle events  — SessionStart (incl. compact) · PreToolUse · PostToolUse · Stop
+12 HOOKS across 5 lifecycle events  — SessionStart (incl. compact) · PreToolUse · PostToolUse · Stop · SubagentStart
       ↓ validated by
-7 BENCHMARK SUITES (30/30) · 8 PLUGIN-EVAL CASES · 26 PRESSURE TESTS
+7 BENCHMARK SUITES (30/30) · 9 PLUGIN-EVAL CASES · 27 PRESSURE TESTS
 ```
 
 ### Hooks & enforcement
@@ -500,6 +501,8 @@ Hooks are deterministic — they fire every time, unlike advisory `CLAUDE.md` in
 | **verify-completion** | Stop | Rejects "done" claims lacking fresh, cited command output |
 | **workflow-continuation** | Stop (async) | One-line nudge when a session ends with an unfinished workflow |
 | **cost-tracker** | Stop (async) | Persists usage stats to `.claude/analytics.json` and token-cost estimates to `.mtk/metrics/costs.jsonl` |
+| **push-gate** | PreToolUse (Bash, only on `git push`) | Advisory by default: says when the pushed range has no matching review receipt; `MTK_PUSH_GATE_ENFORCE=active` blocks |
+| **subagent-context** | SubagentStart | Hands an MTK subagent the active context-pack path and the critical-rule ids; context only, never blocks |
 
 ### Tech stacks
 
@@ -656,15 +659,16 @@ Everything the plugin executes on your machine, what it writes, and what it cont
 | Event | Hooks | What they do |
 |---|---|---|
 | SessionStart | `session-start` | Inject MTK context; on `compact`, re-inject on-disk task state |
-| PreToolUse (Bash) | `security-gate.sh`, `format-on-edit.sh --flush-before-verify` | Block destructive or prompt-hanging commands; format queued files before a verification command runs |
+| PreToolUse (Bash) | `security-gate.sh`, `format-on-edit.sh --flush-before-verify`, `push-gate.sh` (only on `git push`, via an `if` filter) | Block destructive or prompt-hanging commands; format queued files before a verification command runs; note a push whose range has no review receipt (advisory by default) |
 | PreToolUse (Edit\|Write) | `scope-guard.sh`, `config-guard.sh` | Warn on edits outside an approved spec; block edits that weaken linter config |
 | PostToolUse (Edit\|Write\|Bash) | `evidence-ledger.sh` | Record edits and verification runs for `verify-completion` (silent) |
 | PostToolUse (Edit\|Write) | `spec-approval-trigger.sh`, `format-on-edit.sh` | Point to planning on spec approval; queue edited files for formatting |
 | Stop | `verify-completion`, `format-on-edit.sh --flush`, `workflow-continuation.sh` (async), `cost-tracker.sh` (async) | Check completion claims for evidence; run your project's own formatter (`dotnet format`, `ruff`/`black`, or `npx --no-install biome`/`prettier` — never installs anything) on edited files; nudge on an unfinished workflow; record local usage and token-cost estimates |
+| SubagentStart | `subagent-context.sh` | Hand an MTK subagent (or any subagent while a workflow is live) the context-pack path and critical-rule ids; never blocks |
 
 Hooks read the session transcript locally (completion evidence, cost estimates). They never change Claude Code's permission settings.
 
-**Files written in your repo:** `.claude/analytics.json` (usage counts), `.claude/observability/`, `.mtk/workflows/`, `.mtk/metrics/costs.jsonl`, and `.mtk/config-guard-allow` (only when you allow a config edit). Short-lived state goes to `$TMPDIR/mtk-*`. `/mtk-setup` writes `AGENTS.md`, the `CLAUDE.md` shim, `.claude/rules/`, `.claude/references/`, and merges recommended `permissions.allow`/`deny`/`ask` entries into `.claude/settings.json` — only when you run it.
+**Files written in your repo:** `.claude/analytics.json` (usage counts), `.claude/observability/`, `.mtk/workflows/`, `.mtk/lessons/` (lesson-mining state), `.mtk/metrics/costs.jsonl`, `.mtk/metrics/enforcement-shadow.jsonl` (would-be denies of guards in shadow mode), and `.mtk/config-guard-allow` (only when you allow a config edit). Outside the repo, `scripts/review-receipt.sh` writes diff-bound review receipts to `~/.mtk/receipts/` (mode 0600) after a passing review; `push-gate.sh` only reads them. Short-lived state goes to `$TMPDIR/mtk-*`, including the hook liveness stamps in a per-user `$TMPDIR/mtk-hook-seen-<uid>/` (mode 0700) that `mtk-doctor` reads. `/mtk-setup` writes `AGENTS.md`, the `CLAUDE.md` shim, `.claude/rules/`, `.claude/references/`, and merges recommended `permissions.allow`/`deny`/`ask` entries into `.claude/settings.json` — only when you run it.
 
 **Network:** no hook makes a network request. `/mtk-setup` fetches the coding guidelines from `raw.githubusercontent.com/moberghr/coding-guidelines` at a pinned commit and verifies their sha256. Skills that need GitHub or the web (PR-review mining, CI status, `research-context`) ask Claude to run `gh` or web tools through its normal, permission-checked tools. MTK collects no telemetry.
 

@@ -18,10 +18,16 @@ A pointer for the next reader, not a transcript. Compaction, the session-start r
 
 ## Workflow
 
-1. Gather: `git branch --show-current`, `git status --short`, `git log --oneline -10`, `tasks/todo.md`, the active spec path (with any `-vN` suffix).
-2. Write `docs/handoffs/$(date +%Y-%m-%d)-<slug>.md` (keep `docs/handoffs/` gitignored), under 100 lines, paths not code:
+1. Gather: `git branch --show-current`, `git rev-parse --show-toplevel`, `git status --short`, `git log --oneline -10`, `tasks/todo.md`, the active spec path (with any `-vN` suffix).
+2. Write `docs/handoffs/$(date +%Y-%m-%d)-<slug>.md` (keep `docs/handoffs/` gitignored), under 100 lines, paths not code. Start it with the frontmatter block: session-start reads it to re-inject the note after compaction only on its own branch, and to offer it once at startup. The absolute `worktree:` path is fine because `docs/handoffs/` is gitignored. `expires:` is 14 days out (`date -u -v+14d +%F 2>/dev/null || date -u -d '+14 days' +%F`).
 
    ```markdown
+   ---
+   state: open            # open | accepted | expired
+   branch: <git branch --show-current>
+   worktree: <git rev-parse --show-toplevel>
+   expires: <YYYY-MM-DD, today + 14 days>
+   ---
    # Session Handoff — <date> — <topic>
    ## Branch
    ## Active Spec
@@ -37,7 +43,16 @@ A pointer for the next reader, not a transcript. Compaction, the session-start r
    ```
 3. If a workflow is active, record it on the command that writes it (`… && "$WFA" set "$MTK_WF_UUID" results.handoff_path=<file>`) and update the workflow's Claude Artifact per `.claude/references/artifact-publishing.md` (no-op when unavailable or `MTK_ARTIFACT_PUBLISH=0`; disk first).
 4. Tell the engineer the path, any artifact URL, and how to resume.
+5. When you resume from a handoff, mark it taken so it is not offered again; it stays visible across this session's compactions:
+
+   ```bash
+   HS="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/handoff-state.sh" || ([ -f scripts/handoff-state.sh ] && echo scripts/handoff-state.sh || echo "${CLAUDE_PLUGIN_ROOT}/scripts/handoff-state.sh"))"
+   bash "$HS" accept docs/handoffs/<file>.md
+   ```
+   Use `expire` instead of `accept` for a note that is obsolete. If the script is missing or exits non-zero, tell the engineer the note's state was not updated.
 
 ## Verification
 
 - [ ] Note saved with today's date, under 100 lines, factual, with branch, in-progress state, decisions and key files
+- [ ] Note starts with the `state` / `branch` / `worktree` / `expires` frontmatter block
+- [ ] On resume, `handoff-state.sh accept` ran on the note (or its failure was reported)

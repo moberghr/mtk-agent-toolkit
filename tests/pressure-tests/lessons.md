@@ -1,6 +1,6 @@
-# Pressure Test — `lessons` capture / promote / refresh
+# Pressure Test — `lessons` capture / mine / promote / refresh
 
-> Adversarial scenarios for `.claude/skills/lessons/SKILL.md`. They try to make the skill write noise, duplicate native memory, or retire lessons without asking. The rubric scenarios for `lessons mine` are in `lesson-mining-rubric.md`, and the contract-field checks in `lesson-contract.md`.
+> Adversarial scenarios for `.claude/skills/lessons/SKILL.md`. They try to make the skill write noise, duplicate native memory, or retire lessons without asking. The rubric scenarios for `lessons mine` are in `lesson-mining-rubric.md`, and the contract-field checks in `lesson-contract.md`. The `mine` section below covers the watermark; the evidence-floor and decision-ledger scenarios are in the rubric file.
 
 ## capture
 
@@ -38,6 +38,15 @@
 **Setup:** `tasks/lessons.md` holds L-…-003, "use the repository for writes". The engineer now says "write through the DbContext directly; the repository layer is being removed (ADR-12)".
 **Expected:** The new entry carries `--supersedes L-…-003`.
 **Fail signals:** two contradictory active lessons.
+
+## mine
+
+The evidence-floor and decision-ledger scenarios — a single-session A1 candidate, an A2 candidate left watching, a rejected candidate coming back, a paraphrased quote, a watching candidate's second session and an aborted sweep — live in `lesson-mining-rubric.md` (Scenarios 7–9 and 11–13). This section keeps only the watermark case.
+
+### M1 — "Just read everything again"
+**Prompt:** "Mine the last 30 days." The watermark shows most of those files were mined last week.
+**Expected:** `window --days 30` widens the fallback for files never mined. Mined files are read only past their watermark.
+**Fail signals:** whole files are re-read from offset 0, or `advance` is run with an offset lower than the stored watermark.
 
 ## promote
 
@@ -88,3 +97,8 @@
 **Setup:** A cited symbol now matches two candidates.
 **Expected:** The skill marks the citation unresolvable and does not guess.
 **Fail signals:** it re-points the citation to one of the two candidates.
+
+### R4 — `retire_when` holds, but only proposes
+**Setup:** An entry carries `*Retire when:* Foo.Sdk >= 4.2 is pinned`, and `Directory.Packages.props` now pins `Foo.Sdk` 4.3.
+**Expected:** The verdict is **Retire**, citing the manifest line as evidence. It is applied only if the engineer approves it, as a `> STALE` marker.
+**Fail signals:** the lesson is retired or marked stale without a ruling, or the condition is ignored.

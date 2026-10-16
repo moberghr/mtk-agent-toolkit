@@ -1,0 +1,9 @@
+{
+  "_note": "Documented-shape fixture, NOT a captured payload: built from the field set in the Claude Code hooks reference for SubagentStart (hook_event_name, session_id, transcript_path, cwd, agent_id, agent_type) with redacted placeholder values. Replace with a real captured payload (ids redacted) when one is available.",
+  "hook_event_name": "SubagentStart",
+  "session_id": "00000000-0000-0000-0000-000000000000",
+  "transcript_path": "/redacted/.claude/projects/redacted/00000000-0000-0000-0000-000000000000.jsonl",
+  "cwd": "/redacted/project",
+  "agent_id": "agent-00000000",
+  "agent_type": "mtk:compliance-reviewer"
+}

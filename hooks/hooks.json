@@ -27,6 +27,12 @@
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/format-on-edit.sh\" --flush-before-verify",
             "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/push-gate.sh\"",
+            "if": "Bash(git push *)",
+            "timeout": 5
           }
         ]
       },
@@ -105,6 +111,17 @@
             "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/cost-tracker.sh\"",
             "timeout": 30,
             "async": true
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/subagent-context.sh\"",
+            "timeout": 5
           }
         ]
       }

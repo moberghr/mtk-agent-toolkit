@@ -7,6 +7,8 @@ set -euo pipefail
 # compaction. session-start owns this now (it absorbed post-compact.sh): on a
 # `compact` SessionStart it appends the recovery block; with no recoverable
 # state, or on any other source, there is no recovery block.
+# Handoffs are branch-scoped: compact re-injects only an open (or accepted this
+# session) note for the current branch; startup appends one HANDOFF OFFER line.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -51,5 +53,222 @@ out="$(CLAUDE_PROJECT_DIR="$WORK" bash "$HOOK" <<<"$STARTUP" 2>/dev/null || true
 case "$out" in *'POST-COMPACTION'*) fail "startup must not emit the post-compaction block. Got: $out" ;; esac
 case "$out" in *'"additionalContext"'*) : ;; *) fail "startup must still emit its SessionStart context. Got: $out" ;; esac
 printf '  PASS  recovery block is compact-only\n'
+
+# --- 4. handoffs are branch-scoped (scripts/handoff-state.sh) -------------------
+# A fresh project on branch feat/ho-test with a recent spec, one open handoff for
+# this branch (older) and one for another branch (newest).
+
+P2="$WORK/p2"
+mkdir -p "$P2/docs/specs" "$P2/docs/handoffs"
+git -C "$P2" init -q
+git -C "$P2" symbolic-ref HEAD refs/heads/feat/ho-test
+cd "$P2"
+printf '# spec\n' > docs/specs/feature.md
+handoff() { # $1 file  $2 branch
+  printf -- '---\nstate: open\nbranch: %s\nworktree: %s\nexpires: 2099-12-31\n---\n# handoff\n' "$2" "$P2" > "docs/handoffs/$1"
+}
+handoff mine.md feat/ho-test
+touch -t 202601010000 docs/handoffs/mine.md
+handoff other.md feat/elsewhere
+COMPACT2='{"hook_event_name":"SessionStart","source":"compact","session_id":"s-compact2"}'
+STARTUP2='{"hook_event_name":"SessionStart","source":"startup","session_id":"s-startup2"}'
+CLEAR2='{"hook_event_name":"SessionStart","source":"clear","session_id":"s-clear2"}'
+RESUME2='{"hook_event_name":"SessionStart","source":"resume","session_id":"s-resume2"}'
+run() { CLAUDE_PROJECT_DIR="$P2" bash "$HOOK" <<<"$1" 2>/dev/null || true; }
+
+out="$(run "$COMPACT2")"
+case "$out" in *'Recent handoff: docs/handoffs/mine.md'*) : ;; *) fail "compact must re-inject the open handoff for this branch. Got: $out" ;; esac
+case "$out" in *'other.md'*) fail "compact must not re-inject another branch's handoff. Got: $out" ;; esac
+printf '  PASS  compact shows only the matching-branch open handoff\n'
+
+out="$(run "$STARTUP2")"
+case "$out" in *'SESSION RECOVERY: Found recent spec'*'HANDOFF OFFER: open handoff for this branch at docs/handoffs/mine.md (2026-01-01) — read it if you are picking this work up.'*) : ;;
+  *) fail "startup must keep the recovery line and append the handoff offer after it. Got: $out" ;; esac
+case "$out" in *'POST-COMPACTION'*) fail "startup offer must never use the POST-COMPACTION token. Got: $out" ;; esac
+case "$out" in *'other.md'*) fail "startup must not offer another branch's handoff. Got: $out" ;; esac
+[ "$(grep -o 'HANDOFF OFFER:' <<<"$out" | wc -l | tr -d ' ')" = "1" ] || fail "startup must carry exactly one offer line. Got: $out"
+printf '  PASS  startup carries the recovery line and exactly one HANDOFF OFFER line\n'
+
+for payload in "$CLEAR2" "$RESUME2"; do
+  out="$(run "$payload")"
+  case "$out" in *'HANDOFF OFFER'*) fail "clear/resume must not offer a handoff. Got: $out" ;; esac
+done
+printf '  PASS  no offer on clear or resume\n'
+
+git -C "$P2" symbolic-ref HEAD refs/heads/feat/third
+out="$(run "$STARTUP2")"
+case "$out" in *'HANDOFF OFFER'*) fail "no offer when no handoff names the current branch. Got: $out" ;; esac
+case "$out" in *'SESSION RECOVERY: Found recent spec'*) : ;; *) fail "the recovery line must survive without an offer. Got: $out" ;; esac
+out="$(run "$COMPACT2")"
+case "$out" in *'Recent handoff'*) fail "compact must not re-inject handoffs for other branches. Got: $out" ;; esac
+printf '  PASS  offer and compact handoff absent for another branch\n'
+
+# Accepted during this session: no longer offered, still re-injected on compact.
+git -C "$P2" symbolic-ref HEAD refs/heads/feat/ho-test
+bash "$REPO_ROOT/scripts/handoff-state.sh" accept "$P2/docs/handoffs/mine.md"
+touch -t 202601010000 docs/handoffs/mine.md
+out="$(run "$STARTUP2")"
+case "$out" in *'HANDOFF OFFER'*) fail "an accepted handoff must not be offered. Got: $out" ;; esac
+out="$(run "$COMPACT2")"
+case "$out" in *'Recent handoff: docs/handoffs/mine.md'*) : ;; *) fail "a handoff accepted this session must stay visible on compact. Got: $out" ;; esac
+printf '  PASS  accepted handoff: no offer, still re-injected on compact\n'
+
+# Accepted in an earlier session (accepted_at 2 days ago): compact omits it.
+TWO_DAYS_AGO="$(python3 -c 'import datetime; print((datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%SZ"))')"
+sed "s/^accepted_at: .*/accepted_at: $TWO_DAYS_AGO/" docs/handoffs/mine.md > "$WORK/mine.rewritten"
+cat "$WORK/mine.rewritten" > docs/handoffs/mine.md
+grep -q "^accepted_at: $TWO_DAYS_AGO\$" docs/handoffs/mine.md || fail "test setup: accepted_at not rewritten"
+touch -t 202601010000 docs/handoffs/mine.md
+out="$(run "$COMPACT2")"
+case "$out" in *'mine.md'*) fail "a handoff accepted 2 days ago must not be re-injected on compact. Got: $out" ;; esac
+case "$out" in *'"additionalContext"'*) : ;; *) fail "compact must still emit its context envelope. Got: $out" ;; esac
+# (Positive control: the case just above, same note accepted now, is re-injected.)
+printf '  PASS  handoff accepted 2 days ago: omitted on compact\n'
+
+# --- 5. helper script absent → today's compact behaviour -------------------------
+# A plugin copy without scripts/: the hook falls back to the newest-<24h pick
+# (no branch filter) and offers nothing on startup.
+
+mkdir -p "$WORK/plug"
+cp -R "$REPO_ROOT/hooks" "$WORK/plug/hooks"
+out="$(CLAUDE_PLUGIN_ROOT="$WORK/plug" CLAUDE_PROJECT_DIR="$P2" bash "$WORK/plug/hooks/session-start" <<<"$COMPACT2" 2>/dev/null || true)"
+case "$out" in *'Recent handoff: docs/handoffs/other.md'*) : ;; *) fail "without the helper, compact must keep the plain newest-<24h pick. Got: $out" ;; esac
+case "$out" in *'"additionalContext"'*) : ;; *) fail "fallback must still emit the additionalContext envelope. Got: $out" ;; esac
+out="$(CLAUDE_PLUGIN_ROOT="$WORK/plug" CLAUDE_PROJECT_DIR="$P2" bash "$WORK/plug/hooks/session-start" <<<"$STARTUP2" 2>/dev/null || true)"
+case "$out" in *'HANDOFF OFFER'*) fail "without the helper, startup must offer nothing. Got: $out" ;; esac
+printf '  PASS  helper absent: compact keeps the newest-<24h pick, startup offers nothing\n'
+
+# --- 6. helper present but failing → visible stderr line, then the fallback -----
+# A plugin copy whose scripts/handoff-state.sh exits non-zero with a message.
+
+mkdir -p "$WORK/plug2/scripts"
+cp -R "$REPO_ROOT/hooks" "$WORK/plug2/hooks"
+printf '#!/usr/bin/env bash\necho "boom: filter exploded" >&2\necho "second line" >&2\nexit 3\n' > "$WORK/plug2/scripts/handoff-state.sh"
+chmod +x "$WORK/plug2/scripts/handoff-state.sh"
+out="$(CLAUDE_PLUGIN_ROOT="$WORK/plug2" CLAUDE_PROJECT_DIR="$P2" bash "$WORK/plug2/hooks/session-start" <<<"$COMPACT2" 2>"$WORK/fail.err" || true)"
+err="$(cat "$WORK/fail.err")"
+case "$err" in *'[mtk-hook:session-start] handoff: boom: filter exploded'*) : ;;
+  *) fail "a failing helper's first stderr line must be surfaced. Got stderr: $err" ;; esac
+case "$err" in *'[mtk-hook:session-start] handoff filter unavailable (helper exit 3)'*) : ;;
+  *) fail "a failing helper must say it is unavailable, with its exit code. Got stderr: $err" ;; esac
+case "$err" in *'second line'*) fail "only the helper's first stderr line is surfaced. Got stderr: $err" ;; esac
+case "$out" in *'Recent handoff: docs/handoffs/other.md'*) : ;; *) fail "a failing helper must fall back to the newest-<24h pick. Got: $out" ;; esac
+# The startup path captures the helper's stderr the same way.
+out="$(CLAUDE_PLUGIN_ROOT="$WORK/plug2" CLAUDE_PROJECT_DIR="$P2" bash "$WORK/plug2/hooks/session-start" <<<"$STARTUP2" 2>"$WORK/fail-startup.err" || true)"
+err="$(cat "$WORK/fail-startup.err")"
+case "$err" in *'[mtk-hook:session-start] handoff: boom: filter exploded'*) : ;;
+  *) fail "startup: a failing helper's first stderr line must be surfaced. Got stderr: $err" ;; esac
+case "$err" in *'[mtk-hook:session-start] handoff filter unavailable (helper exit 3)'*) : ;;
+  *) fail "startup: a failing helper must say it is unavailable. Got stderr: $err" ;; esac
+case "$out" in *'HANDOFF OFFER'*) fail "startup: a failing helper must yield no offer. Got: $out" ;; esac
+case "$out" in *'"additionalContext"'*) : ;; *) fail "startup: a failing helper must not cost the context envelope. Got: $out" ;; esac
+# Negative control: the working helper, with nothing to say, prints neither line.
+CLAUDE_PROJECT_DIR="$P2" bash "$HOOK" <<<"$COMPACT2" >/dev/null 2>"$WORK/ok.err" || true
+case "$(cat "$WORK/ok.err")" in *'[mtk-hook:session-start] handoff'*) fail "a quiet working helper must surface no handoff line. Got: $(cat "$WORK/ok.err")" ;; esac
+CLAUDE_PROJECT_DIR="$P2" bash "$HOOK" <<<"$STARTUP2" >/dev/null 2>"$WORK/ok-startup.err" || true
+case "$(cat "$WORK/ok-startup.err")" in *'[mtk-hook:session-start] handoff'*) fail "startup: a quiet working helper must surface no handoff line. Got: $(cat "$WORK/ok-startup.err")" ;; esac
+printf '  PASS  failing helper: stderr names the failure on compact and startup, compact falls back\n'
+
+# --- 7. legacy / branchless notes and detached HEAD (helper present) -------------
+# P3 on feat/legacy. A legacy note (no frontmatter) and a frontmatter note
+# without `branch:` are never offered on startup; the positive control is a
+# note tagged with this branch, which is.
+
+P3="$WORK/p3"
+mkdir -p "$P3/docs/handoffs"
+git -C "$P3" init -q
+git -C "$P3" symbolic-ref HEAD refs/heads/feat/legacy
+cd "$P3"
+COMPACT3='{"hook_event_name":"SessionStart","source":"compact","session_id":"s-compact3"}'
+STARTUP3='{"hook_event_name":"SessionStart","source":"startup","session_id":"s-startup3"}'
+run3() { CLAUDE_PROJECT_DIR="$P3" bash "$HOOK" <<<"$1" 2>/dev/null || true; }
+
+printf '# legacy handoff\n' > docs/handoffs/legacy.md
+out="$(run3 "$STARTUP3")"
+case "$out" in *'HANDOFF OFFER'*) fail "startup must not offer a legacy (branch-unknown) note. Got: $out" ;; esac
+case "$out" in *'"additionalContext"'*) : ;; *) fail "startup must still emit its context. Got: $out" ;; esac
+out="$(run3 "$COMPACT3")"
+case "$out" in *'Recent handoff: docs/handoffs/legacy.md'*) : ;; *) fail "compact must re-inject a fresh legacy note when the helper is present. Got: $out" ;; esac
+printf '  PASS  legacy note: no startup offer, re-injected on compact\n'
+
+printf -- '---\nstate: open\nworktree: %s\nexpires: 2099-12-31\n---\n# handoff\n' "$P3" > docs/handoffs/nobranch.md
+out="$(run3 "$STARTUP3")"
+case "$out" in *'HANDOFF OFFER'*) fail "startup must not offer a frontmatter note without branch:. Got: $out" ;; esac
+printf -- '---\nstate: open\nbranch: feat/legacy\nworktree: %s\nexpires: 2099-12-31\n---\n# handoff\n' "$P3" > docs/handoffs/tagged.md
+out="$(run3 "$STARTUP3")"
+case "$out" in *'HANDOFF OFFER: open handoff for this branch at docs/handoffs/tagged.md'*) : ;;
+  *) fail "positive control: a note tagged with this branch must be offered. Got: $out" ;; esac
+case "$out" in *'nobranch.md'*|*'legacy.md'*) fail "the offer must name the tagged note only. Got: $out" ;; esac
+printf '  PASS  branchless frontmatter note: no offer; tagged note (control): offered\n'
+
+# Detached HEAD. The branch-tagged note is made the newest so an unfiltered pick
+# would choose it; the branchless note is expired so the legacy note is the only
+# branch-unknown candidate left.
+bash "$REPO_ROOT/scripts/handoff-state.sh" expire "$P3/docs/handoffs/nobranch.md"
+touch -t 209901010000 docs/handoffs/tagged.md
+out="$(run3 "$COMPACT3")"
+case "$out" in *'Recent handoff: docs/handoffs/tagged.md'*) : ;;
+  *) fail "control: on its own branch compact picks the newest tagged note. Got: $out" ;; esac
+EMPTY_TREE="$(git -C "$P3" hash-object -t tree -w /dev/null)"
+HEAD_SHA="$(git -C "$P3" -c user.name=t -c user.email=t@example.invalid commit-tree "$EMPTY_TREE" -m init)"
+git -C "$P3" update-ref --no-deref HEAD "$HEAD_SHA"
+git -C "$P3" symbolic-ref -q HEAD >/dev/null 2>&1 && fail "test setup: HEAD must be detached"
+out="$(run3 "$COMPACT3")"
+case "$out" in *'Recent handoff: docs/handoffs/legacy.md'*) : ;; *) fail "detached HEAD: compact must still show the legacy note. Got: $out" ;; esac
+case "$out" in *'tagged.md'*) fail "detached HEAD: a branch-tagged note must be hidden. Got: $out" ;; esac
+printf '  PASS  detached HEAD: legacy note shown, branch-tagged note hidden\n'
+
+# --- 8. liveness: startup ticks <stamp dir>/.sessions, other sources do not ------
+
+SEEN_DIR="$(CLAUDE_PROJECT_DIR="$P3" bash -c 'source "$1"; mtk_hook_seen_dir' _ "$REPO_ROOT/hooks/lib/hook-io.sh")" \
+  || fail "test setup: no stamp dir for $P3"
+sessions() { local n=""; [ -f "$SEEN_DIR/.sessions" ] && IFS= read -r n < "$SEEN_DIR/.sessions"; printf '%s' "${n:-0}"; }
+before="$(sessions)"
+run3 "$STARTUP3" >/dev/null
+after_startup="$(sessions)"
+[ "$after_startup" = "$((before + 1))" ] || fail "startup must add one to .sessions (before=$before after=$after_startup)"
+run3 "$COMPACT3" >/dev/null
+run3 '{"hook_event_name":"SessionStart","source":"resume","session_id":"s-resume3"}' >/dev/null
+run3 '{"hook_event_name":"SessionStart","source":"clear","session_id":"s-clear3"}' >/dev/null
+[ "$(sessions)" = "$after_startup" ] || fail "compact/resume/clear must not tick .sessions (expected $after_startup, got $(sessions))"
+[ -f "$SEEN_DIR/session-start" ] || fail "session-start must still stamp itself in $SEEN_DIR"
+printf '  PASS  liveness tick: startup +1, compact/resume/clear unchanged\n'
+
+# --- 9. a succeeding helper's warning still reaches stderr; branchless 24h bound --
+# P5 on feat/p5. A note with a typo'd state makes the helper warn but succeed:
+# both paths surface the warning. A frontmatter note without `branch:` counts on
+# compact only while it is < 24h old, and is never offered on startup.
+
+P5="$WORK/p5"
+mkdir -p "$P5/docs/handoffs"
+git -C "$P5" init -q
+git -C "$P5" symbolic-ref HEAD refs/heads/feat/p5
+cd "$P5"
+COMPACT5='{"hook_event_name":"SessionStart","source":"compact","session_id":"s-compact5"}'
+STARTUP5='{"hook_event_name":"SessionStart","source":"startup","session_id":"s-startup5"}'
+P5_REAL="$(cd "$P5" && pwd -P)"
+
+printf -- '---\nstate: opne\nbranch: feat/p5\nexpires: 2099-12-31\n---\n# typo\n' > docs/handoffs/typo.md
+for payload in "$COMPACT5" "$STARTUP5"; do
+  CLAUDE_PROJECT_DIR="$P5" bash "$HOOK" <<<"$payload" >"$WORK/p5.out" 2>"$WORK/p5.err" || true
+  err="$(cat "$WORK/p5.err")"
+  case "$err" in *"[mtk-hook:session-start] handoff: handoff-state: "*"/docs/handoffs/typo.md: unknown state 'opne', ignored"*) : ;;
+    *) fail "a succeeding helper's warning must be surfaced (payload $payload). Got stderr: $err" ;; esac
+  case "$err" in *'handoff filter unavailable'*) fail "a succeeding helper must not be reported unavailable. Got stderr: $err" ;; esac
+  case "$(cat "$WORK/p5.out")" in *'typo.md'*) fail "an unknown-state note must not be picked. Got: $(cat "$WORK/p5.out")" ;; esac
+done
+case "$err" in *"$P5_REAL"*|*"$P5"*) : ;; *) fail "the surfaced warning names the note's path. Got stderr: $err" ;; esac
+printf '  PASS  helper warning surfaced on compact and startup without failing the filter\n'
+
+printf -- '---\nstate: open\nexpires: 2099-12-31\n---\n# no branch\n' > docs/handoffs/nobranch.md
+touch -t 202001010000 docs/handoffs/nobranch.md
+out="$(CLAUDE_PROJECT_DIR="$P5" bash "$HOOK" <<<"$COMPACT5" 2>/dev/null || true)"
+case "$out" in *'nobranch.md'*) fail "compact must not re-inject a branchless frontmatter note older than 24h. Got: $out" ;; esac
+touch docs/handoffs/nobranch.md
+out="$(CLAUDE_PROJECT_DIR="$P5" bash "$HOOK" <<<"$COMPACT5" 2>/dev/null || true)"
+case "$out" in *'Recent handoff: docs/handoffs/nobranch.md'*) : ;; *) fail "control: a fresh branchless note is re-injected on compact. Got: $out" ;; esac
+out="$(CLAUDE_PROJECT_DIR="$P5" bash "$HOOK" <<<"$STARTUP5" 2>/dev/null || true)"
+case "$out" in *'HANDOFF OFFER'*) fail "startup must never offer a branchless note. Got: $out" ;; esac
+printf '  PASS  branchless frontmatter note: compact only while < 24h, never offered\n'
 
 printf '\nAll session-start compact framing checks passed.\n'

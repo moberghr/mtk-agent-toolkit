@@ -19,6 +19,7 @@ trap _mtk_hook_diag EXIT
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
+mtk_hook_seen session-start
 
 # Session ledger baseline for verify-completion: bind to the payload's
 # session_id and record the working-tree fingerprint before any tool runs, so a
@@ -47,6 +48,50 @@ if [ -n "$SS_INPUT" ]; then
     mtk_session_lock_release "$SS_FILE"
   fi
 fi
+# Liveness: count one session per `startup` (read by mtk-doctor's hook-liveness
+# check). The source is known only once the payload is read, so the tick sits
+# here rather than beside mtk_hook_seen above.
+if [ "$SS_SOURCE" = "startup" ]; then
+  mtk_liveness_tick
+fi
+
+# Handoff lifecycle helper (scripts/handoff-state.sh): it filters
+# docs/handoffs/*.md by frontmatter state, branch and expiry. Resolved from the
+# plugin tree, never cwd. Absent ⇒ compact keeps the plain newest-<24h pick and
+# startup offers nothing (fail open).
+HANDOFF_STATE=""
+if [ -f "$SCRIPT_DIR/../scripts/handoff-state.sh" ]; then
+  HANDOFF_STATE="$SCRIPT_DIR/../scripts/handoff-state.sh"
+elif [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/scripts/handoff-state.sh" ]; then
+  HANDOFF_STATE="${CLAUDE_PLUGIN_ROOT}/scripts/handoff-state.sh"
+fi
+# Current branch of the project root's work tree; empty when detached / no git.
+handoff_branch() { git -C "$1" symbolic-ref --short -q HEAD 2>/dev/null || true; }
+# handoff_list ARGS... — run `handoff-state.sh list ARGS...` into HO_LIST. The
+# helper's stderr goes to a temp file; its first non-empty line is surfaced as
+# `[mtk-hook:session-start] handoff: <line>` whether the helper failed or not,
+# so a bad note's warning is never swallowed. Returns 1 when the helper failed.
+handoff_list() {
+  local errf="" line="" rc=0
+  HO_LIST=""
+  errf="$(mktemp "${TMPDIR:-/tmp}/mtk-handoff-err.XXXXXX" 2>/dev/null)" || errf=""
+  HO_LIST="$(bash "$HANDOFF_STATE" list "$@" 2>"${errf:-/dev/null}")" || rc=$?
+  if [ -n "$errf" ]; then
+    while IFS= read -r line || [ -n "$line" ]; do
+      [ -n "$line" ] && break
+    done < "$errf" || true
+    rm -f "$errf" 2>/dev/null || true
+  fi
+  if [ -n "$line" ]; then
+    printf '[mtk-hook:session-start] handoff: %s\n' "$line" >&2 || true
+  fi
+  if [ "$rc" -ne 0 ]; then
+    HO_LIST=""
+    printf '[mtk-hook:session-start] handoff filter unavailable (helper exit %s)\n' "$rc" >&2 || true
+    return 1
+  fi
+  return 0
+}
 
 # Check for in-progress specs and plans (session recovery). On compact the
 # anchored recovery block below covers the same ground, so this stays quiet.
@@ -67,6 +112,26 @@ if [ "$SS_SOURCE" != "compact" ]; then
   if [[ -f "tasks/todo.md" ]] && [[ -z "$RECOVERY_MSG" ]]; then
     if grep -q '\[ \]' tasks/todo.md 2>/dev/null; then
       RECOVERY_MSG="SESSION RECOVERY: Found incomplete tasks in tasks/todo.md. Check for in-progress work before starting something new."
+    fi
+  fi
+  # Startup only: OFFER (never claim) an open handoff written for this branch —
+  # one line appended after any recovery line, never replacing it. Accepted,
+  # expired, other-branch and legacy (branch-unknown) notes get no offer.
+  if [ "$SS_SOURCE" = "startup" ] && [ -n "$HANDOFF_STATE" ]; then
+    HO_ROOT="$(mtk_repo_root 2>/dev/null || pwd)"
+    if compgen -G "$HO_ROOT/docs/handoffs/*.md" >/dev/null 2>&1; then
+      HO_BRANCH="$(handoff_branch "$HO_ROOT")"
+      if [ -n "$HO_BRANCH" ]; then
+        handoff_list --open --branch "$HO_BRANCH" --dir "$HO_ROOT/docs/handoffs" || true
+        HO_LINE="$(awk -F'\t' -v b="$HO_BRANCH" '$2 == "open" && $3 == b { print; exit }' <<<"$HO_LIST")"
+        if [ -n "$HO_LINE" ]; then
+          HO_PATH="${HO_LINE%%$'\t'*}"
+          HO_DATE="${HO_LINE##*$'\t'}"
+          HO_SHOW="$(mtk_repo_relative_path "$HO_PATH" "$HO_ROOT" 2>/dev/null || printf '%s' "$HO_PATH")"
+          HO_OFFER="HANDOFF OFFER: open handoff for this branch at ${HO_SHOW} (${HO_DATE}) — read it if you are picking this work up."
+          RECOVERY_MSG="${RECOVERY_MSG:+${RECOVERY_MSG} }${HO_OFFER}"
+        fi
+      fi
     fi
   fi
 fi
@@ -121,48 +186,39 @@ if [ "$SS_SOURCE" = "compact" ]; then
     PC="${PC} Incomplete tasks in tasks/todo.md — check before starting new work."
   fi
 
+  # Handoff: the newest note that is open — or accepted during this session —
+  # and written for the current branch (a note with no branch — legacy, or
+  # frontmatter without `branch:` — counts only when modified < 24h). The session ledger records no start timestamp,
+  # so "accepted during this session" is approximated as accepted within the
+  # last 24 hours. Helper absent or failing ⇒ the plain newest-<24h pick.
   if [ -d "$ROOT/docs/handoffs" ]; then
-    PC_HANDOFF=$(find "$ROOT/docs/handoffs" -name '*.md' -mtime -1 2>/dev/null | awk 'NR==1' || true)
+    PC_HANDOFF=""
+    HO_OK=0
+    if [ -n "$HANDOFF_STATE" ]; then
+      HO_SINCE="$(date -u -d '-24 hours' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-24H +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || true)"
+      HO_BRANCH="$(handoff_branch "$ROOT")"
+      # Detached HEAD: a sentinel no branch-tagged note matches; legacy notes still show.
+      [ -n "$HO_BRANCH" ] || HO_BRANCH="(detached)"
+      if handoff_list --open --branch "$HO_BRANCH" ${HO_SINCE:+--include-accepted-since "$HO_SINCE"} --dir "$ROOT/docs/handoffs"; then
+        HO_OK=1
+        PC_HANDOFF="$(awk -F'\t' 'NR == 1 { print $1 }' <<<"$HO_LIST")"
+      fi
+    fi
+    if [ "$HO_OK" -eq 0 ]; then
+      PC_HANDOFF=$(find "$ROOT/docs/handoffs" -name '*.md' -mtime -1 2>/dev/null | awk 'NR==1' || true)
+    fi
     [ -n "${PC_HANDOFF:-}" ] && PC="${PC} Recent handoff: $(show "$PC_HANDOFF") — read to resume previous session state."
   fi
 
   # Active workflow artifact: at most ONE — the newest whose status is `active`
   # (never failed/complete/abandoned) and whose updated_at is within
   # MTK_WORKFLOW_REINJECT_DAYS (default 7). A finished or week-old workflow
-  # re-injected here reads as live work and restarts itself. python3 parses the
-  # JSON and the ISO timestamps (S3.3 baseline); without it no workflow is
-  # re-injected rather than a possibly stale one.
+  # re-injected here reads as live work and restarts itself. Selection lives in
+  # lib/active_workflow.py (shared with subagent-context.sh); without python3 no
+  # workflow is re-injected rather than a possibly stale one.
   WF_DIR="$ROOT/.mtk/workflows"
   if [ -d "$WF_DIR" ] && command -v python3 >/dev/null 2>&1; then
-    WF_LINE="$(python3 - "$WF_DIR" "${MTK_WORKFLOW_REINJECT_DAYS:-7}" <<'PY' 2>/dev/null || true
-import datetime, glob, json, os, sys
-wf_dir, days = sys.argv[1], float(sys.argv[2])
-now = datetime.datetime.now(datetime.timezone.utc)
-best = None
-for path in glob.glob(os.path.join(wf_dir, "*.json")):
-    try:
-        with open(path) as fh:
-            doc = json.load(fh)
-    except Exception:
-        continue
-    if not isinstance(doc, dict):
-        continue
-    if str(doc.get("status", "")).lower() != "active":
-        continue
-    try:
-        ts = datetime.datetime.strptime(str(doc.get("updated_at", "")), "%Y-%m-%dT%H:%M:%SZ")
-        ts = ts.replace(tzinfo=datetime.timezone.utc)
-    except ValueError:
-        continue
-    if (now - ts).total_seconds() > days * 86400:
-        continue
-    if best is None or ts > best[0]:
-        best = (ts, path, doc)
-if best:
-    _, path, doc = best
-    print("\t".join([path, str(doc.get("workflow_type") or "?"), str(doc.get("phase_cursor") or "?")]))
-PY
-)"
+    WF_LINE="$(python3 "$SCRIPT_DIR/lib/active_workflow.py" "$WF_DIR" "${MTK_WORKFLOW_REINJECT_DAYS:-7}" path type phase 2>/dev/null || true)"
     if [ -n "$WF_LINE" ]; then
       ACTIVE_WF="${WF_LINE%%	*}"
       WF_REST="${WF_LINE#*	}"

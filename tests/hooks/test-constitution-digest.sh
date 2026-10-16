@@ -238,4 +238,69 @@ err="$( (cd "$R" && CLAUDE_PROJECT_DIR="$R" bash "$SCRIPT" >/dev/null) 2>&1 )"
 grep -q 'MTK_RULE_ID_PATTERN' <<<"$err" || fail "zero-match hint: expected stderr hint naming MTK_RULE_ID_PATTERN, got: $err"
 ok "zero-match with a Critical Rules section emits a hint"
 
+# 7. --ids-only: Critical Rules only, `<id> <first sentence>` per line, each line
+#    <= 200 chars; no headings, principles or totals line. A dot inside a token
+#    (`.claude/manifest.json`, `C0.1`) does not end the first sentence.
+R="$(new_repo)"
+long_rule="$(printf 'word%.0s ' $(seq 1 80))"
+cat > "$R/AGENTS.md" <<MD
+# Project
+
+## Critical Rules
+
+- **C0.1** Manifest versions must match in \`.claude/manifest.json\` and plugin.json. Bump all three.
+- **C0.2**   Every   file must be listed.
+- **C0.3** ${long_rule}end.
+MD
+mkdir -p "$R/.claude/references"
+printf -- '- [EXTRACTED] principle that must not appear\n' > "$R/.claude/references/architecture-principles.md"
+out="$(cd "$R" && CLAUDE_PROJECT_DIR="$R" bash "$SCRIPT" --ids-only)"
+expected_head="$(printf '%s\n%s' \
+  'C0.1 Manifest versions must match in `.claude/manifest.json` and plugin.json.' \
+  'C0.2 Every file must be listed.')"
+[ "$(awk 'NR<=2' <<<"$out")" = "$expected_head" ] || fail "--ids-only: first two lines wrong, got: $out"
+[ "$(awk 'END { print NR }' <<<"$out")" -eq 3 ] || fail "--ids-only: expected exactly 3 lines, got: $out"
+line3="$(awk 'NR==3' <<<"$out")"
+case "$line3" in "C0.3 word word "*"...") ;; *) fail "--ids-only: long rule not capped with '...', got: $line3" ;; esac
+[ "${#line3}" -eq 200 ] || fail "--ids-only: long rule should be capped at 200 chars, got ${#line3}"
+grep -qE 'Totals|principle|^#' <<<"$out" && fail "--ids-only: headings, principles or totals leaked: $out"
+ok "--ids-only prints <id> <first sentence> per Critical Rule, capped at 200 chars"
+
+# 7b. --ids-only with a custom MTK_RULE_ID_PATTERN shape (`[RULE-7]`, not bold):
+#     the id is the bullet's first word, followed by the first sentence.
+R="$(new_repo)"
+cat > "$R/AGENTS.md" <<'MD'
+## Critical Rules
+- [RULE-7] Bracketed ids work. Second sentence is dropped.
+- [RULE-8] Another rule.
+- **C0.1** Not this scheme.
+MD
+out="$(cd "$R" && CLAUDE_PROJECT_DIR="$R" MTK_RULE_ID_PATTERN='^\s*-\s*\[RULE-[0-9]+\]' bash "$SCRIPT" --ids-only)"
+expected="$(printf '%s\n%s' '[RULE-7] Bracketed ids work.' '[RULE-8] Another rule.')"
+[ "$out" = "$expected" ] || fail "--ids-only [RULE-7]: expected '$expected', got: $out"
+ok "--ids-only with MTK_RULE_ID_PATTERN prints [RULE-7]-style <id> <first sentence> lines"
+
+# 7c. --ids-only with no matching rule exits 1 with empty stdout — even when a
+#     principles file exists (--ids-only never falls through to principles).
+R="$(new_repo)"
+cat > "$R/AGENTS.md" <<'MD'
+## Critical Rules
+- Rule (a): plain bullets with no id at all.
+MD
+mkdir -p "$R/.claude/references"
+printf -- '- [EXTRACTED] one principle\n' > "$R/.claude/references/architecture-principles.md"
+rc=0
+out="$(cd "$R" && CLAUDE_PROJECT_DIR="$R" bash "$SCRIPT" --ids-only 2>/dev/null)" || rc=$?
+[ "$rc" -eq 1 ] || fail "--ids-only no rules: expected exit 1, got $rc"
+[ -z "$out" ] || fail "--ids-only no rules: expected empty stdout, got: $out"
+ok "--ids-only with no matching rule exits 1, prints nothing"
+
+# 7d. --ids-only in a repo with no constitution file at all -> exit 1, empty.
+R="$(new_repo)"
+rc=0
+out="$(cd "$R" && CLAUDE_PROJECT_DIR="$R" bash "$SCRIPT" --ids-only 2>/dev/null)" || rc=$?
+[ "$rc" -eq 1 ] || fail "--ids-only no constitution: expected exit 1, got $rc"
+[ -z "$out" ] || fail "--ids-only no constitution: expected empty stdout, got: $out"
+ok "--ids-only with no constitution file exits 1, prints nothing"
+
 echo "test-constitution-digest: all checks passed"

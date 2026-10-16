@@ -1,0 +1,700 @@
+{
+  "slug": "october-borrows-a",
+  "date": "2026-10-14",
+  "scope": "new-feature",
+  "baseline_area": "toolkit-workflow",
+  "security_impact": "none",
+  "change_manifest": [
+    {
+      "path": "hooks/subagent-context.sh",
+      "action": "create",
+      "purpose": "SubagentStart hook: context pack path + critical-rule ids for MTK subagents",
+      "mechanical": false
+    },
+    {
+      "path": "scripts/constitution-digest.sh",
+      "action": "modify",
+      "purpose": "add --ids-only mode (rule id + first sentence, capped)",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-subagent-context.sh",
+      "action": "create",
+      "purpose": "SubagentStart hook tests (SC1)",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-constitution-digest.sh",
+      "action": "modify",
+      "purpose": "one --ids-only case",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/fixtures/subagent-start.payload.json",
+      "action": "create",
+      "purpose": "redacted real SubagentStart payload fixture",
+      "mechanical": false
+    },
+    {
+      "path": "scripts/lesson-mine-state.sh",
+      "action": "create",
+      "purpose": "mining watermark, decision ledger, stable ids, decoded-quote evidence",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-lesson-mine-state.sh",
+      "action": "create",
+      "purpose": "lesson-mine-state tests (SC2)",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/skills/lessons/SKILL.md",
+      "action": "modify",
+      "purpose": "mine steps 3-7 use the state script; refresh honours retire_when",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/references/lesson-mining-rubric.md",
+      "action": "modify",
+      "purpose": "candidate_id form, A2/A3 evidence floor, mechanical-rule route",
+      "mechanical": false
+    },
+    {
+      "path": "scripts/learnings.sh",
+      "action": "modify",
+      "purpose": "add --retire-when field",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/references/learnings-schema.md",
+      "action": "modify",
+      "purpose": "document retire_when",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-learnings.sh",
+      "action": "modify",
+      "purpose": "--retire-when round-trip case",
+      "mechanical": false
+    },
+    {
+      "path": "tests/pressure-tests/lesson-mining-rubric.md",
+      "action": "modify",
+      "purpose": "A1 single-session still proposed; A2 single-session is watching",
+      "mechanical": false
+    },
+    {
+      "path": "tests/pressure-tests/lessons.md",
+      "action": "modify",
+      "purpose": "mine mode records decisions and advances watermarks",
+      "mechanical": false
+    },
+    {
+      "path": "scripts/handoff-state.sh",
+      "action": "create",
+      "purpose": "list/accept/expire handoffs by frontmatter state and branch",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-handoff-state.sh",
+      "action": "create",
+      "purpose": "handoff-state tests (SC3)",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/skills/handoff/SKILL.md",
+      "action": "modify",
+      "purpose": "frontmatter template and accept-on-resume step",
+      "mechanical": false
+    },
+    {
+      "path": "hooks/session-start",
+      "action": "modify",
+      "purpose": "compact: branch/state-filtered handoff; startup: one HANDOFF OFFER line",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-session-start-compact-framing.sh",
+      "action": "modify",
+      "purpose": "compact filter and startup offer cases",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/rules/hooks-and-scripts.md",
+      "action": "modify",
+      "purpose": "S3.11 allows the startup offer line (B3); S3.6 hook set (B7)",
+      "mechanical": false
+    },
+    {
+      "path": "scripts/check-instruction-load.sh",
+      "action": "create",
+      "purpose": "CODEX-BYTES / SHADOWED-AGENTS / GLOBS-NOT-PATHS / LOCAL-UNIGNORED",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-check-instruction-load.sh",
+      "action": "create",
+      "purpose": "instruction-load tests (SC4)",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/skills/instructions/SKILL.md",
+      "action": "modify",
+      "purpose": "audit step 1 runs the check; step 3 adds the Move verdict",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/skills/setup-bootstrap/SKILL.md",
+      "action": "modify",
+      "purpose": "run the check after generating AGENTS.md",
+      "mechanical": false
+    },
+    {
+      "path": "hooks/lib/hook-io.sh",
+      "action": "modify",
+      "purpose": "mtk_guard_mode, mtk_deny_gated, mtk_hook_seen; fingerprint excludes .mtk/",
+      "mechanical": false
+    },
+    {
+      "path": "hooks/scope-guard.sh",
+      "action": "modify",
+      "purpose": "adopt mtk_guard_mode/mtk_deny_gated with shadow; liveness stamp (B7)",
+      "mechanical": false
+    },
+    {
+      "path": "scripts/check-guard-twins.sh",
+      "action": "create",
+      "purpose": "require deny:/allow: labelled cases per gated deny code",
+      "mechanical": false
+    },
+    {
+      "path": "scripts/validate-toolkit.sh",
+      "action": "modify",
+      "purpose": "FAIL when a gated deny code lacks a twin",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-guard-modes.sh",
+      "action": "create",
+      "purpose": "mode table, shadow log, floor unshadowable, fingerprint (SC5)",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-check-guard-twins.sh",
+      "action": "create",
+      "purpose": "twins checker tests (SC5)",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-deny-ergonomics.sh",
+      "action": "modify",
+      "purpose": "shadow case; mtk_deny unchanged",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-scope-guard-diet.sh",
+      "action": "modify",
+      "purpose": "relabel to deny:/allow:; on/TRUE/YES and shadow cases",
+      "mechanical": false
+    },
+    {
+      "path": "hooks/config-guard.sh",
+      "action": "modify",
+      "purpose": "CLASS=config|test; T1-T5 test-tamper signals in shadow by default; liveness stamp (B7)",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-config-guard.sh",
+      "action": "modify",
+      "purpose": "T-code deny/allow twins; relabel W1-W3 cases (SC6)",
+      "mechanical": false
+    },
+    {
+      "path": "hooks/hooks.json",
+      "action": "modify",
+      "purpose": "register SubagentStart -> subagent-context.sh",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-hooks-wiring.sh",
+      "action": "modify",
+      "purpose": "expected table gains SubagentStart",
+      "mechanical": false
+    },
+    {
+      "path": "hooks/security-gate.sh",
+      "action": "modify",
+      "purpose": "liveness stamp only; no pattern change (S3.18)",
+      "mechanical": false
+    },
+    {
+      "path": "hooks/format-on-edit.sh",
+      "action": "modify",
+      "purpose": "liveness stamp",
+      "mechanical": false
+    },
+    {
+      "path": "hooks/evidence-ledger.sh",
+      "action": "modify",
+      "purpose": "liveness stamp",
+      "mechanical": false
+    },
+    {
+      "path": "hooks/spec-approval-trigger.sh",
+      "action": "modify",
+      "purpose": "liveness stamp",
+      "mechanical": false
+    },
+    {
+      "path": "hooks/verify-completion",
+      "action": "modify",
+      "purpose": "liveness stamp",
+      "mechanical": false
+    },
+    {
+      "path": "hooks/workflow-continuation.sh",
+      "action": "modify",
+      "purpose": "liveness stamp",
+      "mechanical": false
+    },
+    {
+      "path": "hooks/cost-tracker.sh",
+      "action": "modify",
+      "purpose": "liveness stamp",
+      "mechanical": false
+    },
+    {
+      "path": "scripts/mtk-doctor.sh",
+      "action": "modify",
+      "purpose": "health: liveness + instruction-load WARNs; --usage: shadow counts",
+      "mechanical": false
+    },
+    {
+      "path": "tests/hooks/test-mtk-doctor-liveness.sh",
+      "action": "create",
+      "purpose": "doctor liveness/usage tests (SC7)",
+      "mechanical": false
+    },
+    {
+      "path": ".claude/references/env-knobs.md",
+      "action": "modify",
+      "purpose": "new and changed MTK_* knobs",
+      "mechanical": true
+    },
+    {
+      "path": "README.md",
+      "action": "modify",
+      "purpose": "files written, hooks run",
+      "mechanical": true
+    },
+    {
+      "path": ".claude/manifest.json",
+      "action": "modify",
+      "purpose": "entries for new files; version 9.1.0",
+      "mechanical": true
+    },
+    {
+      "path": ".claude-plugin/plugin.json",
+      "action": "modify",
+      "purpose": "version 9.1.0",
+      "mechanical": true
+    },
+    {
+      "path": ".claude-plugin/marketplace.json",
+      "action": "modify",
+      "purpose": "version 9.1.0",
+      "mechanical": true
+    },
+    {
+      "path": "CHANGELOG.md",
+      "action": "modify",
+      "purpose": "9.1.0 entry with measured hook counts",
+      "mechanical": true
+    },
+    {
+      "path": "checksums.sha256",
+      "action": "modify",
+      "purpose": "regenerated last (S4.11)",
+      "mechanical": true
+    },
+    {
+      "path": "docs/competitive-analysis-2026-10.md",
+      "action": "create",
+      "purpose": "research note behind this change",
+      "mechanical": true
+    }
+  ],
+  "public_contracts": [
+    {
+      "kind": "hook",
+      "signature": "SubagentStart -> hooks/subagent-context.sh (additionalContext, never blocks)",
+      "change": "new",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "script",
+      "signature": "scripts/lesson-mine-state.sh window|advance|id|decide|filter|evidence",
+      "change": "new",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "script",
+      "signature": "scripts/handoff-state.sh list|accept|expire",
+      "change": "new",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "script",
+      "signature": "scripts/check-instruction-load.sh [--json]",
+      "change": "new",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "script",
+      "signature": "scripts/check-guard-twins.sh",
+      "change": "new",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "script",
+      "signature": "scripts/constitution-digest.sh --ids-only",
+      "change": "modified",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "script",
+      "signature": "scripts/learnings.sh add --retire-when <condition>",
+      "change": "modified",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "function",
+      "signature": "hook-io.sh: mtk_guard_mode, mtk_deny_gated, mtk_hook_seen",
+      "change": "new",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "file-format",
+      "signature": "docs/handoffs/*.md frontmatter: state, branch, worktree, expires, accepted_at",
+      "change": "new",
+      "surface": "external"
+    },
+    {
+      "kind": "env",
+      "signature": "MTK_SUBAGENT_CONTEXT, MTK_TEST_GUARD_ENFORCE, MTK_CONFIG_GUARD_ENFORCE (plan \u00a7P1-6 adopter), MTK_SCOPE_GUARD_ENFORCE (off|advisory|shadow|active), MTK_CODEX_DOC_MAX_BYTES",
+      "change": "new",
+      "surface": "external"
+    }
+  ],
+  "success_criteria": [
+    {
+      "id": "SC1",
+      "description": "SubagentStart context for MTK agents and active workflows; silent and python-free otherwise; <= 4000 chars",
+      "verification": "bash tests/hooks/test-subagent-context.sh && bash tests/hooks/test-constitution-digest.sh",
+      "evidence_channel": "test-run",
+      "observable": "test-subagent-context.sh exits 0 with all cases PASS"
+    },
+    {
+      "id": "SC2",
+      "description": "mining watermark, decision ledger, stable ids and decoded-quote evidence",
+      "verification": "bash tests/hooks/test-lesson-mine-state.sh && bash tests/hooks/test-learnings.sh",
+      "evidence_channel": "test-run",
+      "observable": "both test scripts exit 0"
+    },
+    {
+      "id": "SC3",
+      "description": "branch/state-filtered handoff on compact and one startup offer line",
+      "verification": "bash tests/hooks/test-handoff-state.sh && bash tests/hooks/test-session-start-compact-framing.sh",
+      "evidence_channel": "test-run",
+      "observable": "both test scripts exit 0"
+    },
+    {
+      "id": "SC4",
+      "description": "instruction-load codes fire on fixtures, silent on clean twins",
+      "verification": "bash tests/hooks/test-check-instruction-load.sh",
+      "evidence_channel": "test-run",
+      "observable": "test script exits 0"
+    },
+    {
+      "id": "SC5",
+      "description": "guard modes, shadow log, mtk_deny unchanged, security-gate unshadowable, fingerprint ignores .mtk/, twins checker",
+      "verification": "bash tests/hooks/test-guard-modes.sh && bash tests/hooks/test-check-guard-twins.sh && bash tests/hooks/test-deny-ergonomics.sh && bash tests/hooks/test-scope-guard-diet.sh && bash tests/hooks/test-verify-completion-failclosed.sh",
+      "evidence_channel": "test-run",
+      "observable": "all five test scripts exit 0"
+    },
+    {
+      "id": "SC6",
+      "description": "test-tamper class detects T1-T5 in C#/Python/TS with allow twins; existing config-guard cases green",
+      "verification": "bash tests/hooks/test-config-guard.sh && bash scripts/check-guard-twins.sh",
+      "evidence_channel": "test-run",
+      "observable": "test-config-guard.sh and check-guard-twins.sh exit 0"
+    },
+    {
+      "id": "SC7",
+      "description": "wiring, doctor liveness, full regression and validator green",
+      "verification": "rc=0; bash scripts/validate-toolkit.sh || rc=1; for t in tests/hooks/test-*.sh; do bash \"$t\" >/dev/null || { echo \"FAIL $t\"; rc=1; }; done; bash scripts/run-fixtures.sh || rc=1; exit $rc",
+      "evidence_channel": "script-output",
+      "observable": "Toolkit validation passed; no FAIL lines; exit 0"
+    },
+    {
+      "id": "SC8",
+      "description": "no hook-process regression on the read path; Bash and Edit/Write counts unchanged",
+      "verification": "python3 hooks/lib/hot_path_matchers.py hooks/hooks.json && bash tests/hooks/test-hooks-wiring.sh",
+      "evidence_channel": "script-output",
+      "observable": "classifier exit 0; wiring test exit 0"
+    }
+  ],
+  "test_manifest": [
+    {
+      "path": "tests/hooks/test-subagent-context.sh",
+      "covers": [
+        "SC1"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-constitution-digest.sh",
+      "covers": [
+        "SC1"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-lesson-mine-state.sh",
+      "covers": [
+        "SC2"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-learnings.sh",
+      "covers": [
+        "SC2"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-handoff-state.sh",
+      "covers": [
+        "SC3"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-session-start-compact-framing.sh",
+      "covers": [
+        "SC3"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-check-instruction-load.sh",
+      "covers": [
+        "SC4"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-guard-modes.sh",
+      "covers": [
+        "SC5"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-check-guard-twins.sh",
+      "covers": [
+        "SC5"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-deny-ergonomics.sh",
+      "covers": [
+        "SC5"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-scope-guard-diet.sh",
+      "covers": [
+        "SC5"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-config-guard.sh",
+      "covers": [
+        "SC6"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-hooks-wiring.sh",
+      "covers": [
+        "SC7",
+        "SC8"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-mtk-doctor-liveness.sh",
+      "covers": [
+        "SC7"
+      ]
+    }
+  ],
+  "out_of_scope": [
+    "PR-B items P1-7, P1-8, P1-9 (separate spec october-borrows-b)",
+    "P2-10 .. P2-17 from the research note",
+    "index-first nudge and anchor-touch lesson surfacing (8.2 diet tension)",
+    "trace-derived review coverage via SubagentStop",
+    "extracting a shared active-workflow selector",
+    "gh-pages feature catalog (how-it-works.*)"
+  ],
+  "assumptions": [
+    "SubagentStart payload carries agent_type (documented; B1 step 0 verifies on a real payload)",
+    "Codex project-doc cap is 32768 bytes; configurable via MTK_CODEX_DOC_MAX_BYTES"
+  ],
+  "risks": [
+    "test-tamper false positives on legitimate refactors (mitigated: shadow default, allow list)",
+    "same-wave implementers share one working tree; checkpoints run only their own tests",
+    "hook-io.sh is sourced by security-gate; mtk_deny left byte-identical and superset test in regression"
+  ],
+  "delta": {
+    "adds": [
+      "SubagentStart hook",
+      "lesson-mining state store",
+      "handoff state",
+      "instruction-load check",
+      "guard modes + shadow log + liveness",
+      "test-tamper class"
+    ],
+    "modifies": [
+      "S3.11 compact recovery",
+      "S3.6 hook set",
+      "mtk_tree_fingerprint",
+      "lessons mine steps 3-7"
+    ],
+    "removes": []
+  },
+  "plan": {
+    "batches": [
+      {
+        "id": "B1",
+        "files": [
+          "hooks/subagent-context.sh",
+          "scripts/constitution-digest.sh",
+          "tests/hooks/test-subagent-context.sh",
+          "tests/hooks/test-constitution-digest.sh",
+          "tests/hooks/fixtures/subagent-start.payload.json"
+        ],
+        "acceptance": "Plan \u00a7P0-1 + B1 tests pass; real SubagentStart payload captured as fixture",
+        "verification": "bash tests/hooks/test-subagent-context.sh && bash tests/hooks/test-constitution-digest.sh",
+        "depends": [],
+        "depends_rationale": "W0: touches only its own files; reads no type another batch creates"
+      },
+      {
+        "id": "B2",
+        "files": [
+          "scripts/lesson-mine-state.sh",
+          "tests/hooks/test-lesson-mine-state.sh",
+          ".claude/skills/lessons/SKILL.md",
+          ".claude/references/lesson-mining-rubric.md",
+          "scripts/learnings.sh",
+          ".claude/references/learnings-schema.md",
+          "tests/hooks/test-learnings.sh",
+          "tests/pressure-tests/lesson-mining-rubric.md",
+          "tests/pressure-tests/lessons.md"
+        ],
+        "acceptance": "Plan \u00a7P0-2 + B2 tests pass; pressure tests updated",
+        "verification": "bash tests/hooks/test-lesson-mine-state.sh && bash tests/hooks/test-learnings.sh",
+        "depends": [],
+        "depends_rationale": "W0: touches only its own files; reads no type another batch creates"
+      },
+      {
+        "id": "B3",
+        "files": [
+          "scripts/handoff-state.sh",
+          "tests/hooks/test-handoff-state.sh",
+          ".claude/skills/handoff/SKILL.md",
+          "hooks/session-start",
+          "tests/hooks/test-session-start-compact-framing.sh",
+          ".claude/rules/hooks-and-scripts.md"
+        ],
+        "acceptance": "Plan \u00a7P0-3 + B3 tests pass; S3.11 amended",
+        "verification": "bash tests/hooks/test-handoff-state.sh && bash tests/hooks/test-session-start-compact-framing.sh",
+        "depends": [],
+        "depends_rationale": "W0: touches only its own files; reads no type another batch creates"
+      },
+      {
+        "id": "B4",
+        "files": [
+          "scripts/check-instruction-load.sh",
+          "tests/hooks/test-check-instruction-load.sh",
+          ".claude/skills/instructions/SKILL.md",
+          ".claude/skills/setup-bootstrap/SKILL.md"
+        ],
+        "acceptance": "Plan \u00a7P0-4 + B4 tests pass",
+        "verification": "bash tests/hooks/test-check-instruction-load.sh",
+        "depends": [],
+        "depends_rationale": "W0: touches only its own files; reads no type another batch creates"
+      },
+      {
+        "id": "B5",
+        "files": [
+          "hooks/lib/hook-io.sh",
+          "hooks/scope-guard.sh",
+          "scripts/check-guard-twins.sh",
+          "scripts/validate-toolkit.sh",
+          "tests/hooks/test-guard-modes.sh",
+          "tests/hooks/test-check-guard-twins.sh",
+          "tests/hooks/test-deny-ergonomics.sh",
+          "tests/hooks/test-scope-guard-diet.sh"
+        ],
+        "acceptance": "Plan \u00a7P1-6 core + B5 tests pass; mtk_deny byte-identical; security-gate unshadowable",
+        "verification": "bash tests/hooks/test-guard-modes.sh && bash tests/hooks/test-check-guard-twins.sh && bash tests/hooks/test-deny-ergonomics.sh && bash tests/hooks/test-scope-guard-diet.sh && bash tests/hooks/test-verify-completion-failclosed.sh",
+        "depends": [],
+        "depends_rationale": "W0: touches only its own files; reads no type another batch creates"
+      },
+      {
+        "id": "B6",
+        "files": [
+          "hooks/config-guard.sh",
+          "tests/hooks/test-config-guard.sh"
+        ],
+        "acceptance": "Plan \u00a7P1-5 + B6 tests pass; every T-code has an allow twin",
+        "verification": "bash tests/hooks/test-config-guard.sh && bash scripts/check-guard-twins.sh",
+        "depends": [
+          "B5"
+        ]
+      },
+      {
+        "id": "B7",
+        "files": [
+          "hooks/hooks.json",
+          "tests/hooks/test-hooks-wiring.sh",
+          "hooks/security-gate.sh",
+          "hooks/format-on-edit.sh",
+          "hooks/evidence-ledger.sh",
+          "hooks/spec-approval-trigger.sh",
+          "hooks/verify-completion",
+          "hooks/workflow-continuation.sh",
+          "hooks/cost-tracker.sh",
+          "scripts/mtk-doctor.sh",
+          "tests/hooks/test-mtk-doctor-liveness.sh",
+          ".claude/references/env-knobs.md",
+          "README.md",
+          ".claude/manifest.json",
+          ".claude-plugin/plugin.json",
+          ".claude-plugin/marketplace.json",
+          "CHANGELOG.md",
+          "checksums.sha256",
+          "docs/competitive-analysis-2026-10.md",
+          "hooks/session-start",
+          "hooks/scope-guard.sh",
+          "hooks/config-guard.sh",
+          "hooks/subagent-context.sh",
+          ".claude/rules/hooks-and-scripts.md"
+        ],
+        "acceptance": "Plan \u00a7B10-A steps 1-7; validator passes; full hook-test loop and fixtures green",
+        "verification": "rc=0; bash scripts/validate-toolkit.sh || rc=1; for t in tests/hooks/test-*.sh; do bash \"$t\" >/dev/null || { echo \"FAIL $t\"; rc=1; }; done; bash scripts/run-fixtures.sh || rc=1; exit $rc",
+        "depends": [
+          "B1",
+          "B2",
+          "B3",
+          "B4",
+          "B5",
+          "B6"
+        ]
+      }
+    ]
+  }
+}

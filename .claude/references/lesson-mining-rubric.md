@@ -80,13 +80,27 @@ The transcript shows measurable time lost (repeated retries, large rollbacks, ex
 
 ---
 
+## Evidence Floor
+
+An admit rule is only as good as the quote behind it. Every `evidence_excerpt` must pass `lesson-mine-state.sh evidence <session> "<quote>"`, which matches the quote against the **decoded** message text of that transcript. A quote that fails is a paraphrase or an invention, and the candidate is dropped.
+
+- **A1 and A4** stand on one session: one redirect with its reason, or one measurable loss. The single quote must still pass `evidence`.
+- **A2 and A3** claim recurrence or a codebase-wide constraint, so one session is an anecdote. A candidate admitted **only** by A2 or A3 needs passing quotes from **≥ 2 distinct sessions**, counted by `lesson-mine-state.sh evidence-count`. With one session it is listed as **watching**, not proposed, and each passing session is stored with `lesson-mine-state.sh watch <id> <session> "<quote>"` (once per id and session, in `.mtk/lessons/watching.jsonl`). A later sweep runs `evidence-count --id <id>`, which re-verifies every stored quote against its transcript and adds those sessions to the count; a stored session whose transcript is gone no longer counts.
+- A candidate with a recorded decision in `.mtk/lessons/decisions.md` (accepted or rejected) is never proposed again. `lesson-mine-state.sh filter` drops it.
+
+## Route Rule
+
+A candidate that is a fixed syntactic or API rule ("never call X", "always pass Y", "do not import Z from W") is a check, not a lesson. Propose it as a check: a pattern under `hooks/linter-patterns/project/`, an analyzer rule, or a CI step, with `proposed_action: check`. A check fires every time; a `tasks/lessons.md` entry fires only when someone reads it. Judgement calls (when to split a batch, which trade-off to take) stay lessons.
+
+---
+
 ## Output Contract
 
 For each surviving candidate, emit:
 
 ```json
 {
-  "candidate_id": "mine-<date>-<seq>",
+  "candidate_id": "mine-<hash12>",
   "title": "<one-line imperative>",
   "body": "<two to five sentences: what happened, why it matters, what the rule prevents>",
   "rule": "<imperative sentence: the rule to follow>",
@@ -94,11 +108,14 @@ For each surviving candidate, emit:
   "admit_rule": "A1 | A2 | A3 | A4",
   "reject_rules_checked": ["R1", "R2", "R3", "R4", "R5", "R6", "R7"],
   "evidence_excerpt": "<verbatim 1–3 lines from the transcript that triggered the admit rule>",
+  "evidence_sessions": ["<session_id whose quote passed lesson-mine-state.sh evidence>"],
   "time_cost": "<estimated minutes lost, or null>",
-  "proposed_action": "capture | promote | manual-review | code-comment"
+  "proposed_action": "capture | promote | manual-review | code-comment | check | watching"
 }
 ```
 
-`proposed_action: code-comment` is used when R3 fires but the candidate has explanatory value worth preserving at the fix site.
+`candidate_id` is `lesson-mine-state.sh id "<rule>"`: the same rule text, ignoring case and whitespace, gives the same id in every sweep, which is how the decision ledger recognises a candidate it has already ruled on.
+
+`proposed_action: code-comment` is used when R3 fires but the candidate has explanatory value worth preserving at the fix site. `check` is the Route Rule outcome. `watching` marks an A2/A3-only candidate below the two-session floor: it is shown for information, never handed to `capture`, and gets a `watch` record instead of a decision line, so the next sweep counts its session and can still propose it.
 
 All candidates are suggestions. The engineer decides what to promote.

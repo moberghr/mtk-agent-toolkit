@@ -134,7 +134,7 @@ cmd_add() {
   local title="" body="" rule="" applies_when=""
   local decision_origin=""
   local wrong_turns_csv="" time_cost="" evolution_actions=""
-  local memory_type="" supersedes=""
+  local memory_type="" supersedes="" retire_when=""
   # v7.25 optional executable lesson-contract fields (all optional, back-compat)
   local output_contract="" prefinal_checklist="" confidence="" source_evidence_refs_csv=""
   local dry_run=0
@@ -161,6 +161,8 @@ cmd_add() {
       # content-type tag + conflict-superseding (pass-through; query derives supersession)
       --memory-type) memory_type="$2"; shift 2 ;;
       --supersedes) supersedes="$2"; shift 2 ;;
+      # external retirement condition (pass-through; `lessons refresh` evaluates it)
+      --retire-when) retire_when="$2"; shift 2 ;;
       # v7.25 executable lesson-contract (pass-through; validated by mtk-doctor lint)
       --output-contract) output_contract="$2"; shift 2 ;;
       --prefinal-checklist) prefinal_checklist="$2"; shift 2 ;;
@@ -227,6 +229,9 @@ cmd_add() {
   fi
   if [ -n "$supersedes" ]; then
     extra="${extra},\"supersedes\":\"$(json_escape "$supersedes")\""
+  fi
+  if [ -n "$retire_when" ]; then
+    extra="${extra},\"retire_when\":\"$(json_escape "$retire_when")\""
   fi
 
   # v7.25 executable lesson-contract fields. output_contract / prefinal_checklist
@@ -532,6 +537,8 @@ cmd_regen_markdown() {
         printf -- '- **%s** [%s, phase=%s] %s\n' "$id" "$sev" "$ph" "$title"
         [ -n "$files" ] && printf -- '  - *Files:* `%s`\n' "$files"
         [ -n "$rule" ] && printf -- '  - *Rule:* %s\n' "$rule"
+        local retire; retire="$(jl_field "$line" retire_when)"
+        [ -n "$retire" ] && printf -- '  - *Retire when:* %s\n' "$retire"
         # v7.25 executable contract (rendered only when present — prose lessons unchanged)
         local conf evrefs parts
         conf="$(jl_field "$line" confidence)"

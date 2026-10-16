@@ -1,6 +1,6 @@
 {
-  "version": "9.0.1",
-  "updated": "2026-10-13",
+  "version": "9.2.0",
+  "updated": "2026-10-16",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -460,6 +460,12 @@
       "target": "tests/hooks/fixtures/security-gate-superset.cases",
       "action": "sync",
       "description": "Probe corpus (placeholders, no literals) for the security-gate superset test: every probe the 8.0.3 gate denies"
+    },
+    "tests/hooks/fixtures/subagent-start.payload.json": {
+      "source": "tests/hooks/fixtures/subagent-start.payload.json",
+      "target": "tests/hooks/fixtures/subagent-start.payload.json",
+      "action": "sync",
+      "description": "Sample SubagentStart hook payload (agent_type, session and transcript fields) used by the subagent-context.sh test"
     },
     "hooks/lib/narrow-permissions.txt": {
       "source": "hooks/lib/narrow-permissions.txt",
@@ -1043,6 +1049,12 @@
       "target": "hooks/config-guard.sh",
       "action": "sync",
       "description": "PreToolUse hook that hard-denies Edit/Write changes weakening a linter, analyzer or formatter config (added suppression codes, rules switched off, new ignore-file lines) unless the engineer listed the path in .mtk/config-guard-allow within 24h"
+    },
+    "hooks/subagent-context.sh": {
+      "source": "hooks/subagent-context.sh",
+      "target": "hooks/subagent-context.sh",
+      "action": "sync",
+      "description": "SubagentStart hook that hands an mtk: subagent (or any subagent while a workflow is live) the active context-pack path and the constitution's critical-rule ids as additionalContext; never blocks"
     },
     "tests/hooks/test-config-guard.sh": {
       "source": "tests/hooks/test-config-guard.sh",
@@ -1701,6 +1713,30 @@
       "action": "sync",
       "description": "Manage structured learnings (.mtk/learnings.jsonl) \u2014 add | query | regen-markdown | migrate. Drives 5-layer retrieval at start of spec/fix."
     },
+    "scripts/lesson-mine-state.sh": {
+      "source": "scripts/lesson-mine-state.sh",
+      "target": "scripts/lesson-mine-state.sh",
+      "action": "sync",
+      "description": "Deterministic state for lessons mine under .mtk/lessons/: a forward-only transcript watermark, an append-only decision ledger that filters ruled candidates, and decoded-quote evidence checks"
+    },
+    "scripts/handoff-state.sh": {
+      "source": "scripts/handoff-state.sh",
+      "target": "scripts/handoff-state.sh",
+      "action": "sync",
+      "description": "Lifecycle state for docs/handoffs/*.md notes (open, accepted, expired; branch and expiry frontmatter) \u2014 list --open is what session-start reads for recovery and the startup handoff offer"
+    },
+    "scripts/check-instruction-load.sh": {
+      "source": "scripts/check-instruction-load.sh",
+      "target": "scripts/check-instruction-load.sh",
+      "action": "sync",
+      "description": "Finds instruction files a harness silently drops, truncates or ignores: Codex byte cap, AGENTS.md shadowed by CLAUDE.md, Cursor globs: in Claude rules, CLAUDE.local.md not gitignored"
+    },
+    "scripts/check-guard-twins.sh": {
+      "source": "scripts/check-guard-twins.sh",
+      "target": "scripts/check-guard-twins.sh",
+      "action": "sync",
+      "description": "Validator check that every code a hook passes to mtk_deny_gated has both a deny: and an allow: labelled expect case in tests/hooks/test-*.sh"
+    },
     "scripts/lint-ears.sh": {
       "source": "scripts/lint-ears.sh",
       "target": "scripts/lint-ears.sh",
@@ -2082,6 +2118,114 @@
       "action": "sync",
       "description": "Reference dynamic-workflow script for the subagent-implementation per-batch loop"
     },
+    "agents/finding-verifier.md": {
+      "source": ".claude/agents/finding-verifier.md",
+      "target": ".claude/agents/finding-verifier.md",
+      "action": "sync",
+      "description": "Read-only verify stage (HIGH/MAX, after Stage 2) that re-checks one directory group of review findings against the code and records a verdict per finding; never drops a finding it cannot verify"
+    },
+    "hooks/lib/guard-mode.sh": {
+      "source": "hooks/lib/guard-mode.sh",
+      "target": "hooks/lib/guard-mode.sh",
+      "action": "sync",
+      "description": "Guard-mode helpers (off|advisory|shadow|active): mtk_guard_mode and mtk_deny_gated, sourced after hook-io.sh by the shadow-capable guards; the unshadowable mtk_deny floor stays in hook-io.sh"
+    },
+    "hooks/lib/hook_registry.py": {
+      "source": "hooks/lib/hook_registry.py",
+      "target": "hooks/lib/hook_registry.py",
+      "action": "sync",
+      "description": "The one reader of hooks/hooks.json handlers (script, args, matcher, if, timeout, async, rarity), shared by validate-toolkit, mtk-doctor and the wiring test"
+    },
+    "hooks/lib/active_workflow.py": {
+      "source": "hooks/lib/active_workflow.py",
+      "target": "hooks/lib/active_workflow.py",
+      "action": "sync",
+      "description": "Selects the one active workflow for hooks, shared by session-start and subagent-context"
+    },
+    "hooks/push-gate.sh": {
+      "source": "hooks/push-gate.sh",
+      "target": "hooks/push-gate.sh",
+      "action": "sync",
+      "description": "PreToolUse hook registered behind an `if` filter on the push command: checks the pushed range against a diff-bound review receipt; advisory by default, MTK_PUSH_GATE_ENFORCE=active blocks"
+    },
+    "scripts/review-receipt.sh": {
+      "source": "scripts/review-receipt.sh",
+      "target": "scripts/review-receipt.sh",
+      "action": "sync",
+      "description": "Diff-bound review receipts under ~/.mtk/receipts/ (0600): compute the change id of the push range, write a receipt after a PASS review, check it for the push gate"
+    },
+    "scripts/review-coverage.sh": {
+      "source": "scripts/review-coverage.sh",
+      "target": "scripts/review-coverage.sh",
+      "action": "sync",
+      "description": "Checks that a reviewer lane accounted for every changed file and disposed of every deterministic candidate; an incomplete lane cannot read as PASS"
+    },
+    "tests/hooks/test-active-workflow.sh": {
+      "source": "tests/hooks/test-active-workflow.sh",
+      "target": "tests/hooks/test-active-workflow.sh",
+      "action": "sync",
+      "description": "Test for hooks/lib/active_workflow.py: active-workflow selection and malformed or foreign workflow files"
+    },
+    "tests/hooks/test-hook-registry.sh": {
+      "source": "tests/hooks/test-hook-registry.sh",
+      "target": "tests/hooks/test-hook-registry.sh",
+      "action": "sync",
+      "description": "Test for hooks/lib/hook_registry.py: shlex splitting, shell prefix, quoted paths, if filter, rarity, error handling, importable API"
+    },
+    "tests/hooks/test-push-gate.sh": {
+      "source": "tests/hooks/test-push-gate.sh",
+      "target": "tests/hooks/test-push-gate.sh",
+      "action": "sync",
+      "description": "Hook test for push-gate.sh: push detection and non-invocations, receipt covered/uncovered, unmapped targets, guard modes and kill-switch"
+    },
+    "tests/hooks/test-review-coverage.sh": {
+      "source": "tests/hooks/test-review-coverage.sh",
+      "target": "tests/hooks/test-review-coverage.sh",
+      "action": "sync",
+      "description": "Test for scripts/review-coverage.sh: missing files, undisposed candidates, malformed lane results, exit codes"
+    },
+    "tests/hooks/test-review-input.sh": {
+      "source": "tests/hooks/test-review-input.sh",
+      "target": "tests/hooks/test-review-input.sh",
+      "action": "sync",
+      "description": "Test for the review input fingerprint, finding UIDs and stall detection on open findings in workflow-artifact.sh"
+    },
+    "tests/hooks/test-review-receipt.sh": {
+      "source": "tests/hooks/test-review-receipt.sh",
+      "target": "tests/hooks/test-review-receipt.sh",
+      "action": "sync",
+      "description": "Test for scripts/review-receipt.sh: change id, range selection, receipt write/check, permissions, tamper and staleness"
+    },
+    "tests/pressure-tests/finding-verifier.md": {
+      "source": "tests/pressure-tests/finding-verifier.md",
+      "target": "tests/pressure-tests/finding-verifier.md",
+      "action": "sync",
+      "description": "Adversarial test for the finding-verifier agent: it may remove a finding only on evidence, never to shrink the list"
+    },
+    "evals/review-incomplete-blocks/case.yaml": {
+      "source": "evals/review-incomplete-blocks/case.yaml",
+      "target": "evals/review-incomplete-blocks/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case review-incomplete-blocks: scaffold and execution settings"
+    },
+    "evals/review-incomplete-blocks/prompt.md": {
+      "source": "evals/review-incomplete-blocks/prompt.md",
+      "target": "evals/review-incomplete-blocks/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case review-incomplete-blocks: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/review-incomplete-blocks/scaffold.sh": {
+      "source": "evals/review-incomplete-blocks/scaffold.sh",
+      "target": "evals/review-incomplete-blocks/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case review-incomplete-blocks: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/review-incomplete-blocks/graders/no-pass-on-incomplete.md": {
+      "source": "evals/review-incomplete-blocks/graders/no-pass-on-incomplete.md",
+      "target": "evals/review-incomplete-blocks/graders/no-pass-on-incomplete.md",
+      "action": "sync",
+      "description": "Plugin-eval case review-incomplete-blocks: grader 'no-pass-on-incomplete'"
+    },
     "agents/context-miner.md": {
       "source": ".claude/agents/context-miner.md",
       "target": ".claude/agents/context-miner.md",
@@ -2261,6 +2405,48 @@
       "target": "tests/hooks/test-learnings.sh",
       "action": "sync",
       "description": "Regression coverage for scripts/learnings.sh defects A-E in a sandboxed throwaway git repo"
+    },
+    "tests/hooks/test-subagent-context.sh": {
+      "source": "tests/hooks/test-subagent-context.sh",
+      "target": "tests/hooks/test-subagent-context.sh",
+      "action": "sync",
+      "description": "Hook test for subagent-context.sh: context-pack path and rule ids for mtk: agents and live workflows, no output and no python spawn otherwise, and the 4,000-char cap at a rule boundary"
+    },
+    "tests/hooks/test-lesson-mine-state.sh": {
+      "source": "tests/hooks/test-lesson-mine-state.sh",
+      "target": "tests/hooks/test-lesson-mine-state.sh",
+      "action": "sync",
+      "description": "Sandboxed test for lesson-mine-state.sh: forward-only transcript watermark, decision-ledger filtering of ruled candidates, and decoded-quote evidence checks"
+    },
+    "tests/hooks/test-handoff-state.sh": {
+      "source": "tests/hooks/test-handoff-state.sh",
+      "target": "tests/hooks/test-handoff-state.sh",
+      "action": "sync",
+      "description": "Sandboxed test for handoff-state.sh: branch-scoped list --open, expired and legacy-note handling, newest-first order, and accept/expire rewriting only the state lines"
+    },
+    "tests/hooks/test-check-instruction-load.sh": {
+      "source": "tests/hooks/test-check-instruction-load.sh",
+      "target": "tests/hooks/test-check-instruction-load.sh",
+      "action": "sync",
+      "description": "Fixture-per-code test for check-instruction-load.sh (CODEX-BYTES, SHADOWED-AGENTS, GLOBS-NOT-PATHS, LOCAL-UNIGNORED), each with a clean twin that must stay silent"
+    },
+    "tests/hooks/test-guard-modes.sh": {
+      "source": "tests/hooks/test-guard-modes.sh",
+      "target": "tests/hooks/test-guard-modes.sh",
+      "action": "sync",
+      "description": "Test for the hook-io.sh guard modes: mtk_guard_mode mapping, mtk_deny_gated shadow logging, the unshadowable mtk_deny floor, .mtk/ excluded from the tree fingerprint, and liveness stamps outside the repo"
+    },
+    "tests/hooks/test-check-guard-twins.sh": {
+      "source": "tests/hooks/test-check-guard-twins.sh",
+      "target": "tests/hooks/test-check-guard-twins.sh",
+      "action": "sync",
+      "description": "Fixture-tree test for check-guard-twins.sh: every mtk_deny_gated code needs deny: and allow: expect cases; comments, near-miss and non-literal codes never count"
+    },
+    "tests/hooks/test-mtk-doctor-liveness.sh": {
+      "source": "tests/hooks/test-mtk-doctor-liveness.sh",
+      "target": "tests/hooks/test-mtk-doctor-liveness.sh",
+      "action": "sync",
+      "description": "Sandboxed test for mtk-doctor hook liveness (WARN only for a per-call hook with no stamp at >= 5 sessions, info for event-rare hooks, unknown without a stamp dir), instruction-load WARNs, and --usage shadow counts"
     },
     "tests/hooks/test-workflow-continuation.sh": {
       "source": "tests/hooks/test-workflow-continuation.sh",
