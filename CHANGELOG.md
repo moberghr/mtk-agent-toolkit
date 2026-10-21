@@ -4,6 +4,15 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Changed
+
+- `release.yml` no longer gates tagging on the `core` eval suite. The repo had no
+  `ANTHROPIC_API_KEY` secret, so every version bump since 9.0.1 failed the gate and skipped the
+  release job, leaving the slim `plugin` branch at 9.0.1. Run the suite by hand before a release
+  (`evals/README.md`).
+- The tag check re-fetches tags first, so a release published by hand right after the merge is
+  seen and the `plugin` branch is still rebuilt from it.
+
 ## [9.4.0] - 2026-10-21
 
 A workflow now keeps one canonical, current handoff note, and the next session is offered it after

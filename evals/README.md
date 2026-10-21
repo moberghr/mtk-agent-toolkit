@@ -56,7 +56,7 @@ claude plugin eval . --case router-fix --runs 1 --ablation none \
 claude plugin eval . --tag smoke --scaffold --allow-tools Bash Write Edit \
   --model claude-sonnet-5-5 --judge-model claude-haiku-5-5 --no-publish --trust-plugin
 
-# Release gate (what CI runs in .github/workflows/release.yml)
+# Pre-release run of the core suite (manual; CI does not gate on it)
 claude plugin eval . --tag core --scaffold --allow-tools Bash Write Edit \
   --model claude-sonnet-5-5 --judge-model claude-haiku-5-5 --threshold 0.8 \
   --max-cost-usd 20 --no-publish --trust-plugin --json eval-results.json
