@@ -25,16 +25,16 @@ sidecar amendment, churn check and Phase 4 stay orchestrator-side.
 5. **On return, per batch in order:**
    - Replay `ts_dispatched` / `ts_returned` onto the workflow artifact in one `"$WFA" batch`
      call (`event agent_dispatched|agent_returned --ts … --data '{"agent":"batch:B1","source":"workflow-replay"}'`), before any gate can halt.
-   - `inconclusive` or schema-invalid → respawn once with narrowed scope, then halt; build or
+   - `inconclusive` or schema-invalid → respawn with narrowed scope, then halt once the shared budget is spent; build or
      tests red → halt and report. Never count either as pass.
-   - `partial` → not a pass: respawn via `RESUME:` + `resume_note`, max 2 per batch, then halt.
+   - `partial` → not a pass: respawn via `RESUME:` + `resume_note`. `partial`, `inconclusive` and killed share one per-batch budget, `results.respawns.<batch_id>`, capped by `MTK_BATCH_MAX_RESPAWNS` (default 2); at the cap, halt.
    - A killed `agent()` (spend/rate limit, model unavailable) is not `inconclusive`: run the
      manual path's killed-mid-batch recovery, record `results.dispatch_incidents[]` first, and
      re-run only unstarted later waves on the fallback tier.
    - Drift micro-check once per wave (union of `actual_files` ⊆ union of `batch.files`, contracts
      ⊆ planned); attribute any extra file to its batch before deciding amend vs re-open Phase 2.5.
    - Persist to `sidecar.implement.completed_batches[]`, tick `tasks/todo.md`, record progress on
-     the same call; run the churn check (600/1000 at HIGH/MAX).
+     the same call, and checkpoint after each persisted batch (`-- checkpoint --next … --verify …` as the call's last op); run the churn check (600/1000 at HIGH/MAX).
 6. Aggregate the `behavioral_diff`, emit `phase_exit_gate`, hand back to Phase 3.5 → 4.
 
 If `Workflow` errors, is denied, or disappears mid-run, finish the remaining batches on the

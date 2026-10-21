@@ -5,8 +5,9 @@ set -euo pipefail
 # under .mtk/sessions/<session>/compact-<stamp>.md. Covers: archive with
 # frontmatter + body + mode 0600, the workflow field, every no-write case
 # (kill switch, empty summary, malformed JSON, un-ignored .mtk), empty stdout +
-# exit 0 always, the 14-day prune, and the liveness stamp. Failures exit 1
-# immediately (no subshell counters).
+# exit 0 always, the 14-day prune, the shared hooks/lib/session_store.py CLI
+# (prune, dir, ignored) and the liveness stamp. Failures exit 1 immediately (no
+# subshell counters).
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -144,6 +145,25 @@ ln -s "$P6T" "$P6/.mtk/sessions"
 run "$P6" "$PAYLOAD"
 [ -d "$P6T/old-sess" ] || fail "prune must not follow a symlinked .mtk/sessions (target subdir deleted)"
 pass "prune ignores a symlinked .mtk/sessions"
+
+# --- 6b. the shared store directly (hooks/lib/session_store.py) -------------------
+STORE="$REPO_ROOT/hooks/lib/session_store.py"
+P7="$WORK/p7"; P7T="$WORK/p7-target"; mkdir -p "$P7/.mtk/sessions/old-a" "$P7/.mtk/sessions/fresh" "$P7T/old-linked"
+touch -t 202001010000 "$P7/.mtk/sessions/old-a" "$P7T/old-linked"
+ln -s "$P7T/old-linked" "$P7/.mtk/sessions/old-link"            # symlinked child: never touched
+: > "$P7/.mtk/sessions/old-file"; touch -t 202001010000 "$P7/.mtk/sessions/old-file"   # not a dir
+n="$(PYTHONDONTWRITEBYTECODE=1 python3 "$STORE" prune "$P7")" || fail "session_store prune exited non-zero"
+[ "$n" = "1" ] || fail "session_store prune must report 1 removed dir, got: $n"
+[ ! -e "$P7/.mtk/sessions/old-a" ] || fail "session_store prune must remove an old session dir"
+[ -d "$P7/.mtk/sessions/fresh" ] && [ -L "$P7/.mtk/sessions/old-link" ] && [ -d "$P7T/old-linked" ] \
+  && [ -f "$P7/.mtk/sessions/old-file" ] || fail "session_store prune must keep fresh dirs, symlinked children and files"
+[ "$(python3 "$STORE" dir "$P7" 'a/../b c')" = "$P7/.mtk/sessions/a_.._b_c" ] || fail "session_store dir must sanitise the id"
+rc=0; python3 "$STORE" dir "$P7" '..' >/dev/null || rc=$?
+[ "$rc" -eq 1 ] || fail "session_store dir must reject a dot-leading id (exit 1), got $rc"
+rc=0; python3 "$STORE" ignored "$P" || rc=$?;  [ "$rc" -eq 0 ] || fail "ignored: a repo that ignores .mtk/ must exit 0, got $rc"
+rc=0; python3 "$STORE" ignored "$P3" || rc=$?; [ "$rc" -eq 3 ] || fail "ignored: a repo that does not ignore .mtk/ must exit 3, got $rc"
+rc=0; python3 "$STORE" ignored "$P4" || rc=$?; [ "$rc" -eq 0 ] || fail "ignored: a non-git project must exit 0, got $rc"
+pass "session_store: prune (real old dirs only), dir sanitising, ignored exit codes"
 
 # --- 7. liveness stamp ----------------------------------------------------------
 SEEN_DIR="$(CLAUDE_PROJECT_DIR="$P" bash -c 'source "$1"; mtk_hook_seen_dir' _ "$REPO_ROOT/hooks/lib/hook-io.sh")" \

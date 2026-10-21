@@ -423,6 +423,46 @@ else
   FAILS+=("(k) expected CLAUDE.md fresh->stale naming agents-only-lib when the AGENTS.md-only dependency is removed, got '$status_k_present' -> '$status_k_removed' / '$reason_k_removed'")
 fi
 
+# --- (l) row 8 counts baseline rules and settings separately -----------------
+echo ""; echo "--- (l) permissions-baseline reason separates rules from settings ---"
+cp .claude/settings.json "$TMPDIR_FIXTURE/settings.full.json"
+mutate_settings() { # $1 = drop-rule | drop-setting | drop-both
+  python3 - "$1" <<'PY'
+import json, sys
+mode = sys.argv[1]
+p = ".claude/settings.json"
+d = json.load(open(p))
+if mode in ("drop-rule", "drop-both"):
+    d["permissions"]["deny"] = d["permissions"]["deny"][1:]
+if mode in ("drop-setting", "drop-both"):
+    d.pop("autoCompactWindow", None)
+json.dump(d, open(p, "w"), indent=2)
+PY
+}
+for mode in drop-rule drop-setting drop-both; do
+  cp "$TMPDIR_FIXTURE/settings.full.json" .claude/settings.json
+  mutate_settings "$mode"
+  st="$(row_field permissions-baseline status)"
+  rs="$(row_field permissions-baseline reason)"
+  case "$mode" in
+    drop-rule)    want='^1 baseline deny/ask rule\(s\) missing from' ;;
+    drop-setting) want='^1 baseline setting\(s\) missing from' ;;
+    drop-both)    want='^1 baseline deny/ask rule\(s\) and 1 baseline setting\(s\) missing from' ;;
+  esac
+  if [ "$st" = "stale" ] && grep -qE "$want" <<<"$rs"; then
+    echo "  PASS  $mode: stale / $rs"
+  else
+    FAILS+=("(l) $mode: expected stale matching $want, got '$st' / '$rs'")
+  fi
+done
+cp "$TMPDIR_FIXTURE/settings.full.json" .claude/settings.json
+rs="$(row_field permissions-baseline reason)"
+if [ "$(row_field permissions-baseline status)" = "fresh" ] && grep -q 'rule and setting' <<<"$rs"; then
+  echo "  PASS  restored settings: fresh covering rules and settings"
+else
+  FAILS+=("(l) restored settings: expected fresh 'rule and setting' reason, got '$rs'")
+fi
+
 echo ""
 if [ ${#FAILS[@]} -gt 0 ]; then
   printf '  FAIL  %s\n' "${FAILS[@]}" >&2

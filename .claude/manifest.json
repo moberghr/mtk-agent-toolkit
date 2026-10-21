@@ -1,6 +1,6 @@
 {
-  "version": "9.3.0",
-  "updated": "2026-10-20",
+  "version": "9.4.0",
+  "updated": "2026-10-21",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -118,6 +118,12 @@
       "target": "tests/hooks/test-session-start-compact-workflows.sh",
       "action": "sync",
       "description": "Verifies session-start's compact branch re-injects only the newest active workflow updated within 7 days"
+    },
+    "tests/hooks/test-session-start-resume.sh": {
+      "source": "tests/hooks/test-session-start-resume.sh",
+      "target": "tests/hooks/test-session-start-resume.sh",
+      "action": "sync",
+      "description": "Verifies session-start appends one read-only RESUME segment after the HANDOFF OFFER for an active checkpointed workflow"
     },
     "tests/hooks/test-session-start-compact-framing.sh": {
       "source": "tests/hooks/test-session-start-compact-framing.sh",
@@ -520,6 +526,12 @@
       "target": "tests/hooks/test-workflow-artifact-prune.sh",
       "action": "sync",
       "description": "Verifies workflow-artifact.sh prune applies the --older-than cutoff to every status, rejects a cutoff below 1 day without --force, reports pruned uuids and never touches a recent workflow"
+    },
+    "tests/hooks/test-workflow-artifact-checkpoint.sh": {
+      "source": "tests/hooks/test-workflow-artifact-checkpoint.sh",
+      "target": "tests/hooks/test-workflow-artifact-checkpoint.sh",
+      "action": "sync",
+      "description": "Verifies workflow-artifact.sh checkpoint/resume in throwaway repos with a stub gh: note frontmatter and sections, in-place rewrite, done-unit validator (exit 3, nothing written, out-of-order batches), snapshot ref that leaves HEAD/index/status untouched, self-ignoring notes, resume drift, init TASK and checkpoint as the last batch op"
     },
     "tests/hooks/test-verify-completion-tree.sh": {
       "source": "tests/hooks/test-verify-completion-tree.sh",
@@ -1055,6 +1067,12 @@
       "target": "hooks/compact-archive.sh",
       "action": "sync",
       "description": "PostCompact hook that archives the compaction summary to .mtk/sessions/<session>/compact-<stamp>.md (git-ignored .mtk only, mode 0600, 14-day prune) for the session-start COMPACTION OFFER; never prints, never blocks"
+    },
+    "hooks/context-guard.sh": {
+      "source": "hooks/context-guard.sh",
+      "target": "hooks/context-guard.sh",
+      "action": "sync",
+      "description": "PostToolUse context guard (Edit|Write|Bash): reads the main-thread context size from the transcript tail, writes .mtk/sessions/<session>/telemetry.json (git-ignored .mtk only, mode 0600), nudges once per workflow step at MTK_CTX_SOFT/MTK_CTX_HARD to checkpoint and /clear, and once per 150k band from MTK_CTX_GENERIC without a workflow; python-free throttle, never blocks"
     },
     "hooks/subagent-context.sh": {
       "source": "hooks/subagent-context.sh",
@@ -1701,6 +1719,12 @@
       "action": "sync",
       "description": "Helper for init/event/set/read/list/gate/seal operations against .mtk/workflows/{uuid}.json; batch applies several ops in one invocation and event --ts replays runtime-captured timestamps"
     },
+    "scripts/workflow-checkpoint.py": {
+      "source": "scripts/workflow-checkpoint.py",
+      "target": "scripts/workflow-checkpoint.py",
+      "action": "sync",
+      "description": "Logic behind workflow-artifact.sh checkpoint and resume: re-renders the one canonical docs/handoffs/<slug>.md note from the workflow artifact, refuses a Resume step naming a done unit (exit 3), self-ignores the notes, snapshots the tree into refs/mtk/checkpoints/<uuid> through a temporary index, and prints the read-only RESUME drift block"
+    },
     "scripts/workflow-dashboard.sh": {
       "source": "scripts/workflow-dashboard.sh",
       "target": "scripts/workflow-dashboard.sh",
@@ -2148,6 +2172,12 @@
       "action": "sync",
       "description": "Selects the one active workflow for hooks, shared by session-start and subagent-context"
     },
+    "hooks/lib/session_store.py": {
+      "source": "hooks/lib/session_store.py",
+      "target": "hooks/lib/session_store.py",
+      "action": "sync",
+      "description": "Shared .mtk/sessions helpers for compact-archive, session-start and context-guard: the .mtk ignore check, session-dir sanitising, newest same-branch compaction archive, 14-day prune and the atomic 0600 telemetry write (importable and a CLI)"
+    },
     "hooks/push-gate.sh": {
       "source": "hooks/push-gate.sh",
       "target": "hooks/push-gate.sh",
@@ -2416,7 +2446,13 @@
       "source": "tests/hooks/test-compact-archive.sh",
       "target": "tests/hooks/test-compact-archive.sh",
       "action": "sync",
-      "description": "Hook test for compact-archive.sh: archive file with frontmatter and mode 0600, workflow field, no write for kill switch / empty summary / malformed JSON / un-ignored .mtk, empty stdout, 14-day prune and liveness stamp"
+      "description": "Hook test for compact-archive.sh: archive file with frontmatter and mode 0600, workflow field, no write for kill switch / empty summary / malformed JSON / un-ignored .mtk, empty stdout, 14-day prune, the shared session_store CLI and liveness stamp"
+    },
+    "tests/hooks/test-context-guard.sh": {
+      "source": "tests/hooks/test-context-guard.sh",
+      "target": "tests/hooks/test-context-guard.sh",
+      "action": "sync",
+      "description": "Hook test for context-guard.sh: telemetry fields and mode 0600, soft/hard nudges once per workflow step, generic nudge per 150k band, sidechain lines ignored, compaction-window precedence, kill switch, python-free throttle, un-ignored .mtk, malformed input and liveness stamp"
     },
     "tests/hooks/test-subagent-context.sh": {
       "source": "tests/hooks/test-subagent-context.sh",

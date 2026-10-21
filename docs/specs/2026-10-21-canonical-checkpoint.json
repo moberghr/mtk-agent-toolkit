@@ -1,0 +1,734 @@
+{
+  "slug": "canonical-checkpoint",
+  "date": "2026-10-21",
+  "scope": "new-feature",
+  "security_impact": "none",
+  "change_manifest": [
+    {
+      "path": "scripts/workflow-artifact.sh",
+      "action": "modify",
+      "purpose": "R1.1/R1.4/R1.8 checkpoint + resume subcommands (delegating to workflow-checkpoint.py), TASK type, checkpoint batchable, prune deletes refs/mtk/checkpoints/<uuid>, usage header"
+    },
+    {
+      "path": "scripts/workflow-checkpoint.py",
+      "action": "create",
+      "purpose": "R1.1-R1.5 note render, frontmatter, validator, self-ignore, snapshot ref, resume drift block"
+    },
+    {
+      "path": "tests/hooks/test-workflow-artifact-checkpoint.sh",
+      "action": "create",
+      "purpose": "SC1-SC6 in throwaway git repos with a stub gh on PATH"
+    },
+    {
+      "path": "scripts/handoff-state.sh",
+      "action": "modify",
+      "purpose": "R1.6 closed state, field <file> <key>"
+    },
+    {
+      "path": "hooks/session-start",
+      "action": "modify",
+      "purpose": "R1.7 RESUME block after a workflow-bearing HANDOFF OFFER on startup|clear; F1/F3 compaction-offer lookup and startup prune via hooks/lib/session_store.py"
+    },
+    {
+      "path": "tests/hooks/test-handoff-state.sh",
+      "action": "modify",
+      "purpose": "SC7 closed + field"
+    },
+    {
+      "path": "tests/hooks/test-session-start-resume.sh",
+      "action": "create",
+      "purpose": "SC8 resume block on startup/clear, none on compact, none without workflow key"
+    },
+    {
+      "path": ".claude/skills/handoff/SKILL.md",
+      "action": "modify",
+      "purpose": "R1.9 thin wrapper over checkpoint/resume; TASK workflow when none active; resume intent never writes a note"
+    },
+    {
+      "path": ".claude/skills/mtk/SKILL.md",
+      "action": "modify",
+      "purpose": "R1.9 handoff route gains resume / pick up"
+    },
+    {
+      "path": ".claude/skills/incremental-implementation/SKILL.md",
+      "action": "modify",
+      "purpose": "R1.2 checkpoint rides on the step-7 batch-close call"
+    },
+    {
+      "path": ".claude/skills/subagent-implementation/SKILL.md",
+      "action": "modify",
+      "purpose": "R1.2 checkpoint rides on step-6 persist; F2 one respawn cap per batch (MTK_BATCH_MAX_RESPAWNS); checkpoint must be the last batch op, exit 3 -> fix --next and re-run alone"
+    },
+    {
+      "path": ".claude/references/subagent-dynamic-workflow.md",
+      "action": "modify",
+      "purpose": "F2 respawn cap wording; R1.2 checkpoint after each batch"
+    },
+    {
+      "path": ".claude/references/subagent-implementer-prompt.md",
+      "action": "modify",
+      "purpose": "F2 partial/inconclusive respawn statements name the shared per-batch cap"
+    },
+    {
+      "path": ".claude/skills/workflow-artifacts/SKILL.md",
+      "action": "modify",
+      "purpose": "R1 checkpoint/resume/TASK in the workflow section (no new When To Use bullets)"
+    },
+    {
+      "path": ".claude/references/workflow-artifact-schema.md",
+      "action": "modify",
+      "purpose": "R1 results.checkpoint*, decisions, next_notes, needs_user, next_command, last_verify, wait_until, respawns; TASK type; snapshot ref; checkpoint_written event"
+    },
+    {
+      "path": ".claude/references/env-knobs.md",
+      "action": "modify",
+      "purpose": "MTK_CHECKPOINT_SNAPSHOT, MTK_CHECKPOINT_MAX_FILE_MB, MTK_BATCH_MAX_RESPAWNS (B3); MTK_CONTEXT_GUARD, MTK_CTX_SOFT, MTK_CTX_HARD, MTK_CTX_GENERIC, MTK_CTX_GUARD_INTERVAL (B4)"
+    },
+    {
+      "path": "tests/pressure-tests/subagent-implementation-pressure.md",
+      "action": "modify",
+      "purpose": "F2 shared respawn cap scenario"
+    },
+    {
+      "path": "hooks/context-guard.sh",
+      "action": "create",
+      "purpose": "R2.1-R2.3 PostToolUse context guard, telemetry, nudges"
+    },
+    {
+      "path": "hooks/lib/session_store.py",
+      "action": "create",
+      "purpose": "F1/F3 shared .mtk/sessions helpers: ignore check, session dir, newest compaction archive, prune, telemetry write"
+    },
+    {
+      "path": "hooks/hooks.json",
+      "action": "modify",
+      "purpose": "R2.1 register context-guard.sh on PostToolUse Edit|Write|Bash"
+    },
+    {
+      "path": "hooks/compact-archive.sh",
+      "action": "modify",
+      "purpose": "F1/F3 use session_store for ignore check, session dir and prune"
+    },
+    {
+      "path": "tests/hooks/test-context-guard.sh",
+      "action": "create",
+      "purpose": "SC9"
+    },
+    {
+      "path": "tests/hooks/test-compact-archive.sh",
+      "action": "modify",
+      "purpose": "SC11 prune through the shared lib"
+    },
+    {
+      "path": "tests/hooks/test-hooks-wiring.sh",
+      "action": "modify",
+      "purpose": "SC10 expected table gains context-guard.sh"
+    },
+    {
+      "path": "tests/hooks/test-hook-registry.sh",
+      "action": "modify",
+      "purpose": "SC10 real-registry list gains context-guard.sh"
+    },
+    {
+      "path": "scripts/setup-refresh-plan.sh",
+      "action": "modify",
+      "purpose": "F4 row-8 reason counts rules and settings separately"
+    },
+    {
+      "path": "tests/hooks/test-setup-refresh-plan.sh",
+      "action": "modify",
+      "purpose": "SC13 row-8 wording"
+    },
+    {
+      "path": "scripts/validate-handoff.sh",
+      "action": "modify",
+      "purpose": "F5 auth no longer matches author/authoring"
+    },
+    {
+      "path": "tests/hooks/test-validate-handoff-derived.sh",
+      "action": "modify",
+      "purpose": "SC13 regex cases"
+    },
+    {
+      "path": ".claude/manifest.json",
+      "action": "modify",
+      "purpose": "files entries for new paths, added by the batch that creates each file (B1, B2, B4); 9.4.0 version bump in B6"
+    },
+    {
+      "path": ".claude-plugin/plugin.json",
+      "action": "modify",
+      "purpose": "9.4.0"
+    },
+    {
+      "path": ".claude-plugin/marketplace.json",
+      "action": "modify",
+      "purpose": "9.4.0"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "action": "modify",
+      "purpose": "9.4.0 entry with hook-process table; rationale for re-introducing context nudges (tied to the checkpoint, before the compaction window)"
+    },
+    {
+      "path": "README.md",
+      "action": "modify",
+      "purpose": "checkpoint/resume and context guard in the feature list"
+    },
+    {
+      "path": ".claude/rules/hooks-and-scripts.md",
+      "action": "modify",
+      "purpose": "S3.6 registered set gains context-guard.sh and lib list gains session_store.py; S3.11 RESUME segment on startup|clear"
+    },
+    {
+      "path": "docs/agent-routing-guide.md",
+      "action": "modify",
+      "purpose": "handoff route covers resume"
+    },
+    {
+      "path": "checksums.sha256",
+      "action": "modify",
+      "purpose": "regenerated last (S4.11)"
+    }
+  ],
+  "public_contracts": [
+    {
+      "kind": "cli-flag",
+      "signature": "workflow-artifact.sh checkpoint <uuid> [--next T] [--decision T]... [--needs-user 'Q | default: D']... [--no-needs-user] [--next-command C] [--verify 'C => R'] [--wait-until ISO] [--close] [--offline] [--no-snapshot]; exit 0/1/3; batchable",
+      "change": "new",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "cli-flag",
+      "signature": "workflow-artifact.sh resume <uuid> [--offline]",
+      "change": "new",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "cli-flag",
+      "signature": "workflow-artifact.sh init TASK",
+      "change": "modified",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "cli-flag",
+      "signature": "handoff-state.sh field <file> <key>; state 'closed'",
+      "change": "modified",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "schema",
+      "signature": "handoff note frontmatter: + workflow, sha, pushed, ahead, behind, next_command, needs_user, wait_until, updated; state closed",
+      "change": "modified",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "schema",
+      "signature": ".mtk/sessions/<sid>/telemetry.json {session_id, context_tokens, window, pct, model, workflow, ts} (read by PR-3)",
+      "change": "new",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "schema",
+      "signature": "git ref refs/mtk/checkpoints/<uuid> (local only)",
+      "change": "new",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "event",
+      "signature": "PostToolUse Edit|Write|Bash -> hooks/context-guard.sh (additionalContext nudges)",
+      "change": "new",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "event",
+      "signature": "SessionStart startup|clear: RESUME block after a workflow-bearing HANDOFF OFFER",
+      "change": "modified",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "cli-flag",
+      "signature": "env MTK_CHECKPOINT_SNAPSHOT, MTK_CHECKPOINT_MAX_FILE_MB, MTK_BATCH_MAX_RESPAWNS, MTK_CONTEXT_GUARD, MTK_CTX_SOFT, MTK_CTX_HARD, MTK_CTX_GENERIC, MTK_CTX_GUARD_INTERVAL",
+      "change": "new",
+      "surface": "internal-tooling"
+    }
+  ],
+  "success_criteria": [
+    {
+      "id": "SC1",
+      "description": "checkpoint writes docs/handoffs/<slug>.md with all R1.1 frontmatter keys and script/model sections; a second checkpoint rewrites the same file; results.checkpoint and results.checkpoint_path recorded",
+      "verification": "bash tests/hooks/test-workflow-artifact-checkpoint.sh",
+      "evidence_channel": "test-run",
+      "observable": "test-workflow-artifact-checkpoint.sh exits 0"
+    },
+    {
+      "id": "SC2",
+      "description": "--next or --next-command naming a done unit exits 3 and leaves the note byte-identical",
+      "verification": "bash tests/hooks/test-workflow-artifact-checkpoint.sh",
+      "evidence_channel": "test-run",
+      "observable": "test-workflow-artifact-checkpoint.sh exits 0"
+    },
+    {
+      "id": "SC3",
+      "description": "refs/mtk/checkpoints/<uuid> holds tracked edits and untracked non-ignored files, excludes ignored and >5MB files; git status, HEAD and the real index unchanged; unchanged tree does not move the ref; prune deletes the ref",
+      "verification": "bash tests/hooks/test-workflow-artifact-checkpoint.sh",
+      "evidence_channel": "test-run",
+      "observable": "test-workflow-artifact-checkpoint.sh exits 0"
+    },
+    {
+      "id": "SC4",
+      "description": "first write in a repo with un-ignored, untracked docs/handoffs creates docs/handoffs/.gitignore '*' and git status shows nothing under docs/handoffs; tracked notes -> note written plus one stderr warning",
+      "verification": "bash tests/hooks/test-workflow-artifact-checkpoint.sh",
+      "evidence_channel": "test-run",
+      "observable": "test-workflow-artifact-checkpoint.sh exits 0"
+    },
+    {
+      "id": "SC5",
+      "description": "resume prints drift lines for sha moved, branch gone, worktree gone, wrong branch, PR merged (stub gh), else 'none', then next_command; --offline never invokes gh",
+      "verification": "bash tests/hooks/test-workflow-artifact-checkpoint.sh",
+      "evidence_channel": "test-run",
+      "observable": "test-workflow-artifact-checkpoint.sh exits 0"
+    },
+    {
+      "id": "SC6",
+      "description": "init TASK succeeds; 'batch <uuid> set k=v -- checkpoint --next x' applies both ops; a checkpoint rejected inside a batch exits 3 with earlier ops applied",
+      "verification": "bash tests/hooks/test-workflow-artifact-checkpoint.sh",
+      "evidence_channel": "test-run",
+      "observable": "test-workflow-artifact-checkpoint.sh exits 0"
+    },
+    {
+      "id": "SC7",
+      "description": "handoff-state accepts state closed and list --open drops it; field prints a frontmatter value, exit 1 when absent",
+      "verification": "bash tests/hooks/test-handoff-state.sh",
+      "evidence_channel": "test-run",
+      "observable": "test-handoff-state.sh exits 0"
+    },
+    {
+      "id": "SC8",
+      "description": "startup and clear with an offered workflow-bearing note append a RESUME block of <=6 lines after HANDOFF OFFER; compact unchanged; note without workflow key unchanged; inactive workflow -> no block",
+      "verification": "bash tests/hooks/test-session-start-resume.sh",
+      "evidence_channel": "test-run",
+      "observable": "test-session-start-resume.sh exits 0"
+    },
+    {
+      "id": "SC9",
+      "description": "context-guard: below soft silent + telemetry.json written; soft fires once per workflow step; hard fires once; generic fires once per 150k band from 300k without a workflow; sidechain usage ignored; MTK_CONTEXT_GUARD=0 silent; throttle suppresses a second parse within the interval; .mtk not ignored -> no telemetry, nudge still emitted; exit 0 on malformed input",
+      "verification": "bash tests/hooks/test-context-guard.sh",
+      "evidence_channel": "test-run",
+      "observable": "test-context-guard.sh exits 0"
+    },
+    {
+      "id": "SC10",
+      "description": "hooks.json registers context-guard.sh under PostToolUse Edit|Write|Bash; wiring and registry tests pass; hot-path classifier clean",
+      "verification": "bash tests/hooks/test-hooks-wiring.sh",
+      "evidence_channel": "test-run",
+      "observable": "test-hooks-wiring.sh exits 0"
+    },
+    {
+      "id": "SC11",
+      "description": "compact-archive, session-start and context-guard use hooks/lib/session_store.py; session dirs older than 14 days pruned on startup",
+      "verification": "bash tests/hooks/test-compact-archive.sh && bash tests/hooks/test-session-start-resume.sh",
+      "evidence_channel": "test-run",
+      "observable": "both exit 0; startup prune asserted in test-session-start-resume.sh"
+    },
+    {
+      "id": "SC12",
+      "description": "handoff skill wraps checkpoint/resume; implementation skills ride checkpoint on batch close; one respawn cap per batch across partial/inconclusive/killed; validate-toolkit passes",
+      "verification": "bash scripts/validate-toolkit.sh && bash scripts/run-fixtures.sh && grep -q MTK_BATCH_MAX_RESPAWNS .claude/skills/subagent-implementation/SKILL.md && grep -q MTK_BATCH_MAX_RESPAWNS .claude/references/subagent-dynamic-workflow.md && grep -q MTK_BATCH_MAX_RESPAWNS .claude/references/subagent-implementer-prompt.md && grep -q 'checkpoint' .claude/skills/incremental-implementation/SKILL.md && grep -q 'resume' .claude/skills/handoff/SKILL.md && grep -q MTK_BATCH_MAX_RESPAWNS .claude/references/env-knobs.md",
+      "evidence_channel": "script-output",
+      "observable": "validator passes, fixtures pass, every grep matches"
+    },
+    {
+      "id": "SC13",
+      "description": "row-8 reason names rules and settings separately; validate-handoff no longer flags skill-authoring.md but flags auth/, AuthService.cs, oauth, authorization",
+      "verification": "bash tests/hooks/test-setup-refresh-plan.sh && bash tests/hooks/test-validate-handoff-derived.sh",
+      "evidence_channel": "test-run",
+      "observable": "both exit 0"
+    },
+    {
+      "id": "SC14",
+      "description": "versions 9.4.0 in all three manifests; CHANGELOG entry; every new file in manifest.json; checksums verify; validate-toolkit passes; full hook suite and fixtures green",
+      "verification": "bash scripts/validate-toolkit.sh && bash scripts/run-fixtures.sh && bash scripts/generate-checksums.sh --verify && for t in tests/hooks/test-*.sh; do bash \"$t\" || echo FAIL $t; done",
+      "evidence_channel": "test-run",
+      "observable": "validator passes, 0 checksum mismatches, no FAIL lines"
+    }
+  ],
+  "test_manifest": [
+    {
+      "path": "tests/hooks/test-workflow-artifact-checkpoint.sh",
+      "covers": [
+        "SC1",
+        "SC2",
+        "SC3",
+        "SC4",
+        "SC5",
+        "SC6"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-handoff-state.sh",
+      "covers": [
+        "SC7"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-session-start-resume.sh",
+      "covers": [
+        "SC8",
+        "SC11"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-context-guard.sh",
+      "covers": [
+        "SC9"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-hooks-wiring.sh",
+      "covers": [
+        "SC10"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-compact-archive.sh",
+      "covers": [
+        "SC11"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-setup-refresh-plan.sh",
+      "covers": [
+        "SC13"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-validate-handoff-derived.sh",
+      "covers": [
+        "SC13"
+      ]
+    }
+  ],
+  "out_of_scope": [
+    "R3 relay runner and gate authorizations (PR-4)",
+    "R4 PROGRAM workflows (PR-5)",
+    "R5 dashboard: step/question/deliverable, renderer, FIX workflow in batch-fix, TASK rule in context-engineering (PR-3)",
+    "UserPromptSubmit hook",
+    "limit-message parsing into wait_until",
+    "removing the engineer's personal ~/.claude/hooks/context-guard.py",
+    "push or PR creation",
+    "AGENTS.md edits"
+  ],
+  "assumptions": [
+    "PostToolUse payload carries session_id and transcript_path; hookSpecificOutput.additionalContext on PostToolUse reaches the model",
+    "transcript assistant lines carry message.usage and isSidechain (personal context-guard.py relies on it daily)",
+    "gh optional; every gh path degrades to 'not checked'",
+    "[NOT PROVED] live PostToolUse additionalContext round-trip on the installed CLI"
+  ],
+  "risks": [
+    "snapshot objects in .git: >5MB untracked skipped; superseded snapshots unreachable and gc'd; tests use throwaway repos",
+    "per-call cost: +1 bash process per Edit/Write/Bash, python parse <=1 per 20s",
+    "gh latency at batch close: 8s timeout, --offline; session-start never calls gh",
+    "self-ignoring docs/handoffs/.gitignore is a new file in target repos (invisible to git)",
+    "shared working tree: only B1 and B5 run concurrently, file-disjoint",
+    "test-mtk-doctor-liveness.sh takes 5+ min: run in background",
+    "AGENTS.md at 120-line cap: untouched",
+    "new hook needs wiring-table and registry-list edits; liveness test derives from hooks.json",
+    "validate-toolkit fails on unlisted files: each creating batch adds its manifest.json entry",
+    "nudges reverse a 9.x removal: CHANGELOG states why (checkpoint-tied, before the compaction window); evidence-ledger stays silent",
+    "ignored note is lost with a deleted worktree: snapshot commit message carries frontmatter + Next"
+  ],
+  "plan": {
+    "batches": [
+      {
+        "id": "B1",
+        "title": "Checkpoint core",
+        "files": [
+          "scripts/workflow-artifact.sh",
+          "scripts/workflow-checkpoint.py",
+          "tests/hooks/test-workflow-artifact-checkpoint.sh",
+          ".claude/manifest.json"
+        ],
+        "acceptance": "SC1-SC6",
+        "verification": "bash tests/hooks/test-workflow-artifact-checkpoint.sh && bash tests/hooks/test-workflow-artifact-prune.sh && bash tests/hooks/test-workflow-artifact-trap.sh && bash tests/hooks/test-workflow-artifact-criteria-seal.sh && bash scripts/validate-toolkit.sh",
+        "boundary": "existing subcommands keep their output and exit codes; branch, HEAD, real index and worktree are never modified by a snapshot",
+        "depends": [],
+        "depends_rationale": "first batch; file-disjoint from B5",
+        "model": "opus"
+      },
+      {
+        "id": "B2",
+        "title": "Handoff lifecycle and session-start resume",
+        "files": [
+          "scripts/handoff-state.sh",
+          "hooks/session-start",
+          "tests/hooks/test-handoff-state.sh",
+          "tests/hooks/test-session-start-resume.sh",
+          ".claude/manifest.json"
+        ],
+        "acceptance": "SC7, SC8",
+        "verification": "bash tests/hooks/test-handoff-state.sh && bash tests/hooks/test-session-start-resume.sh && bash tests/hooks/test-session-start-compact-framing.sh && bash tests/hooks/test-session-start-compact-workflows.sh && bash scripts/validate-toolkit.sh",
+        "boundary": "list output format unchanged; compact output unchanged; offers stay offers",
+        "depends": [
+          "B1"
+        ],
+        "model": "sonnet",
+        "depends_rationale": "shared files carry edges: manifest.json B1->B2->B4->B6, hooks/session-start B2->B4, env-knobs.md B3->B4"
+      },
+      {
+        "id": "B3",
+        "title": "Skills, references, respawn cap",
+        "files": [
+          ".claude/skills/handoff/SKILL.md",
+          ".claude/skills/mtk/SKILL.md",
+          ".claude/skills/incremental-implementation/SKILL.md",
+          ".claude/skills/subagent-implementation/SKILL.md",
+          ".claude/references/subagent-dynamic-workflow.md",
+          ".claude/references/subagent-implementer-prompt.md",
+          ".claude/skills/workflow-artifacts/SKILL.md",
+          ".claude/references/workflow-artifact-schema.md",
+          ".claude/references/env-knobs.md",
+          "tests/pressure-tests/subagent-implementation-pressure.md"
+        ],
+        "acceptance": "SC12",
+        "verification": "bash scripts/validate-toolkit.sh && bash scripts/run-fixtures.sh && grep -q MTK_BATCH_MAX_RESPAWNS .claude/skills/subagent-implementation/SKILL.md && grep -q MTK_BATCH_MAX_RESPAWNS .claude/references/subagent-dynamic-workflow.md && grep -q MTK_BATCH_MAX_RESPAWNS .claude/references/subagent-implementer-prompt.md && grep -q 'checkpoint' .claude/skills/incremental-implementation/SKILL.md && grep -q 'resume' .claude/skills/handoff/SKILL.md && grep -q MTK_BATCH_MAX_RESPAWNS .claude/references/env-knobs.md",
+        "boundary": "no new When To Use bullets on capped skills; skill descriptions stay <=200 chars",
+        "depends": [
+          "B1",
+          "B2"
+        ],
+        "model": "sonnet",
+        "depends_rationale": "shared files carry edges: manifest.json B1->B2->B4->B6, hooks/session-start B2->B4, env-knobs.md B3->B4"
+      },
+      {
+        "id": "B4",
+        "title": "Context guard and shared session store",
+        "files": [
+          "hooks/context-guard.sh",
+          "hooks/lib/session_store.py",
+          "hooks/hooks.json",
+          "hooks/compact-archive.sh",
+          "hooks/session-start",
+          "tests/hooks/test-context-guard.sh",
+          "tests/hooks/test-compact-archive.sh",
+          "tests/hooks/test-hooks-wiring.sh",
+          "tests/hooks/test-hook-registry.sh",
+          ".claude/references/env-knobs.md",
+          "tests/hooks/test-session-start-resume.sh",
+          ".claude/manifest.json"
+        ],
+        "acceptance": "SC9, SC10, SC11",
+        "verification": "bash tests/hooks/test-context-guard.sh && bash tests/hooks/test-compact-archive.sh && bash tests/hooks/test-hooks-wiring.sh && bash tests/hooks/test-hook-registry.sh && bash tests/hooks/test-session-start-resume.sh && bash tests/hooks/test-session-start-compact-framing.sh && bash scripts/validate-toolkit.sh",
+        "boundary": "no UserPromptSubmit or read-path hook; never blocks; exit 0 always; telemetry only where .mtk/ is ignored",
+        "depends": [
+          "B2",
+          "B3"
+        ],
+        "model": "opus",
+        "depends_rationale": "shared files carry edges: manifest.json B1->B2->B4->B6, hooks/session-start B2->B4, env-knobs.md B3->B4"
+      },
+      {
+        "id": "B5",
+        "title": "PR-1 follow-ups: row-8 wording, handoff regex",
+        "files": [
+          "scripts/setup-refresh-plan.sh",
+          "tests/hooks/test-setup-refresh-plan.sh",
+          "scripts/validate-handoff.sh",
+          "tests/hooks/test-validate-handoff-derived.sh"
+        ],
+        "acceptance": "SC13",
+        "verification": "bash tests/hooks/test-setup-refresh-plan.sh && bash tests/hooks/test-validate-handoff-derived.sh",
+        "boundary": "row status semantics unchanged; regex still flags every previously flagged security path except author/authoring",
+        "depends": [],
+        "depends_rationale": "file-disjoint from every other batch; reads nothing they write",
+        "model": "sonnet"
+      },
+      {
+        "id": "B6",
+        "title": "Release 9.4.0",
+        "files": [
+          ".claude/manifest.json",
+          ".claude-plugin/plugin.json",
+          ".claude-plugin/marketplace.json",
+          "CHANGELOG.md",
+          "README.md",
+          ".claude/rules/hooks-and-scripts.md",
+          "docs/agent-routing-guide.md",
+          "checksums.sha256"
+        ],
+        "acceptance": "SC14",
+        "verification": "bash scripts/validate-toolkit.sh && bash scripts/run-fixtures.sh && bash scripts/generate-checksums.sh --verify",
+        "boundary": "checksums regenerated last; AGENTS.md untouched (120-line cap); tasks/lessons.md written in Phase 7 after review",
+        "depends": [
+          "B1",
+          "B2",
+          "B3",
+          "B4",
+          "B5"
+        ],
+        "model": "inline",
+        "depends_rationale": "shared files carry edges: manifest.json B1->B2->B4->B6, hooks/session-start B2->B4, env-knobs.md B3->B4"
+      }
+    ]
+  },
+  "implement": {
+    "completed_batches": [
+      {
+        "batch_id": "B5",
+        "actual_files": [
+          "scripts/setup-refresh-plan.sh",
+          "tests/hooks/test-setup-refresh-plan.sh",
+          "scripts/validate-handoff.sh",
+          "tests/hooks/test-validate-handoff-derived.sh"
+        ],
+        "build": {
+          "ok": true
+        },
+        "tests": {
+          "ok": true
+        },
+        "behavioral_diff": "row-8 reason counts deny/ask rules and settings separately; validate-handoff auth alternative auth([^o]|$|ori[sz]|orit) drops author/authoring, keeps auth/AuthService/oauth/authorization/authority",
+        "deviations": [],
+        "implementer_model": "sonnet"
+      },
+      {
+        "batch_id": "B1",
+        "actual_files": [
+          "scripts/workflow-artifact.sh",
+          "scripts/workflow-checkpoint.py",
+          "tests/hooks/test-workflow-artifact-checkpoint.sh",
+          ".claude/manifest.json"
+        ],
+        "build": {
+          "ok": true
+        },
+        "tests": {
+          "ok": true
+        },
+        "behavioral_diff": "checkpoint/resume subcommands via workflow-checkpoint.py (note render, validator exit 3, self-ignore, snapshot ref refs/mtk/checkpoints/<uuid>, read-only resume drift); checkpoint batchable as last op; init TASK; prune deletes snapshot refs",
+        "deviations": [
+          {
+            "kind": "spec-interpretation",
+            "detail": "fallback slug is the uuid itself (already wf-)"
+          },
+          {
+            "kind": "spec-extension",
+            "detail": "validator also checks carried next_notes; computed default next_command not checked"
+          },
+          {
+            "kind": "orchestrator-correction",
+            "detail": "completed_batches authoritative when non-empty; batches_completed fallback only"
+          }
+        ],
+        "implementer_model": "opus"
+      },
+      {
+        "batch_id": "B2",
+        "actual_files": [
+          "scripts/handoff-state.sh",
+          "hooks/session-start",
+          "tests/hooks/test-handoff-state.sh",
+          "tests/hooks/test-session-start-resume.sh",
+          ".claude/manifest.json"
+        ],
+        "build": {
+          "ok": true
+        },
+        "tests": {
+          "ok": true
+        },
+        "behavioral_diff": "handoff-state: closed state (hidden by --open), field <file> <key> (comment strip only on state/expires/accepted_at/updated); session-start startup/clear: one 'RESUME (offer, not instruction):' segment (<=600 chars) from resume --offline after a HANDOFF OFFER whose note names an active workflow",
+        "deviations": [],
+        "implementer_model": "sonnet"
+      },
+      {
+        "batch_id": "B3",
+        "actual_files": [
+          ".claude/skills/handoff/SKILL.md",
+          ".claude/skills/mtk/SKILL.md",
+          ".claude/skills/incremental-implementation/SKILL.md",
+          ".claude/skills/subagent-implementation/SKILL.md",
+          ".claude/references/subagent-dynamic-workflow.md",
+          ".claude/references/subagent-implementer-prompt.md",
+          ".claude/skills/workflow-artifacts/SKILL.md",
+          ".claude/references/workflow-artifact-schema.md",
+          ".claude/references/env-knobs.md",
+          "tests/pressure-tests/subagent-implementation-pressure.md"
+        ],
+        "build": {
+          "ok": true
+        },
+        "tests": {
+          "ok": true
+        },
+        "behavioral_diff": "handoff skill wraps checkpoint/resume/init TASK with resume mode first; router handoff row covers resume/pick up; batch-close calls end with checkpoint; shared per-batch respawn budget MTK_BATCH_MAX_RESPAWNS; schema + env-knobs document the new fields and knobs; pressure scenario 18",
+        "deviations": [],
+        "implementer_model": "sonnet"
+      },
+      {
+        "batch_id": "B4",
+        "actual_files": [
+          "hooks/lib/session_store.py",
+          "hooks/context-guard.sh",
+          "hooks/compact-archive.sh",
+          "hooks/session-start",
+          "hooks/hooks.json",
+          "tests/hooks/test-context-guard.sh",
+          "tests/hooks/test-compact-archive.sh",
+          "tests/hooks/test-session-start-resume.sh",
+          "tests/hooks/test-hooks-wiring.sh",
+          "tests/hooks/test-hook-registry.sh",
+          ".claude/references/env-knobs.md",
+          ".claude/manifest.json"
+        ],
+        "build": {
+          "ok": true
+        },
+        "tests": {
+          "ok": true
+        },
+        "behavioral_diff": "context-guard.sh on PostToolUse Edit|Write|Bash (bash-only throttle, one python parse, telemetry where .mtk ignored, soft/hard nudges per workflow step, generic per 150k band); session_store.py shared by compact-archive, session-start (offer lookup + startup prune) and the guard",
+        "deviations": [
+          {
+            "kind": "other",
+            "detail": "EXIT trap uses compact-archive variant (exit 0 always)"
+          },
+          {
+            "kind": "other",
+            "detail": "compact-archive new stderr line only when the store crashes"
+          },
+          {
+            "kind": "other",
+            "detail": "startup prune gated on .mtk ignored or no git"
+          },
+          {
+            "kind": "other",
+            "detail": "generic bands do not reset after compaction (personal-hook parity)"
+          }
+        ],
+        "implementer_model": "opus"
+      },
+      {
+        "batch_id": "B6",
+        "actual_files": [
+          ".claude/manifest.json",
+          ".claude-plugin/plugin.json",
+          ".claude-plugin/marketplace.json",
+          "CHANGELOG.md",
+          "README.md",
+          ".claude/rules/hooks-and-scripts.md",
+          "docs/agent-routing-guide.md",
+          "checksums.sha256"
+        ],
+        "build": {
+          "ok": true
+        },
+        "tests": {
+          "ok": true
+        },
+        "behavioral_diff": "9.4.0 in all three manifests; CHANGELOG 9.4.0 with hook-process table and nudge rationale; README hook table + handoff row; S3.6/S3.11; routing guide; checksums regenerated (re-run after review fixes)",
+        "deviations": [],
+        "implementer_model": "inline"
+      }
+    ]
+  }
+}

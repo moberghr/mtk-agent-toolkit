@@ -4,6 +4,99 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [9.4.0] - 2026-10-21
+
+A workflow now keeps one canonical, current handoff note, and the next session is offered it after
+`/clear`. A context guard says when to write it. This is PR-2 of the auto-continuation program
+(`docs/plans/2026-10-20-auto-continuation.md`, R1 + R2). The program's session analysis found
+every handoff written by hand to scattered paths, notes that told the next session to redo
+finished work, and an unanswered question copied through three notes.
+
+### Hook processes per tool call
+
+| Tool call | 9.3.0 | 9.4.0 |
+|---|---|---|
+| Read / Grep / Glob | 0 | 0 |
+| MCP | 0 | 0 |
+| Prompt submit | 0 | 0 |
+| Bash | 3 (4 on `git push`) | 4 (5 on `git push`) |
+| Edit / Write | 5 | 6 |
+| Stop | 4 | 4 |
+| SubagentStart | 1 per subagent | 1 per subagent |
+| PostCompact | 1 per compaction, async | 1 per compaction, async |
+
+The new process is `context-guard.sh`. It starts python at most once per session every
+`MTK_CTX_GUARD_INTERVAL` seconds (default 20). A throttled call is bash only.
+
+### Added
+
+- **`workflow-artifact.sh checkpoint <uuid>`** renders the workflow's handoff note at
+  `docs/handoffs/<spec slug>.md`, or `<uuid>.md` when there is no spec.
+  - It rewrites that one file in place and never makes dated copies.
+  - The note is rebuilt from the workflow artifact on every run. The model supplies only
+    `--next`, `--decision` and `--needs-user "<question> | default: <default>"`. The script fills
+    in git facts, the PR and CI state from `gh` (8 s timeout, `--offline` skips it), the
+    batch table, the last verify run, traps and open questions.
+  - The frontmatter extends the 9.1.0 handoff lifecycle with `workflow`, `sha`, `pushed`,
+    `ahead`, `behind`, `next_command`, `needs_user`, `wait_until` and `updated`.
+  - **Validator:** a `--next` that names a finished batch exits 3 and writes nothing.
+  - `checkpoint` can run as the last op of an existing `batch` call, so the batch close in
+    `incremental-implementation` and `subagent-implementation` carries it at no extra turn.
+- **Snapshot refs.** Each checkpoint also snapshots the working tree into
+  `refs/mtk/checkpoints/<uuid>`.
+  - It covers tracked changes and untracked, non-ignored files, built through a temporary
+    index. HEAD, the branch, the real index and the worktree are never touched.
+  - Untracked files over 5 MB are skipped (`MTK_CHECKPOINT_MAX_FILE_MB`).
+  - The commit message carries the note's frontmatter and next step, so a deleted worktree
+    still leaves the branch, sha and `next_command` readable with `git log -1 <ref>`.
+  - `prune` deletes the ref. `MTK_CHECKPOINT_SNAPSHOT=0` turns snapshots off.
+- **`workflow-artifact.sh resume <uuid>`** prints a read-only block: the workflow, any drift
+  since the checkpoint (sha moved, branch or worktree gone, wrong branch, PR merged or
+  closed), `next_command`, and the open-question count.
+- **Session-start resume offer.** On `startup` and `clear`, a `HANDOFF OFFER` for a note that
+  names an active workflow is followed by one `RESUME (offer, not instruction):` segment from
+  `resume --offline`, capped at 600 chars. No `gh` call is made, and output after a compaction
+  is unchanged.
+- **`hooks/context-guard.sh`** (PostToolUse `Edit|Write|Bash`) reads the context size from the
+  transcript tail.
+  - It writes `.mtk/sessions/<session>/telemetry.json` (context tokens, compaction window, %,
+    model, workflow), but only where `.mtk/` is git-ignored.
+  - With an active workflow, it says once per workflow step at `MTK_CTX_SOFT` (200k), and again
+    at `MTK_CTX_HARD` (250k): finish the transition, checkpoint, and tell the engineer to
+    `/clear`.
+  - Without a workflow, it gives a generic `/clear`-or-handoff nudge from `MTK_CTX_GENERIC`
+    (300k), once per 150k band.
+  - `MTK_CONTEXT_GUARD=0` turns it off.
+  - **Why nudges are back.** 9.x removed `context-budget.sh`'s thresholds because they
+    duplicated native `/context` and auto-compaction. This guard does something neither of
+    those does: it fires before the 300k compaction window, and it is tied to the workflow
+    checkpoint, so the next session resumes from disk instead of from a summary.
+    `evidence-ledger.sh` stays silent.
+- **`TASK` workflow type**, for work that is not a BUILD, FIX or REVIEW.
+- **`handoff-state.sh field <file> <key>`** prints one frontmatter value, keeping a `#` inside
+  the value. `closed` is a new state, hidden by `list --open`.
+- `hooks/lib/session_store.py`, shared by `compact-archive.sh`, `session-start` and
+  `context-guard.sh`, covers:
+  - the `.mtk/` ignore check;
+  - the session directory;
+  - the newest same-branch compaction archive;
+  - pruning of session directories after 14 days. Session-start now also prunes on
+    `startup`, because telemetry creates a session directory in every session.
+
+### Changed
+
+- The **`handoff` skill** is a thin wrapper over `checkpoint` and `resume`.
+  - **Resume mode comes first:** "continue", "pick up", or `/mtk handoff` while an open note
+    exists for the branch, now resumes and never writes a new note.
+  - With no active workflow, it opens a `TASK` workflow first. The router's handoff row also
+    matches `resume` and `pick up`.
+- **One respawn budget per batch.** `partial`, `inconclusive` and killed implementers share
+  `results.respawns.<batch_id>`, capped by `MTK_BATCH_MAX_RESPAWNS` (default 2). A second kill on
+  the same batch still halts.
+- `setup-refresh` row 8 counts missing baseline rules and settings separately.
+- The `validate-handoff.sh` sensitive-path check no longer matches `author` or `authoring`.
+  `auth/`, `AuthService`, `oauth`, `authorization` and `authority` still match.
+
 ## [9.3.0] - 2026-10-20
 
 Sessions compact at 300k instead of running to the 1M wall, and a fresh session finds what the
