@@ -65,7 +65,7 @@ Reached via `/mtk <description>`; `implement`, `fix` and `batch-fix` are also di
 
 Not user-invocable — loaded automatically when triggered:
 
-- `handoff` — capture session state when context is tight or work is paused mid-stream
+- `handoff` — write the workflow's canonical checkpoint when context is tight or work is paused, or resume from one ("continue", "pick up", `/mtk handoff` while an open note exists)
 - `lessons` (`capture` mode) — capture an engineer correction, or a working approach found after struggling 2+ times with the same sub-problem, as a reusable lesson
 - `prior-work-check` — before approving a spec or multi-file work, confirm no existing skill/helper/handler/lesson already covers it
 - `subagent-implementation` — replaces incremental-implementation for 3+ batches, 6+ non-mechanical files, or non-none security_impact; one fresh implementer subagent per batch

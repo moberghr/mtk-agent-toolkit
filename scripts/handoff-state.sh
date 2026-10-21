@@ -4,12 +4,16 @@ set -euo pipefail
 #
 # A handoff note carries YAML frontmatter (written by the handoff skill):
 #   ---
-#   state: open            # open | accepted | expired
+#   state: open            # open | accepted | expired | closed
 #   branch: <branch>
 #   worktree: <abs path>
 #   expires: <YYYY-MM-DD or ISO-8601 UTC>
 #   accepted_at: <ISO-8601 UTC>   # added by `accept`
 #   ---
+# A workflow checkpoint (workflow-artifact.sh checkpoint) writes the same block plus
+# workflow, sha, pushed (true|false|unknown), ahead, behind, next_command,
+# needs_user (flow list), wait_until (ISO-8601 or -) and updated (ISO-8601 UTC),
+# and renders `state: closed` for a finished workflow (--close or a non-active one).
 #
 # Usage:
 #   handoff-state.sh list [--open] [--branch B] [--include-accepted-since <ISO>] [--dir D]
@@ -24,13 +28,19 @@ set -euo pipefail
 #       is still shown (subject to the 24h bound above under --open).
 #       --dir D reads D instead of <project root>/docs/handoffs.
 #       Keys are matched case-insensitively. A `state:` other than open /
-#       accepted / expired is reported on stderr and the note is skipped.
+#       accepted / expired / closed is reported on stderr and the note is
+#       skipped. `closed` (a finished workflow's checkpoint) is hidden by --open
+#       exactly like `expired`.
 #   handoff-state.sh accept <file>   state: accepted, accepted_at: now (UTC)
 #   handoff-state.sh expire <file>   state: expired
 #       Both rewrite only those frontmatter lines; every other byte is kept. A
 #       legacy note gains a minimal frontmatter block.
+#   handoff-state.sh field <file> <key>
+#       Print one frontmatter value (key case-insensitive). Values are returned
+#       intact (a `#` inside next_command / needs_user is kept); only the
+#       trailing comment on state / expires / accepted_at / updated is stripped.
 #
-# Exit: 0 ok · 1 file not found · 2 usage error or python3 missing.
+# Exit: 0 ok · 1 file not found, or `field` key absent · 2 usage error or python3 missing.
 
 if ! command -v python3 >/dev/null 2>&1; then
   echo "handoff-state.sh: python3 is required (S3.3 baseline) but was not found" >&2
@@ -46,7 +56,7 @@ project_root() {
 }
 
 usage() {
-  sed -n '3,33p' "$0" | sed 's/^# \{0,1\}//' >&2
+  sed -n '3,/^# Exit:/p' "$0" | sed 's/^# \{0,1\}//' >&2
   exit 2
 }
 
@@ -139,7 +149,7 @@ for path in glob.glob(os.path.join(d, "*.md")):
     else:
         state = (fm.get("state") or "open").lower()
         note_branch, legacy = fm.get("branch", ""), False
-        if state not in ("open", "accepted", "expired"):
+        if state not in ("open", "accepted", "expired", "closed"):
             # A typo must not hide the note silently.
             sys.stderr.write("handoff-state: %s: unknown state '%s', ignored\n" % (path, fm.get("state")))
             continue
@@ -252,6 +262,46 @@ except BaseException:
     except OSError:
         pass
     raise
+PY
+    ;;
+  field)
+    [ $# -eq 2 ] || usage
+    file="$1"
+    if [ ! -f "$file" ] && [ "${file#/}" = "$file" ]; then
+      root="$(project_root)"
+      [ -f "$root/$file" ] && file="$root/$file"
+    fi
+    if [ ! -f "$file" ]; then
+      echo "handoff-state.sh: no such handoff file: $1" >&2
+      exit 1
+    fi
+    python3 - "$file" "$2" <<'PY'
+import re, sys
+
+path, key = sys.argv[1], sys.argv[2].lower()
+COMMENTED = ("state", "expires", "accepted_at", "updated")
+try:
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        lines = fh.read().splitlines()
+except OSError:
+    sys.exit(1)
+if not lines or lines[0].strip() != "---":
+    sys.exit(1)
+for line in lines[1:]:
+    if line.strip() == "---":
+        break
+    m = re.match(r"^([A-Za-z_][A-Za-z0-9_-]*):\s*(.*)$", line)
+    if not m or m.group(1).lower() != key:
+        continue
+    val = m.group(2)
+    if key in COMMENTED:
+        val = re.sub(r"\s+#.*$", "", val)
+    val = val.strip()
+    if len(val) >= 2 and val[0] == val[-1] and val[0] in "\"'":
+        val = val[1:-1]
+    print(val)
+    sys.exit(0)
+sys.exit(1)
 PY
     ;;
   -h|--help) usage ;;

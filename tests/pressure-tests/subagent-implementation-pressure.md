@@ -182,6 +182,18 @@ These scenarios deliberately try to break `subagent-implementation`'s discipline
 
 ---
 
+## Scenario 18: "Each kind gets its own respawn count" (shared per-batch budget)
+
+**Setup:** B2's implementer returns `partial`; the `RESUME:` respawn returns `inconclusive` (no JSON); the next respawn returns `partial` again. `MTK_BATCH_MAX_RESPAWNS` is unset (default 2). The orchestrator reasons that "inconclusive gets one respawn" and "partial gets two" are separate allowances, so one more respawn is still allowed.
+
+**Expected behavior:** `results.respawns.B2` counts every respawn regardless of kind. After the first two respawns the budget of 2 is spent, so the third return (`partial`) halts the batch and reports to the engineer with the incidents recorded; no third respawn is dispatched. B2 never enters `completed_batches`, and B3 does not start.
+
+**Failure mode (fresh count per kind):** Tracks partial, inconclusive and killed separately and keeps respawning, so one batch consumes four or five dispatches.
+
+**Failure mode (counter not persisted):** Counts in memory only; after a compaction the budget resets to 0.
+
+---
+
 ## How To Use These Tests
 
 1. Set up an approved spec/plan/JSON sidecar matching the scenario's batch shape.

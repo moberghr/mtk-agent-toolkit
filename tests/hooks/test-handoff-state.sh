@@ -249,6 +249,38 @@ expect_has "accept on a legacy note keeps its body" "# legacy fresh" "$(cat "$D/
 bash "$HS" expire docs/handoffs/other.md
 expect_has "relative path resolves" "state: expired" "$(cat "$D/other.md")"
 
+# --- closed state and field ------------------------------------------------------
+
+rm -f "$D"/*.md
+note cl-open.md open feat/x 2099-12-31
+note cl-closed.md closed feat/x 2099-12-31
+out="$(bash "$HS" list --open --dir "$D" 2>/dev/null)"
+expect_has "list --open keeps an open note" "cl-open.md" "$out"
+expect_lacks "list --open excludes a closed note" "cl-closed.md" "$out"
+out="$(bash "$HS" list --dir "$D" 2>/dev/null)"
+expect_has "list without --open still shows a closed note" "cl-closed.md${T}closed${T}feat/x" "$out"
+
+FM="$D/field.md"
+cat > "$FM" <<'EOT'
+---
+state: open            # open | accepted | expired | closed
+Branch: feat/x
+next_command: gh pr view #128
+needs_user: ["merge PR #128? | default: wait"]
+---
+# body
+EOT
+expect_eq "field returns a plain value" "feat/x" "$(bash "$HS" field "$FM" branch)"
+expect_eq "field key match is case-insensitive" "feat/x" "$(bash "$HS" field "$FM" BRANCH)"
+expect_eq "field keeps ' #128' inside next_command" "gh pr view #128" "$(bash "$HS" field "$FM" next_command)"
+expect_eq "field keeps '#' inside needs_user" '["merge PR #128? | default: wait"]' "$(bash "$HS" field "$FM" needs_user)"
+expect_eq "field strips the state comment" "open" "$(bash "$HS" field "$FM" state)"
+rc=0; bash "$HS" field "$FM" nokey >/dev/null 2>&1 || rc=$?
+expect_eq "field on an absent key exits 1" "1" "$rc"
+rc=0; bash "$HS" field "$D/missing.md" state >/dev/null 2>&1 || rc=$?
+expect_eq "field on a missing file exits 1" "1" "$rc"
+rm -f "$FM"
+
 # --- errors ---------------------------------------------------------------------
 
 rc=0; bash "$HS" accept "$D/missing.md" 2>/dev/null || rc=$?
@@ -257,6 +289,9 @@ rc=0; bash "$HS" frobnicate 2>/dev/null || rc=$?
 expect_eq "unknown command exits 2" "2" "$rc"
 rc=0; bash "$HS" list --bogus 2>/dev/null || rc=$?
 expect_eq "unknown list option exits 2" "2" "$rc"
+rc=0; usage_out="$(bash "$HS" 2>&1)" || rc=$?
+expect_eq "no-arg usage exits 2" "2" "$rc"
+expect_has "usage output keeps the Exit line" "Exit: 0 ok" "$usage_out"
 
 if [ "$fails" -ne 0 ]; then
   printf '\n%s handoff-state check(s) failed.\n' "$fails" >&2

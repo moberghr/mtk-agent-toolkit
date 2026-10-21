@@ -85,7 +85,7 @@ Rules:
    MTK_IMPLEMENTER_MAX_CALLS, default 120), or after two verify runs fail on the same error
    with no new approach. Do not keep going: return status "partial" with
    resume_note {done, left, next, files} — the orchestrator respawns a fresh implementer
-   from your on-disk work.
+   from your on-disk work (partial, inconclusive and killed share one per-batch budget, `MTK_BATCH_MAX_RESPAWNS`, default 2).
 12. Result size: the JSON block stays at or under ~60 lines. Longer detail goes to
    `.mtk/workflows/<uuid>/batches/<batch_id>/report.md`; cite that path in `behavioral_diff`
    or a deviation. Build/test evidence already comes from the mtk-verify-run.sh tails.
@@ -101,7 +101,7 @@ VERIFY — before returning:
 - If build or tests fail, set `status: "blocked"`, return the error in `build.evidence` /
   `tests.evidence` with `ok: false` and a one-line analysis. Do not loop endlessly.
 - Returning without running the verify commands, or with a partial/ack-only reply, is
-  `status: "inconclusive"` — it is NOT a pass and will be respawned.
+  `status: "inconclusive"` — it is NOT a pass and will be respawned (within the per-batch `MTK_BATCH_MAX_RESPAWNS` budget, default 2, shared with partial and killed).
 
 DELIVERABLE — return EXACTLY one fenced JSON block matching this schema, then stop:
 

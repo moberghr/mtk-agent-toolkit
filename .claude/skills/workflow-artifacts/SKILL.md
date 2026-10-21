@@ -85,7 +85,9 @@ Orchestration state that lives only in chat is lost on compaction or restart. Th
    - Run `"$WFA" list`.
    - If a single active workflow matches the requested type, offer resume.
    - If multiple, ask via `AskUserQuestion` which uuid to resume.
-   - If none, init a new one.
+   - If none, init a new one (`init TASK` for a lightweight one with no other workflow).
+   - To continue a checkpointed workflow, `"$WFA" resume <uuid>` prints a read-only RESUME block (drift since the checkpoint, `next_command`, open questions).
+   - `"$WFA" checkpoint <uuid> --next … --decision … --verify …` re-renders the one canonical note and snapshots the tree; it is batchable as the LAST op (exit 3 = `--next` names a finished unit). Schema: `.claude/references/workflow-artifact-schema.md`.
 8. **Close the workflow.** At end of phase 7, one call:
    ```bash
    "$WFA" batch "$MTK_WF_UUID" gate memory_sync_gate pass --reason "lessons captured" -- \

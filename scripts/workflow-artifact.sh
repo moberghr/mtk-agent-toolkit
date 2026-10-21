@@ -5,7 +5,10 @@ set -euo pipefail
 # workflow-artifact.sh — manage durable workflow state under .mtk/workflows/
 #
 # Subcommands:
-#   init <type> [--goal "<text>"]    Create a new workflow artifact, print UUID
+#   init <type> [--goal "<text>"]    Create a new workflow artifact, print UUID.
+#                                    type: BUILD | DEBUG | REVIEW | PLAN | FIX |
+#                                    TASK (lightweight, e.g. a handoff with no
+#                                    other workflow) | setup-audit | setup-bootstrap
 #   event <uuid> <type> [--data '<json>'] [--ts <iso8601>]
 #                                    Append event to .events.jsonl. --ts replays a
 #                                    timestamp captured elsewhere (e.g. a dynamic
@@ -17,6 +20,9 @@ set -euo pipefail
 #                                    shell call as the checkpoint itself. With no
 #                                    ops on argv, reads one JSON array per line
 #                                    from stdin (["event","phase_started","--data","{}"]).
+#                                    A `checkpoint` op must be the LAST op; its
+#                                    exit 3 is the batch's exit 3 (earlier ops
+#                                    stay applied).
 #   set <uuid> <key=value>...        Update top-level fields in {uuid}.json
 #   read <uuid>                      Print {uuid}.json to stdout
 #   list                             List active workflows (id, type, status, updated)
@@ -62,15 +68,33 @@ set -euo pipefail
 #   prune --older-than <days> [--dry-run] [--force]
 #                                    Delete workflows of any status not updated
 #                                    within <days> (minimum 1; 0 needs --force),
-#                                    with their event log, .artifact.md and
-#                                    per-uuid directory. Never touches an active
-#                                    workflow updated within <days>.
+#                                    with their event log, .artifact.md,
+#                                    per-uuid directory and (inside git) their
+#                                    refs/mtk/checkpoints/<uuid> ref. Never touches
+#                                    an active workflow updated within <days>.
 #   trap add <uuid> --title "<t>" [--body "<b>"] [--phase p] [--severity warn|high]
 #                                    Record a carried-forward trap (a written,
 #                                    specific gotcha) in results.trap_list —
 #                                    idempotent by title; batchable.
 #   trap list <uuid>                 Print recorded traps, ready to paste into the
 #                                    next phase's or implementer's brief.
+#   checkpoint <uuid> [--next "<t>"] [--decision "<t>"]... [--needs-user
+#              "<question> | default: <default>"]... [--no-needs-user]
+#              [--next-command "<cmd>"] [--verify "<cmd> => <result>"]
+#              [--wait-until <iso8601>] [--close] [--offline] [--no-snapshot]
+#                                    Store the flags on the artifact, then re-render
+#                                    the one canonical note docs/handoffs/<slug>.md
+#                                    (spec slug, else the uuid; kept out of git by a
+#                                    self-ignoring docs/handoffs/.gitignore) and
+#                                    snapshot the tree into refs/mtk/checkpoints/<uuid>
+#                                    without touching HEAD, the index or the
+#                                    worktree. Exit 0 written, 1 unknown workflow or
+#                                    bad flag, 3 --next/--next-command names a done
+#                                    unit (nothing written). Batchable, last op only.
+#   resume <uuid> [--offline]        Read-only: print the RESUME block (type, phase,
+#                                    status, note path, drift since the checkpoint,
+#                                    next_command, open questions). --offline skips gh;
+#                                    --porcelain prints 9 key=value lines instead.
 #
 # Storage: .mtk/workflows/{uuid}.json + .mtk/workflows/{uuid}.events.jsonl
 # Artifacts live OUTSIDE .claude/ to avoid Claude Code's sensitive-file gate.
@@ -107,8 +131,8 @@ json_escape() {
 cmd_init() {
   local wf_type="${1:-}"
   shift || true
-  [ -n "$wf_type" ] || fail "init requires <type> (BUILD|DEBUG|REVIEW|PLAN|FIX|setup-audit|setup-bootstrap)"
-  case "$wf_type" in BUILD|DEBUG|REVIEW|PLAN|FIX|setup-audit|setup-bootstrap) ;; *) fail "unknown workflow type: $wf_type" ;; esac
+  [ -n "$wf_type" ] || fail "init requires <type> (BUILD|DEBUG|REVIEW|PLAN|FIX|TASK|setup-audit|setup-bootstrap)"
+  case "$wf_type" in BUILD|DEBUG|REVIEW|PLAN|FIX|TASK|setup-audit|setup-bootstrap) ;; *) fail "unknown workflow type: $wf_type" ;; esac
 
   local goal=""
   while [ $# -gt 0 ]; do
@@ -312,6 +336,22 @@ cmd_batch() {
   fi
   [ ${#ops_json[@]} -gt 0 ] || fail "batch: no ops given (argv ops separated by --, or JSON arrays on stdin)"
 
+  # checkpoint renders the whole artifact, so it must see every other op's write:
+  # it may only be the last op. Checked before any op runs, so a misordered batch
+  # changes nothing. A malformed op is left for the loop below to report.
+  local misplaced
+  misplaced="$(printf '%s\n' "${ops_json[@]}" | python3 -c '
+import json, sys
+lines = sys.stdin.read().splitlines()
+for i, line in enumerate(lines[:-1]):
+    try:
+        op = json.loads(line)
+    except ValueError:
+        continue
+    if isinstance(op, list) and op and op[0] == "checkpoint":
+        print(i + 1); break')"
+  [ -z "$misplaced" ] || fail "batch: op ${misplaced}: checkpoint must be the last op of a batch (nothing was applied)"
+
   local op_json n=0
   for op_json in "${ops_json[@]}"; do
     local -a argv=()
@@ -330,11 +370,13 @@ sys.stdout.write("\0".join(items) + "\0")'
     [ ${#argv[@]} -gt 0 ] || fail "batch: op $((n+1)) is empty or malformed"
     local sub="${argv[0]}"
     case "$sub" in
-      set|event|gate|criteria|remediation|seal) main "$sub" "$uuid" "${argv[@]:1}" ;;
+      # checkpoint (last op only, checked above) exits 3 on a validator rejection,
+      # which ends the batch with exit 3; the earlier ops stay applied.
+      set|event|gate|criteria|remediation|seal|checkpoint) main "$sub" "$uuid" "${argv[@]:1}" ;;
       # trap takes <add|list> before the uuid: `trap add --title …` in a batch op.
       trap) [ ${#argv[@]} -ge 2 ] || fail "batch: op $((n+1)): trap needs <add|list>"
             main trap "${argv[1]}" "$uuid" "${argv[@]:2}" ;;
-      *) fail "batch: op $((n+1)): '$sub' is not batchable (allowed: set event gate criteria remediation seal trap)" ;;
+      *) fail "batch: op $((n+1)): '$sub' is not batchable (allowed: set event gate criteria remediation seal trap checkpoint)" ;;
     esac
     n=$((n+1))
   done
@@ -990,10 +1032,29 @@ cmd_prune() {
     return 0
   fi
 
-  python3 - "$WF_DIR" "$days" "$dry" <<'PY'
+  python3 - "$WF_DIR" "$days" "$dry" "$ROOT_DIR" <<'PY'
 import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3
-import datetime, glob, json, os, shutil
-wf_dir, days, dry = sys.argv[1], int(sys.argv[2]), sys.argv[3] == "1"
+import datetime, glob, json, os, shutil, subprocess
+wf_dir, days, dry, root = sys.argv[1], int(sys.argv[2]), sys.argv[3] == "1", sys.argv[4]
+
+def git(*args):
+    try:
+        p = subprocess.run(["git", "-C", root, *args], stdin=subprocess.DEVNULL, capture_output=True, text=True)
+    except OSError as e:
+        return 127, str(e)
+    return p.returncode, (p.stderr or p.stdout).strip()
+
+# A pruned workflow's checkpoint snapshot ref goes with it (inside git only). A
+# failed delete is reported, never fatal: the workflow files are already gone.
+in_git = not dry and git("rev-parse", "--git-dir")[0] == 0
+def drop_ref(stem):
+    ref = "refs/mtk/checkpoints/" + stem
+    if git("rev-parse", "-q", "--verify", ref)[0] != 0:
+        return
+    rc, err = git("update-ref", "-d", ref)
+    if rc != 0:
+        print(f"workflow-artifact: prune: could not delete {ref}: {err}", file=sys.stderr)
+
 now = datetime.datetime.now(datetime.timezone.utc)
 cutoff = now - datetime.timedelta(days=days)
 pruned = 0
@@ -1025,9 +1086,37 @@ for path in sorted(glob.glob(os.path.join(wf_dir, "*.json"))):
             os.remove(extra)
     if os.path.isdir(os.path.join(wf_dir, stem)):
         shutil.rmtree(os.path.join(wf_dir, stem))
+    if in_git:
+        drop_ref(stem)
 print(f"workflow-artifact: {'would prune' if dry else 'pruned'} {pruned} workflow(s)")
 PY
 }
+
+# checkpoint / resume — the canonical checkpoint (note + snapshot ref) and its
+# read-only resume block. The logic lives in workflow-checkpoint.py beside this
+# script (resolved from BASH_SOURCE: this script runs by absolute plugin path
+# from other repos, so cwd says nothing about where it lives); ROOT_DIR and
+# WF_DIR are passed so both read the same files. The python exit code is ours:
+# 0 ok, 1 unknown workflow or bad flag, 3 validator rejection (checkpoint).
+run_checkpoint_py() {
+  local sub="$1" self_dir py rc=0
+  shift
+  command -v python3 >/dev/null 2>&1 || {
+    printf 'workflow-artifact: %s requires python3 (S3.3 baseline), which was not found\n' "$sub" >&2
+    exit 2
+  }
+  self_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  py="$self_dir/workflow-checkpoint.py"
+  [ -f "$py" ] || {
+    printf 'workflow-artifact: %s: %s is missing (it ships beside this script)\n' "$sub" "$py" >&2
+    exit 2
+  }
+  python3 "$py" --root "$ROOT_DIR" --wf-dir "$WF_DIR" "$sub" "$@" || rc=$?
+  [ "$rc" -eq 0 ] || exit "$rc"
+}
+
+cmd_checkpoint() { run_checkpoint_py checkpoint "$@"; }
+cmd_resume()     { run_checkpoint_py resume "$@"; }
 
 usage() {
   # Sentinel range, not fixed line numbers: print from line 4 to the first
@@ -1054,6 +1143,8 @@ main() {
     trap)     cmd_trap "$@" ;;
     abandon)  cmd_abandon "$@" ;;
     prune)    cmd_prune "$@" ;;
+    checkpoint) cmd_checkpoint "$@" ;;
+    resume)   cmd_resume "$@" ;;
     ""|-h|--help) usage ;;
     *) fail "unknown subcommand: $sub" ;;
   esac

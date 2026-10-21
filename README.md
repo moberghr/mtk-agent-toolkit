@@ -409,7 +409,7 @@ Benchmarks run against fixture diffs, so results are repeatable regardless of yo
 | **verification-before-completion** | Requires fresh, criterion-by-criterion evidence before any "done" claim |
 | **code-simplification** | Behavior-preserving cleanup after verification passes, via Claude Code's `/simplify` with finance and security carve-outs |
 | **lessons** | One skill, four modes — `capture` (a correction or golden path), `mine` (past transcripts), `refresh` (stale anchors), `promote` (native memory → team) — over one structured learning store |
-| **handoff** | Captures session state for recovery across context boundaries |
+| **handoff** | Writes the workflow's canonical checkpoint note (`workflow-artifact.sh checkpoint`) or resumes from one; the next session is offered it after `/clear` |
 | **instructions** | Audits AGENTS.md/CLAUDE.md for rot, or captures a session's discovered commands and gotchas; append-only, approval-gated |
 | **mtk-doctor** | Install health, active configuration, and (`--usage`) raw usage counts |
 | **writing-skills** | Meta-skill for authoring new skills with pressure tests |
@@ -491,18 +491,20 @@ Hooks are deterministic — they fire every time, unlike advisory `CLAUDE.md` in
 
 | Hook | Event | What it does |
 |:---|:---|:---|
-| **session-start** | SessionStart | Session recovery; on `compact`, re-injects tech stack, active specs/plans, tasks, a recent handoff and one live workflow |
+| **session-start** | SessionStart | Session recovery; on `compact`, re-injects tech stack, active specs/plans, tasks, a recent handoff and one live workflow; on `startup`/`clear`, offers the branch's open handoff plus a read-only `RESUME` line for its workflow |
 | **security-gate** | PreToolUse (Bash) | Blocks destructive ops (DB drops, force-push, `rm -rf` on broad paths, `curl … \| sh`) and commands that would hang on an interactive prompt |
 | **format-on-edit** | PreToolUse (Bash) · PostToolUse (Edit/Write) · Stop | Queues edited files, formats them before a verification command runs, and flushes the rest at Stop |
 | **scope-guard** | PreToolUse (Edit/Write) | Warns when an edit falls outside the active spec's `change_manifest` |
 | **config-guard** | PreToolUse (Edit/Write) | Blocks edits that weaken linter, analyzer, or formatter config |
 | **evidence-ledger** | PostToolUse (Edit/Write/Bash) | Records edits and verification runs for `verify-completion`; prints nothing |
+| **context-guard** | PostToolUse (Edit/Write/Bash) | Writes context telemetry; once per workflow step past 200k/250k says to checkpoint and `/clear`; python at most every 20s |
 | **spec-approval-trigger** | PostToolUse (Edit/Write) | Points to planning when a spec flips to `approved`; flags a sealed spec edited after approval |
 | **verify-completion** | Stop | Rejects "done" claims lacking fresh, cited command output |
 | **workflow-continuation** | Stop (async) | One-line nudge when a session ends with an unfinished workflow |
 | **cost-tracker** | Stop (async) | Persists usage stats to `.claude/analytics.json` and token-cost estimates to `.mtk/metrics/costs.jsonl` |
 | **push-gate** | PreToolUse (Bash, only on `git push`) | Advisory by default: says when the pushed range has no matching review receipt; `MTK_PUSH_GATE_ENFORCE=active` blocks |
 | **subagent-context** | SubagentStart | Hands an MTK subagent the active context-pack path and the critical-rule ids; context only, never blocks |
+| **compact-archive** | PostCompact (async) | Archives the compaction summary under `.mtk/sessions/` (only when `.mtk/` is git-ignored) so the next `startup`/`clear` can offer it |
 
 ### Tech stacks
 

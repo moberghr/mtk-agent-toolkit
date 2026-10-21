@@ -107,7 +107,7 @@ done
 real="$(python3 "$REG" "$REPO_ROOT/hooks/hooks.json" | awk -F'\t' '{ print $5 }' | sort -u | tr '\n' ' ')"
 for s in session-start security-gate.sh scope-guard.sh config-guard.sh evidence-ledger.sh \
          spec-approval-trigger.sh format-on-edit.sh verify-completion workflow-continuation.sh \
-         cost-tracker.sh subagent-context.sh compact-archive.sh; do
+         cost-tracker.sh subagent-context.sh compact-archive.sh context-guard.sh; do
   case " $real" in
     *" $s "*) ;;
     *) printf 'FAIL: real hooks.json: %s not in parsed set: %s\n' "$s" "$real" >&2; fails=$((fails + 1)) ;;

@@ -68,4 +68,33 @@ sed -n '/CRITICAL: files touched/,/^## /p' <<<"$out2" | grep -q 'package-lock.js
   && fail "derived file leaked into the critical list:\n$out2"
 ok "hand-written undeclared file still reports as critical drift"
 
+# Security-path regex: `auth` must not match inside author/authoring, but must
+# still flag real auth paths (auth/, Auth, authorization, authority, oauth).
+SENS='## CRITICAL: security_impact="none" but sensitive paths touched'
+mkdir -p .claude/rules
+printf 'x\n' > .claude/rules/skill-authoring.md
+printf 'x\n' > AUTHORS.md
+printf 'x\n' > authoring.txt
+printf 'x\n' > authored.md
+out3="$(bash "$VH" docs/specs/2026-09-18-derived.json "$BASE" || true)"
+grep -qF -- "$SENS" <<<"$out3" \
+  && fail "author/authoring paths must not trip the security-path check:\n$out3"
+ok "author/authoring paths are not flagged as security-sensitive"
+
+for f in auth/login.txt src/Auth.txt AuthService.cs AuthOptions.cs auth-overrides.yml cfg/auth oauth.txt authorization.txt authorisation.txt authorize.txt authorise.txt authority.txt; do
+  mkdir -p "$(dirname "$f")"
+  printf 'x\n' > "$f"
+done
+out4="$(bash "$VH" docs/specs/2026-09-18-derived.json "$BASE" || true)"
+grep -qF -- "$SENS" <<<"$out4" || fail "auth paths must trip the security-path check:\n$out4"
+hits="$(sed -n '/security_impact="none" but sensitive/,/^## /p' <<<"$out4")"
+for f in auth/login.txt src/Auth.txt AuthService.cs AuthOptions.cs auth-overrides.yml cfg/auth oauth.txt authorization.txt authorisation.txt authorize.txt authorise.txt authority.txt; do
+  grep -qF -- "- \`$f\`" <<<"$hits" || fail "$f not flagged as security-sensitive:\n$hits"
+done
+grep -qF 'skill-authoring' <<<"$hits" && fail "skill-authoring leaked into the sensitive list:\n$hits"
+for f in AUTHORS.md authoring.txt authored.md; do
+  grep -qF -- "- \`$f\`" <<<"$hits" && fail "$f leaked into the sensitive list:\n$hits"
+done
+ok "auth, Auth, AuthService, AuthOptions, auth-overrides, bare cfg/auth, oauth, authorization, authorisation, authorize, authorise, authority are still flagged"
+
 printf '\nAll validate-handoff derived-artifact tests passed.\n'

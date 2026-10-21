@@ -281,3 +281,43 @@
 **Why:** Editors and generators often leave the last line unterminated, and a glued entry silently breaks both the old rule and the new one.
 
 **Applies to:** Doctor `--fix` paths, bootstrap snippets, and any script that appends to `.gitignore`, `.mtkignore` or `.claudeignore`.
+
+## 2026-10-21 — Check the PR state before continuing on a branch someone named
+
+**What happened:** The engineer asked to "continue on this branch" for PR-2. The PR-1 pull request (#128) had been merged about 20 minutes earlier, so new commits on that branch would need a new PR. Nothing in the session knew this until the run checkpointed itself and `gh` reported `PR #128 MERGED`.
+
+**Rule:** Before planning commits or a PR onto an existing branch, run `workflow-artifact.sh resume <uuid>` online, or `gh pr list --head <branch> --state all`. When the PR is merged or closed, ask where the new work goes. Never assume a branch named earlier is still open.
+
+**Why:** A branch named in the request is a snapshot of the moment it was typed. Merges happen in parallel, and the cost shows up only at commit or push time.
+
+**Applies to:** implement, batch-fix and handoff runs that continue an earlier PR's branch, and any resume after `/clear`.
+
+## 2026-10-21 — Two progress sources: the explicit list wins, the counter is only a fallback
+
+**What happened:** The first checkpoint design marked a unit done when its id was in `completed_batches[]` **or** it was among the first `batches_completed` units. B5 finished before B1, so `batches_completed=1` would have marked B1 done, and the validator would then have rejected a `--next` naming the unit actually in progress.
+
+**Rule:** When state carries both an explicit list of finished ids and a count, use the list exclusively whenever it is non-empty. Fall back to "first N in plan order" only when no list exists.
+
+**Why:** Waves and parallel batches finish out of order. A count cannot say which units finished; a union of the two silently invents progress.
+
+**Applies to:** Anything that renders or validates batch progress: the checkpoint note, resume drift, dashboards (PR-3), receipts.
+
+## 2026-10-21 — Bump all three manifest versions at once, after the last batch
+
+**What happened:** During B6 I bumped `plugin.json` and `marketplace.json` to 9.4.0 while a B4 implementer was still running `validate-toolkit` as its gate. Its C0.1 check (all three versions equal) would have failed on a manifest it did not own. I reverted, waited for B4, then bumped all three in one edit.
+
+**Rule:** A version bump is one atomic edit of all three manifests. It is made only after every batch whose verify runs `validate-toolkit` has returned.
+
+**Why:** A half-bumped tree fails C0.1 for everyone sharing the working tree. The failure lands on an innocent batch, which then wastes a respawn diagnosing it.
+
+**Applies to:** The release batch of any multi-batch MTK run with concurrent or pending implementers.
+
+## 2026-10-21 — Never list tasks/lessons.md or tasks/todo.md in a spec's change_manifest
+
+**What happened:** The PR-2 sidecar listed `tasks/lessons.md` for Phase 7. `validate-handoff.sh` excludes todo and lessons files from "actually touched", because it treats them as collateral, the same way `scope-guard.sh` does. So the drift check reported a critical "declared but NOT touched" for a file that had in fact been edited.
+
+**Rule:** Keep `tasks/lessons.md` and `tasks/todo.md` out of `change_manifest` and `plan.batches[].files`. They are workflow collateral, written by every run.
+
+**Why:** Listing them turns a clean drift check into a false critical, and the false critical teaches people to ignore drift findings.
+
+**Applies to:** Spec sidecars written by implement and batch-fix.

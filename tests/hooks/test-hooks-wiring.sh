@@ -60,7 +60,7 @@ expected = {
     ("PreToolUse", "Bash"): ["security-gate.sh", "format-on-edit.sh --flush-before-verify",
                             "push-gate.sh"],
     ("PreToolUse", "Edit|Write"): ["scope-guard.sh", "config-guard.sh"],
-    ("PostToolUse", "Edit|Write|Bash"): ["evidence-ledger.sh"],
+    ("PostToolUse", "Edit|Write|Bash"): ["evidence-ledger.sh", "context-guard.sh"],
     ("PostToolUse", "Edit|Write"): ["spec-approval-trigger.sh", "format-on-edit.sh"],
     ("Stop", ""): ["verify-completion", "format-on-edit.sh --flush",
                    "workflow-continuation.sh", "cost-tracker.sh"],
@@ -76,6 +76,11 @@ if got != expected:
 ifs = {h["script"]: h["if"] for h in handlers(path) if h.get("if")}
 if ifs != {"push-gate.sh": "Bash(git push *)"}:
     fails.append("`if` filters drifted: expected only push-gate.sh with Bash(git push *), got %r" % (ifs,))
+
+# 3c. the context guard is a per-tool-call hook: its handler timeout stays 5 s.
+tmo = [h["timeout"] for h in handlers(path) if h["script"] == "context-guard.sh"]
+if tmo != ["5"]:
+    fails.append("context-guard.sh handler timeout must be exactly 5, got %r" % (tmo,))
 
 # 4. every registered script exists and is executable
 for (ev, m), names in got.items():
