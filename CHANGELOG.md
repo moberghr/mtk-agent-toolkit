@@ -4,6 +4,59 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [9.3.0] - 2026-10-20
+
+Sessions compact at 300k instead of running to the 1M wall, and a fresh session finds what the
+last one left. This is PR-1 of the auto-continuation program (`docs/plans/2026-10-20-auto-continuation.md`).
+It was driven by a 45-day sample of 272 sessions:
+- 62% of main-thread input tokens were spent in turns whose context was already above 300k.
+- Auto-compact fired only at about 967k on 1M-context models.
+- Every handoff was written and picked up by hand.
+
+No hook was added to the read path, MCP calls or prompts.
+
+### Hook processes per tool call
+
+| Tool call | 9.2.0 | 9.3.0 |
+|---|---|---|
+| Read / Grep / Glob | 0 | 0 |
+| MCP | 0 | 0 |
+| Prompt submit | 0 | 0 |
+| Bash | 3 (4 on `git push`) | 3 (4 on `git push`) |
+| Edit / Write | 5 | 5 |
+| Stop | 4 | 4 |
+| SubagentStart | 1 per subagent | 1 per subagent |
+| PostCompact | — | 1 per compaction, async (`compact-archive.sh`) |
+
+### Added
+
+- **Compaction window in the settings baseline.**
+  - `settings-baseline.md` gains a `### settings` section with `autoCompactWindow: 300000`.
+  - `settings-baseline.sh` emits it with `--json`, lists it with `--missing` (`settings<TAB>key: value`) and merges it with `--merge`, but only when the key is absent. An engineer's existing value always wins.
+  - `setup-bootstrap` merges it, and `setup-refresh` proposes it as its own `settings` hunk.
+- **`hooks/compact-archive.sh` (PostCompact, async).** It archives the compaction summary to `.mtk/sessions/<session>/compact-<UTC>.md`, mode 0600, with `session`, `branch`, `trigger`, `created` and `workflow` frontmatter.
+  - It writes only when `.mtk/` is git-ignored, or outside git, so conversation text is never committable.
+  - It prunes session directories older than 14 days.
+  - `MTK_COMPACT_ARCHIVE=0` turns it off.
+  - The retired `post-compact.sh` name stays banned.
+- **Session-start offers after `/clear`.**
+  - The branch-scoped `HANDOFF OFFER` now fires on `clear` as well as `startup`.
+  - When there is no handoff to offer, one `COMPACTION OFFER` names the newest same-branch summary from the last 24h. It is framed as a historical snapshot.
+  - Output after a compaction is unchanged.
+- **Bounded implementers.**
+  - The implementer brief carries a tool-call budget, `MTK_IMPLEMENTER_MAX_CALLS` (default 120). Past it, or after two verify failures on the same error, the implementer returns `status: "partial"` with a `resume_note`.
+  - `subagent-implementation` and the dynamic-workflow path respawn a fresh implementer from the on-disk work, using the existing `RESUME:` preamble, at most twice per batch, and then halt. `partial` is never a pass.
+  - Result JSON is capped at about 60 lines, and longer detail goes to `.mtk/workflows/<uuid>/batches/<id>/report.md`.
+- **Typable workflow skills.** `/mtk:implement`, `/mtk:fix` and `/mtk:batch-fix` are user-invocable shortcuts, so typing them no longer fails with "can only be invoked by Claude". `/mtk <description>` remains the natural-language router.
+
+### Changed
+
+- `mtk-doctor`:
+  - The baseline check reports missing baseline rules **and** settings, and `--fix` merges both.
+  - Hook liveness counts PostCompact handlers as event-rare, like SubagentStart, so a repo that never compacted is not told the hook "never fired".
+- `hooks/lib/hook_registry.py` classifies PostCompact handlers as `rare`.
+- README and AGENTS.md list the eight user-invocable skills.
+
 ## [9.2.0] - 2026-10-16
 
 A review that proves what it covered, and a push that notices when it was not reviewed.

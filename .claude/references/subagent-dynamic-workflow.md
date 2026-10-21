@@ -27,6 +27,7 @@ sidecar amendment, churn check and Phase 4 stay orchestrator-side.
      call (`event agent_dispatched|agent_returned --ts … --data '{"agent":"batch:B1","source":"workflow-replay"}'`), before any gate can halt.
    - `inconclusive` or schema-invalid → respawn once with narrowed scope, then halt; build or
      tests red → halt and report. Never count either as pass.
+   - `partial` → not a pass: respawn via `RESUME:` + `resume_note`, max 2 per batch, then halt.
    - A killed `agent()` (spend/rate limit, model unavailable) is not `inconclusive`: run the
      manual path's killed-mid-batch recovery, record `results.dispatch_incidents[]` first, and
      re-run only unstarted later waves on the fallback tier.

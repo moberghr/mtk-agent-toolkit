@@ -19,6 +19,7 @@
 | Re-run audit | `/mtk-setup --audit` | Refresh the generated architecture-principles reference after architectural change |
 | Merge multi-repo audits | `/mtk-setup --merge` | Unify per-repo audits in `.claude/references/audits/` into a team-wide doc |
 | Everything else | `/mtk <description>` | Natural language — routes to fix / batch-fix / implement / pre-commit-review / repo-health / instructions / mtk-doctor |
+| Run a known workflow directly | `/mtk:implement`, `/mtk:fix` or `/mtk:batch-fix` | Skip the router when you already know the workflow — same skill the router would load |
 | Periodic readiness check | `/mtk repo-health` or `bash scripts/repo-health-score.sh` | 9-asset action checklist + PR review mining (last 10 merged PRs) |
 | Validate toolkit | `bash scripts/validate-toolkit.sh` | Before every commit — structural check of manifest, plugin.json, and skill anatomy |
 | Install health check | `/mtk-doctor` | PASS/WARN/FAIL diagnostics across core files, components, hooks, active config and environment fit; `--json` for CI, `--fix` for safe auto-repairs, `--usage` for raw usage counts |
@@ -94,10 +95,10 @@ model-invoked skill list, the two-stage review graph, the review-output schema, 
 tech-stack loading and progressive/path-scoped reference loading all live in
 `docs/agent-routing-guide.md` — read it whenever routing is not obvious.
 
-Five skills are user-invocable: `/mtk-setup` (setup; `--audit`, `--merge`, `--refresh`, `--check`),
-`/mtk <description>` (the router), `/mtk-doctor`, `/lessons` and `/promote-lesson` (alias). Everything else
-is a **routed workflow skill** reached through `/mtk`, or a **model-invoked skill** loaded
-automatically when its trigger fires. The canonical route list is the `/mtk` decision rule above.
+Eight skills are user-invocable: `/mtk-setup` (`--audit`, `--merge`, `--refresh`, `--check`), `/mtk <description>` (the natural-language router),
+`/mtk-doctor`, `/lessons`, `/promote-lesson` (alias), and `/mtk:implement`, `/mtk:fix`, `/mtk:batch-fix` as direct shortcuts for engineers who already know the workflow.
+Everything else is a **routed workflow skill** reached through `/mtk`, or a **model-invoked skill** loaded automatically when its trigger fires.
+The canonical route list is the `/mtk` decision rule above.
 
 The active tech stack is recorded in `.claude/tech-stack`; every entry-point skill and agent reads
 it in Phase 0 and loads the matching `tech-stack-{stack}` skill. No such file ⇒ run `/mtk-setup`.

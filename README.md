@@ -395,7 +395,7 @@ Benchmarks run against fixture diffs, so results are repeatable regardless of yo
 
 ## Skills
 
-**33 skills:** 5 user-invocable entry points (`/mtk`, `/mtk-setup`, `/mtk-doctor`, `/lessons`, and `/promote-lesson` as a one-release alias), plus workflow, tech-stack, and enabling skills that the entry points orchestrate. You invoke a few; the rest compose themselves.
+**33 skills:** 8 user-invocable entry points (`/mtk`, `/mtk-setup`, `/mtk-doctor`, `/lessons`, `/promote-lesson` as a one-release alias, and the direct shortcuts `/mtk:implement`, `/mtk:fix`, `/mtk:batch-fix`), plus workflow, tech-stack, and enabling skills that the entry points orchestrate. You invoke a few; the rest compose themselves.
 
 | Skill | What it does |
 |:---|:---|
@@ -470,8 +470,8 @@ There is no score: findings plus missing evidence decide the verdict. A critical
 ### Component model
 
 ```
-ENTRY POINTS (5 user-invocable skills)
-  /mtk · /mtk-setup · /mtk-doctor · /lessons · /promote-lesson (alias)
+ENTRY POINTS (8 user-invocable skills)
+  /mtk · /mtk-setup · /mtk-doctor · /lessons · /promote-lesson (alias) · /mtk:implement · /mtk:fix · /mtk:batch-fix
       ↓ orchestrate
 33 SKILLS  — language-agnostic workflows + 3 tech-stack packs + enabling skills
       ↓ route to

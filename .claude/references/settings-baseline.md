@@ -1,5 +1,5 @@
 ---
-description: All-stacks Claude Code permission baseline (permissions.allow / deny / ask) that setup-bootstrap merges into every target repo's .claude/settings.json
+description: All-stacks Claude Code settings baseline (permissions.allow / deny / ask plus top-level scalar settings) that setup-bootstrap merges into every target repo's .claude/settings.json
 globs: [".claude/settings.json", ".claude/settings.local.json"]
 alwaysApply: false
 ---
@@ -12,7 +12,9 @@ Each `### <key>` below is the Claude Code permission list of the same name
 (`permissions.allow`, `permissions.deny`, `permissions.ask`); merge is a union
 with whatever the repo already has (`hooks/merge-settings.sh`). Each bullet is
 one rule: the backticked text is the rule, anything after the dash is a note and
-is not written.
+is not written. The `### settings` section is the exception: each bullet is a
+top-level scalar settings key written as `` `key: value` ``, added only when the
+repo does not already set that key.
 
 There is no `permissions.allowedTools` settings key. A list written under that
 name is ignored, so repos bootstrapped before this was fixed are repaired with
@@ -32,6 +34,10 @@ Rule syntax, from the Claude Code permissions docs:
 - `Bash(...)` matches the whole command text; `*` matches any text, including
   spaces, and may appear anywhere. A rule does not match the same program
   invoked another way (`git -C . push`, `sh -c '...'`).
+
+### settings
+
+- `autoCompactWindow: 300000` — Claude Code otherwise auto-compacts at ~967k tokens on 1M-context models, so sessions carry huge contexts; an engineer's existing value always wins (a key already present is never changed); capped at the model's window
 
 ### allow
 

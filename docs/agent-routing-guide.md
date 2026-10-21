@@ -44,7 +44,7 @@ flowchart TD
 
 ## Routed Workflow Skills
 
-Reached via `/mtk <description>`; `mtk-doctor` and `lessons` are also directly invocable.
+Reached via `/mtk <description>`; `implement`, `fix` and `batch-fix` are also directly invocable as `/mtk:implement`, `/mtk:fix` and `/mtk:batch-fix` shortcuts, as are `mtk-doctor` and `lessons`.
 
 | Workflow | Composition |
 |:---|:---|

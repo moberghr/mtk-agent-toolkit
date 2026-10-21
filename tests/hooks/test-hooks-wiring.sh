@@ -65,6 +65,7 @@ expected = {
     ("Stop", ""): ["verify-completion", "format-on-edit.sh --flush",
                    "workflow-continuation.sh", "cost-tracker.sh"],
     ("SubagentStart", ""): ["subagent-context.sh"],
+    ("PostCompact", ""): ["compact-archive.sh"],
 }
 got = table()
 if got != expected:

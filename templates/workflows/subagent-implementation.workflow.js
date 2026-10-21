@@ -48,7 +48,16 @@ const BATCH_RESULT_SCHEMA = {
     // completed = delivered + verified; blocked = build/tests red; inconclusive
     // = returned without runnable evidence. inconclusive is never a pass — the
     // orchestrator respawns it once with narrowed scope, then halts.
-    status: { type: 'string', enum: ['completed', 'blocked', 'inconclusive'] },
+    // partial = stopped at the tool-call budget with work left; carries resume_note
+    // and is respawned (RESUME + resume_note, max 2) by the orchestrator.
+    status: { type: 'string', enum: ['completed', 'blocked', 'inconclusive', 'partial'] },
+    resume_note: {
+      type: 'object', additionalProperties: false, required: ['done', 'left', 'next', 'files'],
+      properties: {
+        done: { type: 'string' }, left: { type: 'string' }, next: { type: 'string' },
+        files: { type: 'array', items: { type: 'string' } },
+      },
+    },
     actual_files: { type: 'array', items: { type: 'string' } },
     build: {
       type: 'object', additionalProperties: false, required: ['ok', 'evidence'],
@@ -151,10 +160,11 @@ for (const wave of waves) {
     results.push(...waveResults)
   }
   // Fail fast: if any batch in this wave failed build/tests, was inconclusive,
-  // or died (null), stop scheduling later (dependent) waves. The orchestrator
-  // still inspects results on return and respawns inconclusive batches once.
+  // was partial, or died (null), stop scheduling later (dependent) waves. The
+  // orchestrator still inspects results on return: it respawns inconclusive
+  // batches once and partial batches (RESUME + resume_note, max 2) after the run returns.
   const broke = results.find(
-    (r) => !r || r.status === 'blocked' || r.status === 'inconclusive' || !r.build?.ok || !r.tests?.ok,
+    (r) => !r || r.status === 'blocked' || r.status === 'inconclusive' || r.status === 'partial' || !r.build?.ok || !r.tests?.ok,
   )
   if (broke) {
     log(`Halting: batch ${broke?.batch_id ?? '(null result)'} not completed (status=${broke?.status ?? 'missing'}); later waves skipped.`)

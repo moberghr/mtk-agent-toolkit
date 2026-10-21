@@ -7,7 +7,7 @@ set -euo pipefail
 # Liveness: every hook registered in hooks/hooks.json refreshes a stamp named
 # after its file under ${TMPDIR}/mtk-hook-seen-<uid>/<root>/ (mtk_hook_seen), and
 # session-start counts sessions in <stamp dir>/.sessions (mtk_liveness_tick).
-# The doctor derives the hook set from hooks.json (SubagentStart = event-rare,
+# The doctor derives the hook set from hooks.json (SubagentStart/PostCompact = event-rare,
 # info only; everything else per-call) and WARNs on a per-call hook whose stamp
 # is missing, or more than 14 days older than the last session tick (the
 # mtime of .sessions, so an idle repo is not stale), only once .sessions counts
@@ -101,7 +101,7 @@ for ev, entries in json.load(open(sys.argv[1]))["hooks"].items():
     for entry in entries:
         for h in entry["hooks"]:
             b = os.path.basename(h["command"].split()[0].strip("\"'"))
-            if ((ev == "SubagentStart" or bool(h.get("if"))) == (sys.argv[2] == "rare")) and b not in out:
+            if ((ev in ("SubagentStart", "PostCompact") or bool(h.get("if"))) == (sys.argv[2] == "rare")) and b not in out:
                 out.append(b)
 print(" ".join(out))
 PY
@@ -110,7 +110,7 @@ PER_CALL="$(hook_set per-call)"
 RARE="$(hook_set rare)"
 n_per_call="$(wc -w <<<"$PER_CALL" | tr -d ' ')"
 expect_has "derived per-call set includes the async Stop recorders" "cost-tracker.sh" "$PER_CALL"
-expect "derived event-rare set is the if-filtered and SubagentStart hooks" "push-gate.sh subagent-context.sh" "$RARE"
+expect "derived event-rare set is the if-filtered, SubagentStart and PostCompact hooks" "push-gate.sh subagent-context.sh compact-archive.sh" "$RARE"
 
 # ============================ unknown: no stamp directory ======================
 analytics 12
@@ -200,7 +200,7 @@ out="$(checks hooks)"
 expect "event-rare stamp missing, 40 sessions → no WARN" 0 "$(count_lines $'^WARN' "$out")"
 expect "event-rare stamp missing → info row" 1 "$(count_lines $'^PASS\tevent-rare hooks [(]info[)]' "$out")"
 detail="$(detail_of 'event-rare hooks (info)')"
-expect_has "event-rare info row names the unseen hook" "not seen: subagent-context —" "$detail"
+expect_has "event-rare info row names the unseen hook" "not seen: subagent-context compact-archive —" "$detail"
 expect_has "info row says it cannot tell not-fired from invisible" "cannot tell 'not fired' from 'fired but invisible to the model'" "$detail"
 expect_has "info row points at the manual check" "manual SubagentStart check" "$detail"
 stamp subagent-context.sh

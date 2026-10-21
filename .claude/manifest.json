@@ -1,6 +1,6 @@
 {
-  "version": "9.2.0",
-  "updated": "2026-10-16",
+  "version": "9.3.0",
+  "updated": "2026-10-20",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -1049,6 +1049,12 @@
       "target": "hooks/config-guard.sh",
       "action": "sync",
       "description": "PreToolUse hook that hard-denies Edit/Write changes weakening a linter, analyzer or formatter config (added suppression codes, rules switched off, new ignore-file lines) unless the engineer listed the path in .mtk/config-guard-allow within 24h"
+    },
+    "hooks/compact-archive.sh": {
+      "source": "hooks/compact-archive.sh",
+      "target": "hooks/compact-archive.sh",
+      "action": "sync",
+      "description": "PostCompact hook that archives the compaction summary to .mtk/sessions/<session>/compact-<stamp>.md (git-ignored .mtk only, mode 0600, 14-day prune) for the session-start COMPACTION OFFER; never prints, never blocks"
     },
     "hooks/subagent-context.sh": {
       "source": "hooks/subagent-context.sh",
@@ -2405,6 +2411,12 @@
       "target": "tests/hooks/test-learnings.sh",
       "action": "sync",
       "description": "Regression coverage for scripts/learnings.sh defects A-E in a sandboxed throwaway git repo"
+    },
+    "tests/hooks/test-compact-archive.sh": {
+      "source": "tests/hooks/test-compact-archive.sh",
+      "target": "tests/hooks/test-compact-archive.sh",
+      "action": "sync",
+      "description": "Hook test for compact-archive.sh: archive file with frontmatter and mode 0600, workflow field, no write for kill switch / empty summary / malformed JSON / un-ignored .mtk, empty stdout, 14-day prune and liveness stamp"
     },
     "tests/hooks/test-subagent-context.sh": {
       "source": "tests/hooks/test-subagent-context.sh",

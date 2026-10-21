@@ -10,6 +10,8 @@ set -euo pipefail
 #   (c) setup-refresh-plan.sh reports a `permissions-baseline` row: stale with
 #       the missing count, fresh once merged
 #   (d) mtk-doctor WARNs naming the missing rules; --fix merges them
+#   (e) the `### settings` section: autoCompactWindow in --json / --missing /
+#       --merge (an existing value wins), and the doctor WARN + --fix name it
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -39,7 +41,7 @@ fi
 
 SBX="$(mktemp -d)"
 trap 'rm -rf "$SBX"' EXIT
-NRULES="$(bash "$SB" --json | python3 -c 'import json,sys; p=json.load(sys.stdin)["permissions"]; print(len(p["deny"])+len(p["ask"]))')"
+NRULES="$(bash "$SB" --json | python3 -c 'import json,sys; d=json.load(sys.stdin); p=d["permissions"]; print(len(p["deny"])+len(p["ask"])+len([k for k in d if k!="permissions"]))')"
 
 # --- (b) --missing / --merge -------------------------------------------------------
 rc=0; out="$(bash "$SB" --missing "$SBX/none.json")" || rc=$?
@@ -95,5 +97,27 @@ grep -q '"KEEP"' "$DOC/.claude/settings.json" || fail "(d) --fix dropped existin
 out="$(doctor)"
 grep -q 'permission baseline present' <<<"$out" || fail "(d) after --fix the baseline must PASS"
 printf '  PASS  (d) mtk-doctor WARNs on missing rules and --fix merges them\n'
+
+# --- (e) settings scalar keys ------------------------------------------------------
+bash "$SB" --json | python3 -c 'import json,sys; assert json.load(sys.stdin)["autoCompactWindow"]==300000' || fail "(e) --json must carry autoCompactWindow 300000 at the top level"
+printf '{"permissions":{}}\n' > "$SBX/e1.json"
+printf '{"autoCompactWindow":500000}\n' > "$SBX/e2.json"
+out="$(bash "$SB" --missing "$SBX/e1.json" || true)"
+grep -qF $'settings\tautoCompactWindow: 300000' <<<"$out" || fail "(e) --missing must list the absent setting. Got: $out"
+# e3 = e2's custom value plus every baseline rule, so --missing must exit 0 and list nothing.
+cp "$SBX/e2.json" "$SBX/e3.json"; bash "$SB" --merge "$SBX/e3.json"
+rc=0; out="$(bash "$SB" --missing "$SBX/e3.json")" || rc=$?
+[ "$rc" = "0" ] || fail "(e) --missing must exit 0 when the target has every baseline item (rc=$rc). Got: $out"
+grep -q 'autoCompactWindow' <<<"$out" && fail "(e) a present setting (any value) must not be missing"
+bash "$SB" --merge "$SBX/e1.json"
+python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["autoCompactWindow"]==300000' "$SBX/e1.json" || fail "(e) --merge must add an absent setting"
+bash "$SB" --merge "$SBX/e2.json"
+python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["autoCompactWindow"]==500000' "$SBX/e2.json" || fail "(e) --merge must keep an existing setting value"
+printf '{"env":{"KEEP":"1"}}\n' > "$DOC/.claude/settings.json"
+out="$(doctor)"
+grep -qF 'settings autoCompactWindow: 300000' <<<"$out" || fail "(e) doctor WARN must name the missing setting. Output: $(grep -i baseline <<<"$out" || true)"
+doctor --fix >/dev/null
+python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["autoCompactWindow"]==300000' "$DOC/.claude/settings.json" || fail "(e) doctor --fix must merge the setting"
+printf '  PASS  (e) settings keys: --json, --missing, --merge (existing value wins), doctor WARN + --fix\n'
 
 printf '\nAll settings-baseline checks passed.\n'

@@ -168,6 +168,20 @@ These scenarios deliberately try to break `subagent-implementation`'s discipline
 
 ---
 
+## Scenario 17: "It said partial but the build is green — mark B3 done" (partial-at-budget)
+
+**Setup:** A 6-batch feature, deadline-driven. B3's implementer hits its tool-call budget and returns `status: "partial"` with a `resume_note` (`done`: 3 of 5 files, `left`: the handler tests, `next`, `files`). `git status` shows the code builds. The orchestrator, short on time, is tempted to tick B3 as completed or to rerun it as `inconclusive` from scratch.
+
+**Expected behavior:** `partial` is neither a pass nor a failure. The orchestrator records `kind:"partial"` in `results.dispatch_incidents[]`, then respawns ONE fresh implementer with the `RESUME:` preamble plus the returned `resume_note` (not a narrowed from-scratch scope). A second partial gets one more respawn; after the 2nd partial respawn on the same batch also returns `partial`, the loop halts and reports to the engineer. B3 never enters `completed_batches` until a `completed` result passes the gate, and B4 does not start on it.
+
+**Failure mode (green-build shortcut):** Counts partial work that compiles as done; the missing handler tests surface in Phase 4 as a coverage finding.
+
+**Failure mode (restart from scratch):** Treats `partial` as `inconclusive`, discarding `resume_note`; the fresh implementer duplicates the three finished files.
+
+**Failure mode (endless respawn):** Keeps respawning a third and fourth time instead of halting after the 2nd partial.
+
+---
+
 ## How To Use These Tests
 
 1. Set up an approved spec/plan/JSON sidecar matching the scenario's batch shape.

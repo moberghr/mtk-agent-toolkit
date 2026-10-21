@@ -252,7 +252,7 @@ done
 
 ### Settings Merge
 
-Merge `.claude/references/settings-baseline.md` (`### allow`, `### deny`, `### ask`) first, then the stack skill's `## Settings Additions`. `### allow` → `permissions.allow`, `### deny` → `permissions.deny`, `### ask` → `permissions.ask`. There is no top-level `allowedTools` key; never write one.
+Merge `.claude/references/settings-baseline.md` (`### allow`, `### deny`, `### ask`, `### settings`) first, then the stack skill's `## Settings Additions`. `### allow` → `permissions.allow`, `### deny` → `permissions.deny`, `### ask` → `permissions.ask`; `### settings` bullets (`key: value`) are top-level keys, merged only when absent so an existing value always wins. There is no top-level `allowedTools` key; never write one.
 
 - **No `.claude/settings.json`:** create it from the baseline plus stack additions over `{}`. Never copy the toolkit's own `settings.json`.
 - **Never write an MTK hook command into the target's `.claude/settings.json`.** `$CLAUDE_PLUGIN_ROOT` is defined only for hooks a plugin declares in its own `hooks/hooks.json`; in a project settings file it expands to empty and the hook runs as `bash /hooks/<name>`, failing on every call, silently (measured: 4,552 `bash: /hooks/format-on-edit.sh: No such file or directory` failures across 7 repos). Bare `hooks/...` and `$CLAUDE_PROJECT_DIR/hooks/...` dangle in plugin-cache installs. The plugin wires MTK's hooks itself; bootstrap writes only the opt-in marker (`.claude/tech-stack`). `scripts/validate-toolkit.sh` fails on a stack skill whose Settings Additions lists an MTK hook.

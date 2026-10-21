@@ -241,3 +241,43 @@
 **Why:** Ref deletion is commonly permission-gated, so a create step that succeeds and a cleanup step that is denied leaves residue only a human can clear.
 
 **Applies to:** Briefing subagents for dry runs, release rehearsals or ref-mutating tests.
+
+## 2026-10-21 — A new hook event needs three test edits, and a retired hook name stays retired
+
+**What happened:** Registering a `PostCompact` hook made `test-hooks-wiring.sh` fail twice, on its pinned (event, matcher) table and on its cut list of retired hooks, because the new file reused the retired name `post-compact.sh`. `test-mtk-doctor-liveness.sh` failed as well, because it re-derives the event-rare set independently. The implementer "fixed" the cut list by deleting the banned name.
+
+**Rule:** When you add a hook event, update `hooks/hooks.json`, `hooks/lib/hook_registry.py` (rarity), the expected table in `test-hooks-wiring.sh` and the rarity derivation in `test-mtk-doctor-liveness.sh` in the same batch. Never reuse a name on the wiring test's cut list. Pick a new name; the list exists to keep the old hook from coming back.
+
+**Why:** Those tests are deliberately independent oracles, so they do not follow the registry. Deleting a cut-list entry silently re-opens a door that a past release closed on purpose.
+
+**Applies to:** Any change to `hooks/hooks.json` registrations, especially new events.
+
+## 2026-10-21 — "references.index out of sync" is a stale local artifact, not a repo defect
+
+**What happened:** `validate-toolkit.sh` failed on `main` with "references.index out of sync". It was reported as an inherited repo failure and planned as a release-batch fix, until `git check-ignore` showed that `.claude/references.index` is a gitignored build artifact.
+
+**Rule:** When `validate-toolkit` reports the index out of sync, run `bash scripts/build-references-index.sh` locally and re-validate. Never commit the index, and never report it as a defect on the branch.
+
+**Why:** The file is regenerated per checkout, so its drift says nothing about the commit being validated.
+
+**Applies to:** Baseline captures and release checks that run `validate-toolkit.sh` in a long-lived checkout.
+
+## 2026-10-21 — Review-lane briefs must ask for the coverage block
+
+**What happened:** Lanes dispatched without an explicit request returned `findings` and `files_reviewed` but no `coverage` object. `review-coverage.sh` would have marked them `ABSTAINED: incomplete`, so each lane had to be resumed to add the block.
+
+**Rule:** Every review-lane brief asks for `coverage.no_issues` and `coverage.skipped[{file, reason}]`, which together with `findings[]` must account for every path in the changed-file list. It also tells the lane to write its JSON to `$RUN/review/lane-<name>.json` and run `review-coverage.sh` on it before replying.
+
+**Why:** Coverage is what proves that a PASS covered the whole diff. A lane that omits it costs a second round-trip, or a review that cannot pass.
+
+**Applies to:** Phase 4 dispatch in `implement`, and `code-review-and-quality`.
+
+## 2026-10-21 — Appending a line to .gitignore needs a trailing-newline check first
+
+**What happened:** `printf '.mtk/\n' >> .gitignore` turned `node_modules` into `node_modules.mtk/` when the file had no trailing newline. The same pattern already sat in `mtk-doctor --fix`, and a reviewer reproduced it.
+
+**Rule:** Before appending to any line-oriented file, add a newline when the file is non-empty and does not end in one: `[ -s f ] && [ -n "$(tail -c 1 f)" ] && printf '\n' >> f`.
+
+**Why:** Editors and generators often leave the last line unterminated, and a glued entry silently breaks both the old rule and the new one.
+
+**Applies to:** Doctor `--fix` paths, bootstrap snippets, and any script that appends to `.gitignore`, `.mtkignore` or `.claudeignore`.

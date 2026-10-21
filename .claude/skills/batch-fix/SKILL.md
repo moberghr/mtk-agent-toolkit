@@ -2,7 +2,9 @@
 name: batch-fix
 description: Corrective batch of multiple small independent fixes (apply review findings, several/multiple fixes across >3 files, no new contract or architecture) — broader than fix, lighter than implement.
 type: skill
-user-invocable: false
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion
+argument-hint: <findings list or review output>
+user-invocable: true
 ---
 
 # MTK Batch-Fix — Corrective Batch Loop
