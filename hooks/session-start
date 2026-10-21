@@ -96,6 +96,7 @@ handoff_list() {
 # Check for in-progress specs and plans (session recovery). On compact the
 # anchored recovery block below covers the same ground, so this stays quiet.
 RECOVERY_MSG=""
+HO_OFFERED=0
 if [ "$SS_SOURCE" != "compact" ]; then
   if [[ -d "docs/specs" ]]; then
     RECENT_SPEC="$(find docs/specs -name '*.md' -mtime -1 2>/dev/null | awk 'NR==1' || true)"
@@ -114,10 +115,10 @@ if [ "$SS_SOURCE" != "compact" ]; then
       RECOVERY_MSG="SESSION RECOVERY: Found incomplete tasks in tasks/todo.md. Check for in-progress work before starting something new."
     fi
   fi
-  # Startup only: OFFER (never claim) an open handoff written for this branch —
+  # Startup or clear: OFFER (never claim) an open handoff written for this branch —
   # one line appended after any recovery line, never replacing it. Accepted,
   # expired, other-branch and legacy (branch-unknown) notes get no offer.
-  if [ "$SS_SOURCE" = "startup" ] && [ -n "$HANDOFF_STATE" ]; then
+  if { [ "$SS_SOURCE" = "startup" ] || [ "$SS_SOURCE" = "clear" ]; } && [ -n "$HANDOFF_STATE" ]; then
     HO_ROOT="$(mtk_repo_root 2>/dev/null || pwd)"
     if compgen -G "$HO_ROOT/docs/handoffs/*.md" >/dev/null 2>&1; then
       HO_BRANCH="$(handoff_branch "$HO_ROOT")"
@@ -130,7 +131,52 @@ if [ "$SS_SOURCE" != "compact" ]; then
           HO_SHOW="$(mtk_repo_relative_path "$HO_PATH" "$HO_ROOT" 2>/dev/null || printf '%s' "$HO_PATH")"
           HO_OFFER="HANDOFF OFFER: open handoff for this branch at ${HO_SHOW} (${HO_DATE}) — read it if you are picking this work up."
           RECOVERY_MSG="${RECOVERY_MSG:+${RECOVERY_MSG} }${HO_OFFER}"
+          HO_OFFERED=1
         fi
+      fi
+    fi
+  fi
+  # Startup or clear, no handoff offered: OFFER (never claim) the newest
+  # compaction summary archived by hooks/compact-archive.sh for this branch within
+  # the last 24h. No python3 or no match ⇒ no offer (fail open).
+  if { [ "$SS_SOURCE" = "startup" ] || [ "$SS_SOURCE" = "clear" ]; } && [ "${HO_OFFERED:-0}" -eq 0 ] \
+     && command -v python3 >/dev/null 2>&1; then
+    CO_ROOT="$(mtk_repo_root 2>/dev/null || pwd)"
+    if compgen -G "$CO_ROOT/.mtk/sessions/*/compact-*.md" >/dev/null 2>&1; then
+      CO_BRANCH="$(handoff_branch "$CO_ROOT")"
+      [ -n "$CO_BRANCH" ] || CO_BRANCH="-"
+      CO_LINE="$(python3 -c '
+import glob, os, sys, time, datetime
+root, branch = sys.argv[1:3]
+best = None
+for f in glob.glob(os.path.join(root, ".mtk", "sessions", "*", "compact-*.md")):
+    try:
+        m = os.path.getmtime(f)
+        if time.time() - m > 86400:
+            continue
+        b = None
+        with open(f, encoding="utf-8", errors="replace") as fh:
+            if fh.readline().strip() != "---":
+                continue
+            for line in fh:
+                line = line.rstrip("\n")
+                if line.strip() == "---":
+                    break
+                if line.startswith("branch:"):
+                    b = line[7:].strip()
+        if b == branch and (best is None or m > best[0]):
+            best = (m, f)
+    except Exception:
+        continue
+if best:
+    print("%s\t%s" % (best[1], datetime.datetime.fromtimestamp(best[0]).strftime("%H:%M %Y-%m-%d")))
+' "$CO_ROOT" "$CO_BRANCH" 2>/dev/null || true)"
+      if [ -n "$CO_LINE" ]; then
+        CO_PATH="${CO_LINE%%$'\t'*}"
+        CO_DATE="${CO_LINE##*$'\t'}"
+        CO_SHOW="$(mtk_repo_relative_path "$CO_PATH" "$CO_ROOT" 2>/dev/null || printf '%s' "$CO_PATH")"
+        CO_OFFER="COMPACTION OFFER: summary of an earlier compacted session on this branch at ${CO_SHOW} (${CO_DATE}) — a historical snapshot; read it only if you are picking that work up."
+        RECOVERY_MSG="${RECOVERY_MSG:+${RECOVERY_MSG} }${CO_OFFER}"
       fi
     fi
   fi

@@ -43,6 +43,9 @@ cat > "$TMPD/fixture.json" <<'JSON'
   ],
   "SubagentStart": [
     { "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/sub.sh\"", "timeout": 5 } ] }
+  ],
+  "PostCompact": [
+    { "hooks": [ { "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/pc.sh\"", "timeout": 5, "async": true } ] }
   ]
 } }
 JSON
@@ -61,13 +64,15 @@ expect "sh prefix dropped, async true" \
   "per-call${T}Stop${T}${T}${T}recorder.sh${T}${T}30${T}true" "$(row recorder.sh)"
 expect "SubagentStart → rare" \
   "rare${T}SubagentStart${T}${T}${T}sub.sh${T}${T}5${T}false" "$(row sub.sh)"
-expect "one line per handler" 6 "$(awk 'END { print NR }' <<<"$out")"
+expect "PostCompact → rare" \
+  "rare${T}PostCompact${T}${T}${T}pc.sh${T}${T}5${T}true" "$(row pc.sh)"
+expect "one line per handler" 7 "$(awk 'END { print NR }' <<<"$out")"
 
 # Importable API: the same records as dicts.
 py_scripts="$(python3 -B -c 'import sys; sys.path.insert(0, sys.argv[1]); from hook_registry import handlers
 print(" ".join(h["script"] for h in handlers(sys.argv[2])))' "$REPO_ROOT/hooks/lib" "$TMPD/fixture.json")"
 expect "handlers() yields the same scripts in order" \
-  "quoted.sh prefixed.sh filtered.sh no-timeout.sh recorder.sh sub.sh" "$py_scripts"
+  "quoted.sh prefixed.sh filtered.sh no-timeout.sh recorder.sh sub.sh pc.sh" "$py_scripts"
 # exe keeps the registered directory (the validator resolves it), shell prefix dropped.
 py_exe="$(python3 -B -c 'import sys; sys.path.insert(0, sys.argv[1]); from hook_registry import handlers
 print(" ".join(h["exe"] for h in handlers(sys.argv[2]))[:200])' "$REPO_ROOT/hooks/lib" "$TMPD/fixture.json")"
@@ -102,13 +107,16 @@ done
 real="$(python3 "$REG" "$REPO_ROOT/hooks/hooks.json" | awk -F'\t' '{ print $5 }' | sort -u | tr '\n' ' ')"
 for s in session-start security-gate.sh scope-guard.sh config-guard.sh evidence-ledger.sh \
          spec-approval-trigger.sh format-on-edit.sh verify-completion workflow-continuation.sh \
-         cost-tracker.sh subagent-context.sh; do
+         cost-tracker.sh subagent-context.sh compact-archive.sh; do
   case " $real" in
     *" $s "*) ;;
     *) printf 'FAIL: real hooks.json: %s not in parsed set: %s\n' "$s" "$real" >&2; fails=$((fails + 1)) ;;
   esac
 done
 [ "$fails" -eq 0 ] && printf '  PASS  real hooks.json parses with the expected script set\n'
+expect "real hooks.json: compact-archive.sh is rare, async PostCompact" \
+  "rare${T}PostCompact${T}${T}${T}compact-archive.sh${T}${T}5${T}true" \
+  "$(python3 "$REG" "$REPO_ROOT/hooks/hooks.json" | awk -F'\t' '$5 == "compact-archive.sh"')"
 expect "real hooks.json: every handler has a timeout" 0 \
   "$(python3 "$REG" "$REPO_ROOT/hooks/hooks.json" | awk -F'\t' '$7 == "" { n++ } END { print n + 0 }')"
 

@@ -70,4 +70,18 @@ out="$(run_doctor ANTHROPIC_MODEL=claude-haiku-4-5)"
 ! grep -q 'context budget' <<<"$out" || fail "context-budget calibration lines must be gone. Output: $out"
 ok "no context-budget calibration lines"
 
+# --- .gitignore without .mtk/: WARN naming it; --fix appends it and the row passes --
+printf '.claude/settings.local.json\n.claude/observability/' > "$PROJ/.gitignore"   # no trailing newline
+out="$(run_doctor)"
+grep -F '.gitignore missing entry' <<<"$out" | grep -qF '.mtk/' || fail "a .gitignore without .mtk/ must WARN naming it. Output: $(grep -i gitignore <<<"$out")"
+! grep -qF '.gitignore covers expected paths' <<<"$out" || fail "missing .mtk/ must not report the covered PASS"
+out="$( ( cd "$PROJ" && env -u MTK_HELPER_ROOT -u CLAUDE_PLUGIN_ROOT -u CLAUDE_PROJECT_DIR HOME="$SBX/home" bash scripts/mtk-doctor.sh --fix 2>&1 ) || true)"
+grep -F '.gitignore fixed' <<<"$out" | grep -qF '.mtk/' || fail "--fix must report adding .mtk/. Output: $(grep -i gitignore <<<"$out")"
+grep -qxF '.mtk/' "$PROJ/.gitignore" || fail "--fix must append .mtk/ to .gitignore"
+grep -qxF '.claude/observability/' "$PROJ/.gitignore" || fail "--fix must not glue .mtk/ onto a last line that had no trailing newline. Got: $(cat "$PROJ/.gitignore")"
+out="$(run_doctor)"
+grep -qF '.gitignore covers expected paths' <<<"$out" || fail "after --fix the .gitignore row must PASS. Output: $(grep -i gitignore <<<"$out")"
+! grep -qF '.gitignore missing entry' <<<"$out" || fail "after --fix no missing-entry WARN may remain"
+ok ".gitignore missing .mtk/ WARNs; --fix appends it and the row turns PASS"
+
 printf '\nAll mtk-doctor settings checks passed.\n'

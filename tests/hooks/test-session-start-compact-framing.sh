@@ -89,11 +89,12 @@ case "$out" in *'other.md'*) fail "startup must not offer another branch's hando
 [ "$(grep -o 'HANDOFF OFFER:' <<<"$out" | wc -l | tr -d ' ')" = "1" ] || fail "startup must carry exactly one offer line. Got: $out"
 printf '  PASS  startup carries the recovery line and exactly one HANDOFF OFFER line\n'
 
-for payload in "$CLEAR2" "$RESUME2"; do
-  out="$(run "$payload")"
-  case "$out" in *'HANDOFF OFFER'*) fail "clear/resume must not offer a handoff. Got: $out" ;; esac
-done
-printf '  PASS  no offer on clear or resume\n'
+out="$(run "$CLEAR2")"
+case "$out" in *'HANDOFF OFFER: open handoff for this branch at docs/handoffs/mine.md (2026-01-01) — read it if you are picking this work up.'*) : ;;
+  *) fail "clear must offer the branch handoff with the same text as startup. Got: $out" ;; esac
+out="$(run "$RESUME2")"
+case "$out" in *'HANDOFF OFFER'*) fail "resume must not offer a handoff. Got: $out" ;; esac
+printf '  PASS  offer on clear (same text as startup), none on resume\n'
 
 git -C "$P2" symbolic-ref HEAD refs/heads/feat/third
 out="$(run "$STARTUP2")"
@@ -270,5 +271,69 @@ case "$out" in *'Recent handoff: docs/handoffs/nobranch.md'*) : ;; *) fail "cont
 out="$(CLAUDE_PROJECT_DIR="$P5" bash "$HOOK" <<<"$STARTUP5" 2>/dev/null || true)"
 case "$out" in *'HANDOFF OFFER'*) fail "startup must never offer a branchless note. Got: $out" ;; esac
 printf '  PASS  branchless frontmatter note: compact only while < 24h, never offered\n'
+
+# --- 10. COMPACTION OFFER (archives from hooks/compact-archive.sh) -------------------
+# P6 on feat/p6 with no handoffs: startup/clear offer the newest same-branch
+# archive < 24h old; never for another branch, an older archive, a handoff-offer
+# session or the compact source (whose output stays unchanged).
+
+P6="$WORK/p6"
+mkdir -p "$P6/docs/handoffs" "$P6/.mtk/sessions/s-a" "$P6/.mtk/sessions/s-b"
+git -C "$P6" init -q
+git -C "$P6" symbolic-ref HEAD refs/heads/feat/p6
+cd "$P6"
+STARTUP6='{"hook_event_name":"SessionStart","source":"startup","session_id":"s-startup6"}'
+CLEAR6='{"hook_event_name":"SessionStart","source":"clear","session_id":"s-clear6"}'
+COMPACT6='{"hook_event_name":"SessionStart","source":"compact","session_id":"s-compact6"}'
+RESUME6='{"hook_event_name":"SessionStart","source":"resume","session_id":"s-resume6"}'
+run6() { CLAUDE_PROJECT_DIR="$P6" bash "$HOOK" <<<"$1" 2>/dev/null || true; }
+archive() { # $1 file  $2 branch
+  printf -- '---\nsession: x\nbranch: %s\ntrigger: auto\ncreated: 2026-10-20T10:00:00Z\nworkflow: -\n---\nbody\n' "$2" > "$1"
+}
+OFFER_RE='COMPACTION OFFER: summary of an earlier compacted session on this branch at .mtk/sessions/s-b/compact-new.md ('
+
+archive .mtk/sessions/s-a/compact-old.md feat/p6
+touch -t 202001010000 .mtk/sessions/s-a/compact-old.md
+out="$(run6 "$STARTUP6")"
+case "$out" in *'COMPACTION OFFER'*) fail "an archive older than 24h must not be offered. Got: $out" ;; esac
+archive .mtk/sessions/s-b/compact-other.md feat/elsewhere
+out="$(run6 "$STARTUP6")"
+case "$out" in *'COMPACTION OFFER'*) fail "another branch's archive must not be offered. Got: $out" ;; esac
+printf '  PASS  no compaction offer for a >24h or other-branch archive\n'
+
+archive .mtk/sessions/s-b/compact-new.md feat/p6
+mkdir -p .mtk/sessions/s-c
+archive .mtk/sessions/s-c/compact-mid.md feat/p6
+touch -t "$(date -v-2H +%Y%m%d%H%M 2>/dev/null || date -d '2 hours ago' +%Y%m%d%H%M)" .mtk/sessions/s-c/compact-mid.md
+for payload in "$STARTUP6" "$CLEAR6"; do
+  out="$(run6 "$payload")"
+  case "$out" in *"$OFFER_RE"*'a historical snapshot; read it only if you are picking that work up.'*) : ;;
+    *) fail "startup/clear must offer the same-branch recent archive. Got: $out" ;; esac
+  [ "$(grep -o 'COMPACTION OFFER:' <<<"$out" | wc -l | tr -d ' ')" = "1" ] || fail "exactly one compaction offer line. Got: $out"
+  case "$out" in *'compact-old.md'*|*'compact-other.md'*|*'compact-mid.md'*) fail "the offer must name the newest same-branch archive. Got: $out" ;; esac
+done
+printf '  PASS  startup and clear offer the newest same-branch archive (one line)\n'
+
+out="$(run6 "$RESUME6")"
+case "$out" in *'COMPACTION OFFER'*) fail "resume must not offer an archive. Got: $out" ;; esac
+printf '  PASS  no compaction offer on resume\n'
+
+# compact source stays byte-identical with and without an archive present.
+with_archive="$(run6 "$COMPACT6")"
+mv .mtk "$WORK/mtk-aside"
+without_archive="$(run6 "$COMPACT6")"
+mv "$WORK/mtk-aside" .mtk
+[ "$with_archive" = "$without_archive" ] || fail "compact output must not depend on archives. With: $with_archive Without: $without_archive"
+case "$with_archive" in *'COMPACTION OFFER'*) fail "compact must not carry the offer. Got: $with_archive" ;; esac
+printf '  PASS  compact output unchanged by archives\n'
+
+# A handoff offer takes precedence: no compaction offer alongside it.
+printf -- '---\nstate: open\nbranch: feat/p6\nworktree: %s\nexpires: 2099-12-31\n---\n# handoff\n' "$P6" > docs/handoffs/p6.md
+out="$(run6 "$STARTUP6")"
+case "$out" in *'HANDOFF OFFER: open handoff for this branch at docs/handoffs/p6.md'*) : ;; *) fail "control: handoff offer expected. Got: $out" ;; esac
+case "$out" in *'COMPACTION OFFER'*) fail "no compaction offer when a handoff offer was emitted. Got: $out" ;; esac
+out="$(run6 "$CLEAR6")"
+case "$out" in *'COMPACTION OFFER'*) fail "clear: no compaction offer beside a handoff offer. Got: $out" ;; esac
+printf '  PASS  handoff offer suppresses the compaction offer\n'
 
 printf '\nAll session-start compact framing checks passed.\n'

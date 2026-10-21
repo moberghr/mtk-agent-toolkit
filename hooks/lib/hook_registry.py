@@ -13,7 +13,7 @@ Exit 0 on success, 1 (one stderr line, no traceback) when the file is unreadable
 is not JSON or has no "hooks" object. A command that cannot be shlex-split is
 skipped with a stderr warning (validate-toolkit's executable check reports it).
 
-rarity is "rare" for a SubagentStart handler or a handler with an `if` filter
+rarity is "rare" for a SubagentStart or PostCompact handler or a handler with an `if` filter
 (neither fires in nearly every session), else "per-call".
 """
 import json
@@ -60,7 +60,7 @@ def handlers(path):
                     "args": " ".join(argv[1:]),
                     "timeout": "" if timeout is None else str(timeout),
                     "async": h.get("async") is True,
-                    "rarity": "rare" if event == "SubagentStart" or cond else "per-call",
+                    "rarity": "rare" if event in ("SubagentStart", "PostCompact") or cond else "per-call",
                 }
 
 

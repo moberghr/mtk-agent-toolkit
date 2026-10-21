@@ -2,7 +2,9 @@
 name: implement
 description: Full feature implementation loop orchestrating planning, batching, verification, and review skills
 type: skill
-user-invocable: false
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion
+argument-hint: <feature description, or a spec/plan path>
+user-invocable: true
 ---
 
 # MTK Implement — Full Feature Loop

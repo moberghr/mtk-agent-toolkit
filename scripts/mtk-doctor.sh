@@ -583,7 +583,8 @@ for sf in .claude/settings.json .claude/settings.local.json; do
 done
 
 # Permission baseline (.claude/references/settings-baseline.md): the native
-# deny/ask rules that replaced read-guard.sh's secret-file denies. Repos
+# deny/ask rules that replaced read-guard.sh's secret-file denies, plus the
+# baseline's top-level settings keys (autoCompactWindow). Repos
 # bootstrapped before 8.1.0 carry none of them, so a secret file is readable
 # there with no guard at all. WARN listing what is missing; --fix unions the
 # baseline into .claude/settings.json with merge-settings.sh (existing keys and
@@ -600,7 +601,7 @@ else
     fix_rc=0
     fix_out="$(bash "$DOCTOR_BASELINE" --merge .claude/settings.json 2>&1)" || fix_rc=$?
     if [ "$fix_rc" -eq 0 ]; then
-      record PASS permissions "permission baseline merged" "${bl_n} missing deny/ask rule(s) added to .claude/settings.json via merge-settings.sh"
+      record PASS permissions "permission baseline merged" "${bl_n} missing baseline rule(s)/setting(s) added to .claude/settings.json via merge-settings.sh"
       bl_rc=0
       bl_out="$(bash "$DOCTOR_BASELINE" --missing .claude/settings.json 2>&1)" || bl_rc=$?
     else
@@ -608,8 +609,8 @@ else
     fi
   fi
   case "$bl_rc" in
-    0) record PASS permissions "permission baseline present" "every deny/ask rule in settings-baseline.md is in .claude/settings.json" ;;
-    1) record WARN permissions "missing baseline permission rules" "$(grep -c "$(printf '\t')" <<<"$bl_out" || true) rule(s) absent from .claude/settings.json: $(awk -F'\t' 'NF==2{printf "%s %s; ", $1, $2}' <<<"$bl_out")— run with --fix, or /mtk-setup --refresh to review them" ;;
+    0) record PASS permissions "permission baseline present" "every baseline rule and setting in settings-baseline.md is in .claude/settings.json" ;;
+    1) record WARN permissions "missing baseline permission rules or settings" "$(grep -c "$(printf '\t')" <<<"$bl_out" || true) rule(s)/setting(s) absent from .claude/settings.json: $(awk -F'\t' 'NF==2{printf "%s %s; ", $1, $2}' <<<"$bl_out")— run with --fix, or /mtk-setup --refresh to review them" ;;
     *) record WARN permissions "permission baseline not checked" "settings-baseline.sh --missing exited $bl_rc: $(awk 'NR==1' <<<"$bl_out")" ;;
   esac
 fi
@@ -663,7 +664,7 @@ fi
 # helper, so the two cannot disagree on the path), and session-start counts each
 # `startup` in <stamp dir>/.sessions (mtk_liveness_tick). The hook set is every
 # command registered in hooks/hooks.json (read through hooks/lib/hook_registry.py)
-# — no hand list to drift: SubagentStart hooks and if-filtered handlers are
+# — no hand list to drift: SubagentStart/PostCompact hooks and if-filtered handlers are
 # event-rare (info only; a script is rare only when every registration of it
 # is, so one per-call registration makes it per-call), every other hook fires in
 # nearly every session. Once .sessions counts >= 5 sessions, a per-call hook with no stamp, or
@@ -774,7 +775,7 @@ PY
     record PASS hooks "hook stamp age not checked" "could not read stamp mtimes in $LIVE_DIR; stamps judged by presence only"
   fi
   if [ "${#LIVE_PER_CALL[@]}" -eq 0 ]; then
-    record PASS hooks "per-call hooks: none registered" "hooks/hooks.json registers only event-rare hooks (SubagentStart or if-filtered)"
+    record PASS hooks "per-call hooks: none registered" "hooks/hooks.json registers only event-rare hooks (SubagentStart, PostCompact or if-filtered)"
   elif [ "${#live_unseen[@]}" -eq 0 ] && [ "${#live_stale[@]}" -eq 0 ]; then
     record PASS hooks "per-call hooks alive" "all ${#live_seen[@]} per-call hooks registered in hooks/hooks.json left a liveness stamp in $LIVE_DIR within ${LIVE_STALE_DAYS} days of the last session"
   elif [ "$LIVE_SESSIONS" -ge 5 ]; then
@@ -788,7 +789,7 @@ PY
     record PASS hooks "per-call hooks not seen yet" "not seen: ${live_unseen[*]:-none}; stale (> ${LIVE_STALE_DAYS} days before the last session): ${live_stale[*]:-none} — but $LIVE_DIR/.sessions counts only ${LIVE_SESSIONS} session(s) (< 5), too few to judge"
   fi
   if [ "${#LIVE_RARE[@]}" -gt 0 ]; then
-    live_rare_note="seen: ${rare_seen[*]:-none}; not seen: ${rare_unseen[*]:-none} — SubagentStart and if-filtered hooks fire only when their trigger does, so absence is not a failure"
+    live_rare_note="seen: ${rare_seen[*]:-none}; not seen: ${rare_unseen[*]:-none} — SubagentStart, PostCompact and if-filtered hooks fire only when their trigger does, so absence is not a failure"
     case " ${LIVE_RARE[*]} " in
       *" subagent-context.sh "*)
         live_rare_note="$live_rare_note. A subagent-context stamp proves the hook ran, not that the subagent saw its text: this check cannot tell 'not fired' from 'fired but invisible to the model' — confirm with the manual SubagentStart check in the PR that added subagent-context.sh" ;;
@@ -883,6 +884,7 @@ GITIGNORE_MISSING=()
 GITIGNORE_REQUIRED=(
   ".claude/settings.local.json"
   ".claude/observability/"
+  ".mtk/"
 )
 for entry in "${GITIGNORE_REQUIRED[@]}"; do
   if ! grep -qF "$entry" .gitignore 2>/dev/null; then
@@ -895,6 +897,8 @@ if [ "${#GITIGNORE_MISSING[@]}" -eq 0 ]; then
 else
   for g in "${GITIGNORE_MISSING[@]}"; do
     if [ "$FIX" -eq 1 ]; then
+      # A last line without a newline would otherwise absorb the new entry.
+      if [ -s .gitignore ] && [ -n "$(tail -c 1 .gitignore)" ]; then printf '\n' >> .gitignore; fi
       printf '%s\n' "$g" >> .gitignore
       record PASS integrity ".gitignore fixed" "added $g"
     else
