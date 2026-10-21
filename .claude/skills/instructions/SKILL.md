@@ -40,10 +40,11 @@ Two modes over the project constitution, both append-only and approval-gated: **
    ```bash
    CONST="$(bash scripts/resolve-constitution.sh)"
    bash scripts/verify-references.sh "$CONST" .claude/rules/*.md   # exit 3 = STALE lines
+   bash scripts/check-instruction-load.sh   # exit 1 = a file a harness truncates, shadows or ignores; 2/missing = report "not checked"
    ```
    Extract the constitution's build/test/lint/format commands as `name<TAB>command` lines and run them through `bash scripts/verify-commands.sh --timeout 120`. Never pass deploy, migrate, publish, push or anything that writes outside the tree — list those as unverified instead. Also run `bash scripts/resolve-tech-stack.sh "$PWD"`: a constitution naming a different stack, or only the root's stack in a polyglot repo with per-subtree pins, is a currency finding.
 2. **Shim integrity.** When `CLAUDE.md` is a shim, confirm `@AGENTS.md` is present and bare (inside a code fence or backticks it is inert). A shim has no `## Critical Rules` by design — not rot. Nested package files get a full pass only when they carry package-local content.
-3. **Judge what scripts cannot:** architecture clarity, captured gotchas, conciseness, and vague rules ("write good tests") that need a concrete replacement. No numeric grade — name the line and the reason.
+3. **Judge what scripts cannot:** architecture clarity, captured gotchas, conciseness, and vague rules ("write good tests") that need a concrete replacement. A line that is true but belongs elsewhere gets **Move → <named owner>** (README, a rule file, a skill, the spec); the test: would a newcomer act differently because of this line here? No numeric grade — name the line and the reason.
 4. **Report, then stop.** List every STALE path and failed command with its line, the judgement findings, and proposed changes. A clean file is reported as clean; never invent issues. Ask: **"Approve these changes? (yes / partial / no)"**
 5. **Apply** only the approved subset as one `Edit` per change. Removals need per-line approval; "approve all" does not cover deletions. Then re-run step 1 on the edited file and confirm the line count moved less than 10%.
 
@@ -59,7 +60,7 @@ Two modes over the project constitution, both append-only and approval-gated: **
 ## Verification
 
 - [ ] Target resolved (or `/mtk-setup` redirect); no `Write` on `AGENTS.md`/`CLAUDE.md`
-- [ ] Audit: `verify-references.sh` and `verify-commands.sh` output cited, or "none found" stated
+- [ ] Audit: `verify-references.sh`, `verify-commands.sh` and `check-instruction-load.sh` output cited, or "none found" stated
 - [ ] Every finding or addition names a line and a reason; no edits before approval; partial approval applied exactly
 - [ ] Capture: duplicates grep-checked; growth gate passed; `AGENTS.md` ≤ 120 lines and the shim ≤ 20 after edits
 - [ ] Personal items went to `CLAUDE.local.md`, not the committed file

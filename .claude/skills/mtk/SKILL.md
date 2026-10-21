@@ -38,7 +38,7 @@ Match the user's input against these patterns. Check from top to bottom; first m
 | `mine lessons`, `what did we learn`, `harvest lessons`, `lesson sweep`, `mine transcripts` | `.claude/skills/lessons/SKILL.md` (mode `mine`) | "mine lessons from last week", "what did we learn this sprint?" |
 | `refresh lessons`, `audit lessons`, `stale lessons`, `prune lessons`, `clean up lessons` | `.claude/skills/lessons/SKILL.md` (mode `refresh`) | "are the lessons stale?", "clean up lessons.md" |
 | `capture this lesson`, `capture a lesson`, `capture lesson`, `record this lesson`, `golden path`, `correction capture` | `.claude/skills/lessons/SKILL.md` (mode `capture`) | "capture this lesson", "record this lesson for the team" |
-| `hand off`, `handoff`, `save state`, `snapshot session` | `.claude/skills/handoff/SKILL.md` | "hand off to a teammate", "save state before I stop" |
+| `hand off`, `handoff`, `save state`, `snapshot session`, `resume`, `pick up`, `continue from handoff` | `.claude/skills/handoff/SKILL.md` | "hand off to a teammate", "save state before I stop" |
 | `converge`, `convergence`, `principle drift`, `drift from the principles`, `drifted from the principles` | `.claude/skills/mtk-setup/SKILL.md` (direct the user to `/mtk-setup --check`) | "converge", "where has the code drifted from the principles?" |
 | `setup`, `bootstrap`, `init`, `initialize`, `first time`, `prepare repo`, `audit`, `architecture`, `principles` | `/mtk-setup` (direct the user) | "set up this repo", "audit this repo" |
 | `help`, `commands`, `what can you do` | (print help below) | "help", "what commands are there?" |

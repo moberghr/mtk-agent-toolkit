@@ -5,7 +5,10 @@ set -euo pipefail
 # workflow-artifact.sh — manage durable workflow state under .mtk/workflows/
 #
 # Subcommands:
-#   init <type> [--goal "<text>"]    Create a new workflow artifact, print UUID
+#   init <type> [--goal "<text>"]    Create a new workflow artifact, print UUID.
+#                                    type: BUILD | DEBUG | REVIEW | PLAN | FIX |
+#                                    TASK (lightweight, e.g. a handoff with no
+#                                    other workflow) | setup-audit | setup-bootstrap
 #   event <uuid> <type> [--data '<json>'] [--ts <iso8601>]
 #                                    Append event to .events.jsonl. --ts replays a
 #                                    timestamp captured elsewhere (e.g. a dynamic
@@ -17,6 +20,9 @@ set -euo pipefail
 #                                    shell call as the checkpoint itself. With no
 #                                    ops on argv, reads one JSON array per line
 #                                    from stdin (["event","phase_started","--data","{}"]).
+#                                    A `checkpoint` op must be the LAST op; its
+#                                    exit 3 is the batch's exit 3 (earlier ops
+#                                    stay applied).
 #   set <uuid> <key=value>...        Update top-level fields in {uuid}.json
 #   read <uuid>                      Print {uuid}.json to stdout
 #   list                             List active workflows (id, type, status, updated)
@@ -28,9 +34,28 @@ set -euo pipefail
 #   criteria <uuid> <SCn=status>...  Set per-criterion verification status
 #                                    Status values: pending | verified | re-armed
 #                                    --rearm-all  Reset all verified → re-armed
-#   remediation <uuid> <trigger> [--score N]  Record a remediation attempt; prints
-#                                    ESCALATE when iterations >= MTK_MAX_REMEDIATION_ITERS
-#                                    (default 3) or the score plateaus, else CONTINUE
+#   remediation <uuid> <trigger> [--score N] [--open N | --findings <file.json>]
+#                                    Record a remediation attempt; line 1 is always
+#                                    the verdict: ESCALATE when iterations >=
+#                                    MTK_MAX_REMEDIATION_ITERS (default 3), the
+#                                    score plateaus (higher is better), or the
+#                                    open-finding count stalls (--open N, lower is
+#                                    better: two calls without a decrease, the
+#                                    last still above 0, add a "reason: stalled"
+#                                    line), else CONTINUE.
+#                                    --findings reads a JSON array of findings or a
+#                                    lane result with findings[], gives each a
+#                                    stable F-<10 hex> UID (file|rule|snippet),
+#                                    prints FIXED / STILL_OPEN / NEW lines against
+#                                    the previous call and feeds its open count as N.
+#                                    Unparseable --findings file: exit 2.
+#   review-input <uuid> --record|--check
+#                                    Bind a review to the tree it read: --record
+#                                    stores the working-tree fingerprint (.mtk/
+#                                    excluded); --check exits 0 unchanged (also
+#                                    after committing that tree), 1 changed (prints
+#                                    recorded=/current=), 2 nothing recorded or
+#                                    fingerprint not computable
 #   seal <uuid> <path>...            Record a SHA-256 approval seal over the given
 #                                    artifact bodies (spec/plan) at approval time,
 #                                    plus a hash of the spec sidecar's frozen
@@ -43,15 +68,33 @@ set -euo pipefail
 #   prune --older-than <days> [--dry-run] [--force]
 #                                    Delete workflows of any status not updated
 #                                    within <days> (minimum 1; 0 needs --force),
-#                                    with their event log, .artifact.md and
-#                                    per-uuid directory. Never touches an active
-#                                    workflow updated within <days>.
+#                                    with their event log, .artifact.md,
+#                                    per-uuid directory and (inside git) their
+#                                    refs/mtk/checkpoints/<uuid> ref. Never touches
+#                                    an active workflow updated within <days>.
 #   trap add <uuid> --title "<t>" [--body "<b>"] [--phase p] [--severity warn|high]
 #                                    Record a carried-forward trap (a written,
 #                                    specific gotcha) in results.trap_list —
 #                                    idempotent by title; batchable.
 #   trap list <uuid>                 Print recorded traps, ready to paste into the
 #                                    next phase's or implementer's brief.
+#   checkpoint <uuid> [--next "<t>"] [--decision "<t>"]... [--needs-user
+#              "<question> | default: <default>"]... [--no-needs-user]
+#              [--next-command "<cmd>"] [--verify "<cmd> => <result>"]
+#              [--wait-until <iso8601>] [--close] [--offline] [--no-snapshot]
+#                                    Store the flags on the artifact, then re-render
+#                                    the one canonical note docs/handoffs/<slug>.md
+#                                    (spec slug, else the uuid; kept out of git by a
+#                                    self-ignoring docs/handoffs/.gitignore) and
+#                                    snapshot the tree into refs/mtk/checkpoints/<uuid>
+#                                    without touching HEAD, the index or the
+#                                    worktree. Exit 0 written, 1 unknown workflow or
+#                                    bad flag, 3 --next/--next-command names a done
+#                                    unit (nothing written). Batchable, last op only.
+#   resume <uuid> [--offline]        Read-only: print the RESUME block (type, phase,
+#                                    status, note path, drift since the checkpoint,
+#                                    next_command, open questions). --offline skips gh;
+#                                    --porcelain prints 9 key=value lines instead.
 #
 # Storage: .mtk/workflows/{uuid}.json + .mtk/workflows/{uuid}.events.jsonl
 # Artifacts live OUTSIDE .claude/ to avoid Claude Code's sensitive-file gate.
@@ -88,8 +131,8 @@ json_escape() {
 cmd_init() {
   local wf_type="${1:-}"
   shift || true
-  [ -n "$wf_type" ] || fail "init requires <type> (BUILD|DEBUG|REVIEW|PLAN|FIX|setup-audit|setup-bootstrap)"
-  case "$wf_type" in BUILD|DEBUG|REVIEW|PLAN|FIX|setup-audit|setup-bootstrap) ;; *) fail "unknown workflow type: $wf_type" ;; esac
+  [ -n "$wf_type" ] || fail "init requires <type> (BUILD|DEBUG|REVIEW|PLAN|FIX|TASK|setup-audit|setup-bootstrap)"
+  case "$wf_type" in BUILD|DEBUG|REVIEW|PLAN|FIX|TASK|setup-audit|setup-bootstrap) ;; *) fail "unknown workflow type: $wf_type" ;; esac
 
   local goal=""
   while [ $# -gt 0 ]; do
@@ -293,6 +336,22 @@ cmd_batch() {
   fi
   [ ${#ops_json[@]} -gt 0 ] || fail "batch: no ops given (argv ops separated by --, or JSON arrays on stdin)"
 
+  # checkpoint renders the whole artifact, so it must see every other op's write:
+  # it may only be the last op. Checked before any op runs, so a misordered batch
+  # changes nothing. A malformed op is left for the loop below to report.
+  local misplaced
+  misplaced="$(printf '%s\n' "${ops_json[@]}" | python3 -c '
+import json, sys
+lines = sys.stdin.read().splitlines()
+for i, line in enumerate(lines[:-1]):
+    try:
+        op = json.loads(line)
+    except ValueError:
+        continue
+    if isinstance(op, list) and op and op[0] == "checkpoint":
+        print(i + 1); break')"
+  [ -z "$misplaced" ] || fail "batch: op ${misplaced}: checkpoint must be the last op of a batch (nothing was applied)"
+
   local op_json n=0
   for op_json in "${ops_json[@]}"; do
     local -a argv=()
@@ -311,11 +370,13 @@ sys.stdout.write("\0".join(items) + "\0")'
     [ ${#argv[@]} -gt 0 ] || fail "batch: op $((n+1)) is empty or malformed"
     local sub="${argv[0]}"
     case "$sub" in
-      set|event|gate|criteria|remediation|seal) main "$sub" "$uuid" "${argv[@]:1}" ;;
+      # checkpoint (last op only, checked above) exits 3 on a validator rejection,
+      # which ends the batch with exit 3; the earlier ops stay applied.
+      set|event|gate|criteria|remediation|seal|checkpoint) main "$sub" "$uuid" "${argv[@]:1}" ;;
       # trap takes <add|list> before the uuid: `trap add --title …` in a batch op.
       trap) [ ${#argv[@]} -ge 2 ] || fail "batch: op $((n+1)): trap needs <add|list>"
             main trap "${argv[1]}" "$uuid" "${argv[@]:2}" ;;
-      *) fail "batch: op $((n+1)): '$sub' is not batchable (allowed: set event gate criteria remediation seal trap)" ;;
+      *) fail "batch: op $((n+1)): '$sub' is not batchable (allowed: set event gate criteria remediation seal trap checkpoint)" ;;
     esac
     n=$((n+1))
   done
@@ -442,28 +503,74 @@ cmd_remediation() {
   [ -n "$trigger" ] || fail "remediation requires <trigger>"
   [ -f "${WF_DIR}/${uuid}.json" ] || fail "no artifact for $uuid"
 
-  local score=""
+  local score="" open="" findings=""
   while [ $# -gt 0 ]; do
     case "$1" in
       --score)
         [ $# -ge 2 ] || fail "remediation: --score requires a value"
         score="$2"; shift 2 ;;
+      --open)
+        [ $# -ge 2 ] || fail "remediation: --open requires a value"
+        open="$2"; shift 2 ;;
+      --findings)
+        [ $# -ge 2 ] && [ -n "${2:-}" ] || fail "remediation: --findings requires a file"
+        findings="$2"; shift 2 ;;
       *) fail "unknown flag: $1" ;;
     esac
   done
   case "$score" in ''|*[!0-9]*) [ -z "$score" ] || fail "remediation: --score must be a non-negative integer" ;; esac
+  case "$open" in ''|*[!0-9]*) [ -z "$open" ] || fail "remediation: --open must be a non-negative integer" ;; esac
+  # --findings derives N itself; a second, hand-typed N could only disagree with it.
+  if [ -n "$open" ] && [ -n "$findings" ]; then
+    fail "remediation: --open and --findings are mutually exclusive (--findings computes the open count)"
+  fi
 
   local max_iters="${MTK_MAX_REMEDIATION_ITERS:-3}"
   case "$max_iters" in ''|*[!0-9]*) fail "MTK_MAX_REMEDIATION_ITERS must be a positive integer" ;; esac
 
-  # Record the attempt; decide ESCALATE when iterations hit the cap OR the score
-  # stopped improving (plateau). Higher score = better, so a non-increasing latest
-  # score means automated remediation is no longer converging.
-  local verdict
-  verdict="$(python3 - "${WF_DIR}/${uuid}.json" "$(iso_now)" "$trigger" "$score" "$max_iters" <<'PY'
+  # Record the attempt; decide ESCALATE when iterations hit the cap, the score
+  # stopped improving (plateau), or the open-finding count stopped falling
+  # (stalled). Two separate series: scores are higher-is-better, opens are
+  # lower-is-better, so a non-increasing score or a non-decreasing open count
+  # above 0 means automated remediation is no longer converging (two zero
+  # counts are success, not a stall).
+  local verdict rc=0
+  verdict="$(python3 - "${WF_DIR}/${uuid}.json" "$(iso_now)" "$trigger" "$score" "$max_iters" "$open" "$findings" <<'PY'
 import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
-import json, sys
-path, now, trigger, score, max_iters = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], int(sys.argv[5])
+import hashlib, json
+path, now, trigger, score, max_iters, open_n, findings_path = sys.argv[1:8]
+max_iters = int(max_iters)
+
+# Finding UID = F- + sha1(file|rule|normalised snippet)[:10]. The line number is
+# deliberately left out, so a finding keeps its UID when unrelated edits move it.
+# Snippet rule: see review-finding-schema.md (`snippet`). This reads the fields in
+# the order listed below, takes the first non-empty string and collapses whitespace.
+SNIPPET_FIELDS = ("snippet", "evidence", "code", "rationale", "description", "title", "message")
+def finding_uid(f):
+    snippet = next((f[k] for k in SNIPPET_FIELDS if isinstance(f.get(k), str) and f[k].strip()), "")
+    key = "%s|%s|%s" % (str(f.get("file") or "").strip(), str(f.get("rule") or "").strip(),
+                        " ".join(snippet.split()))
+    return "F-" + hashlib.sha1(key.encode("utf-8")).hexdigest()[:10]
+
+current = None
+if findings_path:
+    try:
+        with open(findings_path, encoding="utf-8") as fh:
+            raw = json.load(fh)
+    except (OSError, ValueError) as e:
+        print(f"workflow-artifact: remediation: cannot read --findings {findings_path}: {e}", file=sys.stderr)
+        sys.exit(2)
+    items = raw.get("findings") if isinstance(raw, dict) else raw
+    if not isinstance(items, list) or not all(isinstance(i, dict) for i in items):
+        print(f"workflow-artifact: remediation: --findings {findings_path} is not a JSON array of finding "
+              "objects or an object with findings[]", file=sys.stderr)
+        sys.exit(2)
+    current = []
+    for f in items:
+        u = finding_uid(f)
+        if u not in current:  # duplicates (same file/rule/snippet) are one open finding
+            current.append(u)
+
 with open(path) as f: doc = json.load(f)
 results = doc.setdefault("results", {})
 rem = results.setdefault("remediation", {})
@@ -475,25 +582,153 @@ if score != "":
 scores = [s for s in entry.get("scores", []) if isinstance(s, int)]
 plateau = len(scores) >= 2 and scores[-1] <= scores[-2]
 entry["plateau"] = plateau
-escalate = entry["iterations"] >= max_iters or plateau
+
+reconcile = None
+if current is not None:
+    prev = entry.get("findings", {}).get("open", []) if isinstance(entry.get("findings"), dict) else []
+    prev = prev if isinstance(prev, list) else []
+    reconcile = {
+        "FIXED": [u for u in prev if u not in current],
+        "STILL_OPEN": [u for u in current if u in prev],
+        "NEW": [u for u in current if u not in prev],
+    }
+    entry["findings"] = {"open": current, "last": reconcile}
+    open_n = str(len(current))
+if open_n != "":
+    entry.setdefault("opens", []).append(int(open_n))
+stalled = False
+if "opens" in entry:
+    # Only a trigger that ever reported an open count carries the stall flag, so
+    # score-only artifacts keep their exact old shape.
+    opens = [o for o in entry["opens"] if isinstance(o, int)]
+    stalled = len(opens) >= 2 and opens[-1] > 0 and opens[-1] >= opens[-2]
+    entry["stalled"] = stalled
+
+escalate = entry["iterations"] >= max_iters or plateau or stalled
 doc["updated_at"] = now
 with open(path, "w") as f: json.dump(doc, f, indent=2)
 print("ESCALATE" if escalate else "CONTINUE")
 print(entry["iterations"])
 print("plateau" if plateau else "no-plateau")
+print("stalled" if stalled else "no-stalled")
+# Lines 5+ are passed through after the verdict line.
+if stalled:
+    print("reason: stalled")
+if reconcile is not None:
+    for k in ("FIXED", "STILL_OPEN", "NEW"):
+        print(" ".join([k, str(len(reconcile[k]))] + reconcile[k]))
 PY
-)"
-  local decision iters plat
+)" || rc=$?
+  # 2 = unreadable --findings (nothing was written); anything else is a crash.
+  [ "$rc" -ne 2 ] || exit 2
+  [ "$rc" -eq 0 ] || fail "remediation: tracker update failed (python exit $rc)"
+  local decision iters plat stall extra
   decision="$(printf '%s\n' "$verdict" | sed -n '1p')"
   iters="$(printf '%s\n' "$verdict" | sed -n '2p')"
   plat="$(printf '%s\n' "$verdict" | sed -n '3p')"
+  stall="$(printf '%s\n' "$verdict" | sed -n '4p')"
+  extra="$(printf '%s\n' "$verdict" | sed -n '5,$p')"
 
   if [ "$decision" = "ESCALATE" ]; then
-    local trigger_json
+    local trigger_json reason="cap" stalled_json="false"
     trigger_json="$(printf '%s' "$trigger" | json_escape)"
-    cmd_event "$uuid" "remediation_escalated" --data "{\"trigger\":${trigger_json},\"iterations\":${iters},\"plateau\":\"${plat}\"}" >/dev/null
+    [ "$plat" != "plateau" ] || reason="plateau"
+    if [ "$stall" = "stalled" ]; then reason="stalled"; stalled_json="true"; fi
+    cmd_event "$uuid" "remediation_escalated" --data "{\"trigger\":${trigger_json},\"iterations\":${iters},\"plateau\":\"${plat}\",\"stalled\":${stalled_json},\"reason\":\"${reason}\"}" >/dev/null
   fi
   printf '%s\n' "$decision"
+  [ -z "$extra" ] || printf '%s\n' "$extra"
+}
+
+# review-input — bind a review to the tree it read. --record stores the
+# working-tree fingerprint at lane dispatch; --check (before aggregating the
+# lanes) recomputes it against the RECORDED base commit, so committing exactly
+# the reviewed tree still reads as unchanged while any edit, deletion or new
+# untracked file does not. The fingerprint is hook-io's mtk_tree_fingerprint —
+# the same one the Stop hook binds evidence with — sourced lazily so no other
+# subcommand depends on hooks/lib being present. Exit: 0 unchanged, 1 changed,
+# 2 nothing recorded / hook-io absent / fingerprint not computable.
+load_hook_io() {
+  local self_dir d
+  self_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  for d in "$self_dir/../hooks/lib" "${CLAUDE_PLUGIN_ROOT:+${CLAUDE_PLUGIN_ROOT}/hooks/lib}"; do
+    [ -n "$d" ] && [ -f "$d/hook-io.sh" ] || continue
+    # shellcheck source=../hooks/lib/hook-io.sh
+    . "$d/hook-io.sh"
+    declare -F mtk_tree_fingerprint >/dev/null && return 0
+  done
+  return 1
+}
+
+# Fingerprint as seen from ROOT_DIR: hook-io resolves the root from
+# CLAUDE_PROJECT_DIR before git, so pin it to ours and drop any memoized root.
+review_fingerprint() {
+  _MTK_REPO_ROOT=""
+  CLAUDE_PROJECT_DIR="$ROOT_DIR" mtk_tree_fingerprint "$@"
+}
+
+cmd_review_input() {
+  local uuid="${1:-}" mode="${2:-}"
+  # Every error here exits 2: exit 1 is reserved for "the tree changed".
+  review_input_err() { printf 'workflow-artifact: review-input: %s\n' "$1" >&2; }
+  [ -n "$uuid" ] || { review_input_err "requires <uuid>"; return 2; }
+  [ -f "${WF_DIR}/${uuid}.json" ] || { review_input_err "no artifact for $uuid"; return 2; }
+  case "$mode" in --record|--check) ;; *) review_input_err "requires --record or --check"; return 2 ;; esac
+  [ $# -le 2 ] || { review_input_err "unexpected argument: $3"; return 2; }
+
+  if ! load_hook_io; then
+    printf 'workflow-artifact: review-input: hooks/lib/hook-io.sh not found (looked beside this script and under CLAUDE_PLUGIN_ROOT) — cannot fingerprint the tree\n' >&2
+    return 2
+  fi
+
+  local fp="" rc=0
+  if [ "$mode" = "--record" ]; then
+    fp="$(review_fingerprint)" || rc=$?
+    if [ "$rc" -ne 0 ] || [ -z "$fp" ]; then
+      printf 'workflow-artifact: review-input: cannot fingerprint %s (not a git work tree, or a file is unreadable)\n' "$ROOT_DIR" >&2
+      return 2
+    fi
+    python3 - "${WF_DIR}/${uuid}.json" "$(iso_now)" "$fp" <<'PY' || { review_input_err "artifact for $uuid is not readable JSON"; return 2; }
+import json, sys
+path, now, fp = sys.argv[1:4]
+with open(path) as f: doc = json.load(f)
+review = doc.setdefault("results", {}).setdefault("review", {})
+review["input_fingerprint"] = fp
+review["recorded_at"] = now
+doc["updated_at"] = now
+with open(path, "w") as f: json.dump(doc, f, indent=2)
+PY
+    cmd_event "$uuid" "review_input_recorded" --data "{\"input_fingerprint\":$(printf '%s' "$fp" | json_escape)}" >/dev/null
+    printf 'review-input: recorded %s\n' "$fp"
+    return 0
+  fi
+
+  local recorded
+  recorded="$(python3 - "${WF_DIR}/${uuid}.json" 2>/dev/null <<'PY'
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
+import json
+review = json.load(open(sys.argv[1])).get("results", {}).get("review", {})
+fp = review.get("input_fingerprint") if isinstance(review, dict) else None
+print(fp if isinstance(fp, str) else "")
+PY
+)" || { review_input_err "artifact for $uuid is not readable JSON"; return 2; }
+  if [ -z "$recorded" ]; then
+    printf 'workflow-artifact: review-input: no input fingerprint recorded for %s (run --record at lane dispatch)\n' "$uuid" >&2
+    return 2
+  fi
+  fp="$(review_fingerprint "${recorded%% *}")" || rc=$?
+  if [ "$rc" -ne 0 ] || [ -z "$fp" ]; then
+    printf 'workflow-artifact: review-input: cannot fingerprint %s (not a git work tree, or a file is unreadable)\n' "$ROOT_DIR" >&2
+    return 2
+  fi
+  if [ "$fp" = "$recorded" ]; then
+    printf 'review-input: unchanged (%s)\n' "$fp"
+    return 0
+  fi
+  printf 'review-input: CHANGED — the tree differs from the one the review read\n'
+  printf '  recorded=%s\n' "$recorded"
+  printf '  current=%s\n' "$fp"
+  return 1
 }
 
 # Approval seal — bind the approved SCOPE artifacts (spec + plan) to a
@@ -797,10 +1032,29 @@ cmd_prune() {
     return 0
   fi
 
-  python3 - "$WF_DIR" "$days" "$dry" <<'PY'
+  python3 - "$WF_DIR" "$days" "$dry" "$ROOT_DIR" <<'PY'
 import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3
-import datetime, glob, json, os, shutil
-wf_dir, days, dry = sys.argv[1], int(sys.argv[2]), sys.argv[3] == "1"
+import datetime, glob, json, os, shutil, subprocess
+wf_dir, days, dry, root = sys.argv[1], int(sys.argv[2]), sys.argv[3] == "1", sys.argv[4]
+
+def git(*args):
+    try:
+        p = subprocess.run(["git", "-C", root, *args], stdin=subprocess.DEVNULL, capture_output=True, text=True)
+    except OSError as e:
+        return 127, str(e)
+    return p.returncode, (p.stderr or p.stdout).strip()
+
+# A pruned workflow's checkpoint snapshot ref goes with it (inside git only). A
+# failed delete is reported, never fatal: the workflow files are already gone.
+in_git = not dry and git("rev-parse", "--git-dir")[0] == 0
+def drop_ref(stem):
+    ref = "refs/mtk/checkpoints/" + stem
+    if git("rev-parse", "-q", "--verify", ref)[0] != 0:
+        return
+    rc, err = git("update-ref", "-d", ref)
+    if rc != 0:
+        print(f"workflow-artifact: prune: could not delete {ref}: {err}", file=sys.stderr)
+
 now = datetime.datetime.now(datetime.timezone.utc)
 cutoff = now - datetime.timedelta(days=days)
 pruned = 0
@@ -832,12 +1086,42 @@ for path in sorted(glob.glob(os.path.join(wf_dir, "*.json"))):
             os.remove(extra)
     if os.path.isdir(os.path.join(wf_dir, stem)):
         shutil.rmtree(os.path.join(wf_dir, stem))
+    if in_git:
+        drop_ref(stem)
 print(f"workflow-artifact: {'would prune' if dry else 'pruned'} {pruned} workflow(s)")
 PY
 }
 
+# checkpoint / resume — the canonical checkpoint (note + snapshot ref) and its
+# read-only resume block. The logic lives in workflow-checkpoint.py beside this
+# script (resolved from BASH_SOURCE: this script runs by absolute plugin path
+# from other repos, so cwd says nothing about where it lives); ROOT_DIR and
+# WF_DIR are passed so both read the same files. The python exit code is ours:
+# 0 ok, 1 unknown workflow or bad flag, 3 validator rejection (checkpoint).
+run_checkpoint_py() {
+  local sub="$1" self_dir py rc=0
+  shift
+  command -v python3 >/dev/null 2>&1 || {
+    printf 'workflow-artifact: %s requires python3 (S3.3 baseline), which was not found\n' "$sub" >&2
+    exit 2
+  }
+  self_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  py="$self_dir/workflow-checkpoint.py"
+  [ -f "$py" ] || {
+    printf 'workflow-artifact: %s: %s is missing (it ships beside this script)\n' "$sub" "$py" >&2
+    exit 2
+  }
+  python3 "$py" --root "$ROOT_DIR" --wf-dir "$WF_DIR" "$sub" "$@" || rc=$?
+  [ "$rc" -eq 0 ] || exit "$rc"
+}
+
+cmd_checkpoint() { run_checkpoint_py checkpoint "$@"; }
+cmd_resume()     { run_checkpoint_py resume "$@"; }
+
 usage() {
-  sed -n '4,58p' "$0"
+  # Sentinel range, not fixed line numbers: print from line 4 to the first
+  # blank line, so adding header lines never truncates --help again.
+  sed -n '4,/^$/p' "$0"
 }
 
 main() {
@@ -855,9 +1139,12 @@ main() {
     verify-seal) cmd_verify_seal "$@" ;;
     criteria) cmd_criteria "$@" ;;
     remediation) cmd_remediation "$@" ;;
+    review-input) cmd_review_input "$@" ;;
     trap)     cmd_trap "$@" ;;
     abandon)  cmd_abandon "$@" ;;
     prune)    cmd_prune "$@" ;;
+    checkpoint) cmd_checkpoint "$@" ;;
+    resume)   cmd_resume "$@" ;;
     ""|-h|--help) usage ;;
     *) fail "unknown subcommand: $sub" ;;
   esac

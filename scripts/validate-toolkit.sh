@@ -165,11 +165,15 @@ done
 # blocking hook that times out fails OPEN (its decision never arrives), which is the
 # right trade: a missed advisory beats a frozen session.
 python3 - <<'MTKPY' || fail "hooks/hooks.json has a hook with no timeout"
-import json, sys
-d = json.load(open("hooks/hooks.json")).get("hooks", {})
-bad = [(ev, h.get("command", "?").split("/")[-1])
-       for ev, blocks in d.items() for b in blocks for h in b.get("hooks", [])
-       if "timeout" not in h]
+import sys
+sys.path.insert(0, "hooks/lib")
+sys.dont_write_bytecode = True  # importing must not write hooks/lib/__pycache__
+from hook_registry import handlers
+try:
+    bad = [(h["event"], h["script"]) for h in handlers("hooks/hooks.json") if h["timeout"] == ""]
+except ValueError as e:
+    print(f"ERROR: {e}", file=sys.stderr)
+    sys.exit(1)
 for ev, name in bad:
     print(f"ERROR: hooks.json {ev} hook {name} declares no timeout", file=sys.stderr)
 sys.exit(1 if bad else 0)
@@ -205,27 +209,34 @@ done
 # removing a hook needs no edit here, and a dangling registration (the script
 # deleted, the entry left behind) fails instead of erroring on every tool call.
 python3 - <<'MTKPY' || fail "hooks/hooks.json wires a hook command that does not resolve to an executable file"
-import json, os, shlex, sys
-d = json.load(open("hooks/hooks.json")).get("hooks", {})
+import contextlib, io, os, sys
+sys.path.insert(0, "hooks/lib")
+sys.dont_write_bytecode = True  # importing must not write hooks/lib/__pycache__
+from hook_registry import handlers
 bad, seen = [], 0
-for ev, blocks in d.items():
-    for b in blocks:
-        for h in b.get("hooks", []):
-            cmd = h.get("command")
-            if not cmd:
-                continue
-            seen += 1
-            try:
-                exe = shlex.split(cmd)[0]
-            except ValueError:
-                bad.append(f"{ev}: unparseable command {cmd!r}")
-                continue
-            path = exe.replace("${CLAUDE_PLUGIN_ROOT}", ".")
-            if not os.path.isfile(path):
-                bad.append(f"{ev}: {exe} does not exist")
-            elif not os.access(path, os.X_OK):
-                bad.append(f"{ev}: {exe} is not executable")
-if seen == 0:
+warn = io.StringIO()
+try:
+    with contextlib.redirect_stderr(warn):  # handlers() warns on a command it cannot split
+        rows = list(handlers("hooks/hooks.json"))
+except ValueError as e:
+    print(f"ERROR: hooks.json {e}", file=sys.stderr)
+    sys.exit(1)
+for w in warn.getvalue().splitlines():
+    bad.append(f"unparseable command ({w})")
+for h in rows:
+    seen += 1
+    # The registered path, plugin root mapped to this checkout, so a mistyped or
+    # relocated directory fails here instead of at runtime.
+    exe = h["exe"]
+    for root in ("${CLAUDE_PLUGIN_ROOT}", "$CLAUDE_PLUGIN_ROOT"):
+        if exe.startswith(root):
+            exe = "." + exe[len(root):]
+    path = os.path.normpath(exe)
+    if not os.path.isfile(path):
+        bad.append(f"{h['event']}: {h['script']} does not exist")
+    elif not os.access(path, os.X_OK):
+        bad.append(f"{h['event']}: {h['script']} is not executable")
+if seen == 0 and not bad:
     bad.append("found 0 hook commands — the selector matched nothing, so this check inspected nothing")
 for line in bad:
     print(f"ERROR: hooks.json {line}", file=sys.stderr)
@@ -247,6 +258,40 @@ if ! DIET_OUT="$(python3 hooks/lib/hot_path_matchers.py hooks/hooks.json 2>&1)";
   done <<< "$DIET_OUT"
   fail "hooks/hooks.json breaks the runtime diet — no hook may run on user prompts or on Read/Grep/Glob/MCP tool calls"
 fi
+
+# Liveness stamps (S3.6): every hook hooks.json registers must call
+# `mtk_hook_seen <its own file name>` on a non-comment line. mtk-doctor derives
+# the liveness set from hooks.json and looks for exactly that stamp name, so a
+# hook that never stamps (or stamps under another name) reads as "never fired"
+# in every repo. Both read hooks.json through hooks/lib/hook_registry.py; the wiring test
+# also drives each hook to prove the call is reached.
+python3 - <<'MTKPY' || fail "a hook registered in hooks/hooks.json does not stamp its liveness (add \`mtk_hook_seen <its file name>\` right after sourcing hooks/lib/hook-io.sh)"
+import os, re, sys
+sys.path.insert(0, "hooks/lib")
+sys.dont_write_bytecode = True  # importing must not write hooks/lib/__pycache__
+from hook_registry import handlers
+try:
+    # a command that cannot be split is skipped here; the executable check above reports it
+    names = list(dict.fromkeys(h["script"] for h in handlers("hooks/hooks.json")))
+except ValueError as e:
+    print(f"ERROR: liveness stamp: {e}", file=sys.stderr)
+    sys.exit(1)
+bad = []
+if not names:
+    bad.append("found 0 registered hook scripts — the selector matched nothing, so this check inspected nothing")
+for n in names:
+    try:
+        lines = open(os.path.join("hooks", n)).read().splitlines()
+    except OSError as e:
+        bad.append(f"hooks/{n}: cannot read ({e})")
+        continue
+    call = re.compile(r"(^|[\s;&|(])mtk_hook_seen\s+[\"']?" + re.escape(n) + r"[\"']?(\s|;|$)")
+    if not any(call.search(l) for l in lines if not l.lstrip().startswith("#")):
+        bad.append(f"hooks/{n} has no `mtk_hook_seen {n}` call")
+for line in bad:
+    print(f"ERROR: liveness stamp: {line}", file=sys.stderr)
+sys.exit(1 if bad else 0)
+MTKPY
 
 for required_cmd in format-on-edit.sh; do
   grep -q "$required_cmd" hooks/hooks.json \
@@ -273,38 +318,6 @@ for linters in hooks/pre-commit-linters.sh scripts/pre-commit-linters.sh; do
 done
 [ "$linters_found" -eq 1 ] || fail "pre-commit-linters.sh not found in hooks/ or scripts/ — hooks/git-hooks/pre-commit depends on it"
 
-# Every hook hooks.json wires must exist and be executable. Data-driven on
-# purpose: the check iterates what hooks.json actually registers, so renaming or
-# removing a hook needs no edit here, and a dangling registration (the script
-# deleted, the entry left behind) fails instead of erroring on every tool call.
-python3 - <<'MTKPY' || fail "hooks/hooks.json wires a hook command that does not resolve to an executable file"
-import json, os, shlex, sys
-d = json.load(open("hooks/hooks.json")).get("hooks", {})
-bad, seen = [], 0
-for ev, blocks in d.items():
-    for b in blocks:
-        for h in b.get("hooks", []):
-            cmd = h.get("command")
-            if not cmd:
-                continue
-            seen += 1
-            try:
-                exe = shlex.split(cmd)[0]
-            except ValueError:
-                bad.append(f"{ev}: unparseable command {cmd!r}")
-                continue
-            path = exe.replace("${CLAUDE_PLUGIN_ROOT}", ".")
-            if not os.path.isfile(path):
-                bad.append(f"{ev}: {exe} does not exist")
-            elif not os.access(path, os.X_OK):
-                bad.append(f"{ev}: {exe} is not executable")
-if seen == 0:
-    bad.append("found 0 hook commands — the selector matched nothing, so this check inspected nothing")
-for line in bad:
-    print(f"ERROR: hooks.json {line}", file=sys.stderr)
-sys.exit(1 if bad else 0)
-MTKPY
-
 # Runtime diet lock. Read, Grep, Glob, MCP tool calls and user prompts carry zero
 # MTK hooks: each one is a process spawn on the hottest paths of every session, and
 # native Claude Code already covers what those hooks did (path-scoped rules via
@@ -313,8 +326,15 @@ MTKPY
 # mcp__ tool. Matcher semantics follow Claude Code: empty or "*" matches every
 # tool; a plain `A|B` list matches those names exactly; anything else is a regex.
 python3 - <<'MTKPY' || fail "hooks/hooks.json breaks the runtime diet — no hook may run on user prompts or on Read/Grep/Glob/MCP tool calls"
-import json, os, re, shlex, sys
-d = json.load(open("hooks/hooks.json")).get("hooks", {})
+import re, sys
+sys.path.insert(0, "hooks/lib")
+sys.dont_write_bytecode = True  # importing must not write hooks/lib/__pycache__
+from hook_registry import handlers
+try:
+    rows = list(handlers("hooks/hooks.json"))
+except ValueError as e:
+    print(f"ERROR: runtime diet: {e}", file=sys.stderr)
+    sys.exit(1)
 TOOL_EVENTS = {"PreToolUse", "PostToolUse", "PostToolUseFailure", "PermissionRequest"}
 PROBES = ["Read", "Grep", "Glob", "mcp__server__tool"]
 def covers(matcher, tool):
@@ -327,18 +347,16 @@ def covers(matcher, tool):
     except re.error:
         return True  # an unparseable matcher cannot be proved narrow
 bad = []
-if d.get("UserPromptSubmit"):
+if any(h["event"] == "UserPromptSubmit" for h in rows):
     bad.append("UserPromptSubmit is registered")
-for ev, blocks in d.items():
-    if ev not in TOOL_EVENTS:
-        continue
-    for b in blocks:
-        m = b.get("matcher")
-        hit = [t for t in PROBES if covers(m, t)]
-        if hit:
-            names = [os.path.basename(shlex.split(h["command"])[0]) if h.get("command") else "?"
-                     for h in b.get("hooks", [])]
-            bad.append(f"{ev} matcher {m!r} covers {', '.join(hit)} ({', '.join(names)})")
+groups = {}
+for h in rows:
+    if h["event"] in TOOL_EVENTS:
+        groups.setdefault((h["event"], h["matcher"]), []).append(h["script"])
+for (ev, m), names in groups.items():
+    hit = [t for t in PROBES if covers(m, t)]
+    if hit:
+        bad.append(f"{ev} matcher {m!r} covers {', '.join(hit)} ({', '.join(names)})")
 for line in bad:
     print(f"ERROR: runtime diet: {line}", file=sys.stderr)
 sys.exit(1 if bad else 0)
@@ -670,6 +688,12 @@ bash scripts/lint-skill-bash.sh || fail "skill bash lint failed (run: bash scrip
 # P-* FAIL finding; advisory WARN findings do not fail the build.
 require_file "scripts/poison-lint.sh"
 bash scripts/poison-lint.sh --quiet || fail "poison-floor lint failed (run: bash scripts/poison-lint.sh)"
+
+# Allow twins (S3.10): every code a hook passes to mtk_deny_gated needs both a
+# deny:<code> and an allow:<code> labelled `expect` case in tests/hooks/ — a
+# deny that is only tested for denying drifts into blocking the innocent case.
+require_file "scripts/check-guard-twins.sh"
+bash scripts/check-guard-twins.sh --quiet || fail "guard allow-twin check failed (run: bash scripts/check-guard-twins.sh)"
 
 # Advisory: multi-sentence skill descriptions hurt routing (S2.5) — warn only, never fail.
 for skill in .claude/skills/*/SKILL.md; do

@@ -44,7 +44,7 @@ flowchart TD
 
 ## Routed Workflow Skills
 
-Reached via `/mtk <description>`; `mtk-doctor` and `lessons` are also directly invocable.
+Reached via `/mtk <description>`; `implement`, `fix` and `batch-fix` are also directly invocable as `/mtk:implement`, `/mtk:fix` and `/mtk:batch-fix` shortcuts, as are `mtk-doctor` and `lessons`.
 
 | Workflow | Composition |
 |:---|:---|
@@ -65,7 +65,7 @@ Reached via `/mtk <description>`; `mtk-doctor` and `lessons` are also directly i
 
 Not user-invocable — loaded automatically when triggered:
 
-- `handoff` — capture session state when context is tight or work is paused mid-stream
+- `handoff` — write the workflow's canonical checkpoint when context is tight or work is paused, or resume from one ("continue", "pick up", `/mtk handoff` while an open note exists)
 - `lessons` (`capture` mode) — capture an engineer correction, or a working approach found after struggling 2+ times with the same sub-problem, as a reusable lesson
 - `prior-work-check` — before approving a spec or multi-file work, confirm no existing skill/helper/handler/lesson already covers it
 - `subagent-implementation` — replaces incremental-implementation for 3+ batches, 6+ non-mechanical files, or non-none security_impact; one fresh implementer subagent per batch
@@ -80,6 +80,7 @@ Not user-invocable — loaded automatically when triggered:
 flowchart LR
     S1["Stage 1<br/><b>compliance-reviewer</b><br/><i>Always runs first</i>"]
     S1 -- "No critical issues" --> S2["Stage 2<br/><b>test-reviewer</b><br/><b>architecture-reviewer</b>"]
+    S2 -- "HIGH/MAX only" --> V["Verify<br/><b>finding-verifier</b>"]
     S1 -- "Critical issues" --> FIX["Fix → Re-review"]
     FIX --> S1
 ```
@@ -91,6 +92,8 @@ flowchart LR
 - Test completeness or missing coverage → `test-reviewer`
 - Architecture or slice boundary concerns → `architecture-reviewer`
 - Error-handling diff (catch/except/`?.`/`??`/eslint-disable/Skip) → `silent-failure-hunter` (runs in parallel with `compliance-reviewer` in Stage 1 when triggered)
+
+**Verify stage (HIGH/MAX only):** After Stage 2, `finding-verifier` re-checks one directory group of findings against the code and records a verdict per finding. It is a stage, not a lane: it adds no findings, never drops one it cannot verify, and an incomplete or unverified review cannot read as PASS. Only a full PASS lets `scripts/review-receipt.sh` write a diff-bound receipt for the push gate.
 
 ---
 

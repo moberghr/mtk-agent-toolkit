@@ -50,8 +50,10 @@ set -euo pipefail
 #   7. .claude/setup-answers.json — informational only: `present` / `absent`.
 #      Never affects the --check exit code or the summary counts.
 #   8. permissions-baseline — scripts/settings-baseline.sh --missing against
-#      .claude/settings.json: any baseline deny/ask rule absent -> stale with
-#      the count; none -> fresh; helper missing or unreadable JSON -> unknown.
+#      .claude/settings.json: any baseline deny/ask rule or baseline setting
+#      (`settings<TAB>key: value` lines) absent -> stale with the rule and
+#      setting counts reported separately; none -> fresh; helper missing or
+#      unreadable JSON -> unknown.
 #
 # Usage:
 #   bash scripts/setup-refresh-plan.sh [--json] [--check]
@@ -495,15 +497,27 @@ fi
 # --- Row 8: permissions-baseline (.claude/settings.json deny/ask) -----------
 # The all-stacks baseline (settings-baseline.md) replaced read-guard.sh's
 # secret-file denies; a repo bootstrapped before 8.1.0 has none of its rules.
-# stale = at least one baseline deny/ask rule absent from .claude/settings.json
-# (the skill proposes them through the diff contract); helper missing -> unknown.
+# stale = at least one baseline deny/ask rule or baseline setting absent from
+# .claude/settings.json; the skill proposes them through the diff contract.
+# --missing prints settings as `settings<TAB>key: value`, counted apart from
+# rules. Helper missing -> unknown.
 BASELINE_ROW="permissions-baseline"
 if [ -f "$SCRIPT_DIR/settings-baseline.sh" ]; then
   bl_rc=0
   bl_out="$(bash "$SCRIPT_DIR/settings-baseline.sh" --missing .claude/settings.json 2>/dev/null)" || bl_rc=$?
   case "$bl_rc" in
-    0) add_row "$BASELINE_ROW" "fresh" "every baseline deny/ask rule is in .claude/settings.json" ;;
-    1) add_row "$BASELINE_ROW" "stale" "$(printf '%s\n' "$bl_out" | awk 'NF' | wc -l | tr -d ' ') baseline deny/ask rule(s) missing from .claude/settings.json" ;;
+    0) add_row "$BASELINE_ROW" "fresh" "every baseline deny/ask rule and setting is in .claude/settings.json" ;;
+    1)
+      bl_settings="$(printf '%s\n' "$bl_out" | awk -F'\t' 'NF && $1=="settings"' | wc -l | tr -d ' ')"
+      bl_rules="$(printf '%s\n' "$bl_out" | awk -F'\t' 'NF && $1!="settings"' | wc -l | tr -d ' ')"
+      bl_what=""
+      [ "$bl_rules" -gt 0 ] && bl_what="$bl_rules baseline deny/ask rule(s)"
+      if [ "$bl_settings" -gt 0 ]; then
+        [ -n "$bl_what" ] && bl_what="$bl_what and "
+        bl_what="${bl_what}$bl_settings baseline setting(s)"
+      fi
+      add_row "$BASELINE_ROW" "stale" "${bl_what:-baseline entries} missing from .claude/settings.json"
+      ;;
     *) add_row "$BASELINE_ROW" "unknown" "settings-baseline.sh could not read .claude/settings.json (exit $bl_rc)" ;;
   esac
 else

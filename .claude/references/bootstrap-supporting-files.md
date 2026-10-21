@@ -129,6 +129,18 @@ fi
 
 Report one line in STEP 5 (`generated` or `preserved (existing)`). Do NOT add `.claudeignore` to the `.gitignore` — it must be committed.
 
+### .gitignore: `.mtk/` (always)
+
+Unconditionally ensure `.mtk/` is in the repo's `.gitignore` (create the file if missing; skip when an equivalent line already exists, so it is idempotent). `.mtk/` holds workflow artifacts, evidence logs, metrics and compaction archives, not only analyzer output, so this does not depend on the analyzer step below.
+
+```bash
+if ! grep -qxE '/?\.mtk/?' .gitignore 2>/dev/null; then
+  # A last line without a newline would otherwise absorb the new entry.
+  if [ -s .gitignore ] && [ -n "$(tail -c 1 .gitignore)" ]; then printf '\n' >> .gitignore; fi
+  printf '.mtk/\n' >> .gitignore
+fi
+```
+
 ### Analyzer Configuration (opt-in)
 
 After distributing references, ask the engineer whether to configure recommended analyzers for the detected stack. This sets up Roslyn analyzers (.NET), ruff/mypy (Python), or biome/tsc-strict (TypeScript) so that build output feeds into the review pipeline with `source: "analyzer"` and `confidence: 100`.
@@ -137,7 +149,6 @@ After distributing references, ask the engineer whether to configure recommended
 2. Ask: "Would you like to set up recommended analyzers for {stack}? This adds [packages] to your build and surfaces semantic findings in the review pipeline. (y/n)"
 3. If yes: generate the appropriate config (`Directory.Build.props` additions for .NET, `pyproject.toml [tool.ruff]` for Python, `biome.json` for TypeScript)
 4. If no: skip — the regex linter and AI review still work without analyzers
-5. Add `.mtk/` to `.gitignore` (ephemeral analyzer output cache)
 
 ### Companion Plugin: dotnet-claude-kit (.NET only)
 

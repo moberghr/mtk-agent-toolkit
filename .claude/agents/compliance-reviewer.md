@@ -5,7 +5,7 @@ description: >
   the rules that apply to the diff, the coding guidelines, architecture-principles.md, and
   existing codebase patterns. Adversarial persona — finds problems, doesn't approve easily.
 tools: Read, Glob, Grep, Bash
-model: opus
+model: sonnet
 effort: high
 ---
 
@@ -65,7 +65,10 @@ tech-stack skill). Axes, security first:
 ## Step 4: Output
 
 1. Markdown findings table (`confidence >= threshold`).
-2. Fenced JSON per the schema. Source of truth.
+2. Fenced JSON per the schema. Source of truth. It must carry `coverage` (every changed file in
+   `no_issues`, `skipped` with a reason, or a finding) and, when the orchestrator passed
+   `candidates.json`, `candidates_disposed` for every candidate (`raised`|`dropped`, reason,
+   cited `file:line`); `snippet` on a finding is optional. Rules: **Coverage, candidates, abstention**.
 3. Untested code paths — the public methods from Step 3 with no test.
 4. What's good — a short note for humans, outside the JSON.
 

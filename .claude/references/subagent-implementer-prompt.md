@@ -81,6 +81,14 @@ Rules:
 10. Before trusting a call into a dependency (framework, SDK, package), read its real
    exception/return surface from local source — decompiled package, SDK source, in-repo docs —
    not memory. Name anything you could not verify in `traps`.
+11. Budget: stop at about <max_calls> tool calls (the orchestrator fills this from
+   MTK_IMPLEMENTER_MAX_CALLS, default 120), or after two verify runs fail on the same error
+   with no new approach. Do not keep going: return status "partial" with
+   resume_note {done, left, next, files} — the orchestrator respawns a fresh implementer
+   from your on-disk work (partial, inconclusive and killed share one per-batch budget, `MTK_BATCH_MAX_RESPAWNS`, default 2).
+12. Result size: the JSON block stays at or under ~60 lines. Longer detail goes to
+   `.mtk/workflows/<uuid>/batches/<batch_id>/report.md`; cite that path in `behavioral_diff`
+   or a deviation. Build/test evidence already comes from the mtk-verify-run.sh tails.
 
 VERIFY — before returning:
 - Run the build command and the relevant test command from the context pack.
@@ -93,23 +101,26 @@ VERIFY — before returning:
 - If build or tests fail, set `status: "blocked"`, return the error in `build.evidence` /
   `tests.evidence` with `ok: false` and a one-line analysis. Do not loop endlessly.
 - Returning without running the verify commands, or with a partial/ack-only reply, is
-  `status: "inconclusive"` — it is NOT a pass and will be respawned.
+  `status: "inconclusive"` — it is NOT a pass and will be respawned (within the per-batch `MTK_BATCH_MAX_RESPAWNS` budget, default 2, shared with partial and killed).
 
 DELIVERABLE — return EXACTLY one fenced JSON block matching this schema, then stop:
 
 ```json
 {
   "batch_id": "<id>",
-  "status": "completed|blocked|inconclusive",
+  "status": "completed|blocked|inconclusive|partial",
   "actual_files": ["..."],
   "build":  { "ok": true|false, "evidence": "..." },
   "tests":  { "ok": true|false, "evidence": "..." },
   "behavioral_diff": "...",
   "deviations": [ { "kind": "...", "detail": "...", "justification": "..." } ],
+  "resume_note": { "done": "...", "left": "...", "next": "...", "files": ["..."] },
   "traps": [ { "title": "...", "body": "...", "severity": "warn|high" } ],
   "usage": { "tokens": 0, "error_code": null }
 }
 ```
+
+(`resume_note` is optional — only with `status: "partial"`.)
 
 (`traps` is optional — report any *new* gotcha this batch discovered that a later
 batch could re-hit (a stale generated artifact, an analyzer that only fires under
@@ -135,6 +146,7 @@ spend / an error code; it is a cost signal, never a pass/fail input.)
     { "kind": "extra-file|skipped-file|extra-contract|other",
       "detail": "...", "justification": "..." }
   ],
+  "resume_note": { "done": "...", "left": "...", "next": "...", "files": ["src/Foo.cs"] },
   "traps": [
     { "title": "short gotcha name", "body": "what to do instead", "severity": "warn|high" }
   ],
@@ -155,7 +167,10 @@ loop-safety / cost signal only — never a pass/fail input. Omit the whole
 block when no usage data is available; do not fabricate it.
 
 `status` is one of `completed` (delivered + verified), `blocked` (could not
-proceed; build/tests red and the reason stated), or `inconclusive`
-(returned without runnable evidence — see the inconclusive rule below).
+proceed; build/tests red and the reason stated), `inconclusive`
+(returned without runnable evidence — see the inconclusive rule below), or
+`partial` (work stopped at the tool-call budget, resumable via `resume_note`,
+never a pass; unlike `inconclusive` it returns with a handoff, unlike killed it
+returns at all).
 **A missing fenced block, a JSON parse failure, or an acknowledgment-only
 reply ("done!", no JSON) is recorded as `inconclusive` — never as a pass.**

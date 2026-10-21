@@ -21,6 +21,7 @@ trap _mtk_hook_diag EXIT
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
+mtk_hook_seen spec-approval-trigger.sh
 
 INPUT="$(mtk_read_payload)"
 FILE_PATH="$(mtk_extract_file_path "$INPUT" 2>/dev/null || echo "")"

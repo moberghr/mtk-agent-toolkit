@@ -1,6 +1,6 @@
 {
-  "version": "9.0.1",
-  "updated": "2026-10-13",
+  "version": "9.4.0",
+  "updated": "2026-10-21",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -498,6 +498,24 @@
       "action": "sync",
       "description": "PreToolUse hook that hard-denies Edit/Write changes weakening a linter, analyzer or formatter config (added suppression codes, rules switched off, new ignore-file lines) unless the engineer listed the path in .mtk/config-guard-allow within 24h"
     },
+    "hooks/compact-archive.sh": {
+      "source": "hooks/compact-archive.sh",
+      "target": "hooks/compact-archive.sh",
+      "action": "sync",
+      "description": "PostCompact hook that archives the compaction summary to .mtk/sessions/<session>/compact-<stamp>.md (git-ignored .mtk only, mode 0600, 14-day prune) for the session-start COMPACTION OFFER; never prints, never blocks"
+    },
+    "hooks/context-guard.sh": {
+      "source": "hooks/context-guard.sh",
+      "target": "hooks/context-guard.sh",
+      "action": "sync",
+      "description": "PostToolUse context guard (Edit|Write|Bash): reads the main-thread context size from the transcript tail, writes .mtk/sessions/<session>/telemetry.json (git-ignored .mtk only, mode 0600), nudges once per workflow step at MTK_CTX_SOFT/MTK_CTX_HARD to checkpoint and /clear, and once per 150k band from MTK_CTX_GENERIC without a workflow; python-free throttle, never blocks"
+    },
+    "hooks/subagent-context.sh": {
+      "source": "hooks/subagent-context.sh",
+      "target": "hooks/subagent-context.sh",
+      "action": "sync",
+      "description": "SubagentStart hook that hands an mtk: subagent (or any subagent while a workflow is live) the active context-pack path and the constitution's critical-rule ids as additionalContext; never blocks"
+    },
     "hooks/cost-tracker.sh": {
       "source": "hooks/cost-tracker.sh",
       "target": "hooks/cost-tracker.sh",
@@ -939,6 +957,12 @@
       "action": "sync",
       "description": "Helper for init/event/set/read/list/gate/seal operations against .mtk/workflows/{uuid}.json; batch applies several ops in one invocation and event --ts replays runtime-captured timestamps"
     },
+    "scripts/workflow-checkpoint.py": {
+      "source": "scripts/workflow-checkpoint.py",
+      "target": "scripts/workflow-checkpoint.py",
+      "action": "sync",
+      "description": "Logic behind workflow-artifact.sh checkpoint and resume: re-renders the one canonical docs/handoffs/<slug>.md note from the workflow artifact, refuses a Resume step naming a done unit (exit 3), self-ignores the notes, snapshots the tree into refs/mtk/checkpoints/<uuid> through a temporary index, and prints the read-only RESUME drift block"
+    },
     "scripts/workflow-dashboard.sh": {
       "source": "scripts/workflow-dashboard.sh",
       "target": "scripts/workflow-dashboard.sh",
@@ -956,6 +980,30 @@
       "target": "scripts/learnings.sh",
       "action": "sync",
       "description": "Manage structured learnings (.mtk/learnings.jsonl) — add | query | regen-markdown | migrate. Drives 5-layer retrieval at start of spec/fix."
+    },
+    "scripts/lesson-mine-state.sh": {
+      "source": "scripts/lesson-mine-state.sh",
+      "target": "scripts/lesson-mine-state.sh",
+      "action": "sync",
+      "description": "Deterministic state for lessons mine under .mtk/lessons/: a forward-only transcript watermark, an append-only decision ledger that filters ruled candidates, and decoded-quote evidence checks"
+    },
+    "scripts/handoff-state.sh": {
+      "source": "scripts/handoff-state.sh",
+      "target": "scripts/handoff-state.sh",
+      "action": "sync",
+      "description": "Lifecycle state for docs/handoffs/*.md notes (open, accepted, expired; branch and expiry frontmatter) — list --open is what session-start reads for recovery and the startup handoff offer"
+    },
+    "scripts/check-instruction-load.sh": {
+      "source": "scripts/check-instruction-load.sh",
+      "target": "scripts/check-instruction-load.sh",
+      "action": "sync",
+      "description": "Finds instruction files a harness silently drops, truncates or ignores: Codex byte cap, AGENTS.md shadowed by CLAUDE.md, Cursor globs: in Claude rules, CLAUDE.local.md not gitignored"
+    },
+    "scripts/check-guard-twins.sh": {
+      "source": "scripts/check-guard-twins.sh",
+      "target": "scripts/check-guard-twins.sh",
+      "action": "sync",
+      "description": "Validator check that every code a hook passes to mtk_deny_gated has both a deny: and an allow: labelled expect case in tests/hooks/test-*.sh"
     },
     "scripts/lint-ears.sh": {
       "source": "scripts/lint-ears.sh",
@@ -1271,6 +1319,54 @@
       "target": "templates/workflows/subagent-implementation.workflow.js",
       "action": "sync",
       "description": "Reference dynamic-workflow script for the subagent-implementation per-batch loop"
+    },
+    "agents/finding-verifier.md": {
+      "source": ".claude/agents/finding-verifier.md",
+      "target": ".claude/agents/finding-verifier.md",
+      "action": "sync",
+      "description": "Read-only verify stage (HIGH/MAX, after Stage 2) that re-checks one directory group of review findings against the code and records a verdict per finding; never drops a finding it cannot verify"
+    },
+    "hooks/lib/guard-mode.sh": {
+      "source": "hooks/lib/guard-mode.sh",
+      "target": "hooks/lib/guard-mode.sh",
+      "action": "sync",
+      "description": "Guard-mode helpers (off|advisory|shadow|active): mtk_guard_mode and mtk_deny_gated, sourced after hook-io.sh by the shadow-capable guards; the unshadowable mtk_deny floor stays in hook-io.sh"
+    },
+    "hooks/lib/hook_registry.py": {
+      "source": "hooks/lib/hook_registry.py",
+      "target": "hooks/lib/hook_registry.py",
+      "action": "sync",
+      "description": "The one reader of hooks/hooks.json handlers (script, args, matcher, if, timeout, async, rarity), shared by validate-toolkit, mtk-doctor and the wiring test"
+    },
+    "hooks/lib/active_workflow.py": {
+      "source": "hooks/lib/active_workflow.py",
+      "target": "hooks/lib/active_workflow.py",
+      "action": "sync",
+      "description": "Selects the one active workflow for hooks, shared by session-start and subagent-context"
+    },
+    "hooks/lib/session_store.py": {
+      "source": "hooks/lib/session_store.py",
+      "target": "hooks/lib/session_store.py",
+      "action": "sync",
+      "description": "Shared .mtk/sessions helpers for compact-archive, session-start and context-guard: the .mtk ignore check, session-dir sanitising, newest same-branch compaction archive, 14-day prune and the atomic 0600 telemetry write (importable and a CLI)"
+    },
+    "hooks/push-gate.sh": {
+      "source": "hooks/push-gate.sh",
+      "target": "hooks/push-gate.sh",
+      "action": "sync",
+      "description": "PreToolUse hook registered behind an `if` filter on the push command: checks the pushed range against a diff-bound review receipt; advisory by default, MTK_PUSH_GATE_ENFORCE=active blocks"
+    },
+    "scripts/review-receipt.sh": {
+      "source": "scripts/review-receipt.sh",
+      "target": "scripts/review-receipt.sh",
+      "action": "sync",
+      "description": "Diff-bound review receipts under ~/.mtk/receipts/ (0600): compute the change id of the push range, write a receipt after a PASS review, check it for the push gate"
+    },
+    "scripts/review-coverage.sh": {
+      "source": "scripts/review-coverage.sh",
+      "target": "scripts/review-coverage.sh",
+      "action": "sync",
+      "description": "Checks that a reviewer lane accounted for every changed file and disposed of every deterministic candidate; an incomplete lane cannot read as PASS"
     },
     "agents/context-miner.md": {
       "source": ".claude/agents/context-miner.md",

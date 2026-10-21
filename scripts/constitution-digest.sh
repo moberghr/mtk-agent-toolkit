@@ -26,6 +26,12 @@ set -euo pipefail
 # Usage:
 #   bash scripts/constitution-digest.sh            # human-readable digest
 #   bash scripts/constitution-digest.sh --quiet    # ids + one-line only (for prompts)
+#   bash scripts/constitution-digest.sh --ids-only # Critical Rules only, one
+#                                                  # `<id> <first sentence>` line
+#                                                  # each, capped at 200 chars, no
+#                                                  # headings, principles or totals
+#                                                  # (SubagentStart context block);
+#                                                  # exit 1 when no rule matched
 
 # Resolve the PROJECT root, not the script's own parent. This script ships in
 # the plugin cache as well as in target repos; anchoring on `dirname $0` made a
@@ -37,7 +43,42 @@ ROOT_DIR="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || p
 cd "$ROOT_DIR"
 
 QUIET=0
-[ "${1:-}" = "--quiet" ] && QUIET=1
+IDS_ONLY=0
+case "${1:-}" in
+  --quiet) QUIET=1 ;;
+  --ids-only) QUIET=1; IDS_ONLY=1 ;;
+esac
+
+# --ids-only line shape: `<id> <first sentence>`, at most 200 chars. Input is the
+# already-collapsed bullet text (leading `- ` stripped, whitespace squeezed).
+# The id is the bold token when the bullet opens with one (`**C0.1**`), else the
+# first word (custom MTK_RULE_ID_PATTERN shapes such as `[RULE-7]`). The first
+# sentence ends at the first `. ` — a dot inside a token (`C0.1`,
+# `.claude/manifest.json`) does not end it.
+IDS_MAX=200
+ids_line() {
+  local s="$1" id rest sentence out
+  case "$s" in
+    '**'*)
+      rest="${s#\*\*}"
+      id="${rest%%\*\**}"
+      rest="${rest#*\*\*}"
+      ;;
+    *)
+      id="${s%% *}"
+      rest="${s#"$id"}"
+      ;;
+  esac
+  rest="${rest#"${rest%%[![:space:]]*}"}"
+  sentence="${rest%%. *}"
+  [ "$sentence" = "$rest" ] || sentence="${sentence}."
+  out="$id"
+  [ -n "$sentence" ] && out="$id $sentence"
+  if [ "${#out}" -gt "$IDS_MAX" ]; then
+    out="${out:0:$((IDS_MAX - 3))}..."
+  fi
+  printf '%s\n' "$out"
+}
 
 # Which file is this repo's canonical constitution (see resolve-constitution.sh).
 constitution_file() {
@@ -94,7 +135,12 @@ if [ -f "$CONST_FILE" ]; then
   while IFS= read -r line; do
     crit_count=$((crit_count + 1))
     # Collapse to a single trimmed line.
-    echo "$line" | sed -E 's/^[[:space:]]*-[[:space:]]*//; s/[[:space:]]+/ /g'
+    collapsed="$(printf '%s\n' "$line" | sed -E 's/^[[:space:]]*-[[:space:]]*//; s/[[:space:]]+/ /g')"
+    if [ "$IDS_ONLY" -eq 1 ]; then
+      ids_line "$collapsed"
+    else
+      printf '%s\n' "$collapsed"
+    fi
   done < <(grep -E "$RULE_ID_PATTERN" "$CONST_FILE" || true)
   # A present section with zero recognised ids is the silent-failure case: say so
   # on stderr (stdout stays the digest) and name the knob that fixes it.
@@ -102,6 +148,12 @@ if [ -f "$CONST_FILE" ]; then
     printf 'constitution-digest: %s has a Critical Rules section but no line matched the rule-id pattern. Number rules with a bold id (`- **C0.1** …`, `- **§0.1** …`) or set MTK_RULE_ID_PATTERN to the grep -E shape this project uses.\n' "$CONST_FILE" >&2
   fi
   emit_section ""
+fi
+
+# --ids-only stops after the Critical Rules: no principles, no totals line.
+if [ "$IDS_ONLY" -eq 1 ]; then
+  [ "$crit_count" -gt 0 ] || exit 1
+  exit 0
 fi
 
 # --- Tagged architecture principles ---

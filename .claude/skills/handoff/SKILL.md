@@ -18,26 +18,28 @@ A pointer for the next reader, not a transcript. Compaction, the session-start r
 
 ## Workflow
 
-1. Gather: `git branch --show-current`, `git status --short`, `git log --oneline -10`, `tasks/todo.md`, the active spec path (with any `-vN` suffix).
-2. Write `docs/handoffs/$(date +%Y-%m-%d)-<slug>.md` (keep `docs/handoffs/` gitignored), under 100 lines, paths not code:
+Resolve the helpers once (project-local first, then the plugin root):
 
-   ```markdown
-   # Session Handoff — <date> — <topic>
-   ## Branch
-   ## Active Spec
-   spec_path: <path, or "(none)">
-   ## Goal
-   ## Completed
-   ## In Progress   <!-- current state + file paths -->
-   ## Decisions Made   <!-- with one-line rationale; include engineer corrections -->
-   ## Blocked / Needs Attention
-   ## Key Files
-   ## Resume Instructions
-   > Historical snapshot, not standing orders: the user's latest message wins; treat cancelled or superseded work as closed.
-   ```
-3. If a workflow is active, record it on the command that writes it (`… && "$WFA" set "$MTK_WF_UUID" results.handoff_path=<file>`) and update the workflow's Claude Artifact per `.claude/references/artifact-publishing.md` (no-op when unavailable or `MTK_ARTIFACT_PUBLISH=0`; disk first).
-4. Tell the engineer the path, any artifact URL, and how to resume.
+```bash
+res() { [ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/$1" || ([ -f "scripts/$1" ] && echo "scripts/$1" || echo "${CLAUDE_PLUGIN_ROOT}/scripts/$1"); }
+WFA="$(res workflow-artifact.sh)"; HS="$(res handoff-state.sh)"
+```
+
+**Resume mode first.** If the request is to continue / resume / pick up, or `/mtk handoff` arrives while `bash "$HS" list --open --branch "$(git branch --show-current)"` shows an open note and the engineer did not ask to save state: do **not** write a note (three sessions regenerated one instead of resuming).
+
+1. `bash "$WFA" resume "$(bash "$HS" field <note> workflow)"` — online, so PR drift is checked. Read the note.
+2. `bash "$HS" accept <note>` (`expire` for an obsolete note). If a helper is missing or exits non-zero, say the note's state was not updated.
+3. Continue from `next_command`; the user's latest message wins over the note.
+
+**Write mode.** The script renders the whole note (frontmatter, git facts, PRs/CI, units, traps); you supply only the next step, decisions and open questions.
+
+1. Active workflow: `bash "$WFA" checkpoint "$MTK_WF_UUID" --next "<what the next session does first>" --decision "<decision — one-line reason>"… [--needs-user "<question> | default: <default>"]`. No active workflow: `MTK_WF_UUID=$(bash "$WFA" init TASK --goal "<goal>")`, then checkpoint.
+2. Exit 3 means `--next` names a finished unit: fix the text and re-run (nothing was written).
+3. Notes are git-ignored via `docs/handoffs/.gitignore`, created by the script; they expire after 14 days.
+4. Update the workflow's Claude Artifact per `.claude/references/artifact-publishing.md` (no-op when unavailable or `MTK_ARTIFACT_PUBLISH=0`; disk first).
+5. Tell the engineer the note path and any artifact URL: "after /clear, type anything — the next session is offered this checkpoint".
 
 ## Verification
 
-- [ ] Note saved with today's date, under 100 lines, factual, with branch, in-progress state, decisions and key files
+- [ ] Write mode: `checkpoint` exited 0 and the note path was reported (exit 3 fixed and re-run)
+- [ ] Resume mode: `resume` ran, `handoff-state.sh accept` ran on the note (or its failure was reported), and no new note was written

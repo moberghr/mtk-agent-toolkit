@@ -29,7 +29,7 @@ Durable orchestration state lives under `.mtk/workflows/`, outside `.claude/` so
 ```json
 {
   "workflow_uuid": "wf-20260507T140000Z-a1b2c3",
-  "workflow_type": "BUILD|DEBUG|REVIEW|PLAN|FIX",
+  "workflow_type": "BUILD|DEBUG|REVIEW|PLAN|FIX|TASK",
   "schema_version": 1,
   "created_at": "2026-05-07T14:00:00Z",
   "updated_at": "2026-05-07T14:12:33Z",
@@ -52,7 +52,19 @@ Durable orchestration state lives under `.mtk/workflows/`, outside `.claude/` so
     "batches_total": 4,
     "batches_completed": 2,
     "remediation": {
-      "build_failure": { "iterations": 2, "scores": [5, 7], "plateau": false }
+      "build_failure": { "iterations": 2, "scores": [5, 7], "plateau": false },
+      "review": {
+        "iterations": 2, "scores": [], "plateau": false,
+        "opens": [3, 2], "stalled": false,
+        "findings": {
+          "open": ["F-1a2b3c4d5e", "F-0f9e8d7c6b"],
+          "last": { "FIXED": ["F-5a6b7c8d9e"], "STILL_OPEN": ["F-1a2b3c4d5e"], "NEW": ["F-0f9e8d7c6b"] }
+        }
+      }
+    },
+    "review": {
+      "input_fingerprint": "<base commit sha> <tree hash>",
+      "recorded_at": "2026-05-07T14:30:00Z"
     },
     "usage": { "tokens_total": 0, "error_codes": [] },
     "dispatch_incidents": [
@@ -81,6 +93,48 @@ Implementations may add fields under `results` and `intent` without breaking sch
 `results.context_pack` is the path of the per-run context pack written by `scripts/build-context-pack.sh` after Phase 2 (normally `.mtk/workflows/{uuid}/context-pack.md`): the build/test/format commands, CLAUDE.md critical rules, manifest-selected coding-guideline sections, `[EXTRACTED]` principles, and matching lessons that every implementer and reviewer subagent reads **instead of** the files it was built from. Rebuilt when the manifest is amended; passed by path in every subagent prompt.
 
 `results.artifact_url` is the URL of the workflow's published Claude Artifact (the single browsable rollup of spec/plan/handoff/health, updated in place across phases). It is set only when artifact publishing is enabled and available — see `.claude/references/artifact-publishing.md`. The `*_path` fields (`spec_path`, `plan_path`, `todo_path`, `handoff_path`, `health_report_path`) are the on-disk source docs the assembler (`scripts/workflow-artifact-md.sh`) concatenates into `.mtk/workflows/{uuid}.artifact.md`. Disk remains the source of truth; the artifact is an additive rendered mirror.
+
+`results.checkpoint` is written by `checkpoint` (see `scripts/workflow-checkpoint.py`): `{path, sha, branch, worktree, at, state, snapshot, pr, ignore}` — the note path, HEAD sha, branch and worktree at write time, the timestamp, the note state, the snapshot result (`commit`, `moved`, or `error`), the PR/CI facts (empty with `--offline`), and how the note is kept out of git. `resume` diffs the live tree against it. Alongside it, the flags are stored as `results.checkpoint_path` (the one note, `docs/handoffs/<spec slug|uuid>.md`, rewritten in full each time), `results.next_notes` (`--next`), `results.decisions[]` (`--decision`), `results.needs_user[]` (`{question, default}`), `results.next_command`, `results.last_verify` (`{cmd, result, …}` from `--verify "<cmd> => <result>"`) and `results.wait_until` (`--wait-until`, ISO-8601). `TASK` is the lightweight type (`init TASK`) for a handoff with no other workflow. `checkpoint` also records `results.handoff_path` (the note's repo-relative path, a copy of `checkpoint_path`), which the workflow Claude-Artifact renderer reads.
+
+`resume <uuid> --porcelain [--offline]` is the machine contract: one `key=value` per line, values single-line, in this fixed order — `uuid`, `type`, `phase`, `status`, `note`, `drift`, `pr_checked` (`true|false|offline`), `next_command`, `needs_user` (a count). It is read-only and exits like `resume`. Consumers (the session-start hook) parse `--porcelain`, never the human block. A drift of `none` means every check ran; `unchecked (<why>)` means the branch/sha comparison could not run, and `; PR not checked (offline)` is appended under `--offline`.
+
+`results.respawns.<batch_id>` is the per-batch respawn counter, shared by `partial`, `inconclusive` and killed dispatches in `subagent-implementation`; capped by `MTK_BATCH_MAX_RESPAWNS` (default 2), at which the batch halts.
+
+The tree is snapshotted into `refs/mtk/checkpoints/<uuid>` through a temporary index (HEAD, index and worktree untouched); `prune` deletes that ref with the workflow.
+
+**Batch contract (R1.2).** `checkpoint` is batchable and must be the LAST op of a `batch` call; exit 3 (validator rejection) is the batch's exit 3, earlier ops stay applied, and the caller fixes `--next` and re-runs `checkpoint` alone.
+
+## Review input and remediation tracking
+
+`results.review.input_fingerprint` binds a review to the tree its lanes read. `review-input <uuid> --record` (at lane dispatch) stores the output of `mtk_tree_fingerprint` from `hooks/lib/hook-io.sh` — the same fingerprint the Stop hook binds evidence with, format `<base commit> <hash>` — plus `recorded_at`. `review-input <uuid> --check` (before aggregating the lanes) recomputes it against the **recorded** base commit and exits:
+
+| Exit | Meaning |
+|---|---|
+| `0` | Unchanged. A write under `.mtk/` and a commit of exactly the reviewed tree both stay `0`. |
+| `1` | Changed: a tracked file was edited or deleted, or an untracked, non-ignored file appeared. Prints `recorded=` and `current=`. Re-dispatch the lanes whose files changed. |
+| `2` | Uncheckable: nothing recorded, not a git work tree, an unreadable file, or `hook-io.sh` absent (it is looked up beside the script, then under `CLAUDE_PLUGIN_ROOT`). |
+
+`results.remediation.<trigger>` is the circuit-breaker state written by `remediation <uuid> <trigger>`. It keeps two independent series:
+
+- `scores` (`--score N`, higher is better). `plateau` is true when the last two did not increase.
+- `opens` (`--open N`, the open-finding count, lower is better). `stalled` is true when the last open count is above 0 and the last two did not decrease (`opens[-1] > 0 and opens[-1] >= opens[-2]`), so two successive zeros are success, not a stall. `stalled` is written only for a trigger that has reported an open count.
+
+Either flag, or `iterations >= MTK_MAX_REMEDIATION_ITERS` (default 3), prints `ESCALATE`, else `CONTINUE`. The verdict is always line 1 of the output. A stall adds a `reason: stalled` line after it.
+
+`--findings <file.json>` takes a JSON array of findings, or a lane result object with `findings[]` (`review-finding-schema.md`). It cannot be combined with `--open`, because it supplies N itself as the number of distinct open findings. Each finding gets a UID `F-` + the first 10 hex of `sha1(file|rule|snippet)`:
+
+- The snippet is chosen by the rule in `review-finding-schema.md` (`snippet`, with its fallback field order).
+- Whitespace in the snippet is collapsed and stripped.
+- The line number is never part of the UID, so a finding keeps its UID when edits move it.
+- A reworded `rationale` reads as a new finding: one `FIXED` plus one `NEW`.
+
+The UIDs are reconciled against the previous `--findings` call for the same trigger. The result is stored as `findings.open` (current UIDs) and `findings.last`, and printed after the verdict as three lines, `FIXED <n> <uid>…`, `STILL_OPEN <n> <uid>…` and `NEW <n> <uid>…`:
+
+- `FIXED` — was open, now absent.
+- `STILL_OPEN` — open in both calls.
+- `NEW` — first seen now.
+
+A findings file that is unreadable or has the wrong shape exits `2` and records nothing.
 
 ## criteria_status
 
@@ -124,7 +178,9 @@ Events are append-only. One line per event in `{uuid}.events.jsonl`.
 | `agent_returned` | A subagent finishes — or is killed (`verdict: killed`, `findings_count: 0`) | `agent`, `verdict`, `findings_count`, optional `source: workflow-replay` |
 | `remediation_started` | Loop entered to fix issues | `trigger` |
 | `remediation_resolved` | Loop exits successfully | `trigger`, `iterations` |
-| `remediation_escalated` | Circuit-breaker tripped (cap or plateau) | `trigger`, `iterations`, `plateau` |
+| `remediation_escalated` | Circuit-breaker tripped (cap, plateau or stall) | `trigger`, `iterations`, `plateau`, `stalled` (bool), `reason` (`stalled` \| `plateau` \| `cap`, first that holds) |
+| `review_input_recorded` | `review-input --record` stored the reviewed tree's fingerprint | `input_fingerprint` |
+| `checkpoint_written` | `checkpoint` rendered the note | `path`, `sha`, `branch`, `state`, `snapshot` (`moved` \| `unchanged` \| `skipped` \| `error`), `pr_checked` |
 | `workflow_completed` | Final phase done | `summary` |
 | `workflow_failed` | Failure-stop gate trips | `reason` |
 
@@ -156,6 +212,15 @@ scripts/workflow-artifact.sh gate "$UUID" plan_trust_gate pass --reason "enginee
 # Read state / list active workflows
 scripts/workflow-artifact.sh read "$UUID"
 scripts/workflow-artifact.sh list
+
+# Bind a review to its input tree; reconcile a review iteration's findings (line 1 = verdict)
+scripts/workflow-artifact.sh review-input "$UUID" --record      # later: --check → 0/1/2
+scripts/workflow-artifact.sh remediation "$UUID" review --findings lane-result.json
+
+# Checkpoint the canonical note (batchable, last op only; exit 3 = --next names a done unit); read-only resume block
+scripts/workflow-artifact.sh checkpoint "$UUID" --next "<first step>" --decision "<d — why>" --verify "<cmd> => <result>"
+scripts/workflow-artifact.sh resume "$UUID" [--offline]
+scripts/workflow-artifact.sh resume "$UUID" --porcelain [--offline]   # stable key=value lines for hooks
 
 # Expire workflows (any status) not updated within N days; N >= 1 unless --force; prints pruned uuids
 scripts/workflow-artifact.sh prune --older-than 30 [--dry-run]

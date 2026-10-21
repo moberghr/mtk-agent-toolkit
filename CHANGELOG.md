@@ -4,6 +4,319 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [9.4.0] - 2026-10-21
+
+A workflow now keeps one canonical, current handoff note, and the next session is offered it after
+`/clear`. A context guard says when to write it. This is PR-2 of the auto-continuation program
+(`docs/plans/2026-10-20-auto-continuation.md`, R1 + R2). The program's session analysis found
+every handoff written by hand to scattered paths, notes that told the next session to redo
+finished work, and an unanswered question copied through three notes.
+
+### Hook processes per tool call
+
+| Tool call | 9.3.0 | 9.4.0 |
+|---|---|---|
+| Read / Grep / Glob | 0 | 0 |
+| MCP | 0 | 0 |
+| Prompt submit | 0 | 0 |
+| Bash | 3 (4 on `git push`) | 4 (5 on `git push`) |
+| Edit / Write | 5 | 6 |
+| Stop | 4 | 4 |
+| SubagentStart | 1 per subagent | 1 per subagent |
+| PostCompact | 1 per compaction, async | 1 per compaction, async |
+
+The new process is `context-guard.sh`. It starts python at most once per session every
+`MTK_CTX_GUARD_INTERVAL` seconds (default 20). A throttled call is bash only.
+
+### Added
+
+- **`workflow-artifact.sh checkpoint <uuid>`** renders the workflow's handoff note at
+  `docs/handoffs/<spec slug>.md`, or `<uuid>.md` when there is no spec.
+  - It rewrites that one file in place and never makes dated copies.
+  - The note is rebuilt from the workflow artifact on every run. The model supplies only
+    `--next`, `--decision` and `--needs-user "<question> | default: <default>"`. The script fills
+    in git facts, the PR and CI state from `gh` (8 s timeout, `--offline` skips it), the
+    batch table, the last verify run, traps and open questions.
+  - The frontmatter extends the 9.1.0 handoff lifecycle with `workflow`, `sha`, `pushed`,
+    `ahead`, `behind`, `next_command`, `needs_user`, `wait_until` and `updated`.
+  - **Validator:** a `--next` that names a finished batch exits 3 and writes nothing.
+  - `checkpoint` can run as the last op of an existing `batch` call, so the batch close in
+    `incremental-implementation` and `subagent-implementation` carries it at no extra turn.
+- **Snapshot refs.** Each checkpoint also snapshots the working tree into
+  `refs/mtk/checkpoints/<uuid>`.
+  - It covers tracked changes and untracked, non-ignored files, built through a temporary
+    index. HEAD, the branch, the real index and the worktree are never touched.
+  - Untracked files over 5 MB are skipped (`MTK_CHECKPOINT_MAX_FILE_MB`).
+  - The commit message carries the note's frontmatter and next step, so a deleted worktree
+    still leaves the branch, sha and `next_command` readable with `git log -1 <ref>`.
+  - `prune` deletes the ref. `MTK_CHECKPOINT_SNAPSHOT=0` turns snapshots off.
+- **`workflow-artifact.sh resume <uuid>`** prints a read-only block: the workflow, any drift
+  since the checkpoint (sha moved, branch or worktree gone, wrong branch, PR merged or
+  closed), `next_command`, and the open-question count.
+- **Session-start resume offer.** On `startup` and `clear`, a `HANDOFF OFFER` for a note that
+  names an active workflow is followed by one `RESUME (offer, not instruction):` segment from
+  `resume --offline`, capped at 600 chars. No `gh` call is made, and output after a compaction
+  is unchanged.
+- **`hooks/context-guard.sh`** (PostToolUse `Edit|Write|Bash`) reads the context size from the
+  transcript tail.
+  - It writes `.mtk/sessions/<session>/telemetry.json` (context tokens, compaction window, %,
+    model, workflow), but only where `.mtk/` is git-ignored.
+  - With an active workflow, it says once per workflow step at `MTK_CTX_SOFT` (200k), and again
+    at `MTK_CTX_HARD` (250k): finish the transition, checkpoint, and tell the engineer to
+    `/clear`.
+  - Without a workflow, it gives a generic `/clear`-or-handoff nudge from `MTK_CTX_GENERIC`
+    (300k), once per 150k band.
+  - `MTK_CONTEXT_GUARD=0` turns it off.
+  - **Why nudges are back.** 9.x removed `context-budget.sh`'s thresholds because they
+    duplicated native `/context` and auto-compaction. This guard does something neither of
+    those does: it fires before the 300k compaction window, and it is tied to the workflow
+    checkpoint, so the next session resumes from disk instead of from a summary.
+    `evidence-ledger.sh` stays silent.
+- **`TASK` workflow type**, for work that is not a BUILD, FIX or REVIEW.
+- **`handoff-state.sh field <file> <key>`** prints one frontmatter value, keeping a `#` inside
+  the value. `closed` is a new state, hidden by `list --open`.
+- `hooks/lib/session_store.py`, shared by `compact-archive.sh`, `session-start` and
+  `context-guard.sh`, covers:
+  - the `.mtk/` ignore check;
+  - the session directory;
+  - the newest same-branch compaction archive;
+  - pruning of session directories after 14 days. Session-start now also prunes on
+    `startup`, because telemetry creates a session directory in every session.
+
+### Changed
+
+- The **`handoff` skill** is a thin wrapper over `checkpoint` and `resume`.
+  - **Resume mode comes first:** "continue", "pick up", or `/mtk handoff` while an open note
+    exists for the branch, now resumes and never writes a new note.
+  - With no active workflow, it opens a `TASK` workflow first. The router's handoff row also
+    matches `resume` and `pick up`.
+- **One respawn budget per batch.** `partial`, `inconclusive` and killed implementers share
+  `results.respawns.<batch_id>`, capped by `MTK_BATCH_MAX_RESPAWNS` (default 2). A second kill on
+  the same batch still halts.
+- `setup-refresh` row 8 counts missing baseline rules and settings separately.
+- The `validate-handoff.sh` sensitive-path check no longer matches `author` or `authoring`.
+  `auth/`, `AuthService`, `oauth`, `authorization` and `authority` still match.
+
+## [9.3.0] - 2026-10-20
+
+Sessions compact at 300k instead of running to the 1M wall, and a fresh session finds what the
+last one left. This is PR-1 of the auto-continuation program (`docs/plans/2026-10-20-auto-continuation.md`).
+It was driven by a 45-day sample of 272 sessions:
+- 62% of main-thread input tokens were spent in turns whose context was already above 300k.
+- Auto-compact fired only at about 967k on 1M-context models.
+- Every handoff was written and picked up by hand.
+
+No hook was added to the read path, MCP calls or prompts.
+
+### Hook processes per tool call
+
+| Tool call | 9.2.0 | 9.3.0 |
+|---|---|---|
+| Read / Grep / Glob | 0 | 0 |
+| MCP | 0 | 0 |
+| Prompt submit | 0 | 0 |
+| Bash | 3 (4 on `git push`) | 3 (4 on `git push`) |
+| Edit / Write | 5 | 5 |
+| Stop | 4 | 4 |
+| SubagentStart | 1 per subagent | 1 per subagent |
+| PostCompact | — | 1 per compaction, async (`compact-archive.sh`) |
+
+### Added
+
+- **Compaction window in the settings baseline.**
+  - `settings-baseline.md` gains a `### settings` section with `autoCompactWindow: 300000`.
+  - `settings-baseline.sh` emits it with `--json`, lists it with `--missing` (`settings<TAB>key: value`) and merges it with `--merge`, but only when the key is absent. An engineer's existing value always wins.
+  - `setup-bootstrap` merges it, and `setup-refresh` proposes it as its own `settings` hunk.
+- **`hooks/compact-archive.sh` (PostCompact, async).** It archives the compaction summary to `.mtk/sessions/<session>/compact-<UTC>.md`, mode 0600, with `session`, `branch`, `trigger`, `created` and `workflow` frontmatter.
+  - It writes only when `.mtk/` is git-ignored, or outside git, so conversation text is never committable.
+  - It prunes session directories older than 14 days.
+  - `MTK_COMPACT_ARCHIVE=0` turns it off.
+  - The retired `post-compact.sh` name stays banned.
+- **Session-start offers after `/clear`.**
+  - The branch-scoped `HANDOFF OFFER` now fires on `clear` as well as `startup`.
+  - When there is no handoff to offer, one `COMPACTION OFFER` names the newest same-branch summary from the last 24h. It is framed as a historical snapshot.
+  - Output after a compaction is unchanged.
+- **Bounded implementers.**
+  - The implementer brief carries a tool-call budget, `MTK_IMPLEMENTER_MAX_CALLS` (default 120). Past it, or after two verify failures on the same error, the implementer returns `status: "partial"` with a `resume_note`.
+  - `subagent-implementation` and the dynamic-workflow path respawn a fresh implementer from the on-disk work, using the existing `RESUME:` preamble, at most twice per batch, and then halt. `partial` is never a pass.
+  - Result JSON is capped at about 60 lines, and longer detail goes to `.mtk/workflows/<uuid>/batches/<id>/report.md`.
+- **Typable workflow skills.** `/mtk:implement`, `/mtk:fix` and `/mtk:batch-fix` are user-invocable shortcuts, so typing them no longer fails with "can only be invoked by Claude". `/mtk <description>` remains the natural-language router.
+
+### Changed
+
+- `mtk-doctor`:
+  - The baseline check reports missing baseline rules **and** settings, and `--fix` merges both.
+  - Hook liveness counts PostCompact handlers as event-rare, like SubagentStart, so a repo that never compacted is not told the hook "never fired".
+- `hooks/lib/hook_registry.py` classifies PostCompact handlers as `rare`.
+- README and AGENTS.md list the eight user-invocable skills.
+
+## [9.2.0] - 2026-10-16
+
+A review that proves what it covered, and a push that notices when it was not reviewed.
+Structural follow-ups to 9.1.0 come first, then the review protocol and the push gate. The push
+gate is advisory by default and sits behind an `if` filter, so only `git push` pays for it. No hook
+was added to the read path, MCP calls or prompts.
+
+### Hook processes per tool call
+
+Counted from `hooks/hooks.json` before and after, with the 8.2.0 method: the handlers whose
+matcher covers the tool, PreToolUse plus PostToolUse. `if`-filtered handlers are counted only
+when the call matches the filter.
+
+| Tool call | 9.1.0 | 9.2.0 |
+|---|---|---|
+| Read / Grep / Glob | 0 | 0 |
+| MCP | 0 | 0 |
+| Prompt submit | 0 | 0 |
+| Bash | 3 | 3 (4 on `git push`: `push-gate.sh`) |
+| Edit / Write | 5 | 5 |
+| Stop | 4 | 4 |
+| SubagentStart | 1 per subagent | 1 per subagent |
+
+### Added
+
+- **Diff-bound review receipts (`scripts/review-receipt.sh`).** A passing full review writes a
+  receipt to `~/.mtk/receipts/` (mode 0600), bound to the change it covered (the push range, a
+  merge-base against the upstream, the remote default branch or `main`, plus the diff), not to a
+  branch name or a timestamp. Any later change to the range makes the receipt stale.
+- **Push gate (`hooks/push-gate.sh`).** Registered on `PreToolUse` `Bash` with
+  `"if": "Bash(git push *)"`, and re-checked in the script. When the pushed range has no matching
+  receipt it says so once. `MTK_PUSH_GATE_ENFORCE=off|advisory|shadow|active` (default `advisory`):
+  `shadow` logs the would-be deny, `active` denies. `MTK_PUSH_GATE=0` turns it off. A push it
+  cannot map to the current branch (another refspec, `--all`, `git -C`, a `cd` earlier in the
+  command) is allowed with one "not mapped" line. Known edge: an empty push range, e.g. `main`
+  with no upstream and no `origin/HEAD`, counts as covered.
+- **Review coverage and candidate disposition (`scripts/review-coverage.sh`).** A reviewer lane
+  result must account for every changed file (`coverage.no_issues`, `coverage.skipped` with a
+  reason, or a finding) and, when the orchestrator passes `candidates.json`, dispose of every
+  deterministic candidate as `raised` or `dropped` with a cited `file:line`. A lane that fails the
+  check is recorded `ABSTAINED` with an `incomplete:` reason, so an incomplete review cannot read
+  as PASS. New eval case `review-incomplete-blocks`.
+- **`finding-verifier` agent.** The HIGH/MAX verify stage after Stage 2, not a lane. It re-checks
+  one directory group of findings against the code and records `confirmed`, `refined`,
+  `rejected`, `immaterial` or `pre_existing` per finding. It rejects only on evidence; "cannot
+  verify" keeps the finding, and a failed verifier leaves its group `unverified`.
+- **Review input fingerprint and finding UIDs (`workflow-artifact.sh`).** `review-input --record`
+  and `--check` detect a review run against changed input. A finding gets a stable
+  `F-<10 hex>` UID from file, rule and code snippet, so it keeps its UID when unrelated edits move
+  its line. `remediation --open N` (or `--findings`) makes the tracker escalate when the open
+  count stops falling, alongside the existing iteration cap and score plateau.
+- **`context-miner` reports `search_status: ran|unavailable`** for each source (git log, lessons
+  store, `gh`), so a source that could not be searched is not read as "nothing found".
+
+### Changed
+
+- **`compliance-reviewer` runs on Sonnet.** It was the only review lane on Opus, and in field use the
+  costliest: one owner's last 30 days show ~4.4k Opus calls from it, while every other lane ran on Sonnet.
+  The 9.0 evals already score Sonnet 5.5 at 1.0 on the review cases, and the lane keeps `effort: high`.
+  `model-routing.md` now says when to pass `model: "opus"` on the spawn instead: a diff that is mostly
+  security or financial-state logic.
+- **Guard-mode helpers moved to `hooks/lib/guard-mode.sh`**, sourced after `hook-io.sh` by the
+  shadow-capable guards. `mtk_deny` stays in `hook-io.sh`, and security-gate still does not source
+  the new file, so no `MTK_*_ENFORCE` value reaches it (S3.18).
+- **One reader of `hooks/hooks.json` handlers (`hooks/lib/hook_registry.py`)**, used by
+  `validate-toolkit`, `mtk-doctor` and the wiring test, so they cannot disagree on how a command
+  is split. It also classifies a handler as event-rare (`if`-filtered or `SubagentStart`);
+  `mtk-doctor` treats those as info, not a missing stamp.
+- **One active-workflow selector (`hooks/lib/active_workflow.py`)** shared by `session-start`
+  and `subagent-context` (newest active workflow within the re-injection window).
+- **S3.6** lists `push-gate.sh` in the registered set and names the shared handler parser. The
+  wiring test pins the `if` filter, which the table of commands does not read.
+- **Importing the hook registry writes no bytecode**, so `validate-toolkit`, `mtk-doctor` and the
+  tests leave no `hooks/lib/__pycache__/` in an installed plugin.
+
+## [9.1.0] - 2026-10-15
+
+Context for subagents, quieter lesson mining, branch-scoped handoffs, and guards that can be
+measured before they block. Every new deny ships in shadow mode first. No hook was added to the
+read path, MCP calls or prompts.
+
+### Hook processes per tool call
+
+Counted from `hooks/hooks.json` before and after, with the 8.2.0 method: the handlers whose
+matcher covers the tool, PreToolUse plus PostToolUse.
+
+| Tool call | 9.0.1 | 9.1.0 |
+|---|---|---|
+| Read / Grep / Glob | 0 | 0 |
+| MCP | 0 | 0 |
+| Prompt submit | 0 | 0 |
+| Bash | 3 | 3 |
+| Edit / Write | 5 | 5 |
+| Stop | 4 | 4 |
+| SubagentStart | 0 | 1 per subagent |
+
+### Added
+
+- **SubagentStart context (`hooks/subagent-context.sh`).** When an `mtk:` subagent starts, or any
+  subagent while a workflow is live, the hook adds the active workflow's context-pack path and the
+  constitution's critical-rule ids (`constitution-digest.sh --ids-only`). A subagent dispatched
+  outside `implement`, or by a brief that forgot the pack path, still gets them. The block is
+  capped at 4,000 characters, cut at a rule boundary with a count of omitted rules. Other
+  subagents get no output, and no python process is spawned for them. Context only, never blocks.
+  Off with `MTK_SUBAGENT_CONTEXT=0`.
+- **Lesson-mining state (`scripts/lesson-mine-state.sh`, under `.mtk/lessons/`):**
+  - a forward-only watermark per transcript, so `lessons mine` reads only new bytes;
+  - an append-only decision ledger, so a candidate already accepted or rejected is not proposed
+    again;
+  - an evidence floor: a candidate admitted only by rubric rule A2 or A3 needs verbatim quotes
+    that match decoded messages in at least two sessions.
+
+  `learnings.sh add` gains `--retire-when`.
+- **Handoff state (`scripts/handoff-state.sh`).** Handoff notes carry `state`
+  (open / accepted / expired), `branch` and `expires` frontmatter. A `startup` session appends one
+  `HANDOFF OFFER:` line when an open handoff names the current branch. It offers the note; it
+  never claims the work.
+- **Instruction-load check (`scripts/check-instruction-load.sh`).** Reports instruction files a
+  harness silently drops, truncates or ignores: an `AGENTS.md` chain over Codex's byte cap
+  (`CODEX-BYTES`, `MTK_CODEX_DOC_MAX_BYTES`, default 32768), an `AGENTS.md` that `CLAUDE.md`
+  shadows (`SHADOWED-AGENTS`), a Claude rule with Cursor's `globs:` and no `paths:`
+  (`GLOBS-NOT-PATHS`), and a `CLAUDE.local.md` git does not ignore (`LOCAL-UNIGNORED`). The
+  `instructions` audit and `setup-bootstrap` run it.
+- **Guard modes `off | advisory | shadow | active`** (`mtk_guard_mode`, `mtk_deny_gated` in
+  `hooks/lib/hook-io.sh`). In shadow mode a guard allows the call with no model-visible output and
+  logs the would-be deny (`ts`, `hook`, `code`, a checksum of the target, never the raw text) to
+  `.mtk/metrics/enforcement-shadow.jsonl`. `mtk_deny` itself is unchanged, and the security-gate
+  floor and config-guard's allow-list protection deny under every mode (S3.18).
+  - `scope-guard.sh`: `MTK_SCOPE_GUARD_ENFORCE=shadow` warns as before and logs
+    `SCOPE-OUT-OF-MANIFEST`.
+  - `config-guard.sh` config class: new `MTK_CONFIG_GUARD_ENFORCE`, default `active`, so today's
+    denies still fire. Their text now leads with the code (`W1-SUPPRESS`, `W2-DISABLED`,
+    `W3-IGNORE`), e.g. `(W2-DISABLED disabled values: 0→1)` instead of `(W2 disabled values: 0→1)`.
+    config-guard has no advisory mode: `advisory`, like any unknown value, falls back to the class
+    default (`active` for config, `shadow` for tests) with one stderr line.
+- **Test-tamper class in config-guard, shadow by default.** An Edit/Write to a test file (by
+  repo-relative path and code extension) that adds skip or focus markers (`T1-SKIP`) or
+  suppressions (`T2-SUPPRESS`), removes test declarations (`T3-FEWER-TESTS`) or assertions
+  (`T4-FEWER-ASSERTS`), or swaps a strong assertion for a weak one (`T5-WEAKENED`) is logged.
+  `MTK_TEST_GUARD_ENFORCE=active` denies it instead. Covers C#, Python and JS/TS.
+- **Hook liveness in `mtk-doctor`.** Every registered hook refreshes a stamp in
+  `$TMPDIR/mtk-hook-seen-<uid>/<sanitised project root>/`, outside the repo, with no process spawned
+  once the directory exists. Both levels are created mode 0700 and must be owned by the user and not
+  be symlinks; a symlinked stamp is never followed. `session-start` counts startups in that directory's `.sessions`. The hook
+  set comes from `hooks/hooks.json`; `test-hooks-wiring.sh` fails if a registered hook stops
+  stamping. Once 5 sessions have been counted, health mode WARNs on a per-call hook with no stamp,
+  or one more than 14 days older than the last session. `SubagentStart` hooks are info only, and
+  no stamp directory reads as "unknown", never a WARN. Each instruction-load finding is a WARN; a
+  sub-check that could not run reads "not checked". `--usage` adds the raw shadow-log counts per
+  hook and code.
+- **Allow-twin check (`scripts/check-guard-twins.sh`).** Every code passed to `mtk_deny_gated`
+  needs both a `deny:<code>` and an `allow:<code>` labelled test case; `validate-toolkit.sh` FAILs
+  otherwise (S3.10). A guard that is only tested for denying drifts into blocking the innocent
+  case.
+
+### Changed
+
+- **S3.6:** `SubagentStart` → `subagent-context.sh` is registered in `hooks/hooks.json` and the
+  wiring test's table.
+- **S3.11:** on `compact`, session-start re-injects only a handoff that is open, or accepted during
+  this session, and whose `branch` is the current branch. A note without frontmatter, or without
+  `branch:`, counts only when modified within 24 hours and is never offered on startup.
+- **`mtk_tree_fingerprint` ignores `.mtk/`**, so MTK's own state (shadow log, lesson ledger,
+  workflow artifacts) never reads as a working-tree change to `verify-completion`.
+- **`MTK_SCOPE_GUARD_ENFORCE=off` now silences scope-guard.** Unset stays `advisory`, and the
+  legacy truthy values (`1`, `true`, `yes`, `on`) still mean `active`.
+
 ## [9.0.1] - 2026-10-13
 
 ### Fixed

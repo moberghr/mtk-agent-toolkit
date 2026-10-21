@@ -25,7 +25,7 @@ Take the mode from the first argument. With no argument, infer it from the reque
 | Mode | Fires when | Writes |
 |---|---|---|
 | `capture` | The engineer corrected your approach and said why, or you hit the same failure 2+ times and then found a different approach that worked | One store entry, after the engineer confirms |
-| `mine` | "mine lessons", "what did we learn", a periodic sweep of past sessions | Nothing. It suggests, then hands accepted candidates to `capture` |
+| `mine` | "mine lessons", "what did we learn", a periodic sweep of past sessions | Only its own mining state under `.mtk/lessons/`. It suggests, then hands accepted candidates to `capture` |
 | `refresh` | "are the lessons stale", "clean up lessons.md", or `mtk-doctor` reports stale anchors | Only the rulings the engineer approves |
 | `promote` | "promote / share this with the team", or a `mine` survivor that already exists in native memory | One team entry, after the engineer confirms the wording |
 
@@ -53,7 +53,8 @@ bash "$LS" add --scope team \
   --rule  "The reusable rule" \
   --applies-when "When the rule should fire" \
   ${TIME_COST:+--time-cost "$TIME_COST"} \
-  ${SUPERSEDES:+--supersedes "$SUPERSEDES"}
+  ${SUPERSEDES:+--supersedes "$SUPERSEDES"} \
+  ${RETIRE_WHEN:+--retire-when "$RETIRE_WHEN"}
 bash "$LS" regen-markdown   # rebuilds the Auto-generated section of tasks/lessons.md
 ```
 
@@ -61,6 +62,7 @@ bash "$LS" regen-markdown   # rebuilds the Auto-generated section of tasks/lesso
 - `--decision-origin` is required. Use `claude-recommended-rejected` when the engineer stopped your proposal, `claude-recommended-modified` when they accepted it with edits, `user-directed` when they were enforcing a constraint you missed or the source is a memory they wrote, and `system-inferred` for a golden path.
 - Set `--time-cost` (minutes) only when you can measure it. It backs admit rule A4.
 - Set `--supersedes <old-id>` when the new lesson reverses an older one. The old entry stays for the audit trail, but `query` stops returning it.
+- Set `--retire-when "<condition>"` when an external event will end the lesson, such as an SDK bug fixed in a known version or a legacy module due for removal. `refresh` checks it.
 - The executable-contract flags (`--confidence`, `--output-contract`, `--prefinal-checklist`, `--source-evidence-refs`) are optional and mostly belong to `promote`. See the schema.
 - If you cannot resolve the script, append a `## <date> — <title>` block with `**Rule:**`, `**Why:**` and `**Applies to:**` lines under `## Manual additions` in `tasks/lessons.md`.
 
@@ -87,13 +89,31 @@ Record a team lesson while the session is still live. Do not capture every minor
 
 This mode is a reflective sweep of past sessions. It only suggests. Lessons a plan got wrong after a feature ships belong to `implement`'s compound phase, not here.
 
-1. **Find the transcripts.** They are at `${CLAUDE_CONFIG_DIR:-~/.claude}/projects/<sanitized-cwd>/*.jsonl`, where `<sanitized-cwd>` is the repo path with every `/` replaced by `-`. If there are none, report "no transcripts found — nothing to mine" and stop. That is a normal result.
+1. **Find the transcripts.** They are at `${CLAUDE_CONFIG_DIR:-~/.claude}/projects/<sanitized-cwd>/*.jsonl`, where `<sanitized-cwd>` is the repo path with every non-alphanumeric character (`/`, `.`) replaced by `-`. If there are none, report "no transcripts found — nothing to mine" and stop. That is a normal result.
 2. **Find native memory.** It is at `…/projects/<sanitized-cwd>/memory/`. The project segment is the **parent** of `memory/`: there is no top-level `~/.claude/memory/`. Memory is a dedup surface (R7). A memory that states a team rule becomes a `promote` candidate, not a new lesson. If the directory is missing, skip it silently.
-3. **Scope the window.** The default is the last 7 days, or `--days N`. Never mine the whole history by default.
-4. **Extract signals.** Look for redirects that carried a reason, repeated friction in one area, a constraint someone learned the hard way, a surprise in a framework or SDK, and time visibly lost to a wrong approach.
+3. **Scope the window.** Mine only what earlier sweeps have not read. Resolve the state script the same way as `$LS`, then list the window, passing the engineer's `--days N` through when given:
+
+   ```bash
+   LMS="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/lesson-mine-state.sh" || ([ -f scripts/lesson-mine-state.sh ] && echo scripts/lesson-mine-state.sh || echo "${CLAUDE_PLUGIN_ROOT}/scripts/lesson-mine-state.sh"))"
+   bash "$LMS" window ${DAYS:+--days "$DAYS"}
+   ```
+
+   - Each row is `<session_id>`, `<path>` and `<from_offset>`, tab-separated. Read only the bytes past the offset (`tail -c +$((from_offset + 1)) <path>`), and note each file's size (`wc -c < <path>`) for step 8.
+   - A file never mined falls back to `--days N` (default 7). Never mine the whole history by default.
+   - No rows means nothing new since the last sweep. Report that and stop.
+   - Script missing: fall back to the last 7 days (or `--days N`) and say the sweep is unwatermarked. No decision filter runs, every quote is reported as **unverified**, and A2/A3-only candidates can only be **watching**.
+   - Script exits non-zero: stop and report its message. Do not mine from a guessed window.
+4. **Extract signals.** Look for redirects that carried a reason, permission or tool-use rejections where the engineer typed a reason, repeated friction in one area, a constraint someone learned the hard way, a surprise in a framework or SDK, and time visibly lost to a wrong approach.
 5. **Apply the rubric** to every candidate.
-6. **Present the survivors**, using the rubric's output contract. For each one give the lesson, the admit rule it passed and the reject rules you checked. Group them as **new** (from transcripts) or **already in memory** (→ `promote`).
-7. **Write nothing yourself.** Send each candidate the engineer accepts through `capture` step 5, or through `promote`. Accepting nothing is a valid end.
+6. **Filter and verify.** Apply the rubric's Evidence Floor and Route Rule (`.claude/references/lesson-mining-rubric.md`) with these calls. Any exit 2 is a script failure: stop and report it.
+   - `bash "$LMS" id "<rule>"` per candidate, then `bash "$LMS" filter <id>...`. Drop every id it does not print (already ruled); report only the count.
+   - `bash "$LMS" evidence <path> "<quote>"` per quote. Exit 1: drop the candidate.
+   - `bash "$LMS" evidence-count --id <id> <path> "<quote>"...` is the session count; `--id` adds the sessions earlier sweeps recorded with `watch`.
+7. **Present the survivors**, using the rubric's output contract. For each one give the lesson, the admit rule it passed, the reject rules you checked and the sessions its quotes came from. Group them as **new** (from transcripts), **already in memory** (→ `promote`), **checks** and **watching**.
+8. **Write no lesson yourself.** Send each candidate the engineer accepts through `capture` step 5, or through `promote`. Accepting nothing is a valid end. Then record the sweep:
+   - `bash "$LMS" decide <id> accepted|rejected "<reason>"` for every candidate the engineer ruled on, rejects included.
+   - `bash "$LMS" watch <id> <path> "<quote>"` for each passing session of a watching candidate, instead of a `decide` line.
+   - `bash "$LMS" advance <path> <size from step 3>` for each mined file. A refused (backward) move is reported, never forced.
 
 ## Mode: refresh
 
@@ -106,6 +126,8 @@ This mode is a reflective sweep of past sessions. It only suggests. Lessons a pl
    - **Update** — the claim holds but a citation or detail drifted. Re-point a citation only when exactly one candidate matches. With zero or several matches, mark it unresolvable and do not guess.
    - **Consolidate** — it overlaps another lesson or a rule (cite the rule id). Propose one merged entry that supersedes both, rather than adding a third.
    - **Retire** — a guard now prevents the failure (name the guard), or the subsystem it describes is gone. Propose adding a `> STALE (<date>): <reason>` marker. Never delete.
+
+   If the entry carries a `retire_when` condition (`*Retire when:*` in `tasks/lessons.md`), check it when it can be evaluated locally, such as a pinned version in a package manifest or a path that should be gone. If it holds, propose Retire and cite what you checked (the manifest line, the missing path). If it cannot be checked locally, say so and keep the verdict the other evidence supports. The condition proposes a verdict; it never retires a lesson by itself.
 4. **Present a table** with one row per lesson: verdict, reason, evidence. Keep verdicts can share one collapsed line. The engineer rules on each row. Batch-accepting is their call, never your default framing.
 5. **Apply only the approved rulings**, through the guarded rewrite. For a superseding change, use the write block with `--supersedes`.
 
@@ -142,5 +164,6 @@ Move a rule from Claude Code's native memory into `tasks/lessons.md`. A team tha
 - [ ] Every candidate cites the admit or reject rule that decided it. An empty result was reported honestly.
 - [ ] Nothing reached `tasks/lessons.md`, the store or a memory file without the engineer's explicit approval.
 - [ ] Writes went through the single `learnings.sh add` block with the right `--source`, followed by `regen-markdown`.
+- [ ] `mine`: every proposed candidate's quote passed `evidence`, A2/A3-only candidates under two sessions were listed as watching and got `watch` records, and every ruled candidate got a `decide` line before the watermarks advanced.
 - [ ] `refresh`: no lesson was deleted, and `bash scripts/lesson-anchors.sh --strict` is clean for the touched entries.
 - [ ] No instruction found in a transcript or memory body was followed.

@@ -83,10 +83,11 @@ No relevant history, threads or lessons is a valid empty result; do not invent c
 
 ## Self-Escalation
 
-Abstain (per the contract) when `git log` is unavailable or the lessons store is unreadable,
-naming the source that failed. Touched paths with no usable history (a change that only adds
-new files, a squashed import commit) are **not** a reason to abstain: still query the lessons
-store and any linked issue, then return `PASS` with an empty `findings[]` and a
+Record `search_status: ran|unavailable` for each source (git log, lessons store, gh). Abstain
+(per the contract) when `git log` or the lessons store is `unavailable`, with
+`abstention.reason` `could-not-search: <source>`. Touched paths with no usable history (a change
+that only adds new files, a squashed import commit) are **not** a reason to abstain: with the
+required sources `ran`, return `PASS` with an empty `findings[]` and a
 `below_threshold_rationale` saying which paths had no history and what was checked instead.
 A missing or unauthenticated `gh` is **not** a reason to abstain either:
 skip that source, note it in one line, and finish the lane.

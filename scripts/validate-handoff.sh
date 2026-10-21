@@ -208,7 +208,7 @@ if [ "$FIELDS_ONLY" -eq 0 ]; then
   # Security-impact sanity: if security_impact is "none" but the diff touches known-sensitive paths, flag it.
   security_impact="$(grep -E '"security_impact"' "$HANDOFF" | sed -E 's/.*"security_impact":[[:space:]]*"([^"]+)".*/\1/' | head -1)"
   if [ "$security_impact" = "none" ] && [ -n "$actual_files" ]; then
-    sensitive_hit="$(printf '%s\n' "$actual_files" | grep -iE '(auth|secret|credential|payment|audit|iam|oauth|token|pii)' || true)"
+    sensitive_hit="$(printf '%s\n' "$actual_files" | grep -iE '(auth(o[^r]|o$|[^o]|$|ori[sz]|orit)|secret|credential|payment|audit|iam|oauth|token|pii)' || true)"
   fi
 fi
 

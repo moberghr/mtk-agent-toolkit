@@ -45,8 +45,10 @@ Usage: mtk-doctor [--json] [--fix] [--strict] [--usage]
   --strict  Exit non-zero on WARN as well as FAIL
   --usage   Report raw usage numbers instead of health checks: the
             .claude/analytics.json counters (n = sessions), spec/plan/lesson
-            counts, learnings.sh decision-origin totals, and eval cases. No
-            thresholds, no verdicts. Read-only; combine with --json.
+            counts, learnings.sh decision-origin totals, eval cases, and
+            shadow-mode guard decisions per hook and code
+            (.mtk/metrics/enforcement-shadow.jsonl). No thresholds, no
+            verdicts. Read-only; combine with --json.
 USAGE
       exit 0
       ;;
@@ -70,10 +72,16 @@ if [ "$USAGE_MODE" -eq 1 ]; then
   fi
   EVALS_DIR=""
   [ -d "$ROOT_DIR/evals" ] && EVALS_DIR="$ROOT_DIR/evals"
-  python3 - "$JSON" "$METRICS_JSON" "$EVALS_DIR" <<'PY'
+  # Shadow-mode guards (mtk_deny_gated) log under the hooks' project root:
+  # $CLAUDE_PROJECT_DIR when the harness set it, else the git top level — not
+  # necessarily the directory the doctor was invoked from.
+  SHADOW_ROOT="${CLAUDE_PROJECT_DIR:-}"
+  [ -n "$SHADOW_ROOT" ] && [ -d "$SHADOW_ROOT" ] || SHADOW_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+  SHADOW_LOG="$SHADOW_ROOT/.mtk/metrics/enforcement-shadow.jsonl"
+  python3 - "$JSON" "$METRICS_JSON" "$EVALS_DIR" "$SHADOW_LOG" <<'PY'
 import glob, json, os, re, sys
 sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3
-as_json, metrics_raw, evals_dir = sys.argv[1] == "1", sys.argv[2], sys.argv[3]
+as_json, metrics_raw, evals_dir, shadow_log = sys.argv[1] == "1", sys.argv[2], sys.argv[3], sys.argv[4]
 out = {}
 a_path = ".claude/analytics.json"
 if not os.path.isfile(a_path):
@@ -125,6 +133,30 @@ if evals_dir:
         except (OSError, ValueError):
             ev["latest_run"] = {"status": "unparseable"}
     out["evals"] = ev
+# Would-have-denied decisions of guards running in shadow mode, counted per hook
+# and code. Raw counts only: whether a code is ready for `active` is the reader's call.
+if not os.path.isfile(shadow_log):
+    out["enforcement_shadow"] = {"status": "absent", "detail": "written only by a guard running in shadow mode"}
+else:
+    by_hook, total, bad = {}, 0, 0
+    try:
+        with open(shadow_log, encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                if not line.strip():
+                    continue
+                try:
+                    ev_ = json.loads(line)
+                    hook, code = str(ev_.get("hook") or "?"), str(ev_.get("code") or "?")
+                except (ValueError, AttributeError):
+                    bad += 1
+                    continue
+                by_hook.setdefault(hook, {})
+                by_hook[hook][code] = by_hook[hook].get(code, 0) + 1
+                total += 1
+        out["enforcement_shadow"] = {"status": "ok", "n_events": total, "by_hook": by_hook,
+                                     "unparseable_lines": bad}
+    except OSError as e:
+        out["enforcement_shadow"] = {"status": "unreadable", "detail": str(e)}
 if as_json:
     print(json.dumps(out, sort_keys=True))
 else:
@@ -551,7 +583,8 @@ for sf in .claude/settings.json .claude/settings.local.json; do
 done
 
 # Permission baseline (.claude/references/settings-baseline.md): the native
-# deny/ask rules that replaced read-guard.sh's secret-file denies. Repos
+# deny/ask rules that replaced read-guard.sh's secret-file denies, plus the
+# baseline's top-level settings keys (autoCompactWindow). Repos
 # bootstrapped before 8.1.0 carry none of them, so a secret file is readable
 # there with no guard at all. WARN listing what is missing; --fix unions the
 # baseline into .claude/settings.json with merge-settings.sh (existing keys and
@@ -568,7 +601,7 @@ else
     fix_rc=0
     fix_out="$(bash "$DOCTOR_BASELINE" --merge .claude/settings.json 2>&1)" || fix_rc=$?
     if [ "$fix_rc" -eq 0 ]; then
-      record PASS permissions "permission baseline merged" "${bl_n} missing deny/ask rule(s) added to .claude/settings.json via merge-settings.sh"
+      record PASS permissions "permission baseline merged" "${bl_n} missing baseline rule(s)/setting(s) added to .claude/settings.json via merge-settings.sh"
       bl_rc=0
       bl_out="$(bash "$DOCTOR_BASELINE" --missing .claude/settings.json 2>&1)" || bl_rc=$?
     else
@@ -576,8 +609,8 @@ else
     fi
   fi
   case "$bl_rc" in
-    0) record PASS permissions "permission baseline present" "every deny/ask rule in settings-baseline.md is in .claude/settings.json" ;;
-    1) record WARN permissions "missing baseline permission rules" "$(grep -c "$(printf '\t')" <<<"$bl_out" || true) rule(s) absent from .claude/settings.json: $(awk -F'\t' 'NF==2{printf "%s %s; ", $1, $2}' <<<"$bl_out")— run with --fix, or /mtk-setup --refresh to review them" ;;
+    0) record PASS permissions "permission baseline present" "every baseline rule and setting in settings-baseline.md is in .claude/settings.json" ;;
+    1) record WARN permissions "missing baseline permission rules or settings" "$(grep -c "$(printf '\t')" <<<"$bl_out" || true) rule(s)/setting(s) absent from .claude/settings.json: $(awk -F'\t' 'NF==2{printf "%s %s; ", $1, $2}' <<<"$bl_out")— run with --fix, or /mtk-setup --refresh to review them" ;;
     *) record WARN permissions "permission baseline not checked" "settings-baseline.sh --missing exited $bl_rc: $(awk 'NR==1' <<<"$bl_out")" ;;
   esac
 fi
@@ -622,6 +655,146 @@ if [ -f hooks/hooks.json ] && command -v python3 >/dev/null 2>&1; then
         record FAIL hooks "hot-path hook registered" "${where} — ${why}; hooks/hooks.json must keep the read path, MCP calls and prompts hook-free (S3.6)"
       done <<< "$HOT_PATH"
     fi
+  fi
+fi
+
+# Hook liveness. Every registered hook refreshes a stamp in
+# ${TMPDIR:-/tmp}/mtk-hook-seen-<uid>/<project root, sanitised>/<hook file name>
+# (mtk_hook_seen in hooks/lib/hook-io.sh; the directory comes from the same
+# helper, so the two cannot disagree on the path), and session-start counts each
+# `startup` in <stamp dir>/.sessions (mtk_liveness_tick). The hook set is every
+# command registered in hooks/hooks.json (read through hooks/lib/hook_registry.py)
+# — no hand list to drift: SubagentStart/PostCompact hooks and if-filtered handlers are
+# event-rare (info only; a script is rare only when every registration of it
+# is, so one per-call registration makes it per-call), every other hook fires in
+# nearly every session. Once .sessions counts >= 5 sessions, a per-call hook with no stamp, or
+# with a stamp more than 14 days older than the last session tick (the mtime of
+# .sessions — not "now", so an idle repo whose hooks all ran in its last session
+# is not stale), is WARNed — unregistered, crashing before its stamp, or
+# switched off. A missing .sessions file counts as 0. No stamp
+# directory (TMPDIR cleared or different from the hooks', or nothing has fired
+# yet) is "unknown", and no python3 / unreadable hooks.json is "not checked" —
+# never WARN.
+LIVE_IO="$ROOT_DIR/hooks/lib/hook-io.sh"
+LIVE_HJ="$ROOT_DIR/hooks/hooks.json"
+LIVE_STALE_DAYS=14
+LIVE_PER_CALL=() LIVE_RARE=()
+live_why=""
+if ! command -v python3 >/dev/null 2>&1; then
+  live_why="python3 not found — the hook set is read from hooks/hooks.json"
+elif [ ! -f "$LIVE_HJ" ]; then
+  live_why="$LIVE_HJ not found"
+else
+  live_rc=0
+  LIVE_SET="$(python3 - "$LIVE_HJ" "$ROOT_DIR/hooks/lib" <<'PY' 2>&1
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
+sys.path.insert(0, sys.argv[2])
+try:
+    sys.dont_write_bytecode = True  # importing must not write hooks/lib/__pycache__
+    from hook_registry import handlers
+    kind = {}  # script -> "rare" only while every registration of it is rare
+    for h in handlers(sys.argv[1]):
+        kind[h["script"]] = "per-call" if h["rarity"] == "per-call" or kind.get(h["script"]) == "per-call" else "rare"
+except Exception as e:  # one readable line for the doctor, not a traceback
+    print("%s: %s" % (type(e).__name__, e))
+    sys.exit(1)
+print("\n".join(k + "\t" + b for b, k in kind.items()))
+PY
+)" || live_rc=$?
+  if [ "$live_rc" -ne 0 ]; then
+    live_why="could not read the hook set from $LIVE_HJ: $(awk 'NF { print; exit }' <<<"$LIVE_SET")"
+  else
+    while IFS=$'\t' read -r kind base; do
+      [ -n "$base" ] || continue
+      case "$kind" in
+        rare) LIVE_RARE+=("$base") ;;
+        *) LIVE_PER_CALL+=("$base") ;;
+      esac
+    done <<< "$LIVE_SET"
+    [ "$(( ${#LIVE_PER_CALL[@]} + ${#LIVE_RARE[@]} ))" -gt 0 ] || live_why="$LIVE_HJ registers no hook command"
+  fi
+fi
+LIVE_DIR=""
+if [ -z "$live_why" ] && [ -f "$LIVE_IO" ]; then
+  LIVE_DIR="$(cd "$DOCTOR_PROJECT_DIR" && CLAUDE_PROJECT_DIR="$DOCTOR_PROJECT_DIR" bash -c '. "$1" && mtk_hook_seen_dir' _ "$LIVE_IO" 2>/dev/null)" || LIVE_DIR=""
+fi
+if [ -n "$live_why" ]; then
+  record PASS hooks "hook liveness not checked" "${live_why//$'\t'/ }"
+elif [ -z "$LIVE_DIR" ] || [ ! -d "$LIVE_DIR" ]; then
+  record PASS hooks "hook liveness unknown" "no stamp directory ${LIVE_DIR:-(unresolved)} — no hook has run under this TMPDIR yet, or it was cleared; not a failure"
+else
+  LIVE_SESSIONS=0
+  if [ -f "$LIVE_DIR/.sessions" ]; then
+    live_line=""
+    { IFS= read -r live_line < "$LIVE_DIR/.sessions"; } 2>/dev/null || true
+    case "$live_line" in
+      ''|*[!0-9]*) LIVE_SESSIONS=0 ;;
+      *) [ "${#live_line}" -le 9 ] && LIVE_SESSIONS=$((10#$live_line)) || LIVE_SESSIONS=0 ;;
+    esac
+  fi
+  # Stamps refreshed within the window, measured back from the last session tick
+  # (mtime of .sessions; now when there is none — the >= 5 gate cannot fire then
+  # anyway). python3 is known present here: the hook set needed it. One call for
+  # the whole directory, then a lookup per hook.
+  live_age_ok=1
+  live_found="$(python3 - "$LIVE_DIR" "$LIVE_STALE_DAYS" <<'PY' 2>/dev/null
+import os, sys, time
+d, days = sys.argv[1], float(sys.argv[2])
+try:
+    ref = os.stat(os.path.join(d, ".sessions")).st_mtime
+except OSError:
+    ref = time.time()
+for n in os.listdir(d):
+    p = os.path.join(d, n)
+    if os.path.isfile(p) and os.stat(p).st_mtime >= ref - days * 86400:
+        print(n)
+PY
+)" || { live_found=""; live_age_ok=0; }
+  live_fresh=" "
+  while IFS= read -r live_f; do
+    if [ -n "$live_f" ]; then live_fresh="$live_fresh${live_f##*/} "; fi
+  done <<< "$live_found"
+  live_seen=() live_unseen=() live_stale=() rare_seen=() rare_unseen=()
+  for h in ${LIVE_PER_CALL[@]+"${LIVE_PER_CALL[@]}"}; do
+    case "$live_fresh" in
+      *" $h "*) live_seen+=("${h%.sh}") ;;
+      *)
+        if [ ! -e "$LIVE_DIR/$h" ]; then live_unseen+=("${h%.sh}")
+        elif [ "$live_age_ok" -eq 1 ]; then live_stale+=("${h%.sh}")
+        else live_seen+=("${h%.sh}")   # age unknown: presence only, never stale
+        fi ;;
+    esac
+  done
+  for h in ${LIVE_RARE[@]+"${LIVE_RARE[@]}"}; do
+    case "$live_fresh" in
+      *" $h "*) rare_seen+=("${h%.sh}") ;;
+      *) rare_unseen+=("${h%.sh}") ;;
+    esac
+  done
+  if [ "$live_age_ok" -eq 0 ]; then
+    record PASS hooks "hook stamp age not checked" "could not read stamp mtimes in $LIVE_DIR; stamps judged by presence only"
+  fi
+  if [ "${#LIVE_PER_CALL[@]}" -eq 0 ]; then
+    record PASS hooks "per-call hooks: none registered" "hooks/hooks.json registers only event-rare hooks (SubagentStart, PostCompact or if-filtered)"
+  elif [ "${#live_unseen[@]}" -eq 0 ] && [ "${#live_stale[@]}" -eq 0 ]; then
+    record PASS hooks "per-call hooks alive" "all ${#live_seen[@]} per-call hooks registered in hooks/hooks.json left a liveness stamp in $LIVE_DIR within ${LIVE_STALE_DAYS} days of the last session"
+  elif [ "$LIVE_SESSIONS" -ge 5 ]; then
+    for h in ${live_unseen[@]+"${live_unseen[@]}"}; do
+      record WARN hooks "hook not seen: $h" "no liveness stamp in $LIVE_DIR although $LIVE_DIR/.sessions counts ${LIVE_SESSIONS} sessions — check it is registered in hooks/hooks.json, not crashing, and not switched off"
+    done
+    for h in ${live_stale[@]+"${live_stale[@]}"}; do
+      record WARN hooks "hook stale: $h" "its liveness stamp in $LIVE_DIR is more than ${LIVE_STALE_DAYS} days older than the last session tick ($LIVE_DIR/.sessions), which counts ${LIVE_SESSIONS} sessions — it stopped running: check it is still registered, not crashing, and not switched off"
+    done
+  else
+    record PASS hooks "per-call hooks not seen yet" "not seen: ${live_unseen[*]:-none}; stale (> ${LIVE_STALE_DAYS} days before the last session): ${live_stale[*]:-none} — but $LIVE_DIR/.sessions counts only ${LIVE_SESSIONS} session(s) (< 5), too few to judge"
+  fi
+  if [ "${#LIVE_RARE[@]}" -gt 0 ]; then
+    live_rare_note="seen: ${rare_seen[*]:-none}; not seen: ${rare_unseen[*]:-none} — SubagentStart, PostCompact and if-filtered hooks fire only when their trigger does, so absence is not a failure"
+    case " ${LIVE_RARE[*]} " in
+      *" subagent-context.sh "*)
+        live_rare_note="$live_rare_note. A subagent-context stamp proves the hook ran, not that the subagent saw its text: this check cannot tell 'not fired' from 'fired but invisible to the model' — confirm with the manual SubagentStart check in the PR that added subagent-context.sh" ;;
+    esac
+    record PASS hooks "event-rare hooks (info)" "$live_rare_note"
   fi
 fi
 
@@ -711,6 +884,7 @@ GITIGNORE_MISSING=()
 GITIGNORE_REQUIRED=(
   ".claude/settings.local.json"
   ".claude/observability/"
+  ".mtk/"
 )
 for entry in "${GITIGNORE_REQUIRED[@]}"; do
   if ! grep -qF "$entry" .gitignore 2>/dev/null; then
@@ -723,6 +897,8 @@ if [ "${#GITIGNORE_MISSING[@]}" -eq 0 ]; then
 else
   for g in "${GITIGNORE_MISSING[@]}"; do
     if [ "$FIX" -eq 1 ]; then
+      # A last line without a newline would otherwise absorb the new entry.
+      if [ -s .gitignore ] && [ -n "$(tail -c 1 .gitignore)" ]; then printf '\n' >> .gitignore; fi
       printf '%s\n' "$g" >> .gitignore
       record PASS integrity ".gitignore fixed" "added $g"
     else
@@ -1020,6 +1196,48 @@ if grep -q 'ENABLE_TOOL_SEARCH' .claude/settings.json 2>/dev/null; then
 else
   record PASS context "tool-search deferral not set" \
     "ENABLE_TOOL_SEARCH unset — consider enabling if you connect many MCP servers (defers schema loading)"
+fi
+
+# Instruction load: files a harness silently drops, truncates or ignores
+# (scripts/check-instruction-load.sh — Codex byte cap, AGENTS.md shadowed by
+# CLAUDE.md, Cursor `globs:` in Claude rules, CLAUDE.local.md not ignored). One
+# WARN per finding. A missing script, exit 2 (bad env, resolver missing, or a
+# sub-check that could not run with nothing found) or exit 1 with no finding
+# printed is reported as "not checked" — never as a clean result — with the
+# script's first stderr line as the reason. Exit 1 with a stderr line as well is
+# findings plus a "partly not checked" row.
+CIL="$ROOT_DIR/scripts/check-instruction-load.sh"
+if [ ! -f "$CIL" ]; then
+  record PASS context "instruction load not checked" "scripts/check-instruction-load.sh not found in $ROOT_DIR"
+else
+  cil_rc=0 CIL_ERR="" cil_err_f=""
+  cil_err_f="$(mktemp "${TMPDIR:-/tmp}/mtk-doctor-cil.XXXXXX" 2>/dev/null)" || cil_err_f=""
+  if [ -n "$cil_err_f" ]; then
+    CIL_OUT="$(bash "$CIL" --root "$DOCTOR_PROJECT_DIR" 2>"$cil_err_f")" || cil_rc=$?
+    CIL_ERR="$(awk 'NF { print; exit }' "$cil_err_f" 2>/dev/null)" || CIL_ERR=""
+    rm -f "$cil_err_f"
+  else
+    CIL_OUT="$(bash "$CIL" --root "$DOCTOR_PROJECT_DIR" 2>/dev/null)" || cil_rc=$?
+    CIL_ERR="(stderr not captured: mktemp failed)"
+  fi
+  CIL_ERR="${CIL_ERR//$'\t'/ }"
+  case "$cil_rc" in
+    0) record PASS context "instruction load" "no instruction file is dropped, truncated or ignored by a harness" ;;
+    1)
+      cil_n=0
+      while IFS= read -r finding; do
+        [ -n "$finding" ] || continue
+        cil_n=$((cil_n + 1))
+        record WARN context "instruction load: ${finding%% *}" "${finding#* }"
+      done <<< "$CIL_OUT"
+      if [ "$cil_n" -eq 0 ]; then
+        record PASS context "instruction load not checked" "check-instruction-load.sh exited 1 but printed no finding${CIL_ERR:+: $CIL_ERR}"
+      elif [ -n "$CIL_ERR" ]; then
+        record PASS context "instruction load partly not checked" "$CIL_ERR"
+      fi
+      ;;
+    *) record PASS context "instruction load not checked" "check-instruction-load.sh exited ${cil_rc}: ${CIL_ERR:-no stderr output}" ;;
+  esac
 fi
 
 # ──────────────────────────────────────────────

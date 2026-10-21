@@ -9,14 +9,18 @@ set -euo pipefail
 #
 # Usage:
 #   settings-baseline.sh --json
-#       Print the baseline's deny/ask rules as a settings.json fragment:
-#       {"permissions":{"deny":[...],"ask":[...]}}
+#       Print the baseline as a settings.json fragment: the deny/ask rules plus
+#       the `### settings` scalar keys at the top level:
+#       {"permissions":{"deny":[...],"ask":[...]},"autoCompactWindow":300000}
 #   settings-baseline.sh --missing <settings.json>
 #       Print one "<list>\t<rule>" line (list = deny|ask) per baseline rule the
-#       file does not carry verbatim. A missing file lacks every rule.
+#       file does not carry verbatim, plus one "settings\t<key>: <value>" line
+#       per baseline settings key ABSENT from the file (present with any value
+#       is not missing). A missing file lacks every rule and key.
 #   settings-baseline.sh --merge <settings.json> [--out <path>]
 #       Union the baseline into the file with hooks/merge-settings.sh (arrays are
-#       unioned, every existing key and rule is kept). Writes <path> when --out
+#       unioned, every existing key and rule is kept; a settings key the file
+#       already sets keeps its value because the target wins scalar conflicts). Writes <path> when --out
 #       is given (setup-refresh proposes from a temp copy), else rewrites the
 #       file in place via a temp file + rename (mtk-doctor --fix). A missing
 #       file is created holding the baseline alone.
@@ -27,6 +31,7 @@ set -euo pipefail
 # The baseline path defaults to this script's toolkit tree and can be pointed
 # elsewhere with MTK_SETTINGS_BASELINE. Rules are the backticked text of each
 # `- ` bullet under `### deny` and `### ask`; anything after it is a note.
+# Each bullet under `### settings` is a `key: value` pair (int when all digits).
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BASELINE="${MTK_SETTINGS_BASELINE:-$SCRIPT_DIR/../.claude/references/settings-baseline.md}"
@@ -41,19 +46,25 @@ baseline_json() {
   python3 - "$BASELINE" <<'PY'
 import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
 import json, re
-lists, cur = {"deny": [], "ask": []}, None
+lists, cur, scalars = {"deny": [], "ask": []}, None, {}
 for line in open(sys.argv[1], encoding="utf-8"):
     h = re.match(r"^###\s+(\w+)\s*$", line)
     if h:
-        cur = h.group(1) if h.group(1) in lists else None
+        cur = h.group(1) if h.group(1) in lists or h.group(1) == "settings" else None
         continue
     if line.startswith("## "):
         cur = None
         continue
     m = re.match(r"^- `([^`]+)`", line)
-    if cur and m:
+    if cur == "settings" and m:
+        kv = re.match(r"^([A-Za-z_]\w*):\s*(.+?)\s*$", m.group(1))
+        if kv:
+            scalars[kv.group(1)] = int(kv.group(2)) if kv.group(2).isdigit() else kv.group(2)
+    elif cur and m:
         lists[cur].append(m.group(1))
-print(json.dumps({"permissions": lists}, indent=2))
+doc = {"permissions": lists}
+doc.update(scalars)
+print(json.dumps(doc, indent=2))
 PY
 }
 
@@ -67,8 +78,9 @@ case "$MODE" in
     MTK_BASELINE_JSON="$(baseline_json)" python3 - "$TARGET" <<'PY'
 import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
 import json, os
-base = json.loads(os.environ["MTK_BASELINE_JSON"])["permissions"]
-have = {}
+full = json.loads(os.environ["MTK_BASELINE_JSON"])
+base = full["permissions"]
+have, doc = {}, {}
 if os.path.exists(sys.argv[1]):
     try:
         doc = json.load(open(sys.argv[1]))
@@ -83,6 +95,9 @@ for key in ("deny", "ask"):
     for rule in base[key]:
         if rule not in cur:
             print("%s\t%s" % (key, rule)); missing += 1
+for key, val in full.items():
+    if key != "permissions" and not (isinstance(doc, dict) and key in doc):
+        print("settings\t%s: %s" % (key, val)); missing += 1
 sys.exit(1 if missing else 0)
 PY
     ;;

@@ -221,6 +221,10 @@ mv "$TMP" "<target-path>"
 
 On a non-zero exit: print the offending `<file>:<line>: <pattern>` lines, abort the whole bootstrap, and point the engineer at the audit output or guidelines for the leak. `MTK_SECRET_SCAN_SKIP=1` bypasses the scan for a confirmed false positive only; log the bypass prominently in STEP 5.
 
+## STEP 3.5d: Instruction Load Check
+
+After `AGENTS.md`, the shim and the rules are written, run `bash scripts/check-instruction-load.sh`. Fix every finding before writing the PR; exit 2 or a missing script → report "instruction load not checked" in STEP 5.
+
 ## STEP 3.6: Prune Stack Reference Files Against Detected Tools
 
 The pruning procedure (`detected` union, per-file `tools:` intersection, override path, cache TTL) lives in `.claude/references/bootstrap-supporting-files.md`. Read it now and follow it.
@@ -248,7 +252,7 @@ done
 
 ### Settings Merge
 
-Merge `.claude/references/settings-baseline.md` (`### allow`, `### deny`, `### ask`) first, then the stack skill's `## Settings Additions`. `### allow` → `permissions.allow`, `### deny` → `permissions.deny`, `### ask` → `permissions.ask`. There is no top-level `allowedTools` key; never write one.
+Merge `.claude/references/settings-baseline.md` (`### allow`, `### deny`, `### ask`, `### settings`) first, then the stack skill's `## Settings Additions`. `### allow` → `permissions.allow`, `### deny` → `permissions.deny`, `### ask` → `permissions.ask`; `### settings` bullets (`key: value`) are top-level keys, merged only when absent so an existing value always wins. There is no top-level `allowedTools` key; never write one.
 
 - **No `.claude/settings.json`:** create it from the baseline plus stack additions over `{}`. Never copy the toolkit's own `settings.json`.
 - **Never write an MTK hook command into the target's `.claude/settings.json`.** `$CLAUDE_PLUGIN_ROOT` is defined only for hooks a plugin declares in its own `hooks/hooks.json`; in a project settings file it expands to empty and the hook runs as `bash /hooks/<name>`, failing on every call, silently (measured: 4,552 `bash: /hooks/format-on-edit.sh: No such file or directory` failures across 7 repos). Bare `hooks/...` and `$CLAUDE_PROJECT_DIR/hooks/...` dangle in plugin-cache installs. The plugin wires MTK's hooks itself; bootstrap writes only the opt-in marker (`.claude/tech-stack`). `scripts/validate-toolkit.sh` fails on a stack skill whose Settings Additions lists an MTK hook.

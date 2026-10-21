@@ -2,7 +2,9 @@
 name: implement
 description: Full feature implementation loop orchestrating planning, batching, verification, and review skills
 type: skill
-user-invocable: false
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion
+argument-hint: <feature description, or a spec/plan path>
+user-invocable: true
 ---
 
 # MTK Implement — Full Feature Loop
@@ -248,6 +250,8 @@ not re-open it.
 
 Run `verification-before-completion` first, then **read `.claude/references/implement-review-lanes.md`** — the single source for the lane set at each rigor level, the dispatch inputs, the silent-failure trigger, the defect-class sweep, and lane accounting (`ABSTAINED`, `NO_RESPONSE`, by-policy). Stage 1 `compliance-reviewer` checks against the sealed spec; re-check the seal with `verify-seal` — a STALE seal **refuses completion**. Stage 2 runs only after Stage 1 has no Critical findings.
 
+Per that reference's **Review protocol** (scripts run as `bash "$MTK_ROOT/…"`, with `MTK_ROOT` per *MTK File Resolution*): collect deterministic `candidates.json` first (`compliance-reviewer` disposes of each); `review-input --record` at dispatch and `--check` before aggregating; `review-coverage.sh` on every lane result (incomplete or engine failure ⇒ `ABSTAINED`); `finding-verifier` at HIGH/MAX only; write the receipt only as its **Receipt** step qualifies.
+
 ## Phase 5: Fix Review Findings
 
 Fix every critical issue and every warning unless you record a one-line waiver with a reason, then:
@@ -256,7 +260,7 @@ Fix every critical issue and every warning unless you record a one-line waiver w
 - run the pre-commit review list if present
 - re-run the necessary reviewer(s)
 
-Maximum 3 review iterations.
+Maximum 3 review iterations; pass the merged findings to `remediation … --findings` so a stall escalates early (`implement-review-lanes.md` → Iteration cap).
 
 ## Phase 6: Cleanup
 

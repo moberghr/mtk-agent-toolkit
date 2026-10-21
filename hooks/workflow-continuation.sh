@@ -21,6 +21,7 @@ trap _mtk_hook_diag EXIT
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
+mtk_hook_seen workflow-continuation.sh
 
 REPO_ROOT="$(mtk_repo_root 2>/dev/null || pwd)"
 WF_DIR="${REPO_ROOT}/.mtk/workflows"
