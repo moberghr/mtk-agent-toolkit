@@ -304,6 +304,12 @@
       "action": "modify",
       "purpose": "regenerated last (S4.11)",
       "mechanical": true
+    },
+    {
+      "path": "evals/README.md",
+      "action": "modify",
+      "purpose": "case-table row for the declared review-incomplete-blocks eval case (post-merge amendment, see amendments[])",
+      "mechanical": true
     }
   ],
   "public_contracts": [
@@ -523,12 +529,11 @@
       "S3.6 hook set",
       "doctor liveness rarity",
       "review protocol (lanes reference)",
-      "context-miner abstention"
+      "context-miner abstention",
+      "duplicated hooks.json parsers, consolidated into hook_registry.py",
+      "duplicated workflow selector, consolidated into active_workflow.py"
     ],
-    "removes": [
-      "duplicated hooks.json parsers",
-      "duplicated workflow selector"
-    ]
+    "removes": []
   },
   "plan": {
     "batches": [
@@ -666,5 +671,12 @@
         ]
       }
     ]
-  }
+  },
+  "amendments": [
+    {
+      "date": "2026-10-22",
+      "reason": "Post-merge drift check before archiving: #126 also changed evals/README.md (one case-table row documenting the declared evals/review-incomplete-blocks case). Declared here so the archive records what shipped. Also moved the two delta.removes entries to delta.modifies: #126 deleted no files, and both described duplicated code folded into hook_registry.py / active_workflow.py, which are never baseline keys (spec-archive.sh refuses unmatched removes).",
+      "approved_by": "engineer"
+    }
+  ]
 }

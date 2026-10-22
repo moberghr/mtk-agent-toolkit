@@ -66,6 +66,102 @@
       "change": "modified",
       "source_slug": "v7.14-evidence-closed-loop",
       "date": "2026-06-12"
+    },
+    "SubagentStart -> hooks/subagent-context.sh (additionalContext, never blocks)": {
+      "kind": "hook",
+      "change": "new",
+      "source_slug": "october-borrows-a",
+      "date": "2026-10-14"
+    },
+    "scripts/lesson-mine-state.sh window|advance|id|decide|filter|evidence": {
+      "kind": "script",
+      "change": "new",
+      "source_slug": "october-borrows-a",
+      "date": "2026-10-14"
+    },
+    "scripts/handoff-state.sh list|accept|expire": {
+      "kind": "script",
+      "change": "new",
+      "source_slug": "october-borrows-a",
+      "date": "2026-10-14"
+    },
+    "scripts/check-instruction-load.sh [--json]": {
+      "kind": "script",
+      "change": "new",
+      "source_slug": "october-borrows-a",
+      "date": "2026-10-14"
+    },
+    "scripts/check-guard-twins.sh": {
+      "kind": "script",
+      "change": "new",
+      "source_slug": "october-borrows-a",
+      "date": "2026-10-14"
+    },
+    "scripts/constitution-digest.sh --ids-only": {
+      "kind": "script",
+      "change": "modified",
+      "source_slug": "october-borrows-a",
+      "date": "2026-10-14"
+    },
+    "scripts/learnings.sh add --retire-when <condition>": {
+      "kind": "script",
+      "change": "modified",
+      "source_slug": "october-borrows-a",
+      "date": "2026-10-14"
+    },
+    "hook-io.sh: mtk_guard_mode, mtk_deny_gated, mtk_hook_seen": {
+      "kind": "function",
+      "change": "new",
+      "source_slug": "october-borrows-a",
+      "date": "2026-10-14"
+    },
+    "docs/handoffs/*.md frontmatter: state, branch, worktree, expires, accepted_at": {
+      "kind": "file-format",
+      "change": "new",
+      "source_slug": "october-borrows-a",
+      "date": "2026-10-14"
+    },
+    "MTK_SUBAGENT_CONTEXT, MTK_TEST_GUARD_ENFORCE, MTK_CONFIG_GUARD_ENFORCE (plan §P1-6 adopter), MTK_SCOPE_GUARD_ENFORCE (off|advisory|shadow|active), MTK_CODEX_DOC_MAX_BYTES": {
+      "kind": "env",
+      "change": "new",
+      "source_slug": "october-borrows-a",
+      "date": "2026-10-14"
+    },
+    "PreToolUse Bash if Bash(git push *) -> hooks/push-gate.sh (advisory by default; MTK_PUSH_GATE_ENFORCE)": {
+      "kind": "hook",
+      "change": "new",
+      "source_slug": "october-borrows-b",
+      "date": "2026-10-15"
+    },
+    "scripts/review-receipt.sh write|check": {
+      "kind": "script",
+      "change": "new",
+      "source_slug": "october-borrows-b",
+      "date": "2026-10-15"
+    },
+    "scripts/review-coverage.sh <lane-result.json> <changed-files.txt> [--candidates <file>]": {
+      "kind": "script",
+      "change": "new",
+      "source_slug": "october-borrows-b",
+      "date": "2026-10-15"
+    },
+    "scripts/workflow-artifact.sh review-input --record|--check; remediation --open N | --findings <file>": {
+      "kind": "script",
+      "change": "extended",
+      "source_slug": "october-borrows-b",
+      "date": "2026-10-15"
+    },
+    "mtk:finding-verifier": {
+      "kind": "agent",
+      "change": "new",
+      "source_slug": "october-borrows-b",
+      "date": "2026-10-15"
+    },
+    "review-finding-schema: coverage, candidates_disposed": {
+      "kind": "schema",
+      "change": "extended",
+      "source_slug": "october-borrows-b",
+      "date": "2026-10-15"
     }
   },
   "files": {
@@ -91,13 +187,13 @@
     },
     ".claude/skills/implement/SKILL.md": {
       "action": "modify",
-      "purpose": "[ASSUMED] claims block MTK_AUTO_PROCEED at Phase 2.5",
-      "source_slug": "v7.14-evidence-closed-loop"
+      "purpose": "Phase 4 points at the lanes reference for candidates, review-input, verify stage, receipt write",
+      "source_slug": "october-borrows-b"
     },
     "scripts/constitution-digest.sh": {
-      "action": "create",
-      "purpose": "F2 digest",
-      "source_slug": "borrowed-mechanisms"
+      "action": "modify",
+      "purpose": "add --ids-only mode (rule id + first sentence, capped)",
+      "source_slug": "october-borrows-a"
     },
     ".claude/skills/planning-and-task-breakdown/SKILL.md": {
       "action": "modify",
@@ -141,8 +237,8 @@
     },
     "scripts/validate-toolkit.sh": {
       "action": "modify",
-      "purpose": "F3 non-blocking coverage line",
-      "source_slug": "borrowed-mechanisms"
+      "purpose": "liveness-stamp and timeout checks read the handler list from hook_registry.py",
+      "source_slug": "october-borrows-b"
     },
     ".claude/skills/toolkit-health/SKILL.md": {
       "action": "modify",
@@ -161,8 +257,8 @@
     },
     ".claude/rules/hooks-and-scripts.md": {
       "action": "modify",
-      "purpose": "F4 taxonomy frontmatter",
-      "source_slug": "borrowed-mechanisms"
+      "purpose": "S3.6 hook set: push-gate, hook_registry.py",
+      "source_slug": "october-borrows-b"
     },
     ".claude/rules/git-workflow.md": {
       "action": "modify",
@@ -186,18 +282,18 @@
     },
     ".claude/manifest.json": {
       "action": "modify",
-      "purpose": "7.14.0 + files list + updated date",
-      "source_slug": "v7.14-evidence-closed-loop"
+      "purpose": "entries for new files; version 9.2.0",
+      "source_slug": "october-borrows-b"
     },
     ".claude-plugin/plugin.json": {
       "action": "modify",
-      "purpose": "7.14.0",
-      "source_slug": "v7.14-evidence-closed-loop"
+      "purpose": "agents list + finding-verifier; version 9.2.0",
+      "source_slug": "october-borrows-b"
     },
     ".claude-plugin/marketplace.json": {
       "action": "modify",
-      "purpose": "7.14.0 (version parity — validate-toolkit asserts manifest==plugin==marketplace)",
-      "source_slug": "v7.14-evidence-closed-loop"
+      "purpose": "version 9.2.0",
+      "source_slug": "october-borrows-b"
     },
     ".claude/schemas/handoff.schema.json": {
       "action": "modify",
@@ -206,13 +302,13 @@
     },
     ".claude/references/workflow-artifact-schema.md": {
       "action": "modify",
-      "purpose": "criteria_status map + re-arm semantics",
-      "source_slug": "v7.14-evidence-closed-loop"
+      "purpose": "results.review.input_fingerprint, results.remediation.<trigger>.opens/findings",
+      "source_slug": "october-borrows-b"
     },
     "scripts/workflow-artifact.sh": {
       "action": "modify",
-      "purpose": "criteria_status read/write + abandon affordance",
-      "source_slug": "v7.14-evidence-closed-loop"
+      "purpose": "review-input --record/--check (mtk_tree_fingerprint via hooks/lib/hook-io.sh), finding UIDs + remediation --findings reconcile (FIXED/STILL_OPEN/NEW), --open N stall series; usage header",
+      "source_slug": "october-borrows-b"
     },
     "scripts/validate-handoff.sh": {
       "action": "modify",
@@ -226,8 +322,8 @@
     },
     "hooks/verify-completion": {
       "action": "modify",
-      "purpose": "stale-evidence message declares criteria re-armed",
-      "source_slug": "v7.14-evidence-closed-loop"
+      "purpose": "liveness stamp",
+      "source_slug": "october-borrows-a"
     },
     ".claude/agents/plan-gap-reviewer.md": {
       "action": "modify",
@@ -240,9 +336,9 @@
       "source_slug": "v7.14-evidence-closed-loop"
     },
     "hooks/workflow-continuation.sh": {
-      "action": "create",
-      "purpose": "Stop-hook advisory nudge for unfinished workflows",
-      "source_slug": "v7.14-evidence-closed-loop"
+      "action": "modify",
+      "purpose": "liveness stamp",
+      "source_slug": "october-borrows-a"
     },
     ".claude/settings.json": {
       "action": "modify",
@@ -256,13 +352,13 @@
     },
     ".claude/references/review-finding-schema.md": {
       "action": "modify",
-      "purpose": "optional failure_mode F-code field",
-      "source_slug": "v7.14-evidence-closed-loop"
+      "purpose": "coverage, candidates_disposed, incomplete: abstention prefix; finding-verifier verdicts; 2-vs-3 iteration reconcile",
+      "source_slug": "october-borrows-b"
     },
     ".claude/skills/code-review-and-quality/SKILL.md": {
       "action": "modify",
-      "purpose": "load failure-modes catalog; context-miner lane at HIGH/MAX rigor",
-      "source_slug": "v7.14-evidence-closed-loop"
+      "purpose": "candidates, coverage check, receipt write on PASS",
+      "source_slug": "october-borrows-b"
     },
     ".claude/agents/silent-failure-hunter.md": {
       "action": "modify",
@@ -270,9 +366,9 @@
       "source_slug": "v7.14-evidence-closed-loop"
     },
     ".claude/agents/context-miner.md": {
-      "action": "create",
-      "purpose": "organizational-memory review lane (read-only)",
-      "source_slug": "v7.14-evidence-closed-loop"
+      "action": "modify",
+      "purpose": "search_status per source; git log / lessons unavailable => ABSTAINED could-not-search",
+      "source_slug": "october-borrows-b"
     },
     ".claude/skills/subagent-implementation/SKILL.md": {
       "action": "modify",
@@ -286,8 +382,8 @@
     },
     ".claude/references/learnings-schema.md": {
       "action": "modify",
-      "purpose": "wrong_turns, time_cost, evolution_actions fields",
-      "source_slug": "v7.14-evidence-closed-loop"
+      "purpose": "document retire_when",
+      "source_slug": "october-borrows-a"
     },
     ".claude/skills/correction-capture/SKILL.md": {
       "action": "modify",
@@ -310,9 +406,9 @@
       "source_slug": "v7.14-evidence-closed-loop"
     },
     ".claude/references/lesson-mining-rubric.md": {
-      "action": "create",
-      "purpose": "reject-by-default mining rubric",
-      "source_slug": "v7.14-evidence-closed-loop"
+      "action": "modify",
+      "purpose": "candidate_id form, A2/A3 evidence floor, mechanical-rule route",
+      "source_slug": "october-borrows-a"
     },
     ".claude/skills/lesson-mining/SKILL.md": {
       "action": "create",
@@ -376,8 +472,8 @@
     },
     "README.md": {
       "action": "modify",
-      "purpose": "document new features (S4.9); backfill stale What's New (7.10.x-7.13.1) and version badge (engineer-approved scope add 2026-06-12)",
-      "source_slug": "v7.14-evidence-closed-loop"
+      "purpose": "agent count 6 -> 7, ~/.mtk/receipts/, push-gate in What MTK runs",
+      "source_slug": "october-borrows-b"
     },
     "docs/index.html": {
       "action": "modify",
@@ -387,7 +483,7 @@
     "checksums.sha256": {
       "action": "modify",
       "purpose": "regenerated last (S4.11)",
-      "source_slug": "v7.14-evidence-closed-loop"
+      "source_slug": "october-borrows-b"
     },
     "scripts/run-fixtures.sh": {
       "action": "modify",
@@ -396,8 +492,333 @@
     },
     "scripts/learnings.sh": {
       "action": "modify",
-      "purpose": "B6 deviation (auto-fixed): add optional --wrong-turns/--time-cost/--evolution-actions write flags so item-4 fields are actually persistable (query parser untouched). B1's 'no parser change needed' claim was inaccurate — add subcommand rejected unknown flags.",
-      "source_slug": "v7.14-evidence-closed-loop"
+      "purpose": "add --retire-when field",
+      "source_slug": "october-borrows-a"
+    },
+    "hooks/subagent-context.sh": {
+      "action": "modify",
+      "purpose": "uses active_workflow.py; python still only after the find -mmin prefilter",
+      "source_slug": "october-borrows-b"
+    },
+    "tests/hooks/test-subagent-context.sh": {
+      "action": "create",
+      "purpose": "SubagentStart hook tests (SC1)",
+      "source_slug": "october-borrows-a"
+    },
+    "tests/hooks/test-constitution-digest.sh": {
+      "action": "modify",
+      "purpose": "one --ids-only case",
+      "source_slug": "october-borrows-a"
+    },
+    "tests/hooks/fixtures/subagent-start.payload.json": {
+      "action": "create",
+      "purpose": "redacted real SubagentStart payload fixture",
+      "source_slug": "october-borrows-a"
+    },
+    "scripts/lesson-mine-state.sh": {
+      "action": "create",
+      "purpose": "mining watermark, decision ledger, stable ids, decoded-quote evidence",
+      "source_slug": "october-borrows-a"
+    },
+    "tests/hooks/test-lesson-mine-state.sh": {
+      "action": "create",
+      "purpose": "lesson-mine-state tests (SC2)",
+      "source_slug": "october-borrows-a"
+    },
+    ".claude/skills/lessons/SKILL.md": {
+      "action": "modify",
+      "purpose": "mine steps 3-7 use the state script; refresh honours retire_when",
+      "source_slug": "october-borrows-a"
+    },
+    "tests/hooks/test-learnings.sh": {
+      "action": "modify",
+      "purpose": "--retire-when round-trip case",
+      "source_slug": "october-borrows-a"
+    },
+    "tests/pressure-tests/lesson-mining-rubric.md": {
+      "action": "modify",
+      "purpose": "A1 single-session still proposed; A2 single-session is watching",
+      "source_slug": "october-borrows-a"
+    },
+    "tests/pressure-tests/lessons.md": {
+      "action": "modify",
+      "purpose": "mine mode records decisions and advances watermarks",
+      "source_slug": "october-borrows-a"
+    },
+    "scripts/handoff-state.sh": {
+      "action": "create",
+      "purpose": "list/accept/expire handoffs by frontmatter state and branch",
+      "source_slug": "october-borrows-a"
+    },
+    "tests/hooks/test-handoff-state.sh": {
+      "action": "create",
+      "purpose": "handoff-state tests (SC3)",
+      "source_slug": "october-borrows-a"
+    },
+    ".claude/skills/handoff/SKILL.md": {
+      "action": "modify",
+      "purpose": "frontmatter template and accept-on-resume step",
+      "source_slug": "october-borrows-a"
+    },
+    "hooks/session-start": {
+      "action": "modify",
+      "purpose": "compact recovery uses active_workflow.py",
+      "source_slug": "october-borrows-b"
+    },
+    "tests/hooks/test-session-start-compact-framing.sh": {
+      "action": "modify",
+      "purpose": "compact filter and startup offer cases",
+      "source_slug": "october-borrows-a"
+    },
+    "scripts/check-instruction-load.sh": {
+      "action": "create",
+      "purpose": "CODEX-BYTES / SHADOWED-AGENTS / GLOBS-NOT-PATHS / LOCAL-UNIGNORED",
+      "source_slug": "october-borrows-a"
+    },
+    "tests/hooks/test-check-instruction-load.sh": {
+      "action": "create",
+      "purpose": "instruction-load tests (SC4)",
+      "source_slug": "october-borrows-a"
+    },
+    ".claude/skills/instructions/SKILL.md": {
+      "action": "modify",
+      "purpose": "audit step 1 runs the check; step 3 adds the Move verdict",
+      "source_slug": "october-borrows-a"
+    },
+    ".claude/skills/setup-bootstrap/SKILL.md": {
+      "action": "modify",
+      "purpose": "run the check after generating AGENTS.md",
+      "source_slug": "october-borrows-a"
+    },
+    "hooks/lib/hook-io.sh": {
+      "action": "modify",
+      "purpose": "remove the moved guard-mode helpers; mtk_deny untouched (S3.18)",
+      "source_slug": "october-borrows-b"
+    },
+    "hooks/scope-guard.sh": {
+      "action": "modify",
+      "purpose": "source guard-mode.sh; advisory dedup via mtk_advise_gated",
+      "source_slug": "october-borrows-b"
+    },
+    "scripts/check-guard-twins.sh": {
+      "action": "create",
+      "purpose": "require deny:/allow: labelled cases per gated deny code",
+      "source_slug": "october-borrows-a"
+    },
+    "tests/hooks/test-guard-modes.sh": {
+      "action": "modify",
+      "purpose": "source guard-mode.sh; mtk_advise_gated cases (dedup per key, no session id, off/active silent)",
+      "source_slug": "october-borrows-b"
+    },
+    "tests/hooks/test-check-guard-twins.sh": {
+      "action": "create",
+      "purpose": "twins checker tests (SC5)",
+      "source_slug": "october-borrows-a"
+    },
+    "tests/hooks/test-deny-ergonomics.sh": {
+      "action": "modify",
+      "purpose": "source guard-mode.sh for mtk_deny_gated cases",
+      "source_slug": "october-borrows-b"
+    },
+    "tests/hooks/test-scope-guard-diet.sh": {
+      "action": "modify",
+      "purpose": "relabel to deny:/allow:; on/TRUE/YES and shadow cases",
+      "source_slug": "october-borrows-a"
+    },
+    "hooks/config-guard.sh": {
+      "action": "modify",
+      "purpose": "source guard-mode.sh",
+      "source_slug": "october-borrows-b"
+    },
+    "tests/hooks/test-config-guard.sh": {
+      "action": "modify",
+      "purpose": "T-code deny/allow twins; relabel W1-W3 cases (SC6)",
+      "source_slug": "october-borrows-a"
+    },
+    "hooks/hooks.json": {
+      "action": "modify",
+      "purpose": "PreToolUse Bash gains push-gate.sh with if Bash(git push *), timeout 5",
+      "source_slug": "october-borrows-b"
+    },
+    "tests/hooks/test-hooks-wiring.sh": {
+      "action": "modify",
+      "purpose": "stamp_check and drive_plan read hook_registry.py",
+      "source_slug": "october-borrows-b"
+    },
+    "hooks/security-gate.sh": {
+      "action": "modify",
+      "purpose": "liveness stamp only; no pattern change (S3.18)",
+      "source_slug": "october-borrows-a"
+    },
+    "hooks/format-on-edit.sh": {
+      "action": "modify",
+      "purpose": "liveness stamp",
+      "source_slug": "october-borrows-a"
+    },
+    "hooks/evidence-ledger.sh": {
+      "action": "modify",
+      "purpose": "liveness stamp",
+      "source_slug": "october-borrows-a"
+    },
+    "hooks/spec-approval-trigger.sh": {
+      "action": "modify",
+      "purpose": "liveness stamp",
+      "source_slug": "october-borrows-a"
+    },
+    "hooks/cost-tracker.sh": {
+      "action": "modify",
+      "purpose": "liveness stamp",
+      "source_slug": "october-borrows-a"
+    },
+    "scripts/mtk-doctor.sh": {
+      "action": "modify",
+      "purpose": "liveness set and rarity from hook_registry.py; if-filtered hooks reported, never WARNed",
+      "source_slug": "october-borrows-b"
+    },
+    "tests/hooks/test-mtk-doctor-liveness.sh": {
+      "action": "modify",
+      "purpose": "an if-filtered handler with no stamp is reported, not WARNed",
+      "source_slug": "october-borrows-b"
+    },
+    ".claude/references/env-knobs.md": {
+      "action": "modify",
+      "purpose": "MTK_PUSH_GATE_ENFORCE",
+      "source_slug": "october-borrows-b"
+    },
+    "CHANGELOG.md": {
+      "action": "modify",
+      "purpose": "9.2.0 entry with measured hook process counts",
+      "source_slug": "october-borrows-b"
+    },
+    "docs/competitive-analysis-2026-10.md": {
+      "action": "create",
+      "purpose": "research note behind this change",
+      "source_slug": "october-borrows-a"
+    },
+    "hooks/lib/guard-mode.sh": {
+      "action": "create",
+      "purpose": "guard-mode helpers moved out of hook-io.sh (mtk_guard_mode, mtk_deny_gated, _mtk_shadow_not_written) + new mtk_advise_gated (advisory/shadow text, deduped once per key per session)",
+      "source_slug": "october-borrows-b"
+    },
+    "hooks/lib/hook_registry.py": {
+      "action": "create",
+      "purpose": "one hooks.json handler parser: event, matcher, if, script, args, timeout, async, rarity (rare = SubagentStart or an if-filtered handler); importable + TSV CLI",
+      "source_slug": "october-borrows-b"
+    },
+    "tests/hooks/test-hook-registry.sh": {
+      "action": "create",
+      "purpose": "registry parse cases: shell prefix, quoted path, args, if => rare, SubagentStart => rare, malformed JSON exit code",
+      "source_slug": "october-borrows-b"
+    },
+    "hooks/lib/active_workflow.py": {
+      "action": "create",
+      "purpose": "one active-workflow selector (newest active, updated_at within N days); prints requested fields as TSV",
+      "source_slug": "october-borrows-b"
+    },
+    "tests/hooks/test-active-workflow.sh": {
+      "action": "create",
+      "purpose": "selector cases: status filter, window, newest wins, bad JSON/ts skipped, pack field, no match = empty",
+      "source_slug": "october-borrows-b"
+    },
+    "tests/hooks/test-remediation-tracker.sh": {
+      "action": "modify",
+      "purpose": "--open stall + CONTINUE, --findings reconcile, UID stability, --score unchanged",
+      "source_slug": "october-borrows-b"
+    },
+    "tests/hooks/test-review-input.sh": {
+      "action": "create",
+      "purpose": "record/check: unchanged 0, tracked edit 1, untracked add 1, .mtk write 0, commit of reviewed tree 0",
+      "source_slug": "october-borrows-b"
+    },
+    "scripts/review-receipt.sh": {
+      "action": "create",
+      "purpose": "write/check diff-bound review receipts in ~/.mtk/receipts/<sha256(repo)>/<change_id>.json (0600)",
+      "source_slug": "october-borrows-b"
+    },
+    "hooks/push-gate.sh": {
+      "action": "create",
+      "purpose": "PreToolUse Bash: git push without a receipt -> advisory (default) / shadow / active deny PUSH-UNREVIEWED; unmapped refspec -> one advisory line",
+      "source_slug": "october-borrows-b"
+    },
+    "tests/hooks/test-review-receipt.sh": {
+      "action": "create",
+      "purpose": "0600 under fake HOME, same range passes, new commit fails, amend -> new id, upstream fallback chain",
+      "source_slug": "october-borrows-b"
+    },
+    "tests/hooks/test-push-gate.sh": {
+      "action": "create",
+      "purpose": "advisory, active deny:PUSH-UNREVIEWED + allow:PUSH-UNREVIEWED twins, HEAD:other not mapped, non-push silent",
+      "source_slug": "october-borrows-b"
+    },
+    "scripts/review-coverage.sh": {
+      "action": "create",
+      "purpose": "lane-result coverage + candidate disposition check: exit 0 complete, 1 incomplete, 2 unparseable",
+      "source_slug": "october-borrows-b"
+    },
+    "tests/hooks/test-review-coverage.sh": {
+      "action": "create",
+      "purpose": "complete / missing file / unparseable / candidates all disposed / one missing",
+      "source_slug": "october-borrows-b"
+    },
+    ".claude/references/implement-review-lanes.md": {
+      "action": "modify",
+      "purpose": "candidates collection, review-input record/check, verify stage at HIGH/MAX, --open, receipt write",
+      "source_slug": "october-borrows-b"
+    },
+    ".claude/references/orchestration-gates.md": {
+      "action": "modify",
+      "purpose": "circuit breaker documents --open stall",
+      "source_slug": "october-borrows-b"
+    },
+    ".claude/agents/finding-verifier.md": {
+      "action": "create",
+      "purpose": "verify-stage agent (Read/Glob/Grep), verdicts confirmed|refined|rejected|immaterial|pre_existing, ABSTAINED contract, <= 60 lines",
+      "source_slug": "october-borrows-b"
+    },
+    ".claude/agents/compliance-reviewer.md": {
+      "action": "modify",
+      "purpose": "coverage + candidates_disposed required in output",
+      "source_slug": "october-borrows-b"
+    },
+    "tests/pressure-tests/reviewer-abstention.md": {
+      "action": "modify",
+      "purpose": "6 -> 7 agents carry ABSTAINED",
+      "source_slug": "october-borrows-b"
+    },
+    "tests/pressure-tests/finding-verifier.md": {
+      "action": "create",
+      "purpose": "pressure test: cannot-verify keeps, pre_existing to follow-up, immaterial needs all three",
+      "source_slug": "october-borrows-b"
+    },
+    "evals/review-incomplete-blocks/case.yaml": {
+      "action": "create",
+      "purpose": "eval: a lane that skips a changed file must not yield PASS",
+      "source_slug": "october-borrows-b"
+    },
+    "evals/review-incomplete-blocks/prompt.md": {
+      "action": "create",
+      "purpose": "eval prompt",
+      "source_slug": "october-borrows-b"
+    },
+    "evals/review-incomplete-blocks/scaffold.sh": {
+      "action": "create",
+      "purpose": "eval scaffold",
+      "source_slug": "october-borrows-b"
+    },
+    "evals/review-incomplete-blocks/graders/no-pass-on-incomplete.md": {
+      "action": "create",
+      "purpose": "eval grader",
+      "source_slug": "october-borrows-b"
+    },
+    "docs/agent-routing-guide.md": {
+      "action": "modify",
+      "purpose": "finding-verifier in the review graph",
+      "source_slug": "october-borrows-b"
+    },
+    "evals/README.md": {
+      "action": "modify",
+      "purpose": "case-table row for the declared review-incomplete-blocks eval case (post-merge amendment, see amendments[])",
+      "source_slug": "october-borrows-b"
     }
   },
   "history": [
@@ -412,6 +833,18 @@
       "date": "2026-06-12",
       "verdict": "PASS",
       "archived_at": "2026-06-19T10:46:20Z"
+    },
+    {
+      "slug": "october-borrows-a",
+      "date": "2026-10-14",
+      "verdict": "PASS",
+      "archived_at": "2026-10-22T05:56:19Z"
+    },
+    {
+      "slug": "october-borrows-b",
+      "date": "2026-10-15",
+      "verdict": "PASS",
+      "archived_at": "2026-10-22T05:56:52Z"
     }
   ]
 }

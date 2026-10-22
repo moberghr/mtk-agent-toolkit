@@ -1,0 +1,432 @@
+{
+  "slug": "continuity-quick-wins",
+  "date": "2026-10-20",
+  "scope": "new-feature",
+  "security_impact": "none",
+  "change_manifest": [
+    {
+      "path": ".claude/references/settings-baseline.md",
+      "action": "modify",
+      "purpose": "R0.1 add ### settings section with autoCompactWindow: 300000"
+    },
+    {
+      "path": "scripts/settings-baseline.sh",
+      "action": "modify",
+      "purpose": "R0.1 parse ### settings scalars; --json/--missing/--merge cover them"
+    },
+    {
+      "path": "scripts/mtk-doctor.sh",
+      "action": "modify",
+      "purpose": "R0.1 baseline WARN/--fix wording covers settings; R0.2 rare-event liveness text includes PostCompact"
+    },
+    {
+      "path": ".claude/skills/setup-bootstrap/SKILL.md",
+      "action": "modify",
+      "purpose": "R0.1 Settings Merge includes ### settings top-level keys (added when absent)"
+    },
+    {
+      "path": ".claude/skills/setup-refresh/SKILL.md",
+      "action": "modify",
+      "purpose": "R0.1 permissions-baseline step proposes settings keys as their own hunk"
+    },
+    {
+      "path": "tests/hooks/test-settings-baseline.sh",
+      "action": "modify",
+      "purpose": "R0.1 cover settings key in --json/--missing/--merge and doctor WARN/--fix"
+    },
+    {
+      "path": "hooks/compact-archive.sh",
+      "action": "create",
+      "purpose": "R0.2 archive compact_summary to .mtk/sessions/<sid>/compact-<ts>.md"
+    },
+    {
+      "path": "hooks/hooks.json",
+      "action": "modify",
+      "purpose": "R0.2 register PostCompact handler (async, timeout)"
+    },
+    {
+      "path": "hooks/lib/hook_registry.py",
+      "action": "modify",
+      "purpose": "R0.2 PostCompact handlers are rare for liveness"
+    },
+    {
+      "path": "hooks/session-start",
+      "action": "modify",
+      "purpose": "R0.3 HANDOFF OFFER on clear; COMPACTION OFFER fallback on startup/clear"
+    },
+    {
+      "path": "tests/hooks/test-compact-archive.sh",
+      "action": "create",
+      "purpose": "R0.2 archive, kill switch, not-ignored guard, malformed input, prune, liveness"
+    },
+    {
+      "path": "tests/hooks/test-hook-registry.sh",
+      "action": "modify",
+      "purpose": "R0.2 PostCompact rarity"
+    },
+    {
+      "path": "tests/hooks/test-session-start-compact-framing.sh",
+      "action": "modify",
+      "purpose": "R0.3 clear offer and compaction offer cases"
+    },
+    {
+      "path": ".claude/references/env-knobs.md",
+      "action": "modify",
+      "purpose": "R0.2 MTK_COMPACT_ARCHIVE; R0.4 MTK_IMPLEMENTER_MAX_CALLS"
+    },
+    {
+      "path": ".claude/references/subagent-implementer-prompt.md",
+      "action": "modify",
+      "purpose": "R0.4 budget rule, partial status + resume_note, result-size cap"
+    },
+    {
+      "path": ".claude/skills/subagent-implementation/SKILL.md",
+      "action": "modify",
+      "purpose": "R0.4 partial handled via RESUME respawn, max 2 per batch"
+    },
+    {
+      "path": ".claude/references/subagent-dynamic-workflow.md",
+      "action": "modify",
+      "purpose": "R0.4 partial handling on the workflow path"
+    },
+    {
+      "path": "tests/pressure-tests/subagent-implementation-pressure.md",
+      "action": "modify",
+      "purpose": "R0.4 pressure scenario: partial is never a pass"
+    },
+    {
+      "path": ".claude/skills/implement/SKILL.md",
+      "action": "modify",
+      "purpose": "R0.5 user-invocable + allowed-tools + argument-hint"
+    },
+    {
+      "path": ".claude/skills/fix/SKILL.md",
+      "action": "modify",
+      "purpose": "R0.5 user-invocable + allowed-tools + argument-hint"
+    },
+    {
+      "path": ".claude/skills/batch-fix/SKILL.md",
+      "action": "modify",
+      "purpose": "R0.5 user-invocable + allowed-tools + argument-hint"
+    },
+    {
+      "path": "AGENTS.md",
+      "action": "modify",
+      "purpose": "R0.5 user-invocable list and routing table"
+    },
+    {
+      "path": "docs/agent-routing-guide.md",
+      "action": "modify",
+      "purpose": "R0.5 direct shortcuts"
+    },
+    {
+      "path": ".claude/manifest.json",
+      "action": "modify",
+      "purpose": "C0.2 entries for new files; 9.3.0"
+    },
+    {
+      "path": ".claude-plugin/plugin.json",
+      "action": "modify",
+      "purpose": "9.3.0"
+    },
+    {
+      "path": ".claude-plugin/marketplace.json",
+      "action": "modify",
+      "purpose": "9.3.0"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "action": "modify",
+      "purpose": "9.3.0 entry"
+    },
+    {
+      "path": "checksums.sha256",
+      "action": "modify",
+      "purpose": "S4.11 regenerate last"
+    },
+    {
+      "path": "tests/hooks/test-hooks-wiring.sh",
+      "action": "modify",
+      "purpose": "AMENDED (instrumental): expected hook table gains PostCompact -> compact-archive.sh"
+    },
+    {
+      "path": "tests/hooks/test-mtk-doctor-liveness.sh",
+      "action": "modify",
+      "purpose": "AMENDED (instrumental): independent rarity derivation treats PostCompact as rare"
+    },
+    {
+      "path": "README.md",
+      "action": "modify",
+      "purpose": "AMENDED (S4.9 release rule): user-invocable count 5 -> 8 after R0.5"
+    },
+    {
+      "path": ".claude/rules/hooks-and-scripts.md",
+      "action": "modify",
+      "purpose": "AMENDED (review: rule text must track code): S3.6 registers PostCompact -> compact-archive.sh and its rarity; S3.11 offers on clear + COMPACTION OFFER"
+    },
+    {
+      "path": ".claude/rules/skill-authoring.md",
+      "action": "modify",
+      "purpose": "AMENDED (review round 2): S2.4 entry-point example list names the direct shortcuts /mtk:implement, /mtk:fix, /mtk:batch-fix"
+    },
+    {
+      "path": "templates/workflows/subagent-implementation.workflow.js",
+      "action": "modify",
+      "purpose": "AMENDED (review round 2): BATCH_RESULT_SCHEMA gains partial status + resume_note; wave fail-fast halts on partial"
+    },
+    {
+      "path": ".claude/references/bootstrap-supporting-files.md",
+      "action": "modify",
+      "purpose": "AMENDED (review round 2): .mtk/ added to .gitignore unconditionally, not only in the analyzer branch"
+    },
+    {
+      "path": "tests/hooks/test-mtk-doctor-settings-checks.sh",
+      "action": "modify",
+      "purpose": "AMENDED (review round 2): case: .gitignore missing .mtk/ WARNs, --fix appends and row passes"
+    }
+  ],
+  "public_contracts": [
+    {
+      "kind": "event",
+      "signature": "PostCompact -> hooks/compact-archive.sh (async; writes .mtk/sessions/<sid>/compact-<ts>.md; MTK_COMPACT_ARCHIVE=0 disables)",
+      "change": "new",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "event",
+      "signature": "SessionStart source=clear emits HANDOFF OFFER; startup/clear emit COMPACTION OFFER when no handoff offer",
+      "change": "modified",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "schema",
+      "signature": "settings-baseline ### settings (autoCompactWindow: 300000) merged into target .claude/settings.json when absent; --missing emits settings<TAB>key: value",
+      "change": "modified",
+      "surface": "external"
+    },
+    {
+      "kind": "schema",
+      "signature": "implementer batch result: status adds partial, optional resume_note",
+      "change": "modified",
+      "surface": "internal-tooling"
+    },
+    {
+      "kind": "cli-flag",
+      "signature": "/mtk:implement, /mtk:fix, /mtk:batch-fix directly invocable",
+      "change": "new",
+      "surface": "external"
+    }
+  ],
+  "success_criteria": [
+    {
+      "id": "SC1",
+      "description": "settings-baseline --json emits autoCompactWindow 300000 at top level; --missing lists it only when absent; --merge adds it when absent and keeps an engineer value",
+      "verification": "bash tests/hooks/test-settings-baseline.sh && bash tests/hooks/test-setup-refresh-plan.sh",
+      "evidence_channel": "test-run",
+      "observable": "both tests exit 0"
+    },
+    {
+      "id": "SC2",
+      "description": "mtk-doctor baseline WARN names a missing baseline setting; --fix merges it; wording covers rules and settings",
+      "verification": "bash tests/hooks/test-settings-baseline.sh && bash tests/hooks/test-mtk-doctor-settings-checks.sh",
+      "evidence_channel": "test-run",
+      "observable": "tests exit 0 with doctor assertions"
+    },
+    {
+      "id": "SC3",
+      "description": "compact-archive.sh archives the summary with frontmatter at mode 0600, writes nothing on kill switch / empty summary / non-ignored .mtk, prunes >14d session dirs, exits 0 silently, stamps liveness; registered async PostCompact with timeout; classified rare",
+      "verification": "bash tests/hooks/test-compact-archive.sh && bash tests/hooks/test-hook-registry.sh && bash tests/hooks/test-hooks-wiring.sh",
+      "evidence_channel": "test-run",
+      "observable": "all three tests exit 0"
+    },
+    {
+      "id": "SC4",
+      "description": "session-start emits HANDOFF OFFER on clear as on startup; emits one COMPACTION OFFER for the newest same-branch summary within 24h when no handoff offer; compact source unchanged",
+      "verification": "bash tests/hooks/test-session-start-compact-framing.sh && bash tests/hooks/test-session-start-compact-workflows.sh",
+      "evidence_channel": "test-run",
+      "observable": "both tests exit 0"
+    },
+    {
+      "id": "SC5",
+      "description": "implementer prompt has the MTK_IMPLEMENTER_MAX_CALLS budget rule, partial status with resume_note and the result-size cap; subagent-implementation and dynamic-workflow respawn partial via RESUME at most twice then halt; env-knobs documents both knobs",
+      "verification": "grep -q 'MTK_IMPLEMENTER_MAX_CALLS' .claude/references/subagent-implementer-prompt.md && grep -q 'kind:\"partial\"' .claude/skills/subagent-implementation/SKILL.md && grep -q 'partial' .claude/references/subagent-dynamic-workflow.md && grep -q 'MTK_IMPLEMENTER_MAX_CALLS' .claude/references/env-knobs.md && grep -q 'MTK_COMPACT_ARCHIVE' .claude/references/env-knobs.md && bash scripts/validate-toolkit.sh",
+      "evidence_channel": "script-output",
+      "observable": "greps match and validator passes"
+    },
+    {
+      "id": "SC6",
+      "description": "implement, fix and batch-fix are user-invocable with allowed-tools and argument-hint; AGENTS.md and the routing guide list them",
+      "verification": "for s in implement fix batch-fix; do grep -q '^user-invocable: true' .claude/skills/$s/SKILL.md && grep -q '^allowed-tools:' .claude/skills/$s/SKILL.md && grep -q '^argument-hint:' .claude/skills/$s/SKILL.md || exit 1; done && grep -q '/mtk:implement' AGENTS.md && grep -q '/mtk:implement' docs/agent-routing-guide.md",
+      "evidence_channel": "script-output",
+      "observable": "command exits 0"
+    },
+    {
+      "id": "SC7",
+      "description": "release 9.3.0: versions match in all three manifests, CHANGELOG entry, references.index in sync, checksums regenerated, toolkit validation passes, full hook suite and fixtures pass",
+      "verification": "bash scripts/validate-toolkit.sh && for t in tests/hooks/test-*.sh; do bash \"$t\" >/dev/null 2>&1 || { echo FAIL $t; exit 1; }; done && bash scripts/run-fixtures.sh",
+      "evidence_channel": "test-run",
+      "observable": "Toolkit validation passed; every hook test and fixture exits 0"
+    }
+  ],
+  "test_manifest": [
+    {
+      "path": "tests/hooks/test-settings-baseline.sh",
+      "covers": [
+        "SC1",
+        "SC2"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-setup-refresh-plan.sh",
+      "covers": [
+        "SC1"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-mtk-doctor-settings-checks.sh",
+      "covers": [
+        "SC2"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-compact-archive.sh",
+      "covers": [
+        "SC3"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-hook-registry.sh",
+      "covers": [
+        "SC3"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-hooks-wiring.sh",
+      "covers": [
+        "SC3"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-session-start-compact-framing.sh",
+      "covers": [
+        "SC4"
+      ]
+    },
+    {
+      "path": "tests/hooks/test-session-start-compact-workflows.sh",
+      "covers": [
+        "SC4"
+      ]
+    }
+  ],
+  "out_of_scope": [
+    "R1 checkpoint / resume drift block / handoff rewrite (PR-2)",
+    "R2 context guard and telemetry (PR-2)",
+    "R3 relay runner, R4 PROGRAM workflows, R5 dashboard (PR-3+)",
+    "doctor resolution of the effective compaction window across env and user settings",
+    "edits to the engineer's personal ~/.claude files"
+  ],
+  "assumptions": [
+    "PostCompact hook input carries trigger and compact_summary; SessionStart delivers source=clear (Claude Code hooks docs, checked 2026-10-20)",
+    "autoCompactWindow accepts an integer 100k-1M, capped at the model window (model-config docs)",
+    "[NOT PROVED] the autoCompactWindow settings key also bounds subagents; live PostCompact payload on the installed CLI"
+  ],
+  "risks": [
+    "archived summaries contain conversation text — written only when .mtk/ is git-ignored, mode 0600, 14-day prune, kill switch",
+    "new baseline setting makes doctor WARN in existing repos until refresh — intended, the WARN names the fix",
+    "300k window compacts more often; engineer value wins on merge",
+    "parallel implementers share one working tree — batches are file-disjoint or carry depends edges"
+  ],
+  "plan": {
+    "batches": [
+      {
+        "id": "B1",
+        "files": [
+          ".claude/references/settings-baseline.md",
+          "scripts/settings-baseline.sh",
+          "scripts/mtk-doctor.sh",
+          ".claude/skills/setup-bootstrap/SKILL.md",
+          ".claude/skills/setup-refresh/SKILL.md",
+          "tests/hooks/test-settings-baseline.sh"
+        ],
+        "acceptance": "SC1 and SC2",
+        "verification": "bash tests/hooks/test-settings-baseline.sh && bash tests/hooks/test-setup-refresh-plan.sh && bash tests/hooks/test-mtk-doctor-settings-checks.sh",
+        "boundary": "permission deny/ask semantics and output lines unchanged; merge never overrides an existing scalar",
+        "depends": []
+      },
+      {
+        "id": "B2",
+        "files": [
+          "hooks/compact-archive.sh",
+          "hooks/hooks.json",
+          "hooks/lib/hook_registry.py",
+          "scripts/mtk-doctor.sh",
+          "hooks/session-start",
+          "tests/hooks/test-compact-archive.sh",
+          "tests/hooks/test-hook-registry.sh",
+          "tests/hooks/test-session-start-compact-framing.sh",
+          ".claude/references/env-knobs.md",
+          ".claude/manifest.json",
+          "tests/hooks/test-hooks-wiring.sh",
+          "tests/hooks/test-mtk-doctor-liveness.sh"
+        ],
+        "acceptance": "SC3 and SC4 (manifest gets files entries for the two new files only)",
+        "verification": "bash tests/hooks/test-compact-archive.sh && bash tests/hooks/test-hook-registry.sh && bash tests/hooks/test-hooks-wiring.sh && bash tests/hooks/test-session-start-compact-framing.sh && bash tests/hooks/test-session-start-compact-workflows.sh && bash tests/hooks/test-mtk-doctor-liveness.sh",
+        "boundary": "no hook on UserPromptSubmit/Read/Grep/Glob/MCP (runtime diet); compact-source recovery output unchanged; startup offer text unchanged",
+        "depends": [
+          "B1"
+        ]
+      },
+      {
+        "id": "B3",
+        "files": [
+          ".claude/references/subagent-implementer-prompt.md",
+          ".claude/skills/subagent-implementation/SKILL.md",
+          ".claude/references/subagent-dynamic-workflow.md",
+          ".claude/references/env-knobs.md",
+          "tests/pressure-tests/subagent-implementation-pressure.md"
+        ],
+        "acceptance": "SC5",
+        "verification": "grep -q 'MTK_IMPLEMENTER_MAX_CALLS' .claude/references/subagent-implementer-prompt.md && grep -q 'kind:\"partial\"' .claude/skills/subagent-implementation/SKILL.md && grep -q 'partial' .claude/references/subagent-dynamic-workflow.md && grep -q 'MTK_IMPLEMENTER_MAX_CALLS' .claude/references/env-knobs.md",
+        "boundary": "killed-mid-batch and inconclusive semantics unchanged; subagent-implementation SKILL.md grows by at most ~600 chars (already over the S2.26 budget)",
+        "depends": [
+          "B2"
+        ]
+      },
+      {
+        "id": "B4",
+        "files": [
+          ".claude/skills/implement/SKILL.md",
+          ".claude/skills/fix/SKILL.md",
+          ".claude/skills/batch-fix/SKILL.md",
+          "AGENTS.md",
+          "docs/agent-routing-guide.md"
+        ],
+        "acceptance": "SC6",
+        "verification": "for s in implement fix batch-fix; do grep -q '^user-invocable: true' .claude/skills/$s/SKILL.md && grep -q '^allowed-tools:' .claude/skills/$s/SKILL.md && grep -q '^argument-hint:' .claude/skills/$s/SKILL.md || exit 1; done && bash scripts/run-fixtures.sh",
+        "boundary": "frontmatter and routing docs only; no skill body changes; skill descriptions unchanged",
+        "depends": []
+      },
+      {
+        "id": "B5",
+        "files": [
+          ".claude/manifest.json",
+          ".claude-plugin/plugin.json",
+          ".claude-plugin/marketplace.json",
+          "CHANGELOG.md",
+          "checksums.sha256",
+          "README.md"
+        ],
+        "acceptance": "SC7",
+        "verification": "bash scripts/validate-toolkit.sh && for t in tests/hooks/test-*.sh; do bash \"$t\" >/dev/null 2>&1 || { echo FAIL $t; exit 1; }; done && bash scripts/run-fixtures.sh",
+        "boundary": "release metadata only; checksums regenerated as the very last change",
+        "depends": [
+          "B1",
+          "B2",
+          "B3",
+          "B4"
+        ]
+      }
+    ]
+  }
+}
