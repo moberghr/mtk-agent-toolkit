@@ -216,20 +216,24 @@ if [ "$SS_SOURCE" != "compact" ]; then
   fi
 fi
 
-# Version drift check (advisory only). setup-bootstrap writes the stamp into
-# target repos; the plugin's own manifest carries the shipped version.
+# Version drift check (advisory only). The repo's stamp (.claude/mtk-version.json,
+# written by scripts/stamp-version.sh at bootstrap and after every refresh) names
+# the MTK version whose setup files the repo has; the plugin's manifest names the
+# installed version. stamp-version.sh --compare parses both (one parser, shared
+# with mtk-doctor). An older stamp needs /mtk-setup --refresh — the plugin
+# manager cannot change it; a newer stamp means the plugin itself is behind.
 VERSION_MSG=""
-if [ -f .claude/mtk-version.json ]; then
-  INSTALLED_VERSION="$(grep -o '"version":"[^"]*"' .claude/mtk-version.json 2>/dev/null | awk 'NR==1' | sed 's/"version":"//;s/"//' || true)"
-  if [ -n "$INSTALLED_VERSION" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
-    SOURCE_MANIFEST="${CLAUDE_PLUGIN_ROOT}/.claude/manifest.json"
-    if [ -f "$SOURCE_MANIFEST" ]; then
-      SOURCE_VERSION="$(grep -o '"version": "[^"]*"' "$SOURCE_MANIFEST" | awk 'NR==1' | sed 's/"version": "//;s/"//' || true)"
-      if [ -n "$SOURCE_VERSION" ] && [ "$INSTALLED_VERSION" != "$SOURCE_VERSION" ]; then
-        VERSION_MSG="MTK update available: ${INSTALLED_VERSION} → ${SOURCE_VERSION}. Use the Claude Code plugin manager to upgrade."
-      fi
-    fi
-  fi
+STAMP_SH="$SCRIPT_DIR/../scripts/stamp-version.sh"
+# CLAUDE_PLUGIN_ROOT is Claude Code's; other harnesses (S3.8) run the hook from
+# the plugin tree, so its manifest sits next to this hook.
+PLUGIN_MANIFEST="${CLAUDE_PLUGIN_ROOT:-$SCRIPT_DIR/..}/.claude/manifest.json"
+if [ -f .claude/mtk-version.json ] && [ -f "$STAMP_SH" ] && [ -f "$PLUGIN_MANIFEST" ]; then
+  VCMP="$(bash "$STAMP_SH" --compare --manifest "$PLUGIN_MANIFEST" 2>/dev/null || true)"
+  read -r V_STATE V_STAMP V_PLUGIN <<<"$VCMP" || true
+  case "${V_STATE:-}" in
+    older) VERSION_MSG="MTK: this repo was set up with MTK ${V_STAMP}; the plugin is ${V_PLUGIN}. Run /mtk-setup --refresh to bring its setup files up to date." ;;
+    newer) VERSION_MSG="MTK: this repo was set up with MTK ${V_STAMP}, newer than the installed plugin ${V_PLUGIN}. Update the plugin with the Claude Code plugin manager." ;;
+  esac
 fi
 
 # --- Post-compaction recovery (source = compact) ------------------------------

@@ -1,5 +1,5 @@
 {
-  "version": "9.4.1",
+  "version": "9.4.2",
   "updated": "2026-10-22",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
@@ -1295,6 +1295,12 @@
       "target": "scripts/spec-archive.sh",
       "action": "sync",
       "description": "Sync a feature spec delta back into its area baseline and append an audit record (delta-spec model); idempotent, refuses non-PASS drift"
+    },
+    "scripts/stamp-version.sh": {
+      "source": "scripts/stamp-version.sh",
+      "target": "scripts/stamp-version.sh",
+      "action": "sync",
+      "description": "Single writer of a target repo's .claude/mtk-version.json (bootstrap and setup-refresh); --compare is the shared stamp-vs-plugin parser for session-start and mtk-doctor"
     },
     "scripts/constitution-digest.sh": {
       "source": "scripts/constitution-digest.sh",
