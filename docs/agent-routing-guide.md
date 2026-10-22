@@ -110,9 +110,9 @@ via a local review-config override file, which is gitignored).
 Behavioural evals live under `evals/` as native `claude plugin eval` cases
 (prompt + scaffold script + hidden graders), covering verification evidence,
 pre-commit secrets, force-push, silent failures, fix-scope escalation, `/mtk`
-routing and implement approval. The `core` tag gates every release
-(`.github/workflows/release.yml`); `evals/README.md` has the run commands and
-the three-arm comparison method.
+routing and implement approval. Run the `core` tag by hand before a release
+(CI does not gate on it); `evals/README.md` has the run commands and the
+three-arm comparison method.
 
 ## Tech Stack Loading
 

@@ -4,6 +4,74 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [9.4.1] - 2026-10-22
+
+These fixes come from 24 hours of 9.4.0 use across 37 sessions, about $437 at list price.
+- Handoff and "continue" stayed manual. Auto-compaction was disabled, so 0 compactions happened
+  and 55% of main-thread spend was in turns above 300k.
+- The context guard nudged sessions about workflows that other sessions were driving.
+- The security gate timed out 58 times on long heredoc commands, and none of those commands were
+  judged.
+
+### Fixed
+
+- **Workflows belong to a session.** `workflow-artifact.sh` stamps `owner_session` from
+  `CLAUDE_CODE_SESSION_ID`, which subagents inherit from their parent.
+  - It does this on `init` and on every subcommand that records progress: `event`, `set`,
+    `batch`, `gate`, `seal`, `criteria`, `remediation`, `review-input`, `checkpoint` and
+    `trap add`. A call that is then rejected still claims, because that session is acting on
+    the workflow.
+  - It never does this on `read`, `list`, `resume`, `verify-seal`, `trap list`, `abandon` or
+    `prune`, so a session-start RESUME offer still claims nothing.
+  - `hooks/lib/active_workflow.py --session <id>` keeps only the workflows that session owns.
+  - `context-guard.sh`, `subagent-context.sh`, `compact-archive.sh`, `workflow-continuation.sh`
+    and the compact re-inject in `session-start` pass their payload's `session_id`. The Stop
+    hook's user-visible "WORKFLOW IN PROGRESS … resume, hand off or close it" line no longer
+    fires for another session's run.
+  - Another session's workflow, or an unowned one, takes the generic path. In the field run a
+    disk-scan session was told to "checkpoint wf-X" for another session's workflow, and an
+    upstream-issues session was nudged about a hardening loop.
+  - A stale active workflow is now visible only to the session that owned it.
+  - A workflow created before 9.4.1, or outside Claude Code, has no owner. The hooks ignore it
+    until its next checkpoint or batch claims it.
+  - A payload without `session_id` (another harness) keeps the old repo-wide selection.
+- **The context guard knows about compaction.** `hooks/lib/compaction.py` resolves effective
+  auto-compaction the way Claude Code does:
+  - the `DISABLE_AUTO_COMPACT` / `DISABLE_COMPACT` env, including the settings `env` blocks;
+  - then the managed policy file, local, project and user settings;
+  - then `~/.claude.json`.
+
+  With compaction on and a window of at most 500k configured, the workflow nudge says to checkpoint and keep
+  going, because compaction carries the work and session-start re-injects the checkpoint. The
+  generic nudge stops suggesting `/mtk handoff`. With compaction off, or with no window, the
+  `/clear` wording stays, as it does with a window near the model default.
+- **TASK workflows are labelled by type.** Their soft nudge says "TASK workflow" instead of
+  "phase phase-0, 0 batch(es) done".
+- **`security-gate.sh` judges long commands in milliseconds.**
+  - The cause was the "anything left after stripping?" test, `[ -n "${NORM//[[:space:]]/}" ]`.
+    On macOS bash 3.2 that substitution is super-linear: it took 159s on an 8k command in a UTF-8
+    locale, against a 5s hook timeout.
+  - Equivalent `case` matches replace it in `security-gate.sh` (twice) and `gate-backstop.sh`.
+    No pattern changed (S3.18).
+  - A 9k field command went from 299s to 0.4s.
+  - New test: `test-security-gate-long-command.sh`.
+
+### Added
+
+- **mtk-doctor reports auto-compaction on its own line** (context). It WARNs when compaction is
+  disabled and names the source, and WARNs when it is on but no window is configured. Otherwise
+  it PASSes with the window and its source. The permission-baseline WARN no longer lists
+  `autoCompactWindow`, which was item 35 of 35 there. `--fix` still merges it.
+
+### Changed
+
+- `release.yml` no longer gates tagging on the `core` eval suite. The repo had no
+  `ANTHROPIC_API_KEY` secret, so every version bump since 9.0.1 failed the gate and skipped the
+  release job, leaving the slim `plugin` branch at 9.0.1. Run the suite by hand before a release
+  (`evals/README.md`).
+- The tag check re-fetches tags first, so a release published by hand right after the merge is
+  seen and the `plugin` branch is still rebuilt from it.
+
 ## [9.4.0] - 2026-10-21
 
 A workflow now keeps one canonical, current handoff note, and the next session is offered it after

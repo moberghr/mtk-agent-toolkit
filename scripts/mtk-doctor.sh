@@ -584,7 +584,8 @@ done
 
 # Permission baseline (.claude/references/settings-baseline.md): the native
 # deny/ask rules that replaced read-guard.sh's secret-file denies, plus the
-# baseline's top-level settings keys (autoCompactWindow). Repos
+# baseline's top-level settings keys (autoCompactWindow — merged by --fix, but
+# reported on the context "auto-compaction" line, not in this list). Repos
 # bootstrapped before 8.1.0 carry none of them, so a secret file is readable
 # there with no guard at all. WARN listing what is missing; --fix unions the
 # baseline into .claude/settings.json with merge-settings.sh (existing keys and
@@ -608,6 +609,11 @@ else
       record FAIL permissions "permission baseline merge failed" "settings-baseline.sh --merge exited $fix_rc: $(awk 'NR==1' <<<"$fix_out")"
     fi
   fi
+  # autoCompactWindow has its own line (context: auto-compaction), which also sees
+  # user settings and env; --fix above still merges it.
+  bl_kept="$(grep -v "^settings$(printf '\t')autoCompactWindow:" <<<"$bl_out" || true)"
+  if [ "$bl_rc" -eq 1 ] && [ -n "$bl_out" ] && [ -z "$bl_kept" ]; then bl_rc=0; fi
+  bl_out="$bl_kept"
   case "$bl_rc" in
     0) record PASS permissions "permission baseline present" "every baseline rule and setting in settings-baseline.md is in .claude/settings.json" ;;
     1) record WARN permissions "missing baseline permission rules or settings" "$(grep -c "$(printf '\t')" <<<"$bl_out" || true) rule(s)/setting(s) absent from .claude/settings.json: $(awk -F'\t' 'NF==2{printf "%s %s; ", $1, $2}' <<<"$bl_out")— run with --fix, or /mtk-setup --refresh to review them" ;;
@@ -1186,6 +1192,40 @@ if [ -f ".mcp.json" ]; then
     "${MCP_COUNT} server(s) in .mcp.json — each adds ~10-20k tokens of tool schema per session"
 else
   record PASS context "MCP schema baseline" "no .mcp.json — no MCP schema baseline"
+fi
+
+# Auto-compaction — the only in-process way a long session carries on by itself:
+# the context guard and checkpoints count on it being on with a window (the
+# default, about 967k on 1M models, is never reached). Resolved by
+# hooks/lib/compaction.py with Claude Code's precedence (DISABLE_AUTO_COMPACT /
+# DISABLE_COMPACT env, then local > project > user settings, then ~/.claude.json).
+COMPACTION_PY="$ROOT_DIR/hooks/lib/compaction.py"
+[ -f "$COMPACTION_PY" ] || COMPACTION_PY="${CLAUDE_PLUGIN_ROOT:-.}/hooks/lib/compaction.py"
+cp_line=""
+if [ -f "$COMPACTION_PY" ] && command -v python3 >/dev/null 2>&1; then
+  cp_line="$(python3 "$COMPACTION_PY" "$(pwd)" 2>/dev/null || true)"
+fi
+if [ -z "$cp_line" ]; then
+  record WARN context "auto-compaction not checked" "hooks/lib/compaction.py or python3 not found, or it failed"
+else
+  IFS="$(printf '\t')" read -r cp_on cp_on_src cp_win cp_win_src <<<"$cp_line"
+  cp_on="${cp_on#enabled=}"; cp_on_src="${cp_on_src#enabled_source=}"
+  cp_win="${cp_win#window=}"; cp_win_src="${cp_win_src#window_source=}"
+  case "$cp_on:$cp_win" in
+    [01]:-|[01]:[0-9]*) case "${cp_win#-}" in *[!0-9]*) cp_on="?" ;; esac ;;
+    *) cp_on="?" ;;
+  esac
+  if [ "$cp_on" = "?" ]; then
+    record WARN context "auto-compaction not checked" "unexpected compaction.py output: ${cp_line}"
+  elif [ "$cp_on" != "1" ]; then
+    record WARN context "auto-compaction disabled" \
+      "by ${cp_on_src}: long sessions never compact, so every continuation needs a manual /clear — set autoCompactEnabled: true (or /config → Auto-compact) and autoCompactWindow: 300000"
+  elif [ "$cp_win" = "-" ]; then
+    record WARN context "no auto-compact window" \
+      "auto-compaction is on but no autoCompactWindow is set (env, .claude/settings*.json or ~/.claude/settings.json); the default (about 967k on 1M models) is never reached — set autoCompactWindow: 300000"
+  else
+    record PASS context "auto-compaction on" "window $((cp_win / 1000))k (${cp_win_src}); enabled by ${cp_on_src}"
+  fi
 fi
 
 # Tool-search deferral — defers MCP tool schemas until first use instead of
