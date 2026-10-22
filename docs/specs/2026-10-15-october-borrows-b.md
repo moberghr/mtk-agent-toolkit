@@ -149,3 +149,12 @@ Run on 2026-10-16 against `feat/october-borrows-a` @ `bae6bf8`:
 Reused rather than rebuilt: `mtk_tree_fingerprint`, `mtk_guard_mode`/`mtk_deny_gated`, the `remediation` tracker, `check-guard-twins.sh` and the ABSTAINED contract.
 
 Verdict: CLEAR. Every batch is not-started.
+
+## Amendment — 2026-10-22 (post-merge, before archiving)
+
+A drift check of merged #126 against the sidecar found one undeclared file: `evals/README.md`
+(one case-table row for the declared `evals/review-incomplete-blocks` case). It is now declared
+in the change manifest (51 entries). The two `delta.removes` entries moved to `delta.modifies`:
+#126 deleted no files, and both described duplicated code consolidated into `hook_registry.py`
+and `active_workflow.py`, which are not baseline keys. Archived into
+`docs/specs/baseline/toolkit-workflow` with verdict PASS. Recorded in the sidecar's `amendments[]`.

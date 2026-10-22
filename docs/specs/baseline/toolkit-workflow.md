@@ -11,50 +11,75 @@
 | /mtk routes 'mine lessons' -> lesson-mining skill | handler | new | v7.14-evidence-closed-loop |
 | GitHub Actions workflow validate-lesson-pr.yml on lessons/contributed/** PRs | endpoint | new | v7.14-evidence-closed-loop |
 | MTK_READ_GUARD=advisory (read-guard rollout mode) | cli-flag | new | v7.14-evidence-closed-loop |
+| MTK_SUBAGENT_CONTEXT, MTK_TEST_GUARD_ENFORCE, MTK_CONFIG_GUARD_ENFORCE (plan §P1-6 adopter), MTK_SCOPE_GUARD_ENFORCE (off|advisory|shadow|active), MTK_CODEX_DOC_MAX_BYTES | env | new | october-borrows-a |
+| PreToolUse Bash if Bash(git push *) -> hooks/push-gate.sh (advisory by default; MTK_PUSH_GATE_ENFORCE) | hook | new | october-borrows-b |
+| SubagentStart -> hooks/subagent-context.sh (additionalContext, never blocks) | hook | new | october-borrows-a |
+| docs/handoffs/*.md frontmatter: state, branch, worktree, expires, accepted_at | file-format | new | october-borrows-a |
 | handoff.schema.json success_criteria[].{evidence_channel,observable} | handler | modified | v7.14-evidence-closed-loop |
+| hook-io.sh: mtk_guard_mode, mtk_deny_gated, mtk_hook_seen | function | new | october-borrows-a |
 | learnings JSONL optional fields wrong_turns/time_cost/evolution_actions | handler | modified | v7.14-evidence-closed-loop |
+| mtk:finding-verifier | agent | new | october-borrows-b |
+| review-finding-schema: coverage, candidates_disposed | schema | extended | october-borrows-b |
 | scripts/build-rule-index.sh [--check] | script | added | borrowed-mechanisms |
+| scripts/check-guard-twins.sh | script | new | october-borrows-a |
+| scripts/check-instruction-load.sh [--json] | script | new | october-borrows-a |
+| scripts/constitution-digest.sh --ids-only | script | modified | october-borrows-a |
 | scripts/constitution-digest.sh | script | added | borrowed-mechanisms |
+| scripts/handoff-state.sh list|accept|expire | script | new | october-borrows-a |
+| scripts/learnings.sh add --retire-when <condition> | script | modified | october-borrows-a |
+| scripts/lesson-mine-state.sh window|advance|id|decide|filter|evidence | script | new | october-borrows-a |
+| scripts/review-coverage.sh <lane-result.json> <changed-files.txt> [--candidates <file>] | script | new | october-borrows-b |
+| scripts/review-receipt.sh write|check | script | new | october-borrows-b |
 | scripts/skill-eval/coverage.sh [--json] | script | added | borrowed-mechanisms |
 | scripts/spec-archive.sh <spec.json> | script | added | borrowed-mechanisms |
+| scripts/workflow-artifact.sh review-input --record|--check; remediation --open N | --findings <file> | script | extended | october-borrows-b |
 | subagent batch-result status enum gains 'inconclusive' | handler | modified | v7.14-evidence-closed-loop |
 
 ## Files
 
 | Path | Action | Source slug | Purpose |
 |---|---|---|---|
-| .claude-plugin/marketplace.json | modify | v7.14-evidence-closed-loop | 7.14.0 (version parity — validate-toolkit asserts manifest==plugin==marketplace) |
-| .claude-plugin/plugin.json | modify | v7.14-evidence-closed-loop | 7.14.0 |
-| .claude/agents/context-miner.md | create | v7.14-evidence-closed-loop | organizational-memory review lane (read-only) |
+| .claude-plugin/marketplace.json | modify | october-borrows-b | version 9.2.0 |
+| .claude-plugin/plugin.json | modify | october-borrows-b | agents list + finding-verifier; version 9.2.0 |
+| .claude/agents/compliance-reviewer.md | modify | october-borrows-b | coverage + candidates_disposed required in output |
+| .claude/agents/context-miner.md | modify | october-borrows-b | search_status per source; git log / lessons unavailable => ABSTAINED could-not-search |
+| .claude/agents/finding-verifier.md | create | october-borrows-b | verify-stage agent (Read/Glob/Grep), verdicts confirmed|refined|rejected|immaterial|pre_existing, ABSTAINED contract, <= 60 lines |
 | .claude/agents/plan-gap-reviewer.md | modify | v7.14-evidence-closed-loop | dirty-worktree overlap rejection rule |
 | .claude/agents/silent-failure-hunter.md | modify | v7.14-evidence-closed-loop | reference error-handling F-codes |
-| .claude/manifest.json | modify | v7.14-evidence-closed-loop | 7.14.0 + files list + updated date |
+| .claude/manifest.json | modify | october-borrows-b | entries for new files; version 9.2.0 |
 | .claude/references/ai-failure-modes.md | create | v7.14-evidence-closed-loop | F-code failure-mode catalog with citations |
 | .claude/references/delta-spec-model.md | create | borrowed-mechanisms | F1 reference |
 | .claude/references/dependency-intake-checklist.md | modify | v7.14-evidence-closed-loop | criterion 0: Existence & Legitimacy |
 | .claude/references/divergence-frames.md | create | v7.14-evidence-closed-loop | frames table incl. fintech frames |
-| .claude/references/learnings-schema.md | modify | v7.14-evidence-closed-loop | wrong_turns, time_cost, evolution_actions fields |
-| .claude/references/lesson-mining-rubric.md | create | v7.14-evidence-closed-loop | reject-by-default mining rubric |
-| .claude/references/review-finding-schema.md | modify | v7.14-evidence-closed-loop | optional failure_mode F-code field |
+| .claude/references/env-knobs.md | modify | october-borrows-b | MTK_PUSH_GATE_ENFORCE |
+| .claude/references/implement-review-lanes.md | modify | october-borrows-b | candidates collection, review-input record/check, verify stage at HIGH/MAX, --open, receipt write |
+| .claude/references/learnings-schema.md | modify | october-borrows-a | document retire_when |
+| .claude/references/lesson-mining-rubric.md | modify | october-borrows-a | candidate_id form, A2/A3 evidence floor, mechanical-rule route |
+| .claude/references/orchestration-gates.md | modify | october-borrows-b | circuit breaker documents --open stall |
+| .claude/references/review-finding-schema.md | modify | october-borrows-b | coverage, candidates_disposed, incomplete: abstention prefix; finding-verifier verdicts; 2-vs-3 iteration reconcile |
 | .claude/references/security-checklist.md | modify | v7.14-evidence-closed-loop | prohibit global-config self-mutation |
-| .claude/references/workflow-artifact-schema.md | modify | v7.14-evidence-closed-loop | criteria_status map + re-arm semantics |
+| .claude/references/workflow-artifact-schema.md | modify | october-borrows-b | results.review.input_fingerprint, results.remediation.<trigger>.opens/findings |
 | .claude/rules/INDEX.md | create | borrowed-mechanisms | F4 generated wake-up layer |
 | .claude/rules/git-workflow.md | modify | borrowed-mechanisms | F4 taxonomy frontmatter |
-| .claude/rules/hooks-and-scripts.md | modify | borrowed-mechanisms | F4 taxonomy frontmatter |
+| .claude/rules/hooks-and-scripts.md | modify | october-borrows-b | S3.6 hook set: push-gate, hook_registry.py |
 | .claude/rules/skill-authoring.md | modify | borrowed-mechanisms | F4 taxonomy frontmatter |
 | .claude/rules/toolkit-structure.md | modify | borrowed-mechanisms | F4 taxonomy frontmatter |
 | .claude/schemas/handoff.schema.json | modify | v7.14-evidence-closed-loop | evidence_channel enum + observable on success_criteria |
 | .claude/settings.json | modify | v7.14-evidence-closed-loop | register read-guard and workflow-continuation hooks |
 | .claude/skills/brainstorming/SKILL.md | modify | v7.14-evidence-closed-loop | isolated-divergence mode + critic pass + trap register + cost gate |
-| .claude/skills/code-review-and-quality/SKILL.md | modify | v7.14-evidence-closed-loop | load failure-modes catalog; context-miner lane at HIGH/MAX rigor |
+| .claude/skills/code-review-and-quality/SKILL.md | modify | october-borrows-b | candidates, coverage check, receipt write on PASS |
 | .claude/skills/context-engineering/SKILL.md | modify | borrowed-mechanisms | F4 wake-up usage |
 | .claude/skills/correction-capture/SKILL.md | modify | v7.14-evidence-closed-loop | enriched capture template |
-| .claude/skills/implement/SKILL.md | modify | v7.14-evidence-closed-loop | [ASSUMED] claims block MTK_AUTO_PROCEED at Phase 2.5 |
+| .claude/skills/handoff/SKILL.md | modify | october-borrows-a | frontmatter template and accept-on-resume step |
+| .claude/skills/implement/SKILL.md | modify | october-borrows-b | Phase 4 points at the lanes reference for candidates, review-input, verify stage, receipt write |
+| .claude/skills/instructions/SKILL.md | modify | october-borrows-a | audit step 1 runs the check; step 3 adds the Move verdict |
 | .claude/skills/lesson-mining/SKILL.md | create | v7.14-evidence-closed-loop | suggest-only transcript mining skill |
+| .claude/skills/lessons/SKILL.md | modify | october-borrows-a | mine steps 3-7 use the state script; refresh honours retire_when |
 | .claude/skills/mtk/SKILL.md | modify | v7.14-evidence-closed-loop | route lesson-mining |
 | .claude/skills/planning-and-task-breakdown/SKILL.md | modify | v7.14-evidence-closed-loop | package-legitimacy ASSUMED + human checkpoint |
 | .claude/skills/promote-lesson/SKILL.md | modify | v7.14-evidence-closed-loop | enriched template + contribute-back offer + anonymization checklist |
 | .claude/skills/research-context/SKILL.md | modify | v7.14-evidence-closed-loop | provenance tags on brief claims |
+| .claude/skills/setup-bootstrap/SKILL.md | modify | october-borrows-a | run the check after generating AGENTS.md |
 | .claude/skills/spec-drift-detection/SKILL.md | modify | borrowed-mechanisms | F1 archive-on-pass note |
 | .claude/skills/spec-driven-development/SKILL.md | modify | v7.14-evidence-closed-loop | evidence channels, dirty-worktree step, provenance tags, rejected-alternatives |
 | .claude/skills/subagent-implementation/SKILL.md | modify | v7.14-evidence-closed-loop | TASK/DELIVERABLE/SCOPE/VERIFY headers; inconclusive status |
@@ -65,32 +90,90 @@
 | .claude/skills/verification-before-completion/SKILL.md | modify | v7.14-evidence-closed-loop | criterion loop, channel taxonomy, re-arm rule |
 | .github/workflows/validate-lesson-pr.yml | create | v7.14-evidence-closed-loop | contribute-back validation, label-only, no auto-merge |
 | AGENTS.md | modify | v7.14-evidence-closed-loop | route new skill (S4.10) |
+| CHANGELOG.md | modify | october-borrows-b | 9.2.0 entry with measured hook process counts |
 | CLAUDE.md | modify | v7.14-evidence-closed-loop | routing table row + version note |
-| README.md | modify | v7.14-evidence-closed-loop | document new features (S4.9); backfill stale What's New (7.10.x-7.13.1) and version badge (engineer-approved scope add 2026-06-12) |
-| checksums.sha256 | modify | v7.14-evidence-closed-loop | regenerated last (S4.11) |
+| README.md | modify | october-borrows-b | agent count 6 -> 7, ~/.mtk/receipts/, push-gate in What MTK runs |
+| checksums.sha256 | modify | october-borrows-b | regenerated last (S4.11) |
+| docs/agent-routing-guide.md | modify | october-borrows-b | finding-verifier in the review graph |
+| docs/competitive-analysis-2026-10.md | create | october-borrows-a | research note behind this change |
 | docs/index.html | modify | v7.14-evidence-closed-loop | pages site: refresh version and feature highlights (engineer-approved scope add 2026-06-12) |
+| evals/README.md | modify | october-borrows-b | case-table row for the declared review-incomplete-blocks eval case (post-merge amendment, see amendments[]) |
 | evals/fix/eval-01-real-fix.md | create | borrowed-mechanisms | F3 seed eval (positive) |
 | evals/fix/eval-02-scope-creep.md | create | borrowed-mechanisms | F3 seed eval (adversarial) |
 | evals/fix/grader.md | create | borrowed-mechanisms | F3 seed eval |
+| evals/review-incomplete-blocks/case.yaml | create | october-borrows-b | eval: a lane that skips a changed file must not yield PASS |
+| evals/review-incomplete-blocks/graders/no-pass-on-incomplete.md | create | october-borrows-b | eval grader |
+| evals/review-incomplete-blocks/prompt.md | create | october-borrows-b | eval prompt |
+| evals/review-incomplete-blocks/scaffold.sh | create | october-borrows-b | eval scaffold |
 | evals/spec-drift-detection/eval-01-silent-drift.md | create | borrowed-mechanisms | F3 seed eval |
 | evals/spec-drift-detection/eval-02-clean-pass.md | create | borrowed-mechanisms | F3 seed eval |
 | evals/spec-drift-detection/grader.md | create | borrowed-mechanisms | F3 seed eval |
+| hooks/config-guard.sh | modify | october-borrows-b | source guard-mode.sh |
+| hooks/cost-tracker.sh | modify | october-borrows-a | liveness stamp |
+| hooks/evidence-ledger.sh | modify | october-borrows-a | liveness stamp |
+| hooks/format-on-edit.sh | modify | october-borrows-a | liveness stamp |
+| hooks/hooks.json | modify | october-borrows-b | PreToolUse Bash gains push-gate.sh with if Bash(git push *), timeout 5 |
+| hooks/lib/active_workflow.py | create | october-borrows-b | one active-workflow selector (newest active, updated_at within N days); prints requested fields as TSV |
+| hooks/lib/guard-mode.sh | create | october-borrows-b | guard-mode helpers moved out of hook-io.sh (mtk_guard_mode, mtk_deny_gated, _mtk_shadow_not_written) + new mtk_advise_gated (advisory/shadow text, deduped once per key per session) |
+| hooks/lib/hook-io.sh | modify | october-borrows-b | remove the moved guard-mode helpers; mtk_deny untouched (S3.18) |
+| hooks/lib/hook_registry.py | create | october-borrows-b | one hooks.json handler parser: event, matcher, if, script, args, timeout, async, rarity (rare = SubagentStart or an if-filtered handler); importable + TSV CLI |
+| hooks/push-gate.sh | create | october-borrows-b | PreToolUse Bash: git push without a receipt -> advisory (default) / shadow / active deny PUSH-UNREVIEWED; unmapped refspec -> one advisory line |
 | hooks/read-guard.sh | create | v7.14-evidence-closed-loop | blocking secret-read gate + noise-dir advisory |
-| hooks/verify-completion | modify | v7.14-evidence-closed-loop | stale-evidence message declares criteria re-armed |
-| hooks/workflow-continuation.sh | create | v7.14-evidence-closed-loop | Stop-hook advisory nudge for unfinished workflows |
+| hooks/scope-guard.sh | modify | october-borrows-b | source guard-mode.sh; advisory dedup via mtk_advise_gated |
+| hooks/security-gate.sh | modify | october-borrows-a | liveness stamp only; no pattern change (S3.18) |
+| hooks/session-start | modify | october-borrows-b | compact recovery uses active_workflow.py |
+| hooks/spec-approval-trigger.sh | modify | october-borrows-a | liveness stamp |
+| hooks/subagent-context.sh | modify | october-borrows-b | uses active_workflow.py; python still only after the find -mmin prefilter |
+| hooks/verify-completion | modify | october-borrows-a | liveness stamp |
+| hooks/workflow-continuation.sh | modify | october-borrows-a | liveness stamp |
 | lessons/contributed/README.md | create | v7.14-evidence-closed-loop | intake/curation contract for contributed lessons |
 | scripts/build-rule-index.sh | create | borrowed-mechanisms | F4 wake-up index generator |
-| scripts/constitution-digest.sh | create | borrowed-mechanisms | F2 digest |
-| scripts/learnings.sh | modify | v7.14-evidence-closed-loop | B6 deviation (auto-fixed): add optional --wrong-turns/--time-cost/--evolution-actions write flags so item-4 fields are actually persistable (query parser untouched). B1's 'no parser change needed' claim was inaccurate — add subcommand rejected unknown flags. |
+| scripts/check-guard-twins.sh | create | october-borrows-a | require deny:/allow: labelled cases per gated deny code |
+| scripts/check-instruction-load.sh | create | october-borrows-a | CODEX-BYTES / SHADOWED-AGENTS / GLOBS-NOT-PATHS / LOCAL-UNIGNORED |
+| scripts/constitution-digest.sh | modify | october-borrows-a | add --ids-only mode (rule id + first sentence, capped) |
+| scripts/handoff-state.sh | create | october-borrows-a | list/accept/expire handoffs by frontmatter state and branch |
+| scripts/learnings.sh | modify | october-borrows-a | add --retire-when field |
+| scripts/lesson-mine-state.sh | create | october-borrows-a | mining watermark, decision ledger, stable ids, decoded-quote evidence |
+| scripts/mtk-doctor.sh | modify | october-borrows-b | liveness set and rarity from hook_registry.py; if-filtered hooks reported, never WARNed |
+| scripts/review-coverage.sh | create | october-borrows-b | lane-result coverage + candidate disposition check: exit 0 complete, 1 incomplete, 2 unparseable |
+| scripts/review-receipt.sh | create | october-borrows-b | write/check diff-bound review receipts in ~/.mtk/receipts/<sha256(repo)>/<change_id>.json (0600) |
 | scripts/run-fixtures.sh | modify | v7.14-evidence-closed-loop | B1 deviation (auto-fixed): typed-fixture skip so non-router fixtures coexist in tests/fixtures/ |
 | scripts/skill-eval/coverage.sh | create | borrowed-mechanisms | F3 coverage/sprawl report |
 | scripts/spec-archive.sh | create | borrowed-mechanisms | F1 archive/sync-back |
 | scripts/validate-handoff.sh | modify | v7.14-evidence-closed-loop | validate new criterion fields |
-| scripts/validate-toolkit.sh | modify | borrowed-mechanisms | F3 non-blocking coverage line |
-| scripts/workflow-artifact.sh | modify | v7.14-evidence-closed-loop | criteria_status read/write + abandon affordance |
+| scripts/validate-toolkit.sh | modify | october-borrows-b | liveness-stamp and timeout checks read the handler list from hook_registry.py |
+| scripts/workflow-artifact.sh | modify | october-borrows-b | review-input --record/--check (mtk_tree_fingerprint via hooks/lib/hook-io.sh), finding UIDs + remediation --findings reconcile (FIXED/STILL_OPEN/NEW), --open N stall series; usage header |
 | templates/workflows/subagent-implementation.workflow.js | modify | v7.14-evidence-closed-loop | same dispatch contract in workflow path |
+| tests/hooks/fixtures/subagent-start.payload.json | create | october-borrows-a | redacted real SubagentStart payload fixture |
+| tests/hooks/test-active-workflow.sh | create | october-borrows-b | selector cases: status filter, window, newest wins, bad JSON/ts skipped, pack field, no match = empty |
+| tests/hooks/test-check-guard-twins.sh | create | october-borrows-a | twins checker tests (SC5) |
+| tests/hooks/test-check-instruction-load.sh | create | october-borrows-a | instruction-load tests (SC4) |
+| tests/hooks/test-config-guard.sh | modify | october-borrows-a | T-code deny/allow twins; relabel W1-W3 cases (SC6) |
+| tests/hooks/test-constitution-digest.sh | modify | october-borrows-a | one --ids-only case |
+| tests/hooks/test-deny-ergonomics.sh | modify | october-borrows-b | source guard-mode.sh for mtk_deny_gated cases |
+| tests/hooks/test-guard-modes.sh | modify | october-borrows-b | source guard-mode.sh; mtk_advise_gated cases (dedup per key, no session id, off/active silent) |
+| tests/hooks/test-handoff-state.sh | create | october-borrows-a | handoff-state tests (SC3) |
+| tests/hooks/test-hook-registry.sh | create | october-borrows-b | registry parse cases: shell prefix, quoted path, args, if => rare, SubagentStart => rare, malformed JSON exit code |
+| tests/hooks/test-hooks-wiring.sh | modify | october-borrows-b | stamp_check and drive_plan read hook_registry.py |
+| tests/hooks/test-learnings.sh | modify | october-borrows-a | --retire-when round-trip case |
+| tests/hooks/test-lesson-mine-state.sh | create | october-borrows-a | lesson-mine-state tests (SC2) |
+| tests/hooks/test-mtk-doctor-liveness.sh | modify | october-borrows-b | an if-filtered handler with no stamp is reported, not WARNed |
+| tests/hooks/test-push-gate.sh | create | october-borrows-b | advisory, active deny:PUSH-UNREVIEWED + allow:PUSH-UNREVIEWED twins, HEAD:other not mapped, non-push silent |
+| tests/hooks/test-remediation-tracker.sh | modify | october-borrows-b | --open stall + CONTINUE, --findings reconcile, UID stability, --score unchanged |
+| tests/hooks/test-review-coverage.sh | create | october-borrows-b | complete / missing file / unparseable / candidates all disposed / one missing |
+| tests/hooks/test-review-input.sh | create | october-borrows-b | record/check: unchanged 0, tracked edit 1, untracked add 1, .mtk write 0, commit of reviewed tree 0 |
+| tests/hooks/test-review-receipt.sh | create | october-borrows-b | 0600 under fake HOME, same range passes, new commit fails, amend -> new id, upstream fallback chain |
+| tests/hooks/test-scope-guard-diet.sh | modify | october-borrows-a | relabel to deny:/allow:; on/TRUE/YES and shadow cases |
+| tests/hooks/test-session-start-compact-framing.sh | modify | october-borrows-a | compact filter and startup offer cases |
+| tests/hooks/test-subagent-context.sh | create | october-borrows-a | SubagentStart hook tests (SC1) |
+| tests/pressure-tests/finding-verifier.md | create | october-borrows-b | pressure test: cannot-verify keeps, pre_existing to follow-up, immaterial needs all three |
+| tests/pressure-tests/lesson-mining-rubric.md | modify | october-borrows-a | A1 single-session still proposed; A2 single-session is watching |
+| tests/pressure-tests/lessons.md | modify | october-borrows-a | mine mode records decisions and advances watermarks |
+| tests/pressure-tests/reviewer-abstention.md | modify | october-borrows-b | 6 -> 7 agents carry ABSTAINED |
 
 ## Archive history
 
 - 2026-06-01 · borrowed-mechanisms · drift PASS · archived 2026-06-01T16:00:00Z
 - 2026-06-12 · v7.14-evidence-closed-loop · drift PASS · archived 2026-06-19T10:46:20Z
+- 2026-10-14 · october-borrows-a · drift PASS · archived 2026-10-22T05:56:19Z
+- 2026-10-15 · october-borrows-b · drift PASS · archived 2026-10-22T05:56:52Z
