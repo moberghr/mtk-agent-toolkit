@@ -1,6 +1,6 @@
 {
-  "version": "9.4.0",
-  "updated": "2026-10-21",
+  "version": "9.4.1",
+  "updated": "2026-10-22",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -497,6 +497,12 @@
       "action": "sync",
       "description": "Verifies mtk-doctor settings checks: double wiring on every event, unparseable settings.json FAILs, allowedTools FAIL for convertible and WARN for broad leftovers, model-derived context window"
     },
+    "tests/hooks/test-mtk-doctor-compaction.sh": {
+      "source": "tests/hooks/test-mtk-doctor-compaction.sh",
+      "target": "tests/hooks/test-mtk-doctor-compaction.sh",
+      "action": "sync",
+      "description": "Test for mtk-doctor's auto-compaction line: disabled source, missing window, PASS with window; baseline list without autoCompactWindow"
+    },
     "tests/hooks/test-verify-completion-failclosed.sh": {
       "source": "tests/hooks/test-verify-completion-failclosed.sh",
       "target": "tests/hooks/test-verify-completion-failclosed.sh",
@@ -532,6 +538,12 @@
       "target": "tests/hooks/test-workflow-artifact-checkpoint.sh",
       "action": "sync",
       "description": "Verifies workflow-artifact.sh checkpoint/resume in throwaway repos with a stub gh: note frontmatter and sections, in-place rewrite, done-unit validator (exit 3, nothing written, out-of-order batches), snapshot ref that leaves HEAD/index/status untouched, self-ignoring notes, resume drift, init TASK and checkpoint as the last batch op"
+    },
+    "tests/hooks/test-workflow-artifact-owner.sh": {
+      "source": "tests/hooks/test-workflow-artifact-owner.sh",
+      "target": "tests/hooks/test-workflow-artifact-owner.sh",
+      "action": "sync",
+      "description": "Test for workflow-artifact.sh owner_session: mutating subcommands claim, read-only ones never do"
     },
     "tests/hooks/test-verify-completion-tree.sh": {
       "source": "tests/hooks/test-verify-completion-tree.sh",
@@ -1371,6 +1383,12 @@
       "action": "sync",
       "description": "Fixture-based tests for hooks/security-gate.sh covering inline destructive statements, scripts and .sql files the command executes, the read-only allow path, and the repo tests/ carve-out"
     },
+    "tests/hooks/test-security-gate-long-command.sh": {
+      "source": "tests/hooks/test-security-gate-long-command.sh",
+      "target": "tests/hooks/test-security-gate-long-command.sh",
+      "action": "sync",
+      "description": "Test that security-gate.sh judges a ~15k-char heredoc command within its hook timeout and still denies a destructive tail"
+    },
     "tests/hooks/test-checksum-format.sh": {
       "source": "tests/hooks/test-checksum-format.sh",
       "target": "tests/hooks/test-checksum-format.sh",
@@ -2172,6 +2190,12 @@
       "action": "sync",
       "description": "Selects the one active workflow for hooks, shared by session-start and subagent-context"
     },
+    "hooks/lib/compaction.py": {
+      "source": "hooks/lib/compaction.py",
+      "target": "hooks/lib/compaction.py",
+      "action": "sync",
+      "description": "Resolves effective auto-compaction (enabled + window) with Claude Code's precedence, shared by context-guard and mtk-doctor"
+    },
     "hooks/lib/session_store.py": {
       "source": "hooks/lib/session_store.py",
       "target": "hooks/lib/session_store.py",
@@ -2201,6 +2225,12 @@
       "target": "tests/hooks/test-active-workflow.sh",
       "action": "sync",
       "description": "Test for hooks/lib/active_workflow.py: active-workflow selection and malformed or foreign workflow files"
+    },
+    "tests/hooks/test-compaction.sh": {
+      "source": "tests/hooks/test-compaction.sh",
+      "target": "tests/hooks/test-compaction.sh",
+      "action": "sync",
+      "description": "Test for hooks/lib/compaction.py: env kill switches and env blocks, managed > local > project > user > ~/.claude.json precedence, malformed and non-numeric values"
     },
     "tests/hooks/test-hook-registry.sh": {
       "source": "tests/hooks/test-hook-registry.sh",

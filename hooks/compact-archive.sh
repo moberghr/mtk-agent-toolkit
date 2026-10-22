@@ -56,7 +56,9 @@ BRANCH="$(git -C "$ROOT" symbolic-ref --short -q HEAD 2>/dev/null || true)"
 [ -n "$BRANCH" ] || BRANCH="-"
 
 WORKFLOW="-"
-WF_PATH="$(python3 "$SCRIPT_DIR/lib/active_workflow.py" "$ROOT/.mtk/workflows" 7 path 2>/dev/null || true)"
+# Only the compacting session's own workflow (owner_session).
+CA_SID="$(mtk_extract_json_string "$INPUT" "session_id" 2>/dev/null || true)"
+WF_PATH="$(python3 "$SCRIPT_DIR/lib/active_workflow.py" --session "$CA_SID" "$ROOT/.mtk/workflows" 7 path 2>/dev/null || true)"
 [ -n "$WF_PATH" ] && WORKFLOW="$(basename "$WF_PATH" .json)"
 
 umask 077

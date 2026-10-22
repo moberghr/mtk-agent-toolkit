@@ -22,11 +22,12 @@ git -C "$WORK" init -q
 mkdir -p "$WORK/.mtk/workflows" "$WORK/sub/deeper" "$WORK/docs/plans" "$WORK/tasks"
 
 iso_ago() { python3 -c 'import sys,datetime;print((datetime.datetime.now(datetime.timezone.utc)-datetime.timedelta(hours=float(sys.argv[1]))).strftime("%Y-%m-%dT%H:%M:%SZ"))' "$1"; }
-wf() { # $1 uuid  $2 status  $3 hours-ago  $4 phase
+wf() { # $1 uuid  $2 status  $3 hours-ago  $4 phase  [$5 owner_session, default the compacting session]
   cat > "$WORK/.mtk/workflows/$1.json" <<EOF
 {
   "workflow_uuid": "$1",
   "workflow_type": "BUILD",
+  "owner_session": "${5:-s-compact}",
   "updated_at": "$(iso_ago "$3")",
   "status": "$2",
   "phase_cursor": "$4"
@@ -55,6 +56,15 @@ printf '  PASS  only the newest live, recent workflow is re-injected\n'
 case "$out" in *'2099-plan.md'*) : ;; *) fail "a plan at the project root must be found from a subdirectory. Got: $out" ;; esac
 case "$out" in *'Incomplete tasks'*) : ;; *) fail "tasks/todo.md at the project root must be found from a subdirectory. Got: $out" ;; esac
 printf '  PASS  pointers resolve against the project root, not the cwd\n'
+
+# Another session's live workflow is newer, but it is not this session's work:
+# compaction re-injects only the compacting session's own workflow.
+wf wf-elsewhere active 1 phase-7 s-other
+out="$(cd "$WORK" && CLAUDE_PROJECT_DIR="$WORK" bash "$HOOK" <<<"$COMPACT" 2>/dev/null || true)"
+case "$out" in *'wf-elsewhere'*) fail "another session's workflow must not be re-injected. Got: $out" ;; esac
+case "$out" in *'wf-newest'*) : ;; *) fail "the compacting session's own workflow must still be re-injected. Got: $out" ;; esac
+rm -f "$WORK/.mtk/workflows/wf-elsewhere.json"
+printf '  PASS  another session\047s workflow is never re-injected\n'
 
 # Nothing live and recent: no workflow line at all.
 wf wf-newest completed 3 phase-3

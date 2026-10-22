@@ -11,7 +11,8 @@ set -euo pipefail
 #       the missing count, fresh once merged
 #   (d) mtk-doctor WARNs naming the missing rules; --fix merges them
 #   (e) the `### settings` section: autoCompactWindow in --json / --missing /
-#       --merge (an existing value wins), and the doctor WARN + --fix name it
+#       --merge (an existing value wins); doctor --fix merges it, but the
+#       doctor's baseline WARN leaves it to the auto-compaction line (9.4.1)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -115,9 +116,10 @@ bash "$SB" --merge "$SBX/e2.json"
 python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["autoCompactWindow"]==500000' "$SBX/e2.json" || fail "(e) --merge must keep an existing setting value"
 printf '{"env":{"KEEP":"1"}}\n' > "$DOC/.claude/settings.json"
 out="$(doctor)"
-grep -qF 'settings autoCompactWindow: 300000' <<<"$out" || fail "(e) doctor WARN must name the missing setting. Output: $(grep -i baseline <<<"$out" || true)"
+bl_lines="$(grep -i 'baseline' <<<"$out" || true)"
+case "$bl_lines" in *autoCompactWindow*) fail "(e) the baseline line must leave autoCompactWindow to the auto-compaction line. Output: $bl_lines" ;; esac
 doctor --fix >/dev/null
 python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["autoCompactWindow"]==300000' "$DOC/.claude/settings.json" || fail "(e) doctor --fix must merge the setting"
-printf '  PASS  (e) settings keys: --json, --missing, --merge (existing value wins), doctor WARN + --fix\n'
+printf '  PASS  (e) settings keys: --json, --missing, --merge (existing value wins), doctor --fix; not in the baseline WARN\n'
 
 printf '\nAll settings-baseline checks passed.\n'

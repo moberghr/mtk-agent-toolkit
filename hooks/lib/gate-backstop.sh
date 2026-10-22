@@ -58,7 +58,7 @@ mtk_bs_judge_segment() {
     *'$('*|*'`'*)
       printf '%s' "$seg" | sed 's/\$(/\n/g; s/)/\n/g; s/`/\n/g' \
         | while IFS= read -r inner || [ -n "$inner" ]; do
-            [ -n "${inner//[[:space:]]/}" ] && mtk_bs_judge_segment "$inner"
+            case "$inner" in *[![:space:]]*) mtk_bs_judge_segment "$inner" ;; esac
           done
       return 0 ;;
   esac

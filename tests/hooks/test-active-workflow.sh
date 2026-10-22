@@ -86,6 +86,17 @@ check "non-string pack empty" "$D/p.json${TAB}" "$(run 7 path pack)"
 wf p active 1
 check "absent pack empty" "$D/p.json${TAB}" "$(run 7 path pack)"
 
+# session filter: --session keeps only the workflows that session owns
+# (owner_session, stamped by workflow-artifact.sh); empty means no filter
+fresh_dir
+wf mine active 2 ',"owner_session":"sess-A"'
+wf theirs active 1 ',"owner_session":"sess-B"'
+wf legacy active 0
+check "no --session: newest active wins" "$D/legacy.json" "$(run 7 path)"
+check "--session picks its own workflow" "$D/mine.json" "$(python3 "$SEL" --session sess-A "$D" 7 path 2>/dev/null)"
+check "--session skips unowned and other-owned" "" "$(python3 "$SEL" --session sess-C "$D" 7 path 2>/dev/null)"
+check "empty --session means no filter" "$D/legacy.json" "$(python3 "$SEL" --session "" "$D" 7 path 2>/dev/null)"
+
 # no match / bad args
 fresh_dir
 rc=0; out="$(python3 "$SEL" "$D" 7 path 2>/dev/null)" || rc=$?

@@ -96,6 +96,11 @@ set -euo pipefail
 #                                    next_command, open questions). --offline skips gh;
 #                                    --porcelain prints 9 key=value lines instead.
 #
+# Ownership: init and the subcommands that record progress (event, set, batch,
+# gate, seal, criteria, remediation, review-input, checkpoint, trap add) stamp
+# owner_session (the calling CLAUDE_CODE_SESSION_ID); read, list, resume,
+# verify-seal, trap list, abandon and prune never do.
+#
 # Storage: .mtk/workflows/{uuid}.json + .mtk/workflows/{uuid}.events.jsonl
 # Artifacts live OUTSIDE .claude/ to avoid Claude Code's sensitive-file gate.
 # Add `.mtk/` to .gitignore in target repos (not committed by default).
@@ -173,6 +178,7 @@ EOF
 
   : > "${WF_DIR}/${uuid}.events.jsonl"
   cmd_event "$uuid" "workflow_started" --data "{\"workflow_type\":\"${wf_type}\"}" >/dev/null
+  claim_session "$uuid"
 
   printf '%s\n' "$uuid"
 }
@@ -1118,6 +1124,37 @@ run_checkpoint_py() {
 cmd_checkpoint() { run_checkpoint_py checkpoint "$@"; }
 cmd_resume()     { run_checkpoint_py resume "$@"; }
 
+# owner_session — the Claude Code session (CLAUDE_CODE_SESSION_ID, which
+# subagents inherit from their parent) that last changed the workflow. The
+# per-session hooks select only their own session's workflow through
+# hooks/lib/active_workflow.py --session, so a workflow one session drives
+# never nudges, re-injects into or archives for another session in the same
+# repo. Progress-recording subcommands claim before they run — even a call that
+# is then rejected (bad flag, checkpoint exit 3) claims, since that session is
+# acting on the workflow; read-only ones never do, so a session-start RESUME
+# offer (resume --offline) leaves ownership alone, and abandon/prune end a
+# workflow without claiming it. No or unsafe session id: nothing is stamped.
+# Already owned: no python is started.
+claim_session() {
+  local uuid="${1:-}" sid="${CLAUDE_CODE_SESSION_ID:-}" f
+  case "$sid" in ''|*[!A-Za-z0-9._-]*) return 0 ;; esac
+  case "$uuid" in ''|*[!A-Za-z0-9._-]*) return 0 ;; esac
+  f="${WF_DIR}/${uuid}.json"
+  [ -f "$f" ] || return 0
+  grep -qF "\"owner_session\": \"${sid}\"" "$f" && return 0
+  # A failed claim must not block the subcommand it precedes: say so and go on.
+  python3 - "$f" "$sid" "$uuid" <<'PY' || true
+import json, sys
+path, sid, uuid = sys.argv[1:4]
+try:
+    with open(path) as f: doc = json.load(f)
+    doc["owner_session"] = sid
+    with open(path, "w") as f: json.dump(doc, f, indent=2)
+except (OSError, ValueError, AttributeError, TypeError) as exc:
+    print("workflow-artifact: could not record owner_session on %s: %s" % (uuid, exc), file=sys.stderr)
+PY
+}
+
 usage() {
   # Sentinel range, not fixed line numbers: print from line 4 to the first
   # blank line, so adding header lines never truncates --help again.
@@ -1127,6 +1164,10 @@ usage() {
 main() {
   local sub="${1:-}"
   shift || true
+  case "$sub" in
+    event|set|batch|gate|seal|criteria|remediation|review-input|checkpoint) claim_session "${1:-}" ;;
+    trap) if [ "${1:-}" = "add" ]; then claim_session "${2:-}"; fi ;;
+  esac
   case "$sub" in
     init)     cmd_init "$@" ;;
     event)    cmd_event "$@" ;;
