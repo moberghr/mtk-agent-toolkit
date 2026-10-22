@@ -59,12 +59,12 @@ MD
   printf '%s' "$d"
 }
 
-write_wf() { # $1 repo  $2 id  $3 status  $4 updated_at  $5 context_pack ("" = none)
-  local repo="$1" id="$2" status="$3" updated="$4" pack="$5" results='{}'
+write_wf() { # $1 repo  $2 id  $3 status  $4 updated_at  $5 context_pack ("" = none)  [$6 owner_session, default s-1]
+  local repo="$1" id="$2" status="$3" updated="$4" pack="$5" owner="${6:-s-1}" results='{}'
   mkdir -p "$repo/.mtk/workflows"
   [ -n "$pack" ] && results="{\"context_pack\": \"$pack\"}"
-  printf '{"workflow_id": "%s", "status": "%s", "updated_at": "%s", "results": %s}\n' \
-    "$id" "$status" "$updated" "$results" > "$repo/.mtk/workflows/$id.json"
+  printf '{"workflow_id": "%s", "status": "%s", "updated_at": "%s", "owner_session": "%s", "results": %s}\n' \
+    "$id" "$status" "$updated" "$owner" "$results" > "$repo/.mtk/workflows/$id.json"
 }
 
 write_pack() { # $1 repo  $2 id -> creates .mtk/workflows/<id>/context-pack.md
@@ -166,6 +166,23 @@ C="$(ctx)"
 has "wf-new/context-pack.md" "$C" && ! has "wf-old" "$C" && ! has "wf-done" "$C" \
   && pass "newest active workflow's pack is the one shown" \
   || fail "wrong workflow selected: $C"
+
+# 2d. Another session's workflow is not this session's work: a newer one owned by
+#     another session is skipped, and with only that one a general-purpose agent
+#     gets nothing.
+R="$(new_repo)"
+write_pack "$R" wf-mine; write_pack "$R" wf-theirs
+write_wf "$R" wf-mine active "$(utc_ago 2)" ".mtk/workflows/wf-mine/context-pack.md"
+write_wf "$R" wf-theirs active "$(utc_ago 0.01)" ".mtk/workflows/wf-theirs/context-pack.md" s-other
+run_hook "$R" "$(payload general-purpose)"
+C="$(ctx)"
+has "wf-mine/context-pack.md" "$C" && ! has "wf-theirs" "$C" \
+  && pass "another session's newer workflow is skipped; this session's pack is shown" \
+  || fail "another session's workflow leaked into the subagent block: $C"
+rm -f "$R/.mtk/workflows/wf-mine.json"
+run_hook "$R" "$(payload general-purpose)"
+[ "$RC" -eq 0 ] && [ -z "$OUT" ] && pass "only another session's workflow -> general-purpose agent gets nothing" \
+  || fail "only another session's workflow: expected silence (rc=$RC, out=$OUT)"
 
 # ============================ R2: silence, no python ===========================
 

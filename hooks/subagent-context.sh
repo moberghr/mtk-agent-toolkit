@@ -28,8 +28,9 @@ trap _mtk_hook_diag EXIT
 # .mtk/workflows/ was modified within the window. Otherwise: no output, exit 0.
 #
 # Selection (python, only when the gate opened on a recent workflow file): the
-# newest workflow whose status is `active` and whose updated_at is within the
-# window — picked by hooks/lib/active_workflow.py, the selector session-start also uses. A non-`mtk:`
+# newest workflow whose status is `active`, whose updated_at is within the
+# window and whose owner_session is the payload's session_id — picked by
+# hooks/lib/active_workflow.py, the selector session-start also uses. A non-`mtk:`
 # agent for which that selection finds NO active workflow gets no output: a
 # recent but finished workflow is not a live one. `mtk:` agents still get the
 # rules part without an active workflow.
@@ -106,7 +107,10 @@ PACK_LINE=""
 HAVE_ACTIVE=0
 PACK=""
 if [ -n "$RECENT_WF" ] && command -v python3 >/dev/null 2>&1; then
-  SEL="$(python3 "$SCRIPT_DIR/lib/active_workflow.py" "$WF_DIR" "$WF_DAYS_RAW" path pack 2>/dev/null || true)"
+  # Only the parent session's own workflow (owner_session) — never one another
+  # session in this repo is driving.
+  SID="$(mtk_extract_json_string "$INPUT" "session_id" 2>/dev/null || true)"
+  SEL="$(python3 "$SCRIPT_DIR/lib/active_workflow.py" --session "$SID" "$WF_DIR" "$WF_DAYS_RAW" path pack 2>/dev/null || true)"
   if [ -n "$SEL" ]; then
     HAVE_ACTIVE=1
     PACK="${SEL#*$'\t'}"

@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 """Active-workflow selector shared by hooks/session-start and hooks/subagent-context.sh.
 
-Usage: python3 hooks/lib/active_workflow.py <wf_dir> <days> <field>...
+Usage: python3 hooks/lib/active_workflow.py [--session <id>] <wf_dir> <days> <field>...
 Fields: path | type | phase | pack.
 
 Selects at most ONE workflow: the newest <wf_dir>/*.json whose `status`
 (case-insensitive) is `active` and whose `updated_at` (%Y-%m-%dT%H:%M:%SZ, UTC)
-is within <days> (float). Unreadable, non-dict and bad-timestamp files are
+is within <days> (float). With a non-empty --session, only a workflow whose
+`owner_session` (stamped by scripts/workflow-artifact.sh) equals it qualifies:
+a hook acts for its own session, never on a workflow another session (or no
+session) is driving. An empty --session (a payload without session_id, as from
+a harness other than Claude Code) keeps the repo-wide pre-9.4.1 selection on
+purpose: such a harness stamps no owner either, so filtering would select
+nothing. Unreadable, non-dict and bad-timestamp files are
 skipped. On a match prints ONE tab-separated line of the requested fields
 (type/phase default "?", pack is the results.context_pack string when it is
 non-empty and single-line, else empty). No match prints nothing, exit 0.
@@ -21,8 +27,10 @@ import sys
 FIELDS = ("path", "type", "phase", "pack")
 
 
-def select(wf_dir, days):
-    """Return (path, doc) of the newest active workflow within `days`, or None."""
+def select(wf_dir, days, session=None):
+    """Return (path, doc) of the newest active workflow within `days`, or None.
+
+    A non-empty `session` keeps only workflows whose owner_session equals it."""
     now = datetime.datetime.now(datetime.timezone.utc)
     best = None
     for path in glob.glob(os.path.join(wf_dir, "*.json")):
@@ -34,6 +42,8 @@ def select(wf_dir, days):
         if not isinstance(doc, dict):
             continue
         if str(doc.get("status", "")).lower() != "active":
+            continue
+        if session and doc.get("owner_session") != session:
             continue
         try:
             ts = datetime.datetime.strptime(str(doc.get("updated_at", "")), "%Y-%m-%dT%H:%M:%SZ")
@@ -62,8 +72,12 @@ def field_value(name, path, doc):
 
 
 def main(argv):
+    session = None
+    if len(argv) > 2 and argv[1] == "--session":
+        session = argv[2]
+        argv = argv[:1] + argv[3:]
     if len(argv) < 4:
-        sys.stderr.write("usage: active_workflow.py <wf_dir> <days> <field>...\n")
+        sys.stderr.write("usage: active_workflow.py [--session <id>] <wf_dir> <days> <field>...\n")
         return 2
     wf_dir, days_raw, fields = argv[1], argv[2], argv[3:]
     try:
@@ -75,7 +89,7 @@ def main(argv):
         if name not in FIELDS:
             sys.stderr.write("active_workflow.py: unknown field: %s\n" % name)
             return 2
-    sel = select(wf_dir, days)
+    sel = select(wf_dir, days, session)
     if sel:
         sys.stdout.reconfigure(newline="\n")
         print("\t".join(field_value(n, sel[0], sel[1]) for n in fields))

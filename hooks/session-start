@@ -298,7 +298,10 @@ if [ "$SS_SOURCE" = "compact" ]; then
   # workflow is re-injected rather than a possibly stale one.
   WF_DIR="$ROOT/.mtk/workflows"
   if [ -d "$WF_DIR" ] && command -v python3 >/dev/null 2>&1; then
-    WF_LINE="$(python3 "$SCRIPT_DIR/lib/active_workflow.py" "$WF_DIR" "${MTK_WORKFLOW_REINJECT_DAYS:-7}" path type phase 2>/dev/null || true)"
+    # Only the compacting session's own workflow (owner_session): another
+    # session's live workflow is not this conversation's work.
+    SS_SID="$(mtk_extract_json_string "$SS_INPUT" "session_id" 2>/dev/null || true)"
+    WF_LINE="$(python3 "$SCRIPT_DIR/lib/active_workflow.py" --session "$SS_SID" "$WF_DIR" "${MTK_WORKFLOW_REINJECT_DAYS:-7}" path type phase 2>/dev/null || true)"
     if [ -n "$WF_LINE" ]; then
       ACTIVE_WF="${WF_LINE%%	*}"
       WF_REST="${WF_LINE#*	}"

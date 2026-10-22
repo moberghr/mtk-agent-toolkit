@@ -25,6 +25,7 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 export TMPDIR="$WORK/tmp"; mkdir -p "$TMPDIR" "$WORK/home" "$WORK/tr"
 export PYTHONDONTWRITEBYTECODE=1
+export MTK_MANAGED_SETTINGS="$WORK/no-managed-settings.json"   # never read this machine's policy file
 export GIT_CONFIG_NOSYSTEM=1
 export GIT_CONFIG_GLOBAL="$WORK/gitconfig"
 : > "$GIT_CONFIG_GLOBAL"
@@ -43,9 +44,24 @@ user_line() { printf '{"parentUuid":"p","isSidechain":false,"type":"user","messa
 # mktr <name> <ctx> — a transcript whose newest main-thread context is <ctx>.
 mktr() { { user_line; assistant 1000; user_line; assistant "$2"; } > "$WORK/tr/$1.jsonl"; printf '%s' "$WORK/tr/$1.jsonl"; }
 
+# own_wf <project> <session> — make <session> the owner_session of every workflow in
+# <project>: a session only gets workflow nudges for a workflow it owns (section 15
+# covers the other cases). NO_OWN=1 skips it.
+own_wf() {
+  [ "${NO_OWN:-0}" = "1" ] && return 0
+  [ -d "$1/.mtk/workflows" ] || return 0
+  python3 - "$1/.mtk/workflows" "$2" <<'PY'
+import glob, json, os, sys
+for p in glob.glob(os.path.join(sys.argv[1], "*.json")):
+    d = json.load(open(p))
+    d["owner_session"] = sys.argv[2]
+    json.dump(d, open(p, "w"))
+PY
+}
 # run <project> <session> <transcript> [env...] — sets RC, OUT, ERR; never aborts.
 run() {
   local proj="$1" sid="$2" trp="$3"; shift 3
+  own_wf "$proj" "$sid"
   RC=0
   OUT="$(cd "$proj" && env HOME="$WORK/home" CLAUDE_PROJECT_DIR="$proj" MTK_CTX_GUARD_INTERVAL=0 "$@" bash "$HOOK" \
     <<<"{\"session_id\":\"$sid\",\"transcript_path\":\"$trp\",\"cwd\":\"$proj\",\"hook_event_name\":\"PostToolUse\",\"tool_name\":\"Bash\",\"tool_input\":{\"command\":\"ls\"}}" \
@@ -243,6 +259,7 @@ pass "nudge names the checkpoint CLI by absolute, quoted path resolved from the 
 mkdir -p "$WORK/copy/hooks" "$WORK/plug dir/scripts"
 cp "$HOOK" "$WORK/copy/hooks/context-guard.sh"; cp -R "$REPO_ROOT/hooks/lib" "$WORK/copy/hooks/lib"
 write_wf "$P" "$UUID" phase-7 2
+own_wf "$P" s-fb
 RC=0
 OUT="$(cd "$P" && env HOME="$WORK/home" CLAUDE_PROJECT_DIR="$P" MTK_CTX_GUARD_INTERVAL=0 CLAUDE_PLUGIN_ROOT="$WORK/plug dir" bash "$WORK/copy/hooks/context-guard.sh" \
   <<<"{\"session_id\":\"s-fb\",\"transcript_path\":\"$(mktr fb 210000)\",\"cwd\":\"$P\"}" 2>"$WORK/err")" || RC=$?
@@ -382,6 +399,76 @@ run "$P" s-root "$(mktr root 210000)" CLAUDE_PLUGIN_ROOT="$WORK/plug dir"
 expect_nudge "repo layout beats CLAUDE_PLUGIN_ROOT" "bash \"$REPO_ROOT/scripts/workflow-artifact.sh\" checkpoint $UUID --next"
 case "$NUDGE" in *'plug dir'*) fail "nudge must not name the CLAUDE_PLUGIN_ROOT copy. Got: $NUDGE" ;; esac
 pass "hook in the repo layout names <repo>/scripts/workflow-artifact.sh even with CLAUDE_PLUGIN_ROOT elsewhere"
+
+# --- 15. ownership: workflow nudges only for the session's own workflow ------------------------
+# A 2026-10-22 field run told a disk-scan session to "checkpoint wf-X" because another
+# session in the same worktree was driving wf-X. Another session's or an unowned
+# (legacy) workflow takes the generic path; the owner still gets the workflow nudge.
+PS="$WORK/own"; mkdir -p "$PS"; git -C "$PS" init -q; printf '.mtk/\n' > "$PS/.gitignore"
+write_wf "$PS" wf-other phase-3 0
+own_wf "$PS" s-driver
+NO_OWN=1 run "$PS" s-bystander "$(mktr own1 260000)"
+expect_silent "another session's workflow at 260k (below the generic 300k)"
+NO_OWN=1 run "$PS" s-bystander "$(mktr own2 310000)"
+expect_nudge "another session's workflow: generic path" "Mention it once"
+case "$NUDGE" in *wf-other*|*'workflow-artifact.sh'*) fail "another session's workflow must not drive the nudge. Got: $NUDGE" ;; esac
+[ "$(telemetry_field "$PS/.mtk/sessions/s-bystander/telemetry.json" workflow)" = "null" ] || fail "telemetry workflow must be null for another session's workflow"
+write_wf "$PS" wf-other phase-3 0   # rewritten without owner_session
+NO_OWN=1 run "$PS" s-legacy "$(mktr own3 310000)"
+expect_nudge "unowned workflow: generic path" "Mention it once"
+case "$NUDGE" in *wf-other*) fail "an unowned workflow must not drive the nudge. Got: $NUDGE" ;; esac
+run "$PS" s-driver "$(mktr own4 260000)"
+expect_nudge "owner gets the workflow nudge" "wf-other" "checkpoint now"
+pass "ownership: another session's or an unowned workflow takes the generic path; the owner gets the workflow nudge"
+
+# --- 16. compaction-aware wording ----------------------------------------------------------
+# With auto-compaction on and a window configured, compaction carries the work: the
+# nudge says checkpoint and keep going, and never sends the engineer to /clear for it.
+PC="$WORK/compact"; mkdir -p "$PC/.claude"; git -C "$PC" init -q; printf '.mtk/\n' > "$PC/.gitignore"
+UC="wf-20261022T080000Z-cmp001"
+write_wf "$PC" "$UC" phase-4 1
+run "$PC" s-c1 "$(mktr c1 210000)" CLAUDE_CODE_AUTO_COMPACT_WINDOW=300000
+expect_nudge "soft, compaction on" "$UC" "workflow-artifact.sh\" checkpoint $UC --next" "keep going" "auto-compaction"
+case "$NUDGE" in *'/clear'*) fail "with compaction on the soft nudge must not send the engineer to /clear. Got: $NUDGE" ;; esac
+run "$PC" s-c1 "$(mktr c2 260000)" CLAUDE_CODE_AUTO_COMPACT_WINDOW=300000
+expect_nudge "hard, compaction on" "checkpoint now" "keep going" "auto-compaction"
+case "$NUDGE" in *'/clear'*) fail "with compaction on the hard nudge must not send the engineer to /clear. Got: $NUDGE" ;; esac
+run "$PN" s-c3 "$(mktr c3 310000)" CLAUDE_CODE_AUTO_COMPACT_WINDOW=300000
+expect_nudge "generic, compaction on" "auto-compaction" "Mention it once"
+case "$NUDGE" in *'/mtk handoff'*) fail "with compaction on the generic nudge must not suggest /mtk handoff. Got: $NUDGE" ;; esac
+pass "compaction on + window: checkpoint and keep going; no /clear for the workflow, no /mtk handoff"
+
+run "$PC" s-c4 "$(mktr c4 210000)" CLAUDE_CODE_AUTO_COMPACT_WINDOW=300000 DISABLE_AUTO_COMPACT=1
+expect_nudge "DISABLE_AUTO_COMPACT keeps the /clear wording" "/clear" "the next session is offered the checkpoint"
+printf '{"autoCompactEnabled": false}\n' > "$PC/.claude/settings.json"
+run "$PC" s-c5 "$(mktr c5 210000)" CLAUDE_CODE_AUTO_COMPACT_WINDOW=300000
+expect_nudge "autoCompactEnabled false keeps the /clear wording" "/clear"
+printf '{"autoCompactEnabled": true}\n' > "$PC/.claude/settings.json"
+printf '{"autoCompactEnabled": false}\n' > "$WORK/home/.claude.json"
+run "$PC" s-c6 "$(mktr c6 210000)" CLAUDE_CODE_AUTO_COMPACT_WINDOW=300000
+expect_nudge "settings beat ~/.claude.json" "keep going"
+rm -f "$PC/.claude/settings.json"
+run "$PC" s-c7 "$(mktr c7 210000)" CLAUDE_CODE_AUTO_COMPACT_WINDOW=300000
+expect_nudge "~/.claude.json applies when no settings file sets it" "/clear"
+rm -f "$WORK/home/.claude.json"
+run "$PC" s-c8 "$(mktr c8 210000)"
+expect_nudge "compaction on but no window configured keeps the /clear wording" "/clear"
+run "$PC" s-c10 "$(mktr c10 210000)" CLAUDE_CODE_AUTO_COMPACT_WINDOW=500000
+expect_nudge "a 500k window still carries the work" "keep going"
+run "$PC" s-c11 "$(mktr c11 210000)" CLAUDE_CODE_AUTO_COMPACT_WINDOW=500001
+expect_nudge "just above 500k: the /clear wording" "/clear"
+run "$PC" s-c9 "$(mktr c9 210000)" CLAUDE_CODE_AUTO_COMPACT_WINDOW=1000000
+expect_nudge "a window above 500k is never reached: the /clear wording stays" "/clear"
+pass "compaction off (env, settings, ~/.claude.json) or no window: the /clear wording stays"
+
+# --- 17. TASK workflows are labelled by type, not phase/batches --------------------------------
+PT="$WORK/task"; mkdir -p "$PT"; git -C "$PT" init -q; printf '.mtk/\n' > "$PT/.gitignore"; mkdir -p "$PT/.mtk/workflows"
+printf '{"workflow_uuid":"wf-task","workflow_type":"TASK","status":"active","updated_at":"%s","phase_cursor":"phase-0","results":{}}\n' \
+  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$PT/.mtk/workflows/wf-task.json"
+run "$PT" s-task "$(mktr task 210000)"
+expect_nudge "TASK soft nudge" "wf-task" "(TASK workflow)"
+case "$NUDGE" in *'batch(es) done'*|*'phase-0'*) fail "a TASK workflow has no phases or batches to report. Got: $NUDGE" ;; esac
+pass "TASK workflow: the soft nudge names the type instead of phase-0 / 0 batches"
 
 # --- 14. liveness stamp --------------------------------------------------------------------
 SEEN_DIR="$(CLAUDE_PROJECT_DIR="$P" bash -c 'source "$1"; mtk_hook_seen_dir' _ "$REPO_ROOT/hooks/lib/hook-io.sh")" \

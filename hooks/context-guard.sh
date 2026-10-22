@@ -5,10 +5,15 @@ set -euo pipefail
 # context size from the transcript tail and
 #   - writes .mtk/sessions/<session>/telemetry.json (mode 0600) on every parse,
 #     only where .mtk/ is git-ignored or outside git (hooks/lib/session_store.py);
-#   - with an active workflow, nudges once per workflow step at MTK_CTX_SOFT
-#     (default 200000) and at MTK_CTX_HARD (default 250000) to checkpoint and
-#     /clear; without one, nudges once per 150k band from MTK_CTX_GENERIC
-#     (default 300000) toward /clear or /mtk handoff.
+#   - with an active workflow THIS session owns (owner_session, stamped by
+#     workflow-artifact.sh), nudges once per workflow step at MTK_CTX_SOFT
+#     (default 200000) and at MTK_CTX_HARD (default 250000) to checkpoint;
+#     without one, nudges once per 150k band from MTK_CTX_GENERIC (default
+#     300000). Another session's workflow takes the generic path.
+#   - when auto-compaction is on and a window is configured
+#     (hooks/lib/compaction.py), the nudge says to checkpoint and keep going —
+#     compaction carries the work. Otherwise it sends the engineer to /clear
+#     (workflow) or suggests /clear or /mtk handoff (generic).
 # The nudge names the checkpoint CLI by absolute path (next to this hook, else
 # under CLAUDE_PLUGIN_ROOT). Nudges go out as additionalContext, one line each. It never blocks, prints
 # nothing else on stdout and always exits 0. MTK_CONTEXT_GUARD=0 disables it.
@@ -86,10 +91,12 @@ lib, root, sid, transcript, keys_path, ckpt_sh = sys.argv[1:7]
 sys.dont_write_bytecode = True
 sys.path.insert(0, lib)
 import active_workflow
+import compaction
 import session_store
 
 TAIL = 512 * 1024
 BAND = 150000
+CARRY_MAX = 500000
 
 
 def env_int(name, default):
@@ -98,18 +105,6 @@ def env_int(name, default):
     except ValueError:
         return default
     return v if v > 0 else default
-
-
-def positive_int(v):
-    if isinstance(v, bool):
-        return None
-    if isinstance(v, float):
-        v = int(v)
-    try:
-        n = int(str(v).strip())
-    except (TypeError, ValueError):
-        return None
-    return n if n > 0 else None
 
 
 def read_context():
@@ -148,25 +143,6 @@ def read_context():
     return None, None
 
 
-def compact_window():
-    w = positive_int(os.environ.get("CLAUDE_CODE_AUTO_COMPACT_WINDOW", ""))
-    if w:
-        return w
-    for p in (os.path.join(root, ".claude", "settings.local.json"),
-              os.path.join(root, ".claude", "settings.json"),
-              os.path.join(os.path.expanduser("~"), ".claude", "settings.json")):
-        try:
-            with open(p, encoding="utf-8") as fh:
-                cfg = json.load(fh)
-        except (OSError, ValueError):
-            continue
-        if isinstance(cfg, dict) and "autoCompactWindow" in cfg:
-            w = positive_int(cfg.get("autoCompactWindow"))
-            if w:
-                return w
-    return None
-
-
 def safe_token(v, fallback):
     s = str(v if v is not None else "")
     ok = s and all(c.isalnum() or c in "._-" for c in s) and s.isascii()
@@ -177,13 +153,18 @@ def main():
     ctx, model = read_context()
     if not ctx:
         return
-    window = compact_window()
+    window, _ = compaction.window(root)
+    # Compaction carries the work only when it is on AND a window at or below
+    # CARRY_MAX is configured: the model default (about 967k on 1M models), or a
+    # window set near it, is never reached in practice.
+    carried = bool(window) and window <= CARRY_MAX and compaction.enabled(root)[0]
 
-    uuid = phase = batches = None
-    sel = active_workflow.select(os.path.join(root, ".mtk", "workflows"), 7)
+    uuid = phase = batches = wf_type = None
+    sel = active_workflow.select(os.path.join(root, ".mtk", "workflows"), 7, sid)
     if sel:
         path, doc = sel
         uuid = safe_token(doc.get("workflow_uuid"), os.path.basename(path)[:-len(".json")])
+        wf_type = str(doc.get("workflow_type") or "")
         phase = str(doc.get("phase_cursor") or "?")
         res = doc.get("results")
         b = res.get("batches_completed") if isinstance(res, dict) else None
@@ -203,7 +184,13 @@ def main():
     k = ctx // 1000
     of_window = " (%d%% of the %dk auto-compact window)" % (round(100 * ctx / window), window // 1000) if window else ""
     cmd = "`bash \"%s\" checkpoint %s --next \"<the next concrete step>\"`" % (ckpt_sh, uuid)
-    resume = "then tell the engineer to /clear \u2014 the next session is offered the checkpoint and resumes from it."
+    if carried:
+        resume = ("then keep going: auto-compaction near the %dk window carries the work and re-injects the checkpoint, "
+                  "so do not ask the engineer to start a fresh session." % (window // 1000))
+    else:
+        resume = "then tell the engineer to /clear \u2014 the next session is offered the checkpoint and resumes from it."
+    # A TASK workflow has no phases or batches: name the type instead of "phase-0, 0 batch(es) done".
+    progress = "TASK workflow" if wf_type == "TASK" else "phase %s, %s batch(es) done" % (phase, batches)
     text = None
     if uuid:
         hard, soft = env_int("MTK_CTX_HARD", 250000), env_int("MTK_CTX_SOFT", 200000)
@@ -212,11 +199,12 @@ def main():
         if level and key not in keys:
             keys.append(key)
             if level == "hard":
-                text = ("[mtk context-guard] Context is ~%dk tokens%s with workflow %s active. Do not start new work: "
-                        "checkpoint now with %s, %s" % (k, of_window, uuid, cmd, resume))
+                lead = "Before the next step," if carried else "Do not start new work:"
+                text = ("[mtk context-guard] Context is ~%dk tokens%s with workflow %s active. %s "
+                        "checkpoint now with %s, %s" % (k, of_window, uuid, lead, cmd, resume))
             else:
-                text = ("[mtk context-guard] Context is ~%dk tokens%s with workflow %s active (phase %s, %s batch(es) done). "
-                        "Finish the current transition, run %s, %s" % (k, of_window, uuid, phase, batches, cmd, resume))
+                text = ("[mtk context-guard] Context is ~%dk tokens%s with workflow %s active (%s). "
+                        "Finish the current transition, run %s, %s" % (k, of_window, uuid, progress, cmd, resume))
     else:
         generic = env_int("MTK_CTX_GENERIC", 300000)
         if ctx >= generic:
@@ -224,10 +212,14 @@ def main():
             last = max([int(x[5:]) for x in keys if x.startswith("band:") and x[5:].isdigit()] or [-1])
             if band > last:
                 keys = [x for x in keys if not x.startswith("band:")] + ["band:%d" % band]
+                if carried:
+                    tail = "otherwise continue: auto-compaction near the %dk window will summarize it. " % (window // 1000)
+                else:
+                    tail = ("if it continues long multi-step work, suggest wrapping up with /mtk handoff and resuming "
+                            "in a fresh session. ")
                 text = ("[mtk context-guard] Session context is ~%dk tokens%s; every turn re-reads all of it. "
                         "If the latest request starts new or unrelated work, tell the engineer in one line to run /clear first; "
-                        "if it continues long multi-step work, suggest wrapping up with /mtk handoff and resuming in a fresh session. "
-                        "Mention it once, then continue." % (k, of_window))
+                        "%sMention it once, then continue." % (k, of_window, tail))
     if not text:
         return
     # Persist the dedupe keys first: a guard that cannot remember would nag on every parse.

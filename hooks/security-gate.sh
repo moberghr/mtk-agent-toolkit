@@ -84,7 +84,7 @@ mtk_judge_segment() {
     *'$('*|*'`'*)
       printf '%s' "$seg" | sed 's/\$(/\n/g; s/)/\n/g; s/`/\n/g' \
         | while IFS= read -r inner || [ -n "$inner" ]; do
-            [ -n "${inner//[[:space:]]/}" ] && mtk_judge_segment "$inner"
+            case "$inner" in *[![:space:]]*) mtk_judge_segment "$inner" ;; esac
           done
       return 0 ;;
   esac
@@ -641,7 +641,10 @@ mtk_referenced_files() {
 # Judge the command with only git/gh message text removed (mtk_strip_inert_text).
 # Never fail open: if stripping fails or yields nothing, judge the raw command.
 NORM="$(mtk_strip_inert_text "$COMMAND" 2>/dev/null || true)"
-[ -n "${NORM//[[:space:]]/}" ] || NORM="$COMMAND"
+# A case match, not `${NORM//[[:space:]]/}`: on macOS bash 3.2 that substitution
+# is super-linear and took minutes on a 10k-char heredoc command, past the 5s
+# hook timeout (tests/hooks/test-security-gate-long-command.sh).
+case "$NORM" in *[![:space:]]*) ;; *) NORM="$COMMAND" ;; esac
 
 # Every deny below goes through gate_deny. When the command carries a heredoc,
 # the likely intent is writing a file, and the Write tool does that without

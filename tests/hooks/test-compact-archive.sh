@@ -60,13 +60,19 @@ pass "archive written with frontmatter, body, mode 0600, empty stdout, exit 0"
 # --- 2. workflow field from an active workflow fixture -----------------------
 mkdir -p "$P/.mtk/workflows"
 NOW="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-printf '{"status":"active","updated_at":"%s","type":"implement","phase":"3"}\n' "$NOW" > "$P/.mtk/workflows/wf-test-123.json"
+printf '{"status":"active","updated_at":"%s","type":"implement","phase":"3","owner_session":"sess-wf"}\n' "$NOW" > "$P/.mtk/workflows/wf-test-123.json"
 sleep 1
 run "$P" "${PAYLOAD/sess-1/sess-wf}"
 F2="$(files_in "$P" | grep sess-wf || true)"
 [ -n "$F2" ] || fail "second archive not written"
 grep -qx -- 'workflow: wf-test-123' "$F2" || fail "workflow field must name the active workflow. File: $(cat "$F2")"
 pass "workflow field carries the active workflow id"
+sleep 1
+run "$P" "${PAYLOAD/sess-1/sess-other}"
+F3="$(files_in "$P" | grep sess-other || true)"
+[ -n "$F3" ] || fail "third archive not written"
+grep -qx -- 'workflow: -' "$F3" || fail "another session's compaction must not name this session's workflow. File: $(cat "$F3")"
+pass "another session's compaction archive does not name the workflow"
 
 # --- 3. session id is sanitised before use in a path -------------------------
 run "$P" '{"session_id":"a/../../evil id","trigger":"manual","compact_summary":"x"}'

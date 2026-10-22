@@ -497,7 +497,7 @@ Hooks are deterministic — they fire every time, unlike advisory `CLAUDE.md` in
 | **scope-guard** | PreToolUse (Edit/Write) | Warns when an edit falls outside the active spec's `change_manifest` |
 | **config-guard** | PreToolUse (Edit/Write) | Blocks edits that weaken linter, analyzer, or formatter config |
 | **evidence-ledger** | PostToolUse (Edit/Write/Bash) | Records edits and verification runs for `verify-completion`; prints nothing |
-| **context-guard** | PostToolUse (Edit/Write/Bash) | Writes context telemetry; once per workflow step past 200k/250k says to checkpoint and `/clear`; python at most every 20s |
+| **context-guard** | PostToolUse (Edit/Write/Bash) | Writes context telemetry; once per step of the session's own workflow past 200k/250k says to checkpoint, then keep going (auto-compaction on with a window) or `/clear`; python at most every 20s |
 | **spec-approval-trigger** | PostToolUse (Edit/Write) | Points to planning when a spec flips to `approved`; flags a sealed spec edited after approval |
 | **verify-completion** | Stop | Rejects "done" claims lacking fresh, cited command output |
 | **workflow-continuation** | Stop (async) | One-line nudge when a session ends with an unfinished workflow |

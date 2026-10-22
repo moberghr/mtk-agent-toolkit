@@ -27,16 +27,6 @@ REPO_ROOT="$(mtk_repo_root 2>/dev/null || pwd)"
 WF_DIR="${REPO_ROOT}/.mtk/workflows"
 [ -d "$WF_DIR" ] || exit 0
 
-# Newest workflow JSON by mtime (portable stat, like scope-guard.sh).
-NEWEST=""
-NEWEST_MTIME=0
-for f in "$WF_DIR"/*.json; do
-  [ -f "$f" ] || continue
-  m=$(stat -c '%Y' "$f" 2>/dev/null || stat -f '%m' "$f" 2>/dev/null || echo 0)
-  if [ "$m" -gt "$NEWEST_MTIME" ]; then NEWEST_MTIME=$m; NEWEST="$f"; fi
-done
-[ -n "$NEWEST" ] || exit 0
-
 # Numeric/string field extraction without jq (S3.3). The trailing `|| true` is
 # load-bearing: under `set -euo pipefail` a legitimate no-match (grep exits 1)
 # would otherwise abort the whole hook via the assignment `VAR="$(json_num …)"`
@@ -45,6 +35,27 @@ done
 # common case early in a run, so this fired an exit-1 on every such Stop.
 json_num() { grep -oE "\"$1\"[[:space:]]*:[[:space:]]*[0-9]+" "$2" 2>/dev/null | grep -oE '[0-9]+$' | head -1 || true; }
 json_str() { grep -oE "\"$1\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" "$2" 2>/dev/null | sed 's/.*:[[:space:]]*"//;s/"$//' | head -1 || true; }
+
+# Only this session's own workflow (owner_session, stamped by
+# workflow-artifact.sh): another session's unfinished run is not this session's
+# to resume or hand off. A payload without session_id (another harness) keeps
+# the repo-wide pick, as hooks/lib/active_workflow.py does.
+INPUT=""
+if [ ! -t 0 ]; then
+  INPUT="$(mtk_read_payload_nopy 3 2>/dev/null || true)"
+fi
+SID="$(mtk_extract_json_string "$INPUT" "session_id" 2>/dev/null || true)"
+
+# Newest (by mtime, portable stat like scope-guard.sh) workflow JSON this session owns.
+NEWEST=""
+NEWEST_MTIME=0
+for f in "$WF_DIR"/*.json; do
+  [ -f "$f" ] || continue
+  if [ -n "$SID" ] && [ "$(json_str owner_session "$f")" != "$SID" ]; then continue; fi
+  m=$(stat -c '%Y' "$f" 2>/dev/null || stat -f '%m' "$f" 2>/dev/null || echo 0)
+  if [ "$m" -gt "$NEWEST_MTIME" ]; then NEWEST_MTIME=$m; NEWEST="$f"; fi
+done
+[ -n "$NEWEST" ] || exit 0
 
 STATUS="$(json_str status "$NEWEST")"
 [ "$STATUS" = "active" ] || exit 0
