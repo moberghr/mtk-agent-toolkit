@@ -180,7 +180,15 @@ For every doc whose on-disk copy STEP 4 actually changed (wholesale stock overwr
 
 ## STEP 6: Report
 
-Print a summary with four counts — `Updated`, `Created`, `Preserved (untouched)`, `Needs review` — followed by an itemized list of every needs-review item.
+First bump the repo's version stamp, so session-start and `mtk-doctor` stop pointing at a refresh that just ran — but only when this run left **no** `Needs review` item and no declined MTK hunk; otherwise report `stamp left at <old>: <N> item(s) still need review` and do not run it, so the nudge stays until the engineer resolves them. Skip it in check mode, which writes nothing outside `.claude/.mtk-cache/`. The script never lowers a newer stamp:
+
+```bash
+bash "$MTK_ROOT/scripts/stamp-version.sh" --manifest "$MTK_ROOT/.claude/manifest.json"
+```
+
+Put its one line (`stamp 7.24.0 -> 9.4.2`, or `stamp already …`) in the report. On exit 2, report the reason; do not hand-edit `.claude/mtk-version.json`.
+
+Then print a summary with four counts — `Updated`, `Created`, `Preserved (untouched)`, `Needs review` — followed by an itemized list of every needs-review item.
 
 **A count of `Updated` is a claim that a file on disk changed — never infer it from a generator's exit code.** A generator that exits 0 may have declined to write: `generate-agents-md.sh` prints `AGENTS.md is already the canonical constitution (CLAUDE.md is absent or a shim importing it) — nothing to regenerate.` and exits 0 without touching the file. That stdout note is the signal — when you see it, report the file under **Preserved (untouched)** as "generator declined — AGENTS.md is the canonical constitution", never under `Updated`. The same applies to any run whose diff is empty: a file whose bytes did not change belongs under `Preserved (untouched)` with the reason "no change", not under `Updated`. Confirm a change before counting it (e.g. `git status --porcelain <file>`); an exit-0 no-op reported as a regeneration is a false completion claim.
 
@@ -219,5 +227,5 @@ Next steps:
 - `scripts/verify-claims.sh` ran per refreshed doc, including the one-retry loop where downgrades occurred.
 - Every engineer-edited file — including an `AGENTS.md` row flagged for footer-version drift — went through `.claude/references/regen-diff-contract.md`, not `generate-agents-md.sh`: no direct `Write` to `CLAUDE.md` or any `.claude/rules/*.md`, no `git merge-file --union`, and no exit-0 generator no-op reported as `Updated`.
 - Each retired generated index (`.claude/rules/INDEX.md`, `.claude/rules/triggers.index`, `.claude/triggers.index` carrying a `build-rule-index`/`build-triggers-index` header) was deleted only after the engineer approved it and is listed under "Retired prior MTK files"; under `--non-interactive` none was deleted.
-- The STEP 6 report was printed with all four counts and an itemized needs-review list (or explicit "none").
+- `scripts/stamp-version.sh` bumped `.claude/mtk-version.json` only when nothing was left under Needs review (never in check mode), and the STEP 6 report was printed with its line, all four counts and an itemized needs-review list (or explicit "none").
 - Check mode: `verify-claims.sh` ran only on temp copies with every exit code checked; every item cites a `weak` entry; nothing outside `.claude/.mtk-cache/` was written, and `tasks/todo.md` only after interactive approval.

@@ -386,6 +386,18 @@ marketplace_version="$(grep -E '"version"' .claude-plugin/marketplace.json | hea
 [ "$manifest_version" = "$plugin_version" ] || fail "Version mismatch: manifest=$manifest_version plugin=$plugin_version"
 [ "$manifest_version" = "$marketplace_version" ] || fail "Version mismatch: manifest=$manifest_version marketplace=$marketplace_version"
 
+# A release names its version in two more places: a CHANGELOG heading and the
+# checksums.sha256 header that scripts/generate-checksums.sh writes (S4.11). A
+# bump that misses either ships notes or an integrity manifest for another
+# version. The moberg-plugins marketplace entry deliberately carries no version.
+awk -v h="## [${manifest_version}]" 'index($0, h) == 1 { found = 1 } END { exit !found }' CHANGELOG.md \
+  || fail "CHANGELOG.md has no '## [${manifest_version}]' heading — add the release notes for the manifest version"
+checksums_header="$(awk 'NR==1' checksums.sha256 2>/dev/null || true)"
+case "$checksums_header" in
+  *" v${manifest_version}") ;;
+  *) fail "checksums.sha256 header is '${checksums_header}', not v${manifest_version} — run bash scripts/generate-checksums.sh as the last step of the release (S4.11)" ;;
+esac
+
 # Manifest source path existence + collect manifest-tracked skill paths.
 # manifest.json has no nested objects with "source" keys other than file entries,
 # so a flat grep is sufficient and correct.

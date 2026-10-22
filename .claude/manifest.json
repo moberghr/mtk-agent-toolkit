@@ -1,5 +1,5 @@
 {
-  "version": "9.4.1",
+  "version": "9.4.2",
   "updated": "2026-10-22",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
@@ -118,6 +118,12 @@
       "target": "tests/hooks/test-session-start-compact-workflows.sh",
       "action": "sync",
       "description": "Verifies session-start's compact branch re-injects only the newest active workflow updated within 7 days"
+    },
+    "tests/hooks/test-session-start-version.sh": {
+      "source": "tests/hooks/test-session-start-version.sh",
+      "target": "tests/hooks/test-session-start-version.sh",
+      "action": "sync",
+      "description": "Test for session-start's setup-stamp message: older -> /mtk-setup --refresh, newer -> update the plugin, numeric compare, whitespace-tolerant parse"
     },
     "tests/hooks/test-session-start-resume.sh": {
       "source": "tests/hooks/test-session-start-resume.sh",
@@ -503,6 +509,12 @@
       "action": "sync",
       "description": "Test for mtk-doctor's auto-compaction line: disabled source, missing window, PASS with window; baseline list without autoCompactWindow"
     },
+    "tests/hooks/test-mtk-doctor-versions.sh": {
+      "source": "tests/hooks/test-mtk-doctor-versions.sh",
+      "target": "tests/hooks/test-mtk-doctor-versions.sh",
+      "action": "sync",
+      "description": "Test for mtk-doctor's setup-stamp line and the stale marketplace-entry version WARN"
+    },
     "tests/hooks/test-verify-completion-failclosed.sh": {
       "source": "tests/hooks/test-verify-completion-failclosed.sh",
       "target": "tests/hooks/test-verify-completion-failclosed.sh",
@@ -544,6 +556,12 @@
       "target": "tests/hooks/test-workflow-artifact-owner.sh",
       "action": "sync",
       "description": "Test for workflow-artifact.sh owner_session: mutating subcommands claim, read-only ones never do"
+    },
+    "tests/hooks/test-stamp-version.sh": {
+      "source": "tests/hooks/test-stamp-version.sh",
+      "target": "tests/hooks/test-stamp-version.sh",
+      "action": "sync",
+      "description": "Test for scripts/stamp-version.sh: fresh and update writes, kept keys and pins, already-current no-op, errors, --compare"
     },
     "tests/hooks/test-verify-completion-tree.sh": {
       "source": "tests/hooks/test-verify-completion-tree.sh",
@@ -2141,6 +2159,12 @@
       "target": "scripts/spec-archive.sh",
       "action": "sync",
       "description": "Sync a feature spec delta back into its area baseline and append an audit record (delta-spec model); idempotent, refuses non-PASS drift"
+    },
+    "scripts/stamp-version.sh": {
+      "source": "scripts/stamp-version.sh",
+      "target": "scripts/stamp-version.sh",
+      "action": "sync",
+      "description": "Single writer of a target repo's .claude/mtk-version.json (bootstrap and setup-refresh); --compare is the shared stamp-vs-plugin parser for session-start and mtk-doctor"
     },
     "scripts/constitution-digest.sh": {
       "source": "scripts/constitution-digest.sh",

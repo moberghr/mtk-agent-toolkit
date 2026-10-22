@@ -9,7 +9,7 @@
 ## Verification
 
 - [ ] `bash scripts/validate-toolkit.sh` passes
-- [ ] Version bumped in both `manifest.json` and `plugin.json` (if releasing)
+- [ ] Releasing: version bumped in every place S4.6 lists — 3 manifests, CHANGELOG heading, `checksums.sha256` regenerated last (validate-toolkit checks them)
 - [ ] New skills have pressure tests (if adding review/security/verification skills)
 - [ ] AGENTS.md updated (if adding new skills or changing routing)
 - [ ] README updated (if adding new user-facing features)
