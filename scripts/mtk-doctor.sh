@@ -244,10 +244,27 @@ else
   record FAIL core "manifest.json missing" "set CLAUDE_PLUGIN_ROOT or run from a plugin clone"
 fi
 
-# Target-repo provenance file (single source of truth for installed version).
+# Target-repo provenance file: the MTK version whose setup files this repo has,
+# compared with the plugin by scripts/stamp-version.sh --compare (the parser
+# session-start uses too). An older stamp needs /mtk-setup --refresh, which bumps
+# it when it finishes; the plugin manager cannot change it.
 in_project
 if [ -f ".claude/mtk-version.json" ]; then
-  record PASS core ".claude/mtk-version.json present"
+  STAMP_SH="$ROOT_DIR/scripts/stamp-version.sh"
+  [ -f "$STAMP_SH" ] || STAMP_SH="${CLAUDE_PLUGIN_ROOT:-.}/scripts/stamp-version.sh"
+  case "$DOCTOR_MANIFEST" in /*|"") vc_manifest="$DOCTOR_MANIFEST" ;; *) vc_manifest="$ROOT_DIR/$DOCTOR_MANIFEST" ;; esac
+  vc=""
+  if [ -f "$STAMP_SH" ] && [ -n "$vc_manifest" ]; then
+    vc="$(bash "$STAMP_SH" --compare --manifest "$vc_manifest" 2>&1)" || vc="error: ${vc}"
+  fi
+  vc_state=""; vc_stamp=""; vc_plugin=""
+  read -r vc_state vc_stamp vc_plugin <<<"$vc" || true
+  case "$vc_state" in
+    equal) record PASS core "setup stamp current" ".claude/mtk-version.json and the plugin are both ${vc_plugin}" ;;
+    older) record WARN core "setup stamp behind the plugin" "this repo's setup files are from MTK ${vc_stamp}; the plugin is ${vc_plugin} — run /mtk-setup --refresh (it bumps the stamp once nothing is left to review)" ;;
+    newer) record WARN core "setup stamp newer than the plugin" "this repo was set up with MTK ${vc_stamp}, newer than the installed plugin ${vc_plugin} — update the plugin" ;;
+    *) record WARN core "setup stamp not compared" "scripts/stamp-version.sh --compare is missing or failed: ${vc:-no manifest or script found}" ;;
+  esac
 fi
 
 # Budget the RESOLVED constitution, not a fixed filename. Post-inversion the
@@ -329,6 +346,53 @@ elif [ "$MANIFEST_VERSION" = "$PLUGIN_VERSION" ] && [ -n "$MANIFEST_VERSION" ]; 
   record PASS components "version sync" "$MANIFEST_VERSION"
 else
   record FAIL components "version mismatch" "manifest=${MANIFEST_VERSION:-?} plugin=${PLUGIN_VERSION:-?}"
+fi
+
+# A marketplace entry must not carry its own mtk `version`: plugin.json is the one
+# copy, and a duplicate goes stale silently (moberg-plugins listed 8.0.1 while
+# 9.4.x shipped). For each marketplace MTK is installed from (installed_plugins.json
+# "mtk@<marketplace>"), WARN when its entry's version is OLDER than the newest
+# installed one — a stale catalog. A newer entry is a pending update, and the
+# toolkit's dev marketplace legitimately carries the current version (C0.1).
+if command -v python3 >/dev/null 2>&1; then
+  mkt_rc=0
+  mkt_out="$(python3 - "$HOME/.claude/plugins" <<'PY' 2>&1
+
+import json, os, re, sys
+base = sys.argv[1]
+def vkey(v):
+    return tuple(int(m.group()) if m else 0 for m in (re.match(r"\d+", p) for p in str(v).lstrip("vV").split(".")))
+def load(p):
+    try:
+        with open(p, encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
+        return None
+inst = load(os.path.join(base, "installed_plugins.json")) or {}
+plugins = inst.get("plugins", inst) if isinstance(inst, dict) else {}
+known = load(os.path.join(base, "known_marketplaces.json")) or {}
+for key, entries in (plugins.items() if isinstance(plugins, dict) else []):
+    name, _, mkt = key.partition("@")
+    if name != "mtk" or not mkt or not isinstance(entries, list) or not entries:
+        continue
+    vers = [e.get("version") for e in entries if isinstance(e, dict) and e.get("version")]
+    installed = max(vers, key=vkey) if vers else None
+    loc = (known.get(mkt) or {}).get("installLocation") if isinstance(known, dict) else None
+    cat = load(os.path.join(loc, ".claude-plugin", "marketplace.json")) if loc else None
+    for p in (cat or {}).get("plugins", []) if isinstance(cat, dict) else []:
+        if isinstance(p, dict) and p.get("name") == "mtk" and p.get("version") and installed and vkey(p["version"]) < vkey(installed):
+            print("%s\t%s\t%s" % (mkt, p["version"], installed))
+PY
+)" || mkt_rc=$?
+  if [ "$mkt_rc" -ne 0 ]; then
+    record WARN components "marketplace version not checked" "the check failed (exit $mkt_rc): $(awk 'END { print }' <<<"$mkt_out")"
+    mkt_out=""
+  fi
+  while IFS="$(printf '\t')" read -r mkt_name mkt_ver mkt_inst; do
+    [ -n "$mkt_name" ] || continue
+    record WARN components "marketplace lists a stale mtk version" \
+      "marketplace ${mkt_name} says mtk ${mkt_ver}, but ${mkt_inst} is installed — remove the entry's \"version\" (plugin.json is the single copy), as moberg-plugins does"
+  done <<<"$mkt_out"
 fi
 
 # Skill count vs disk. `find` on a missing .claude/skills exits non-zero and

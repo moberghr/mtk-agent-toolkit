@@ -13,6 +13,8 @@ set -euo pipefail
 #   - runtime diet: hooks.json registering UserPromptSubmit, or a tool matcher
 #     covering Read/Grep/Glob/mcp__ (exact list, regex, server-scoped mcp__ or "*"), fails
 #   - a hooks.json command that resolves to no file fails
+#   - a manifest version with no CHANGELOG heading, or a checksums.sha256 header
+#     naming another version, fails
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -57,6 +59,22 @@ expect_fail() { # $1 label  $2 expected message fragment
 
 out="$(run)" || fail "clean sandbox must validate. Errors: $(grep ERROR <<<"$out" | awk 'NR<=3')"
 ok "clean sandbox validates"
+
+# --- release version in CHANGELOG and checksums header (9.4.2) ------------------
+cp "$D/CHANGELOG.md" "$B/changelog.orig"
+VER="$(python3 -c 'import json; print(json.load(open("'"$D"'/.claude/manifest.json"))["version"])')"
+python3 - "$D/CHANGELOG.md" "$VER" <<'PY'
+import sys
+p, v = sys.argv[1:3]
+s = open(p, encoding="utf-8").read().replace("## [%s]" % v, "## [0.0.0-removed]")
+open(p, "w", encoding="utf-8").write(s)
+PY
+expect_fail "manifest version without a CHANGELOG heading is flagged" "CHANGELOG.md has no '## [$VER]' heading"
+cp "$B/changelog.orig" "$D/CHANGELOG.md"
+cp "$D/checksums.sha256" "$B/checksums.orig"
+{ printf '# MTK release checksum manifest v0.0.1\n'; awk 'NR>1' "$B/checksums.orig"; } > "$D/checksums.sha256"
+expect_fail "checksums header naming another version is flagged" "checksums.sha256 header is"
+cp "$B/checksums.orig" "$D/checksums.sha256"
 
 # --- internal codename, whole word, any case -----------------------------------
 HOOK="$D/scripts/refresh-derived.sh"

@@ -63,7 +63,7 @@ Releases regenerate `checksums.sha256` via `bash scripts/generate-checksums.sh` 
 
 ## Critical Rules (Always Apply)
 
-- **C0.1** Manifest versions must match: `.claude/manifest.json` version == `.claude-plugin/plugin.json` version == `.claude-plugin/marketplace.json` plugin entry version. Bump all three when releasing.
+- **C0.1** Manifest versions must match: `.claude/manifest.json` version == `.claude-plugin/plugin.json` version == `.claude-plugin/marketplace.json` plugin entry version, plus a `## [X.Y.Z]` CHANGELOG heading and the `checksums.sha256` header. Bump them together when releasing (S4.6); `validate-toolkit.sh` FAILs on a miss. The moberg-plugins marketplace entry carries no version.
 - **C0.2** Every repo file must have a manifest.json `files` entry, except the short allow-list of non-shipped files in `validate-toolkit.sh` (`manifest_allowed_unlisted`). Every manifest path must exist on disk.
 - **C0.3** Skills follow the anatomy in `.claude/rules/skill-authoring.md` S2.2 (Overview / When To Use / Workflow / Verification for workflow skills; phase-structured and entry-point skills are exempt as listed there). Entry-point skills use `allowed-tools` and `argument-hint` in frontmatter. Skill directory name must match frontmatter `name:`.
 - **C0.4** Agents and skills must have `---` frontmatter blocks.

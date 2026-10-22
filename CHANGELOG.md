@@ -4,6 +4,54 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [9.4.2] - 2026-10-22
+
+The MTK version is now the same everywhere it shows, and a release can't miss a place. Before this,
+four places disagreed:
+- the moberg-plugins marketplace entry said 8.0.1;
+- about 20 repos' setup stamps said 7.0.0–7.35.0;
+- the installed plugin said 9.4.0;
+- `main` said 9.4.1.
+
+Every session start in those repos said "MTK update available … use the plugin manager". The
+plugin manager cannot change a repo stamp, so that message never went away.
+
+### Fixed
+
+- **The session-start version message is accurate.**
+  - A repo whose setup stamp is older than the plugin now gets "set up with MTK X; the plugin is
+    Y. Run /mtk-setup --refresh".
+  - A stamp newer than the plugin asks for a plugin update.
+  - Versions compare numerically, so 9.10.0 is newer than 9.4.2.
+  - A stamp written with a space after the colon, which was silently never read, is now read.
+- **setup-refresh bumps the stamp when it finishes** with nothing left under Needs review, so a
+  refreshed repo stops being told to refresh. The stamp is never lowered, so an older plugin
+  can't downgrade it. Versions read their leading digits, so `v9.4.2` and `9.4.2-rc1` both read
+  as 9.4.2. The stamp lives at the git top level, and session-start falls back to the manifest
+  next to the hook when `CLAUDE_PLUGIN_ROOT` is unset, which covers the other harnesses.
+
+### Added
+
+- **`scripts/stamp-version.sh` is the one writer of `.claude/mtk-version.json`.** It keeps
+  `installed`, sets `refreshed`, carries the repo's own coding-guidelines pin and keeps unknown
+  keys. Bootstrap uses it in place of the inline snippet. Its read-only `--compare` mode is the
+  one parser that session-start and mtk-doctor share.
+- **mtk-doctor version lines.**
+  - It compares the setup stamp with the plugin: PASS when equal, WARN with `/mtk-setup --refresh`
+    when older, WARN to update the plugin when newer.
+  - It WARNs when a marketplace MTK is installed from lists its own `mtk` version that is older
+    than the installed one, which means a stale catalog. A newer entry is a pending update and
+    does not warn.
+- **validate-toolkit release guards.** It FAILs when CHANGELOG.md has no `## [<version>]` heading,
+  or when the `checksums.sha256` header names another version. S4.6 and C0.1 now list every place
+  that carries the version.
+
+### Changed
+
+- moberghr/moberg-plugins#2 is merged. The `mtk` and `work-tree` entries carry no `version`, and
+  `mtk` pins `ref: plugin`, the release-built branch. plugin.json is the single copy, so the
+  catalog can't go stale again.
+
 ## [9.4.1] - 2026-10-22
 
 These fixes come from 24 hours of 9.4.0 use across 37 sessions, about $437 at list price.

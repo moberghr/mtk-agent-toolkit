@@ -189,21 +189,10 @@ Close with: `Install manually when you're ready — MTK works without any of the
 
 Write **one** provenance file: `.claude/mtk-version.json`. It records the installed MTK version (for session-start drift detection) and the coding-guidelines pin (sha + sha256) that STEP 1 fetched with. Do **NOT** write a slim `.claude/manifest.json` into target repos — the toolkit's full manifest lives only at `$CLAUDE_PLUGIN_ROOT/.claude/manifest.json`. Scripts (`generate-tool-configs.sh`, `mtk-doctor.sh`) resolve it from the plugin root.
 
-A `coding-guidelines` block already in `.claude/mtk-version.json` is the repo's own pin (written by `/mtk-setup --update-guidelines`, and the one `scripts/update-guidelines.sh` reads first): carry it forward unchanged. Otherwise copy the plugin manifest's block.
+A `coding-guidelines` block already in `.claude/mtk-version.json` is the repo's own pin (written by `/mtk-setup --update-guidelines`, and the one `scripts/update-guidelines.sh` reads first): carry it forward unchanged. Otherwise copy the plugin manifest's block. `scripts/stamp-version.sh` is the one writer of the stamp and does both; `setup-refresh` runs the same script when a refresh finishes, so the stamp always names the version whose setup files the repo has:
 
 ```bash
-PM="${MTK_ROOT:-.}/.claude/manifest.json"
-python3 - "$PM" <<'STAMP'
-import datetime, json, os, sys
-pm = json.load(open(sys.argv[1]))
-old = json.load(open(".claude/mtk-version.json")) if os.path.exists(".claude/mtk-version.json") else {}
-out = {"version": pm["version"], "installed": datetime.date.today().isoformat(),
-       "source": "https://github.com/moberghr/mtk-agent-toolkit"}
-cg = old.get("coding-guidelines") or pm.get("coding-guidelines")
-if cg:
-    out["coding-guidelines"] = cg
-json.dump(out, open(".claude/mtk-version.json", "w"), indent=2)
-STAMP
+bash "${MTK_ROOT:-.}/scripts/stamp-version.sh" --manifest "${MTK_ROOT:-.}/.claude/manifest.json"
 ```
 
 Omit the `coding-guidelines` block when no external guidelines were pinned (placeholder stacks). Committed (not gitignored).

@@ -36,7 +36,7 @@ paths:
 ## Versioning
 
 - **S4.5** Follow semver: major (breaking changes to skill contracts), minor (new skills), patch (fixes, tweaks).
-- **S4.6** Bump version in both `manifest.json` and `plugin.json` in the same commit.
+- **S4.6** A version bump touches every place that names the release, in the same commit, and `validate-toolkit.sh` FAILs on any it misses: `.claude/manifest.json`, `.claude-plugin/plugin.json`, the dev `.claude-plugin/marketplace.json` entry, a `## [X.Y.Z]` heading in `CHANGELOG.md`, and the `checksums.sha256` header (S4.11). Nothing else carries the version. The `moberghr/moberg-plugins` marketplace entry has **no** `version` (it pins `ref: plugin`, and `plugin.json` on that branch is the single copy); `mtk-doctor` WARNs when an installed marketplace lists a stale one. Target repos' `.claude/mtk-version.json` stamps are written only by `scripts/stamp-version.sh` (bootstrap, and setup-refresh when it finishes), never by hand.
 - **S4.7** Update `manifest.updated` date when bumping version.
 
 ## Release Checklist
