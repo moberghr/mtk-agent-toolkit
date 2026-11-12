@@ -2400,6 +2400,12 @@
       "action": "sync",
       "description": "Router-mapping fixture: lesson-harvest prompts and in-the-moment corrections route to the lessons skill (mine / capture)"
     },
+    "tests/fixtures/router-review-brainstorm-spec.json": {
+      "source": "tests/fixtures/router-review-brainstorm-spec.json",
+      "target": "tests/fixtures/router-review-brainstorm-spec.json",
+      "action": "sync",
+      "description": "Router-mapping fixture: PR/branch/diff review routes to code-review-and-quality, staged-changes review to pre-commit-review, design exploration to brainstorming, spec-only requests to spec-driven-development"
+    },
     "tests/hooks/test-verify-completion-rearm.sh": {
       "source": "tests/hooks/test-verify-completion-rearm.sh",
       "target": "tests/hooks/test-verify-completion-rearm.sh",

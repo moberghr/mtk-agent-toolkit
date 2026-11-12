@@ -52,6 +52,9 @@ Reached via `/mtk <description>`; `implement`, `fix` and `batch-fix` are also di
 | batch-fix | corrective batch of multiple small independent fixes (>3 files, no new contract) → findings list + spec stub + one gate → per-finding TDD → inline impl → proportional review; between `fix` and `implement` |
 | implement | brainstorm *(optional)* → context → spec *(+ JSON sidecar)* → task breakdown → test-first batches → **spec-drift-detection** → two-stage review → simplification |
 | pre-commit-review | static linter pass *(confidence 100)* → AI review *(confidence-scored)*, merged via `.claude/references/review-finding-schema.md` |
+| code-review-and-quality | PR, branch or diff outside implement → lanes from `.claude/references/implement-review-lanes.md` (compliance always; silent-failure, test, architecture by trigger) → defect-class sweep → lane accounting → findings table + JSON |
+| brainstorming | explore the affected code → 2–3 approaches, tradeoffs, recommendation → wait for the engineer's pick; read-only, divergence mode only on request |
+| spec-driven-development | spec + JSON sidecar → stop for approval; `/mtk:implement <spec path>` adopts the approved spec (Phase 0.7) |
 | setup-refresh | drift-scoped refresh of all generated setup artifacts (reached via `/mtk-setup --refresh`) — staleness plan → scoped regen → diff proposals for engineer-edited files; `--check` is the read-only drift report of code against the agreed principles |
 | repo-health | 9-asset AI-readiness action checklist (no score) → audit drift → PR review mining (last N merged PRs, suggest-only `[MINED:feedback]`) |
 | mtk-doctor | install health check across core files, components, hooks, integrity, active config — PASS/WARN/FAIL, `--json`, `--fix`; `--usage` prints raw usage counts with n |
