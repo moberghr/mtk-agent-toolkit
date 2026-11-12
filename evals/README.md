@@ -109,3 +109,50 @@ The script does not report lift (with-plugin minus without-plugin, per case, fro
 `cases[].arms.with` and `cases[].arms.without` in a run's `aggregate-result.json`). That
 table is not built, because no stored results file was available to confirm the per-run
 fields against.
+
+## Checking skill routing
+
+`bash scripts/routing-check.sh` checks offline that skill descriptions route. It reads
+the `name` and `description` of every skill under `.claude/skills/` and the prompts in
+`tests/fixtures/skill-routing.json`. It needs only python3 and makes no model calls, so
+`validate-toolkit.sh` and `run-fixtures.sh` both run it. It reports:
+
+- **Collisions.** The similarity of every pair of descriptions. A pair warns at 0.50 and
+  fails at 0.75, unless the fixture's `allow_pairs` lists it with a reason. An allow-list
+  entry for a pair below the warn line warns that it can be removed.
+- **Positive prompts.** Each one passes when its skill ranks in the top 3. A tie counts
+  against it. The rank-1 rate is reported too, and `min_rank1` (90% today, `--min-rank1`
+  to override) fails the run when it drops below the floor.
+- **Name-free prompts.** A positive prompt that shares no word with its skill's name.
+  The name is weighted double, so a prompt that repeats it ("fix this bug" for `fix`)
+  scores partly on the echo. A name-free prompt reaches its skill through the description
+  alone. Its rank-1 rate is reported on its own and has its own floor,
+  `min_rank1_name_free` (89% today, `--min-rank1-name-free` to override).
+- **Negative prompts.** Each names a skill that must not rank first (a tie counts as
+  first) and, optionally, an `owner` that must outrank it. A negative whose named skill
+  scores 0 can never fail, so it warns.
+- **Coverage.** Every skill needs `min_positive_per_skill` positive prompts (2), with at
+  least `min_name_free_per_skill` of them name-free (1), unless `exempt` lists it with a
+  reason. An exempt entry for a skill that meets both anyway warns that it can be removed.
+- **Frontmatter.** It reads a description written as a plain value (on one line or
+  several), a value starting on the next line, a single- or double-quoted value, or a
+  `|` or `>` block. Any other shape, a missing frontmatter block or an empty description
+  fails the run and names the skill, so nothing is scored as silently empty.
+
+`--json` prints the same report for scripts, including the description text each skill
+was scored on. `--quiet` prints only the warnings, failures and summary line, and
+`--skills-dir` / `--prompts` point it elsewhere. `--warn`, `--fail` and `--top-k`
+override the fixture's thresholds. It exits 0 on a pass, 1 when a check fails, and 2 on a
+usage error, a number that is not finite, a bad fixture or a missing python3. The report
+is ASCII. A prompt with other characters is printed escaped when the terminal cannot
+show it.
+
+The score is a lexical proxy. Each text becomes a stemmed TF-IDF vector, with the name
+counted twice and common words dropped, and the vectors are compared by cosine
+similarity. A pass shows that the words in a description point at its skill. It does
+not show that a live model picks the skill. That is what the cases in this directory
+measure. When a prompt misroutes, reword the description so it says what the skill does
+in the words engineers use. Rewording the prompt toward the description only hides the
+problem. Some prompts share no words with any honest description, for example "this
+throws a NullReferenceException when the cart is empty". Leave those out of the fixture
+and cover them with an eval case.

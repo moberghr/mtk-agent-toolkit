@@ -1,6 +1,6 @@
 ---
 name: verification-before-completion
-description: Use before reporting any task, batch, or fix as complete — requires fresh execution evidence for every completion claim.
+description: Use before reporting any task, batch or fix as complete — requires fresh evidence from tests or commands actually run for every completion claim.
 type: skill
 license: MIT
 compatibility:

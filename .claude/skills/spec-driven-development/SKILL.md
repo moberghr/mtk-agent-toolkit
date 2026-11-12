@@ -1,6 +1,6 @@
 ---
 name: spec-driven-development
-description: Use when the task is a new feature, breaking change, multi-file change, or any work where approval should happen before coding begins.
+description: Use when the task is a new feature, breaking change or multi-file change whose spec and design should be approved before any code is written.
 type: skill
 license: MIT
 compatibility:

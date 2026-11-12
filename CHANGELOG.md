@@ -2,11 +2,34 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [9.5.0] - 2026-11-12
+
+This release adds a model-free check that skill descriptions send everyday prompts to the right skill, and rewords the twelve descriptions it caught. It also ships the eval coverage report and the fixes below, merged since 9.4.2.
 
 ### Added
 
+- `scripts/routing-check.sh` checks skill descriptions offline. The model picks a skill from its `name` and `description`, so the script scores those two fields: stemmed TF-IDF vectors (name counted twice, common words dropped) compared by cosine similarity. It needs only python3 and makes no model calls.
+  - Every pair of skills is reported. A pair warns at 0.50 and fails at 0.75, unless it is on the allow-list with a reason.
+  - Each committed prompt ranks the skills. A positive prompt passes when its skill is in the top 3; a tie counts against it. A negative prompt names a skill that must not rank first (a tie counts as first) and, optionally, an owner that must outrank it. A negative whose named skill scores 0 cannot fail, so it warns.
+  - A positive prompt that shares no word with its skill's name is name-free. The name is weighted double, so prompts that repeat it make the overall rate look better than the descriptions earn. The rank-1 rate over name-free prompts is reported on its own.
+  - Each skill needs two positive prompts, one of them name-free, unless it is on the exempt list with a reason. An exempt or allow-list entry that is no longer needed warns.
+  - Two ratchets: `--min-rank1` over all positive prompts (committed floor 90%, the catalog reaches 92.5%) and `--min-rank1-name-free` over the name-free ones (committed floor 89%, the catalog reaches 89.3%).
+  - It reads a description written as a plain value on one or more lines, a value on the next line, a quoted value or a `|`/`>` block. Any other shape, a missing frontmatter block or an empty description fails the run and names the skill.
+  - `--json` gives the same report for scripts, with the description text each skill was scored on. The report is ASCII. Exit 0 is a pass, 1 a failed check, 2 a usage or environment error, including a number that is not finite.
+  - It is a lexical proxy: a pass is necessary, not sufficient. The evals still cover live routing.
+- `tests/fixtures/skill-routing.json` holds the prompts and the checker's configuration. It has 106 positive prompts, at least two per skill, 56 of them name-free. It has 21 negatives for the confusable groups: fix, batch-fix and implement; lessons and promote-lesson; the four setup skills; the three tech stacks; mtk-doctor and fix on failing tests; research-context and fix. It also holds the allow-list (lessons and its deprecated alias promote-lesson), the exempt list (`mtk` and `promote-lesson`) and the thresholds. It is a new `skill-routing` fixture type, so `run-fixtures.sh` runs the check on it, and `validate-toolkit.sh` runs it too and prints its summary line.
+- `tests/hooks/test-routing-check.sh` covers each collision band, each case kind including a negative tie, name-free counting and coverage, both ratchets, the threshold flags, every frontmatter shape the reader handles and the ones it rejects, non-finite numbers, a terminal that cannot encode the prompt text, and the exit-2 paths. It checks that `run-fixtures.sh` and `validate-toolkit.sh` fail when the routing check fails, and runs the check twice over the real skills to confirm identical output.
 - `scripts/eval-coverage.sh` lists the skills that no eval case exercises. It reads the case files only, never results, and makes no model calls. A case counts for a skill when the skill is one of its `tags`, its prompt invokes `/<skill>`, `/mtk <skill>` or `/mtk:<skill>`, or a grader names `skills/<skill>/`. The rule is a heuristic and is stated in `--help` and the report header. `--json` gives the same report for scripts. On MTK's nine cases it finds 3 of 33 skills covered. The per-case lift table the script is named for is not built yet, because no stored `aggregate-result.json` was available to confirm the per-run fields.
+
+### Changed
+
+- Twelve skill descriptions are reworded so they route on the words engineers use. The gain is measured only by the lexical proxy above, on a prompt set written alongside the rewording. No live model eval of the description changes has been run yet. On the committed prompts, with the original descriptions and then the new ones: rank-1 goes from 84 to 98 of 106 (79.2% to 92.5%), name-free rank-1 from 39 to 50 of 56 (69.6% to 89.3%), top-3 from 95 to 106 of 106, and negatives from 16 to 21 of 21. The closest pair outside the allow-list drops from 0.68 (tech-stack-dotnet and tech-stack-python) to 0.41.
+  - "why is this test failing?" reaches `fix`, not `mtk-doctor`. `fix` now names bugs, failing tests, errors and small config changes. The doctor's description no longer lists `PASS/WARN/FAIL` and `--fix`, and says to use it when MTK seems broken or misconfigured.
+  - "add a new endpoint for exporting trades" reaches `implement`. It now says it is for substantial work that adds a feature, a public contract such as an endpoint, or a multi-file behavior change.
+  - "what does the latest EF Core version say about bulk updates" reaches `research-context`, which now names latest-version behavior, recommended practices and upgrade guides.
+  - The three tech-stack descriptions name their own tools in place of one shared sentence.
+  - `batch-fix`, `brainstorming`, `code-review-and-quality`, `spec-driven-development` and `verification-before-completion` are reworded for the same reason.
+- `skill-authoring.md` (S2.6b) asks authors to add trigger prompts to `tests/fixtures/skill-routing.json` for a new skill, at least one of them name-free.
 
 ### Fixed
 

@@ -1,6 +1,6 @@
 ---
 name: tech-stack-dotnet
-description: Provides .NET-specific build commands, test commands, ORM guidance, framework patterns, and reference file paths for workflow skills.
+description: .NET stack context for workflow skills — dotnet build, test and migration commands, EF Core and MediatR patterns, analyzer setup, C# coding guidelines and reference file paths.
 license: MIT
 compatibility:
   - claude-code

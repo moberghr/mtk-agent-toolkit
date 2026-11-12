@@ -1,6 +1,6 @@
 ---
 name: batch-fix
-description: Corrective batch of multiple small independent fixes (apply review findings, several/multiple fixes across >3 files, no new contract or architecture) — broader than fix, lighter than implement.
+description: Use to apply review findings or several small independent corrections across more than 3 files in one batch, with no new contract or architecture — broader than fix, lighter than implement.
 type: skill
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion
 argument-hint: <findings list or review output>

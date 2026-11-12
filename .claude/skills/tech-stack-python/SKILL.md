@@ -1,6 +1,6 @@
 ---
 name: tech-stack-python
-description: Provides Python-specific build commands, test commands, ORM guidance, framework patterns, and reference file paths for workflow skills.
+description: Python stack context for workflow skills — pytest, mypy and ruff commands, SQLAlchemy and Alembic guidance, FastAPI, Django and Flask patterns, and reference file paths.
 license: MIT
 compatibility:
   - claude-code

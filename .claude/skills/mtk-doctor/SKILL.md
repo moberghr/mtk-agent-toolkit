@@ -1,6 +1,6 @@
 ---
 name: mtk-doctor
-description: MTK health check (core, components, hooks, integrity, active config, environment) with PASS/WARN/FAIL, --json, --fix; --usage reports raw usage counts.
+description: MTK install health check — core files, hooks, integrity, active config and environment, with JSON output, safe auto-repair and raw usage counts; use when MTK seems broken or misconfigured.
 type: skill
 allowed-tools: Read, Bash
 argument-hint: "[--json] [--fix] [--strict] [--usage]"

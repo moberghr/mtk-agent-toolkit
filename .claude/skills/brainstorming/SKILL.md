@@ -1,6 +1,6 @@
 ---
 name: brainstorming
-description: Use before spec writing when the approach is unclear, multiple designs are plausible, or the engineer wants to explore alternatives before committing.
+description: Use before spec writing when the approach is unclear, several designs or ways to build it are plausible, or the engineer wants to explore alternatives before committing.
 type: skill
 license: MIT
 compatibility:

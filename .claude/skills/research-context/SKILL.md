@@ -1,6 +1,6 @@
 ---
 name: research-context
-description: Use when a decision needs current external/web info (library best-practices, version behavior, migration guidance) rather than local sources — runs grounded web research and returns a cited brief.
+description: Use when a decision needs current external info, not local sources — latest-version behavior, recommended practices, upgrade or migration guides; researches the web and returns a cited brief.
 type: skill
 license: MIT
 compatibility:

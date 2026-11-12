@@ -1,6 +1,6 @@
 ---
 name: code-review-and-quality
-description: Review a PR or diff outside implement — runs the compliance, silent-failure, test and architecture lanes from implement-review-lanes.md with full lane accounting.
+description: Review a PR (pull request), branch or diff outside implement — runs the compliance, silent-failure, test and architecture lanes with full lane accounting.
 type: skill
 effort: max
 context: fork

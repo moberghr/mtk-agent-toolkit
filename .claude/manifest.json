@@ -1,6 +1,6 @@
 {
-  "version": "9.4.2",
-  "updated": "2026-10-22",
+  "version": "9.5.0",
+  "updated": "2026-11-12",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -1317,6 +1317,12 @@
       "action": "sync",
       "description": "Offline eval coverage report: lists the skills no evals/<case>/ exercises (tag, prompt invocation or grader skill path), human or --json; reads case files only, no model calls"
     },
+    "scripts/routing-check.sh": {
+      "source": "scripts/routing-check.sh",
+      "target": "scripts/routing-check.sh",
+      "action": "sync",
+      "description": "Model-free skill routing check: scores each skill's name and description with stemmed TF-IDF, fails on colliding description pairs, positive prompts outside the top k, negative prompts the wrong skill wins, skills short of prompts or name-free prompts, unreadable frontmatter, and rank-1 rates below the two ratchets (all prompts and name-free prompts)"
+    },
     "tests/pressure-tests/test-reviewer-pressure.md": {
       "source": "tests/pressure-tests/test-reviewer-pressure.md",
       "target": "tests/pressure-tests/test-reviewer-pressure.md",
@@ -1855,7 +1861,7 @@
       "source": "scripts/run-fixtures.sh",
       "target": "scripts/run-fixtures.sh",
       "action": "sync",
-      "description": "Validates router-decision fixtures under tests/fixtures/ \u2014 structural check, asserts gate names and action consistency without running Claude"
+      "description": "Validates the fixtures under tests/fixtures/ by fixture_type (router-decision, handoff-validation, router-mapping, skill-routing) without running Claude"
     },
     "tests/fixtures/README.md": {
       "source": "tests/fixtures/README.md",
@@ -2406,6 +2412,12 @@
       "action": "sync",
       "description": "Router-mapping fixture for the batch-fix lane (batch-fix vs fix vs implement)"
     },
+    "tests/fixtures/skill-routing.json": {
+      "source": "tests/fixtures/skill-routing.json",
+      "target": "tests/fixtures/skill-routing.json",
+      "action": "sync",
+      "description": "Skill-routing fixture read by routing-check.sh: everyday prompts per skill, negatives for confusable pairs, name-free prompts that share no word with their skill's name, the collision allow-list and exempt list with reasons, and the committed thresholds and both rank-1 ratchets"
+    },
     "tests/fixtures/router-lesson-mining.json": {
       "source": "tests/fixtures/router-lesson-mining.json",
       "target": "tests/fixtures/router-lesson-mining.json",
@@ -2705,6 +2717,12 @@
       "target": "tests/hooks/test-eval-coverage.sh",
       "action": "sync",
       "description": "Fixture test for eval-coverage.sh coverage: each coverage rule and its distractors, nested cases, results/ and mocks/ excluded, --json fields, exit-2 paths, and a deterministic run over the real evals/ and skills"
+    },
+    "tests/hooks/test-routing-check.sh": {
+      "source": "tests/hooks/test-routing-check.sh",
+      "target": "tests/hooks/test-routing-check.sh",
+      "action": "sync",
+      "description": "Fixture test for routing-check.sh: collision fail, warn and allow-list bands, positive hit, miss and tie, negatives with and without an owner and a negative tie, name-free counting, coverage and exempt list, both ratchets, frontmatter shapes read and rejected, non-finite numbers, a non-UTF-8 terminal, threshold flags, --json fields, exit-2 paths, run-fixtures and validate-toolkit failing on a failed check, and a deterministic run over the real skills"
     },
     "references/product-context.md": {
       "source": ".claude/references/product-context.md",

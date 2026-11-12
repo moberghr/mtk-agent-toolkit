@@ -29,6 +29,7 @@ paths:
 - **S2.5** Every `description` field (in manifest, plugin.json, and frontmatter) must be a single clear sentence explaining what the artifact does — not marketing copy, not a list.
 - **S2.6** Descriptions should help Claude route to the right tool. "Reusable planning skill for substantial .NET changes" > "A skill for planning".
 - **S2.6a** Every skill `description` loads into **every** session (Claude Code reserves ~1% of context for skill metadata). Keep each ≤ **200 chars** (keyword-dense "what + when") and the aggregate across all skills under the toolkit budget. `validate-toolkit.sh` enforces both and prints the running total — treat a failure as "tighten wording", not "raise the cap".
+- **S2.6b** A new skill needs at least two trigger prompts in `tests/fixtures/skill-routing.json`, written the way an engineer would ask. At least one of them must be name-free: it uses no word of the skill's name. Add a negative for any skill it is easy to confuse with. A skill that is only reached by typing its command gets an `exempt` entry with a reason instead. `scripts/routing-check.sh` (run by `validate-toolkit.sh`) fails when the prompts do not reach the skill or when two descriptions read too much alike. Fix that by rewording the description, not by bending the prompts toward it.
 
 ## Pressure Tests
 

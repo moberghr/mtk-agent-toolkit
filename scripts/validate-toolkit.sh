@@ -657,6 +657,14 @@ done
 printf 'Skill descriptions: %d chars (~%d tokens) / %d-char budget.\n' "$desc_total" "$((desc_total / 4))" "$DESC_TOTAL_BUDGET"
 [ "$desc_total" -le "$DESC_TOTAL_BUDGET" ] || fail "Skill descriptions exceed the aggregate budget ($desc_total > $DESC_TOTAL_BUDGET chars). They load into every session — tighten the longest ones."
 
+# Skill routing (S2.6): the model picks a skill from its name and description, so
+# the descriptions must route the committed prompts and stay apart from each other.
+# A model-free lexical check; its thresholds, allow-list and ratchet live in
+# tests/fixtures/skill-routing.json. It prints its warnings and one summary line.
+require_file "scripts/routing-check.sh"
+require_file "tests/fixtures/skill-routing.json"
+bash scripts/routing-check.sh --quiet || fail "skill routing check failed (run: bash scripts/routing-check.sh)"
+
 if [ -d ".claude/rules" ]; then
   while IFS= read -r rule; do
     rule_lines="$(wc -l < "$rule")"
