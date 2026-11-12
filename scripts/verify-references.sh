@@ -11,6 +11,15 @@ set -euo pipefail
 # Checks (parity with the former inline STEP 3.5a bash):
 #   1. Directory claims — every `path/`-shaped token must `test -d`.
 #      (Also covers the rules-file proper-noun scan: rules files are passed in.)
+#      Placeholder segments — `<name>`, `{name}` (not `{a,b}` alternation),
+#      `$VAR` / `${VAR}`, `YYYY-MM-DD` and `…` / `...` — become `*`, and a
+#      token with `*` or `?` is a pattern: it resolves when any path matches
+#      (root, src/, or the git index at any depth). A bare `name/` directory
+#      resolves when a tracked directory of that name exists at any depth.
+#      Unresolved tokens that git ignores (runtime state such as `.mtk/`) are
+#      skipped. Authors opt a token out with `<!-- verify-references: ignore -->`
+#      on its line, or a glob in `.claude/verify-references.ignore` (one per
+#      line, `#` comments). The skipped count goes to stderr.
 #   2. Project-file claims — each referenced `.csproj` must exist on disk.
 #   3. Framework / version claims — informational dump of actual TargetFramework
 #      / requires-python / engines so the caller can cross-check version claims.
@@ -60,10 +69,76 @@ done
 [ "${#EXISTING[@]}" -gt 0 ] || { echo "verify-references: no input files resolved" >&2; exit 2; }
 
 STALE=0
+SKIPPED=0
 
 # Known-optional references: paths that are legitimately referenced-but-absent
 # (gitignored, created lazily on first use, or never checked in) — never STALE.
 KNOWN_OPTIONAL='^(\.claude/settings\.local\.json|\.claude\.local\.md|tasks/todo\.md|\.claude/review-config\.local\.json)$'
+
+# Author opt-outs: one glob per line in the ignore file (`#` comments), or the
+# marker comment on the line that carries the token.
+IGNORE_MARKER='<!-- verify-references: ignore -->'
+IGNORE_GLOBS=()
+if [ -f .claude/verify-references.ignore ]; then
+  while IFS= read -r g || [ -n "$g" ]; do
+    g="${g#"${g%%[![:space:]]*}"}"; g="${g%"${g##*[![:space:]]}"}"   # trim
+    case "$g" in ''|'#'*) continue ;; esac
+    IGNORE_GLOBS+=("$g")
+  done < .claude/verify-references.ignore
+fi
+
+opted_out() { # $1 = token, $2 = token without trailing slash
+  local g
+  for g in ${IGNORE_GLOBS[@]+"${IGNORE_GLOBS[@]}"}; do
+    # shellcheck disable=SC2254  # $g is a glob by design
+    case "$1" in $g) return 0 ;; esac
+    # shellcheck disable=SC2254
+    case "$2" in $g) return 0 ;; esac
+  done
+  return 1
+}
+
+# Placeholder segments → `*`. `${…}` first so `${VAR:-x}` is one placeholder;
+# `{a,b}` alternation (has a comma) is left alone.
+to_pattern() {
+  printf '%s\n' "$1" | LC_ALL=C sed -E \
+    -e 's/\$\{[^{}]*\}/*/g' -e 's/\$[A-Za-z_][A-Za-z0-9_]*/*/g' \
+    -e 's/\{[^{},\/]+\}/*/g' -e 's/<[^<>\/]+>/*/g' \
+    -e 's/…/*/g' -e 's/\.\.\.+/*/g' -e 's/YYYY(-?MM(-?DD)?)?/*/g'
+}
+
+# Plain path: root, src/, or the git index (a tracked file or directory). A
+# bare `name/` (no inner separator) is subtree-relative in running text — e.g.
+# `lib/` right after `hooks/` — so a tracked `name/` at any depth resolves it.
+path_resolves() {
+  [ -e "$1" ] || [ -e "src/$1" ] && return 0
+  git ls-files --error-unmatch -- "$1" >/dev/null 2>&1 && return 0
+  case "$1" in */*) return 1 ;; esac
+  [ -n "$(git ls-files -- "*/$1/*" 2>/dev/null)" ]
+}
+
+# Pattern: any match at root, under src/, or anywhere in the git index. A
+# leading placeholder (`$ROOT/…`, `<repo>/…`) is an unknown root, so the rest
+# is also tried from the repo root.
+glob_resolves() {
+  local pat="$1" alt="" m
+  case "$pat" in '*/'*) alt="${pat#\*/}" ;; esac
+  # Unquoted on purpose: these expand as globs (tokens never contain spaces).
+  for m in $pat src/$pat ${alt:+$alt}; do [ -e "$m" ] && return 0; done
+  [ -n "$(git ls-files -- "$pat" "*/$pat" ${alt:+"$alt"} 2>/dev/null)" ]
+}
+
+# Backtick spans per line as `<opted-out 0|1><TAB><token>`.
+extract_tokens() {
+  awk -v marker="$IGNORE_MARKER" '{
+    ign = index($0, marker) ? 1 : 0
+    s = $0
+    while (match(s, /`[^`]+`/)) {
+      print ign "\t" substr(s, RSTART + 1, RLENGTH - 2)
+      s = substr(s, RSTART + RLENGTH)
+    }
+  }' "$1" 2>/dev/null | sort -u || true
+}
 
 # --- Check 1: path / directory claims (near-zero false positives) ------------
 # Only path-like tokens INSIDE backtick code spans count (never prose), and a
@@ -71,7 +146,7 @@ KNOWN_OPTIONAL='^(\.claude/settings\.local\.json|\.claude\.local\.md|tasks/todo\
 # src/, AND in the git index. This avoids the broad-regex noise (prose slashes
 # like `I/O`, npm scopes, subtree-relative paths) that buried real stale refs.
 for file in "${EXISTING[@]}"; do
-  while IFS= read -r tok; do
+  while IFS=$'\t' read -r ign tok; do
     [ -z "$tok" ] && continue
     case "$tok" in *" "*|http*|ftp*|@*) continue ;; esac   # prose / URL / npm scope
     tok="${tok%%:*}"                                        # strip path:line / path:Symbol citation suffix
@@ -81,13 +156,28 @@ for file in "${EXISTING[@]}"; do
     echo "$tok" | grep -qE '(^(src|apps|packages|libs|services|tests?|lib)/|\.[A-Za-z0-9]+$)' || continue
     p="${tok%/}"
     echo "$p" | grep -qE "$KNOWN_OPTIONAL" && continue    # known-optional: legitimately referenced-but-absent
-    # resolve subtree-relative before declaring stale: root, src/, then git index
-    if [ -e "$p" ] || [ -e "src/$p" ] || git ls-files --error-unmatch "$p" >/dev/null 2>&1 || git ls-files "$p" 2>/dev/null | grep -qF "$p"; then
-      continue
-    fi
-    echo "STALE in $file: '$tok' looks like a path but resolves nowhere (root, src/, or git index)"
+    if [ "$ign" = 1 ] || opted_out "$tok" "$p"; then SKIPPED=$((SKIPPED + 1)); continue; fi
+    case "$p" in
+      *'<'*'>'*|*'{'*'}'*|*'$'*|*'...'*|*'…'*|*YYYY*) pat="$(to_pattern "$p")" ;;
+      *) pat="$p" ;;
+    esac
+    case "$pat" in
+      *'*'*|*'?'*)
+        glob_resolves "$pat" && continue
+        probe="${pat//\*/x}"; probe="${probe//\?/x}"
+        what="looks like a path pattern but matches nothing" ;;
+      *)
+        path_resolves "$p" && continue
+        probe="$p"
+        what="looks like a path but resolves nowhere" ;;
+    esac
+    # Git-ignored = runtime/generated state (e.g. `.mtk/`), present only at run
+    # time. The trailing slash is kept so directory-only ignore rules match.
+    case "$tok" in */) probe="$probe/" ;; esac
+    if git check-ignore -q -- "$probe" 2>/dev/null; then SKIPPED=$((SKIPPED + 1)); continue; fi
+    echo "STALE in $file: '$tok' $what (root, src/, or git index)"
     STALE=$((STALE + 1))
-  done < <(grep -oE '`[^`]+`' "$file" 2>/dev/null | tr -d '`' | sort -u || true)
+  done < <(extract_tokens "$file")
 done
 
 # --- Check 2: project-file claims (.csproj) ----------------------------------
@@ -119,6 +209,9 @@ while IFS= read -r proj; do
 done < <(grep -h 'Project(' ./*.sln 2>/dev/null | grep -oE '"[^"]+\.csproj"' | tr -d '"' | tr '\\' '/' | sort -u || true)
 
 # --- Report -----------------------------------------------------------------
+if [ "$SKIPPED" -gt 0 ]; then
+  echo "verify-references: skipped $SKIPPED git-ignored or opted-out reference(s)" >&2
+fi
 if [ "$STALE" -gt 0 ]; then
   echo "verify-references: $STALE stale reference(s) found" >&2
   exit 3

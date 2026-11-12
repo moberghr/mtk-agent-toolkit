@@ -4,6 +4,14 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+
+- `scripts/eval-coverage.sh` lists the skills that no eval case exercises. It reads the case files only, never results, and makes no model calls. A case counts for a skill when the skill is one of its `tags`, its prompt invokes `/<skill>`, `/mtk <skill>` or `/mtk:<skill>`, or a grader names `skills/<skill>/`. The rule is a heuristic and is stated in `--help` and the report header. `--json` gives the same report for scripts. On MTK's nine cases it finds 3 of 33 skills covered. The per-case lift table the script is named for is not built yet, because no stored `aggregate-result.json` was available to confirm the per-run fields.
+
+### Fixed
+
+- `verify-references.sh` no longer reports placeholder and glob paths as stale. A token such as `.claude/skills/<skill-name>/SKILL.md`, `tech-stack-{name}/SKILL.md` or `docs/handoffs/*.md` is now matched as a pattern, a bare directory such as `lib/` is found at any depth, and paths that git ignores (runtime state like `.mtk/`) are skipped. Authors can opt a path out with `<!-- verify-references: ignore -->` on its line or a glob in `.claude/verify-references.ignore`. Real missing paths are still reported with the same line and exit code 3, so the seven false positives on MTK's own rule files are gone.
+
 ## [9.4.2] - 2026-10-22
 
 The MTK version is now the same everywhere it shows, and a release can't miss a place. Before this,

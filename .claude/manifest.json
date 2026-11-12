@@ -1305,6 +1305,12 @@
       "action": "sync",
       "description": "Eval pipeline overview, directory layout, and manual/automated run guidance"
     },
+    "scripts/eval-coverage.sh": {
+      "source": "scripts/eval-coverage.sh",
+      "target": "scripts/eval-coverage.sh",
+      "action": "sync",
+      "description": "Offline eval coverage report: lists the skills no evals/<case>/ exercises (tag, prompt invocation or grader skill path), human or --json; reads case files only, no model calls"
+    },
     "tests/pressure-tests/test-reviewer-pressure.md": {
       "source": "tests/pressure-tests/test-reviewer-pressure.md",
       "target": "tests/pressure-tests/test-reviewer-pressure.md",
@@ -2007,6 +2013,12 @@
       "action": "sync",
       "description": "Check directories, .csproj projects, and .sln members referenced in generated docs exist on disk; print STALE advisories (exit 3 if any)"
     },
+    ".claude/verify-references.ignore": {
+      "source": ".claude/verify-references.ignore",
+      "target": ".claude/verify-references.ignore",
+      "action": "sync",
+      "description": "This repo's opt-out globs for verify-references.sh: paths its rule files name that exist only in target repos (the setup stamp)"
+    },
     "scripts/audit-drift-check.sh": {
       "source": "scripts/audit-drift-check.sh",
       "target": "scripts/audit-drift-check.sh",
@@ -2657,6 +2669,18 @@
       "target": "tests/hooks/test-verify-commands.sh",
       "action": "sync",
       "description": "Fixture-based tests for scripts/verify-commands.sh covering verified, failed, and timeout outcomes"
+    },
+    "tests/hooks/test-verify-references.sh": {
+      "source": "tests/hooks/test-verify-references.sh",
+      "target": "tests/hooks/test-verify-references.sh",
+      "action": "sync",
+      "description": "Fixture-repo test for verify-references.sh: placeholder and glob tokens resolve or are skipped when git-ignored, inline and ignore-file opt-outs, true positives keep their exact STALE line and exit 3"
+    },
+    "tests/hooks/test-eval-coverage.sh": {
+      "source": "tests/hooks/test-eval-coverage.sh",
+      "target": "tests/hooks/test-eval-coverage.sh",
+      "action": "sync",
+      "description": "Fixture test for eval-coverage.sh coverage: each coverage rule and its distractors, nested cases, results/ and mocks/ excluded, --json fields, exit-2 paths, and a deterministic run over the real evals/ and skills"
     },
     "references/product-context.md": {
       "source": ".claude/references/product-context.md",
