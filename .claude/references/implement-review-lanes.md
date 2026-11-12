@@ -12,7 +12,9 @@ outside implement. Findings follow `.claude/references/review-finding-schema.md`
 
 Stage 1 (`compliance-reviewer`, sonnet at high effort) always runs first: spec compliance, security, architecture
 and coding standards against the sealed spec. Fix **Critical** findings before Stage 2. Stage 2
-lanes run on sonnet, in parallel (one message, several `Agent` calls).
+lanes run on sonnet, in parallel (one message, several `Agent` calls). When the diff is mostly
+security or financial-state logic, spawn `compliance-reviewer` on the `strong` tier instead (pass
+`model` on the spawn); `.claude/references/model-routing.md` owns the tiers, the bindings and the fallback.
 
 | Lane | LIGHT / STANDARD | HIGH | MAX | Outside implement |
 |---|---|---|---|---|

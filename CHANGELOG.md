@@ -4,6 +4,15 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Fixed
+
+- `/mtk` now routes "review PR 123", "review this branch" and "review the diff" to `code-review-and-quality`. Before, the bare `review` keyword sent them to `pre-commit-review`, which only reviews staged changes before a commit. The pre-commit row now says it is for staged changes.
+- `/mtk` now routes design questions ("brainstorm…", "how should we…") to `brainstorming` and spec-only requests ("write a spec…", "spec out…") to `spec-driven-development`. `security-and-hardening` and `context-engineering` stay model-invoked, with no route. The `/mtk` decision rule in `AGENTS.md` and the routing guide list the three new routes, and a router fixture pins them.
+- The review lanes now apply the model-routing policy. A diff that is mostly security or financial-state logic gets `compliance-reviewer` on the `strong` tier, with `model-routing.md` as the source of truth.
+- The `CODE_INDEX.md` template no longer points at `scripts/build-code-index.sh`, which never existed. It says the index is kept by hand, and that `scripts/spec-archive.sh` appends newly shipped contracts.
+- `implement` points at `env-knobs.md` for `MTK_HELPER_ROOT`, not at `CLAUDE.md`, which no longer defines it.
+- `env-knobs.md` documents 13 more variables that hooks and scripts read: the remediation iteration cap, the four output-compression knobs, the two verification-excerpt bounds, the git pre-commit blocking switch, the secret-scan skip, the shrink-guard override, the lessons auto-seed switch, the workflow re-injection window and the artifact-root override.
+
 ## [9.4.2] - 2026-10-22
 
 The MTK version is now the same everywhere it shows, and a release can't miss a place. Before this,
