@@ -33,18 +33,25 @@ RMRF="rm -$(printf 'rf') /"
 DROPT="$(printf 'DROP') $(printf 'TABLE') users"
 FPUSH="git push --$(printf 'force') origin main"
 
-gate() { # $1 = command string -> prints "blocked" or "allowed"
-  local payload rc
+gate() { # $1 = command string -> prints "blocked", "allowed" or "error (…)"
+  # "blocked" needs exit 2 AND a deny reason (first stderr line starting
+  # BLOCKED), so a gate that dies on a syntax error (also exit 2) is not a pass.
+  local payload rc first
   payload="$(python3 -c 'import json,sys;print(json.dumps({"session_id":"t","tool_name":"Bash","tool_input":{"command":sys.argv[1]}}))' "$1")"
   set +e
-  printf '%s' "$payload" | CLAUDE_PROJECT_DIR="$REPO_ROOT" bash "$HOOK" >/dev/null 2>&1
+  printf '%s' "$payload" | CLAUDE_PROJECT_DIR="$REPO_ROOT" bash "$HOOK" >/dev/null 2>"$TMP/gate.err"
   rc=$?
   set -e
-  [ "$rc" -eq 2 ] && printf 'blocked' || printf 'allowed'
+  first="$(awk 'NR == 1' "$TMP/gate.err")"
+  case "$rc:$first" in
+    2:BLOCKED*) printf 'blocked' ;;
+    0:*) printf 'allowed' ;;
+    *) printf 'error (exit %s: %s)' "$rc" "$first" ;;
+  esac
 }
 
-allow() { [ "$(gate "$2")" = allowed ] || fail "$1: should be ALLOWED but was blocked -> $2"; }
-block() { [ "$(gate "$2")" = blocked ] || fail "$1: should be BLOCKED but was allowed -> $2"; }
+allow() { local r; r="$(gate "$2")"; [ "$r" = allowed ] || fail "$1: should be ALLOWED but was $r -> $2"; }
+block() { local r; r="$(gate "$2")"; [ "$r" = blocked ] || fail "$1: should be BLOCKED but was $r -> $2"; }
 
 # --- class 1: read-only segments mention, they do not execute -----------------
 allow "grep for a delete"   "grep -rn '$RMRF' hooks/"
@@ -77,6 +84,32 @@ allow "bash -c grep"                "bash -c \"grep -E '$RMRF' hooks/*.sh\""
 allow "sed as a filter"             "sed -n '/$RMRF/p' hooks/x.sh"
 allow "awk pattern"                 "awk '/$RMRF/' hooks/x.sh"
 allow "time grep"                   "time grep -rn '$RMRF' hooks"
+
+# --- class 5: a recursive force delete of a literal, specific path ----------------
+# An allow-list (rm_broad in hooks/lib/gate-backstop.sh): a delete the 9.4.2 gate
+# denied is allowed when every operand is fully literal, has no `.`/`..`/.git
+# component, and is relative or strictly below /tmp or /private/tmp. Home in any
+# spelling, any other absolute path and any expansion (an unset $TMPDIR turns
+# "$TMPDIR/x" into /x) stay denied. A relative glob such as build/* was allowed
+# by 9.4.2 and still is (tests/hooks/test-security-gate-rm-table.sh pins the
+# full table of differences).
+DEL="rm -$(printf 'rf')"
+allow "delete ./node_modules"       "$DEL ./node_modules"
+allow "delete .next"                "$DEL .next"
+allow "delete ./dist/tmp"           "$DEL ./dist/tmp"
+allow "delete /tmp/build-abc"       "$DEL /tmp/build-abc"
+allow "two literal dirs"            "$DEL node_modules dist"
+allow "split flags, literal dir"    "rm -r -f ./node_modules"
+allow "quoted path with a space"    "$DEL \"my build\""
+allow "dots inside a name"          "$DEL build/v1..2"
+for t in / '/*' '~' '~/' '~/*' '~root' '~+' '$HOME' '$HOME/' '${HOME}' '${HOME}/' . ./ './*' .. ../ '*' '*.log' \
+         /usr /etc/ /tmp /tmp/ '/tmp/*' /Users /home /Users/someone /usr/local \
+         '$X' '"$X"' '$(pwd)' '$X/build' '$TMPDIR' '"$TMPDIR/"' '$TMPDIR/*' .git ./a/.git \
+         '"$TMPDIR/x"' '${TMPDIR}/build' '~/x/cache' '$HOME/.cache/foo'; do
+  block "broad target $t"           "$DEL $t"
+done
+allow "relative glob (9.4.2 allowed)" "$DEL build/*"
+block "broad among literals"        "$DEL build /"
 
 # --- the real checks must still fire -----------------------------------------
 block "delete inside a for loop"    "for f in x; do $RMRF; done"

@@ -38,14 +38,17 @@ if [ -n "$SS_INPUT" ]; then
   if [ -n "${_MTK_SESSION_ID:-}" ]; then
     SS_FP="$(mtk_tree_fingerprint 2>/dev/null)" || SS_FP=""
     SS_FILE="$(mtk_session_file)"
-    mtk_session_lock_acquire "$SS_FILE"
-    mtk_load_session_state "$SS_FILE"
-    if [ -n "$SS_FP" ] && [ -z "${session_start_tree:-}" ] && [ "${event_seq:-0}" -eq 0 ]; then
-      session_start_base="${SS_FP%% *}"
-      session_start_tree="${SS_FP#* }"
+    # A busy lock records no baseline: verify-completion then runs its gap
+    # checks (fail closed) instead of trusting an unlocked, possibly late one.
+    if mtk_session_lock_acquire "$SS_FILE"; then
+      mtk_load_session_state "$SS_FILE"
+      if [ -n "$SS_FP" ] && [ -z "${session_start_tree:-}" ] && [ "${event_seq:-0}" -eq 0 ]; then
+        session_start_base="${SS_FP%% *}"
+        session_start_tree="${SS_FP#* }"
+      fi
+      mtk_save_session_state "$SS_FILE"
+      mtk_session_lock_release "$SS_FILE"
     fi
-    mtk_save_session_state "$SS_FILE"
-    mtk_session_lock_release "$SS_FILE"
   fi
 fi
 # Liveness: count one session per `startup` (read by mtk-doctor's hook-liveness

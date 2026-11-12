@@ -3,7 +3,7 @@ set -euo pipefail
 
 # hooks/evidence-ledger.sh (formerly context-budget.sh) keeps only the evidence
 # ledger verify-completion reads:
-#   - an Edit/Write bumps the edit sequence
+#   - an Edit/Write/MultiEdit/NotebookEdit bumps the edit sequence
 #   - a write-pattern Bash command bumps it too; a read-only one does not
 #   - a verification command is recorded with its outcome and a tree fingerprint
 #   - it never records the session baseline itself
@@ -36,7 +36,14 @@ post() { # $1 session  $2 tool  $3 command-or-path  [$4 stdout] → hook stdout
 import json, sys
 sid, tool, arg = sys.argv[1], sys.argv[2], sys.argv[3]
 out = sys.argv[4] if len(sys.argv) > 4 else ""
-ti = {"command": arg} if tool == "Bash" else {"file_path": arg}
+if tool == "Bash":
+    ti = {"command": arg}
+elif tool == "NotebookEdit":
+    ti = {"notebook_path": arg, "new_source": "x = 1", "edit_mode": "replace"}
+elif tool == "MultiEdit":
+    ti = {"file_path": arg, "edits": [{"old_string": "a", "new_string": "b"}]}
+else:
+    ti = {"file_path": arg}
 print(json.dumps({"session_id": sid, "hook_event_name": "PostToolUse", "tool_name": tool,
                   "tool_input": ti, "tool_response": {"stdout": out, "stderr": ""}}))
 PY
@@ -60,6 +67,19 @@ post s1 Bash 'ls -la' >/dev/null
 post s1 Bash "sed -i.bak 's/one/two/' a.txt" >/dev/null
 e2="$(field s1 last_edit_seq)"; [ "$e2" -gt "$e1" ] || fail "write-pattern Bash must bump last_edit_seq ($e1 -> $e2)"
 printf '  PASS  edit sequence: Edit and write-pattern Bash bump it, read-only Bash does not\n'
+
+# --- MultiEdit and NotebookEdit are edits too ----------------------------------
+# Outside git verify-completion compares edit and verification sequence numbers,
+# so an edit tool that does not bump the edit sequence after a verification run
+# would let the stale verification stand.
+m0="$(field s1 mods)"
+post s1 MultiEdit "$WORK/a.txt" >/dev/null
+e3="$(field s1 last_edit_seq)"; [ "$e3" -gt "$e2" ] || fail "MultiEdit must bump last_edit_seq ($e2 -> $e3)"
+[ "$(field s1 mods)" -gt "$m0" ] || fail "MultiEdit must count as a modification"
+post s1 NotebookEdit "$WORK/nb.ipynb" >/dev/null
+e4="$(field s1 last_edit_seq)"; [ "$e4" -gt "$e3" ] || fail "NotebookEdit must bump last_edit_seq ($e3 -> $e4)"
+[ "$(field s1 last_edit_seq)" = "$(field s1 event_seq)" ] || fail "NotebookEdit's edit sequence must be its own event"
+printf '  PASS  MultiEdit and NotebookEdit bump the edit sequence\n'
 
 # --- verification recorded with outcome + fingerprint --------------------------
 post s1 Bash 'pytest' '===== 5 passed =====' >/dev/null

@@ -90,6 +90,7 @@ expect() {
 
 P="$PROJ"
 NL=$'\n'
+TAB=$'\t'
 
 # ============================ SC1: weakening edits deny ========================
 
@@ -326,6 +327,165 @@ expect "approval list denied before .mtk exists (case variant)" 2 "$(run_guard "
 expect "approval list denied before .mtk exists (../ segment)" 2 "$(run_guard "$(write_payload \
   "$P/src/../.mtk/config-guard-allow" "Directory.Build.props")")"
 mkdir -p "$P/.mtk"
+
+# ============================ SC7: MultiEdit / NotebookEdit ====================
+# MultiEdit is one edit of one file: every edits[] entry is read, the old_strings
+# are the before text and the new_strings the after text (entries share no
+# list/section state), so a weakening in ANY entry denies exactly as the same
+# change made with Edit does, and a setting moved between entries is not one.
+multiedit_payload() { # $1 path, then old/new pairs
+  python3 - "$@" <<'PY'
+import json, sys
+path, rest = sys.argv[1], sys.argv[2:]
+edits = [{"old_string": rest[i], "new_string": rest[i + 1]} for i in range(0, len(rest) - 1, 2)]
+print(json.dumps({"hook_event_name": "PreToolUse", "tool_name": "MultiEdit",
+                  "tool_input": {"file_path": path, "edits": edits}}))
+PY
+}
+notebook_payload() { # $1 notebook path
+  python3 - "$1" <<'PY'
+import json, sys
+print(json.dumps({"hook_event_name": "PreToolUse", "tool_name": "NotebookEdit",
+                  "tool_input": {"notebook_path": sys.argv[1], "new_source": "x = 1",
+                                 "edit_mode": "replace"}}))
+PY
+}
+TSC="$P/tsconfig.json"
+
+expect "deny:W2-DISABLED MultiEdit: \"strict\": true -> false in tsconfig" 2 "$(run_guard "$(multiedit_payload \
+  "$TSC" '"strict": true,' '"strict": false,')")"
+expect "deny:W2-DISABLED MultiEdit: the weakening is in the second entry" 2 "$(run_guard "$(multiedit_payload \
+  "$TSC" '"target": "es2020",' '"target": "es2022",' '"strict": true,' '"strict": false,')")"
+expect "deny:W1-SUPPRESS MultiEdit: NoWarn code added in the third entry" 2 "$(run_guard "$(multiedit_payload \
+  "$P/Directory.Build.props" \
+  '<LangVersion>11</LangVersion>' '<LangVersion>12</LangVersion>' \
+  '<Nullable>enable</Nullable>' '<Nullable>enable</Nullable>' \
+  '<NoWarn>CS1591</NoWarn>' '<NoWarn>CS1591;CA2007</NoWarn>')")"
+expect "allow:W2-DISABLED MultiEdit: strict line moved from one entry to another" 0 "$(run_guard "$(multiedit_payload \
+  "$TSC" "\"strict\": true,${NL}    \"target\": \"es2022\"," '"target": "es2022",' \
+  '"module": "esnext"' "\"module\": \"esnext\",${NL}    \"strict\": true")")"
+expect "allow:W1-SUPPRESS MultiEdit: non-weakening entries (version bumps)" 0 "$(run_guard "$(multiedit_payload \
+  "$P/src/App/App.csproj" \
+  '<PackageReference Include="Serilog" Version="3.1.1" />' '<PackageReference Include="Serilog" Version="4.0.2" />' \
+  '<TargetFramework>net8.0</TargetFramework>' '<TargetFramework>net9.0</TargetFramework>')")"
+p="$(multiedit_payload "$TSC" '"target": "es2020",' '"target": "es2022",' '"strict": true,' '"strict": false,')"
+p="${p/'"tool_name": "MultiEdit", '/}"
+case "$p" in *tool_name*) printf 'FAIL: tool_name not stripped from the MultiEdit payload\n' >&2; fails=$((fails + 1)) ;; esac
+expect "deny:W2-DISABLED MultiEdit without tool_name (inferred from edits[])" 2 "$(run_guard "$p")"
+expect "MultiEdit of the approval list itself denied" 2 "$(run_guard "$(multiedit_payload \
+  "$P/.mtk/config-guard-allow" "" "Directory.Build.props")")"
+expect "deny:T1-SKIP MultiEdit: skip added in the second entry of a test file" 2 "$(MTK_TEST_GUARD_ENFORCE=active \
+  "$GUARD" <<<"$(multiedit_payload "$P/tests/Calc.Tests/CalcTests.cs" \
+  'var a = 1;' 'var a = 2;' '[Fact]' '[Fact(Skip = "flaky")]')" >/dev/null 2>"$LAST_ERR" && echo 0 || echo $?)"
+expect "NotebookEdit of the approval list itself denied" 2 "$(run_guard "$(notebook_payload \
+  "$P/.mtk/config-guard-allow")")"
+expect "NotebookEdit of a notebook passes" 0 "$(run_guard "$(notebook_payload "$P/notebooks/explore.ipynb")")"
+# Another harness may omit tool_name: a payload carrying only notebook_path (plus
+# the notebook fields) is a NotebookEdit, so the approval-list protection applies.
+nb_notool_payload() { # $1 notebook path
+  python3 - "$1" <<'PY'
+import json, sys
+print(json.dumps({"hook_event_name": "PreToolUse",
+                  "tool_input": {"notebook_path": sys.argv[1], "new_source": "x = 1"}}))
+PY
+}
+p="$(nb_notool_payload "$P/.mtk/config-guard-allow")"
+case "$p" in *tool_name*) printf 'FAIL: notebook payload carries a tool_name\n' >&2; fails=$((fails + 1)) ;; esac
+expect "no tool_name, notebook_path only: the approval list itself denied" 2 "$(run_guard "$p")"
+expect "no tool_name, notebook_path only: a notebook passes" 0 "$(run_guard "$(nb_notool_payload \
+  "$P/notebooks/explore.ipynb")")"
+
+# ============================ SC9: control characters in the target path =======
+# `read` stops at a newline, so the old normaliser kept only the first line:
+# `src/x<LF>/../../.mtk/config-guard-allow` read as `src/x` and the approval list
+# was writable. The payloads come from json.dumps, so the path carries a real JSON
+# `\n` / `\t` escape that the hook's own extraction decodes. A target path holding
+# any control character is denied outright (hard guard, every tool, any file).
+CTL_ALLOW="$P/src/x${NL}/../../.mtk/config-guard-allow"
+p="$(write_payload "$CTL_ALLOW" "Directory.Build.props")"
+case "$p" in *'\n/../../.mtk/'*) ;; *) printf 'FAIL: payload lacks the JSON newline escape: %s\n' "$p" >&2; fails=$((fails + 1)) ;; esac
+expect "Write src/x<LF>/../../.mtk/config-guard-allow denied" 2 "$(run_guard "$p")"
+expect "Edit src/x<LF>/../../.mtk/config-guard-allow denied" 2 "$(run_guard "$(edit_payload \
+  "$CTL_ALLOW" "" "Directory.Build.props")")"
+expect "MultiEdit src/x<LF>/../../.mtk/config-guard-allow denied" 2 "$(run_guard "$(multiedit_payload \
+  "$CTL_ALLOW" "" "Directory.Build.props")")"
+expect "NotebookEdit src/x<LF>/../../.mtk/config-guard-allow denied" 2 "$(run_guard "$(notebook_payload "$CTL_ALLOW")")"
+expect "no tool_name, notebook_path src/x<LF>/../../.mtk/config-guard-allow denied" 2 "$(run_guard \
+  "$(nb_notool_payload "$CTL_ALLOW")")"
+msg="$("$GUARD" 2>&1 >/dev/null <<<"$(write_payload "$CTL_ALLOW" "Directory.Build.props")" || true)"
+check_msg "(control character) says why" 1 "control character"
+check_msg "(control character) does not echo the hostile path" 0 "config-guard-allow"
+check_msg "(control character) teaches no toggle" 0 "disable this guard"
+expect "a tab in an ordinary file name denied" 2 "$(run_guard "$(edit_payload \
+  "$P/src/a${TAB}b.cs" 'var a = 1;' 'var a = 2;')")"
+expect "a newline in an ordinary file name denied (Write, new file)" 2 "$(run_guard "$(write_payload \
+  "$P/notes${NL}.txt" "hello")")"
+expect "a carriage return after a config file name denied" 2 "$(run_guard "$(edit_payload \
+  "$P/tsconfig.json"$'\r' '"target": "es2020",' '"target": "es2022",')")"
+expect "a path with spaces and glob characters is an ordinary path" 0 "$(run_guard "$(edit_payload \
+  "$P/src/a b*?[x].cs" 'var a = 1;' 'var a = 2;')")"
+
+# ============================ SC8: removed strictness, ESLint numeric 0 ========
+# Deleting (or commenting out) a strictness setting weakens the config as surely
+# as flipping it to false. Moving it, or folding sub-flags into the "strict"
+# umbrella, does not.
+expect "deny:W2-DISABLED tsconfig \"strict\": true line deleted" 2 "$(run_guard "$(edit_payload \
+  "$TSC" "\"strict\": true,${NL}    \"target\": \"es2022\"," '"target": "es2022",')")"
+expect "deny:W2-DISABLED csproj TreatWarningsAsErrors line deleted" 2 "$(run_guard "$(edit_payload \
+  "$P/src/App/App.csproj" \
+  "<LangVersion>12</LangVersion>${NL}    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>" \
+  '<LangVersion>12</LangVersion>')")"
+expect "deny:W2-DISABLED tsconfig strict line commented out" 2 "$(run_guard "$(edit_payload \
+  "$TSC" '    "strict": true,' '    // "strict": true,')")"
+expect "deny:W2-DISABLED tsconfig noImplicitAny deleted (no umbrella added)" 2 "$(run_guard "$(edit_payload \
+  "$TSC" "\"noImplicitAny\": true,${NL}    \"target\": \"es2022\"," '"target": "es2022",')")"
+# Pinned, intended: the guard judges the Edit's own fragment, never the rest of
+# the file. With "strict": true elsewhere on disk, noImplicitAny is redundant,
+# but a fragment that drops it without showing "strict": true still reads as a
+# removed strictness setting and is denied. Conservative by design: reading the
+# file would let one edit borrow strictness that another edit then removes. The
+# engineer's approval list is the escape for a genuine cleanup.
+printf '{\n  "compilerOptions": {\n    "strict": true,\n    "noImplicitAny": true,\n    "target": "es2022"\n  }\n}\n' > "$TSC"
+expect "deny:W2-DISABLED redundant noImplicitAny dropped while \"strict\": true sits outside the fragment" 2 \
+  "$(run_guard "$(edit_payload "$TSC" "\"noImplicitAny\": true,${NL}    \"target\": \"es2022\"," '"target": "es2022",')")"
+rm -f "$TSC"
+printf '{\n  "compilerOptions": {\n    "strict": true,\n    "target": "es2022"\n  }\n}\n' > "$TSC"
+expect "deny:W2-DISABLED Write over tsconfig drops \"strict\": true" 2 "$(run_guard "$(write_payload \
+  "$TSC" "$(printf '{\n  "compilerOptions": {\n    "target": "es2022"\n  }\n}\n')")")"
+rm -f "$TSC"
+p="$(edit_payload "$TSC" "\"strict\": true,${NL}    \"target\": \"es2022\"," \
+  "\"target\": \"es2022\",${NL}    \"strict\": true,")"
+expect "allow:W2-DISABLED tsconfig strict line moved within the same edit" 0 "$(run_guard "$p")"
+expect "allow:W2-DISABLED noImplicitAny + strictNullChecks folded into \"strict\": true" 0 "$(run_guard "$(edit_payload \
+  "$TSC" "\"noImplicitAny\": true,${NL}    \"strictNullChecks\": true," '"strict": true,')")"
+expect "allow:W2-DISABLED strict line added" 0 "$(run_guard "$(edit_payload \
+  "$TSC" '"target": "es2022",' "\"target\": \"es2022\",${NL}    \"strict\": true,")")"
+
+# ESLint numeric severity 0 is "off". Only ESLint files, only a rule-shaped key
+# (hyphen or plugin slash, or a single-word core rule), only the severity slot.
+expect "deny:W2-DISABLED eslint numeric severity 2 -> 0 (.eslintrc.json)" 2 "$(run_guard "$(edit_payload \
+  "$P/.eslintrc.json" '"no-console": 2,' '"no-console": 0,')")"
+expect "deny:W2-DISABLED eslint [2, {...}] -> [0, {...}] (eslint.config.mjs)" 2 "$(run_guard "$(edit_payload \
+  "$P/eslint.config.mjs" "'no-unused-vars': [2, { args: 'none' }]," "'no-unused-vars': [0, { args: 'none' }],")")"
+expect "deny:W2-DISABLED eslint plugin rule set to 0" 2 "$(run_guard "$(edit_payload \
+  "$P/.eslintrc.json" '"@typescript-eslint/no-explicit-any": "error",' '"@typescript-eslint/no-explicit-any": 0,')")"
+expect "deny:W2-DISABLED eslint unquoted core rule curly: 2 -> 0" 2 "$(run_guard "$(edit_payload \
+  "$P/eslint.config.js" '    curly: 2,' '    curly: 0,')")"
+expect "deny:W2-DISABLED eslint YAML severity 2 -> 0 (.eslintrc.yml)" 2 "$(run_guard "$(edit_payload \
+  "$P/.eslintrc.yml" '  no-console: 2' '  no-console: 0')")"
+expect "allow:W2-DISABLED eslint severity 2 -> 1 (warn) is not weakening" 0 "$(run_guard "$(edit_payload \
+  "$P/.eslintrc.json" '"no-console": 2,' '"no-console": 1,')")"
+expect "allow:W2-DISABLED eslint severity 0 -> 2 re-enables a rule" 0 "$(run_guard "$(edit_payload \
+  "$P/.eslintrc.json" '"no-console": 0,' '"no-console": 2,')")"
+expect "allow:W2-DISABLED eslint \"off\" -> 0 keeps the rule off (no new weakening)" 0 "$(run_guard "$(edit_payload \
+  "$P/.eslintrc.json" '"no-console": "off",' '"no-console": 0,')")"
+expect "allow:W2-DISABLED eslint option value 0 is not a severity" 0 "$(run_guard "$(edit_payload \
+  "$P/.eslintrc.json" '"no-magic-numbers": ["error", { "ignore": [1] }],' \
+  '"no-magic-numbers": ["error", { "ignore": [0, 1] }],')")"
+expect "allow:W2-DISABLED \"tabWidth\": 0 in a non-ESLint file (biome.json)" 0 "$(run_guard "$(edit_payload \
+  "$P/biome.json" '"tabWidth": 2,' '"tabWidth": 0,')")"
+expect "allow:W2-DISABLED hyphenated \"max-nesting-depth\": 0 in a non-ESLint file (.stylelintrc.json)" 0 \
+  "$(run_guard "$(edit_payload "$P/.stylelintrc.json" '"max-nesting-depth": 3,' '"max-nesting-depth": 0,')")"
 
 # ============================ SC6: test-tamper class ===========================
 # Test files of a code extension at a test-shaped repo-relative path. Each signal
@@ -800,7 +960,7 @@ expect "non-Edit/Write tool ignored" 0 "$(run_guard \
 # typo'd event key must fail this.
 if command -v python3 >/dev/null 2>&1; then
   for wf in hooks/hooks.json; do
-    got="$(python3 - "$REPO_ROOT/$wf" PreToolUse 'Edit|Write' config-guard.sh <<'PY'
+    got="$(python3 - "$REPO_ROOT/$wf" PreToolUse 'Edit|Write|MultiEdit|NotebookEdit' config-guard.sh <<'PY'
 import json, sys
 path, event, matcher, base = sys.argv[1:5]
 try:
@@ -815,9 +975,9 @@ print("missing")
 PY
 )"
     if [ "$got" = "wired" ]; then
-      printf '  PASS  %s wires config-guard.sh under PreToolUse "Edit|Write"\n' "$wf"
+      printf '  PASS  %s wires config-guard.sh under PreToolUse "Edit|Write|MultiEdit|NotebookEdit"\n' "$wf"
     else
-      printf 'FAIL: %s: config-guard.sh not wired under PreToolUse "Edit|Write" (%s)\n' "$wf" "$got" >&2
+      printf 'FAIL: %s: config-guard.sh not wired under PreToolUse "Edit|Write|MultiEdit|NotebookEdit" (%s)\n' "$wf" "$got" >&2
       fails=$((fails + 1))
     fi
   done
