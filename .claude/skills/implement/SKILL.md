@@ -22,7 +22,7 @@ The entry point for substantial work. Stack specifics come from the active tech 
 Before doing anything else:
 
 0. Init or resume a workflow artifact (`.claude/skills/workflow-artifacts/SKILL.md`).
-   - **Resolve the helper once** — plugin installs have no project-relative copy, and `CLAUDE_PLUGIN_ROOT` is never set in the Bash environment (Claude Code substitutes the braced `${CLAUDE_PLUGIN_ROOT}` into skill text at load time instead), so a bare `scripts/workflow-artifact.sh` fails. Resolve it `MTK_HELPER_ROOT`-first (a checkout you pin — see `CLAUDE.md`), then project, then plugin, and use `"$WFA"` for every `workflow-artifact.sh` call in this skill:
+   - **Resolve the helper once** — plugin installs have no project-relative copy, and `CLAUDE_PLUGIN_ROOT` is never set in the Bash environment (Claude Code substitutes the braced `${CLAUDE_PLUGIN_ROOT}` into skill text at load time instead), so a bare `scripts/workflow-artifact.sh` fails. Resolve it `MTK_HELPER_ROOT`-first (a checkout you pin — see `.claude/references/env-knobs.md`), then project, then plugin, and use `"$WFA"` for every `workflow-artifact.sh` call in this skill:
      ```bash
      WFA="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/workflow-artifact.sh" || ([ -f scripts/workflow-artifact.sh ] && echo scripts/workflow-artifact.sh || echo "${CLAUDE_PLUGIN_ROOT}/scripts/workflow-artifact.sh"))"
      ```

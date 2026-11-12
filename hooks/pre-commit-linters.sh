@@ -173,32 +173,94 @@ if [ -d "$PATTERNS_DIR/project" ]; then
 fi
 
 # --- Get diff (runs against the current working directory / invoking repo) ---
+# core.quotepath=off: by default git C-quotes any path with a non-ASCII byte
+# (`+++ "b/\303\234ber.cs"`), which the header match below would miss, so a
+# staged Über.cs went unscanned or had its findings pinned on the previous file.
 case "$DIFF_SOURCE" in
-  cached) DIFF_CMD=(git diff --cached -U0 --no-color) ;;
-  range)  DIFF_CMD=(git diff "$DIFF_RANGE" -U0 --no-color) ;;
-  *)      DIFF_CMD=(git diff HEAD -U0 --no-color) ;;
+  cached) DIFF_CMD=(git -c core.quotepath=off diff --cached -U0 --no-color) ;;
+  range)  DIFF_CMD=(git -c core.quotepath=off diff "$DIFF_RANGE" -U0 --no-color) ;;
+  *)      DIFF_CMD=(git -c core.quotepath=off diff HEAD -U0 --no-color) ;;
 esac
 
 # --- Extract file:line:content for added lines ---
 # awk walks the unified diff. Hunk header @@ -a,b +c,d @@ gives new-side
 # starting line c. We increment for each +line and each context-but-we-skip
 # line (but -U0 means zero context; only +, -, and @@ lines appear).
+# The `+++` file header is read only between `diff --git` and the first hunk;
+# inside a hunk every `+` line is an added line, so one whose text starts with
+# "++ " (shown as `+++ …`) is scanned and counted, never taken for a header, and
+# an empty added line still advances the line number. Git ends that header with
+# a tab when the name has a space, and still C-quotes a name holding `"`, `\` or
+# a control character even with quotepath off; both are undone here.
+#
+# Record: <file>\t<line>\t<content>, where <file> is ALREADY JSON-escaped
+# (jesc below, total: `\`, `"` and every control byte). A tab or newline from a
+# file name therefore never reaches the tab/newline-separated record stream —
+# unquoted raw, `tab<TAB>name.cs` split into file `tab`, line `name.cs`, and the
+# emitted JSON failed to parse. The escaping adds no `/` or `.` and every escape
+# holds a backslash, so mtk_path_class reads the same basename and extension on
+# the escaped name as on the real one. LC_ALL=C: bytes in, the same bytes out
+# (sprintf("%c") of a control code is one byte; names stay byte-exact).
 added_lines() {
-  "${DIFF_CMD[@]}" | awk '
-    /^\+\+\+ b\// { file=substr($0, 7); next }
-    /^\+\+\+ \/dev\/null/ { file=""; next }
+  "${DIFF_CMD[@]}" | LC_ALL=C awk '
+    BEGIN {
+      # git C-quote escapes; octal \ooo covers every other control byte.
+      Q["a"] = sprintf("%c", 7); Q["b"] = sprintf("%c", 8); Q["t"] = "\t"
+      Q["n"] = "\n"; Q["v"] = sprintf("%c", 11); Q["f"] = sprintf("%c", 12)
+      Q["r"] = "\r"; Q["\""] = "\""; Q["\\"] = "\\"
+      # JSON escapes: backslash, quote, and every control byte (and DEL).
+      for (i = 1; i < 32; i++) J[sprintf("%c", i)] = sprintf("\\u%04x", i)
+      J[sprintf("%c", 127)] = "\\u007f"
+      J["\t"] = "\\t"; J["\n"] = "\\n"; J["\r"] = "\\r"
+      J["\""] = "\\\""; J["\\"] = "\\\\"
+    }
+    function unquote(s,   out, i, c, n) {
+      s = substr(s, 2, length(s) - 2)
+      out = ""
+      n = length(s)
+      for (i = 1; i <= n; i++) {
+        c = substr(s, i, 1)
+        if (c == "\\" && i < n) {
+          i++
+          c = substr(s, i, 1)
+          if (c ~ /[0-7]/ && i + 2 <= n) { c = sprintf("%c", (c * 64) + (substr(s, i + 1, 1) * 8) + substr(s, i + 2, 1)); i += 2 }
+          else if (c in Q) c = Q[c]
+        }
+        out = out c
+      }
+      return out
+    }
+    function jesc(s,   out, i, c, n) {
+      out = ""
+      n = length(s)
+      for (i = 1; i <= n; i++) {
+        c = substr(s, i, 1)
+        out = out ((c in J) ? J[c] : c)
+      }
+      return out
+    }
+    /^diff --git / { in_hdr = 1; next }
+    in_hdr && /^\+\+\+ / {
+      f = substr($0, 5)
+      sub(/\t$/, "", f)
+      if (f == "/dev/null") { file = ""; next }
+      if (substr(f, 1, 1) == "\"") f = unquote(f)
+      file = jesc((substr(f, 1, 2) == "b/") ? substr(f, 3) : f)
+      next
+    }
     /^@@ / {
+      in_hdr = 0
       # Parse +c,d — the part after the space-plus
       if (match($0, /\+[0-9]+/)) {
         line = substr($0, RSTART+1, RLENGTH-1) + 0 - 1
       } else { line = 0 }
       next
     }
-    /^\+[^+]/ {
+    !in_hdr && /^\+/ {
       line++
-      if (file != "") {
-        # Strip the leading +
-        content = substr($0, 2)
+      # Strip the leading +; an empty added line is counted but not emitted.
+      content = substr($0, 2)
+      if (file != "" && content != "") {
         # Skip binary markers
         if (content !~ /^Binary files /) {
           printf "%s\t%d\t%s\n", file, line, content
@@ -207,6 +269,29 @@ added_lines() {
       next
     }
   '
+}
+
+# JSON string body for $1 (no surrounding quotes), escaped totally: `\`, `"`
+# and every control character — a raw TAB or CR inside a JSON string makes the
+# whole report unparseable. Parameter expansion only; the control-character
+# pass runs only when one is present.
+mtk_json_str() {
+  local s="${1:-}" o c u
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  case "$s" in *[[:cntrl:]]*) ;; *) printf '%s' "$s"; return 0 ;; esac
+  s="${s//$'\t'/\\t}"; s="${s//$'\n'/\\n}"; s="${s//$'\r'/\\r}"
+  for o in 001 002 003 004 005 006 007 010 013 014 016 017 020 021 022 023 \
+    024 025 026 027 030 031 032 033 034 035 036 037 177; do
+    printf -v c '%b' "\\0$o"
+    case "$s" in
+      # Pattern and replacement stay unquoted: bash 3.2 keeps nested quotes
+      # literally, and $u (\u00XX) has no glob character or `&`, so bash 5.2's
+      # patsub_replacement leaves it alone.
+      *"$c"*) printf -v u '\\u%04x' "$((8#$o))"; s="${s//$c/$u}" ;;
+    esac
+  done
+  printf '%s' "$s"
 }
 
 # --- Scan added lines against patterns ---
@@ -224,9 +309,9 @@ scan() {
       finding_index=$((finding_index + 1))
       local fid
       fid=$(printf 'L%03d' "$finding_index")
-      # JSON-escape content preview for rationale
+      # JSON-escape content preview for rationale (file is escaped already)
       local preview
-      preview=$(printf '%s' "$content" | sed 's/\\/\\\\/g; s/"/\\"/g' | cut -c1-120)
+      preview="$(mtk_json_str "${content:0:120}")"
       findings+=("{\"id\":\"$fid\",\"severity\":\"$severity\",\"confidence\":100,\"source\":\"linter\",\"rule\":\"$rule_id\",\"file\":\"$file\",\"line\":$line,\"rationale\":\"$rationale\",\"suggested_fix\":\"$fix\",\"evidence\":\"$preview\"}")
     fi
   done < <(added_lines)
@@ -279,12 +364,15 @@ scan_cached() {
       code)  [ "${REC_CLASS[idx-1]}" = "prose" ] && continue ;;
       prose) [ "${REC_CLASS[idx-1]}" = "code" ] && continue ;;
     esac
+    # Already JSON-escaped by added_lines (any name git can stage).
     file="${REC_FILE[idx-1]}"
     line="${REC_LINE[idx-1]}"
     content="${REC_CONTENT[idx-1]}"
     finding_index=$((finding_index + 1))
     fid=$(printf 'L%03d' "$finding_index")
-    preview=$(printf '%s' "$content" | sed 's/\\/\\\\/g; s/"/\\"/g' | cut -c1-120)
+    # Cut first, then escape: cutting the escaped text could split a `\\` pair
+    # and leave a lone `\` that escapes the closing quote.
+    preview="$(mtk_json_str "${content:0:120}")"
     findings+=("{\"id\":\"$fid\",\"severity\":\"$severity\",\"confidence\":100,\"source\":\"linter\",\"rule\":\"$rule_id\",\"file\":\"$file\",\"line\":$line,\"rationale\":\"$rationale\",\"suggested_fix\":\"$fix\",\"evidence\":\"$preview\"}")
   done <<< "$hits"
 }

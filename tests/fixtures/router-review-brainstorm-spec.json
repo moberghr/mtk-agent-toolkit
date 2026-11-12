@@ -1,0 +1,18 @@
+{
+  "id": "router-review-brainstorm-spec",
+  "fixture_type": "router-mapping",
+  "description": "A PR, branch or diff review routes to code-review-and-quality while a staged-changes review stays with pre-commit-review; a design exploration routes to brainstorming and a spec-only request to spec-driven-development, ahead of the bare review/add/new keywords lower in the table.",
+  "cases": [
+    { "prompt": "review PR 123", "expected_skill": "code-review-and-quality" },
+    { "prompt": "review this branch before merge", "expected_skill": "code-review-and-quality" },
+    { "prompt": "review my staged changes before commit", "expected_skill": "pre-commit-review" },
+    { "prompt": "brainstorm approaches for rate limiting", "expected_skill": "brainstorming" },
+    { "prompt": "how should we add idempotency keys to payouts?", "expected_skill": "brainstorming" },
+    { "prompt": "write a spec for a new export endpoint", "expected_skill": "spec-driven-development" },
+    { "prompt": "spec out the billing change", "expected_skill": "spec-driven-development" }
+  ],
+  "expected": {
+    "next_action": "route",
+    "rationale": "The code-review, brainstorming and spec rows sit above pre-commit-review, fix and implement, so first-match-wins precedence keeps the bare review/check/commit and add/new keywords from taking a PR review, a design question or a spec-only request, while a staged-changes review still reaches pre-commit-review."
+  }
+}
