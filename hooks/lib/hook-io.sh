@@ -522,7 +522,10 @@ mtk_ensure_session_baseline() {
     return 0
   fi
   fp="$(mtk_tree_fingerprint 2>/dev/null)" || return 0
-  mtk_session_lock_acquire "$sf"
+  # Busy lock: record no baseline. Without one verify-completion runs its gap
+  # checks (fail closed); an unlocked write could land after a tool's event and
+  # record a baseline that already contains that tool's change (fail open).
+  mtk_session_lock_acquire "$sf" || return 0
   mtk_load_session_state "$sf"
   if [ -z "${session_start_tree:-}" ] && [ "${event_seq:-0}" -eq 0 ]; then
     session_start_base="${fp%% *}"
@@ -621,48 +624,163 @@ mtk_sq_escape() {
   printf '%s' "${1:-}" | sed "s/'/'\\\\''/g"
 }
 
-# Advisory session-file lock using atomic mkdir (portable; no flock dependency).
-# Best-effort: after ~5s of contention we continue anyway to avoid stalling
-# interactive hooks. Paired with atomic-rename writes in mtk_save_session_state
-# so a dropped lock never leaves a half-written state file visible to readers.
-# Both lock helpers accept the session-file path as $1 so callers that already
+# Advisory lock on "<path>.lock" (portable; no flock dependency): an atomic
+# mkdir, plus an owner token the holder writes inside it as an empty file named
+# o.<pid>.<random>. Paired with atomic-rename writes in mtk_save_session_state,
+# so readers never see a half-written state file whether or not a writer held
+# the lock.
+#
+# Contract: acquire returns 0 only when this process holds the lock, and 1
+# after a bounded wait when it does not: at most MTK_SESSION_LOCK_TRIES
+# (default 20) tries 50 ms apart, about 1 s, and never much past 2 s of wall
+# clock (SECONDS) however slowly a loaded host runs each try. The bound stays
+# well under the shortest timeout of a hook that takes this lock
+# (evidence-ledger.sh, `timeout: 3`), so a busy lock reaches the caller's own
+# fallback instead of the harness killing the hook. Every caller decides what a
+# busy lock means for it; under `set -e` a bare call would end the hook, so none
+# is bare. Release removes the lock only when this process's own token is still
+# in it, so a caller whose acquire failed, or whose token was reaped, cannot
+# remove the current holder's lock.
+#
+# A live holder keeps this lock for single-digit milliseconds (load state →
+# update counters → save), but the harness SIGTERMs a hook that overruns its
+# `timeout`, and SIGTERM does not run the EXIT trap, so the directory can
+# outlive the process that made it. Without taking it over, every later hook
+# would pay the full wait. So a waiter inspects the holder: a token whose pid is
+# dead (`kill -0`) is a corpse and is reaped at once; a token whose pid is alive
+# is reaped only once it is older than MTK_SESSION_LOCK_MAX_AGE_SECS (default
+# 30, by the token's mtime) — that pid was reused by a long-lived process after
+# the holder died. The token's age is read once per token per acquire: it only
+# grows, and one acquire's wait is far shorter than the bound.
+# _mtk_session_lock_reap renames the owner's uniquely named token out of the
+# directory, and only the waiter whose rename succeeded removes the directory —
+# two waiters cannot both win. A directory with no readable token (a holder
+# between its mkdir and its token write, one killed in that window, or a lock
+# left by an older MTK) is reaped by age only, once older than
+# MTK_SESSION_LOCK_STALE_SECS (default 2); a token-less one by rmdir, which
+# cannot remove a directory that has meanwhile gained a token.
+#
+# The pid is $BASHPID where bash has it (4+), else $$; a lock taken inside a
+# bash 3.2 subshell therefore records the parent's pid and counts as live while
+# the parent runs.
+#
+# Both helpers accept the session-file path as $1 so callers that already
 # computed it don't pay the cksum|cut + date pipeline again (memoization inside
 # mtk_session_file cannot help here — `$(...)` runs it in a subshell, so the
 # memo never reaches the parent). No-arg calls keep the old behavior.
+#
+# _MTK_LOCKS_HELD lists the token paths this process holds, one per line (kept
+# across a re-source of this file); release consults it before touching disk.
+_MTK_LOCKS_HELD="${_MTK_LOCKS_HELD:-}"
 mtk_session_lock_acquire() {
   local lock
   lock="${1:-$(mtk_session_file)}.lock"
-  local tries=0
-  # A live holder keeps this lock for single-digit milliseconds (load state →
-  # update counters → save). So a lock older than a couple of seconds is not
-  # contention, it is a corpse: the harness SIGTERMs a hook that overruns its
-  # `timeout` (evidence-ledger.sh runs under `timeout: 3`), and SIGTERM does not
-  # run the EXIT trap, so the directory outlives the process that made it.
-  # Without stealing it, every later hook pays the full spin below — 100 × 50ms
-  # of dead wall-clock on the next tool call, for a counter nobody blocks on.
+  local pid="${BASHPID:-$$}"
+  local tok="${lock}/o.${pid}.${RANDOM}${RANDOM}"
+  local max="${MTK_SESSION_LOCK_TRIES:-20}"
   local stale_secs="${MTK_SESSION_LOCK_STALE_SECS:-2}"
-  local mtime now
-  while ! mkdir "$lock" 2>/dev/null; do
-    # Increment first: every path through this loop must advance the counter, or
-    # a lock we can see but cannot rmdir spins forever.
-    tries=$((tries + 1))
-    if [ "$tries" -ge 100 ]; then
-      return 0
-    fi
-    mtime=$(stat -c '%Y' "$lock" 2>/dev/null || stat -f '%m' "$lock" 2>/dev/null || echo 0)
-    now=$(date +%s)
-    if [ "$mtime" -gt 0 ] && [ "$((now - mtime))" -ge "$stale_secs" ]; then
+  local max_age="${MTK_SESSION_LOCK_MAX_AGE_SECS:-30}"
+  case "$max" in ''|*[!0-9]*) max=20 ;; esac
+  case "$stale_secs" in ''|*[!0-9]*) stale_secs=2 ;; esac
+  case "$max_age" in ''|*[!0-9]*) max_age=30 ;; esac
+  local tries=0 give_up="" owner opid age young="" nl='
+'
+  while :; do
+    if mkdir "$lock" 2>/dev/null; then
+      if { : > "$tok"; } 2>/dev/null; then
+        _MTK_LOCKS_HELD="${_MTK_LOCKS_HELD}${tok}${nl}"
+        return 0
+      fi
+      # The token cannot be written (unwritable or full TMPDIR): the directory
+      # is ours and empty, so remove it rather than leave a token-less lock that
+      # every later hook would wait out, and report the lock as not taken.
       rmdir "$lock" 2>/dev/null || true
-      continue
+      return 1
     fi
-    sleep 0.05 2>/dev/null || sleep 1
+    # Increment first: every path through this loop must advance the counter, or
+    # a lock we can see but cannot reap spins forever. The wall-clock cap (whole
+    # seconds, so at least ceil(max × 50 ms) and under one second more) is set on
+    # the first busy try, keeping the uncontended path to one mkdir.
+    tries=$((tries + 1))
+    [ -n "$give_up" ] || give_up=$((SECONDS + (max + 19) / 20 + 1))
+    [ "$tries" -lt "$max" ] && [ "$SECONDS" -lt "$give_up" ] || return 1
+    [ -d "$lock" ] || continue
+    owner=""
+    for owner in "$lock"/o.*; do break; done
+    [ -e "$owner" ] || owner=""
+    opid="${owner##*/o.}"
+    opid="${opid%%.*}"
+    case "$opid" in ''|*[!0-9]*) opid="" ;; esac
+    if [ -n "$opid" ]; then
+      # A recorded owner. A live pid is waited on until its token is older than
+      # max_age. (A pid we may not signal counts as dead; the lock lives in this
+      # user's own TMPDIR.)
+      if kill -0 "$opid" 2>/dev/null; then
+        if [ "$owner" != "$young" ]; then
+          age="$(_mtk_lock_age "$owner")" || age=""
+          [ -n "$age" ] && [ "$age" -ge "$max_age" ] || young="$owner"
+        fi
+        if [ "$owner" = "$young" ]; then
+          sleep 0.05 2>/dev/null || sleep 1
+          continue
+        fi
+      fi
+    else
+      # No readable owner: reaped by age only.
+      age="$(_mtk_lock_age "$lock")" || age=""
+      if [ -z "$age" ] || [ "$age" -lt "$stale_secs" ]; then
+        sleep 0.05 2>/dev/null || sleep 1
+        continue
+      fi
+    fi
+    _mtk_session_lock_reap "$lock" "$owner" || true
   done
 }
 
-mtk_session_lock_release() {
-  local lock
-  lock="${1:-$(mtk_session_file)}.lock"
+# Seconds since PATH was last modified; returns 1 when that cannot be read.
+_mtk_lock_age() {
+  local mtime now
+  mtime=$(stat -c '%Y' "$1" 2>/dev/null || stat -f '%m' "$1" 2>/dev/null) || return 1
+  now=$(date +%s) || return 1
+  case "${mtime}${now}" in ''|*[!0-9]*) return 1 ;; esac
+  printf '%s\n' "$((now - mtime))"
+}
+
+# Reap a stale lock: _mtk_session_lock_reap LOCK OWNER-TOKEN-PATH. Renaming the
+# owner's uniquely named token is the atomic step: of several waiters reaping
+# the same token exactly one rename succeeds, and only that waiter removes the
+# directory; a lock re-taken meanwhile carries a different token, so a late
+# reaper's rename fails and leaves it alone. With no OWNER (a token-less lock)
+# rmdir is the atomic step. Returns 0 only when this caller reaped the lock.
+_mtk_session_lock_reap() {
+  local lock="$1" owner="${2:-}" reaped
+  if [ -z "$owner" ]; then
+    rmdir "$lock" 2>/dev/null || return 1
+    return 0
+  fi
+  reaped="${lock}.reaped.${BASHPID:-$$}.${RANDOM}${RANDOM}"
+  mv "$owner" "$reaped" 2>/dev/null || return 1
+  rm -f "$reaped" 2>/dev/null || true
   rmdir "$lock" 2>/dev/null || true
+  return 0
+}
+
+mtk_session_lock_release() {
+  local lock tok rest nl='
+'
+  lock="${1:-$(mtk_session_file)}.lock"
+  case "${_MTK_LOCKS_HELD}" in
+    *"${lock}/o."*) ;;
+    *) return 0 ;;
+  esac
+  rest="${_MTK_LOCKS_HELD#*"${lock}/o."}"
+  tok="${lock}/o.${rest%%"${nl}"*}"
+  _MTK_LOCKS_HELD="${_MTK_LOCKS_HELD/"${tok}${nl}"/}"
+  [ -e "$tok" ] || return 0
+  # One process removes the token and then the (now empty) directory; where
+  # rm has no -d, fall back to two.
+  rm -d -f "$tok" "$lock" 2>/dev/null || { rm -f "$tok" 2>/dev/null; rmdir "$lock" 2>/dev/null; } || true
+  return 0
 }
 
 mtk_init_session_state() {
@@ -1086,10 +1204,12 @@ mtk_classify_verification_outcome() {
   fi
 }
 
+# Best-effort counters: a busy lock skips the increment and returns 0, so the
+# guard that calls them never ends on a counter.
 mtk_record_scope_guard_warning() {
   local session_file
   session_file="$(mtk_session_file)"
-  mtk_session_lock_acquire "$session_file"
+  mtk_session_lock_acquire "$session_file" || return 0
   mtk_load_session_state "$session_file"
   scope_guard_warnings=$((scope_guard_warnings + 1))
   mtk_save_session_state "$session_file"
@@ -1100,7 +1220,7 @@ mtk_record_benchmark_run() {
   local score="$1"
   local session_file
   session_file="$(mtk_session_file)"
-  mtk_session_lock_acquire "$session_file"
+  mtk_session_lock_acquire "$session_file" || return 0
   mtk_load_session_state "$session_file"
   benchmarks_run=$((benchmarks_run + 1))
   benchmark_last_score="$score"
