@@ -5,13 +5,13 @@ set -euo pipefail
 _mtk_hook_diag() { local c=$?; [[ $c -ne 0 ]] && echo "[mtk-hook:$(basename "$0")] exit $c" >&2 2>/dev/null || true; return 0; }
 trap _mtk_hook_diag EXIT
 
-# PostToolUse hook (Edit|Write|Bash): the session evidence ledger that
-# verify-completion reads at Stop. Formerly context-budget.sh; the file/operation/
+# PostToolUse hook (Edit|Write|MultiEdit|NotebookEdit|Bash): the session
+# evidence ledger that verify-completion reads at Stop. Formerly context-budget.sh; the file/operation/
 # byte thresholds and their CONTEXT BUDGET nudges are gone — current models and
 # the harness's own /context track that — so this hook never prints anything.
 #
 # What it records, per session (keyed on session_id, else project + date):
-#   - every event bumps event_seq; Edit/Write bump the edit sequence, and so does
+#   - every event bumps event_seq; the edit tools bump the edit sequence, and so does
 #     a Bash command that writes files (mtk_command_writes_files) — the seq
 #     fallback for trees git cannot fingerprint
 #   - a verification command (mtk_command_is_verification) is recorded with its
@@ -47,19 +47,26 @@ fi
 # Session-scoped state file (keyed on session_id, else per-project per-day).
 # Hold the advisory lock for the full load→modify→save cycle so concurrent
 # PreToolUse/PostToolUse firings don't lose counter updates through
-# last-writer-wins races.
+# last-writer-wins races. If the lock stays busy past its bound (a live holder
+# that has not let go), record the event anyway, unlocked: this ledger is the
+# evidence verify-completion reads, and a dropped edit event would let an
+# outside-git session pass its seq check (fail open). The save is an atomic
+# rename, so the worst case is the pre-existing last-writer-wins race.
 SESSION_FILE="$(mtk_session_file)"
-mtk_session_lock_acquire "$SESSION_FILE"
+LEDGER_LOCKED=0
+mtk_session_lock_acquire "$SESSION_FILE" && LEDGER_LOCKED=1
 mtk_load_session_state "$SESSION_FILE"
 
 # The session baseline ("did this session change anything") is not recorded
 # here: after a tool ran it already contains that tool's effect, and every tool
-# this hook sees (Edit|Write|Bash) can change files. session-start and the
+# this hook sees (the edit tools and Bash) can change files. session-start and the
 # PreToolUse hooks (scope-guard, format-on-edit --flush-before-verify) record it.
 
-# Update counters based on tool type
+# Update counters based on tool type. MultiEdit and NotebookEdit are edits like
+# Edit/Write: outside git the seq fallback must see them re-arm the gap. Only
+# the tool name counts here, never the path (NotebookEdit names it notebook_path).
 case "$TOOL_NAME" in
-  Edit|Write)
+  Edit|Write|MultiEdit|NotebookEdit)
     event_seq=$((event_seq + 1))
     mods=$((mods + 1))
     ops=$((ops + 1))
@@ -114,6 +121,6 @@ case "$TOOL_NAME" in
 esac
 
 mtk_save_session_state "$SESSION_FILE"
-mtk_session_lock_release "$SESSION_FILE"
+[ "$LEDGER_LOCKED" -eq 0 ] || mtk_session_lock_release "$SESSION_FILE"
 
 exit 0

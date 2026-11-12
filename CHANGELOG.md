@@ -6,6 +6,43 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ### Fixed
 
+- **The scope guard can no longer be walked past with `..` or a control character.** A path such
+  as `.mtk/../src/b.cs` is normalised before any exemption or manifest match
+  (`hooks/lib/normalize-path.sh`, shared with the config guard). A path holding a newline or
+  another control character is never exempt, and the config guard refuses it outright.
+- **An empty `change_manifest` no longer denies every edit.** In active mode the guard says once
+  per session that the spec has no readable manifest. A failed or empty parse is not cached.
+- **`MultiEdit` and `NotebookEdit` go through the edit guards and the post-edit hooks.** The
+  config guard judges every entry of a `MultiEdit`; the evidence ledger counts both as edits.
+- **The config guard flags a removed strictness setting and ESLint severity `0`.**
+- **The security gate denies more bypasses:**
+  - a download run through `eval`, `source` or an interpreter;
+  - a delete command invoked through a variable;
+  - deleting a protected branch by push;
+  - `TRUNCATE` without `TABLE`, including in a heredoc, a pipe or a file fed to a SQL client;
+  - abbreviated `--hard`.
+- **A recursive force-delete of a specific path is no longer denied as "broad".** A delete the
+  9.4.2 gate denied is now allowed when every operand is a literal path inside the working
+  directory or below `/tmp`, with no `..`, no `.git` component, no expansion, glob or brace. So
+  deleting `./node_modules` or `/tmp/build-abc` passes. Everything 9.4.2 allowed is still allowed,
+  except the bypasses below. This is a deliberate, narrow exception to S3.18, in both gate layers.
+- **More recursive force-deletes are denied:** a relative operand after a `cd` or `pushd` to
+  somewhere outside the working directory (`cd ~ && …`), an operand with a `..` or `.git`
+  component, and a broad operand hidden behind an escaped separator, an fd-close redirect, a
+  line continuation or a lone brace.
+- **The security gate's run time is bounded.** A command over `MTK_SECURITY_GATE_MAX_BYTES`,
+  `MTK_SECURITY_GATE_MAX_SEGMENTS`, `MTK_SECURITY_GATE_MAX_SUBST` or
+  `MTK_SECURITY_GATE_MAX_SHELL_C` is denied at once, shells nested more than 8 deep are denied,
+  prefix stripping stops after 128 words, and a command still being judged after
+  `MTK_SECURITY_GATE_DEADLINE_SECS` (3) is denied. Before, a long command could outlast the hook
+  timeout, which does not block.
+- **The session lock is owned.** Acquire fails visibly after about 1 s when the lock is busy,
+  release only removes the caller's own lock, and a live holder's lock is taken only after
+  `MTK_SESSION_LOCK_MAX_AGE_SECS` (30).
+- **The pre-commit linter reads non-ASCII and quoted file names**, keeps its JSON valid for any
+  file name, and counts added empty lines so line numbers are right.
+- **Usage analytics count a session once**, add only new operations on each Stop, and record a
+  failed write in `.mtk/metrics/.analytics-error` instead of losing it.
 - `/mtk` now routes "review PR 123", "review this branch" and "review the diff" to `code-review-and-quality`. Before, the bare `review` keyword sent them to `pre-commit-review`, which only reviews staged changes before a commit. The pre-commit row now says it is for staged changes.
 - `/mtk` now routes design questions ("brainstorm…", "how should we…") to `brainstorming` and spec-only requests ("write a spec…", "spec out…") to `spec-driven-development`. `security-and-hardening` and `context-engineering` stay model-invoked, with no route. The `/mtk` decision rule in `AGENTS.md` and the routing guide list the three new routes, and a router fixture pins them.
 - The review lanes now apply the model-routing policy. A diff that is mostly security or financial-state logic gets `compliance-reviewer` on the `strong` tier, with `model-routing.md` as the source of truth.

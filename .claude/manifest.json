@@ -143,6 +143,12 @@
       "action": "sync",
       "description": "Verifies scope-guard warns once per file per session, ignores finished or receipted specs, and matches exact paths or directory prefixes only"
     },
+    "tests/hooks/test-session-lock.sh": {
+      "source": "tests/hooks/test-session-lock.sh",
+      "target": "tests/hooks/test-session-lock.sh",
+      "action": "sync",
+      "description": "Verifies the session lock: owner token, release only by the holder, visible failure on a busy lock, live holders never stolen, dead owners reaped by exactly one waiter"
+    },
     "tests/hooks/test-mtk-doctor-hot-path.sh": {
       "source": "tests/hooks/test-mtk-doctor-hot-path.sh",
       "target": "tests/hooks/test-mtk-doctor-hot-path.sh",
@@ -165,7 +171,7 @@
       "source": "hooks/evidence-ledger.sh",
       "target": "hooks/evidence-ledger.sh",
       "action": "sync",
-      "description": "PostToolUse evidence ledger (Edit|Write|Bash): records verification runs with a working-tree fingerprint, bumps the edit sequence on file-writing commands, and keeps the session baseline that verify-completion checks"
+      "description": "PostToolUse evidence ledger (Edit|Write|MultiEdit|NotebookEdit|Bash): records verification runs with a working-tree fingerprint, bumps the edit sequence on file-writing commands, and keeps the session baseline that verify-completion checks"
     },
     "evals/verification-evidence/scaffold.sh": {
       "source": "evals/verification-evidence/scaffold.sh",
@@ -1102,7 +1108,7 @@
       "source": "hooks/context-guard.sh",
       "target": "hooks/context-guard.sh",
       "action": "sync",
-      "description": "PostToolUse context guard (Edit|Write|Bash): reads the main-thread context size from the transcript tail, writes .mtk/sessions/<session>/telemetry.json (git-ignored .mtk only, mode 0600), nudges once per workflow step at MTK_CTX_SOFT/MTK_CTX_HARD to checkpoint and /clear, and once per 150k band from MTK_CTX_GENERIC without a workflow; python-free throttle, never blocks"
+      "description": "PostToolUse context guard (Edit|Write|MultiEdit|NotebookEdit|Bash): reads the main-thread context size from the transcript tail, writes .mtk/sessions/<session>/telemetry.json (git-ignored .mtk only, mode 0600), nudges once per workflow step at MTK_CTX_SOFT/MTK_CTX_HARD to checkpoint and /clear, and once per 150k band from MTK_CTX_GENERIC without a workflow; python-free throttle, never blocks"
     },
     "hooks/subagent-context.sh": {
       "source": "hooks/subagent-context.sh",
@@ -1321,7 +1327,7 @@
       "source": "hooks/scope-guard.sh",
       "target": "hooks/scope-guard.sh",
       "action": "sync",
-      "description": "PreToolUse Edit|Write hook that warns once per file per session when editing outside the active spec's change_manifest; ignores finished or receipted specs; records the session baseline"
+      "description": "PreToolUse Edit|Write|MultiEdit|NotebookEdit hook that warns once per file per session when editing outside the active spec's change_manifest; ignores finished or receipted specs; records the session baseline"
     },
     "hooks/lib/hook-io.sh": {
       "source": "hooks/lib/hook-io.sh",
@@ -1406,6 +1412,12 @@
       "target": "tests/hooks/test-security-gate-long-command.sh",
       "action": "sync",
       "description": "Test that security-gate.sh judges a ~15k-char heredoc command within its hook timeout and still denies a destructive tail"
+    },
+    "tests/hooks/test-security-gate-rm-table.sh": {
+      "source": "tests/hooks/test-security-gate-rm-table.sh",
+      "target": "tests/hooks/test-security-gate-rm-table.sh",
+      "action": "sync",
+      "description": "Table test pinning the security gate's recursive force-delete decisions against the frozen 9.4.2 decisions, with every intended difference annotated"
     },
     "tests/hooks/test-checksum-format.sh": {
       "source": "tests/hooks/test-checksum-format.sh",
@@ -1669,7 +1681,7 @@
       "source": "hooks/spec-approval-trigger.sh",
       "target": "hooks/spec-approval-trigger.sh",
       "action": "sync",
-      "description": "PostToolUse hook (Edit|Write) that tells the model, via additionalContext, to run planning-and-task-breakdown when a spec transitions to status: approved"
+      "description": "PostToolUse hook (Edit|Write|MultiEdit|NotebookEdit) that tells the model, via additionalContext, to run planning-and-task-breakdown when a spec transitions to status: approved"
     },
     "tests/hooks/test-spec-approval-trigger.sh": {
       "source": "tests/hooks/test-spec-approval-trigger.sh",
@@ -2201,6 +2213,12 @@
       "target": "hooks/lib/guard-mode.sh",
       "action": "sync",
       "description": "Guard-mode helpers (off|advisory|shadow|active): mtk_guard_mode and mtk_deny_gated, sourced after hook-io.sh by the shadow-capable guards; the unshadowable mtk_deny floor stays in hook-io.sh"
+    },
+    "hooks/lib/normalize-path.sh": {
+      "source": "hooks/lib/normalize-path.sh",
+      "target": "hooks/lib/normalize-path.sh",
+      "action": "sync",
+      "description": "Lexical path normalisation (mtk_normalize_path) shared by scope-guard and config-guard: collapses . and .. segments without filesystem access so an exemption or manifest match cannot be walked past"
     },
     "hooks/lib/hook_registry.py": {
       "source": "hooks/lib/hook_registry.py",

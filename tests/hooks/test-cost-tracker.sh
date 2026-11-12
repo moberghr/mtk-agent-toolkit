@@ -386,6 +386,158 @@ expect "cost tracking off: still exits 0 silently" "0:" "$(stop_a a-two MTK_COST
 expect "MTK_COST_TRACKER=0 still records analytics" 2 "$(aget sessions)"
 expect "analytics accumulates operations" 20 "$(aget total_operations)"
 
+# --- T6: one session is counted once, and only its new operations are added ----------
+# Each Stop used to add the session's cumulative counters again and count another
+# session: 6 ops over 3 Stops recorded sessions=3, total_operations=18. A per-session
+# high-water mark (kept beside the session ledger in TMPDIR, not in analytics.json)
+# makes every Stop add only the delta. The read-modify-write runs under the project's
+# analytics lock; a busy lock skips the write, and the next Stop records the delta.
+PROJ_B="$SANDBOX/analytics-b"
+mkdir -p "$PROJ_B"
+( cd "$PROJ_B" && git init -q . )
+seed_b() { # $1 project  $2 session  $3 ops  $4 mods  $5 scope warnings
+  ( cd "$1" && CLAUDE_PROJECT_DIR="$1" bash -c '
+      source "$1/hooks/lib/hook-io.sh"
+      mtk_session_bind "{\"session_id\":\"$2\"}"
+      sf="$(mtk_session_file)"
+      mtk_load_session_state "$sf"
+      ops=$3; mods=$4; scope_guard_warnings=$5
+      mtk_save_session_state "$sf"' _ "$REPO_ROOT" "$2" "$3" "$4" "$5" )
+}
+stop_b() { # $1 project  $2 session  [extra env...] → "rc:stdout"
+  local proj="$1" sid="$2" rc=0 out; shift 2
+  out=$(cd "$proj" && env CLAUDE_PROJECT_DIR="$proj" MTK_COST_TRACKER=0 "$@" bash "$HOOK" 2>&1 \
+    <<<"{\"session_id\":\"$sid\",\"transcript_path\":\"$SANDBOX/no-such-transcript.jsonl\",\"hook_event_name\":\"Stop\"}") || rc=$?
+  printf '%s:%s' "$rc" "$out"
+}
+bget() { python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get(sys.argv[2], "ABSENT"))' "$1/.claude/analytics.json" "$2" 2>/dev/null || echo NO-FILE; }
+
+seed_b "$PROJ_B" b-one 6 2 1
+expect "T6 Stop 1: exits 0 silently" "0:" "$(stop_b "$PROJ_B" b-one)"
+expect "T6 Stop 2: exits 0 silently" "0:" "$(stop_b "$PROJ_B" b-one)"
+expect "T6 Stop 3: exits 0 silently" "0:" "$(stop_b "$PROJ_B" b-one)"
+expect "3 Stops of one 6-op session count one session" 1 "$(bget "$PROJ_B" sessions)"
+expect "3 Stops of one 6-op session add 6 operations, not 18" 6 "$(bget "$PROJ_B" total_operations)"
+expect "3 Stops add the session's modifications once" 2 "$(bget "$PROJ_B" total_modifications)"
+expect "3 Stops add the session's scope warnings once" 1 "$(bget "$PROJ_B" scope_guard_warnings)"
+# (Where the analytics lock lives — TMPDIR, keyed on the analytics path — is
+# pinned by the busy-lock case below: holding exactly that key skips the write.)
+expect "the analytics lock and mark temp files are gone after the Stops" 0 \
+  "$(ls -A "$TMPDIR" | grep -c 'mtk-analytics-.*\.lock\|\.analytics\.tmp\.' || true)"
+
+seed_b "$PROJ_B" b-one 9 3 1
+stop_b "$PROJ_B" b-one >/dev/null
+expect "the same session growing to 9 ops adds only the delta" 9 "$(bget "$PROJ_B" total_operations)"
+expect "a growing session is still one session" 1 "$(bget "$PROJ_B" sessions)"
+expect "a growing session adds only the new modification" 3 "$(bget "$PROJ_B" total_modifications)"
+
+seed_b "$PROJ_B" b-two 7 1 0
+stop_b "$PROJ_B" b-two >/dev/null
+stop_b "$PROJ_B" b-two >/dev/null
+expect "a second session counts once" 2 "$(bget "$PROJ_B" sessions)"
+expect "a second session adds its 7 operations once" 16 "$(bget "$PROJ_B" total_operations)"
+
+# A busy analytics lock skips the write (exit 0, silent); the next Stop catches up.
+# The key mirrors cost-tracker.sh: TMPDIR/mtk-analytics-<cksum of the analytics path>.
+AREAL="$(cd "$PROJ_B" && pwd -P)/.claude/analytics.json"
+ALOCK="$TMPDIR/mtk-analytics-$(printf '%s' "$AREAL" | cksum | cut -d' ' -f1).lock"
+sleep 30 & LIVE=$!
+mkdir "$ALOCK"; : > "$ALOCK/o.$LIVE.1"
+seed_b "$PROJ_B" b-two 10 1 0
+expect "busy analytics lock: Stop exits 0 silently" "0:" "$(stop_b "$PROJ_B" b-two MTK_SESSION_LOCK_TRIES=3)"
+expect "busy analytics lock: the write is skipped" 16 "$(bget "$PROJ_B" total_operations)"
+[ -e "$ALOCK/o.$LIVE.1" ] && k=kept || k=stolen
+expect "busy analytics lock: the live holder's lock is left alone" kept "$k"
+kill "$LIVE" 2>/dev/null || true; wait "$LIVE" 2>/dev/null || true
+rm -f "$ALOCK/o.$LIVE.1"; rmdir "$ALOCK"
+stop_b "$PROJ_B" b-two >/dev/null
+expect "after the lock frees, the next Stop adds the skipped delta once" 19 "$(bget "$PROJ_B" total_operations)"
+expect "and still counts two sessions" 2 "$(bget "$PROJ_B" sessions)"
+
+# An existing analytics.json written by the old recorder keeps its totals.
+PROJ_C="$SANDBOX/analytics-c"
+mkdir -p "$PROJ_C/.claude"
+( cd "$PROJ_C" && git init -q . )
+cat > "$PROJ_C/.claude/analytics.json" <<'JSON'
+{
+  "first_session": "2026-01-02",
+  "last_session": "2026-03-04",
+  "sessions": 40,
+  "total_operations": 1000,
+  "total_modifications": 300,
+  "specs_created": 5,
+  "lessons_captured": 7,
+  "scope_guard_warnings": 2,
+  "benchmarks_run": 1,
+  "benchmark_last_score": "9/10"
+}
+JSON
+seed_b "$PROJ_C" c-one 6 1 0
+stop_b "$PROJ_C" c-one >/dev/null
+stop_b "$PROJ_C" c-one >/dev/null
+expect "old-format file: sessions continue from 40" 41 "$(bget "$PROJ_C" sessions)"
+expect "old-format file: operations continue from 1000" 1006 "$(bget "$PROJ_C" total_operations)"
+expect "old-format file: modifications continue from 300" 301 "$(bget "$PROJ_C" total_modifications)"
+expect "old-format file: first_session kept" 2026-01-02 "$(bget "$PROJ_C" first_session)"
+expect "old-format file: specs_created kept" 5 "$(bget "$PROJ_C" specs_created)"
+expect "old-format file: lessons_captured kept" 7 "$(bget "$PROJ_C" lessons_captured)"
+expect "old-format file: benchmark score kept" 9/10 "$(bget "$PROJ_C" benchmark_last_score)"
+expect "analytics.json keeps exactly the documented keys (no per-session bookkeeping)" \
+  "benchmark_last_score benchmarks_run first_session last_session lessons_captured scope_guard_warnings sessions specs_created total_modifications total_operations" \
+  "$(python3 -c 'import json,sys; print(" ".join(sorted(json.load(open(sys.argv[1])))))' "$PROJ_C/.claude/analytics.json" 2>/dev/null || echo NO-FILE)"
+
+# --- T7: a failed analytics write loses nothing and is not silent ---------------------
+# The per-session high-water mark advances only after analytics.json was replaced,
+# so a failed write leaves the delta for the next Stop. The failure is written as
+# one line ("<ISO-UTC ts>\t<rc>\t<msg>") to <project>/.mtk/metrics/.analytics-error,
+# beside the cost tracker's .last-error, and a later successful write removes it.
+mark_b() { # $1 project  $2 session → the session's high-water mark file
+  ( cd "$1" && CLAUDE_PROJECT_DIR="$1" bash -c '
+      source "$1/hooks/lib/hook-io.sh"
+      mtk_session_bind "{\"session_id\":\"$2\"}"
+      printf "%s.analytics" "$(mtk_session_file)"' _ "$REPO_ROOT" "$2" )
+}
+aerr() { # $1 project → "absent", or "<lines> <msg-has-analytics>" for the error file
+  local f="$1/.mtk/metrics/.analytics-error" ts rc msg
+  [ -f "$f" ] || { echo absent; return 0; }
+  IFS=$'\t' read -r ts rc msg < "$f" || true
+  case "$ts" in [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z) ts=ts ;; *) ts=bad-ts ;; esac
+  case "$msg" in *analytics*) msg=msg ;; *) msg="no-msg" ;; esac
+  printf '%s %s %s\n' "$(wc -l < "$f" | tr -d ' ')" "$ts" "$msg"
+}
+
+# (a) .claude is a regular file: analytics.json cannot be created.
+PROJ_D="$SANDBOX/analytics-d"
+mkdir -p "$PROJ_D"
+( cd "$PROJ_D" && git init -q . )
+printf 'not a directory\n' > "$PROJ_D/.claude"
+seed_b "$PROJ_D" d-one 8 2 1
+expect "unwritable .claude: Stop exits 0 silently" "0:" "$(stop_b "$PROJ_D" d-one)"
+[ -e "$(mark_b "$PROJ_D" d-one)" ] && k=advanced || k=unadvanced
+expect "unwritable .claude: the session's mark is not advanced" unadvanced "$k"
+expect "unwritable .claude: one error line recorded" "1 ts msg" "$(aerr "$PROJ_D")"
+rm -f "$PROJ_D/.claude"
+expect "repaired .claude: Stop exits 0 silently" "0:" "$(stop_b "$PROJ_D" d-one)"
+expect "repaired .claude: the next Stop records the full delta" 8 "$(bget "$PROJ_D" total_operations)"
+expect "repaired .claude: and counts the session" 1 "$(bget "$PROJ_D" sessions)"
+expect "repaired .claude: the error line is cleared" absent "$(aerr "$PROJ_D")"
+
+# (b) analytics.json exists but does not parse: it is kept byte for byte.
+PROJ_E="$SANDBOX/analytics-e"
+mkdir -p "$PROJ_E/.claude"
+( cd "$PROJ_E" && git init -q . )
+printf '{\n  "first_session": "2026-01-02",\n  "sessions": 40,\n  "total_operations": 1000,\n  "total_modif' > "$PROJ_E/.claude/analytics.json"
+cp "$PROJ_E/.claude/analytics.json" "$SANDBOX/analytics-e.orig"
+seed_b "$PROJ_E" e-one 6 1 0
+expect "malformed analytics.json: Stop exits 0 silently" "0:" "$(stop_b "$PROJ_E" e-one)"
+cmp -s "$SANDBOX/analytics-e.orig" "$PROJ_E/.claude/analytics.json" && k=identical || k=changed
+expect "malformed analytics.json is left byte-identical" identical "$k"
+[ -e "$(mark_b "$PROJ_E" e-one)" ] && k=advanced || k=unadvanced
+expect "malformed analytics.json: the session's mark is not advanced" unadvanced "$k"
+expect "malformed analytics.json: one error line recorded" "1 ts msg" "$(aerr "$PROJ_E")"
+ls -A "$PROJ_E/.claude" | grep -v '^analytics\.json$' >/dev/null && k=debris || k=clean
+expect "malformed analytics.json: no temp files left beside it" clean "$k"
+
 if [ "$fails" -gt 0 ]; then
   printf '%d cost-tracker case(s) failed\n' "$fails" >&2
 else

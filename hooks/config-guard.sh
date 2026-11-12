@@ -6,8 +6,8 @@ set -euo pipefail
 _mtk_hook_diag() { local c=$?; [[ $c -ne 0 && $c -ne 2 ]] && echo "[mtk-hook:$(basename "$0")] exit $c" >&2 2>/dev/null || true; return 0; }
 trap _mtk_hook_diag EXIT
 
-# PreToolUse guard for Edit | Write on linter / analyzer / formatter config.
-# Exit 0 = allow, exit 2 = block.
+# PreToolUse guard for Edit | Write | MultiEdit | NotebookEdit on linter /
+# analyzer / formatter config. Exit 0 = allow, exit 2 = block.
 #
 # Denies ONLY edits that WEAKEN the config. Every other edit to a protected file
 # passes silently — a guard that blocks version bumps or stricter rules gets
@@ -21,15 +21,26 @@ trap _mtk_hook_diag EXIT
 #   W2  disabled values: dotnet_diagnostic severity none|silent|suggestion, quoted
 #       "off", TreatWarningsAsErrors/strict/... = false, AnalysisLevel/Mode none,
 #       ignore_errors = true, "recommended": false, <WarningLevel>0,
-#       <Nullable>disable.
+#       <Nullable>disable; in ESLint files only, a numeric rule severity 0
+#       ("rule": 0, "rule": [0, …]) on a rule-shaped key (hyphen or plugin
+#       slash, or a single-word core rule), so option values such as
+#       "ignore": [0, 1] are not severities. Also W2: a strictness setting
+#       removed or commented out — the same boolean keys set true, counted on
+#       non-comment lines, denied when that count drops. The "strict" umbrella
+#       is counted apart: folding noImplicitAny/strictNullChecks into
+#       "strict": true is not a removal; dropping "strict" itself always is.
 #   W3  ignore files only: non-blank, non-comment, non-negation (!) lines.
 #
 # Deliberately NOT weakening: severity `warning`. Moving error -> warning keeps
 # the diagnostic visible, and under TreatWarningsAsErrors still breaks the
 # build; treating it as weakening would over-block routine tuning.
 #
-# Before/after text: Edit = old_string -> new_string; Write to an existing file =
-# disk contents -> content; Write to a missing file is allowed (new config).
+# Before/after text: Edit = old_string -> new_string; MultiEdit = every edits[]
+# old_string -> every new_string (one edit of one file, judged as a whole like an
+# Edit spanning the same regions; entries share no list/section state); Write to
+# an existing file = disk contents -> content; Write to a missing file is allowed
+# (new config). NotebookEdit: a notebook is neither config nor a test-class code
+# file, so only the approval-list protection below applies to it.
 #
 # Engineer approval list: .mtk/config-guard-allow (repo-relative path per line),
 # honoured only when modified within the last 24h. "Repo" is the edited file's
@@ -38,9 +49,10 @@ trap _mtk_hook_diag EXIT
 # model to STOP and ask — it never prints how to approve, and an
 # Edit/Write to the list itself is always denied (matched by file identity after
 # ./ ../ normalisation, so case variants and dot segments are caught; the
-# approval lookup uses the same normalised path). A Bash write to the list is out
-# of this hook's reach: it is a drift guard, not a defence against a determined
-# adversary.
+# approval lookup uses the same normalised path). A target path holding a control
+# character (newline, tab, …) is denied outright, whatever file it names. A Bash
+# write to the list is out of this hook's reach: it is a drift guard, not a
+# defence against a determined adversary.
 #
 # Known limit: an Edit fragment that adds a code to a multi-line list without
 # including the list's key line (or section header) is not attributed to W1.
@@ -90,6 +102,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/hook-io.sh"
 source "${SCRIPT_DIR}/lib/guard-mode.sh"
+source "${SCRIPT_DIR}/lib/normalize-path.sh"
 
 [ "${MTK_CONFIG_GUARD:-1}" = "0" ] && exit 0
 mtk_hook_seen config-guard.sh
@@ -99,44 +112,51 @@ INPUT="$(mtk_read_payload)"
 
 TOOL_NAME=$(mtk_extract_tool_name "$INPUT" 2>/dev/null || echo "")
 case "$TOOL_NAME" in
-  Edit|Write) ;;
+  Edit|Write|MultiEdit|NotebookEdit) ;;
   "")
-    # Some harnesses omit tool_name — infer from the fields present.
-    if mtk_extract_json_string "$INPUT" "new_string" >/dev/null 2>&1; then
-      TOOL_NAME="Edit"
-    elif mtk_extract_json_string "$INPUT" "content" >/dev/null 2>&1; then
-      TOOL_NAME="Write"
-    else
-      exit 0
-    fi
+    # Some harnesses omit tool_name — infer from the fields present. A quoted
+    # "edits" can only be a key: inside a JSON string its quotes are escaped.
+    case "$INPUT" in
+      *'"edits"'*) TOOL_NAME="MultiEdit" ;;
+      *)
+        if mtk_extract_json_string "$INPUT" "new_string" >/dev/null 2>&1; then
+          TOOL_NAME="Edit"
+        elif mtk_extract_json_string "$INPUT" "content" >/dev/null 2>&1; then
+          TOOL_NAME="Write"
+        elif mtk_extract_json_string "$INPUT" "notebook_path" >/dev/null 2>&1; then
+          TOOL_NAME="NotebookEdit"
+        else
+          exit 0
+        fi
+        ;;
+    esac
     ;;
   *) exit 0 ;;
 esac
 
-FILE_PATH=$(mtk_extract_file_path "$INPUT" 2>/dev/null || echo "")
+if [ "$TOOL_NAME" = "NotebookEdit" ]; then
+  FILE_PATH=$(mtk_extract_tool_field "$INPUT" notebook_path 2>/dev/null || echo "")
+else
+  FILE_PATH=$(mtk_extract_file_path "$INPUT" 2>/dev/null || echo "")
+fi
 [ -n "$FILE_PATH" ] || exit 0
+
+# A control character (newline, tab, CR, …) in the target path is hostile: no
+# real config or source path holds one, and line-oriented handling of it is how
+# `src/x<LF>/../../.mtk/config-guard-allow` once read as `src/x` and reached the
+# approval list. Hard guard: denied outright, for every tool and any file, with
+# no toggle — and the path is not echoed back. Builtin match: runs on every edit.
+case "$FILE_PATH" in
+  *[[:cntrl:]]*)
+    mtk_deny "CONFIG-GUARD: the target path contains a control character (newline, tab, carriage return or similar); no edit is made to such a path. Use the file's real path." ""
+    ;;
+esac
 
 REPO_ROOT="$(mtk_repo_root 2>/dev/null || pwd)"
 
-# Lexical normalisation: relative -> $PWD-anchored, and '', '.', '..' segments
-# resolved as strings (the target need not exist yet). Pure bash, bash-3.2 safe.
-normalize_path() {
-  local p="$1" seg out="" n
-  local -a parts stack
-  stack=()
-  case "$p" in /*) ;; *) p="$PWD/$p" ;; esac
-  IFS=/ read -r -a parts <<<"$p"
-  for seg in ${parts[@]+"${parts[@]}"}; do
-    case "$seg" in
-      ''|.) ;;
-      ..) n=${#stack[@]}; [ "$n" -gt 0 ] && unset "stack[$((n - 1))]" && stack=(${stack[@]+"${stack[@]}"}) ;;
-      *) stack+=("$seg") ;;
-    esac
-  done
-  for seg in ${stack[@]+"${stack[@]}"}; do out="$out/$seg"; done
-  printf '%s' "${out:-/}"
-}
-NORM_PATH="$(normalize_path "$FILE_PATH")"
+# Lexical normalisation (hooks/lib/normalize-path.sh): relative -> $PWD-anchored,
+# and '', '.', '..' segments resolved as strings (the target need not exist yet).
+mtk_normalize_path_var NORM_PATH "$FILE_PATH"
 
 # The edited file belongs to its own git work tree, which is not always the
 # session's project: a worktree nested under it (.claude/worktrees/<name>/) is a
@@ -178,6 +198,8 @@ is_allow_list() {
 if is_allow_list; then
   mtk_deny "CONFIG-GUARD: '.mtk/config-guard-allow' is the engineer's approval list for config-weakening edits; it is not editable by the agent. STOP and ask the engineer — do not work around this guard." ""
 fi
+# A notebook is neither a config file nor a test-class code file.
+[ "$TOOL_NAME" = "NotebookEdit" ] && exit 0
 
 BASE_LC="$(basename "$FILE_PATH" | tr '[:upper:]' '[:lower:]')"
 
@@ -190,6 +212,10 @@ case "$BASE_LC" in
   ruff.toml|.ruff.toml|pyproject.toml|setup.cfg|.flake8|tox.ini|mypy.ini|.mypy.ini|.pylintrc|pylintrc) MODE="config" ;;
   .shellcheckrc|.markdownlint*) MODE="config" ;;
 esac
+# ESLint numeric severities are read only in ESLint's own files: elsewhere a
+# "key": 0 is an ordinary setting (stylelint "max-nesting-depth": 0 is stricter).
+ESLINT=0
+case "$BASE_LC" in .eslintrc*|eslint.config.*) ESLINT=1 ;; esac
 
 # Test-shaped repo-relative path of a code extension (see header).
 is_test_file() {
@@ -233,9 +259,58 @@ fi
 case "$GUARD_MODE" in shadow|active) ;; *) exit 0 ;; esac
 
 # --- Before / after text ------------------------------------------------------
+# A line that separates MultiEdit entries; count_signals resets its multi-line
+# list / section state on it, so one entry's open list never spills into the next.
+EDIT_SEP=$'\034mtk-edit-boundary\034'
+
+# Every string value of key $2 in payload $1, in document order, one EDIT_SEP
+# line between values; exit 1 when the key is absent. Decodes each value exactly
+# like mtk_extract_json_string (hook-io.sh), which stops at the first one.
+extract_json_strings() {
+  printf '%s' "$1" | awk -v key="$2" -v sep="$EDIT_SEP" '
+    { buf = (NR == 1 ? $0 : buf "\n" $0) }
+    END {
+      pattern = "\"" key "\"[[:space:]]*:[[:space:]]*\""
+      len = length(buf); pos = 1; n = 0
+      while (pos <= len && match(substr(buf, pos), pattern)) {
+        i = pos + RSTART + RLENGTH - 1
+        out = ""; esc = 0
+        for (; i <= len; i++) {
+          c = substr(buf, i, 1)
+          if (esc) {
+            if (c == "n") out = out "\n"
+            else if (c == "t") out = out "\t"
+            else if (c == "r") out = out "\r"
+            else if (c == "\"") out = out "\""
+            else if (c == "\\") out = out "\\"
+            else if (c == "/") out = out "/"
+            else if (c == "b") out = out "\b"
+            else if (c == "f") out = out "\f"
+            else out = out "\\" c
+            esc = 0
+            continue
+          }
+          if (c == "\\") { esc = 1; continue }
+          if (c == "\"") break
+          out = out c
+        }
+        printf "%s%s", (n++ ? "\n" sep "\n" : ""), out
+        pos = i + 1
+      }
+      if (n == 0) exit 1
+      printf "\n"
+    }
+  '
+}
+
 if [ "$TOOL_NAME" = "Edit" ]; then
   BEFORE="$(mtk_extract_json_string "$INPUT" "old_string" 2>/dev/null)" || exit 0
   AFTER="$(mtk_extract_json_string "$INPUT" "new_string" 2>/dev/null)" || exit 0
+elif [ "$TOOL_NAME" = "MultiEdit" ]; then
+  # Every edits[] entry: a weakening in any one of them counts, as it would in
+  # an Edit spanning the same regions.
+  BEFORE="$(extract_json_strings "$INPUT" "old_string" 2>/dev/null)" || exit 0
+  AFTER="$(extract_json_strings "$INPUT" "new_string" 2>/dev/null)" || exit 0
 else
   # New config file: nothing to weaken.
   [ -f "$FILE_PATH" ] || exit 0
@@ -244,9 +319,11 @@ else
   BEFORE="$(cat "$FILE_PATH" 2>/dev/null)" || exit 0
 fi
 
-# Prints "w1 w2 w3" for the text on stdin.
+# Prints "w1 w2 w3 su ss" for the text on stdin: the W1–W3 counts, then the
+# strictness settings that are on — the "strict" umbrella (su) and the other
+# boolean keys (ss) — for the removed-strictness check.
 count_signals() {
-  awk -v mode="$MODE" '
+  awk -v mode="$MODE" -v eslint="$ESLINT" -v sep="$EDIT_SEP" '
     function is_code(t,   nl, nd) {
       if (t !~ /^[A-Za-z]+[0-9]+$/) return 0
       match(t, /[0-9]/); nl = RSTART - 1; nd = length(t) - nl
@@ -262,9 +339,26 @@ count_signals() {
       t = s; b = gsub(/\]/, "", t)
       return a - b
     }
-    BEGIN { w1 = 0; w2 = 0; w3 = 0; cont = ""; depth = 0; sect = 0 }
+    # ESLint rules set to numeric severity 0 on lower-cased line s: a rule-shaped
+    # key (hyphen or plugin slash, or a single-word core rule) whose value, or
+    # the first element of whose array value, is 0. Option keys ("ignore",
+    # "code", camelCase) are not rule-shaped, so their 0 values do not count.
+    function eslint_zero(s,   c, k) {
+      c = 0
+      while (match(s, /[@a-z0-9_\/-]+["\047]?[[:space:]]*:[[:space:]]*(\[[[:space:]]*)?0([^0-9.x]|$)/)) {
+        k = substr(s, RSTART, RLENGTH)
+        s = substr(s, RSTART + RLENGTH)
+        sub(/["\047]?[[:space:]]*:.*$/, "", k)
+        if (k ~ /[-\/]/ || k ~ /^(camelcase|complexity|curly|eqeqeq|indent|quotes|radix|semi|strict|yoda)$/) c++
+      }
+      return c
+    }
+    BEGIN { w1 = 0; w2 = 0; w3 = 0; su = 0; ss = 0; cont = ""; depth = 0; sect = 0 }
     {
       raw = $0; l = tolower(raw)
+
+      # MultiEdit entry boundary: nothing carries over from the previous entry.
+      if (raw == sep) { cont = ""; depth = 0; sect = 0; next }
 
       if (mode == "ignore") {
         if (l ~ /^[[:space:]]*$/) next
@@ -282,6 +376,14 @@ count_signals() {
       if (l ~ /"recommended"[[:space:]]*:[[:space:]]*false/) w2++
       if (l ~ /<warninglevel>[[:space:]]*0([^0-9]|$)/) w2++
       if (l ~ /<nullable>[[:space:]]*disable/) w2++
+      if (eslint == 1) w2 += eslint_zero(l)
+
+      # --- strictness settings that are on (a drop is a removal, see W2) ---
+      # Comment lines do not count, so commenting a setting out removes it.
+      if (l !~ /^[[:space:]]*(\/\/|#|;|<!--)/) {
+        t = l; su += gsub(/(^|[^a-z_])strict["\047]?[[:space:]]*[:=>][[:space:]]*["\047]?true/, "", t)
+        t = l; ss += gsub(/(^|[^a-z_])(treatwarningsaserrors|enforcecodestyleinbuild|runanalyzers|runanalyzersduringbuild|enablenetanalyzers|noimplicitany|strictnullchecks|warn_unused_ignores|disallow_untyped_defs)["\047]?[[:space:]]*[:=>][[:space:]]*["\047]?true/, "", t)
+      }
 
       # --- W1: suppression codes ---
       if (cont == "xml") {
@@ -326,7 +428,7 @@ count_signals() {
         }
       }
     }
-    END { printf "%d %d %d\n", w1, w2, w3 }
+    END { printf "%d %d %d %d %d\n", w1, w2, w3, su, ss }
   '
 }
 
@@ -459,12 +561,18 @@ count_test_signals() {
 SIGNAL=""
 CODE=""
 if [ "$CLASS" = "config" ]; then
-  read -r B1 B2 B3 <<<"$(count_signals <<<"$BEFORE")"
-  read -r A1 A2 A3 <<<"$(count_signals <<<"$AFTER")"
+  read -r B1 B2 B3 BU BS <<<"$(count_signals <<<"$BEFORE")"
+  read -r A1 A2 A3 AU AS <<<"$(count_signals <<<"$AFTER")"
   if [ "$A1" -gt "$B1" ]; then
     SIGNAL="W1-SUPPRESS suppression codes: ${B1}→${A1}"; CODE="W1-SUPPRESS"
   elif [ "$A2" -gt "$B2" ]; then
     SIGNAL="W2-DISABLED disabled values: ${B2}→${A2}"; CODE="W2-DISABLED"
+  elif [ "$AU" -lt "$BU" ]; then
+    SIGNAL="W2-DISABLED strict setting removed: ${BU}→${AU}"; CODE="W2-DISABLED"
+  elif [ "$AS" -lt "$BS" ] && [ "$AU" -eq 0 ]; then
+    # Sub-flags dropped while the after text visibly turns "strict" on are folded
+    # into the umbrella, not removed.
+    SIGNAL="W2-DISABLED strictness settings removed: ${BS}→${AS}"; CODE="W2-DISABLED"
   elif [ "$A3" -gt "$B3" ]; then
     SIGNAL="W3-IGNORE ignore-file lines: ${B3}→${A3}"; CODE="W3-IGNORE"
   fi
