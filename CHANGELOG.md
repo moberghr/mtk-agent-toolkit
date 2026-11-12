@@ -4,6 +4,10 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+
+- `scripts/eval-coverage.sh` lists the skills that no eval case exercises. It reads the case files only, never results, and makes no model calls. A case counts for a skill when the skill is one of its `tags`, its prompt invokes `/<skill>`, `/mtk <skill>` or `/mtk:<skill>`, or a grader names `skills/<skill>/`. The rule is a heuristic and is stated in `--help` and the report header. `--json` gives the same report for scripts. On MTK's nine cases it finds 3 of 33 skills covered. The per-case lift table the script is named for is not built yet, because no stored `aggregate-result.json` was available to confirm the per-run fields.
+
 ### Fixed
 
 - **The scope guard can no longer be walked past with `..` or a control character.** A path such
@@ -49,6 +53,7 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 - The `CODE_INDEX.md` template no longer points at `scripts/build-code-index.sh`, which never existed. It says the index is kept by hand, and that `scripts/spec-archive.sh` appends newly shipped contracts.
 - `implement` points at `env-knobs.md` for `MTK_HELPER_ROOT`, not at `CLAUDE.md`, which no longer defines it.
 - `env-knobs.md` documents 13 more variables that hooks and scripts read: the remediation iteration cap, the four output-compression knobs, the two verification-excerpt bounds, the git pre-commit blocking switch, the secret-scan skip, the shrink-guard override, the lessons auto-seed switch, the workflow re-injection window and the artifact-root override.
+- `verify-references.sh` no longer reports placeholder and glob paths as stale. A token such as `.claude/skills/<skill-name>/SKILL.md`, `tech-stack-{name}/SKILL.md` or `docs/handoffs/*.md` is now matched as a pattern, a bare directory such as `lib/` is found at any depth, and paths that git ignores (runtime state like `.mtk/`) are skipped. Authors can opt a path out with `<!-- verify-references: ignore -->` on its line or a glob in `.claude/verify-references.ignore`. Real missing paths are still reported with the same line and exit code 3, so the seven false positives on MTK's own rule files are gone.
 
 ## [9.4.2] - 2026-10-22
 

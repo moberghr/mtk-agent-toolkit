@@ -88,3 +88,24 @@ Graders that can only pass with the plugin (`tool_used: Skill`, `arm: with-only`
 indicators such as "the spec file was written") are reported as plugin-fired indicators
 and excluded from both arms' scores; graders marked `arm: both` (for example "no edits
 on a pure question") are scored in both arms.
+
+## Reading coverage
+
+`bash scripts/eval-coverage.sh` lists the skills under `.claude/skills/` that no case here
+exercises. It reads the case files only: no results, no model calls. `--json` prints the
+same report for scripts, and `--evals-dir` / `--skills-dir` point it elsewhere. It exits 0
+when the report printed and 2 on a usage error, a missing directory or a missing python3.
+
+"Exercises" is a heuristic, stated in `--help` and in the report header. A case covers a
+skill when the skill name is one of its `tags`, the prompt invokes `/<skill>`,
+`/mtk <skill>` or `/mtk:<skill>`, or a grader names `skills/<skill>/` (or is a
+`tool: Skill` grader naming the skill). Prose mentions do not count, so a model-invoked
+skill that a case triggers only implicitly is listed as uncovered. To declare coverage
+exactly, add the skill name to the case's `tags:`. `tags` is a documented field and
+`--tag` filtering keeps working. Do not add a `covers:` key, because `prompt.md`
+frontmatter rejects unknown keys.
+
+The script does not report lift (with-plugin minus without-plugin, per case, from
+`cases[].arms.with` and `cases[].arms.without` in a run's `aggregate-result.json`). That
+table is not built, because no stored results file was available to confirm the per-run
+fields against.

@@ -1,0 +1,11 @@
+# Paths scripts/verify-references.sh must not report as STALE in this repo.
+# One glob per line. A token's own line can opt out instead with
+# <!-- verify-references: ignore -->, but that skips every path on the line.
+
+# Setup stamp written into target repos by scripts/stamp-version.sh; the
+# toolkit repo itself is never set up, so it has none.
+.claude/mtk-version.json
+
+# Handoff notes: the writer creates docs/handoffs/ with a self-ignoring
+# .gitignore at run time, so a fresh clone has no such directory.
+docs/handoffs/*.md
