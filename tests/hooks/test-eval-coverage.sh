@@ -15,9 +15,8 @@ set -euo pipefail
 # the router itself) do not count. evals/results/ and evals/mocks/ are not
 # cases; nested cases under a non-case group directory are.
 #
-# The per-case lift table is not built: the stored results directory holds no
-# aggregate-result.json to confirm the per-run fields against, so the script
-# reads no results and this test feeds it none.
+# The script reads no results (lift and run comparison live in each run's result
+# and in scripts/eval-compare.sh), so this test feeds it none.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"

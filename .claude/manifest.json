@@ -1,5 +1,5 @@
 {
-  "version": "9.5.0",
+  "version": "9.6.0",
   "updated": "2026-11-12",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
@@ -274,6 +274,432 @@
       "target": "evals/router-fix/case.yaml",
       "action": "sync",
       "description": "Plugin-eval case router-fix: scaffold and execution settings"
+    },
+    "evals/fires-fix/scaffold.sh": {
+      "source": "evals/fires-fix/scaffold.sh",
+      "target": "evals/fires-fix/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case fires-fix: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/fires-fix/prompt.md": {
+      "source": "evals/fires-fix/prompt.md",
+      "target": "evals/fires-fix/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-fix: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/fires-fix/case.yaml": {
+      "source": "evals/fires-fix/case.yaml",
+      "target": "evals/fires-fix/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case fires-fix: scaffold and execution settings"
+    },
+    "evals/fires-fix/graders/reads-source.md": {
+      "source": "evals/fires-fix/graders/reads-source.md",
+      "target": "evals/fires-fix/graders/reads-source.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-fix: grader 'reads-source'"
+    },
+    "evals/fires-fix/graders/routing-fired.md": {
+      "source": "evals/fires-fix/graders/routing-fired.md",
+      "target": "evals/fires-fix/graders/routing-fired.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-fix: grader 'routing-fired'"
+    },
+    "evals/quiet-fix/scaffold.sh": {
+      "source": "evals/quiet-fix/scaffold.sh",
+      "target": "evals/quiet-fix/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-fix: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/quiet-fix/prompt.md": {
+      "source": "evals/quiet-fix/prompt.md",
+      "target": "evals/quiet-fix/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-fix: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/quiet-fix/case.yaml": {
+      "source": "evals/quiet-fix/case.yaml",
+      "target": "evals/quiet-fix/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-fix: scaffold and execution settings"
+    },
+    "evals/quiet-fix/graders/explains-backoff.md": {
+      "source": "evals/quiet-fix/graders/explains-backoff.md",
+      "target": "evals/quiet-fix/graders/explains-backoff.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-fix: grader 'explains-backoff'"
+    },
+    "evals/quiet-fix/graders/explains-give-up.md": {
+      "source": "evals/quiet-fix/graders/explains-give-up.md",
+      "target": "evals/quiet-fix/graders/explains-give-up.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-fix: grader 'explains-give-up'"
+    },
+    "evals/quiet-fix/graders/no-edit.md": {
+      "source": "evals/quiet-fix/graders/no-edit.md",
+      "target": "evals/quiet-fix/graders/no-edit.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-fix: grader 'no-edit'"
+    },
+    "evals/quiet-fix/graders/no-write.md": {
+      "source": "evals/quiet-fix/graders/no-write.md",
+      "target": "evals/quiet-fix/graders/no-write.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-fix: grader 'no-write'"
+    },
+    "evals/quiet-fix/graders/routing-quiet.md": {
+      "source": "evals/quiet-fix/graders/routing-quiet.md",
+      "target": "evals/quiet-fix/graders/routing-quiet.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-fix: grader 'routing-quiet'"
+    },
+    "evals/fires-code-review-and-quality/scaffold.sh": {
+      "source": "evals/fires-code-review-and-quality/scaffold.sh",
+      "target": "evals/fires-code-review-and-quality/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case fires-code-review-and-quality: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/fires-code-review-and-quality/prompt.md": {
+      "source": "evals/fires-code-review-and-quality/prompt.md",
+      "target": "evals/fires-code-review-and-quality/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-code-review-and-quality: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/fires-code-review-and-quality/case.yaml": {
+      "source": "evals/fires-code-review-and-quality/case.yaml",
+      "target": "evals/fires-code-review-and-quality/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case fires-code-review-and-quality: scaffold and execution settings"
+    },
+    "evals/fires-code-review-and-quality/graders/names-defect.md": {
+      "source": "evals/fires-code-review-and-quality/graders/names-defect.md",
+      "target": "evals/fires-code-review-and-quality/graders/names-defect.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-code-review-and-quality: grader 'names-defect'"
+    },
+    "evals/fires-code-review-and-quality/graders/no-edit.md": {
+      "source": "evals/fires-code-review-and-quality/graders/no-edit.md",
+      "target": "evals/fires-code-review-and-quality/graders/no-edit.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-code-review-and-quality: grader 'no-edit'"
+    },
+    "evals/fires-code-review-and-quality/graders/no-write.md": {
+      "source": "evals/fires-code-review-and-quality/graders/no-write.md",
+      "target": "evals/fires-code-review-and-quality/graders/no-write.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-code-review-and-quality: grader 'no-write'"
+    },
+    "evals/fires-code-review-and-quality/graders/routing-fired.md": {
+      "source": "evals/fires-code-review-and-quality/graders/routing-fired.md",
+      "target": "evals/fires-code-review-and-quality/graders/routing-fired.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-code-review-and-quality: grader 'routing-fired'"
+    },
+    "evals/quiet-code-review-and-quality/scaffold.sh": {
+      "source": "evals/quiet-code-review-and-quality/scaffold.sh",
+      "target": "evals/quiet-code-review-and-quality/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-code-review-and-quality: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/quiet-code-review-and-quality/prompt.md": {
+      "source": "evals/quiet-code-review-and-quality/prompt.md",
+      "target": "evals/quiet-code-review-and-quality/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-code-review-and-quality: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/quiet-code-review-and-quality/case.yaml": {
+      "source": "evals/quiet-code-review-and-quality/case.yaml",
+      "target": "evals/quiet-code-review-and-quality/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-code-review-and-quality: scaffold and execution settings"
+    },
+    "evals/quiet-code-review-and-quality/graders/names-timeout-change.md": {
+      "source": "evals/quiet-code-review-and-quality/graders/names-timeout-change.md",
+      "target": "evals/quiet-code-review-and-quality/graders/names-timeout-change.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-code-review-and-quality: grader 'names-timeout-change'"
+    },
+    "evals/quiet-code-review-and-quality/graders/no-edit.md": {
+      "source": "evals/quiet-code-review-and-quality/graders/no-edit.md",
+      "target": "evals/quiet-code-review-and-quality/graders/no-edit.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-code-review-and-quality: grader 'no-edit'"
+    },
+    "evals/quiet-code-review-and-quality/graders/routing-quiet.md": {
+      "source": "evals/quiet-code-review-and-quality/graders/routing-quiet.md",
+      "target": "evals/quiet-code-review-and-quality/graders/routing-quiet.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-code-review-and-quality: grader 'routing-quiet'"
+    },
+    "evals/fires-security-and-hardening/scaffold.sh": {
+      "source": "evals/fires-security-and-hardening/scaffold.sh",
+      "target": "evals/fires-security-and-hardening/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case fires-security-and-hardening: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/fires-security-and-hardening/prompt.md": {
+      "source": "evals/fires-security-and-hardening/prompt.md",
+      "target": "evals/fires-security-and-hardening/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-security-and-hardening: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/fires-security-and-hardening/case.yaml": {
+      "source": "evals/fires-security-and-hardening/case.yaml",
+      "target": "evals/fires-security-and-hardening/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case fires-security-and-hardening: scaffold and execution settings"
+    },
+    "evals/fires-security-and-hardening/graders/reads-source.md": {
+      "source": "evals/fires-security-and-hardening/graders/reads-source.md",
+      "target": "evals/fires-security-and-hardening/graders/reads-source.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-security-and-hardening: grader 'reads-source'"
+    },
+    "evals/fires-security-and-hardening/graders/routing-fired.md": {
+      "source": "evals/fires-security-and-hardening/graders/routing-fired.md",
+      "target": "evals/fires-security-and-hardening/graders/routing-fired.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-security-and-hardening: grader 'routing-fired'"
+    },
+    "evals/quiet-security-and-hardening/scaffold.sh": {
+      "source": "evals/quiet-security-and-hardening/scaffold.sh",
+      "target": "evals/quiet-security-and-hardening/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-security-and-hardening: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/quiet-security-and-hardening/prompt.md": {
+      "source": "evals/quiet-security-and-hardening/prompt.md",
+      "target": "evals/quiet-security-and-hardening/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-security-and-hardening: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/quiet-security-and-hardening/case.yaml": {
+      "source": "evals/quiet-security-and-hardening/case.yaml",
+      "target": "evals/quiet-security-and-hardening/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-security-and-hardening: scaffold and execution settings"
+    },
+    "evals/quiet-security-and-hardening/graders/limit-raised.md": {
+      "source": "evals/quiet-security-and-hardening/graders/limit-raised.md",
+      "target": "evals/quiet-security-and-hardening/graders/limit-raised.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-security-and-hardening: grader 'limit-raised'"
+    },
+    "evals/quiet-security-and-hardening/graders/routing-quiet.md": {
+      "source": "evals/quiet-security-and-hardening/graders/routing-quiet.md",
+      "target": "evals/quiet-security-and-hardening/graders/routing-quiet.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-security-and-hardening: grader 'routing-quiet'"
+    },
+    "evals/fires-research-context/scaffold.sh": {
+      "source": "evals/fires-research-context/scaffold.sh",
+      "target": "evals/fires-research-context/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case fires-research-context: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/fires-research-context/prompt.md": {
+      "source": "evals/fires-research-context/prompt.md",
+      "target": "evals/fires-research-context/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-research-context: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/fires-research-context/case.yaml": {
+      "source": "evals/fires-research-context/case.yaml",
+      "target": "evals/fires-research-context/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case fires-research-context: scaffold and execution settings"
+    },
+    "evals/fires-research-context/graders/reads-source.md": {
+      "source": "evals/fires-research-context/graders/reads-source.md",
+      "target": "evals/fires-research-context/graders/reads-source.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-research-context: grader 'reads-source'"
+    },
+    "evals/fires-research-context/graders/routing-fired.md": {
+      "source": "evals/fires-research-context/graders/routing-fired.md",
+      "target": "evals/fires-research-context/graders/routing-fired.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-research-context: grader 'routing-fired'"
+    },
+    "evals/quiet-research-context/scaffold.sh": {
+      "source": "evals/quiet-research-context/scaffold.sh",
+      "target": "evals/quiet-research-context/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-research-context: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/quiet-research-context/prompt.md": {
+      "source": "evals/quiet-research-context/prompt.md",
+      "target": "evals/quiet-research-context/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-research-context: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/quiet-research-context/case.yaml": {
+      "source": "evals/quiet-research-context/case.yaml",
+      "target": "evals/quiet-research-context/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-research-context: scaffold and execution settings"
+    },
+    "evals/quiet-research-context/graders/names-pinned-version.md": {
+      "source": "evals/quiet-research-context/graders/names-pinned-version.md",
+      "target": "evals/quiet-research-context/graders/names-pinned-version.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-research-context: grader 'names-pinned-version'"
+    },
+    "evals/quiet-research-context/graders/no-web-fetch.md": {
+      "source": "evals/quiet-research-context/graders/no-web-fetch.md",
+      "target": "evals/quiet-research-context/graders/no-web-fetch.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-research-context: grader 'no-web-fetch'"
+    },
+    "evals/quiet-research-context/graders/no-web-search.md": {
+      "source": "evals/quiet-research-context/graders/no-web-search.md",
+      "target": "evals/quiet-research-context/graders/no-web-search.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-research-context: grader 'no-web-search'"
+    },
+    "evals/quiet-research-context/graders/routing-quiet.md": {
+      "source": "evals/quiet-research-context/graders/routing-quiet.md",
+      "target": "evals/quiet-research-context/graders/routing-quiet.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-research-context: grader 'routing-quiet'"
+    },
+    "evals/fires-code-simplification/scaffold.sh": {
+      "source": "evals/fires-code-simplification/scaffold.sh",
+      "target": "evals/fires-code-simplification/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case fires-code-simplification: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/fires-code-simplification/prompt.md": {
+      "source": "evals/fires-code-simplification/prompt.md",
+      "target": "evals/fires-code-simplification/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-code-simplification: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/fires-code-simplification/case.yaml": {
+      "source": "evals/fires-code-simplification/case.yaml",
+      "target": "evals/fires-code-simplification/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case fires-code-simplification: scaffold and execution settings"
+    },
+    "evals/fires-code-simplification/graders/reads-source.md": {
+      "source": "evals/fires-code-simplification/graders/reads-source.md",
+      "target": "evals/fires-code-simplification/graders/reads-source.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-code-simplification: grader 'reads-source'"
+    },
+    "evals/fires-code-simplification/graders/routing-fired.md": {
+      "source": "evals/fires-code-simplification/graders/routing-fired.md",
+      "target": "evals/fires-code-simplification/graders/routing-fired.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-code-simplification: grader 'routing-fired'"
+    },
+    "evals/quiet-code-simplification/scaffold.sh": {
+      "source": "evals/quiet-code-simplification/scaffold.sh",
+      "target": "evals/quiet-code-simplification/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-code-simplification: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/quiet-code-simplification/prompt.md": {
+      "source": "evals/quiet-code-simplification/prompt.md",
+      "target": "evals/quiet-code-simplification/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-code-simplification: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/quiet-code-simplification/case.yaml": {
+      "source": "evals/quiet-code-simplification/case.yaml",
+      "target": "evals/quiet-code-simplification/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-code-simplification: scaffold and execution settings"
+    },
+    "evals/quiet-code-simplification/graders/old-name-gone.md": {
+      "source": "evals/quiet-code-simplification/graders/old-name-gone.md",
+      "target": "evals/quiet-code-simplification/graders/old-name-gone.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-code-simplification: grader 'old-name-gone'"
+    },
+    "evals/quiet-code-simplification/graders/renamed.md": {
+      "source": "evals/quiet-code-simplification/graders/renamed.md",
+      "target": "evals/quiet-code-simplification/graders/renamed.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-code-simplification: grader 'renamed'"
+    },
+    "evals/quiet-code-simplification/graders/routing-quiet.md": {
+      "source": "evals/quiet-code-simplification/graders/routing-quiet.md",
+      "target": "evals/quiet-code-simplification/graders/routing-quiet.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-code-simplification: grader 'routing-quiet'"
+    },
+    "evals/fires-brainstorming/scaffold.sh": {
+      "source": "evals/fires-brainstorming/scaffold.sh",
+      "target": "evals/fires-brainstorming/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case fires-brainstorming: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/fires-brainstorming/prompt.md": {
+      "source": "evals/fires-brainstorming/prompt.md",
+      "target": "evals/fires-brainstorming/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-brainstorming: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/fires-brainstorming/case.yaml": {
+      "source": "evals/fires-brainstorming/case.yaml",
+      "target": "evals/fires-brainstorming/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case fires-brainstorming: scaffold and execution settings"
+    },
+    "evals/fires-brainstorming/graders/no-edit.md": {
+      "source": "evals/fires-brainstorming/graders/no-edit.md",
+      "target": "evals/fires-brainstorming/graders/no-edit.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-brainstorming: grader 'no-edit'"
+    },
+    "evals/fires-brainstorming/graders/no-write.md": {
+      "source": "evals/fires-brainstorming/graders/no-write.md",
+      "target": "evals/fires-brainstorming/graders/no-write.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-brainstorming: grader 'no-write'"
+    },
+    "evals/fires-brainstorming/graders/reads-source.md": {
+      "source": "evals/fires-brainstorming/graders/reads-source.md",
+      "target": "evals/fires-brainstorming/graders/reads-source.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-brainstorming: grader 'reads-source'"
+    },
+    "evals/fires-brainstorming/graders/routing-fired.md": {
+      "source": "evals/fires-brainstorming/graders/routing-fired.md",
+      "target": "evals/fires-brainstorming/graders/routing-fired.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-brainstorming: grader 'routing-fired'"
+    },
+    "evals/quiet-brainstorming/scaffold.sh": {
+      "source": "evals/quiet-brainstorming/scaffold.sh",
+      "target": "evals/quiet-brainstorming/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-brainstorming: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/quiet-brainstorming/prompt.md": {
+      "source": "evals/quiet-brainstorming/prompt.md",
+      "target": "evals/quiet-brainstorming/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-brainstorming: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/quiet-brainstorming/case.yaml": {
+      "source": "evals/quiet-brainstorming/case.yaml",
+      "target": "evals/quiet-brainstorming/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-brainstorming: scaffold and execution settings"
+    },
+    "evals/quiet-brainstorming/graders/batch-size-changed.md": {
+      "source": "evals/quiet-brainstorming/graders/batch-size-changed.md",
+      "target": "evals/quiet-brainstorming/graders/batch-size-changed.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-brainstorming: grader 'batch-size-changed'"
+    },
+    "evals/quiet-brainstorming/graders/routing-quiet.md": {
+      "source": "evals/quiet-brainstorming/graders/routing-quiet.md",
+      "target": "evals/quiet-brainstorming/graders/routing-quiet.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-brainstorming: grader 'routing-quiet'"
     },
     "evals/pre-commit-secret/scaffold.sh": {
       "source": "evals/pre-commit-secret/scaffold.sh",
@@ -1316,6 +1742,12 @@
       "target": "scripts/eval-coverage.sh",
       "action": "sync",
       "description": "Offline eval coverage report: lists the skills no evals/<case>/ exercises (tag, prompt invocation or grader skill path), human or --json; reads case files only, no model calls"
+    },
+    "scripts/eval-compare.sh": {
+      "source": "scripts/eval-compare.sh",
+      "target": "scripts/eval-compare.sh",
+      "action": "sync",
+      "description": "Compares two claude plugin eval --json results (baseline vs candidate): per-case score, delta and plugin-fired indicator, fires and stays-quiet rates over the routing pairs, regression beyond --noise or a case missing from the candidate; leaves errored runs out; refuses partial or incomplete runs; human or --json, no model calls"
     },
     "scripts/routing-check.sh": {
       "source": "scripts/routing-check.sh",
@@ -2717,6 +3149,24 @@
       "target": "tests/hooks/test-eval-coverage.sh",
       "action": "sync",
       "description": "Fixture test for eval-coverage.sh coverage: each coverage rule and its distractors, nested cases, results/ and mocks/ excluded, --json fields, exit-2 paths, and a deterministic run over the real evals/ and skills"
+    },
+    "tests/hooks/test-eval-compare.sh": {
+      "source": "tests/hooks/test-eval-compare.sh",
+      "target": "tests/hooks/test-eval-compare.sh",
+      "action": "sync",
+      "description": "Fixture test for eval-compare.sh: improvement, regression beyond and within noise, cases in one file only, errored runs left out, null verdicts, partial and incomplete runs refused, multi-run firing, indicator-only graders (routing and generic), --json fields, warnings, ASCII output and exit-2 paths"
+    },
+    "tests/hooks/fixtures/eval-compare/complete.json": {
+      "source": "tests/hooks/fixtures/eval-compare/complete.json",
+      "target": "tests/hooks/fixtures/eval-compare/complete.json",
+      "action": "sync",
+      "description": "Trimmed real claude plugin eval --json result (four cases, two arms, paths replaced) that test-eval-compare.sh derives its baseline and candidate variants from"
+    },
+    "tests/hooks/fixtures/eval-compare/partial.json": {
+      "source": "tests/hooks/fixtures/eval-compare/partial.json",
+      "target": "tests/hooks/fixtures/eval-compare/partial.json",
+      "action": "sync",
+      "description": "Real claude plugin eval --json result of a run stopped by its cost ceiling (partial: true), used by test-eval-compare.sh to check that partial runs are refused"
     },
     "tests/hooks/test-routing-check.sh": {
       "source": "tests/hooks/test-routing-check.sh",

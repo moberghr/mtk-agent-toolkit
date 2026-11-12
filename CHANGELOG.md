@@ -2,6 +2,27 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [9.6.0] - 2026-11-12
+
+This release turns the behavioural evals into a benchmark for skill triggering: twelve cases that check whether a live model loads a skill when it should and leaves it alone when it should not, and a script that compares two eval runs.
+
+### Added
+
+- Twelve eval cases tagged `routing`, in six pairs, for `fix`, `code-review-and-quality`, `security-and-hardening`, `research-context`, `code-simplification` and `brainstorming`. In each pair, `fires-<skill>` gives an everyday prompt that should load the skill and `quiet-<skill>` gives a plausible near miss that should not: a question about how a function handles failure, "what does the uncommitted diff change?", raising a model token limit, a library question the repo answers, renaming one variable, a fully specified one-line change. No prompt names its skill or uses a slash command. The review pair pastes its patch into the prompt, because pasted content is a known case where skills fail to load. Each fires prompt is one that its skill's own description claims more than any other skill's does; where two skills are both defensible, the case's `description` says so.
+  - A fires case reports its skill load as an indicator (`graders/routing-fired.md`, `arm: with-only`), because only the with-plugin arm can pass it, and is scored on a check both arms can pass in a few turns. A quiet case scores the absence of the load (`graders/routing-quiet.md`, `arm: both`) next to a free check on the result. Every case has a scored check that only a run which did the work can pass, so a run that crashed in its first turn does not score as a pass. Turn caps are 8 and 10, since a skill loads in the first turns.
+  - `validate-toolkit.sh` checks the shape of every case tagged `routing`, with flow or block `tags:`: exactly one of `fires`/`quiet`, exactly one tag naming a skill, and the matching grader with the right `arm`, whose Skill-call and SKILL.md-read alternatives both name that skill.
+- `scripts/eval-compare.sh` compares two `claude plugin eval --json` files, a baseline and a candidate. Per case it prints the with-plugin score in each, the delta and FIRED (runs in which the plugin fired out of with-plugin runs); then the mean score, the fires rate and the stays-quiet rate. It exits 1 when a score, a FIRED rate or one of the two rates drops by more than `--noise` (default 0.2: one grader flip in one of three runs is noise, a whole run from pass to fail is not), and when a baseline case is missing from the candidate (`--allow-missing` accepts that). A run that ended on an error is left out of the score and the rates and reported, since its "no edit" and "stayed quiet" graders pass on nothing done. It exits 2 on a partial or otherwise incomplete run, which it never scores: among others, a case whose runs all ended on an error, or a grader verdict whose `passed` is null or missing. It also exits 2 on files scored under different ablation modes. A changed model, judge, Claude Code version, grader definition or run count is a warning. `--json` gives the same report for scripts. It reads only fields confirmed against a real Claude Code 2.1.322 result.
+- `tests/hooks/test-eval-compare.sh` covers improvement, regression beyond and within noise, the noise edge, cases in only one file and `--allow-missing`, errored runs (left out, or all of a case's runs, exit 2), null and missing verdicts, several runs per case (2 of 3 firing against `--noise`), a case that changed kind, partial and incomplete runs, indicator-only graders (routing, `arm: with-only`, `tool_used: Skill`), `--json` fields, warnings, ASCII output and the exit-2 paths. Its fixtures in `tests/hooks/fixtures/eval-compare/` are trimmed real results, with paths removed.
+
+### Changed
+
+- `evals/README.md` lists the new cases, explains the routing pairs and their scoring, and shows how to produce a baseline and a candidate file on the same cases and compare them. The note that the lift table could not be built is replaced: lift is in each run's own result (`cases[].aggregates.delta`), and `eval-compare.sh` compares two runs.
+- `README.md` gives the plugin-eval case count as 21; it said 8.
+
+### First run
+
+One run per case, both arms (Claude Code 2.1.322, model `claude-sonnet-5-5`, judge `claude-haiku-5-5`, `WebSearch` granted). The seven cases changed in review were run again after the change; the other five figures come from the first run of all twelve. Every scored grader passed in both arms, so the lift is 0 on every case. The stays-quiet rate was 6/6. The fires rate was 2/6: `code-simplification` and `research-context` loaded through the Skill tool; `fix`, `code-review-and-quality` (pasted patch), `security-and-hardening` (an API key added to a payment client) and `brainstorming` did not, and their routing graders found no Skill call and no read of the skill in the trace. The two runs cost 1.68 and 0.79 USD. One run per case is a weak signal, so treat this as a first data point, not a measured rate. No skill description is changed in this release.
+
 ## [9.5.0] - 2026-11-12
 
 This release adds a model-free check that skill descriptions send everyday prompts to the right skill, and rewords the twelve descriptions it caught. It also ships the eval coverage report and the fixes below, merged since 9.4.2.

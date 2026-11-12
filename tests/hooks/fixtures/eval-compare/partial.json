@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.322",
+  "startedAt": "2026-11-12T21:24:44.391Z",
+  "durationSeconds": 0,
+  "costUsd": 0,
+  "partial": true,
+  "partialReason": "cost_ceiling",
+  "suite": {
+    "root": "<path>",
+    "ablation": "with-without",
+    "modelOverride": "claude-sonnet-5-5",
+    "judgeModel": "claude-haiku-5-5",
+    "tagFilters": [
+      "routing"
+    ],
+    "threshold": 1,
+    "concurrency": 1,
+    "plugins": [
+      {
+        "name": "mtk",
+        "version": "9.5.0",
+        "path": "<path>"
+      }
+    ]
+  },
+  "cases": [],
+  "aggregates": {
+    "casesTotal": 0,
+    "casesPassed": 0,
+    "overallScore": 0,
+    "overallPassRate": 0
+  }
+}

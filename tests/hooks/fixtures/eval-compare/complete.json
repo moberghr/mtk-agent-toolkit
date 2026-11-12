@@ -1,0 +1,507 @@
+{
+  "schemaVersion": 1,
+  "claudeVersion": "2.1.322",
+  "startedAt": "2026-11-12T21:16:26.345Z",
+  "durationSeconds": 97,
+  "costUsd": 0.508181,
+  "partial": false,
+  "suite": {
+    "root": "<path>",
+    "ablation": "with-without",
+    "modelOverride": "claude-sonnet-5-5",
+    "judgeModel": "claude-haiku-5-5",
+    "threshold": 1,
+    "concurrency": 1,
+    "plugins": [
+      {
+        "name": "mtk",
+        "version": "9.5.0",
+        "path": "<path>"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "fires-code-simplification",
+      "dir": "evals/fires-code-simplification",
+      "source": "mixed",
+      "promptMarkdown": "My last commit added summarize_orders to report.py. It works and the tests pass, but it is a tangle of nested ifs. Can you tidy it up without changing what it does?",
+      "runsPerCase": 3,
+      "timeoutSeconds": 240,
+      "maxTurns": 8,
+      "graders": [
+        {
+          "name": "reads-source",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "trace",
+            "pattern": "\"name\":\"(?:Read|Grep|Bash)\",\"input\":\\{[^}]*report\\.py",
+            "flags": "",
+            "match": "contains"
+          }
+        },
+        {
+          "name": "routing-fired",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "trace",
+            "pattern": "\"name\":\"Skill\",\"input\":\\{[^}]*\"skill\":\"(?:[\\w-]+:)?code-simplification\"|\"name\":\"Read\",\"input\":\\{\"file_path\":\"[^\"]*/skills/code-simplification/SKILL\\.md\"",
+            "flags": "",
+            "match": "contains",
+            "arm": "with-only"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 10,
+            "costUsd": 0.09238139999999999,
+            "judgeCostUsd": 0,
+            "durationSeconds": 22,
+            "startedAt": "2026-11-12T21:29:21.525Z",
+            "error": null,
+            "tracePath": "<path>/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "reads-source",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched \"name\":\"(?:Read|Grep|Bash)\",\"input\":\\{[^}]*report\\.py",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "routing-fired",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched \"name\":\"Skill\",\"input\":\\{[^}]*\"skill\":\"(?:[\\w-]+:)?code-simplification\"|\"name\":\"Read\",\"input\":\\{\"file_path\":\"[^\"]*/skills/code-simplification/SKILL\\.md\"",
+                "withOnly": true,
+                "scored": false
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 9,
+            "costUsd": 0.0729649,
+            "judgeCostUsd": 0,
+            "durationSeconds": 18,
+            "startedAt": "2026-11-12T21:29:43.167Z",
+            "error": null,
+            "tracePath": "<path>/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "reads-source",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched \"name\":\"(?:Read|Grep|Bash)\",\"input\":\\{[^}]*report\\.py",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "fires-fix",
+      "dir": "evals/fires-fix",
+      "source": "mixed",
+      "promptMarkdown": "test_cart.sh fails on the empty-cart check: cart_total prints nothing for an empty cart, but it should print 0. Can you sort it out?",
+      "runsPerCase": 3,
+      "timeoutSeconds": 240,
+      "maxTurns": 8,
+      "graders": [
+        {
+          "name": "reads-source",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "trace",
+            "pattern": "\"name\":\"(?:Read|Grep|Bash)\",\"input\":\\{[^}]*cart\\.sh",
+            "flags": "",
+            "match": "contains"
+          }
+        },
+        {
+          "name": "routing-fired",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "trace",
+            "pattern": "\"name\":\"Skill\",\"input\":\\{[^}]*\"skill\":\"(?:[\\w-]+:)?fix\"|\"name\":\"Read\",\"input\":\\{\"file_path\":\"[^\"]*/skills/fix/SKILL\\.md\"",
+            "flags": "",
+            "match": "contains",
+            "arm": "with-only"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 7,
+            "costUsd": 0.0762726,
+            "judgeCostUsd": 0,
+            "durationSeconds": 14,
+            "startedAt": "2026-11-12T21:30:01.488Z",
+            "error": null,
+            "tracePath": "<path>/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "reads-source",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched \"name\":\"(?:Read|Grep|Bash)\",\"input\":\\{[^}]*cart\\.sh",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "routing-fired",
+                "passed": false,
+                "weight": 1,
+                "explanation": "pattern not found in trace",
+                "withOnly": true,
+                "scored": false
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 6,
+            "costUsd": 0.0536205,
+            "judgeCostUsd": 0,
+            "durationSeconds": 7,
+            "startedAt": "2026-11-12T21:30:15.703Z",
+            "error": null,
+            "tracePath": "<path>/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "reads-source",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched \"name\":\"(?:Read|Grep|Bash)\",\"input\":\\{[^}]*cart\\.sh",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "no-false-done",
+      "dir": "evals/no-false-done",
+      "source": "mixed",
+      "promptMarkdown": "What does backup.sh in this repo do? A short explanation is enough.",
+      "runsPerCase": 3,
+      "timeoutSeconds": 300,
+      "maxTurns": 15,
+      "graders": [
+        {
+          "name": "answer-correct",
+          "type": "llm",
+          "weight": 1,
+          "config": {
+            "criteria": "The script under question archives the directory given as its first argument into a\ntimestamped .tar.gz in a destination ...",
+            "focus": "last_message"
+          }
+        },
+        {
+          "name": "no-edit",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Edit",
+            "min": 0,
+            "max": 0,
+            "arm": "both"
+          }
+        },
+        {
+          "name": "no-write",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Write",
+            "min": 0,
+            "max": 0,
+            "arm": "both"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.06157176,
+            "judgeCostUsd": 0.00036226,
+            "durationSeconds": 11,
+            "startedAt": "2026-11-12T21:16:26.395Z",
+            "error": null,
+            "tracePath": "<path>/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "answer-correct",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "`backup.sh` makes a rotating backup of a directory.\n\n- **Usage:** `backup.sh <dir> [dest]`. The source directory is requ ..."
+              },
+              {
+                "name": "no-edit",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Edit called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-write",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Write called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 3,
+            "costUsd": 0.04767466,
+            "judgeCostUsd": 0.00028736000000000007,
+            "durationSeconds": 9,
+            "startedAt": "2026-11-12T21:16:37.804Z",
+            "error": null,
+            "tracePath": "<path>/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "answer-correct",
+                "passed": true,
+                "weight": 1,
+                "explanation": "judge votes: PASS PASS PASS",
+                "withOnly": false,
+                "scored": true,
+                "judgeVotes": [
+                  true,
+                  true,
+                  true
+                ],
+                "evidence": "`backup.sh` creates a timestamped compressed archive of a directory and keeps only the newest few backups.\n\n- **Usage:** ..."
+              },
+              {
+                "name": "no-edit",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Edit called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-write",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Write called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    },
+    {
+      "name": "quiet-code-review-and-quality",
+      "dir": "evals/quiet-code-review-and-quality",
+      "source": "mixed",
+      "promptMarkdown": "What does the uncommitted diff in this repo change? A plain summary of the behaviour difference is enough.",
+      "runsPerCase": 3,
+      "timeoutSeconds": 240,
+      "maxTurns": 10,
+      "graders": [
+        {
+          "name": "names-env-override",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "last_message",
+            "pattern": "APP_TIMEOUT",
+            "flags": "",
+            "match": "contains"
+          }
+        },
+        {
+          "name": "no-edit",
+          "type": "tool_used",
+          "weight": 1,
+          "config": {
+            "tool": "Edit",
+            "min": 0,
+            "max": 0,
+            "arm": "both"
+          }
+        },
+        {
+          "name": "routing-quiet",
+          "type": "regex",
+          "weight": 1,
+          "config": {
+            "target": "trace",
+            "pattern": "\"name\":\"Skill\",\"input\":\\{[^}]*\"skill\":\"(?:[\\w-]+:)?code-review-and-quality\"|\"name\":\"Read\",\"input\":\\{\"file_path\":\"[^\"]*/skills/code-review-and-quality/SKILL\\.md\"",
+            "flags": "",
+            "match": "not_contains",
+            "arm": "both"
+          }
+        }
+      ],
+      "arms": {
+        "with": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 2,
+            "costUsd": 0.057279300000000005,
+            "judgeCostUsd": 0,
+            "durationSeconds": 8,
+            "startedAt": "2026-11-12T21:32:25.114Z",
+            "error": null,
+            "tracePath": "<path>/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "names-env-override",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched APP_TIMEOUT",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-edit",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Edit called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "routing-quiet",
+                "passed": true,
+                "weight": 1,
+                "explanation": "pattern absent as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ],
+        "without": [
+          {
+            "score": 1,
+            "passed": true,
+            "turns": 2,
+            "costUsd": 0.045766,
+            "judgeCostUsd": 0,
+            "durationSeconds": 8,
+            "startedAt": "2026-11-12T21:32:33.072Z",
+            "error": null,
+            "tracePath": "<path>/out/trace.jsonl",
+            "skippedPaidGraders": false,
+            "graders": [
+              {
+                "name": "names-env-override",
+                "passed": true,
+                "weight": 1,
+                "explanation": "matched APP_TIMEOUT",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "no-edit",
+                "passed": true,
+                "weight": 1,
+                "explanation": "Edit called 0x (expected 0..0)",
+                "withOnly": false,
+                "scored": true
+              },
+              {
+                "name": "routing-quiet",
+                "passed": true,
+                "weight": 1,
+                "explanation": "pattern absent as expected",
+                "withOnly": false,
+                "scored": true
+              }
+            ]
+          }
+        ]
+      },
+      "aggregates": {
+        "score": 1,
+        "passRate": 1,
+        "scoreWithout": 1,
+        "passRateWithout": 1,
+        "delta": 0
+      }
+    }
+  ],
+  "aggregates": {
+    "casesTotal": 4,
+    "casesPassed": 4,
+    "overallScore": 1.0,
+    "overallPassRate": 1.0,
+    "meanDelta": 0.0
+  }
+}
