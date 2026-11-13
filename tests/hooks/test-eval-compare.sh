@@ -248,8 +248,8 @@ variant ind-off "$rename"
 variant ind-on "$rename
 V(\"fires-fix\", \"routed-to-fix\")[\"passed\"] = True"
 run "$SBX/ind-on.json" "$SBX/ind-off.json"
-expect_rc "a withOnly indicator that stops passing exits 1" 1
-expect_out "non-routing indicator shows in FIRED with no kind" "*fires-fix*-*1/1*0/1*regressed: fired 1.00 -> 0.00*"
+expect_rc "a withOnly indicator that stops passing on a non-routing case exits 0" 0
+expect_out "non-routing indicator shows in FIRED with no kind, as a note" "*fires-fix*-*1/1*0/1*same; note: workflow loaded 1.00 -> 0.00*"
 expect_out "fires rate is n/a without routing graders" "*fires rate        n/a*"
 # Under --ablation none the run does not mark the grader withOnly; the definition does.
 variant cfg-on "$rename
@@ -258,14 +258,14 @@ V(\"fires-fix\", \"routed-to-fix\")[\"withOnly\"] = False"
 variant cfg-off "$rename
 V(\"fires-fix\", \"routed-to-fix\")[\"withOnly\"] = False"
 run "$SBX/cfg-on.json" "$SBX/cfg-off.json"
-expect_out "arm: with-only in the grader definition marks an indicator" "*fires-fix*-*1/1*0/1*regressed*"
+expect_out "arm: with-only in the grader definition marks an indicator" "*fires-fix*-*1/1*0/1*same; note: workflow loaded*"
 # A tool_used Skill grader is an indicator unless it says arm: both.
 skill='C("no-false-done")["graders"].append({"name": "skill-ran", "type": "tool_used", "weight": 1, "config": {"tool": "Skill"}})
 C("no-false-done")["arms"]["with"][0]["graders"].append({"name": "skill-ran", "passed": PASSED, "weight": 1, "withOnly": False, "scored": True})'
 variant skill-on "${skill/PASSED/True}"
 variant skill-off "${skill/PASSED/False}"
 run "$SBX/skill-on.json" "$SBX/skill-off.json"
-expect_out "tool_used Skill without arm: both is an indicator" "*no-false-done*-*1/1*0/1*regressed*"
+expect_out "tool_used Skill without arm: both is an indicator" "*no-false-done*-*1/1*0/1*same; note: workflow loaded*"
 variant both-on "${skill/PASSED/True}
 C(\"no-false-done\")[\"graders\"][-1][\"config\"][\"arm\"] = \"both\""
 variant both-off "${skill/PASSED/False}
@@ -292,7 +292,7 @@ run --json "$SBX/fired.json" "$SBX/loud.json"
 expect_rc "--json exits 1 on a regression" 1
 if py 'True' >/dev/null 2>&1; then pass "--json is valid JSON"; else fail "--json must be valid JSON. out: $OUT"; fi
 expect_py "json: top-level keys" '",".join(sorted(d))' \
-  "allowMissing,baseline,candidate,cases,noise,onlyInBaseline,onlyInCandidate,regressed,regressions,totals,warnings"
+  "allowMissing,baseline,candidate,cases,noise,notes,onlyInBaseline,onlyInCandidate,regressed,regressions,totals,warnings"
 expect_py "json: allowMissing" 'd["allowMissing"]' "False"
 expect_py "json: noise" 'd["noise"]' "0.2"
 expect_py "json: regressed" 'd["regressed"]' "True"
@@ -390,6 +390,55 @@ OUT="$(PATH="$SBX/nopy" "$BASH" "$EC" "$BASE" "$BASE" 2>"$SBX/err")" || RC=$?
 ERR="$(cat "$SBX/err")"
 expect_rc "missing python3 exits 2" 2
 expect_err "missing python3 message names python3" "*python3*"
+
+# --- 9. non-routing cases: the score decides, the indicator is a note ---------------------
+# no-false-done gets an unscored with-only indicator, two runs, so the fired rate can
+# move by 0.5 (beyond the 0.2 noise) while the score stays put or moves on its own.
+ind='C("no-false-done")["graders"].append({"name": "skill-ran", "type": "tool_used", "weight": 1, "config": {"tool": "Skill"}})
+RUNS("no-false-done", 2)
+for i, ok in enumerate(OKS):
+    C("no-false-done")["arms"]["with"][i]["graders"].append({"name": "skill-ran", "passed": ok, "weight": 1, "withOnly": True, "scored": False})'
+variant nr-both "${ind/OKS/[True, True]}"
+variant nr-half "${ind/OKS/[True, False]}
+SC(\"no-false-done\", 1.0)"
+variant nr-half-same "${ind/OKS/[True, False]}"
+variant nr-low "${ind/OKS/[True, True]}
+SC(\"no-false-done\", 0.5)"
+variant nr-half-low "${ind/OKS/[True, False]}
+SC(\"no-false-done\", 0.5)"
+variant nr-base "${ind/OKS/[True, True]}
+SC(\"no-false-done\", 0.67)"
+
+# (a) score up, indicator down: improved, exit 0, listed under NOTES.
+run "$SBX/nr-base.json" "$SBX/nr-half.json"
+expect_rc "non-routing: score up, indicator down exits 0" 0
+expect_out "non-routing: score up, indicator down is improved with a note" "*no-false-done*-*0.67*1.00*+0.33*2/2*1/2*improved: score +0.33; note: workflow loaded 1.00 -> 0.50*"
+expect_out "non-routing: the note is listed under NOTES" "*0 regression(s), 1 improved*NOTES*no-false-done: workflow loaded 1.00 -> 0.50*"
+run --json "$SBX/nr-base.json" "$SBX/nr-half.json"
+expect_py "non-routing: --json row note" "[c['note'] for c in d['cases'] if c['name']=='no-false-done'][0]" "workflow loaded 1.00 -> 0.50"
+expect_py "non-routing: --json status is improved" "[c['status'] for c in d['cases'] if c['name']=='no-false-done'][0]" "improved"
+expect_py "non-routing: --json notes list" "d['notes']" "['no-false-done: workflow loaded 1.00 -> 0.50']"
+expect_py "non-routing: --json is not a regression" "d['regressed']" "False"
+expect_py "non-routing: --json keeps the other fields" "sorted([c for c in d['cases'] if c['name']=='no-false-done'][0].keys())" "['baseline', 'candidate', 'delta', 'kind', 'name', 'note', 'reasons', 'status']"
+# (b) score same, indicator down: not a regression.
+run "$SBX/nr-both.json" "$SBX/nr-half-same.json"
+expect_rc "non-routing: score same, indicator down exits 0" 0
+expect_out "non-routing: score same, indicator down is same with a note" "*no-false-done*-*1.00*1.00*+0.00*2/2*1/2*same; note: workflow loaded 1.00 -> 0.50*"
+expect_out "non-routing: that note is under NOTES" "*NOTES*no-false-done: workflow loaded 1.00 -> 0.50*"
+# (c) score down beyond noise, indicator same: regressed.
+run "$SBX/nr-both.json" "$SBX/nr-low.json"
+expect_rc "non-routing: score down, indicator same exits 1" 1
+expect_out "non-routing: score down, indicator same is regressed with no note" "*no-false-done*-*1.00*0.50*-0.50*2/2*2/2*regressed: score -0.50*"
+run "$SBX/nr-both.json" "$SBX/nr-half-low.json"
+expect_out "non-routing: score down and indicator down regresses on the score alone" "*no-false-done*regressed: score -0.50; note: workflow loaded 1.00 -> 0.50*"
+expect_out "non-routing: the regression line does not mention the indicator" "*REGRESSIONS*no-false-done: score -0.50
+*NOTES*"
+# A fires case that stops firing is still a regression, and gets no note.
+run "$SBX/fired.json" "$BASE"
+expect_rc "fires case that stops firing still exits 1" 1
+expect_out "fires case that stops firing is regressed, not noted" "*fires-fix*regressed: fired 1.00 -> 0.00
+*"
+case "$OUT" in *NOTES*) fail "a fires case must not produce a note" ;; *) pass "a fires case produces no NOTES section" ;; esac
 
 echo
 if [ "$fails" -eq 0 ]; then
