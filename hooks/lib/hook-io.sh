@@ -536,44 +536,97 @@ mtk_ensure_session_baseline() {
 }
 
 # Extract the first string value for `key` from a JSON payload.
-# The parser walks the string body character-by-character so that escaped quotes
+# The parser honours escapes inside the string body so that escaped quotes
 # (\") no longer terminate the value prematurely — that bug let destructive
 # commands slip past the security gate.
 # Exits non-zero if the key is not present.
+#
+# Decoding is linear in the payload size. Some awks run strlen on the whole
+# buffer for every substr call, and their regex split and gsub cost grows with
+# the number of matches times the string length, so a character-at-a-time loop
+# was quadratic and a large Write payload outran the hook timeout. Instead each
+# input line is split at its backslashes with a one-character string separator,
+# which every awk treats literally and handles in one pass (some awks also break
+# such a split at newlines, and a line has none). The pieces of all lines are
+# kept in order, each one marked as following a backslash or a line break. An
+# escape is then the first character of a piece that follows a backslash (or,
+# when that piece is empty, the separator after it), and the rest of a piece is
+# plain text that is printed in one step up to the first quote. The output goes
+# straight to stdout instead of being built up in a variable. The key itself is
+# still found by one regex match on the joined buffer, so which occurrence is
+# returned does not change. Joining the input lines into that buffer is
+# unchanged and still grows faster than linear with the number of raw line
+# breaks; a JSON hook payload is a single line.
+# Escapes: \n \t \r \" \\ \/ \b \f are decoded; any other escaped character,
+# including the u of \uXXXX and a raw line break, is kept with its backslash. A
+# backslash that ends the payload is dropped, and an unterminated value prints
+# what it has.
+# config-guard.sh carries a copy of the piece split and of emit_value for
+# every-occurrence extraction; keep the two in step.
 mtk_extract_json_string() {
   local payload="$1"
   local key="$2"
   local output
 
   output=$(printf '%s' "$payload" | awk -v key="$key" '
-    { buf = (NR == 1 ? $0 : buf "\n" $0) }
+    # Prints the string value whose body starts at buffer position start, and
+    # returns the position of its closing quote, or len + 1 when the buffer
+    # ends first. Reads the pieces in part[1..n], where nl[i] is set when piece
+    # i follows a line break rather than a backslash. On entry part[k] holds
+    # start and begins at buffer position b; on return k and b name the piece
+    # that holds the closing quote.
+    function emit_value(   p, pb, q, c, skip) {
+      p = substr(part[k], start - b + 1); pb = start; skip = 0
+      for (;;) {
+        q = index(p, "\"")
+        if (q) { printf "%s", substr(p, 1, q - 1); return pb + q - 1 }
+        printf "%s", p
+        if (k >= n) return len + 1
+        # p is the tail of part[k], so pb + length(p) is the separator after it.
+        b = pb + length(p) + 1; k++
+        p = part[k]; pb = b
+        # The separator before this piece was the escaped character of the
+        # previous escape and is already printed.
+        if (skip) { skip = 0; continue }
+        # A line break inside the value is plain text.
+        if (nl[k]) { printf "%s", "\n"; continue }
+        # An empty piece means the escaped character is the separator after
+        # it: a backslash, or a line break that is kept with its backslash.
+        if (p == "") {
+          if (k >= n) return len + 1
+          if (nl[k + 1]) printf "%s%s", "\\", "\n"
+          else printf "%s", "\\"
+          skip = 1; continue
+        }
+        c = substr(p, 1, 1); p = substr(p, 2); pb++
+        if (c == "n") printf "%s", "\n"
+        else if (c == "t") printf "%s", "\t"
+        else if (c == "r") printf "%s", "\r"
+        else if (c == "\"") printf "%s", "\""
+        else if (c == "\\") printf "%s", "\\"
+        else if (c == "/") printf "%s", "/"
+        else if (c == "b") printf "%s", "\b"
+        else if (c == "f") printf "%s", "\f"
+        else printf "%s%s", "\\", c
+      }
+    }
+    # The first line is split straight into part; later lines are appended.
+    NR == 1 { buf = $0; n = split($0, part, "\\"); if (n == 0) { n = 1; part[1] = "" } }
+    NR > 1 {
+      buf = buf "\n" $0
+      nl[n + 1] = 1
+      m = split($0, piece, "\\")
+      if (m == 0) { m = 1; piece[1] = "" }
+      for (j = 1; j <= m; j++) part[++n] = piece[j]
+    }
     END {
       pattern = "\"" key "\"[[:space:]]*:[[:space:]]*\""
       if (!match(buf, pattern)) exit 1
       start = RSTART + RLENGTH
-      out = ""
-      esc = 0
-      len = length(buf)
-      for (i = start; i <= len; i++) {
-        c = substr(buf, i, 1)
-        if (esc) {
-          if (c == "n") out = out "\n"
-          else if (c == "t") out = out "\t"
-          else if (c == "r") out = out "\r"
-          else if (c == "\"") out = out "\""
-          else if (c == "\\") out = out "\\"
-          else if (c == "/") out = out "/"
-          else if (c == "b") out = out "\b"
-          else if (c == "f") out = out "\f"
-          else out = out "\\" c
-          esc = 0
-          continue
-        }
-        if (c == "\\") { esc = 1; continue }
-        if (c == "\"") { print out; exit 0 }
-        out = out c
-      }
-      print out
+      len = length(buf); k = 1; b = 1
+      while (k < n && start > b + (l = length(part[k]))) { b += l + 1; k++ }
+      emit_value()
+      printf "\n"
       exit 0
     }
   ') || return 1

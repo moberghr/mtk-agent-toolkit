@@ -1554,6 +1554,12 @@
       "action": "sync",
       "description": "Hook test for config-guard.sh covering each weakening signal across .NET, JS/TS and Python configs, stricter and unrelated edits that must pass, the allow list and its 24h expiry, and the kill-switch"
     },
+    "tests/hooks/test-hook-io-decoder.sh": {
+      "source": "tests/hooks/test-hook-io-decoder.sh",
+      "target": "tests/hooks/test-hook-io-decoder.sh",
+      "action": "sync",
+      "description": "Test for the JSON string decoders (mtk_extract_json_string in hook-io.sh, extract_json_strings in config-guard.sh): old-versus-new differential over a generated corpus on output bytes and exit code, contract pins, and a CPU-time bound on 300 KB and 1 MB payloads"
+    },
     "tests/hooks/test-build-plugin-branch.sh": {
       "source": "tests/hooks/test-build-plugin-branch.sh",
       "target": "tests/hooks/test-build-plugin-branch.sh",
