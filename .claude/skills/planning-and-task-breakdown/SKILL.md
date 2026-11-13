@@ -70,7 +70,7 @@ Convert the approved plan into small, executable tasks that can be verified one 
    - Tag the package `[ASSUMED]` in the plan until verified, and insert an explicit `checkpoint:human-verify` step **before** the install task. This checkpoint is one of the conditions that blocks `MTK_AUTO_PROCEED` at the `implement` Phase 2.5 gate, so an unverified package can never be installed autonomously.
    - A criterion-0 Poor (not found / dead repo / typosquat signal) blocks the dependency outright — re-plan without it.
 5. State the resulting wave schedule in the plan (`W0: B1 · W1: B2 B3 B4 · W2: B5`) — derived from `depends` as topological levels, wave width capped at `MTK_BATCH_WAVE_MAX` (default 3). The schedule is a readback of the edges, not a second source of truth: if it looks wrong, fix `depends`.
-6. Write `tasks/todo.md` with:
+6. Read `tasks/todo.md` before writing it. Unfinished items for different work (not batches of this plan, the same comparison `batch-fix` makes against its stub's findings) stay in the file under a short heading below the new plan, or you ask the engineer; never overwrite them silently. Then write `tasks/todo.md` with:
    - task title
    - scope and branch
    - batches with checkboxes

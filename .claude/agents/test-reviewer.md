@@ -47,6 +47,13 @@ tests with no assertion; catch blocks that swallow the exception under test (use
 `Assert.Throws` / `pytest.raises`); mock-call-only verification with no check on the result;
 near-identical copies that do not vary the interesting input.
 
+**Mutation check** — once per review, only for a condition the change adds to money, auth or
+state-mutating logic: apply one boundary or negation mutation (`>` → `>=`, drop a `!`) with
+`bash "$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/mutation-probe.sh" || ([ -f scripts/mutation-probe.sh ] && echo scripts/mutation-probe.sh || echo "${CLAUDE_PLUGIN_ROOT}/scripts/mutation-probe.sh"))" --file <path> --line <n> --from '<text>' --to '<text>' --test '<covering tests>'`.
+Only `survived` becomes a finding (the mutated `file:line` and the missing test case). `not_run`
+(expected where tests need ignored runtime files or services) or a missing script is reported as
+"mutation check not run", never as evidence.
+
 ## Step 3: Output
 
 Schema table and JSON. Each finding cites the test `file:line` and the production

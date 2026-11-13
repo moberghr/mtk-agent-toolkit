@@ -30,7 +30,9 @@ findings-only fragments merged into this envelope. Worked examples and long-form
     "rationale": "one line: why this is a problem",
     "suggested_fix": "one line: the remediation",
     "decision_origin": "optional: user-directed | claude-recommended-approved | claude-recommended-modified | claude-recommended-rejected | system-inferred",
-    "failure_mode": "optional F1..F16 from ai-failure-modes.md"
+    "failure_mode": "optional F1..F16 from ai-failure-modes.md",
+    "pre_existing": "optional: true only for lines this change did not add or modify",
+    "evidence": "required with pre_existing: the same defect at the merge base, as file:line"
   }],
   "internet_facing": false,
   "needs_human_review": [{ "area": "optional axis", "why": "..." }],
@@ -41,7 +43,8 @@ findings-only fragments merged into this envelope. Worked examples and long-form
 ## Field rules
 
 - `source`: `linter`/`analyzer` always carry `confidence: 100`; `ai` is reasoned; `drift` is spec-drift; `context` is mined history.
-- `rule` is the canonical citation; `rule_ref`, `category`, `gate`, `failure_mode`, `decision_origin`, `internet_facing`, `needs_human_review` are optional.
+- `rule` is the canonical citation; `rule_ref`, `category`, `gate`, `failure_mode`, `decision_origin`, `pre_existing`, `evidence`, `internet_facing`, `needs_human_review` are optional.
+- `pre_existing: true` means the flagged lines sit in a changed file but this change did not add or modify them (the test `finding-verifier` applies for its `pre_existing` verdict), and `evidence` cites the same defect at the merge base. A label on a line the diff touches, or without that evidence, is void: the finding counts as the change's. A valid one goes to the follow-up list and never forces `NEEDS_CHANGES`; one with `gate: "mandatory"` or a security rule is listed first there, never dropped. When `finding-verifier` runs, its verdict replaces the lane's label.
 - `decision_origin`, when present, must be one of the five values above (meanings: `docs/review-finding-examples.md`). Emit it when the reviewer knows who made the decision under review; omit it rather than guess.
 - `snippet` (optional): the code the finding is about. Finding UIDs (`F-` + sha1 of `file|rule|normalised snippet`, first 10 hex) are taken from the first of `snippet`, `evidence`, `code`, falling back to `rationale`, `description`, `title`, `message`, so a snippet keeps the UID stable when the wording changes.
 - There is no score block. Findings and the evidence behind them decide the verdict.
@@ -89,14 +92,14 @@ per-engineer override in `review-config.local.json`). Only `confidence >= thresh
 `findings[]`; the rest are counted in `summary.filtered_below_threshold`.
 
 There is no findings quota: a clean diff with zero findings is a valid result, explained by `below_threshold_rationale`. Never inflate confidence or pad `findings[]` to avoid an empty list. Drop, and do **not** count, false-positive
-categories: pre-existing issues outside the diff, compiler/linter-catchable issues from `source: "ai"`,
+categories: pre-existing issues the changed code does not reach (one it reaches follows the `pre_existing` field rule), compiler/linter-catchable issues from `source: "ai"`,
 style nits not in a loaded guideline, justified silences, plausibly intentional changes, generic
 concerns with no concrete vector, guesses needing unloaded context.
 
 ## Verdict mapping (in order)
 
 1. Review could not be completed → `ABSTAINED` (`abstention.reason` required; real findings found before stopping are kept but never convert to `PASS`).
-2. Any `critical` at/above threshold, or any `gate: "mandatory"` → `NEEDS_CHANGES`.
+2. Any `critical` at/above threshold, or any `gate: "mandatory"`, unless validly `pre_existing` (Field rules) → `NEEDS_CHANGES`.
 3. Otherwise → `PASS`, which needs evidence: an empty `findings[]` **requires** `below_threshold_rationale` naming what was checked (`file:line` or the files and axes covered) and why nothing reached the threshold. A PASS without that evidence is not a PASS — the orchestrator records the lane as `ABSTAINED`.
 
 Warnings and suggestions never force `NEEDS_CHANGES`. Remediation on the same blocking finding is
@@ -120,6 +123,10 @@ Every agent in `.claude/agents/` follows this section; the agent file adds only 
   `review-config.local.json`. Emit the markdown table, then the fenced JSON (source of truth).
   Apply *Confidence and threshold* above; an empty `findings[]` carries a
   `below_threshold_rationale` naming what was checked.
+- **Before reporting.** Check each finding against the callers, guards and tests that reach the
+  changed code, and drop it when they rule it out. A defect on lines this change did not add or
+  modify is not a regression: report it only under the `pre_existing` field rule. Zero findings
+  is a valid result.
 - **Anti-anchoring.** Judge from evidence: the diff, the code, the spec/sidecar and the pack.
   Do not read other lanes' output, earlier review iterations, or planner rationale; if the
   orchestrator passes any, treat it as a pointer to verify, never as a conclusion.

@@ -76,5 +76,12 @@ tech-stack skill). Axes, security first:
 
 - Security gaps are `critical` without exception: here a security gap is regulatory exposure.
 - Missing tests on data-mutating public methods are `warning`, `critical` when financial.
+- A money operation reachable by webhook, queue redelivery or client retry is `critical` when
+  nothing makes a repeat a no-op: insert claim, unique constraint on the effect row (provider
+  event id), guarded state transition, provider-enforced key sent with the call, or absolute-set upsert.
+- A destructive schema step (drop, rename, type narrowing, `NOT NULL` on existing rows) is
+  `critical` while any running release or rollback target still depends on the old shape, as when
+  one deploy removes the last reader and drops the column; objects new in the same unreleased
+  change are exempt. No down path is `warning` (`.claude/references/schema-migrations.md`).
 - Guideline style issues are `suggestion` unless they indicate a bug.
 - Verdict follows the schema's mapping: any critical is `NEEDS_CHANGES`; a PASS must cite what was checked.

@@ -1,5 +1,5 @@
 ---
-description: Finance domain and security supplement — regulated state, sensitive data, audit invariants, and the agent-config ban
+description: Finance domain and security supplement — regulated state, sensitive data, audit invariants, idempotency, and the agent-config ban
 globs: ["**/Money*.cs", "**/Payment*.cs", "**/Ledger*.cs", "**/*Transaction*.py", "**/auth/**", "**/authorization/**", "**/payments/**", "**/transfers/**", "**/audit/**", "**/secrets/**", "**/iam/**", "**/appsettings*.json", "**/*.env*"]
 alwaysApply: false
 ---
@@ -37,6 +37,17 @@ Never log any of it, never put it in error messages or exception payloads, never
 - Retention is regulator-driven, not engineer-driven.
 - Time is authoritative server time, UTC, from a trusted clock. Client timestamps are input, not truth.
 
+## Idempotency
+
+For anything a client, queue or provider can deliver twice (money movement, order placement, webhooks):
+
+- Derive the key from the operation's intent (client request id, provider event id), never a new random id per attempt.
+- Claim it by inserting under a unique constraint in the effect's transaction; read-then-insert is a race.
+- Store a payload hash with the key; the same key with a different payload is rejected.
+- An external call cannot join that transaction: commit the claim as in-flight with a lease, send the same key to the provider, and reconcile with the provider by that key before any re-run after a timeout or crash.
+- On a repeat: completed returns the stored result; in flight within its lease is rejected or waits; unknown (a timeout) is reconciled, never treated as failed; failed follows the stated retry rule.
+- Keys expire on a stated schedule that outlasts every caller's retry window.
+
 ## Agent configuration (MTK security rule)
 
 - Never write routing or configuration into a user's global `~/.claude/CLAUDE.md`, `~/.claude/settings.json` or any other global agent config. Global self-mutation by a skill, agent or external content silently overrides every project for every user on the machine.
@@ -60,7 +71,7 @@ Never log any of it, never put it in error messages or exception payloads, never
 - Could PII or a financial identifier leak into logs, metrics, exceptions or upstream observability?
 - Is rounding, currency conversion and time-zone handling explicit and **tested**, or inherited from a framework default?
 - Do tests of money, ledger and audit behavior run against the production database engine? An in-memory provider does not prove transaction or rounding semantics.
-- Are idempotency keys present on anything that can be retried (money movement, order placement, webhooks)?
+- Is everything retryable idempotent as **Idempotency** above requires?
 - If this path is bypassed or fails open, what is the blast radius — stale data, duplicate trades, duplicate payments, wrong report numbers?
 - Does it add a trust boundary with a market, custodian, exchange, bank or regulator? Are authentication, signing and replay protection explicit?
 - Does it widen IAM, network or secret-store access beyond what the change needs?

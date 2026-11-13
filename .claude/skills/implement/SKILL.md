@@ -1,6 +1,6 @@
 ---
 name: implement
-description: Full feature implementation loop orchestrating planning, batching, verification, and review skills
+description: Use for substantial work that adds a feature, a public contract such as an endpoint, or a multi-file behavior change; the full loop of spec, plan, batched implementation, verification and review.
 type: skill
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion
 argument-hint: <feature description, or a spec/plan path>
@@ -22,7 +22,7 @@ The entry point for substantial work. Stack specifics come from the active tech 
 Before doing anything else:
 
 0. Init or resume a workflow artifact (`.claude/skills/workflow-artifacts/SKILL.md`).
-   - **Resolve the helper once** — plugin installs have no project-relative copy, and `CLAUDE_PLUGIN_ROOT` is never set in the Bash environment (Claude Code substitutes the braced `${CLAUDE_PLUGIN_ROOT}` into skill text at load time instead), so a bare `scripts/workflow-artifact.sh` fails. Resolve it `MTK_HELPER_ROOT`-first (a checkout you pin — see `CLAUDE.md`), then project, then plugin, and use `"$WFA"` for every `workflow-artifact.sh` call in this skill:
+   - **Resolve the helper once** — plugin installs have no project-relative copy, and `CLAUDE_PLUGIN_ROOT` is never set in the Bash environment (Claude Code substitutes the braced `${CLAUDE_PLUGIN_ROOT}` into skill text at load time instead), so a bare `scripts/workflow-artifact.sh` fails. Resolve it `MTK_HELPER_ROOT`-first (a checkout you pin — see `.claude/references/env-knobs.md`), then project, then plugin, and use `"$WFA"` for every `workflow-artifact.sh` call in this skill:
      ```bash
      WFA="$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/workflow-artifact.sh" || ([ -f scripts/workflow-artifact.sh ] && echo scripts/workflow-artifact.sh || echo "${CLAUDE_PLUGIN_ROOT}/scripts/workflow-artifact.sh"))"
      ```
@@ -167,7 +167,7 @@ open package-legitimacy checkpoint, the scope is neither breaking-change nor hig
 `implement-approval-gate.md`). Any condition failing ⇒ fall back to `AskUserQuestion`.
 
 **Read `.claude/references/implement-approval-gate.md`** for the full rendering
-spec, the complete AUTO_PROCEED precondition list, harness fallbacks when
+spec, what counts as approval, the complete AUTO_PROCEED precondition list, harness fallbacks when
 `AskUserQuestion` is unavailable, multi-spec `gate_scope` and standing-approval
 expiry, and why `results.todo_path` is excluded from the seal.
 ## Phase 2.9: Pre-Flight (Collision, Dispatch, Baseline)
@@ -254,7 +254,7 @@ Per that reference's **Review protocol** (scripts run as `bash "$MTK_ROOT/…"`,
 
 ## Phase 5: Fix Review Findings
 
-Fix every critical issue and every warning unless you record a one-line waiver with a reason, then:
+Fix every critical issue and every warning unless you record a one-line waiver with a reason (a valid `pre_existing` finding goes to the follow-up list instead, per `review-finding-schema.md`), then:
 
 - run the build and test commands from the active tech stack skill
 - run the pre-commit review list if present

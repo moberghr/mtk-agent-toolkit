@@ -27,7 +27,7 @@
 | Mine lessons from past sessions | `/lessons mine` | Sweep recent session transcripts for durable lesson/memory candidates (reject-by-default rubric, suggest-only) |
 | Tune MTK behaviour (hooks, rigor, budgets, thresholds) | `MTK_*` environment variables | Full table of every knob, its default and effect: `.claude/references/env-knobs.md` |
 
-**Decision rule for `/mtk`:** Say what you want in plain English. The router picks the right workflow skill — fix / batch-fix / implement / pre-commit-review / repo-health / research-context / instructions / lessons / mtk-doctor / handoff.
+**Decision rule for `/mtk`:** Say what you want in plain English. The router picks the right workflow skill — fix / batch-fix / implement / pre-commit-review / code-review-and-quality / brainstorming / spec-driven-development / repo-health / research-context / instructions / lessons / mtk-doctor / handoff.
 
 **Updates:** MTK is a Claude Code plugin — use the plugin manager to upgrade. There is no in-repo update command.
 

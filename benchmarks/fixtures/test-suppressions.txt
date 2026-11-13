@@ -1,0 +1,42 @@
+# Suppression markers hooks/config-guard.sh must report as T2-SUPPRESS when an
+# Edit adds the line to a test-shaped file (test class active). Read by
+# scripts/run-benchmarks.sh; its pass count is the guard's detection rate on
+# this list. Tab-separated: FILE<TAB>ADDED_LINE, FILE repo-relative and
+# test-shaped. A row starts with FILE, so a "#" row is always a comment.
+tests/Calc.Tests/CalcTests.cs	#pragma warning disable CS0219
+src/calc.test.ts	// @ts-ignore
+src/calc.test.ts	// @ts-expect-error
+src/calc.test.ts	// @ts-nocheck
+src/calc.test.ts	/* eslint-disable */
+src/calc.test.ts	// eslint-disable-next-line no-console
+src/calc.test.ts	// biome-ignore lint/style/useConst: legacy
+tests/test_calc.py	from calc import add  # noqa: F401
+tests/test_calc.py	value = load()  # type: ignore
+tests/test_calc.py	# pylint: disable=invalid-name
+tests/test_calc.py	# pylint: skip-file
+tests/test_calc.py	result = parse(s)  # pyright: ignore[reportArgumentType]
+tests/Calc.Tests/CalcTests.cs	[SuppressMessage("Naming", "CA1707", Justification = "names")]
+tests/Calc.Tests/CalcTests.cs	[assembly: SuppressMessage("Style", "IDE0060")]
+tests/Calc.Tests/CalcTests.cs	[global::System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Design", "CA1031")]
+tests/Calc.Tests/CalcTests.cs	[UnconditionalSuppressMessage("Trimming", "IL2026")]
+tests/Calc.Tests/CalcTests.fs	#nowarn "40"
+tests/Calc.Tests/CalcTests.cs	var r = Calc.Parse(s); // NOSONAR
+tests/test_calc.py	result = parse(s)  # nosonar
+src/calc.test.ts	const q = build(id); // nosemgrep: js.sql-injection
+tests/test_calc.py	result = parse(s)  # nosem
+tests/test_calc.py	out = run(cmd)  # nosec B602
+tests/test_calc.py	KEY = "fixture-value"  # gitleaks:allow
+tests/Calc.Tests/CalcTests.cs	[ExcludeFromCodeCoverage]
+tests/Calc.Tests/CalcTests.cs	[ExcludeFromCodeCoverage(Justification = "glue")]
+tests/Calc.Tests/CalcTests.cs	[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]
+tests/Calc.Tests/CalcTests.cs	[Serializable, ExcludeFromCodeCoverage]
+tests/Calc.Tests/CalcTests.fs	[<ExcludeFromCodeCoverage>]
+tests/test_calc.py	def helper_x():  # pragma: no cover
+tests/test_calc.py	if ready:  # pragma: no branch
+src/calc.test.ts	/* istanbul ignore next */
+src/calc.test.ts	/* c8 ignore next */
+src/calc.test.ts	/* v8 ignore start */
+tests/Calc.Tests/CalcTests.cs	var r = Calc.Parse(s); //NOSONAR
+tests/test_calc.py	out = run(cmd)  #nosec
+tests/Calc.Tests/CalcTests.fs	[<Fact; ExcludeFromCodeCoverage>]
+tests/Calc.Tests/CalcTests.fs	[<Fact; SuppressMessage("a","b")>]

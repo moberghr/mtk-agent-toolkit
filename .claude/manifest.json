@@ -1,6 +1,6 @@
 {
-  "version": "9.4.2",
-  "updated": "2026-10-22",
+  "version": "9.10.0",
+  "updated": "2026-11-13",
   "description": "MTK (Moberg Toolkit) — language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -63,7 +63,7 @@
       "source": "hooks/evidence-ledger.sh",
       "target": "hooks/evidence-ledger.sh",
       "action": "sync",
-      "description": "PostToolUse evidence ledger (Edit|Write|Bash): records verification runs with a working-tree fingerprint, bumps the edit sequence on file-writing commands, and keeps the session baseline that verify-completion checks"
+      "description": "PostToolUse evidence ledger (Edit|Write|MultiEdit|NotebookEdit|Bash): records verification runs with a working-tree fingerprint, bumps the edit sequence on file-writing commands, and keeps the session baseline that verify-completion checks"
     },
     "benchmarks/fixtures/destructive-sql-command.txt": {
       "source": "benchmarks/fixtures/destructive-sql-command.txt",
@@ -220,6 +220,12 @@
       "target": ".claude/references/domain-finance.md",
       "action": "sync",
       "description": "Finance domain supplement — concrete examples of regulated state, sensitive data, and audit requirements for fintech codebases"
+    },
+    "references/schema-migrations.md": {
+      "source": ".claude/references/schema-migrations.md",
+      "target": ".claude/references/schema-migrations.md",
+      "action": "sync",
+      "description": "Expand-then-contract procedure for schema migrations that stay safe during rollout and rollback, pointed to by every stack's data-layer guidance"
     },
     "references/dependency-intake-checklist.md": {
       "source": ".claude/references/dependency-intake-checklist.md",
@@ -508,7 +514,7 @@
       "source": "hooks/context-guard.sh",
       "target": "hooks/context-guard.sh",
       "action": "sync",
-      "description": "PostToolUse context guard (Edit|Write|Bash): reads the main-thread context size from the transcript tail, writes .mtk/sessions/<session>/telemetry.json (git-ignored .mtk only, mode 0600), nudges once per workflow step at MTK_CTX_SOFT/MTK_CTX_HARD to checkpoint and /clear, and once per 150k band from MTK_CTX_GENERIC without a workflow; python-free throttle, never blocks"
+      "description": "PostToolUse context guard (Edit|Write|MultiEdit|NotebookEdit|Bash): reads the main-thread context size from the transcript tail, writes .mtk/sessions/<session>/telemetry.json (git-ignored .mtk only, mode 0600), nudges once per workflow step at MTK_CTX_SOFT/MTK_CTX_HARD to checkpoint and /clear, and once per 150k band from MTK_CTX_GENERIC without a workflow; python-free throttle, never blocks"
     },
     "hooks/subagent-context.sh": {
       "source": "hooks/subagent-context.sh",
@@ -675,11 +681,29 @@
       "action": "sync",
       "description": "Tree-sitter AST walker with PageRank-ish ranking and binary-search token-budget fit"
     },
+    "scripts/eval-coverage.sh": {
+      "source": "scripts/eval-coverage.sh",
+      "target": "scripts/eval-coverage.sh",
+      "action": "sync",
+      "description": "Offline eval coverage report: lists the skills no evals/<case>/ exercises (tag, prompt invocation or grader skill path), human or --json; reads case files only, no model calls"
+    },
+    "scripts/eval-compare.sh": {
+      "source": "scripts/eval-compare.sh",
+      "target": "scripts/eval-compare.sh",
+      "action": "sync",
+      "description": "Compares two claude plugin eval --json results (baseline vs candidate): per-case score, delta and plugin-fired indicator, fires and stays-quiet rates over the routing pairs, regression beyond --noise or a case missing from the candidate; leaves errored runs out; refuses partial or incomplete runs; human or --json, no model calls"
+    },
+    "scripts/routing-check.sh": {
+      "source": "scripts/routing-check.sh",
+      "target": "scripts/routing-check.sh",
+      "action": "sync",
+      "description": "Model-free skill routing check: scores each skill's name and description with stemmed TF-IDF, fails on colliding description pairs, positive prompts outside the top k, negative prompts the wrong skill wins, skills short of prompts or name-free prompts, unreadable frontmatter, and rank-1 rates below the two ratchets (all prompts and name-free prompts)"
+    },
     "hooks/scope-guard.sh": {
       "source": "hooks/scope-guard.sh",
       "target": "hooks/scope-guard.sh",
       "action": "sync",
-      "description": "PreToolUse Edit|Write hook that warns once per file per session when editing outside the active spec's change_manifest; ignores finished or receipted specs; records the session baseline"
+      "description": "PreToolUse Edit|Write|MultiEdit|NotebookEdit hook that warns once per file per session when editing outside the active spec's change_manifest; ignores finished or receipted specs; records the session baseline"
     },
     "hooks/lib/hook-io.sh": {
       "source": "hooks/lib/hook-io.sh",
@@ -740,6 +764,18 @@
       "target": "benchmarks/fixtures/known-good.diff",
       "action": "sync",
       "description": "Known-good code fixture for benchmark testing — clean code that should produce zero false positives"
+    },
+    "benchmarks/fixtures/test-suppressions.txt": {
+      "source": "benchmarks/fixtures/test-suppressions.txt",
+      "target": "benchmarks/fixtures/test-suppressions.txt",
+      "action": "sync",
+      "description": "Benchmark fixture of suppression markers config-guard must report as T2-SUPPRESS when added to a test file — the detection-rate list"
+    },
+    "benchmarks/fixtures/test-suppression-lookalikes.txt": {
+      "source": "benchmarks/fixtures/test-suppression-lookalikes.txt",
+      "target": "benchmarks/fixtures/test-suppression-lookalikes.txt",
+      "action": "sync",
+      "description": "Benchmark fixture of T2-SUPPRESS look-alikes (near-miss names, identifiers, strings, closing markers) config-guard must allow — the false-positive floor"
     },
     ".claude/references/rule-frontmatter.md": {
       "source": ".claude/references/rule-frontmatter.md",
@@ -901,7 +937,7 @@
       "source": "hooks/spec-approval-trigger.sh",
       "target": "hooks/spec-approval-trigger.sh",
       "action": "sync",
-      "description": "PostToolUse hook (Edit|Write) that tells the model, via additionalContext, to run planning-and-task-breakdown when a spec transitions to status: approved"
+      "description": "PostToolUse hook (Edit|Write|MultiEdit|NotebookEdit) that tells the model, via additionalContext, to run planning-and-task-breakdown when a spec transitions to status: approved"
     },
     "hooks/lib/model-pricing.tsv": {
       "source": "hooks/lib/model-pricing.tsv",
@@ -1033,7 +1069,7 @@
       "source": "scripts/run-fixtures.sh",
       "target": "scripts/run-fixtures.sh",
       "action": "sync",
-      "description": "Validates router-decision fixtures under tests/fixtures/ — structural check, asserts gate names and action consistency without running Claude"
+      "description": "Validates the fixtures under tests/fixtures/ by fixture_type (router-decision, handoff-validation, router-mapping, skill-routing) without running Claude"
     },
     "scripts/mtk-compress.sh": {
       "source": "scripts/mtk-compress.sh",
@@ -1148,6 +1184,12 @@
       "target": "scripts/verify-references.sh",
       "action": "sync",
       "description": "Check directories, .csproj projects, and .sln members referenced in generated docs exist on disk; print STALE advisories (exit 3 if any)"
+    },
+    ".claude/verify-references.ignore": {
+      "source": ".claude/verify-references.ignore",
+      "target": ".claude/verify-references.ignore",
+      "action": "sync",
+      "description": "This repo's opt-out globs for verify-references.sh: paths its rule files name that exist only in target repos (the setup stamp)"
     },
     "scripts/audit-drift-check.sh": {
       "source": "scripts/audit-drift-check.sh",
@@ -1338,6 +1380,12 @@
       "action": "sync",
       "description": "Guard-mode helpers (off|advisory|shadow|active): mtk_guard_mode and mtk_deny_gated, sourced after hook-io.sh by the shadow-capable guards; the unshadowable mtk_deny floor stays in hook-io.sh"
     },
+    "hooks/lib/normalize-path.sh": {
+      "source": "hooks/lib/normalize-path.sh",
+      "target": "hooks/lib/normalize-path.sh",
+      "action": "sync",
+      "description": "Lexical path normalisation (mtk_normalize_path) shared by scope-guard and config-guard: collapses . and .. segments without filesystem access so an exemption or manifest match cannot be walked past"
+    },
     "hooks/lib/hook_registry.py": {
       "source": "hooks/lib/hook_registry.py",
       "target": "hooks/lib/hook_registry.py",
@@ -1379,6 +1427,12 @@
       "target": "scripts/review-coverage.sh",
       "action": "sync",
       "description": "Checks that a reviewer lane accounted for every changed file and disposed of every deterministic candidate; an incomplete lane cannot read as PASS"
+    },
+    "scripts/mutation-probe.sh": {
+      "source": "scripts/mutation-probe.sh",
+      "target": "scripts/mutation-probe.sh",
+      "action": "sync",
+      "description": "Applies one boundary or negation mutation in a throwaway worktree, runs the covering tests before and after, and reports killed, survived or not_run without touching the reviewed tree"
     },
     "agents/context-miner.md": {
       "source": ".claude/agents/context-miner.md",

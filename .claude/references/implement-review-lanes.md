@@ -12,7 +12,9 @@ outside implement. Findings follow `.claude/references/review-finding-schema.md`
 
 Stage 1 (`compliance-reviewer`, sonnet at high effort) always runs first: spec compliance, security, architecture
 and coding standards against the sealed spec. Fix **Critical** findings before Stage 2. Stage 2
-lanes run on sonnet, in parallel (one message, several `Agent` calls).
+lanes run on sonnet, in parallel (one message, several `Agent` calls). When the diff is mostly
+security or financial-state logic, spawn `compliance-reviewer` on the `strong` tier instead (pass
+`model` on the spawn); `.claude/references/model-routing.md` owns the tiers, the bindings and the fallback.
 
 | Lane | LIGHT / STANDARD | HIGH | MAX | Outside implement |
 |---|---|---|---|---|
@@ -30,7 +32,10 @@ a frontmatter-only batch) skips `architecture-reviewer`.
 
 **Silent-failure trigger.** Dispatch `silent-failure-hunter` alongside Stage 1 when `git diff`
 matches any of `\b(catch|except|finally)\b`, `\.catch\(`, `\?\?`, `\|\|`, or adds
-`// eslint-disable`, `# noqa`, `@ts-ignore`, `@ts-expect-error`, `Skip =`, `it\.skip`, `xit\(`.
+`// eslint-disable`, `# noqa`, `#pragma warning disable`, `@ts-ignore`, `@ts-expect-error`, `@ts-nocheck`,
+`biome-ignore`, `pylint: disable`, `pyright: ignore`, `type: ignore`, `#nowarn`, `NOSONAR`, `nosemgrep`, `nosec`, `gitleaks:allow`,
+`SuppressMessage`, `ExcludeFromCodeCoverage`, `pragma: no cover`, `istanbul ignore`, `c8 ignore`, `v8 ignore`,
+`Skip =`, `it\.skip`, `xit\(`.
 It emits `category: "error-handling"`; merge and dedupe by `(file, line, rule)`.
 
 ## Dispatch rules

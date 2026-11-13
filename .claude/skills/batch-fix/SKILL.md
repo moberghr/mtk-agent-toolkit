@@ -1,6 +1,6 @@
 ---
 name: batch-fix
-description: Corrective batch of multiple small independent fixes (apply review findings, several/multiple fixes across >3 files, no new contract or architecture) — broader than fix, lighter than implement.
+description: Use to apply review findings or several small independent corrections across more than 3 files in one batch, with no new contract or architecture — broader than fix, lighter than implement.
 type: skill
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion
 argument-hint: <findings list or review output>
@@ -112,7 +112,7 @@ Not material (proceed without re-asking): renumbering, splitting one finding int
 
 **Dirty-tree overlap is a gate input, not a detail.** If the Phase 2 baseline shows pre-existing modifications in files this batch will touch, surface that *at the gate*, naming the overlapping files. The engineer is otherwise approving edits stacked on work they may not remember making, and neither `git diff HEAD` nor a revert will cleanly separate the two afterwards. Offer the choice explicitly — proceed on top of the existing edits, stash them first, or drop the overlapping findings from the batch. Never silently edit on top of an overlap.
 
-If `AskUserQuestion` is deferred, load it with `ToolSearch select:AskUserQuestion`. If the harness does not expose it, stop and print the four options as one line and wait. Until the engineer answers: read-only Bash only, no edits. Do not start Phase 4 until an approval answer.
+If `AskUserQuestion` is deferred, load it with `ToolSearch select:AskUserQuestion`. If the harness does not expose it, stop and print the four options as one line and wait. Until the engineer answers: read-only Bash only, no edits. Do not start Phase 4 until an approval answer, as `.claude/references/implement-approval-gate.md` defines one.
 
 ### Phase 4: Execute Per Finding (Inline)
 

@@ -657,6 +657,83 @@ done
 printf 'Skill descriptions: %d chars (~%d tokens) / %d-char budget.\n' "$desc_total" "$((desc_total / 4))" "$DESC_TOTAL_BUDGET"
 [ "$desc_total" -le "$DESC_TOTAL_BUDGET" ] || fail "Skill descriptions exceed the aggregate budget ($desc_total > $DESC_TOTAL_BUDGET chars). They load into every session — tighten the longest ones."
 
+# Skill routing (S2.6): the model picks a skill from its name and description, so
+# the descriptions must route the committed prompts and stay apart from each other.
+# A model-free lexical check; its thresholds, allow-list and ratchet live in
+# tests/fixtures/skill-routing.json. It prints its warnings and one summary line.
+require_file "scripts/routing-check.sh"
+require_file "tests/fixtures/skill-routing.json"
+bash scripts/routing-check.sh --quiet || fail "skill routing check failed (run: bash scripts/routing-check.sh)"
+
+# Routing eval pairs (evals/README.md "Routing pairs"). scripts/eval-compare.sh finds a
+# routing case by its grader file name, so a case whose frontmatter `tags:` (flow
+# `[a, b]` or block `- a` style) include `routing` carries exactly one of `fires`/`quiet`,
+# exactly one tag naming an existing skill, and the matching grader for that skill:
+# graders/routing-fired.md with `arm: with-only`, or graders/routing-quiet.md with
+# `arm: both` and `match: not_contains`. Both alternatives of the grader's pattern, the
+# Skill-tool call and the Read of SKILL.md, must name that skill and no other.
+routing_cases=0
+for prompt in evals/*/prompt.md; do
+  [ -f "$prompt" ] || continue
+  case_dir="${prompt%/prompt.md}"
+  # One tag per line, from the frontmatter only.
+  case_tags="$(awk -v q="'" '
+    NR == 1 { if ($0 != "---") exit; next }
+    $0 == "---" { exit }
+    in_block && /^[[:space:]]*-/ {
+      t = $0; sub(/^[[:space:]]*-[[:space:]]*/, "", t); gsub(/["[:space:]]/, "", t); gsub(q, "", t)
+      if (t != "") print t
+      next
+    }
+    { in_block = 0 }
+    /^tags:/ {
+      v = $0; sub(/^tags:[[:space:]]*/, "", v)
+      if (v == "") { in_block = 1; next }
+      gsub(/[][]/, "", v); n = split(v, parts, ",")
+      for (i = 1; i <= n; i++) { t = parts[i]; gsub(/["[:space:]]/, "", t); gsub(q, "", t); if (t != "") print t }
+    }' "$prompt")"
+  grep -qx 'routing' <<<"$case_tags" || continue
+  routing_cases=$((routing_cases + 1))
+  kind=""
+  grep -qx 'fires' <<<"$case_tags" && kind="fires"
+  if grep -qx 'quiet' <<<"$case_tags"; then
+    [ -z "$kind" ] || fail "routing case $case_dir is tagged both fires and quiet"
+    kind="quiet"
+  fi
+  [ -n "$kind" ] || fail "routing case $case_dir needs the tag fires or quiet"
+  routed_skill=""
+  skill_tags=0
+  while IFS= read -r tag; do
+    [ -n "$tag" ] && [ -f ".claude/skills/$tag/SKILL.md" ] || continue
+    routed_skill="$tag"
+    skill_tags=$((skill_tags + 1))
+  done <<<"$case_tags"
+  [ "$skill_tags" -eq 1 ] || fail "routing case $case_dir needs exactly one tag naming the skill it checks (found $skill_tags)"
+  [ -n "$routed_skill" ] || continue
+  if [ "$kind" = "fires" ]; then
+    grader="$case_dir/graders/routing-fired.md"
+    require_file "$grader"
+    [ -f "$grader" ] || continue
+    grep -q '^arm: with-only$' "$grader" || fail "$grader must set arm: with-only (only the with-plugin arm can pass it)"
+    [ ! -f "$case_dir/graders/routing-quiet.md" ] || fail "fires case $case_dir must not also carry routing-quiet.md"
+  elif [ "$kind" = "quiet" ]; then
+    grader="$case_dir/graders/routing-quiet.md"
+    require_file "$grader"
+    [ -f "$grader" ] || continue
+    grep -q '^arm: both$' "$grader" || fail "$grader must set arm: both (it is scored in both arms)"
+    grep -q '^match: not_contains$' "$grader" || fail "$grader must set match: not_contains"
+    [ ! -f "$case_dir/graders/routing-fired.md" ] || fail "quiet case $case_dir must not also carry routing-fired.md"
+  else
+    continue
+  fi
+  want_call="\"skill\":\"(?:[\\w-]+:)?${routed_skill}\""
+  got_call="$(grep -o '"skill":"[^"]*"' "$grader" || true)"
+  [ "$got_call" = "$want_call" ] || fail "$grader: the Skill-tool alternative must be $want_call, the skill its tags name (found: ${got_call:-none})"
+  got_read="$(grep -oE '/skills/[^/"]+/SKILL' "$grader" || true)"
+  [ "$got_read" = "/skills/${routed_skill}/SKILL" ] || fail "$grader: the Read alternative must name /skills/${routed_skill}/SKILL.md, the skill its tags name (found: ${got_read:-none})"
+done
+printf 'Routing eval cases: %d checked.\n' "$routing_cases"
+
 if [ -d ".claude/rules" ]; then
   while IFS= read -r rule; do
     rule_lines="$(wc -l < "$rule")"
