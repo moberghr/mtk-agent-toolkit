@@ -2,6 +2,21 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [9.9.0] - 2026-11-13
+
+This release teaches the test-file guard more ways a test or check can be silenced.
+
+### Changed
+
+- `hooks/config-guard.sh` T2-SUPPRESS now also counts these markers when an edit adds them to a test file: `NOSONAR`, `nosemgrep`, `gitleaks:allow`, `# nosec`, `# pragma: no cover`, `# pylint: disable`, `# pyright: ignore`, `istanbul` / `c8` / `v8` ignore comments, `biome-ignore`, and the `[ExcludeFromCodeCoverage]` and `[SuppressMessage]` attributes, including assembly-level targets, a later place in an attribute list, and F# `[< ; >]` lists. The guard covers the test class only and still runs in shadow mode by default; production code is out of its reach by design. Each occurrence on a line counts once, and a `stop` comment is not a suppression. Counting is linear in line length: a marker is located first and a pattern runs only on a short window after it, so a very long line costs what it cost before these markers were added.
+- The header of `config-guard.sh` states the known limits: a comment opener inside a string or URL can count, an earlier attribute that contains `]` or a list split across lines hides a later one, and HTML, SQL and VB comment forms are not read.
+- `silent-failure-hunter` and the lane trigger in `implement-review-lanes.md` name the same markers as the guard, including `# type: ignore` and `#nowarn`.
+
+### Added
+
+- `benchmarks/fixtures/test-suppressions.txt` (37 rows the guard must detect) and `benchmarks/fixtures/test-suppression-lookalikes.txt` (20 near misses it must leave alone, such as `c8 ignored`, `pragma: no-cover`, `nosonar-mode` and a type named `SuppressMessageAttribute` in a generic argument). `scripts/run-benchmarks.sh` scores both: detection went from 7 of the first 33 rows before this release to 37 of 37, with 20 of 20 look-alikes quiet.
+- `tests/hooks/test-config-guard.sh` gains cases for every new marker, same-line start/stop pairs, repeated markers, F# lists and three long-line timing bounds.
+
 ## [9.8.0] - 2026-11-13
 
 This release adds three engineering procedures: schema migrations that stay safe while two releases share a database, a recipe for idempotent operations, and a way to find the commit behind a regression.
