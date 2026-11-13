@@ -1,0 +1,30 @@
+{
+  "grader": "evals/statement-regression-bisect/graders/used-bisect.md",
+  "note": "Indicator: git bisect was run.",
+  "samples": [
+    {
+      "id": "bisect run in a worktree",
+      "expect": "pass",
+      "calls": [
+        {
+          "tool": "Bash",
+          "input": {
+            "command": "git -C /tmp/b bisect run ./check.sh"
+          }
+        }
+      ]
+    },
+    {
+      "id": "log reading only",
+      "expect": "fail",
+      "calls": [
+        {
+          "tool": "Bash",
+          "input": {
+            "command": "git log -p -- ledger/statement.py"
+          }
+        }
+      ]
+    }
+  ]
+}

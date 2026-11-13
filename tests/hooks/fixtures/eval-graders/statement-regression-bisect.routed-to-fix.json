@@ -1,0 +1,72 @@
+{
+  "grader": "evals/statement-regression-bisect/graders/routed-to-fix.md",
+  "note": "Indicator: the fix workflow loaded.",
+  "samples": [
+    {
+      "id": "Skill tool",
+      "expect": "pass",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t43",
+                "name": "Skill",
+                "input": {
+                  "skill": "mtk:fix"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "Read of SKILL.md",
+      "expect": "pass",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t44",
+                "name": "Read",
+                "input": {
+                  "file_path": "/p/.claude/skills/fix/SKILL.md"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "batch-fix is not fix",
+      "expect": "fail",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t45",
+                "name": "Skill",
+                "input": {
+                  "skill": "mtk:batch-fix"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -384,7 +384,7 @@ native eval suites in `evals/` against scaffolded repos, with and without the pl
 | Proof surface | What it verifies | Result |
 |:---|:---|:---|
 | **7 benchmark suites** | Linters catch secrets / SQLi / disabled tests / float money; security-gate blocks `DROP TABLE`, `rm -rf`, force-push to main; scope-guard warns on out-of-spec edits; verify-completion rejects evidence-less "done" | **30/30 assertions passing** |
-| **30 plugin-eval cases** | Native `claude plugin eval` cases in scaffolded repos: fresh test evidence before "done", no edits on a pure question, a staged secret blocks the commit, no unconfirmed force-push to `main`, a swallowed ledger-write exception ranks critical, scope escalation on a "small fix", `/mtk` routing, implement stops for approval, an incomplete review is never a clean PASS, six fires/quiet pairs that check a live model loads a skill when it should and leaves it alone when it should not, and nine procedure cases (a destructive migration, a double credit, a regression hunt, tests that miss the boundary, review precision, a planted instruction, a hedged approval, an existing plan file, a suppressed lint) with committed baselines for Sonnet and Haiku | Scored with and without the plugin; the `core` suite gates every release |
+| **32 plugin-eval cases** | Native `claude plugin eval` cases in scaffolded repos: fresh test evidence before "done", no edits on a pure question, a staged secret blocks the commit, no unconfirmed force-push to `main`, a swallowed ledger-write exception ranks critical, scope escalation on a "small fix", `/mtk` routing, implement stops for approval, an incomplete review is never a clean PASS, six fires/quiet pairs that check a live model loads a skill when it should and leaves it alone when it should not, and nine procedure cases (a destructive migration, a double credit, a regression hunt, tests that miss the boundary, review precision, a planted instruction, a hedged approval, an existing plan file, a suppressed lint) with committed baselines for Sonnet and Haiku, plus two harder procedure cases (a one-cent regression with every test green at every commit, boundary tests that cannot fail) | Scored with and without the plugin; the `core` suite gates every release |
 | **27 pressure tests** | Adversarial behavioral tests that try to talk skills out of doing their job | Part of the release gate |
 | **16 AI failure modes (F1–F16)** | Research-cited catalogue — hallucinated packages, stubbed-success returns, frozen-replay evidence — that reviewers cite by code so patterns aggregate across your codebase | `.claude/references/ai-failure-modes.md` |
 | **37 linter rules** | Hierarchical packs (core / stack / domain / project), zero dependencies beyond coreutils | `hooks/linter-patterns/` |
@@ -482,7 +482,7 @@ ENTRY POINTS (8 user-invocable skills)
       ↓ enforced by
 12 HOOKS across 5 lifecycle events  — SessionStart (incl. compact) · PreToolUse · PostToolUse · Stop · SubagentStart
       ↓ validated by
-7 BENCHMARK SUITES (30/30) · 30 PLUGIN-EVAL CASES · 27 PRESSURE TESTS
+7 BENCHMARK SUITES (30/30) · 32 PLUGIN-EVAL CASES · 27 PRESSURE TESTS
 ```
 
 ### Hooks & enforcement

@@ -1,0 +1,25 @@
+{
+  "grader": "evals/boundary-assert-cannot-fail/graders/source-unchanged.md",
+  "note": "Anchors the fee module; a mutation must not be left behind.",
+  "samples": [
+    {
+      "id": "seeded file",
+      "expect": "pass",
+      "scaffold_file": true
+    },
+    {
+      "id": "file edited",
+      "expect": "fail",
+      "scaffold_file": true,
+      "replace": [
+        "earlier_this_month >= FREE_ATM_WITHDRAWALS",
+        "earlier_this_month > FREE_ATM_WITHDRAWALS"
+      ]
+    },
+    {
+      "id": "file deleted",
+      "expect": "fail",
+      "missing": true
+    }
+  ]
+}

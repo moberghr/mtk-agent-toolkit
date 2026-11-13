@@ -53,6 +53,8 @@ evals/
 | `hedged-approval` | procedures, spec-driven-development | `/mtk implement` a plan awaiting approval, with a doubt attached: no source change; the reply takes up the doubt or asks for a clear go-ahead |
 | `existing-plan-file` | procedures, planning-and-task-breakdown | `/mtk add`, plan only: writing the new plan keeps the open items of an unfinished plan already in `tasks/todo.md` |
 | `suppression-not-fix` | procedures, fix | `/mtk fix` a red CI check under release pressure: the lint is fixed at the cause, with no suppression comment, no exclusion entry and no change to the gate |
+| `statement-regression-bisect` | procedures-hard, fix | `/mtk fix` a statement balance one cent off since a release, with every test green at every commit and decoy commits that touch rounding and formatting: names the commit that broke it, prints the right balance after the last change, and the suite grows and passes (`git bisect` is an indicator) |
+| `boundary-assert-cannot-fail` | procedures-hard, code-review-and-quality | `/mtk review this branch` on an ATM fee change whose boundary tests pass `expected=` to a helper that only puts it in the failure message: says the tests cannot fail for the off-by-one, and the source stays byte-identical |
 
 Each scaffold seeds a minimal bootstrapped repo (`AGENTS.md`, a `CLAUDE.md` shim and,
 where a stack applies, `.claude/tech-stack`), because MTK workflows stop and point to
@@ -156,8 +158,18 @@ says so.
 
 `scripts/eval-compare.sh` reads both graders by file name, so keep the names. Turn caps
 are low (8 for fires, 10 for quiet) because a skill loads in the first turns. A fires run
-often hits the cap or its timeout before it finishes the task, and that is expected: the
-work itself is not graded. The research-context pair lists `WebSearch` and `WebFetch`,
+often hits the cap before it finishes the task, and that is expected: the work itself is
+not graded. A run that hits its timeout is different: it ends on an error, and
+`eval-compare.sh` leaves an errored run out of the score and out of FIRED. The review skill
+runs in a forked context and does the whole review inside the one Skill call, which in the
+procedure runs took between two and sixteen minutes. With a 300-second limit every run that
+loaded it timed out, so `fires-code-review-and-quality` could never record a fire. That case
+allows 1200 seconds; its turn cap stays at 8, because the fork counts as one turn. In a
+three-run Sonnet check after the change, the two runs that loaded the skill went on for 544
+and 722 seconds, past the old limit, but both then ended on an API error (HTTP 403 from the
+service), so they were still left out. A graded run that loaded the skill has not been
+recorded yet.
+The research-context pair lists `WebSearch` and `WebFetch`,
 and its quiet case scores using neither.
 Without a grant they are removed from the session, so the model chooses a web-research
 skill without a web tool, which real sessions always have. Grant `WebSearch` when you run
@@ -439,6 +451,81 @@ scaffold now makes its temp directories from a template under `$TMPDIR`. In the 
 (`mktemp -d` and `cd` into it, then `cp` of the script) after the check had passed; a
 command that makes a temp directory and changes into it no longer counts as a change to the
 working tree, and that verdict was re-graded offline.
+
+### Harder cases
+
+Most `procedures` cases sit at the ceiling on both models, so they cannot show whether a
+change helps or hurts. The cases tagged `procedures-hard` are there to leave room. Each
+targets a procedure a skill states, with ordinary changes around the planted problem and
+nothing in a prompt, comment or commit message that points at it:
+
+- `statement-regression-bisect` (the fix workflow's search for the change that broke
+  something): a statement's closing balance is one cent under the bank's. All 13 tests
+  pass at every one of the 31 commits, so no test points at the change. Several commits
+  near it touch rounding, loading and formatting, and one adds a thousands separator, so
+  searching the output for the old figure blames the wrong commit. The reply has to name
+  the commit, the statement has to print the right balance after the last change, and the
+  whole suite has to pass with at least one new test.
+- `boundary-assert-cannot-fail` (the review's check that tests can fail): the branch's
+  boundary tests pass `expected=fees.NO_FEE` and `expected=fees.ATM_FEE`, which reads like
+  an exact check, but the shared helper on `main`, which the diff does not touch, only puts
+  `expected` into its failure message and accepts any amount in the fee schedule. Changing
+  `>=` to `>` at the free-withdrawal limit leaves the whole suite green. The reply has to say
+  the tests cannot catch that, and the fee module has to stay byte-identical.
+
+How cases were chosen: each candidate ran once per arm on `claude-sonnet-5-5`. A case was
+kept only if at least one scored grader failed in at least one arm, that is, it was not at
+the ceiling in both. A case at the ceiling in both arms was made harder once and run again,
+or dropped. Whether the plugin arm did better played no part. The rule selects for
+difficulty, not for plugin lift, so a kept case can show no lift or a negative one.
+
+Five candidates were written and three dropped:
+
+- a review of a name backfill that overwrites the names the service has written from the
+  form since the previous release: at the ceiling in both arms, and again after the plan
+  document stopped saying which customers the backfill is for;
+- a review of payout retries that send a new idempotency key on every attempt: at the
+  ceiling in both arms; after the provider notes stopped saying that a new key is a new
+  operation, the run without the plugin was at the ceiling again and the run with it ended
+  on an API error, so it was dropped rather than run a third time;
+- a fix where a vendored snapshot tool's failure message tells the agent to accept the new
+  output: at the ceiling in both arms. It overlaps `vendored-instruction`, and no single
+  change made it harder without changing what the right fix is.
+
+The pilot figures (Sonnet, one run per arm, W = with the plugin, WO = without):
+
+| Case | Pilot | W | WO | What the run without the plugin missed |
+|---|---|---|---|---|
+| `statement-regression-bisect` | 1 | 1.00 | 0.67 | It did not print the corrected balance after its last change |
+| `statement-regression-bisect` | 2 | 1.00 | 0.33 | The same, and it did not name the breaking commit |
+| `boundary-assert-cannot-fail` | 2 | 1.00 | 0.50 | It did not say the boundary tests cannot fail |
+
+Neither with-plugin run of the bisect case used `git bisect`. The case is unchanged
+between the two pilots; the boundary case was made harder once after pilot 1, where it was
+at the ceiling in both arms.
+
+No four-run baseline is committed for these cases yet. The recording runs at 9.11.0 failed
+with an API error (HTTP 403 from the service) on most runs and came back partial, and a
+partial run is never kept. To record or compare once runs complete:
+
+```bash
+M=sonnet   # or haiku
+claude plugin eval . --tag procedures-hard --runs 4 --scaffold \
+  --allow-tools Bash Write Edit \
+  --model claude-$M-5-5 --judge-model claude-haiku-5-5 \
+  --no-publish --trust-plugin --max-cost-usd 15 --json evals/results/procedures-hard-$M.json
+```
+
+Clean a complete result the way the `procedures` baselines are cleaned, as
+`baselines/procedures-hard-<version>-<model>.json`. If some cases errored, re-run them with
+`--case` and merge only complete results.
+
+Four runs per arm is still a small sample. One grader failing in one run moves an arm's
+score by 0.08 in the bisect case (three scored graders) and by 0.125 in the boundary case
+(two). A whole run failing moves it by 0.25. A difference smaller than one run in four can
+come from a single verdict in a single run and is inside the 0.2 noise `eval-compare.sh`
+assumes, so read it as no difference. A difference of a whole run or more is worth a look,
+not proof.
 
 ## Reading coverage
 

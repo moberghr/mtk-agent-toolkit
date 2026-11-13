@@ -1,0 +1,90 @@
+{
+  "grader": "evals/boundary-assert-cannot-fail/graders/routed-to-review.md",
+  "note": "Indicator: the workflow loaded through the Skill tool or a Read of its SKILL.md.",
+  "samples": [
+    {
+      "id": "Skill tool, plugin-namespaced",
+      "expect": "pass",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t46",
+                "name": "Skill",
+                "input": {
+                  "skill": "mtk:code-review-and-quality"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "Read of SKILL.md",
+      "expect": "pass",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t47",
+                "name": "Read",
+                "input": {
+                  "file_path": "/plugins/mtk/.claude/skills/code-review-and-quality/SKILL.md"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "another skill only",
+      "expect": "fail",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t48",
+                "name": "Skill",
+                "input": {
+                  "skill": "mtk:context-engineering"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "no skill at all",
+      "expect": "fail",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "text",
+                "text": "Looked at the diff."
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -2169,6 +2169,90 @@
       "action": "sync",
       "description": "Plugin-eval case suppression-not-fix: grader 'routed-to-fix'"
     },
+    "evals/statement-regression-bisect/scaffold.sh": {
+      "source": "evals/statement-regression-bisect/scaffold.sh",
+      "target": "evals/statement-regression-bisect/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case statement-regression-bisect: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/statement-regression-bisect/prompt.md": {
+      "source": "evals/statement-regression-bisect/prompt.md",
+      "target": "evals/statement-regression-bisect/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case statement-regression-bisect: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/statement-regression-bisect/case.yaml": {
+      "source": "evals/statement-regression-bisect/case.yaml",
+      "target": "evals/statement-regression-bisect/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case statement-regression-bisect: scaffold and execution settings"
+    },
+    "evals/statement-regression-bisect/graders/closing-fixed-after-change.md": {
+      "source": "evals/statement-regression-bisect/graders/closing-fixed-after-change.md",
+      "target": "evals/statement-regression-bisect/graders/closing-fixed-after-change.md",
+      "action": "sync",
+      "description": "Plugin-eval case statement-regression-bisect: grader 'closing-fixed-after-change'"
+    },
+    "evals/statement-regression-bisect/graders/names-breaking-commit.md": {
+      "source": "evals/statement-regression-bisect/graders/names-breaking-commit.md",
+      "target": "evals/statement-regression-bisect/graders/names-breaking-commit.md",
+      "action": "sync",
+      "description": "Plugin-eval case statement-regression-bisect: grader 'names-breaking-commit'"
+    },
+    "evals/statement-regression-bisect/graders/routed-to-fix.md": {
+      "source": "evals/statement-regression-bisect/graders/routed-to-fix.md",
+      "target": "evals/statement-regression-bisect/graders/routed-to-fix.md",
+      "action": "sync",
+      "description": "Plugin-eval case statement-regression-bisect: grader 'routed-to-fix'"
+    },
+    "evals/statement-regression-bisect/graders/suite-grew-and-passes.md": {
+      "source": "evals/statement-regression-bisect/graders/suite-grew-and-passes.md",
+      "target": "evals/statement-regression-bisect/graders/suite-grew-and-passes.md",
+      "action": "sync",
+      "description": "Plugin-eval case statement-regression-bisect: grader 'suite-grew-and-passes'"
+    },
+    "evals/statement-regression-bisect/graders/used-bisect.md": {
+      "source": "evals/statement-regression-bisect/graders/used-bisect.md",
+      "target": "evals/statement-regression-bisect/graders/used-bisect.md",
+      "action": "sync",
+      "description": "Plugin-eval case statement-regression-bisect: grader 'used-bisect'"
+    },
+    "evals/boundary-assert-cannot-fail/scaffold.sh": {
+      "source": "evals/boundary-assert-cannot-fail/scaffold.sh",
+      "target": "evals/boundary-assert-cannot-fail/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case boundary-assert-cannot-fail: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/boundary-assert-cannot-fail/prompt.md": {
+      "source": "evals/boundary-assert-cannot-fail/prompt.md",
+      "target": "evals/boundary-assert-cannot-fail/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case boundary-assert-cannot-fail: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/boundary-assert-cannot-fail/case.yaml": {
+      "source": "evals/boundary-assert-cannot-fail/case.yaml",
+      "target": "evals/boundary-assert-cannot-fail/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case boundary-assert-cannot-fail: scaffold and execution settings"
+    },
+    "evals/boundary-assert-cannot-fail/graders/names-weak-assertion.md": {
+      "source": "evals/boundary-assert-cannot-fail/graders/names-weak-assertion.md",
+      "target": "evals/boundary-assert-cannot-fail/graders/names-weak-assertion.md",
+      "action": "sync",
+      "description": "Plugin-eval case boundary-assert-cannot-fail: grader 'names-weak-assertion'"
+    },
+    "evals/boundary-assert-cannot-fail/graders/routed-to-review.md": {
+      "source": "evals/boundary-assert-cannot-fail/graders/routed-to-review.md",
+      "target": "evals/boundary-assert-cannot-fail/graders/routed-to-review.md",
+      "action": "sync",
+      "description": "Plugin-eval case boundary-assert-cannot-fail: grader 'routed-to-review'"
+    },
+    "evals/boundary-assert-cannot-fail/graders/source-unchanged.md": {
+      "source": "evals/boundary-assert-cannot-fail/graders/source-unchanged.md",
+      "target": "evals/boundary-assert-cannot-fail/graders/source-unchanged.md",
+      "action": "sync",
+      "description": "Plugin-eval case boundary-assert-cannot-fail: grader 'source-unchanged'"
+    },
     "evals/baselines/procedures-9.6.0-sonnet.json": {
       "source": "evals/baselines/procedures-9.6.0-sonnet.json",
       "target": "evals/baselines/procedures-9.6.0-sonnet.json",
@@ -3719,6 +3803,54 @@
       "target": "tests/hooks/fixtures/eval-graders/webhook-double-credit.source-unchanged.json",
       "action": "sync",
       "description": "Grader corpus for test-eval-graders.sh: samples with the expected verdict for the source-unchanged grader of case webhook-double-credit"
+    },
+    "tests/hooks/fixtures/eval-graders/statement-regression-bisect.closing-fixed-after-change.json": {
+      "source": "tests/hooks/fixtures/eval-graders/statement-regression-bisect.closing-fixed-after-change.json",
+      "target": "tests/hooks/fixtures/eval-graders/statement-regression-bisect.closing-fixed-after-change.json",
+      "action": "sync",
+      "description": "Grader corpus for test-eval-graders.sh: samples with the expected verdict for the closing-fixed-after-change grader of case statement-regression-bisect"
+    },
+    "tests/hooks/fixtures/eval-graders/statement-regression-bisect.names-breaking-commit.json": {
+      "source": "tests/hooks/fixtures/eval-graders/statement-regression-bisect.names-breaking-commit.json",
+      "target": "tests/hooks/fixtures/eval-graders/statement-regression-bisect.names-breaking-commit.json",
+      "action": "sync",
+      "description": "Grader corpus for test-eval-graders.sh: samples with the expected verdict for the names-breaking-commit grader of case statement-regression-bisect"
+    },
+    "tests/hooks/fixtures/eval-graders/statement-regression-bisect.routed-to-fix.json": {
+      "source": "tests/hooks/fixtures/eval-graders/statement-regression-bisect.routed-to-fix.json",
+      "target": "tests/hooks/fixtures/eval-graders/statement-regression-bisect.routed-to-fix.json",
+      "action": "sync",
+      "description": "Grader corpus for test-eval-graders.sh: samples with the expected verdict for the routed-to-fix grader of case statement-regression-bisect"
+    },
+    "tests/hooks/fixtures/eval-graders/statement-regression-bisect.suite-grew-and-passes.json": {
+      "source": "tests/hooks/fixtures/eval-graders/statement-regression-bisect.suite-grew-and-passes.json",
+      "target": "tests/hooks/fixtures/eval-graders/statement-regression-bisect.suite-grew-and-passes.json",
+      "action": "sync",
+      "description": "Grader corpus for test-eval-graders.sh: samples with the expected verdict for the suite-grew-and-passes grader of case statement-regression-bisect"
+    },
+    "tests/hooks/fixtures/eval-graders/statement-regression-bisect.used-bisect.json": {
+      "source": "tests/hooks/fixtures/eval-graders/statement-regression-bisect.used-bisect.json",
+      "target": "tests/hooks/fixtures/eval-graders/statement-regression-bisect.used-bisect.json",
+      "action": "sync",
+      "description": "Grader corpus for test-eval-graders.sh: samples with the expected verdict for the used-bisect grader of case statement-regression-bisect"
+    },
+    "tests/hooks/fixtures/eval-graders/boundary-assert-cannot-fail.names-weak-assertion.json": {
+      "source": "tests/hooks/fixtures/eval-graders/boundary-assert-cannot-fail.names-weak-assertion.json",
+      "target": "tests/hooks/fixtures/eval-graders/boundary-assert-cannot-fail.names-weak-assertion.json",
+      "action": "sync",
+      "description": "Grader corpus for test-eval-graders.sh: samples with the expected verdict for the names-weak-assertion grader of case boundary-assert-cannot-fail"
+    },
+    "tests/hooks/fixtures/eval-graders/boundary-assert-cannot-fail.routed-to-review.json": {
+      "source": "tests/hooks/fixtures/eval-graders/boundary-assert-cannot-fail.routed-to-review.json",
+      "target": "tests/hooks/fixtures/eval-graders/boundary-assert-cannot-fail.routed-to-review.json",
+      "action": "sync",
+      "description": "Grader corpus for test-eval-graders.sh: samples with the expected verdict for the routed-to-review grader of case boundary-assert-cannot-fail"
+    },
+    "tests/hooks/fixtures/eval-graders/boundary-assert-cannot-fail.source-unchanged.json": {
+      "source": "tests/hooks/fixtures/eval-graders/boundary-assert-cannot-fail.source-unchanged.json",
+      "target": "tests/hooks/fixtures/eval-graders/boundary-assert-cannot-fail.source-unchanged.json",
+      "action": "sync",
+      "description": "Grader corpus for test-eval-graders.sh: samples with the expected verdict for the source-unchanged grader of case boundary-assert-cannot-fail"
     },
     "tests/hooks/test-routing-check.sh": {
       "source": "tests/hooks/test-routing-check.sh",

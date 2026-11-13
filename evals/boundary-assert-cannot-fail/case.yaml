@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: boundary-assert-cannot-fail
+context:
+  scaffold_script: scaffold.sh

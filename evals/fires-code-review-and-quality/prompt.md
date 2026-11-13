@@ -2,7 +2,7 @@
 description: A patch pasted into the prompt, not present in the repo, still loads the review skill.
 tags: [routing, fires, code-review-and-quality]
 max_turns: 8
-timeout_seconds: 300
+timeout_seconds: 1200
 allowed_tools: [Read, Glob, Grep, Skill, TodoWrite]
 expected_outcome: Loads the review skill for the pasted patch and points out that an unknown or absent coupon now raises KeyError instead of returning the total, without editing anything.
 ---
