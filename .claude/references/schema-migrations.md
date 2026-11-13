@@ -11,12 +11,12 @@ During a rollout the previous release and the new one run against the same datab
 
 1. **Expand.** Add the new shape next to the old one: a new column or table, nullable or with a default. Nothing is dropped, renamed or narrowed.
 2. **Write both.** Release code that writes the old and the new shape and still reads the old one.
-3. **Backfill.** Copy existing rows into the new shape in batches, outside the schema migration's transaction, with a job that is safe to re-run. One `UPDATE` over a large table inside the migration holds its locks for the whole run.
-4. **Switch reads.** Release code that reads the new shape. Constraints on the new shape (`NOT NULL`, unique, foreign key) are added after the backfill, as their own step.
+3. **Backfill.** Copy existing rows into the new shape in batches, outside the schema migration's transaction, with a job that is safe to re-run. Touch only rows whose new shape is still unset (or compare-and-set), so the backfill never overwrites a value the application wrote during dual-write. One `UPDATE` over a large table inside the migration holds its locks for the whole run.
+4. **Switch reads.** Release code that reads the new shape. Constraints on the new shape (`NOT NULL`, unique, foreign key) are added after the backfill, as their own step. On a large live table, add constraints and indexes without a long lock where the engine supports it (Postgres: `ADD CONSTRAINT ... NOT VALID` then `VALIDATE CONSTRAINT`; `CREATE INDEX CONCURRENTLY`).
 5. **Contract.** Once no running release, and no release you might roll back to, reads or writes the old shape, remove it in a separate, later deploy. An ORM model that still maps the column counts as a reader.
 
 ## Rules
 
-- A destructive step (drop, rename, type narrowing, `NOT NULL` on existing data) never ships in the same deploy as code that still depends on the old shape. A rename is an expand plus a later contract, not one in-place rename.
+- A destructive step (drop, rename, type narrowing, `NOT NULL` on existing data) never ships while any running release, or a release you might roll back to, still depends on the old shape, so the deploy that removes the last reader is not the one that drops the column. Objects introduced in the same unreleased change are exempt (a column added and dropped within it, `NOT NULL` on a column created with a default in the same migration). A rename is an expand plus a later contract, not one in-place rename.
 - Every migration has a down path, and it has been run: apply, roll back and apply again against the production database engine before merging. A step whose down path cannot restore data (a dropped column) says so in the migration and in the PR.
 - Read every generated migration before applying it; schema tools can read a rename as drop plus add.

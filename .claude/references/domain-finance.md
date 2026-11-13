@@ -42,9 +42,10 @@ Never log any of it, never put it in error messages or exception payloads, never
 For anything a client, queue or provider can deliver twice (money movement, order placement, webhooks):
 
 - Derive the key from the operation's intent (client request id, provider event id), never a new random id per attempt.
-- Claim the key by inserting it under a unique constraint in the same transaction as the effect; a read-then-insert check is a race. When the effect is an external call that cannot join the transaction, commit the claim as in-flight first.
-- Store a hash of the request payload with the key; the same key with a different payload is rejected.
-- On a repeat: completed returns the stored result; in flight is rejected or waits and never runs again; failed follows the operation's stated retry rule.
+- Claim it by inserting under a unique constraint in the effect's transaction; read-then-insert is a race.
+- Store a payload hash with the key; the same key with a different payload is rejected.
+- An external call cannot join that transaction: commit the claim as in-flight with a lease, send the same key to the provider, and reconcile with the provider by that key before any re-run after a timeout or crash.
+- On a repeat: completed returns the stored result; in flight within its lease is rejected or waits; unknown (a timeout) is reconciled, never treated as failed; failed follows the stated retry rule.
 - Keys expire on a stated schedule that outlasts every caller's retry window.
 
 ## Agent configuration (MTK security rule)
@@ -70,7 +71,7 @@ For anything a client, queue or provider can deliver twice (money movement, orde
 - Could PII or a financial identifier leak into logs, metrics, exceptions or upstream observability?
 - Is rounding, currency conversion and time-zone handling explicit and **tested**, or inherited from a framework default?
 - Do tests of money, ledger and audit behavior run against the production database engine? An in-memory provider does not prove transaction or rounding semantics.
-- Does anything that can be retried (money movement, order placement, webhooks) claim an idempotency key as **Idempotency** above requires?
+- Is everything retryable idempotent as **Idempotency** above requires?
 - If this path is bypassed or fails open, what is the blast radius — stale data, duplicate trades, duplicate payments, wrong report numbers?
 - Does it add a trust boundary with a market, custodian, exchange, bank or regulator? Are authentication, signing and replay protection explicit?
 - Does it widen IAM, network or secret-store access beyond what the change needs?

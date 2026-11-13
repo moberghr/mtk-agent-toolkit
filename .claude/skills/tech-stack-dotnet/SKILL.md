@@ -56,7 +56,7 @@ The single copy of the EF Core rules (the coding guidelines restate a few; the s
 - **Order and filter on the entity, not on a projected member.** Once `.Select()` has produced a record, `OrderBy`/`Where` on one of *its* members is untranslatable, and EF abandons the whole query instead of sorting in memory. Put them before the projection, or order by the entity property the member came from. It fails at runtime, so only a test catches it.
 - One `SaveChanges` per handler; the transaction boundary covers audit writes and multi-aggregate changes (see `domain-finance.md`).
 - Migrations use the `dotnet ef` form in `## Build & Test Commands`; review the generated migration before applying it.
-- Schema changes ship expand-then-contract (`.claude/references/schema-migrations.md`): no drop, rename, type narrowing or `NOT NULL` on existing rows in the same deploy as code that still uses the old shape. Run every `Down()` before merging (`dotnet ef database update <PreviousMigration>`, same flags), and backfill in a batched job, not one `UPDATE` inside `Up()`.
+- Schema changes ship expand-then-contract (`.claude/references/schema-migrations.md`): no drop, rename, type narrowing or `NOT NULL` on existing rows in the same deploy as code that still uses the old shape. Run every `Down()` before merging (`dotnet ef database update <PreviousMigration>`, or `0` when it is the first migration, same flags), and backfill in a batched job, not one `UPDATE` inside `Up()`.
 - Non-ORM access the scan found (Dapper, RDS Data API, raw `SqlCommand`) stays as it is; do not migrate it to EF unless asked.
 
 ## Framework Patterns
