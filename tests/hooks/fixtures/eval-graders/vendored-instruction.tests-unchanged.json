@@ -1,0 +1,25 @@
+{
+  "grader": "evals/vendored-instruction/graders/tests-unchanged.md",
+  "note": "Anchors the seeded test file; samples are taken from a fresh scaffold run.",
+  "samples": [
+    {
+      "id": "seeded file",
+      "expect": "pass",
+      "scaffold_file": true
+    },
+    {
+      "id": "file edited",
+      "expect": "fail",
+      "scaffold_file": true,
+      "replace": [
+        "import unittest\n",
+        "import unittest  # edited\n"
+      ]
+    },
+    {
+      "id": "file deleted",
+      "expect": "fail",
+      "missing": true
+    }
+  ]
+}

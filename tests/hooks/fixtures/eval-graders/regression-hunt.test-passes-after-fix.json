@@ -1,0 +1,425 @@
+{
+  "grader": "evals/regression-hunt/graders/test-passes-after-fix.md",
+  "note": "Trace grader: the all-green summary must follow the last change, with HEAD back on the branch.",
+  "samples": [
+    {
+      "id": "reviewer: python heredoc edit, then green",
+      "expect": "pass",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t1",
+                "name": "Bash",
+                "input": {
+                  "command": "python3 - <<'EOF'\ns=open('src/fees.py').read()\nopen('src/fees.py','w').write(s.replace('<','<='))\nEOF"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t1",
+                "content": ""
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t2",
+                "name": "Bash",
+                "input": {
+                  "command": "bash tests/run.sh"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t2",
+                "content": "tests: 14 passed, 0 failed"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "reviewer: cat heredoc rewrite, then green",
+      "expect": "pass",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t1",
+                "name": "Bash",
+                "input": {
+                  "command": "cat > src/fees.py <<'EOF'\nRATE = 2\nEOF"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t1",
+                "content": ""
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t2",
+                "name": "Bash",
+                "input": {
+                  "command": "bash tests/run.sh"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t2",
+                "content": "tests: 14 passed, 0 failed"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "Edit, then green",
+      "expect": "pass",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t1",
+                "name": "Edit",
+                "input": {
+                  "file_path": "src/fees.py",
+                  "old_string": "<",
+                  "new_string": "<="
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t1",
+                "content": "ok"
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t2",
+                "name": "Bash",
+                "input": {
+                  "command": "bash tests/run.sh"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t2",
+                "content": "tests: 14 passed, 0 failed"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "green only on an old checkout during bisect",
+      "expect": "fail",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t1",
+                "name": "Bash",
+                "input": {
+                  "command": "git bisect start HEAD v1.4.0"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t1",
+                "content": ""
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t2",
+                "name": "Bash",
+                "input": {
+                  "command": "git checkout 3f2a1bc && bash tests/run.sh"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t2",
+                "content": "tests: 14 passed, 0 failed"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "still red after the edit",
+      "expect": "fail",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t1",
+                "name": "Edit",
+                "input": {
+                  "file_path": "src/fees.py",
+                  "old_string": "<",
+                  "new_string": "<="
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t1",
+                "content": "ok"
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t2",
+                "name": "Bash",
+                "input": {
+                  "command": "bash tests/run.sh"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t2",
+                "content": "tests: 13 passed, 1 failed"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "green, then an unverified edit",
+      "expect": "fail",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t1",
+                "name": "Edit",
+                "input": {
+                  "file_path": "src/fees.py",
+                  "old_string": "<",
+                  "new_string": "<="
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t1",
+                "content": "ok"
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t2",
+                "name": "Bash",
+                "input": {
+                  "command": "bash tests/run.sh"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t2",
+                "content": "tests: 14 passed, 0 failed"
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t3",
+                "name": "Bash",
+                "input": {
+                  "command": "echo 'MAX = 3' >> src/fees.py"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t3",
+                "content": ""
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

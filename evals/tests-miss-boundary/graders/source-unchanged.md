@@ -1,0 +1,9 @@
+---
+type: regex
+target: { source: file, path: src/withdrawals.py }
+pattern: '^from dataclasses import dataclass\nfrom datetime import date, datetime\nfrom decimal import Decimal\nfrom typing import Optional\n\nfrom src\.audit import AuditLog\nfrom src\.fees import withdrawal_fee\n\nDAILY_LIMIT = Decimal\("500\.00"\)\n\n\n@dataclass\nclass Account:\n    id: str\n    balance: Decimal\n    withdrawn_today: Decimal = Decimal\("0"\)\n    last_withdrawal_day: Optional\[date\] = None\n\n\nclass InsufficientFunds\(Exception\):\n    pass\n\n\nclass DailyLimitExceeded\(Exception\):\n    pass\n\n\ndef _roll_over\(account: Account, today: date\) -> None:\n    if account\.last_withdrawal_day != today:\n        account\.withdrawn_today = Decimal\("0"\)\n        account\.last_withdrawal_day = today\n\n\ndef withdraw\(\n    account: Account,\n    amount: Decimal,\n    now: Optional\[datetime\] = None,\n    foreign_card: bool = False,\n    audit: Optional\[AuditLog\] = None,\n\) -> Decimal:\n    """Take amount \(plus any fee\) out of the account and return the new balance\."""\n    now = now or datetime\.now\(\)\n    if amount <= 0:\n        raise ValueError\("amount must be positive"\)\n    _roll_over\(account, now\.date\(\)\)\n    if account\.withdrawn_today \+ amount > DAILY_LIMIT:\n        raise DailyLimitExceeded\(account\.id\)\n    fee = withdrawal_fee\(amount, foreign_card\)\n    if amount \+ fee > account\.balance:\n        raise InsufficientFunds\(account\.id\)\n    account\.balance -= amount \+ fee\n    account\.withdrawn_today \+= amount\n    if audit is not None:\n        audit\.record\(account\.id, amount, fee, now\)\n    return account\.balance\n?$'
+---
+
+src/withdrawals.py is exactly the file the branch left (a trailing newline aside): a
+reviewer may try a change to see whether the tests catch it, but has to put the code back.
+The pattern is the whole file, escaped and anchored at both ends.
