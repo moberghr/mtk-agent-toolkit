@@ -36,8 +36,9 @@ helper and critical in a payment finalizer.
 
 ## Step 2: Scope
 
-Only lines in the diff. A pre-existing silent failure on an untouched line is out of scope,
-unless the diff turns a previously loud failure into a silent one.
+Only lines in the diff. A pre-existing silent failure on an untouched line is not this change's
+finding: report it only as `pre_existing` (schema Field rules) when the changed code calls into
+it, and as a regression when the diff turns a previously loud failure into a silent one.
 
 ## Step 3: Pattern catalogue
 

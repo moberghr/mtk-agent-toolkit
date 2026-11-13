@@ -151,9 +151,7 @@ Options: `Approve & run until done` · `Approve (interactive)` · `Edit first` �
 `Revise` · `Show full plan & spec in terminal`.
 
 **Until the engineer answers: read-only Bash only — no Edit/Write on source, no
-Phase 3.** A non-committal reply ("I guess", "probably fine", "not sure about X
-though") is not approval: resolve the doubt it names or ask for an explicit yes.
-In autonomous mode, never re-ask for Phases 3–7 — stop and report.
+Phase 3.** In autonomous mode, never re-ask for Phases 3–7 — stop and report.
 
 On approval, record the gate and **seal the approved scope** so a later edit
 cannot silently keep the approval:
@@ -169,7 +167,7 @@ open package-legitimacy checkpoint, the scope is neither breaking-change nor hig
 `implement-approval-gate.md`). Any condition failing ⇒ fall back to `AskUserQuestion`.
 
 **Read `.claude/references/implement-approval-gate.md`** for the full rendering
-spec, the complete AUTO_PROCEED precondition list, harness fallbacks when
+spec, what counts as approval, the complete AUTO_PROCEED precondition list, harness fallbacks when
 `AskUserQuestion` is unavailable, multi-spec `gate_scope` and standing-approval
 expiry, and why `results.todo_path` is excluded from the seal.
 ## Phase 2.9: Pre-Flight (Collision, Dispatch, Baseline)
@@ -256,7 +254,7 @@ Per that reference's **Review protocol** (scripts run as `bash "$MTK_ROOT/…"`,
 
 ## Phase 5: Fix Review Findings
 
-Fix every critical issue and every warning unless you record a one-line waiver with a reason, then:
+Fix every critical issue and every warning unless you record a one-line waiver with a reason (a valid `pre_existing` finding goes to the follow-up list instead, per `review-finding-schema.md`), then:
 
 - run the build and test commands from the active tech stack skill
 - run the pre-commit review list if present

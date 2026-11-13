@@ -3168,6 +3168,12 @@
       "action": "sync",
       "description": "Checks that a reviewer lane accounted for every changed file and disposed of every deterministic candidate; an incomplete lane cannot read as PASS"
     },
+    "scripts/mutation-probe.sh": {
+      "source": "scripts/mutation-probe.sh",
+      "target": "scripts/mutation-probe.sh",
+      "action": "sync",
+      "description": "Applies one boundary or negation mutation in a throwaway worktree, runs the covering tests before and after, and reports killed, survived or not_run without touching the reviewed tree"
+    },
     "tests/hooks/test-active-workflow.sh": {
       "source": "tests/hooks/test-active-workflow.sh",
       "target": "tests/hooks/test-active-workflow.sh",
@@ -3197,6 +3203,12 @@
       "target": "tests/hooks/test-review-coverage.sh",
       "action": "sync",
       "description": "Test for scripts/review-coverage.sh: missing files, undisposed candidates, malformed lane results, exit codes"
+    },
+    "tests/hooks/test-mutation-probe.sh": {
+      "source": "tests/hooks/test-mutation-probe.sh",
+      "target": "tests/hooks/test-mutation-probe.sh",
+      "action": "sync",
+      "description": "Test for scripts/mutation-probe.sh: killed, survived, not_run cases, uncommitted changes in the copy, untouched reviewed tree, cleanup after failure and signal, usage errors"
     },
     "tests/hooks/test-review-input.sh": {
       "source": "tests/hooks/test-review-input.sh",

@@ -47,15 +47,12 @@ tests with no assertion; catch blocks that swallow the exception under test (use
 `Assert.Throws` / `pytest.raises`); mock-call-only verification with no check on the result;
 near-identical copies that do not vary the interesting input.
 
-**Mutation check** — once per review, only when the change adds a condition to money, auth
-or state-mutating logic. Work in a throwaway copy, never the reviewed tree: `tmp=$(mktemp -d)`,
-`git worktree add --detach "$tmp" HEAD`, and if the change is uncommitted apply
-`git diff HEAD --binary` there and copy its untracked files. Invert the condition so behaviour
-should break (drop a negation, `>` → `>=`, `&&` → `||`), run only the tests covering it, then
-`git worktree remove --force "$tmp"` and confirm `git status --porcelain` here is unchanged.
-Still green ⇒ a finding at the inverted `file:line` naming the missing test case. If the tests
-cannot run here (no toolchain, needs network, a service or a database), write
-`mutation check: not run — <reason>`; it is never evidence in `below_threshold_rationale`.
+**Mutation check** — once per review, only for a condition the change adds to money, auth or
+state-mutating logic: apply one boundary or negation mutation (`>` → `>=`, drop a `!`) with
+`bash "${CLAUDE_PLUGIN_ROOT}/scripts/mutation-probe.sh" --file <path> --line <n> --from '<text>' --to '<text>' --test '<covering tests>'`,
+which runs in a throwaway worktree and never writes the reviewed tree. Only `survived` becomes a
+finding (the mutated `file:line` and the missing test case); `not_run` is expected where tests
+need ignored runtime files or services, and is reported as not run, never as evidence.
 
 ## Step 3: Output
 

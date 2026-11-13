@@ -105,7 +105,7 @@ Emit the schema-conformant output per `.claude/references/review-finding-schema.
 
 Read `.claude/review-config.json` for the threshold (default 80; `.claude/review-config.local.json` overrides if present). Apply the **confidence rubric** and the **anti-inflation rule**.
 
-- Any `critical` finding at/above threshold → `verdict: "NEEDS_CHANGES"`.
+- Any `critical` finding at/above threshold, unless validly `pre_existing` (schema Field rules) → `verdict: "NEEDS_CHANGES"`.
 - Otherwise → `verdict: "PASS"`.
 - If `findings[]` is empty, `below_threshold_rationale` is mandatory — state what you checked and why you conclude the diff is clean.
 
