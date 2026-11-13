@@ -36,3 +36,7 @@ tests/test_calc.py	if ready:  # pragma: no branch
 src/calc.test.ts	/* istanbul ignore next */
 src/calc.test.ts	/* c8 ignore next */
 src/calc.test.ts	/* v8 ignore start */
+tests/Calc.Tests/CalcTests.cs	var r = Calc.Parse(s); //NOSONAR
+tests/test_calc.py	out = run(cmd)  #nosec
+tests/Calc.Tests/CalcTests.fs	[<Fact; ExcludeFromCodeCoverage>]
+tests/Calc.Tests/CalcTests.fs	[<Fact; SuppressMessage("a","b")>]

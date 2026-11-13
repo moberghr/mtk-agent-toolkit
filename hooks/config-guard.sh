@@ -87,12 +87,15 @@ trap _mtk_hook_diag EXIT
 #                     any case and only after a comment opener (//, /*, #,
 #                     (*) on the same line, so an identifier or a string such
 #                     as nosonarMode or "nosonar" is not one; gitleaks:allow
-#                     counts anywhere on the line, as gitleaks reads it. An
-#                     attribute counts with or without the Attribute suffix, a
-#                     namespace or global:: prefix, a target (assembly:,
-#                     module:, …), F# [< >] brackets, or a place later in its
-#                     attribute list; a list counts once, so a second tracked
-#                     attribute added to the same list is not seen.
+#                     counts anywhere on the line, as gitleaks reads it. Each
+#                     occurrence counts, so x // nosec // nosec is two, and a
+#                     c8 / v8 start or next with its stop on the same line is
+#                     one. An attribute counts with or without the Attribute
+#                     suffix, a namespace or global:: prefix, a target
+#                     (assembly:, module:, …), F# [< >] brackets, or a place
+#                     later in its attribute list (after "," or F# ";"); a
+#                     list counts once, so a second tracked attribute added to
+#                     the same list is not seen.
 #                     Deliberately not counted: VB <Attr> syntax (a generic
 #                     type argument reads the same), formatter markers
 #                     (prettier-ignore, fmt: off), and ReSharper disable
@@ -114,6 +117,12 @@ trap _mtk_hook_diag EXIT
 # reads as T3-FEWER-TESTS on the old file — the approval list above is the
 # escape (it covers test files too). Text is not parsed, so a marker quoted
 # in a string (a source-generator test's expected output) counts as added.
+# For the same reason a comment opener inside a string or URL counts as one:
+# 'https://nosonar.example.com/x' reads as a NOSONAR comment. An earlier
+# attribute that holds a "]", or a list that breaks across lines, hides a
+# later tracked attribute in the same list ([Fact, Trait("a", "[x]"),
+# SuppressMessage(…)] is not seen). HTML (<!-- -->), SQL (--) and VB (')
+# comments are not read, so a marker in one of those forms is not seen.
 # Production code is out of reach by design: T2 reads test-shaped files only,
 # while coverage exclusions and analyzer attributes mostly land in production
 # code. A class for every code file would, even in shadow mode, log each
@@ -497,28 +506,74 @@ count_test_signals() {
       }
       return 0
     }
-    # T2 markers beyond the first six (see header), counted on s. Comment
-    # markers are read on the lower-cased text after a comment opener on the
-    # same line; attributes on the original text. Each regex runs only when
-    # index() finds its token, so text without one costs a string search.
-    function supp(s,   t, c) {
-      t = tolower(s); c = 0
-      if (index(t, "nosonar")) c += cnt(t, CM "nosonar" R)
-      if (index(t, "nosem")) c += cnt(t, CM "nosem(grep)?" R)
-      if (index(t, "nosec")) c += cnt(t, CM "nosec" R)
-      if (index(t, "gitleaks:allow")) c += cnt(t, L "gitleaks:allow" R)
-      if (index(t, "pylint:")) c += cnt(t, CM "pylint:[ \t]*(disable|skip-file)" RW)
-      if (index(t, "pyright:")) c += cnt(t, CM "pyright:[ \t]*ignore" RW)
-      if (index(t, "pragma")) c += cnt(t, "#[ \t]*pragma:?[ \t]*no[ \t]*(cover|branch)" R)
-      if (index(t, "#nowarn")) c += cnt(t, L "#nowarn" R)
-      if (index(t, "@ts-nocheck")) c += cnt(t, CM "@ts-nocheck" R)
-      if (index(t, "biome-ignore")) c += cnt(t, CM "biome-ignore(-all|-start)?" R)
-      if (index(t, "istanbul")) c += cnt(t, CM "istanbul[ \t]+ignore" R)
-      # c8/v8 "ignore stop" closes a region; it suppresses nothing itself.
-      if (index(t, "ignore")) c += cnt(t, CM "[cv]8[ \t]+ignore" R) - cnt(t, CM "[cv]8[ \t]+ignore[ \t]+stop" R)
-      if (index(s, "SuppressMessage") || index(s, "ExcludeFromCodeCoverage"))
-        c += cnt(s, AT "((Unconditional)?SuppressMessage|ExcludeFromCodeCoverage)(Attribute)?[ \t]*[](,>]")
+    # T2 markers beyond the first six (see header), counted on s: the comment
+    # markers of the table built in BEGIN on the lower-cased text, line by
+    # line and once per occurrence; attribute lists on the original text.
+    # Markers are found with index() and split(), and a regex only ever runs
+    # on a short window that starts at a marker, so the cost stays linear in
+    # the text however many comment openers or brackets a line holds. Text
+    # with no marker costs one index() per table row.
+    function supp(s,   t, c, i, j, n, e, ln, LN, PK, np) {
+      t = tolower(s); c = 0; np = 0
+      for (j = 1; j <= NK; j++) if (index(t, KG[j])) PK[++np] = j
+      if (np) {
+        n = split(t, LN, "\n")
+        for (i = 1; i <= n; i++) {
+          ln = LN[i]; e = -1
+          for (j = 1; j <= np; j++) if (index(ln, KG[PK[j]])) {
+            if (e < 0) e = opener(ln)
+            c += occ(ln, PK[j], e)
+          }
+        }
+      }
+      if (index(s, "SuppressMessage") || index(s, "ExcludeFromCodeCoverage")) c += attrs(s)
       return c
+    }
+    # End position of the comment opener (//, /*, #, (*) that ends first on
+    # line ln; 0 when the line has none.
+    function opener(ln,   e, i) {
+      e = 0
+      if ((i = index(ln, "#"))) e = i
+      if ((i = index(ln, "//")) && (!e || i + 1 < e)) e = i + 1
+      if ((i = index(ln, "/*")) && (!e || i + 1 < e)) e = i + 1
+      if ((i = index(ln, "(*")) && (!e || i + 1 < e)) e = i + 1
+      return e
+    }
+    # Occurrences of table row k on line ln: places where anchor KA[k] starts,
+    # no KB[k] character stands just before, a comment opener ends earlier on
+    # the line when KC[k] is set (e: see opener), and the window from there
+    # matches KR[k] but not KX[k]. A window cut short of the line end gets an
+    # identifier character appended, so its end never passes for the line end.
+    function occ(ln, k, e,   P, n, i, p, w, ch, c, len) {
+      n = split(ln, P, KA[k]); c = 0; p = 1; len = length(ln)
+      for (i = 1; i < n; i++) {
+        p += length(P[i])
+        ch = (p > 1) ? substr(ln, p - 1, 1) : ""
+        if ((ch == "" || !index(KB[k], ch)) && (!KC[k] || (e && e < p))) {
+          w = substr(ln, p, 80); if (len - p >= 80) w = w "a"
+          if (match(w, KR[k]) && (KX[k] == "" || !match(w, KX[k]))) c++
+        }
+        p += length(KA[k])
+      }
+      return c
+    }
+    # Tracked attributes on s: every "[" opens a piece, and a piece counts once
+    # when, after an optional F# "<", a target (assembly:, module:, ...) and
+    # earlier attributes of the same list (each closed by "," or F# ";"), it
+    # names one, with global:: and a namespace allowed. A piece ends at the
+    # next "[", and the regex stops at "]" or a line break. The separator is a
+    # regex on purpose: BSD awk also splits on newline for a one-character
+    # string separator, which would start a piece at every line.
+    function attrs(s,   P, n, i, c) {
+      n = split(s, P, /\[/); c = 0
+      for (i = 2; i <= n; i++)
+        if ((index(P[i], "SuppressMessage") || index(P[i], "ExcludeFromCodeCoverage")) && match(P[i], AR)) c++
+      return c
+    }
+    # One row of the comment-marker table (see BEGIN).
+    function mk(g, a, r, x, b, cm) {
+      NK++; KG[NK] = g; KA[NK] = a; KR[NK] = "^" r; KX[NK] = (x == "") ? "" : "^" x
+      KB[NK] = b; KC[NK] = cm
     }
     function strong(f, x) { if (x != "") S[f, x]++ }
     function weak(f, x) { if (x != "") W[f, x]++ }
@@ -577,14 +632,33 @@ count_test_signals() {
     }
     BEGIN {
       B = "(^|[^A-Za-z0-9_.])"; fi = 0
-      # supp() boundaries, lower-case: L/R around a token (R and RW differ
-      # only in whether "-" continues it); CM = a comment opener (//, /*, #,
-      # (*) earlier on the same line, then nothing or a run ending in a
-      # non-identifier character; AT = "[" or F# "[<", an optional attribute
-      # target, earlier attributes in the same list, global:: and a namespace.
-      L = "(^|[^a-z0-9_.-])"; R = "([^a-z0-9_-]|$)"; RW = "([^a-z0-9_]|$)"
-      CM = "(//|/\\*|#|\\(\\*)([^\n]*[^a-z0-9_.:\n-])?"
-      AT = "\\[<?[ \t]*([A-Za-z]+[ \t]*:[ \t]*)?([^]\n]*,[ \t]*)?(global::)?([A-Za-z_][A-Za-z0-9_]*\\.)*"
+      # supp() comment markers, lower case, one mk() row each: gate (an
+      # index() hit on the text and on the line), anchor (where the marker
+      # starts; the split point), regex and exclusion on the window from the
+      # anchor, the characters that may not stand just before the anchor
+      # (CB after a comment opener, LB elsewhere), and 1 when a comment opener
+      # must end earlier on the line. R and RW end a token; they differ only
+      # in whether "-" continues it. A c8/v8 "ignore stop" closes a region and
+      # suppresses nothing itself, hence the exclusion.
+      R = "([^a-z0-9_-]|$)"; RW = "([^a-z0-9_]|$)"
+      CB = "abcdefghijklmnopqrstuvwxyz0123456789_.:-"; LB = "abcdefghijklmnopqrstuvwxyz0123456789_.-"
+      NK = 0
+      mk("nosonar", "nosonar", "nosonar" R, "", CB, 1)
+      mk("nosem", "nosem", "nosem(grep)?" R, "", CB, 1)
+      mk("nosec", "nosec", "nosec" R, "", CB, 1)
+      mk("gitleaks:allow", "gitleaks:allow", "gitleaks:allow" R, "", LB, 0)
+      mk("pylint:", "pylint:", "pylint:[ \t]*(disable|skip-file)" RW, "", CB, 1)
+      mk("pyright:", "pyright:", "pyright:[ \t]*ignore" RW, "", CB, 1)
+      mk("pragma", "#", "#[ \t]*pragma:?[ \t]*no[ \t]*(cover|branch)" R, "", "", 0)
+      mk("#nowarn", "#nowarn", "#nowarn" R, "", LB, 0)
+      mk("@ts-nocheck", "@ts-nocheck", "@ts-nocheck" R, "", CB, 1)
+      mk("biome-ignore", "biome-ignore", "biome-ignore(-all|-start)?" R, "", CB, 1)
+      mk("istanbul", "istanbul", "istanbul[ \t]+ignore" R, "", CB, 1)
+      mk("c8", "c8", "c8[ \t]+ignore" R, "c8[ \t]+ignore[ \t]+stop" R, CB, 1)
+      mk("v8", "v8", "v8[ \t]+ignore" R, "v8[ \t]+ignore[ \t]+stop" R, CB, 1)
+      # attrs() regex, anchored at the character after a "[".
+      AR = "^<?[ \t]*([A-Za-z]+[ \t]*:[ \t]*)?([^]\n]*[,;][ \t]*)?(global::)?([A-Za-z_][A-Za-z0-9_]*\\.)*" \
+        "((Unconditional)?SuppressMessage|ExcludeFromCodeCoverage)(Attribute)?[ \t]*[](,>]"
     }
     FNR == 1 { fi++ }
     { T[fi] = T[fi] "\n" $0 }

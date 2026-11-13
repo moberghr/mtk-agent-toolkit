@@ -720,6 +720,17 @@ tcase T2-SUPPRESS "F# [<ExcludeFromCodeCoverage>] added" \
   "$(edit_payload "$FSF" 'type Fixture() =' "[<ExcludeFromCodeCoverage>]${NL}type Fixture() =")"
 tcase T2-SUPPRESS "F# #nowarn added" \
   "$(edit_payload "$FSF" 'module CalcTests' "module CalcTests${NL}#nowarn \"40\"")"
+tcase T2-SUPPRESS "F# [<Fact; ExcludeFromCodeCoverage>] (\";\" separates F# attributes)" \
+  "$(edit_payload "$FSF" '[<Fact>]' '[<Fact; ExcludeFromCodeCoverage>]')"
+tcase T2-SUPPRESS "F# [<Fact; SuppressMessage(\"a\",\"b\")>]" \
+  "$(edit_payload "$FSF" '[<Fact>]' '[<Fact; SuppressMessage("a","b")>]')"
+# Once per occurrence, not once per line.
+tcase T2-SUPPRESS "TS v8 ignore start and stop on one line" \
+  "$(edit_payload "$TSF" 'a(); b();' 'a(); /* v8 ignore start */ b(); /* v8 ignore stop */')"
+tcase T2-SUPPRESS "TS c8 ignore next followed by c8 ignore stop on one line" \
+  "$(edit_payload "$TSF" 'function helper() {' "/* c8 ignore next */ /* c8 ignore stop */${NL}function helper() {")"
+tcase T2-SUPPRESS "TS a second // nosec on a line that has one" \
+  "$(edit_payload "$TSF" 'x(); // nosec' 'x(); // nosec // nosec')"
 
 # Neither mode signals: exit 0 with the test class active, no log line in
 # shadow. Kept or removed markers, and look-alikes of every new token.
@@ -758,6 +769,41 @@ tquiet "look-alike nosemgrepper / nosecurity in comments" \
   "$(edit_payload "$PY" 'result = parse(s)' "# nosemgrepper is a word${NL}result = parse(s)  # nosecurity review")"
 tquiet "look-alike # pylint: enable= / # pyright: strict" \
   "$(edit_payload "$PY" 'result = parse(s)' "# pylint: enable=invalid-name${NL}# pyright: strict${NL}result = parse(s)")"
+tquiet "look-alike Dictionary<string, SuppressMessageAttribute> on a line after a [ (no line crossing)" \
+  "$(edit_payload "$CS" 'var t = 1;' "var xs = new int[2];${NL}var d = new Dictionary<string, SuppressMessageAttribute>();")"
+tquiet "look-alike # pragma: no-cover / # pyright: basic" \
+  "$(edit_payload "$PY" 'result = parse(s)' "# pragma: no-cover${NL}# pyright: basic${NL}result = parse(s)")"
+tquiet "look-alike /* c8 ignored */ / // nosonar-mode" \
+  "$(edit_payload "$TSF" 'const q = build(id);' "/* c8 ignored here */${NL}const q = build(id); // nosonar-mode on")"
+# Cost stays linear in the text: markers are found with index() and split(),
+# never with a regex that scans ahead of them. Each line below took 3.5 s, 8 s
+# and 24 s when one did; the 2 s bound sits well inside the 5 s hook timeout.
+# The lines stay near 100 KB because the shared payload decoder grows
+# quadratically on its own (about 4.5 s on 300 KB), and it is not under test.
+long_payload() { # $1 path  $2 unit  $3 count  $4 tail: an Edit adding one long line
+  python3 - "$1" "$2" "$3" "$4" <<'PY'
+import json, sys
+line = sys.argv[2] * int(sys.argv[3]) + sys.argv[4]
+print(json.dumps({"hook_event_name": "PreToolUse", "tool_name": "Edit",
+                  "tool_input": {"file_path": sys.argv[1], "old_string": "probe();",
+                                 "new_string": line + "\nprobe();"}}))
+PY
+}
+tfast() { # <label> <want exit> <payload>: expect, and fail past 2 s (1 s clock)
+  local t0="$SECONDS" got
+  got="$(run_active "$3")"
+  if [ $((SECONDS - t0)) -gt 2 ]; then
+    printf 'FAIL: %s — took %ss, bound 2s\n' "$1" "$((SECONDS - t0))" >&2
+    fails=$((fails + 1)); rm -f "$LAST_ERR"
+  else
+    expect "$1" "$2" "$got"
+  fi
+}
+tfast "allow:T2-SUPPRESS fast: 115 KB line of quoted URLs, then /* ignore */" 0 \
+  "$(long_payload "$TSF" "x=a('https://e.com/p');" 5000 '/* ignore */')"
+tfast "allow:T2-SUPPRESS fast: 100 KB of //a, then xnosonar" 0 "$(long_payload "$TSF" '//a' 33000 'xnosonar')"
+tfast "deny:T2-SUPPRESS fast: 100 KB of [, then SuppressMessage] (still seen)" 2 \
+  "$(long_payload "$CS" '[' 100000 'SuppressMessage]')"
 expect "allow:T2-SUPPRESS MTK_TEST_GUARD_ENFORCE=off: NOSONAR added" 0 "$(run_with "$(edit_payload "$CS" \
   'var r = Calc.Parse(s);' 'var r = Calc.Parse(s); // NOSONAR')" MTK_TEST_GUARD_ENFORCE=off)"
 expect_nolog "MTK_TEST_GUARD_ENFORCE=off: NOSONAR added logs nothing" \

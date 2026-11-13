@@ -1,14 +1,14 @@
 {
   "schema": "mtk.benchmarks.v1",
-  "generated_at": "2026-11-13T00:58:34Z",
-  "commit": "c71ab38",
+  "generated_at": "2026-11-13T02:40:43Z",
+  "commit": "0db88e0",
   "toolkit_version": "9.4.2",
   "runner": "scripts/run-benchmarks.sh",
   "run_complete": true,
   "totals": {
-    "passed": 80,
+    "passed": 88,
     "failed": 0,
-    "total": 80
+    "total": 88
   },
   "sections": [
     {
@@ -43,12 +43,12 @@
     },
     {
       "name": "Config Guard: test-file suppression markers",
-      "passed": 33,
+      "passed": 37,
       "failed": 0
     },
     {
       "name": "Config Guard: suppression look-alikes (no false positives)",
-      "passed": 16,
+      "passed": 20,
       "failed": 0
     },
     {

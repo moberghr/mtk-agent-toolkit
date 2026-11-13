@@ -18,3 +18,7 @@ tests/test_calc.py	result = parse(s)  # nosecurity review
 tests/test_calc.py	# pylint: enable=invalid-name
 tests/test_calc.py	# pyright: strict
 tests/test_calc.py	value = load()  # type: int
+src/calc.test.ts	/* c8 ignored here */
+tests/test_calc.py	# pragma: no-cover
+tests/Calc.Tests/CalcTests.cs	var r = Calc.Parse(s); // nosonar-mode on
+tests/test_calc.py	# pyright: basic

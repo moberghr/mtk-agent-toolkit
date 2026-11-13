@@ -112,7 +112,7 @@ first, not last.
   a stated reason on the same line or the line above — finding. The silence
   carries no audit trail.
 - **`@ts-ignore` / `@ts-expect-error` without comment** — finding. Same rule.
-- **`@ts-nocheck` / `biome-ignore` / `# pylint: disable` / `# pyright: ignore` / F# `#nowarn` / `[SuppressMessage]` (no `Justification`), scanner silences (`NOSONAR`, `nosemgrep`, `# nosec`, `gitleaks:allow`) and coverage exclusions (`[ExcludeFromCodeCoverage]`, `# pragma: no cover`, `istanbul` / `c8` / `v8 ignore`)** without a stated reason — finding. Same rule; in production code this lane is the only check that sees them (`config-guard` reads test files only).
+- **`@ts-nocheck` / `biome-ignore` / `# pylint: disable` / `# pyright: ignore` / `# type: ignore` / F# `#nowarn` / `[SuppressMessage]` (no `Justification`), scanner silences (`NOSONAR`, `nosemgrep`, `# nosec`, `gitleaks:allow`) and coverage exclusions (`[ExcludeFromCodeCoverage]`, `# pragma: no cover`, `istanbul` / `c8` / `v8 ignore`)** without a stated reason — finding. Same rule; in production code this lane is the only check that sees them (`config-guard` reads test files only).
 - **`// TODO: handle this`** in an error branch that was previously handled —
   finding (regression: error handling moved to "later").
 
