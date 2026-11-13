@@ -1,0 +1,20 @@
+# Look-alikes of the T2-SUPPRESS markers: hooks/config-guard.sh must allow an
+# Edit that adds any of these lines to a test-shaped file (test class active).
+# Read by scripts/run-benchmarks.sh as the guard's false-positive floor.
+# Tab-separated: FILE<TAB>ADDED_LINE, FILE repo-relative and test-shaped.
+tests/Calc.Tests/CalcTests.cs	[SuppressMessageFoo]
+tests/Calc.Tests/CalcTests.cs	public class ExcludeFromCodeCoverageHelper { }
+tests/Calc.Tests/CalcTests.cs	var t = typeof(ExcludeFromCodeCoverageAttribute);
+tests/Calc.Tests/CalcTests.cs	var a = m.GetCustomAttribute<SuppressMessageAttribute>();
+tests/Calc.Tests/CalcTests.cs	var d = new Dictionary<string, SuppressMessageAttribute>();
+tests/Calc.Tests/CalcTests.cs	#pragma warning restore CS0219
+src/calc.test.ts	const nosonarMode = true;
+src/calc.test.ts	const label = "nosonar";
+src/calc.test.ts	// @ts-check
+src/calc.test.ts	/* c8 ignore stop */
+src/calc.test.ts	// biome-ignore-end
+tests/test_calc.py	# nosemgrepper is a word
+tests/test_calc.py	result = parse(s)  # nosecurity review
+tests/test_calc.py	# pylint: enable=invalid-name
+tests/test_calc.py	# pyright: strict
+tests/test_calc.py	value = load()  # type: int

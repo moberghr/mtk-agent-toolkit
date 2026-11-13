@@ -13,7 +13,7 @@ Each run writes **`benchmarks/results.json`** (committed, schema `mtk.benchmarks
 
 ## What the numbers measure
 
-Per-section pass/fail counts over seven benchmark sections:
+Per-section pass/fail counts over nine benchmark sections:
 
 | Section | Asserts that… |
 |---|---|
@@ -23,6 +23,8 @@ Per-section pass/fail counts over seven benchmark sections:
 | Scope Guard: spec-aware scope detection | out-of-manifest edits warn, in-manifest edits stay silent |
 | Verify Completion: evidence gating | completion claims without fresh evidence are blocked |
 | Prerequisites: tool detection | prerequisite reporting produces formatted output |
+| Config Guard: test-file suppression markers | each marker in `fixtures/test-suppressions.txt`, added to a test file, is denied as `T2-SUPPRESS` (test class active) — the guard's detection rate on that list |
+| Config Guard: suppression look-alikes (no false positives) | the near-miss names, identifiers, strings and closing markers in `fixtures/test-suppression-lookalikes.txt` are allowed |
 | Toolkit Validation | `validate-toolkit.sh` exits 0 and prints its pass line |
 
 ## What these numbers do **not** measure

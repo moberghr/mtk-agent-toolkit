@@ -2349,6 +2349,18 @@
       "action": "sync",
       "description": "Known-good code fixture for benchmark testing \u2014 clean code that should produce zero false positives"
     },
+    "benchmarks/fixtures/test-suppressions.txt": {
+      "source": "benchmarks/fixtures/test-suppressions.txt",
+      "target": "benchmarks/fixtures/test-suppressions.txt",
+      "action": "sync",
+      "description": "Benchmark fixture of suppression markers config-guard must report as T2-SUPPRESS when added to a test file \u2014 the detection-rate list"
+    },
+    "benchmarks/fixtures/test-suppression-lookalikes.txt": {
+      "source": "benchmarks/fixtures/test-suppression-lookalikes.txt",
+      "target": "benchmarks/fixtures/test-suppression-lookalikes.txt",
+      "action": "sync",
+      "description": "Benchmark fixture of T2-SUPPRESS look-alikes (near-miss names, identifiers, strings, closing markers) config-guard must allow \u2014 the false-positive floor"
+    },
     "tests/pressure-tests/reviewer-abstention.md": {
       "source": "tests/pressure-tests/reviewer-abstention.md",
       "target": "tests/pressure-tests/reviewer-abstention.md",

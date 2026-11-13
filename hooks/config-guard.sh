@@ -73,8 +73,30 @@ trap _mtk_hook_diag EXIT
 # Test signals, counted on the same before/after text as the config class:
 #   T1-SKIP           skip/focus markers added ([Fact(Skip=…)], Skip =, [Ignore],
 #                     pytest/unittest skip, it/describe/test.skip(, xit(, .only().
-#   T2-SUPPRESS       suppressions added (#pragma warning disable, @ts-ignore,
-#                     @ts-expect-error, # noqa, # type: ignore, eslint-disable).
+#   T2-SUPPRESS       suppressions added. Analyzer and linter silences:
+#                     #pragma warning disable, F# #nowarn, @ts-ignore,
+#                     @ts-expect-error, @ts-nocheck, eslint-disable,
+#                     biome-ignore[-all|-start], # noqa, # type: ignore,
+#                     # pylint: disable|skip-file, # pyright: ignore,
+#                     [SuppressMessage], [UnconditionalSuppressMessage].
+#                     Scanner silences: NOSONAR, nosemgrep / nosem, nosec,
+#                     gitleaks:allow. Coverage exclusions:
+#                     [ExcludeFromCodeCoverage], # pragma: no cover|branch,
+#                     istanbul ignore, c8 / v8 ignore (not "ignore stop",
+#                     which closes a region). The comment markers count in
+#                     any case and only after a comment opener (//, /*, #,
+#                     (*) on the same line, so an identifier or a string such
+#                     as nosonarMode or "nosonar" is not one; gitleaks:allow
+#                     counts anywhere on the line, as gitleaks reads it. An
+#                     attribute counts with or without the Attribute suffix, a
+#                     namespace or global:: prefix, a target (assembly:,
+#                     module:, …), F# [< >] brackets, or a place later in its
+#                     attribute list; a list counts once, so a second tracked
+#                     attribute added to the same list is not seen.
+#                     Deliberately not counted: VB <Attr> syntax (a generic
+#                     type argument reads the same), formatter markers
+#                     (prettier-ignore, fmt: off), and ReSharper disable
+#                     comments (routine in test files for test-name style).
 #   T3-FEWER-TESTS    fewer test declarations ([Fact], [Theory], [Test],
 #                     [TestMethod], [InlineData/TestCase/DataRow( rows,
 #                     def test_, it(, test().
@@ -90,7 +112,14 @@ trap _mtk_hook_diag EXIT
 # split( / emit( / latest( are not tests and [IgnoreDataMember] is not a skip.
 # Test-class limits: Bash writes are out of reach; a test moved to a new file
 # reads as T3-FEWER-TESTS on the old file — the approval list above is the
-# escape (it covers test files too).
+# escape (it covers test files too). Text is not parsed, so a marker quoted
+# in a string (a source-generator test's expected output) counts as added.
+# Production code is out of reach by design: T2 reads test-shaped files only,
+# while coverage exclusions and analyzer attributes mostly land in production
+# code. A class for every code file would, even in shadow mode, log each
+# routine production #pragma or # noqa — a default-behaviour change for every
+# install — so there is none; the silent-failure-hunter review lane, whose
+# Silenced Diagnostics list is this list's twin, is what sees those files.
 # Both classes go through the mode-gated deny; the approval-list protection
 # above stays a plain, unconditional deny that no MTK_*_ENFORCE value changes.
 #
@@ -468,6 +497,29 @@ count_test_signals() {
       }
       return 0
     }
+    # T2 markers beyond the first six (see header), counted on s. Comment
+    # markers are read on the lower-cased text after a comment opener on the
+    # same line; attributes on the original text. Each regex runs only when
+    # index() finds its token, so text without one costs a string search.
+    function supp(s,   t, c) {
+      t = tolower(s); c = 0
+      if (index(t, "nosonar")) c += cnt(t, CM "nosonar" R)
+      if (index(t, "nosem")) c += cnt(t, CM "nosem(grep)?" R)
+      if (index(t, "nosec")) c += cnt(t, CM "nosec" R)
+      if (index(t, "gitleaks:allow")) c += cnt(t, L "gitleaks:allow" R)
+      if (index(t, "pylint:")) c += cnt(t, CM "pylint:[ \t]*(disable|skip-file)" RW)
+      if (index(t, "pyright:")) c += cnt(t, CM "pyright:[ \t]*ignore" RW)
+      if (index(t, "pragma")) c += cnt(t, "#[ \t]*pragma:?[ \t]*no[ \t]*(cover|branch)" R)
+      if (index(t, "#nowarn")) c += cnt(t, L "#nowarn" R)
+      if (index(t, "@ts-nocheck")) c += cnt(t, CM "@ts-nocheck" R)
+      if (index(t, "biome-ignore")) c += cnt(t, CM "biome-ignore(-all|-start)?" R)
+      if (index(t, "istanbul")) c += cnt(t, CM "istanbul[ \t]+ignore" R)
+      # c8/v8 "ignore stop" closes a region; it suppresses nothing itself.
+      if (index(t, "ignore")) c += cnt(t, CM "[cv]8[ \t]+ignore" R) - cnt(t, CM "[cv]8[ \t]+ignore[ \t]+stop" R)
+      if (index(s, "SuppressMessage") || index(s, "ExcludeFromCodeCoverage"))
+        c += cnt(s, AT "((Unconditional)?SuppressMessage|ExcludeFromCodeCoverage)(Attribute)?[ \t]*[](,>]")
+      return c
+    }
     function strong(f, x) { if (x != "") S[f, x]++ }
     function weak(f, x) { if (x != "") W[f, x]++ }
     # Records strong-assertion arguments in S[f, arg] and weak-assertion
@@ -523,7 +575,17 @@ count_test_signals() {
         }
       }
     }
-    BEGIN { B = "(^|[^A-Za-z0-9_.])"; fi = 0 }
+    BEGIN {
+      B = "(^|[^A-Za-z0-9_.])"; fi = 0
+      # supp() boundaries, lower-case: L/R around a token (R and RW differ
+      # only in whether "-" continues it); CM = a comment opener (//, /*, #,
+      # (*) earlier on the same line, then nothing or a run ending in a
+      # non-identifier character; AT = "[" or F# "[<", an optional attribute
+      # target, earlier attributes in the same list, global:: and a namespace.
+      L = "(^|[^a-z0-9_.-])"; R = "([^a-z0-9_-]|$)"; RW = "([^a-z0-9_]|$)"
+      CM = "(//|/\\*|#|\\(\\*)([^\n]*[^a-z0-9_.:\n-])?"
+      AT = "\\[<?[ \t]*([A-Za-z]+[ \t]*:[ \t]*)?([^]\n]*,[ \t]*)?(global::)?([A-Za-z_][A-Za-z0-9_]*\\.)*"
+    }
     FNR == 1 { fi++ }
     { T[fi] = T[fi] "\n" $0 }
     END {
@@ -534,7 +596,7 @@ count_test_signals() {
           + cnt(s, B "(it|describe|test)\\.skip\\(") + cnt(s, B "x(it|describe|test)\\(") + cnt(s, "\\.only\\(")
         c2[f] = cnt(s, "#pragma[ \t]+warning[ \t]+disable") + cnt(s, "//[ \t]*@ts-ignore") \
           + cnt(s, "//[ \t]*@ts-expect-error") + cnt(s, "#[ \t]*noqa") \
-          + cnt(s, "#[ \t]*type:[ \t]*ignore") + cnt(s, "eslint-disable")
+          + cnt(s, "#[ \t]*type:[ \t]*ignore") + cnt(s, "eslint-disable") + supp(s)
         c3[f] = cnt(s, "\\[(Fact|Theory)(\\]|\\(|,)") + cnt(s, "\\[Test(\\]|\\(|,)") \
           + cnt(s, "\\[TestMethod(\\]|\\(|,)") + cnt(s, "\\[(InlineData|TestCase|DataRow)\\(") \
           + cnt(s, B "def[ \t]+test_") + cnt(s, B "(it|test)\\(")
