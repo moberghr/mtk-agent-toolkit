@@ -2,6 +2,21 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [9.10.1] - 2026-11-13
+
+Three fixes: hook payload decoding in linear time, the remaining wrong-verdict cases in the mutation probe, and the status column of the eval comparison.
+
+### Fixed
+
+- Hook payload decoding is linear in payload size. `mtk_extract_json_string` (`hooks/lib/hook-io.sh`) and `extract_json_strings` (`hooks/config-guard.sh`) built their output one character at a time, so a 300 KB Write took about 5.6 s to decode against a 5 s hook timeout, and the guards failed open. The same payload now decodes in 0.15 s and a 1 MB payload in 0.5 s (59 s before); the whole `config-guard` hook on a 300 KB Write goes from 5.7 s to 0.7 s. Output bytes and exit codes are unchanged: `tests/hooks/test-hook-io-decoder.sh` keeps the old decoders as a reference and compares them with the shipped ones over 739 payloads, with timing bounds on CPU time. Tested on BSD awk only; the program uses only POSIX constructs.
+- `scripts/mutation-probe.sh`:
+  - Processes a test command leaves in the background are stopped after every run, so a server started by the unmutated run can no longer answer for the mutated one and produce a false `survived`. If they cannot be stopped the verdict is `not_run`.
+  - Any failure after argument parsing ends in one JSON `not_run` line; before, some failures exited 1 with nothing on stdout. Untracked files whose names start with `-` and a read-only untracked `--file` now work.
+  - A `--file` marked assume-unchanged or skip-worktree, or inside a submodule, gives `not_run`, since the copy would not hold the reviewed content. The header lists what is not copied faithfully: such files, files under a clean/smudge filter, and submodule contents.
+  - `--timeout` allows at least the given number of seconds (it could fire up to a second early), and a `--line` or `--timeout` longer than 9 digits is a usage error instead of wrapping.
+  - The test goes from 68 to 87 checks, and every `not_run` case now checks its reason.
+- `scripts/eval-compare.sh`: a case that is not a routing pair is judged on its score alone. A change in how often the intended workflow loaded is shown as a note on the row and under a `NOTES` heading, and no longer marks the case as regressed or changes the exit code. Routing pairs are unchanged, since the load rate is what they measure. `--json` gains a `note` per case and a top-level `notes` list.
+
 ## [9.10.0] - 2026-11-13
 
 This release tightens review and the approval gate: a scripted mutation check for the test reviewer, a rule for defects that predate the change, one definition of approval, and a rule that content under analysis is data.
