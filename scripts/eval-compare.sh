@@ -38,13 +38,21 @@ set -euo pipefail
 #
 # A regression (exit 1) is any of these:
 #   - a case score that dropped by more than --noise, for a case in both files;
-#   - a FIRED rate that dropped by more than --noise (a fires case, or any case with
-#     an indicator), or rose by more than --noise on a quiet case;
+#   - a FIRED rate that dropped by more than --noise on a fires case, or rose by more
+#     than --noise on a quiet case;
 #   - a fires rate or stays-quiet rate that dropped by more than --noise;
 #   - a case in the baseline that is missing from the candidate, since a case that
 #     no longer runs measures nothing. Pass --allow-missing when a case was removed on
 #     purpose. A case only in the candidate is listed and not compared.
 # Run both files with the same --case/--tag filter.
+#
+# For a case that is neither fires nor quiet, the score is the measurement and the
+# indicator is context. Its status comes from the score delta alone (regressed,
+# improved, within noise or same). If its FIRED rate moved by more than --noise, in
+# either direction, that is a note on the row ("note: workflow loaded 1.00 -> 0.50")
+# and a line under NOTES after REGRESSIONS. A note never makes a regression or an
+# improvement and does not change the exit code. In --json the row carries it as
+# `note` (null when none) and the top level lists them as `notes`.
 #
 # --noise defaults to 0.2. Scores are means over runs, so at --runs 3 one grader
 # verdict flipping in one run moves a two-grader case by 0.17 (noise), while a whole
@@ -293,6 +301,7 @@ only_cand = [n for n in sorted(cand) if n not in base]
 SIDE_KEYS = ("score", "runs", "graded", "errored", "fired", "firedRate")
 rows = []
 regressions = []
+notes = []
 for name in only_base:
     if not allow_missing:
         regressions.append("%s: in the baseline but missing from the candidate" % name)
@@ -309,7 +318,7 @@ for name in shared:
         warnings.append("case %s has %d run(s) in the baseline and %d in the candidate"
                         % (name, b["runs"], c["runs"]))
     delta = r(c["score"] - b["score"])
-    reasons, better = [], []
+    reasons, better, note = [], [], None
     if delta < -noise:
         reasons.append("score %+.2f" % delta)
     elif delta > noise:
@@ -322,17 +331,22 @@ for name in shared:
                 reasons.append(moved + " (should stay quiet)")
             elif fdelta < -noise:
                 better.append(moved)
-        else:
+        elif kind == "fires":
             if fdelta < -noise:
                 reasons.append(moved)
             elif fdelta > noise:
                 better.append(moved)
+        elif abs(fdelta) > noise:
+            # Any other case: the score is the measurement and the indicator is
+            # context, so a move is a note and never changes the status.
+            note = "workflow loaded %.2f -> %.2f" % (b["firedRate"], c["firedRate"])
+            notes.append("%s: %s" % (name, note))
     if reasons:
         status = "regressed"
         regressions.append("%s: %s" % (name, "; ".join(reasons)))
     elif better:
         status = "improved"
-    elif delta == 0 and b["firedRate"] == c["firedRate"]:
+    elif delta == 0 and (kind is None or b["firedRate"] == c["firedRate"]):
         status = "same"
     else:
         status = "within noise"
@@ -344,6 +358,7 @@ for name in shared:
         "delta": delta,
         "status": status,
         "reasons": reasons or better,
+        "note": note,
     })
 
 
@@ -381,6 +396,7 @@ if as_json:
         "onlyInCandidate": only_cand,
         "totals": totals,
         "regressions": regressions,
+        "notes": notes,
         "warnings": warnings,
         "regressed": bool(regressions),
     }, sys.stdout, indent=2)
@@ -411,6 +427,8 @@ for row in rows:
     status = row["status"]
     if row["reasons"]:
         status += ": " + "; ".join(row["reasons"])
+    if row["note"]:
+        status += "; note: " + row["note"]
     print("%s%-7s%-6.2f%-6.2f%-+7.2f%-9s%-9s%s" % (
         asc(row["name"]).ljust(width), row["kind"] or "-", row["baseline"]["score"],
         row["candidate"]["score"], row["delta"], fired_cell(row["baseline"]),
@@ -457,6 +475,10 @@ print("summary: %d regression(s), %d improved, %d within noise, %d same, %d case
 if regressions:
     print("REGRESSIONS")
     for line in regressions:
+        print("  %s" % asc(line))
+if notes:
+    print("NOTES (not regressions; they do not change the exit code)")
+    for line in notes:
         print("  %s" % asc(line))
 sys.exit(1 if regressions else 0)
 PY
