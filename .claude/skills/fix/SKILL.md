@@ -1,6 +1,6 @@
 ---
 name: fix
-description: Use for a bug, failing test, error or small config change whose fix stays within 1-3 files and needs no formal spec — escalates to implement if the scope grows.
+description: Use for a bug, failing test, error or wrong output, even a one-line fix, or a small config change that stays within 1-3 files and needs no formal spec; escalates to implement if scope grows.
 type: skill
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion
 argument-hint: <bug or small change>

@@ -1,6 +1,6 @@
 ---
 name: security-and-hardening
-description: Use when the change touches auth, secrets, audited state, audit trails, infrastructure, or external inputs — treat security as a design constraint, not final polish.
+description: Security checks before writing any change, even a small one, that touches auth, API keys, credentials or secrets, external API calls, untrusted input, audit trails or infrastructure.
 type: skill
 license: MIT
 compatibility:

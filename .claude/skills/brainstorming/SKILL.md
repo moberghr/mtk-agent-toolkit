@@ -1,6 +1,6 @@
 ---
 name: brainstorming
-description: Use before spec writing when the approach is unclear, several designs or ways to build it are plausible, or the engineer wants to explore alternatives before committing.
+description: Compare 2-3 approaches or alternative designs with their trade-offs; use whenever someone wants to weigh a few ways to solve a problem before picking one, or the approach is unclear, before a spec.
 type: skill
 license: MIT
 compatibility:
