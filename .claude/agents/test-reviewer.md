@@ -47,6 +47,16 @@ tests with no assertion; catch blocks that swallow the exception under test (use
 `Assert.Throws` / `pytest.raises`); mock-call-only verification with no check on the result;
 near-identical copies that do not vary the interesting input.
 
+**Mutation check** — once per review, only when the change adds a condition to money, auth
+or state-mutating logic. Work in a throwaway copy, never the reviewed tree: `tmp=$(mktemp -d)`,
+`git worktree add --detach "$tmp" HEAD`, and if the change is uncommitted apply
+`git diff HEAD --binary` there and copy its untracked files. Invert the condition so behaviour
+should break (drop a negation, `>` → `>=`, `&&` → `||`), run only the tests covering it, then
+`git worktree remove --force "$tmp"` and confirm `git status --porcelain` here is unchanged.
+Still green ⇒ a finding at the inverted `file:line` naming the missing test case. If the tests
+cannot run here (no toolchain, needs network, a service or a database), write
+`mutation check: not run — <reason>`; it is never evidence in `below_threshold_rationale`.
+
 ## Step 3: Output
 
 Schema table and JSON. Each finding cites the test `file:line` and the production

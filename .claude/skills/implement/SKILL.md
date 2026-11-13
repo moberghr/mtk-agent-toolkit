@@ -151,7 +151,9 @@ Options: `Approve & run until done` · `Approve (interactive)` · `Edit first` �
 `Revise` · `Show full plan & spec in terminal`.
 
 **Until the engineer answers: read-only Bash only — no Edit/Write on source, no
-Phase 3.** In autonomous mode, never re-ask for Phases 3–7 — stop and report.
+Phase 3.** A non-committal reply ("I guess", "probably fine", "not sure about X
+though") is not approval: resolve the doubt it names or ask for an explicit yes.
+In autonomous mode, never re-ask for Phases 3–7 — stop and report.
 
 On approval, record the gate and **seal the approved scope** so a later edit
 cannot silently keep the approval:
