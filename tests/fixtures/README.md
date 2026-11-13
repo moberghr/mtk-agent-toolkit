@@ -14,8 +14,9 @@ These fixtures complement the markdown pressure tests in `tests/pressure-tests/`
 | `router-decision` (default when `workflow_type` is present) | JSON shape; `workflow_type`, gate names, and `next_action` against the documented vocabularies; cross-rules (`abort` ⇒ `failure_stop_gate: fail`; `advance_phase` ⇒ a gate is recorded). | The `rationale` **text** (only its presence/length) — that stays human review. |
 | `handoff-validation` | Runs `scripts/validate-handoff.sh` against the fixture and asserts its declared `expected_exit` (0 = accepted, 1 = rejected). | The full drift report body — only the exit code contract is asserted. |
 | `router-mapping` | Each case's `expected_skill` has a directory under `.claude/skills/`, and each case is grounded: a `/mtk` route-table keyword for that skill appears in the prompt, or a `note` documents a boundary/hook-routed case. | Whether a **live** `/mtk` invocation actually routes the prompt there — that is a pressure test / eval, not a structural fixture. |
+| `skill-routing` | Runs `scripts/routing-check.sh --prompts <fixture>`. Skill descriptions must rank each positive prompt's skill in the top k and keep each negative prompt's skill off rank 1. They must meet both rank-1 floors: one over all positive prompts, and one over the name-free prompts, which share no word with their skill's name. Every non-exempt skill must have its minimum number of prompts and name-free prompts. No pair of descriptions may reach the fail threshold unless the pair is allow-listed. | Whether a live model picks that skill. The score is lexical (stemmed TF-IDF, cosine), so a pass is necessary, not sufficient. |
 
-Reported markers: `OK` (router-decision, handoff), `OK (structural)` (router-mapping). No fixture is silently skipped.
+Reported markers: `OK` (router-decision, handoff), `OK (structural)` (router-mapping), `OK (skill-routing, <summary>)` (skill-routing). Unknown fixture types fail. No fixture is silently skipped.
 
 ## Router-decision fixture shape
 
@@ -48,6 +49,26 @@ Carries `"fixture_type": "handoff-validation"`, a `success_criteria` array (each
 ## Router-mapping fixture shape
 
 Carries `"fixture_type": "router-mapping"` and a `cases` array. Each case is `{ "prompt": "...", "expected_skill": "<skill-dir>", "note": "optional" }`. The runner asserts the skill directory exists and the mapping is grounded in the `/mtk` route table (or a `note` documents a boundary / hook-routed case). It does not invoke the live router.
+
+## Skill-routing fixture shape
+
+Carries `"fixture_type": "skill-routing"` and is also the checker's configuration. The full reference is in `evals/README.md` under "Checking skill routing".
+
+```json
+{
+  "id": "skill-routing",
+  "fixture_type": "skill-routing",
+  "description": "one-line human summary",
+  "thresholds": { "warn": 0.5, "fail": 0.75, "top_k": 3, "min_rank1": 90, "min_rank1_name_free": 89,
+                  "min_positive_per_skill": 2, "min_name_free_per_skill": 1 },
+  "allow_pairs": [ { "skills": ["<skill>", "<skill>"], "reason": "why these two may read alike" } ],
+  "exempt": [ { "skill": "<skill>", "reason": "why it needs no trigger prompts" } ],
+  "positive": [ { "prompt": "...", "skill": "<skill>" } ],
+  "negative": [ { "prompt": "...", "not": "<skill>", "owner": "<skill, optional>" } ]
+}
+```
+
+Unknown keys, an allow-list or exempt entry without a reason, a number that is not finite, and inverted thresholds are usage errors (exit 2). A skill name the catalog does not have fails the check. A negative must not repeat a positive prompt, and its `not` skill must score above 0 on it, or the case cannot fail. When you add a skill, add at least two positive prompts for it, one of them name-free (S2.6b).
 
 ## How to add a fixture
 

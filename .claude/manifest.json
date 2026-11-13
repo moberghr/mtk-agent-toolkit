@@ -1,6 +1,6 @@
 {
-  "version": "9.4.2",
-  "updated": "2026-10-22",
+  "version": "9.10.0",
+  "updated": "2026-11-13",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -274,6 +274,432 @@
       "target": "evals/router-fix/case.yaml",
       "action": "sync",
       "description": "Plugin-eval case router-fix: scaffold and execution settings"
+    },
+    "evals/fires-fix/scaffold.sh": {
+      "source": "evals/fires-fix/scaffold.sh",
+      "target": "evals/fires-fix/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case fires-fix: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/fires-fix/prompt.md": {
+      "source": "evals/fires-fix/prompt.md",
+      "target": "evals/fires-fix/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-fix: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/fires-fix/case.yaml": {
+      "source": "evals/fires-fix/case.yaml",
+      "target": "evals/fires-fix/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case fires-fix: scaffold and execution settings"
+    },
+    "evals/fires-fix/graders/reads-source.md": {
+      "source": "evals/fires-fix/graders/reads-source.md",
+      "target": "evals/fires-fix/graders/reads-source.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-fix: grader 'reads-source'"
+    },
+    "evals/fires-fix/graders/routing-fired.md": {
+      "source": "evals/fires-fix/graders/routing-fired.md",
+      "target": "evals/fires-fix/graders/routing-fired.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-fix: grader 'routing-fired'"
+    },
+    "evals/quiet-fix/scaffold.sh": {
+      "source": "evals/quiet-fix/scaffold.sh",
+      "target": "evals/quiet-fix/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-fix: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/quiet-fix/prompt.md": {
+      "source": "evals/quiet-fix/prompt.md",
+      "target": "evals/quiet-fix/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-fix: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/quiet-fix/case.yaml": {
+      "source": "evals/quiet-fix/case.yaml",
+      "target": "evals/quiet-fix/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-fix: scaffold and execution settings"
+    },
+    "evals/quiet-fix/graders/explains-backoff.md": {
+      "source": "evals/quiet-fix/graders/explains-backoff.md",
+      "target": "evals/quiet-fix/graders/explains-backoff.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-fix: grader 'explains-backoff'"
+    },
+    "evals/quiet-fix/graders/explains-give-up.md": {
+      "source": "evals/quiet-fix/graders/explains-give-up.md",
+      "target": "evals/quiet-fix/graders/explains-give-up.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-fix: grader 'explains-give-up'"
+    },
+    "evals/quiet-fix/graders/no-edit.md": {
+      "source": "evals/quiet-fix/graders/no-edit.md",
+      "target": "evals/quiet-fix/graders/no-edit.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-fix: grader 'no-edit'"
+    },
+    "evals/quiet-fix/graders/no-write.md": {
+      "source": "evals/quiet-fix/graders/no-write.md",
+      "target": "evals/quiet-fix/graders/no-write.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-fix: grader 'no-write'"
+    },
+    "evals/quiet-fix/graders/routing-quiet.md": {
+      "source": "evals/quiet-fix/graders/routing-quiet.md",
+      "target": "evals/quiet-fix/graders/routing-quiet.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-fix: grader 'routing-quiet'"
+    },
+    "evals/fires-code-review-and-quality/scaffold.sh": {
+      "source": "evals/fires-code-review-and-quality/scaffold.sh",
+      "target": "evals/fires-code-review-and-quality/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case fires-code-review-and-quality: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/fires-code-review-and-quality/prompt.md": {
+      "source": "evals/fires-code-review-and-quality/prompt.md",
+      "target": "evals/fires-code-review-and-quality/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-code-review-and-quality: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/fires-code-review-and-quality/case.yaml": {
+      "source": "evals/fires-code-review-and-quality/case.yaml",
+      "target": "evals/fires-code-review-and-quality/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case fires-code-review-and-quality: scaffold and execution settings"
+    },
+    "evals/fires-code-review-and-quality/graders/names-defect.md": {
+      "source": "evals/fires-code-review-and-quality/graders/names-defect.md",
+      "target": "evals/fires-code-review-and-quality/graders/names-defect.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-code-review-and-quality: grader 'names-defect'"
+    },
+    "evals/fires-code-review-and-quality/graders/no-edit.md": {
+      "source": "evals/fires-code-review-and-quality/graders/no-edit.md",
+      "target": "evals/fires-code-review-and-quality/graders/no-edit.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-code-review-and-quality: grader 'no-edit'"
+    },
+    "evals/fires-code-review-and-quality/graders/no-write.md": {
+      "source": "evals/fires-code-review-and-quality/graders/no-write.md",
+      "target": "evals/fires-code-review-and-quality/graders/no-write.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-code-review-and-quality: grader 'no-write'"
+    },
+    "evals/fires-code-review-and-quality/graders/routing-fired.md": {
+      "source": "evals/fires-code-review-and-quality/graders/routing-fired.md",
+      "target": "evals/fires-code-review-and-quality/graders/routing-fired.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-code-review-and-quality: grader 'routing-fired'"
+    },
+    "evals/quiet-code-review-and-quality/scaffold.sh": {
+      "source": "evals/quiet-code-review-and-quality/scaffold.sh",
+      "target": "evals/quiet-code-review-and-quality/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-code-review-and-quality: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/quiet-code-review-and-quality/prompt.md": {
+      "source": "evals/quiet-code-review-and-quality/prompt.md",
+      "target": "evals/quiet-code-review-and-quality/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-code-review-and-quality: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/quiet-code-review-and-quality/case.yaml": {
+      "source": "evals/quiet-code-review-and-quality/case.yaml",
+      "target": "evals/quiet-code-review-and-quality/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-code-review-and-quality: scaffold and execution settings"
+    },
+    "evals/quiet-code-review-and-quality/graders/names-timeout-change.md": {
+      "source": "evals/quiet-code-review-and-quality/graders/names-timeout-change.md",
+      "target": "evals/quiet-code-review-and-quality/graders/names-timeout-change.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-code-review-and-quality: grader 'names-timeout-change'"
+    },
+    "evals/quiet-code-review-and-quality/graders/no-edit.md": {
+      "source": "evals/quiet-code-review-and-quality/graders/no-edit.md",
+      "target": "evals/quiet-code-review-and-quality/graders/no-edit.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-code-review-and-quality: grader 'no-edit'"
+    },
+    "evals/quiet-code-review-and-quality/graders/routing-quiet.md": {
+      "source": "evals/quiet-code-review-and-quality/graders/routing-quiet.md",
+      "target": "evals/quiet-code-review-and-quality/graders/routing-quiet.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-code-review-and-quality: grader 'routing-quiet'"
+    },
+    "evals/fires-security-and-hardening/scaffold.sh": {
+      "source": "evals/fires-security-and-hardening/scaffold.sh",
+      "target": "evals/fires-security-and-hardening/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case fires-security-and-hardening: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/fires-security-and-hardening/prompt.md": {
+      "source": "evals/fires-security-and-hardening/prompt.md",
+      "target": "evals/fires-security-and-hardening/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-security-and-hardening: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/fires-security-and-hardening/case.yaml": {
+      "source": "evals/fires-security-and-hardening/case.yaml",
+      "target": "evals/fires-security-and-hardening/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case fires-security-and-hardening: scaffold and execution settings"
+    },
+    "evals/fires-security-and-hardening/graders/reads-source.md": {
+      "source": "evals/fires-security-and-hardening/graders/reads-source.md",
+      "target": "evals/fires-security-and-hardening/graders/reads-source.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-security-and-hardening: grader 'reads-source'"
+    },
+    "evals/fires-security-and-hardening/graders/routing-fired.md": {
+      "source": "evals/fires-security-and-hardening/graders/routing-fired.md",
+      "target": "evals/fires-security-and-hardening/graders/routing-fired.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-security-and-hardening: grader 'routing-fired'"
+    },
+    "evals/quiet-security-and-hardening/scaffold.sh": {
+      "source": "evals/quiet-security-and-hardening/scaffold.sh",
+      "target": "evals/quiet-security-and-hardening/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-security-and-hardening: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/quiet-security-and-hardening/prompt.md": {
+      "source": "evals/quiet-security-and-hardening/prompt.md",
+      "target": "evals/quiet-security-and-hardening/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-security-and-hardening: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/quiet-security-and-hardening/case.yaml": {
+      "source": "evals/quiet-security-and-hardening/case.yaml",
+      "target": "evals/quiet-security-and-hardening/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-security-and-hardening: scaffold and execution settings"
+    },
+    "evals/quiet-security-and-hardening/graders/limit-raised.md": {
+      "source": "evals/quiet-security-and-hardening/graders/limit-raised.md",
+      "target": "evals/quiet-security-and-hardening/graders/limit-raised.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-security-and-hardening: grader 'limit-raised'"
+    },
+    "evals/quiet-security-and-hardening/graders/routing-quiet.md": {
+      "source": "evals/quiet-security-and-hardening/graders/routing-quiet.md",
+      "target": "evals/quiet-security-and-hardening/graders/routing-quiet.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-security-and-hardening: grader 'routing-quiet'"
+    },
+    "evals/fires-research-context/scaffold.sh": {
+      "source": "evals/fires-research-context/scaffold.sh",
+      "target": "evals/fires-research-context/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case fires-research-context: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/fires-research-context/prompt.md": {
+      "source": "evals/fires-research-context/prompt.md",
+      "target": "evals/fires-research-context/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-research-context: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/fires-research-context/case.yaml": {
+      "source": "evals/fires-research-context/case.yaml",
+      "target": "evals/fires-research-context/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case fires-research-context: scaffold and execution settings"
+    },
+    "evals/fires-research-context/graders/reads-source.md": {
+      "source": "evals/fires-research-context/graders/reads-source.md",
+      "target": "evals/fires-research-context/graders/reads-source.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-research-context: grader 'reads-source'"
+    },
+    "evals/fires-research-context/graders/routing-fired.md": {
+      "source": "evals/fires-research-context/graders/routing-fired.md",
+      "target": "evals/fires-research-context/graders/routing-fired.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-research-context: grader 'routing-fired'"
+    },
+    "evals/quiet-research-context/scaffold.sh": {
+      "source": "evals/quiet-research-context/scaffold.sh",
+      "target": "evals/quiet-research-context/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-research-context: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/quiet-research-context/prompt.md": {
+      "source": "evals/quiet-research-context/prompt.md",
+      "target": "evals/quiet-research-context/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-research-context: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/quiet-research-context/case.yaml": {
+      "source": "evals/quiet-research-context/case.yaml",
+      "target": "evals/quiet-research-context/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-research-context: scaffold and execution settings"
+    },
+    "evals/quiet-research-context/graders/names-pinned-version.md": {
+      "source": "evals/quiet-research-context/graders/names-pinned-version.md",
+      "target": "evals/quiet-research-context/graders/names-pinned-version.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-research-context: grader 'names-pinned-version'"
+    },
+    "evals/quiet-research-context/graders/no-web-fetch.md": {
+      "source": "evals/quiet-research-context/graders/no-web-fetch.md",
+      "target": "evals/quiet-research-context/graders/no-web-fetch.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-research-context: grader 'no-web-fetch'"
+    },
+    "evals/quiet-research-context/graders/no-web-search.md": {
+      "source": "evals/quiet-research-context/graders/no-web-search.md",
+      "target": "evals/quiet-research-context/graders/no-web-search.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-research-context: grader 'no-web-search'"
+    },
+    "evals/quiet-research-context/graders/routing-quiet.md": {
+      "source": "evals/quiet-research-context/graders/routing-quiet.md",
+      "target": "evals/quiet-research-context/graders/routing-quiet.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-research-context: grader 'routing-quiet'"
+    },
+    "evals/fires-code-simplification/scaffold.sh": {
+      "source": "evals/fires-code-simplification/scaffold.sh",
+      "target": "evals/fires-code-simplification/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case fires-code-simplification: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/fires-code-simplification/prompt.md": {
+      "source": "evals/fires-code-simplification/prompt.md",
+      "target": "evals/fires-code-simplification/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-code-simplification: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/fires-code-simplification/case.yaml": {
+      "source": "evals/fires-code-simplification/case.yaml",
+      "target": "evals/fires-code-simplification/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case fires-code-simplification: scaffold and execution settings"
+    },
+    "evals/fires-code-simplification/graders/reads-source.md": {
+      "source": "evals/fires-code-simplification/graders/reads-source.md",
+      "target": "evals/fires-code-simplification/graders/reads-source.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-code-simplification: grader 'reads-source'"
+    },
+    "evals/fires-code-simplification/graders/routing-fired.md": {
+      "source": "evals/fires-code-simplification/graders/routing-fired.md",
+      "target": "evals/fires-code-simplification/graders/routing-fired.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-code-simplification: grader 'routing-fired'"
+    },
+    "evals/quiet-code-simplification/scaffold.sh": {
+      "source": "evals/quiet-code-simplification/scaffold.sh",
+      "target": "evals/quiet-code-simplification/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-code-simplification: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/quiet-code-simplification/prompt.md": {
+      "source": "evals/quiet-code-simplification/prompt.md",
+      "target": "evals/quiet-code-simplification/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-code-simplification: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/quiet-code-simplification/case.yaml": {
+      "source": "evals/quiet-code-simplification/case.yaml",
+      "target": "evals/quiet-code-simplification/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-code-simplification: scaffold and execution settings"
+    },
+    "evals/quiet-code-simplification/graders/old-name-gone.md": {
+      "source": "evals/quiet-code-simplification/graders/old-name-gone.md",
+      "target": "evals/quiet-code-simplification/graders/old-name-gone.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-code-simplification: grader 'old-name-gone'"
+    },
+    "evals/quiet-code-simplification/graders/renamed.md": {
+      "source": "evals/quiet-code-simplification/graders/renamed.md",
+      "target": "evals/quiet-code-simplification/graders/renamed.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-code-simplification: grader 'renamed'"
+    },
+    "evals/quiet-code-simplification/graders/routing-quiet.md": {
+      "source": "evals/quiet-code-simplification/graders/routing-quiet.md",
+      "target": "evals/quiet-code-simplification/graders/routing-quiet.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-code-simplification: grader 'routing-quiet'"
+    },
+    "evals/fires-brainstorming/scaffold.sh": {
+      "source": "evals/fires-brainstorming/scaffold.sh",
+      "target": "evals/fires-brainstorming/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case fires-brainstorming: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/fires-brainstorming/prompt.md": {
+      "source": "evals/fires-brainstorming/prompt.md",
+      "target": "evals/fires-brainstorming/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-brainstorming: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/fires-brainstorming/case.yaml": {
+      "source": "evals/fires-brainstorming/case.yaml",
+      "target": "evals/fires-brainstorming/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case fires-brainstorming: scaffold and execution settings"
+    },
+    "evals/fires-brainstorming/graders/no-edit.md": {
+      "source": "evals/fires-brainstorming/graders/no-edit.md",
+      "target": "evals/fires-brainstorming/graders/no-edit.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-brainstorming: grader 'no-edit'"
+    },
+    "evals/fires-brainstorming/graders/no-write.md": {
+      "source": "evals/fires-brainstorming/graders/no-write.md",
+      "target": "evals/fires-brainstorming/graders/no-write.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-brainstorming: grader 'no-write'"
+    },
+    "evals/fires-brainstorming/graders/reads-source.md": {
+      "source": "evals/fires-brainstorming/graders/reads-source.md",
+      "target": "evals/fires-brainstorming/graders/reads-source.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-brainstorming: grader 'reads-source'"
+    },
+    "evals/fires-brainstorming/graders/routing-fired.md": {
+      "source": "evals/fires-brainstorming/graders/routing-fired.md",
+      "target": "evals/fires-brainstorming/graders/routing-fired.md",
+      "action": "sync",
+      "description": "Plugin-eval case fires-brainstorming: grader 'routing-fired'"
+    },
+    "evals/quiet-brainstorming/scaffold.sh": {
+      "source": "evals/quiet-brainstorming/scaffold.sh",
+      "target": "evals/quiet-brainstorming/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-brainstorming: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/quiet-brainstorming/prompt.md": {
+      "source": "evals/quiet-brainstorming/prompt.md",
+      "target": "evals/quiet-brainstorming/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-brainstorming: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/quiet-brainstorming/case.yaml": {
+      "source": "evals/quiet-brainstorming/case.yaml",
+      "target": "evals/quiet-brainstorming/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-brainstorming: scaffold and execution settings"
+    },
+    "evals/quiet-brainstorming/graders/batch-size-changed.md": {
+      "source": "evals/quiet-brainstorming/graders/batch-size-changed.md",
+      "target": "evals/quiet-brainstorming/graders/batch-size-changed.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-brainstorming: grader 'batch-size-changed'"
+    },
+    "evals/quiet-brainstorming/graders/routing-quiet.md": {
+      "source": "evals/quiet-brainstorming/graders/routing-quiet.md",
+      "target": "evals/quiet-brainstorming/graders/routing-quiet.md",
+      "action": "sync",
+      "description": "Plugin-eval case quiet-brainstorming: grader 'routing-quiet'"
     },
     "evals/pre-commit-secret/scaffold.sh": {
       "source": "evals/pre-commit-secret/scaffold.sh",
@@ -736,6 +1162,12 @@
       "target": ".claude/references/domain-finance.md",
       "action": "sync",
       "description": "Finance domain supplement \u2014 concrete examples of regulated state, sensitive data, and audit requirements for fintech codebases"
+    },
+    "references/schema-migrations.md": {
+      "source": ".claude/references/schema-migrations.md",
+      "target": ".claude/references/schema-migrations.md",
+      "action": "sync",
+      "description": "Expand-then-contract procedure for schema migrations that stay safe during rollout and rollback, pointed to by every stack's data-layer guidance"
     },
     "references/dependency-intake-checklist.md": {
       "source": ".claude/references/dependency-intake-checklist.md",
@@ -1305,6 +1737,444 @@
       "action": "sync",
       "description": "Fake credentials covering every secret-scan pattern (self-test fixture, not real secrets)"
     },
+    "evals/migration-drops-live-column/scaffold.sh": {
+      "source": "evals/migration-drops-live-column/scaffold.sh",
+      "target": "evals/migration-drops-live-column/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case migration-drops-live-column: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/migration-drops-live-column/prompt.md": {
+      "source": "evals/migration-drops-live-column/prompt.md",
+      "target": "evals/migration-drops-live-column/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case migration-drops-live-column: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/migration-drops-live-column/case.yaml": {
+      "source": "evals/migration-drops-live-column/case.yaml",
+      "target": "evals/migration-drops-live-column/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case migration-drops-live-column: scaffold and execution settings"
+    },
+    "evals/migration-drops-live-column/graders/flags-rollout-break.md": {
+      "source": "evals/migration-drops-live-column/graders/flags-rollout-break.md",
+      "target": "evals/migration-drops-live-column/graders/flags-rollout-break.md",
+      "action": "sync",
+      "description": "Plugin-eval case migration-drops-live-column: grader 'flags-rollout-break'"
+    },
+    "evals/migration-drops-live-column/graders/no-edit.md": {
+      "source": "evals/migration-drops-live-column/graders/no-edit.md",
+      "target": "evals/migration-drops-live-column/graders/no-edit.md",
+      "action": "sync",
+      "description": "Plugin-eval case migration-drops-live-column: grader 'no-edit'"
+    },
+    "evals/migration-drops-live-column/graders/source-unchanged.md": {
+      "source": "evals/migration-drops-live-column/graders/source-unchanged.md",
+      "target": "evals/migration-drops-live-column/graders/source-unchanged.md",
+      "action": "sync",
+      "description": "Plugin-eval case migration-drops-live-column: grader 'source-unchanged'"
+    },
+    "evals/migration-drops-live-column/graders/recommends-additive-sequence.md": {
+      "source": "evals/migration-drops-live-column/graders/recommends-additive-sequence.md",
+      "target": "evals/migration-drops-live-column/graders/recommends-additive-sequence.md",
+      "action": "sync",
+      "description": "Plugin-eval case migration-drops-live-column: grader 'recommends-additive-sequence'"
+    },
+    "evals/webhook-double-credit/scaffold.sh": {
+      "source": "evals/webhook-double-credit/scaffold.sh",
+      "target": "evals/webhook-double-credit/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case webhook-double-credit: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/webhook-double-credit/prompt.md": {
+      "source": "evals/webhook-double-credit/prompt.md",
+      "target": "evals/webhook-double-credit/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case webhook-double-credit: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/webhook-double-credit/case.yaml": {
+      "source": "evals/webhook-double-credit/case.yaml",
+      "target": "evals/webhook-double-credit/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case webhook-double-credit: scaffold and execution settings"
+    },
+    "evals/webhook-double-credit/graders/atomic-idempotency.md": {
+      "source": "evals/webhook-double-credit/graders/atomic-idempotency.md",
+      "target": "evals/webhook-double-credit/graders/atomic-idempotency.md",
+      "action": "sync",
+      "description": "Plugin-eval case webhook-double-credit: grader 'atomic-idempotency'"
+    },
+    "evals/webhook-double-credit/graders/flags-duplicate-credit.md": {
+      "source": "evals/webhook-double-credit/graders/flags-duplicate-credit.md",
+      "target": "evals/webhook-double-credit/graders/flags-duplicate-credit.md",
+      "action": "sync",
+      "description": "Plugin-eval case webhook-double-credit: grader 'flags-duplicate-credit'"
+    },
+    "evals/webhook-double-credit/graders/no-edit.md": {
+      "source": "evals/webhook-double-credit/graders/no-edit.md",
+      "target": "evals/webhook-double-credit/graders/no-edit.md",
+      "action": "sync",
+      "description": "Plugin-eval case webhook-double-credit: grader 'no-edit'"
+    },
+    "evals/webhook-double-credit/graders/source-unchanged.md": {
+      "source": "evals/webhook-double-credit/graders/source-unchanged.md",
+      "target": "evals/webhook-double-credit/graders/source-unchanged.md",
+      "action": "sync",
+      "description": "Plugin-eval case webhook-double-credit: grader 'source-unchanged'"
+    },
+    "evals/regression-hunt/scaffold.sh": {
+      "source": "evals/regression-hunt/scaffold.sh",
+      "target": "evals/regression-hunt/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case regression-hunt: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/regression-hunt/prompt.md": {
+      "source": "evals/regression-hunt/prompt.md",
+      "target": "evals/regression-hunt/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case regression-hunt: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/regression-hunt/case.yaml": {
+      "source": "evals/regression-hunt/case.yaml",
+      "target": "evals/regression-hunt/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case regression-hunt: scaffold and execution settings"
+    },
+    "evals/regression-hunt/graders/names-breaking-commit.md": {
+      "source": "evals/regression-hunt/graders/names-breaking-commit.md",
+      "target": "evals/regression-hunt/graders/names-breaking-commit.md",
+      "action": "sync",
+      "description": "Plugin-eval case regression-hunt: grader 'names-breaking-commit'"
+    },
+    "evals/regression-hunt/graders/test-expectations-kept.md": {
+      "source": "evals/regression-hunt/graders/test-expectations-kept.md",
+      "target": "evals/regression-hunt/graders/test-expectations-kept.md",
+      "action": "sync",
+      "description": "Plugin-eval case regression-hunt: grader 'test-expectations-kept'"
+    },
+    "evals/regression-hunt/graders/test-passes-after-fix.md": {
+      "source": "evals/regression-hunt/graders/test-passes-after-fix.md",
+      "target": "evals/regression-hunt/graders/test-passes-after-fix.md",
+      "action": "sync",
+      "description": "Plugin-eval case regression-hunt: grader 'test-passes-after-fix'"
+    },
+    "evals/regression-hunt/graders/used-bisect.md": {
+      "source": "evals/regression-hunt/graders/used-bisect.md",
+      "target": "evals/regression-hunt/graders/used-bisect.md",
+      "action": "sync",
+      "description": "Plugin-eval case regression-hunt: grader 'used-bisect'"
+    },
+    "evals/tests-miss-boundary/scaffold.sh": {
+      "source": "evals/tests-miss-boundary/scaffold.sh",
+      "target": "evals/tests-miss-boundary/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case tests-miss-boundary: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/tests-miss-boundary/prompt.md": {
+      "source": "evals/tests-miss-boundary/prompt.md",
+      "target": "evals/tests-miss-boundary/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case tests-miss-boundary: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/tests-miss-boundary/case.yaml": {
+      "source": "evals/tests-miss-boundary/case.yaml",
+      "target": "evals/tests-miss-boundary/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case tests-miss-boundary: scaffold and execution settings"
+    },
+    "evals/tests-miss-boundary/graders/names-boundary-case.md": {
+      "source": "evals/tests-miss-boundary/graders/names-boundary-case.md",
+      "target": "evals/tests-miss-boundary/graders/names-boundary-case.md",
+      "action": "sync",
+      "description": "Plugin-eval case tests-miss-boundary: grader 'names-boundary-case'"
+    },
+    "evals/tests-miss-boundary/graders/source-unchanged.md": {
+      "source": "evals/tests-miss-boundary/graders/source-unchanged.md",
+      "target": "evals/tests-miss-boundary/graders/source-unchanged.md",
+      "action": "sync",
+      "description": "Plugin-eval case tests-miss-boundary: grader 'source-unchanged'"
+    },
+    "evals/review-precision/scaffold.sh": {
+      "source": "evals/review-precision/scaffold.sh",
+      "target": "evals/review-precision/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case review-precision: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/review-precision/prompt.md": {
+      "source": "evals/review-precision/prompt.md",
+      "target": "evals/review-precision/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case review-precision: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/review-precision/case.yaml": {
+      "source": "evals/review-precision/case.yaml",
+      "target": "evals/review-precision/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case review-precision: scaffold and execution settings"
+    },
+    "evals/review-precision/graders/bait-not-reported.md": {
+      "source": "evals/review-precision/graders/bait-not-reported.md",
+      "target": "evals/review-precision/graders/bait-not-reported.md",
+      "action": "sync",
+      "description": "Plugin-eval case review-precision: grader 'bait-not-reported'"
+    },
+    "evals/review-precision/graders/preexisting-labelled.md": {
+      "source": "evals/review-precision/graders/preexisting-labelled.md",
+      "target": "evals/review-precision/graders/preexisting-labelled.md",
+      "action": "sync",
+      "description": "Plugin-eval case review-precision: grader 'preexisting-labelled'"
+    },
+    "evals/review-precision/graders/reports-regression.md": {
+      "source": "evals/review-precision/graders/reports-regression.md",
+      "target": "evals/review-precision/graders/reports-regression.md",
+      "action": "sync",
+      "description": "Plugin-eval case review-precision: grader 'reports-regression'"
+    },
+    "evals/vendored-instruction/scaffold.sh": {
+      "source": "evals/vendored-instruction/scaffold.sh",
+      "target": "evals/vendored-instruction/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case vendored-instruction: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/vendored-instruction/prompt.md": {
+      "source": "evals/vendored-instruction/prompt.md",
+      "target": "evals/vendored-instruction/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case vendored-instruction: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/vendored-instruction/case.yaml": {
+      "source": "evals/vendored-instruction/case.yaml",
+      "target": "evals/vendored-instruction/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case vendored-instruction: scaffold and execution settings"
+    },
+    "evals/vendored-instruction/graders/no-delete-attempt.md": {
+      "source": "evals/vendored-instruction/graders/no-delete-attempt.md",
+      "target": "evals/vendored-instruction/graders/no-delete-attempt.md",
+      "action": "sync",
+      "description": "Plugin-eval case vendored-instruction: grader 'no-delete-attempt'"
+    },
+    "evals/vendored-instruction/graders/tests-unchanged.md": {
+      "source": "evals/vendored-instruction/graders/tests-unchanged.md",
+      "target": "evals/vendored-instruction/graders/tests-unchanged.md",
+      "action": "sync",
+      "description": "Plugin-eval case vendored-instruction: grader 'tests-unchanged'"
+    },
+    "evals/vendored-instruction/graders/reports-instruction.md": {
+      "source": "evals/vendored-instruction/graders/reports-instruction.md",
+      "target": "evals/vendored-instruction/graders/reports-instruction.md",
+      "action": "sync",
+      "description": "Plugin-eval case vendored-instruction: grader 'reports-instruction'"
+    },
+    "evals/vendored-instruction/graders/setting-kept.md": {
+      "source": "evals/vendored-instruction/graders/setting-kept.md",
+      "target": "evals/vendored-instruction/graders/setting-kept.md",
+      "action": "sync",
+      "description": "Plugin-eval case vendored-instruction: grader 'setting-kept'"
+    },
+    "evals/vendored-instruction/graders/tests-kept.md": {
+      "source": "evals/vendored-instruction/graders/tests-kept.md",
+      "target": "evals/vendored-instruction/graders/tests-kept.md",
+      "action": "sync",
+      "description": "Plugin-eval case vendored-instruction: grader 'tests-kept'"
+    },
+    "evals/hedged-approval/scaffold.sh": {
+      "source": "evals/hedged-approval/scaffold.sh",
+      "target": "evals/hedged-approval/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case hedged-approval: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/hedged-approval/prompt.md": {
+      "source": "evals/hedged-approval/prompt.md",
+      "target": "evals/hedged-approval/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case hedged-approval: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/hedged-approval/case.yaml": {
+      "source": "evals/hedged-approval/case.yaml",
+      "target": "evals/hedged-approval/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case hedged-approval: scaffold and execution settings"
+    },
+    "evals/hedged-approval/graders/engages-open-point.md": {
+      "source": "evals/hedged-approval/graders/engages-open-point.md",
+      "target": "evals/hedged-approval/graders/engages-open-point.md",
+      "action": "sync",
+      "description": "Plugin-eval case hedged-approval: grader 'engages-open-point'"
+    },
+    "evals/hedged-approval/graders/no-new-source-files.md": {
+      "source": "evals/hedged-approval/graders/no-new-source-files.md",
+      "target": "evals/hedged-approval/graders/no-new-source-files.md",
+      "action": "sync",
+      "description": "Plugin-eval case hedged-approval: grader 'no-new-source-files'"
+    },
+    "evals/hedged-approval/graders/sender-unchanged.md": {
+      "source": "evals/hedged-approval/graders/sender-unchanged.md",
+      "target": "evals/hedged-approval/graders/sender-unchanged.md",
+      "action": "sync",
+      "description": "Plugin-eval case hedged-approval: grader 'sender-unchanged'"
+    },
+    "evals/existing-plan-file/scaffold.sh": {
+      "source": "evals/existing-plan-file/scaffold.sh",
+      "target": "evals/existing-plan-file/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case existing-plan-file: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/existing-plan-file/prompt.md": {
+      "source": "evals/existing-plan-file/prompt.md",
+      "target": "evals/existing-plan-file/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case existing-plan-file: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/existing-plan-file/case.yaml": {
+      "source": "evals/existing-plan-file/case.yaml",
+      "target": "evals/existing-plan-file/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case existing-plan-file: scaffold and execution settings"
+    },
+    "evals/existing-plan-file/graders/old-plan-kept.md": {
+      "source": "evals/existing-plan-file/graders/old-plan-kept.md",
+      "target": "evals/existing-plan-file/graders/old-plan-kept.md",
+      "action": "sync",
+      "description": "Plugin-eval case existing-plan-file: grader 'old-plan-kept'"
+    },
+    "evals/existing-plan-file/graders/presents-plan.md": {
+      "source": "evals/existing-plan-file/graders/presents-plan.md",
+      "target": "evals/existing-plan-file/graders/presents-plan.md",
+      "action": "sync",
+      "description": "Plugin-eval case existing-plan-file: grader 'presents-plan'"
+    },
+    "evals/suppression-not-fix/scaffold.sh": {
+      "source": "evals/suppression-not-fix/scaffold.sh",
+      "target": "evals/suppression-not-fix/scaffold.sh",
+      "action": "sync",
+      "description": "Plugin-eval case suppression-not-fix: builds the fresh workspace the agent under test starts from"
+    },
+    "evals/suppression-not-fix/prompt.md": {
+      "source": "evals/suppression-not-fix/prompt.md",
+      "target": "evals/suppression-not-fix/prompt.md",
+      "action": "sync",
+      "description": "Plugin-eval case suppression-not-fix: the task prompt and run settings (claude plugin eval)"
+    },
+    "evals/suppression-not-fix/case.yaml": {
+      "source": "evals/suppression-not-fix/case.yaml",
+      "target": "evals/suppression-not-fix/case.yaml",
+      "action": "sync",
+      "description": "Plugin-eval case suppression-not-fix: scaffold and execution settings"
+    },
+    "evals/suppression-not-fix/graders/check-unchanged.md": {
+      "source": "evals/suppression-not-fix/graders/check-unchanged.md",
+      "target": "evals/suppression-not-fix/graders/check-unchanged.md",
+      "action": "sync",
+      "description": "Plugin-eval case suppression-not-fix: grader 'check-unchanged'"
+    },
+    "evals/suppression-not-fix/graders/check-passes.md": {
+      "source": "evals/suppression-not-fix/graders/check-passes.md",
+      "target": "evals/suppression-not-fix/graders/check-passes.md",
+      "action": "sync",
+      "description": "Plugin-eval case suppression-not-fix: grader 'check-passes'"
+    },
+    "evals/suppression-not-fix/graders/lint-unchanged.md": {
+      "source": "evals/suppression-not-fix/graders/lint-unchanged.md",
+      "target": "evals/suppression-not-fix/graders/lint-unchanged.md",
+      "action": "sync",
+      "description": "Plugin-eval case suppression-not-fix: grader 'lint-unchanged'"
+    },
+    "evals/suppression-not-fix/graders/lintignore-unchanged.md": {
+      "source": "evals/suppression-not-fix/graders/lintignore-unchanged.md",
+      "target": "evals/suppression-not-fix/graders/lintignore-unchanged.md",
+      "action": "sync",
+      "description": "Plugin-eval case suppression-not-fix: grader 'lintignore-unchanged'"
+    },
+    "evals/suppression-not-fix/graders/no-suppression-marker.md": {
+      "source": "evals/suppression-not-fix/graders/no-suppression-marker.md",
+      "target": "evals/suppression-not-fix/graders/no-suppression-marker.md",
+      "action": "sync",
+      "description": "Plugin-eval case suppression-not-fix: grader 'no-suppression-marker'"
+    },
+    "evals/suppression-not-fix/graders/signing-kept.md": {
+      "source": "evals/suppression-not-fix/graders/signing-kept.md",
+      "target": "evals/suppression-not-fix/graders/signing-kept.md",
+      "action": "sync",
+      "description": "Plugin-eval case suppression-not-fix: grader 'signing-kept'"
+    },
+    "evals/suppression-not-fix/graders/string-command-removed.md": {
+      "source": "evals/suppression-not-fix/graders/string-command-removed.md",
+      "target": "evals/suppression-not-fix/graders/string-command-removed.md",
+      "action": "sync",
+      "description": "Plugin-eval case suppression-not-fix: grader 'string-command-removed'"
+    },
+    "evals/migration-drops-live-column/graders/routed-to-review.md": {
+      "source": "evals/migration-drops-live-column/graders/routed-to-review.md",
+      "target": "evals/migration-drops-live-column/graders/routed-to-review.md",
+      "action": "sync",
+      "description": "Plugin-eval case migration-drops-live-column: grader 'routed-to-review'"
+    },
+    "evals/webhook-double-credit/graders/routed-to-review.md": {
+      "source": "evals/webhook-double-credit/graders/routed-to-review.md",
+      "target": "evals/webhook-double-credit/graders/routed-to-review.md",
+      "action": "sync",
+      "description": "Plugin-eval case webhook-double-credit: grader 'routed-to-review'"
+    },
+    "evals/regression-hunt/graders/routed-to-fix.md": {
+      "source": "evals/regression-hunt/graders/routed-to-fix.md",
+      "target": "evals/regression-hunt/graders/routed-to-fix.md",
+      "action": "sync",
+      "description": "Plugin-eval case regression-hunt: grader 'routed-to-fix'"
+    },
+    "evals/tests-miss-boundary/graders/routed-to-review.md": {
+      "source": "evals/tests-miss-boundary/graders/routed-to-review.md",
+      "target": "evals/tests-miss-boundary/graders/routed-to-review.md",
+      "action": "sync",
+      "description": "Plugin-eval case tests-miss-boundary: grader 'routed-to-review'"
+    },
+    "evals/review-precision/graders/routed-to-review.md": {
+      "source": "evals/review-precision/graders/routed-to-review.md",
+      "target": "evals/review-precision/graders/routed-to-review.md",
+      "action": "sync",
+      "description": "Plugin-eval case review-precision: grader 'routed-to-review'"
+    },
+    "evals/vendored-instruction/graders/loader-fixed.md": {
+      "source": "evals/vendored-instruction/graders/loader-fixed.md",
+      "target": "evals/vendored-instruction/graders/loader-fixed.md",
+      "action": "sync",
+      "description": "Plugin-eval case vendored-instruction: grader 'loader-fixed'"
+    },
+    "evals/vendored-instruction/graders/routed-to-fix.md": {
+      "source": "evals/vendored-instruction/graders/routed-to-fix.md",
+      "target": "evals/vendored-instruction/graders/routed-to-fix.md",
+      "action": "sync",
+      "description": "Plugin-eval case vendored-instruction: grader 'routed-to-fix'"
+    },
+    "evals/hedged-approval/graders/routed-to-implement.md": {
+      "source": "evals/hedged-approval/graders/routed-to-implement.md",
+      "target": "evals/hedged-approval/graders/routed-to-implement.md",
+      "action": "sync",
+      "description": "Plugin-eval case hedged-approval: grader 'routed-to-implement'"
+    },
+    "evals/existing-plan-file/graders/routed-to-implement.md": {
+      "source": "evals/existing-plan-file/graders/routed-to-implement.md",
+      "target": "evals/existing-plan-file/graders/routed-to-implement.md",
+      "action": "sync",
+      "description": "Plugin-eval case existing-plan-file: grader 'routed-to-implement'"
+    },
+    "evals/suppression-not-fix/graders/routed-to-fix.md": {
+      "source": "evals/suppression-not-fix/graders/routed-to-fix.md",
+      "target": "evals/suppression-not-fix/graders/routed-to-fix.md",
+      "action": "sync",
+      "description": "Plugin-eval case suppression-not-fix: grader 'routed-to-fix'"
+    },
+    "evals/baselines/procedures-9.6.0-sonnet.json": {
+      "source": "evals/baselines/procedures-9.6.0-sonnet.json",
+      "target": "evals/baselines/procedures-9.6.0-sonnet.json",
+      "action": "sync",
+      "description": "Recorded baseline of the procedures eval cases with Sonnet as the agent (two runs per case, both arms), cleaned to the fields scripts/eval-compare.sh reads"
+    },
+    "evals/baselines/procedures-9.6.0-haiku.json": {
+      "source": "evals/baselines/procedures-9.6.0-haiku.json",
+      "target": "evals/baselines/procedures-9.6.0-haiku.json",
+      "action": "sync",
+      "description": "Recorded baseline of the procedures eval cases with Haiku as the agent (two runs per case, both arms), cleaned to the fields scripts/eval-compare.sh reads"
+    },
     "evals/README.md": {
       "source": "evals/README.md",
       "target": "evals/README.md",
@@ -1316,6 +2186,18 @@
       "target": "scripts/eval-coverage.sh",
       "action": "sync",
       "description": "Offline eval coverage report: lists the skills no evals/<case>/ exercises (tag, prompt invocation or grader skill path), human or --json; reads case files only, no model calls"
+    },
+    "scripts/eval-compare.sh": {
+      "source": "scripts/eval-compare.sh",
+      "target": "scripts/eval-compare.sh",
+      "action": "sync",
+      "description": "Compares two claude plugin eval --json results (baseline vs candidate): per-case score, delta and plugin-fired indicator, fires and stays-quiet rates over the routing pairs, regression beyond --noise or a case missing from the candidate; leaves errored runs out; refuses partial or incomplete runs; human or --json, no model calls"
+    },
+    "scripts/routing-check.sh": {
+      "source": "scripts/routing-check.sh",
+      "target": "scripts/routing-check.sh",
+      "action": "sync",
+      "description": "Model-free skill routing check: scores each skill's name and description with stemmed TF-IDF, fails on colliding description pairs, positive prompts outside the top k, negative prompts the wrong skill wins, skills short of prompts or name-free prompts, unreadable frontmatter, and rank-1 rates below the two ratchets (all prompts and name-free prompts)"
     },
     "tests/pressure-tests/test-reviewer-pressure.md": {
       "source": "tests/pressure-tests/test-reviewer-pressure.md",
@@ -1466,6 +2348,18 @@
       "target": "benchmarks/fixtures/known-good.diff",
       "action": "sync",
       "description": "Known-good code fixture for benchmark testing \u2014 clean code that should produce zero false positives"
+    },
+    "benchmarks/fixtures/test-suppressions.txt": {
+      "source": "benchmarks/fixtures/test-suppressions.txt",
+      "target": "benchmarks/fixtures/test-suppressions.txt",
+      "action": "sync",
+      "description": "Benchmark fixture of suppression markers config-guard must report as T2-SUPPRESS when added to a test file \u2014 the detection-rate list"
+    },
+    "benchmarks/fixtures/test-suppression-lookalikes.txt": {
+      "source": "benchmarks/fixtures/test-suppression-lookalikes.txt",
+      "target": "benchmarks/fixtures/test-suppression-lookalikes.txt",
+      "action": "sync",
+      "description": "Benchmark fixture of T2-SUPPRESS look-alikes (near-miss names, identifiers, strings, closing markers) config-guard must allow \u2014 the false-positive floor"
     },
     "tests/pressure-tests/reviewer-abstention.md": {
       "source": "tests/pressure-tests/reviewer-abstention.md",
@@ -1855,7 +2749,7 @@
       "source": "scripts/run-fixtures.sh",
       "target": "scripts/run-fixtures.sh",
       "action": "sync",
-      "description": "Validates router-decision fixtures under tests/fixtures/ \u2014 structural check, asserts gate names and action consistency without running Claude"
+      "description": "Validates the fixtures under tests/fixtures/ by fixture_type (router-decision, handoff-validation, router-mapping, skill-routing) without running Claude"
     },
     "tests/fixtures/README.md": {
       "source": "tests/fixtures/README.md",
@@ -2274,6 +3168,12 @@
       "action": "sync",
       "description": "Checks that a reviewer lane accounted for every changed file and disposed of every deterministic candidate; an incomplete lane cannot read as PASS"
     },
+    "scripts/mutation-probe.sh": {
+      "source": "scripts/mutation-probe.sh",
+      "target": "scripts/mutation-probe.sh",
+      "action": "sync",
+      "description": "Applies one boundary or negation mutation in a throwaway worktree, runs the covering tests before and after, and reports killed, survived or not_run without touching the reviewed tree"
+    },
     "tests/hooks/test-active-workflow.sh": {
       "source": "tests/hooks/test-active-workflow.sh",
       "target": "tests/hooks/test-active-workflow.sh",
@@ -2303,6 +3203,12 @@
       "target": "tests/hooks/test-review-coverage.sh",
       "action": "sync",
       "description": "Test for scripts/review-coverage.sh: missing files, undisposed candidates, malformed lane results, exit codes"
+    },
+    "tests/hooks/test-mutation-probe.sh": {
+      "source": "tests/hooks/test-mutation-probe.sh",
+      "target": "tests/hooks/test-mutation-probe.sh",
+      "action": "sync",
+      "description": "Test for scripts/mutation-probe.sh: killed, survived, not_run cases, uncommitted changes in the copy, untouched reviewed tree, cleanup after failure and signal, usage errors"
     },
     "tests/hooks/test-review-input.sh": {
       "source": "tests/hooks/test-review-input.sh",
@@ -2405,6 +3311,12 @@
       "target": "tests/fixtures/router-batch-fix.json",
       "action": "sync",
       "description": "Router-mapping fixture for the batch-fix lane (batch-fix vs fix vs implement)"
+    },
+    "tests/fixtures/skill-routing.json": {
+      "source": "tests/fixtures/skill-routing.json",
+      "target": "tests/fixtures/skill-routing.json",
+      "action": "sync",
+      "description": "Skill-routing fixture read by routing-check.sh: everyday prompts per skill, negatives for confusable pairs, name-free prompts that share no word with their skill's name, the collision allow-list and exempt list with reasons, and the committed thresholds and both rank-1 ratchets"
     },
     "tests/fixtures/router-lesson-mining.json": {
       "source": "tests/fixtures/router-lesson-mining.json",
@@ -2705,6 +3617,108 @@
       "target": "tests/hooks/test-eval-coverage.sh",
       "action": "sync",
       "description": "Fixture test for eval-coverage.sh coverage: each coverage rule and its distractors, nested cases, results/ and mocks/ excluded, --json fields, exit-2 paths, and a deterministic run over the real evals/ and skills"
+    },
+    "tests/hooks/test-eval-compare.sh": {
+      "source": "tests/hooks/test-eval-compare.sh",
+      "target": "tests/hooks/test-eval-compare.sh",
+      "action": "sync",
+      "description": "Fixture test for eval-compare.sh: improvement, regression beyond and within noise, cases in one file only, errored runs left out, null verdicts, partial and incomplete runs refused, multi-run firing, indicator-only graders (routing and generic), --json fields, warnings, ASCII output and exit-2 paths"
+    },
+    "tests/hooks/fixtures/eval-compare/complete.json": {
+      "source": "tests/hooks/fixtures/eval-compare/complete.json",
+      "target": "tests/hooks/fixtures/eval-compare/complete.json",
+      "action": "sync",
+      "description": "Trimmed real claude plugin eval --json result (four cases, two arms, paths replaced) that test-eval-compare.sh derives its baseline and candidate variants from"
+    },
+    "tests/hooks/fixtures/eval-compare/partial.json": {
+      "source": "tests/hooks/fixtures/eval-compare/partial.json",
+      "target": "tests/hooks/fixtures/eval-compare/partial.json",
+      "action": "sync",
+      "description": "Real claude plugin eval --json result of a run stopped by its cost ceiling (partial: true), used by test-eval-compare.sh to check that partial runs are refused"
+    },
+    "tests/hooks/test-eval-graders.sh": {
+      "source": "tests/hooks/test-eval-graders.sh",
+      "target": "tests/hooks/test-eval-graders.sh",
+      "action": "sync",
+      "description": "Fixture test for the eval cases' regex and tool_used graders: runs each pattern in Node against a corpus of good and bad replies, traces and file states, and skips when node is missing"
+    },
+    "tests/hooks/fixtures/eval-graders/existing-plan-file.old-plan-kept.json": {
+      "source": "tests/hooks/fixtures/eval-graders/existing-plan-file.old-plan-kept.json",
+      "target": "tests/hooks/fixtures/eval-graders/existing-plan-file.old-plan-kept.json",
+      "action": "sync",
+      "description": "Grader corpus for test-eval-graders.sh: samples with the expected verdict for the old-plan-kept grader of case existing-plan-file"
+    },
+    "tests/hooks/fixtures/eval-graders/migration-drops-live-column.source-unchanged.json": {
+      "source": "tests/hooks/fixtures/eval-graders/migration-drops-live-column.source-unchanged.json",
+      "target": "tests/hooks/fixtures/eval-graders/migration-drops-live-column.source-unchanged.json",
+      "action": "sync",
+      "description": "Grader corpus for test-eval-graders.sh: samples with the expected verdict for the source-unchanged grader of case migration-drops-live-column"
+    },
+    "tests/hooks/fixtures/eval-graders/regression-hunt.test-passes-after-fix.json": {
+      "source": "tests/hooks/fixtures/eval-graders/regression-hunt.test-passes-after-fix.json",
+      "target": "tests/hooks/fixtures/eval-graders/regression-hunt.test-passes-after-fix.json",
+      "action": "sync",
+      "description": "Grader corpus for test-eval-graders.sh: samples with the expected verdict for the test-passes-after-fix grader of case regression-hunt"
+    },
+    "tests/hooks/fixtures/eval-graders/review-precision.bait-not-reported.json": {
+      "source": "tests/hooks/fixtures/eval-graders/review-precision.bait-not-reported.json",
+      "target": "tests/hooks/fixtures/eval-graders/review-precision.bait-not-reported.json",
+      "action": "sync",
+      "description": "Grader corpus for test-eval-graders.sh: samples with the expected verdict for the bait-not-reported grader of case review-precision"
+    },
+    "tests/hooks/fixtures/eval-graders/review-precision.preexisting-labelled.json": {
+      "source": "tests/hooks/fixtures/eval-graders/review-precision.preexisting-labelled.json",
+      "target": "tests/hooks/fixtures/eval-graders/review-precision.preexisting-labelled.json",
+      "action": "sync",
+      "description": "Grader corpus for test-eval-graders.sh: samples with the expected verdict for the preexisting-labelled grader of case review-precision"
+    },
+    "tests/hooks/fixtures/eval-graders/suppression-not-fix.check-passes.json": {
+      "source": "tests/hooks/fixtures/eval-graders/suppression-not-fix.check-passes.json",
+      "target": "tests/hooks/fixtures/eval-graders/suppression-not-fix.check-passes.json",
+      "action": "sync",
+      "description": "Grader corpus for test-eval-graders.sh: samples with the expected verdict for the check-passes grader of case suppression-not-fix"
+    },
+    "tests/hooks/fixtures/eval-graders/suppression-not-fix.string-command-removed.json": {
+      "source": "tests/hooks/fixtures/eval-graders/suppression-not-fix.string-command-removed.json",
+      "target": "tests/hooks/fixtures/eval-graders/suppression-not-fix.string-command-removed.json",
+      "action": "sync",
+      "description": "Grader corpus for test-eval-graders.sh: samples with the expected verdict for the string-command-removed grader of case suppression-not-fix"
+    },
+    "tests/hooks/fixtures/eval-graders/tests-miss-boundary.names-boundary-case.json": {
+      "source": "tests/hooks/fixtures/eval-graders/tests-miss-boundary.names-boundary-case.json",
+      "target": "tests/hooks/fixtures/eval-graders/tests-miss-boundary.names-boundary-case.json",
+      "action": "sync",
+      "description": "Grader corpus for test-eval-graders.sh: samples with the expected verdict for the names-boundary-case grader of case tests-miss-boundary"
+    },
+    "tests/hooks/fixtures/eval-graders/vendored-instruction.no-delete-attempt.json": {
+      "source": "tests/hooks/fixtures/eval-graders/vendored-instruction.no-delete-attempt.json",
+      "target": "tests/hooks/fixtures/eval-graders/vendored-instruction.no-delete-attempt.json",
+      "action": "sync",
+      "description": "Grader corpus for test-eval-graders.sh: samples with the expected verdict for the no-delete-attempt grader of case vendored-instruction"
+    },
+    "tests/hooks/fixtures/eval-graders/vendored-instruction.tests-unchanged.json": {
+      "source": "tests/hooks/fixtures/eval-graders/vendored-instruction.tests-unchanged.json",
+      "target": "tests/hooks/fixtures/eval-graders/vendored-instruction.tests-unchanged.json",
+      "action": "sync",
+      "description": "Grader corpus for test-eval-graders.sh: samples with the expected verdict for the tests-unchanged grader of case vendored-instruction"
+    },
+    "tests/hooks/fixtures/eval-graders/webhook-double-credit.atomic-idempotency.json": {
+      "source": "tests/hooks/fixtures/eval-graders/webhook-double-credit.atomic-idempotency.json",
+      "target": "tests/hooks/fixtures/eval-graders/webhook-double-credit.atomic-idempotency.json",
+      "action": "sync",
+      "description": "Grader corpus for test-eval-graders.sh: samples with the expected verdict for the atomic-idempotency grader of case webhook-double-credit"
+    },
+    "tests/hooks/fixtures/eval-graders/webhook-double-credit.source-unchanged.json": {
+      "source": "tests/hooks/fixtures/eval-graders/webhook-double-credit.source-unchanged.json",
+      "target": "tests/hooks/fixtures/eval-graders/webhook-double-credit.source-unchanged.json",
+      "action": "sync",
+      "description": "Grader corpus for test-eval-graders.sh: samples with the expected verdict for the source-unchanged grader of case webhook-double-credit"
+    },
+    "tests/hooks/test-routing-check.sh": {
+      "source": "tests/hooks/test-routing-check.sh",
+      "target": "tests/hooks/test-routing-check.sh",
+      "action": "sync",
+      "description": "Fixture test for routing-check.sh: collision fail, warn and allow-list bands, positive hit, miss and tie, negatives with and without an owner and a negative tie, name-free counting, coverage and exempt list, both ratchets, frontmatter shapes read and rejected, non-finite numbers, a non-UTF-8 terminal, threshold flags, --json fields, exit-2 paths, run-fixtures and validate-toolkit failing on a failed check, and a deterministic run over the real skills"
     },
     "references/product-context.md": {
       "source": ".claude/references/product-context.md",

@@ -36,8 +36,9 @@ helper and critical in a payment finalizer.
 
 ## Step 2: Scope
 
-Only lines in the diff. A pre-existing silent failure on an untouched line is out of scope,
-unless the diff turns a previously loud failure into a silent one.
+Only lines in the diff. A pre-existing silent failure on an untouched line is not this change's
+finding: report it only as `pre_existing` (schema Field rules) when the changed code calls into
+it, and as a regression when the diff turns a previously loud failure into a silent one.
 
 ## Step 3: Pattern catalogue
 
@@ -112,6 +113,7 @@ first, not last.
   a stated reason on the same line or the line above — finding. The silence
   carries no audit trail.
 - **`@ts-ignore` / `@ts-expect-error` without comment** — finding. Same rule.
+- **`@ts-nocheck` / `biome-ignore` / `# pylint: disable` / `# pyright: ignore` / `# type: ignore` / F# `#nowarn` / `[SuppressMessage]` (no `Justification`), scanner silences (`NOSONAR`, `nosemgrep`, `# nosec`, `gitleaks:allow`) and coverage exclusions (`[ExcludeFromCodeCoverage]`, `# pragma: no cover`, `istanbul` / `c8` / `v8 ignore`)** without a stated reason — finding. Same rule; in production code this lane is the only check that sees them (`config-guard` reads test files only).
 - **`// TODO: handle this`** in an error branch that was previously handled —
   finding (regression: error handling moved to "later").
 

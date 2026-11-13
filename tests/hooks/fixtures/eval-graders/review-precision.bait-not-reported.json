@@ -1,0 +1,46 @@
+{
+  "grader": "evals/review-precision/graders/bait-not-reported.md",
+  "note": "Passes unless the reply reports coupon_label as a crash risk without saying it is safe as called.",
+  "samples": [
+    {
+      "id": "reviewer: guarded caller named",
+      "expect": "pass",
+      "text": "Not a finding: `coupon_label` dereferences `order.coupon`, but receipt_lines only calls it when order.coupon is not None, so this is safe."
+    },
+    {
+      "id": "reviewer: only invoked when a coupon exists",
+      "expect": "pass",
+      "text": "I looked at `coupon_label` too. It assumes a coupon, but receipt_lines only invokes it when a coupon exists, so there is no crash risk."
+    },
+    {
+      "id": "reviewer: finding split over a bullet and its continuation line",
+      "expect": "fail",
+      "text": "## Findings\n\n- **coupon_label** (coupons.py:41): Unsafe attribute access.\n  Raises AttributeError when no coupon is set.\n- **remove_coupon** leaves the discount in place."
+    },
+    {
+      "id": "a finding in a table row",
+      "expect": "fail",
+      "text": "| F6 | minor | `src/coupons.py:49` | `coupon_label` raises `AttributeError` if `order.coupon` is `None`. |"
+    },
+    {
+      "id": "the bait not mentioned",
+      "expect": "pass",
+      "text": "Verdict: NEEDS_CHANGES. `_discount_for` dropped the cap at the subtotal, so totals can go negative."
+    },
+    {
+      "id": "a crash claim in the next bullet does not attach to the name",
+      "expect": "pass",
+      "text": "- `coupon_label` is only reached from receipt_lines, which checks the coupon first.\n- `Cart.add` raises on a negative quantity."
+    },
+    {
+      "id": "recorded sonnet-rerun2/with0: lists coupon_label as a minor AttributeError finding",
+      "expect": "fail",
+      "text": "⚠️ Moberg AI policy: this review feeds a business decision (merging for Monday's campaign launch). Under Art. 5 you must verify the findings yourself and you are responsible for the result.\n\n## Verdict: NEEDS_CHANGES, don't merge as is\n\nCompliance and test lanes both ran, and both returned FAIL / NEEDS_CHANGES. The 12 existing tests pass. They don't cover any of the problems below. I reproduced the first three myself. The review isn't bound to a workflow artifact, no push receipt was written, and `review-finding-schema.md` was missing, so both lanes used a fallback format. The architecture lane was skipped because the branch adds no new slice or boundary. The silent-failure lane was skipped because no trigger pattern matched.\n\n### Blockers (money correctness)\n1. **Discount isn't clamped** (`src/coupons.py:31-35`). The old `min(amount, subtotal)` was dropped. A 10.00 fixed coupon on a 5.00 order gives a total of **-5.00**. A `percent=150` coupon also gives a negative total.\n2. **`remove_coupon` keeps the discount** (`src/coupons.py:55`). After applying and removing a 1000 coupon on a 5000 order, `total_cents` is still **4000**. This bug exists on `main` too, but this branch adds a history entry that makes the state look consistent when it isn't.\n3. **No validation on `percent` or `amount_cents`**. A negative percent produces a surcharge (I saw `discount_cents == -100`). If both fields are set, the amount is silently ignored. A coupon with both at 0 is accepted as a no-op. The fix is to validate in `__post_init__` that exactly one is set, `0 < percent <= 100` and `amount_cents >= 0`.\n\n### Should fix or consciously accept\n- **Legacy codes break at load time.** `Coupon.__post_init__` now raises `ValueError` for codes shorter than 4 or longer than 16 characters, or containing symbols like `_` or `%`. Check that no existing stored coupons violate this. If marketing's spring codes are plain alphanumerics of 4–16 characters, you're fine.\n- **Applying a second coupon silently replaces the first.** The docs say one coupon per order, but history gets no removal entry.\n- **Discount and minimum subtotal are checked once, at apply time.** A shopper could apply a coupon at 30.00 and then drop items to 5.00. Recompute or re-validate at checkout.\n- **Expiry is inclusive and uses the server's local timezone.** That matters for a Monday launch and for the end-of-campaign cutoff. It's undocumented and untested at the boundary.\n- **Test gaps:**\n  - Nothing covers `remove_coupon` followed by `total_cents`, clamping, percent at 0, 100 or above 100, or `expires == today`.\n  - Nothing covers `subtotal == min_subtotal`, or an applied coupon that has a minimum.\n  - The refusal tests don't check that the order is left unchanged.\n- **Minor:**\n  - `coupon_label` raises `AttributeError` if no coupon is set.\n  - `coupon_history` encodes removals as a `\"-\"` prefix with no timestamp.\n  - `unit_cents` isn't validated in `Cart.add`.\n\n### What's fine\nA failed apply leaves the order untouched. Tests inject `today`, so they're deterministic. `Coupon`'s positional signature is unchanged. `normalise_code` handles case, spaces and dashes cleanly.\n\nDefect-class sweep: I only checked sibling money-state code in `src/`. The pattern is \"discount or total state that isn't recomputed or clamped\". The hits are items 1, 2 and the stale-subtotal point above. I found nothing else in `receipt.py` or `cart.py`.\n\nThe blockers are small fixes: a clamp, resetting `discount_cents` in `remove_coupon`, and validation in `__post_init__`. Each needs a test. That should be doable today. Want me to make those changes on this branch, using `/mtk:fix` or `/mtk:batch-fix`? I won't change anything or merge until you say so."
+    },
+    {
+      "id": "recorded haiku-rerun-with0: does not report the guarded helper",
+      "expect": "pass",
+      "text": "**Verdict: not ready to merge.** I haven't merged anything. The branch has one defect that would produce negative order totals, and it's worth fixing before Monday.\n\n**Blocking**\n\n1. **Discounts are no longer capped at the subtotal.** `_discount_for` in `src/coupons.py` returns `coupon.amount_cents` directly. `main` had `min(coupon.amount_cents, order.subtotal_cents)`, and that cap was dropped.\n   - Repro: subtotal 500 with a 1000 fixed coupon gives discount 1000 and total **-500**.\n   - Percent coupons have the same gap. `Coupon(percent=150)` on 500 gives total **-250**, because percent is never validated.\n   - No test covers either case, so the suite passes anyway.\n   - Fix: return `min(coupon.amount_cents, subtotal_cents)`, reject percent outside 1–100 in `__post_init__`, and add a test for each.\n\n**Check before Monday**\n\n2. **Code validation may reject existing coupons.** `normalise_code` requires `[A-Z0-9]{4,16}` and runs in `Coupon.__post_init__`. Any live code that is shorter, longer, or has other characters will now raise when loaded. I can't see the live coupon data from this repo, so please check the real list.\n3. **Expiry is inclusive.** `today > expires` means a code expiring 31 Oct is valid through 31 Oct. Confirm that matches what marketing has promised.\n4. **Applying a second coupon replaces the first.** It also records it in history. That fits \"one coupon per order\", but confirm you don't want an error instead.\n\n**Review coverage**\n\n- Tests: 12 pass (`python3 -m unittest discover -s tests -t .`).\n- I ran the compliance and test-review lanes inline, not as separate agents. The silent-failure and architecture lanes were not triggered: the diff adds no `catch`/`except`, `??`, `||`, or lint suppressions, and no new module boundary.\n- Because the review ran inline and isn't bound to a committed tree, there is no review receipt.\n\nVerify the findings and the merge decision yourself, since you are responsible for the result.\n\nIf you want, I'll apply fix 1 with its tests, rerun the suite, and then merge to `main` once you confirm. Items 2–4 are for you to check against the live data and with marketing."
+    }
+  ]
+}

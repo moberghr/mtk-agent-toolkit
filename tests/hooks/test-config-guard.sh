@@ -661,6 +661,160 @@ tcase T2-SUPPRESS "Python # type: ignore added" \
   "$(edit_payload "$PY" 'from calc import add' 'from calc import add  # type: ignore')"
 tcase T2-SUPPRESS "TS /* eslint-disable */ added" \
   "$(edit_payload "$TSF" 'const n = add(1, 2);' "/* eslint-disable */${NL}const n = add(1, 2);")"
+# T2-SUPPRESS: scanner silences, coverage exclusions, analyzer attributes and
+# the remaining linter markers. One case per marker and per attribute spelling.
+FSF="$P/tests/Calc.Tests/CalcTests.fs"
+tcase T2-SUPPRESS "C# // NOSONAR added" \
+  "$(edit_payload "$CS" 'var r = Calc.Parse(s);' 'var r = Calc.Parse(s); // NOSONAR')"
+tcase T2-SUPPRESS "Python # nosonar (lower case) added" \
+  "$(edit_payload "$PY" 'result = parse(s)' 'result = parse(s)  # nosonar')"
+tcase T2-SUPPRESS "TS /* NOSONAR */ block comment added" \
+  "$(edit_payload "$TSF" 'const q = build(id);' '/* NOSONAR */ const q = build(id);')"
+tcase T2-SUPPRESS "TS // nosemgrep: <rule> added" \
+  "$(edit_payload "$TSF" 'const q = build(id);' 'const q = build(id); // nosemgrep: js.sql-injection')"
+tcase T2-SUPPRESS "Python # nosem added" \
+  "$(edit_payload "$PY" 'result = parse(s)' 'result = parse(s)  # nosem')"
+tcase T2-SUPPRESS "Python gitleaks:allow added" \
+  "$(edit_payload "$PY" 'KEY = load_key()' 'KEY = "fixture-value"  # gitleaks:allow')"
+tcase T2-SUPPRESS "Python # nosec added" \
+  "$(edit_payload "$PY" 'out = run(cmd)' 'out = run(cmd)  # nosec B602')"
+tcase T2-SUPPRESS "Python # pylint: disable= added" \
+  "$(edit_payload "$PY" 'def helper_x():' "# pylint: disable=invalid-name${NL}def helper_x():")"
+tcase T2-SUPPRESS "Python # pylint: disable-next= added" \
+  "$(edit_payload "$PY" 'def helper_x():' "# pylint: disable-next=too-many-args${NL}def helper_x():")"
+tcase T2-SUPPRESS "Python # pyright: ignore[...] added" \
+  "$(edit_payload "$PY" 'result = parse(s)' 'result = parse(s)  # pyright: ignore[reportArgumentType]')"
+tcase T2-SUPPRESS "Python # pragma: no cover added" \
+  "$(edit_payload "$PY" 'def helper_x():' 'def helper_x():  # pragma: no cover')"
+tcase T2-SUPPRESS "Python # pragma: no branch added" \
+  "$(edit_payload "$PY" 'if ready:' 'if ready:  # pragma: no branch')"
+tcase T2-SUPPRESS "TS // @ts-nocheck added" \
+  "$(edit_payload "$TSF" 'import { add } from "./calc";' "// @ts-nocheck${NL}import { add } from \"./calc\";")"
+tcase T2-SUPPRESS "TS // biome-ignore added" \
+  "$(edit_payload "$TSF" 'let q = build(id);' "// biome-ignore lint/style/useConst: legacy${NL}let q = build(id);")"
+tcase T2-SUPPRESS "TS /* istanbul ignore next */ added" \
+  "$(edit_payload "$TSF" 'function helper() {' "/* istanbul ignore next */${NL}function helper() {")"
+tcase T2-SUPPRESS "TS /* c8 ignore next */ added" \
+  "$(edit_payload "$TSF" 'function helper() {' "/* c8 ignore next */${NL}function helper() {")"
+tcase T2-SUPPRESS "TS /* v8 ignore start */ … /* v8 ignore stop */ region added" \
+  "$(edit_payload "$TSF" 'function helper() {}' "/* v8 ignore start */${NL}function helper() {}${NL}/* v8 ignore stop */")"
+tcase T2-SUPPRESS "C# [ExcludeFromCodeCoverage] added" \
+  "$(edit_payload "$CS" 'public class Fixture' "[ExcludeFromCodeCoverage]${NL}public class Fixture")"
+tcase T2-SUPPRESS "C# [ExcludeFromCodeCoverage(Justification = …)] added" \
+  "$(edit_payload "$CS" 'public class Fixture' "[ExcludeFromCodeCoverage(Justification = \"glue\")]${NL}public class Fixture")"
+tcase T2-SUPPRESS "C# [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute] added" \
+  "$(edit_payload "$CS" 'public class Fixture' "[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute]${NL}public class Fixture")"
+tcase T2-SUPPRESS "C# ExcludeFromCodeCoverage added later in an attribute list" \
+  "$(edit_payload "$CS" '[Serializable]' '[Serializable, ExcludeFromCodeCoverage]')"
+tcase T2-SUPPRESS "C# [SuppressMessage(…)] added" \
+  "$(edit_payload "$CS" 'public void Adds_Numbers()' "[SuppressMessage(\"Naming\", \"CA1707\", Justification = \"names\")]${NL}public void Adds_Numbers()")"
+tcase T2-SUPPRESS "C# [System.Diagnostics.CodeAnalysis.SuppressMessage(…)] added" \
+  "$(edit_payload "$CS" 'public void Adds_Numbers()' "[System.Diagnostics.CodeAnalysis.SuppressMessage(\"Style\", \"IDE0060\")]${NL}public void Adds_Numbers()")"
+tcase T2-SUPPRESS "C# [assembly: SuppressMessage(…)] added" \
+  "$(edit_payload "$CS" 'using Xunit;' "using Xunit;${NL}[assembly: SuppressMessage(\"Naming\", \"CA1707\")]")"
+tcase T2-SUPPRESS "C# [global::…SuppressMessageAttribute( with arguments over several lines] added" \
+  "$(edit_payload "$CS" 'public void Swallows()' "[global::System.Diagnostics.CodeAnalysis.SuppressMessageAttribute(${NL}    \"Design\",${NL}    \"CA1031\")]${NL}public void Swallows()")"
+tcase T2-SUPPRESS "C# [UnconditionalSuppressMessage(…)] added" \
+  "$(edit_payload "$CS" 'public void Loads()' "[UnconditionalSuppressMessage(\"Trimming\", \"IL2026\")]${NL}public void Loads()")"
+tcase T2-SUPPRESS "F# [<ExcludeFromCodeCoverage>] added" \
+  "$(edit_payload "$FSF" 'type Fixture() =' "[<ExcludeFromCodeCoverage>]${NL}type Fixture() =")"
+tcase T2-SUPPRESS "F# #nowarn added" \
+  "$(edit_payload "$FSF" 'module CalcTests' "module CalcTests${NL}#nowarn \"40\"")"
+tcase T2-SUPPRESS "F# [<Fact; ExcludeFromCodeCoverage>] (\";\" separates F# attributes)" \
+  "$(edit_payload "$FSF" '[<Fact>]' '[<Fact; ExcludeFromCodeCoverage>]')"
+tcase T2-SUPPRESS "F# [<Fact; SuppressMessage(\"a\",\"b\")>]" \
+  "$(edit_payload "$FSF" '[<Fact>]' '[<Fact; SuppressMessage("a","b")>]')"
+# Once per occurrence, not once per line.
+tcase T2-SUPPRESS "TS v8 ignore start and stop on one line" \
+  "$(edit_payload "$TSF" 'a(); b();' 'a(); /* v8 ignore start */ b(); /* v8 ignore stop */')"
+tcase T2-SUPPRESS "TS c8 ignore next followed by c8 ignore stop on one line" \
+  "$(edit_payload "$TSF" 'function helper() {' "/* c8 ignore next */ /* c8 ignore stop */${NL}function helper() {")"
+tcase T2-SUPPRESS "TS a second // nosec on a line that has one" \
+  "$(edit_payload "$TSF" 'x(); // nosec' 'x(); // nosec // nosec')"
+
+# Neither mode signals: exit 0 with the test class active, no log line in
+# shadow. Kept or removed markers, and look-alikes of every new token.
+tquiet() { # <description> <payload>
+  expect "allow:T2-SUPPRESS $1" 0 "$(run_active "$2")"
+  expect_nolog "shadow-silent:T2-SUPPRESS $1" "$2"
+}
+tquiet "NOSONAR kept while its line's code changes" \
+  "$(edit_payload "$CS" 'var r = Calc.Parse(s); // NOSONAR' 'var r = Calc.Parse(t); // NOSONAR')"
+tquiet "[ExcludeFromCodeCoverage] kept while the class body changes" \
+  "$(edit_payload "$CS" "[ExcludeFromCodeCoverage]${NL}public class Fixture { int a; }" \
+    "[ExcludeFromCodeCoverage]${NL}public class Fixture { int b; }")"
+tquiet "[SuppressMessage] kept, only its Justification reworded" \
+  "$(edit_payload "$CS" '[SuppressMessage("Naming", "CA1707", Justification = "names")]' \
+    '[SuppressMessage("Naming", "CA1707", Justification = "xUnit test-name style")]')"
+tquiet "# nosec removed" "$(edit_payload "$PY" 'out = run(cmd)  # nosec B602' 'out = run(cmd)')"
+tquiet "[SuppressMessage(…)] removed" \
+  "$(edit_payload "$CS" "[SuppressMessage(\"Style\", \"IDE0060\")]${NL}public void Adds_Numbers()" 'public void Adds_Numbers()')"
+tquiet "// nosemgrep removed" \
+  "$(edit_payload "$TSF" 'const q = build(id); // nosemgrep: js.sql-injection' 'const q = build(id);')"
+tquiet "c8 ignore stop alone added (closes a region)" \
+  "$(edit_payload "$TSF" 'function helper() {}' "function helper() {}${NL}/* c8 ignore stop */")"
+tquiet "biome-ignore-end alone added (closes a range)" \
+  "$(edit_payload "$TSF" 'function helper() {}' "function helper() {}${NL}// biome-ignore-end")"
+tquiet "look-alike [SuppressMessageFoo]" \
+  "$(edit_payload "$CS" 'public void Adds_Numbers()' "[SuppressMessageFoo]${NL}public void Adds_Numbers()")"
+tquiet "look-alike class ExcludeFromCodeCoverageHelper" \
+  "$(edit_payload "$CS" 'public class Fixture' "public class ExcludeFromCodeCoverageHelper { }${NL}public class Fixture")"
+tquiet "look-alike typeof(ExcludeFromCodeCoverageAttribute) / GetCustomAttribute<SuppressMessageAttribute>()" \
+  "$(edit_payload "$CS" 'var t = 1;' "var t = typeof(ExcludeFromCodeCoverageAttribute);${NL}var a = m.GetCustomAttribute<SuppressMessageAttribute>();")"
+tquiet "look-alike nosonar identifier and string outside a comment" \
+  "$(edit_payload "$TSF" 'const q = build(id);' "const nosonarMode = true;${NL}const label = \"nosonar\";")"
+tquiet "look-alike nosonar on the line after a comment (no line crossing)" \
+  "$(edit_payload "$PY" 'result = parse(s)' "# parse first${NL}nosonar = parse(s)")"
+tquiet "look-alike nosemgrepper / nosecurity in comments" \
+  "$(edit_payload "$PY" 'result = parse(s)' "# nosemgrepper is a word${NL}result = parse(s)  # nosecurity review")"
+tquiet "look-alike # pylint: enable= / # pyright: strict" \
+  "$(edit_payload "$PY" 'result = parse(s)' "# pylint: enable=invalid-name${NL}# pyright: strict${NL}result = parse(s)")"
+tquiet "look-alike Dictionary<string, SuppressMessageAttribute> on a line after a [ (no line crossing)" \
+  "$(edit_payload "$CS" 'var t = 1;' "var xs = new int[2];${NL}var d = new Dictionary<string, SuppressMessageAttribute>();")"
+tquiet "look-alike # pragma: no-cover / # pyright: basic" \
+  "$(edit_payload "$PY" 'result = parse(s)' "# pragma: no-cover${NL}# pyright: basic${NL}result = parse(s)")"
+tquiet "look-alike /* c8 ignored */ / // nosonar-mode" \
+  "$(edit_payload "$TSF" 'const q = build(id);' "/* c8 ignored here */${NL}const q = build(id); // nosonar-mode on")"
+# Cost stays linear in the text: markers are found with index() and split(),
+# never with a regex that scans ahead of them. Each line below took 3.5 s, 8 s
+# and 24 s when one did; the 2 s bound sits well inside the 5 s hook timeout.
+# The lines stay near 100 KB because the shared payload decoder grows
+# quadratically on its own (about 4.5 s on 300 KB), and it is not under test.
+long_payload() { # $1 path  $2 unit  $3 count  $4 tail: an Edit adding one long line
+  python3 - "$1" "$2" "$3" "$4" <<'PY'
+import json, sys
+line = sys.argv[2] * int(sys.argv[3]) + sys.argv[4]
+print(json.dumps({"hook_event_name": "PreToolUse", "tool_name": "Edit",
+                  "tool_input": {"file_path": sys.argv[1], "old_string": "probe();",
+                                 "new_string": line + "\nprobe();"}}))
+PY
+}
+tfast() { # <label> <want exit> <payload>: expect, and fail past 2 s (1 s clock)
+  local t0="$SECONDS" got
+  got="$(run_active "$3")"
+  if [ $((SECONDS - t0)) -gt 2 ]; then
+    printf 'FAIL: %s — took %ss, bound 2s\n' "$1" "$((SECONDS - t0))" >&2
+    fails=$((fails + 1)); rm -f "$LAST_ERR"
+  else
+    expect "$1" "$2" "$got"
+  fi
+}
+tfast "allow:T2-SUPPRESS fast: 115 KB line of quoted URLs, then /* ignore */" 0 \
+  "$(long_payload "$TSF" "x=a('https://e.com/p');" 5000 '/* ignore */')"
+tfast "allow:T2-SUPPRESS fast: 100 KB of //a, then xnosonar" 0 "$(long_payload "$TSF" '//a' 33000 'xnosonar')"
+tfast "deny:T2-SUPPRESS fast: 100 KB of [, then SuppressMessage] (still seen)" 2 \
+  "$(long_payload "$CS" '[' 100000 'SuppressMessage]')"
+expect "allow:T2-SUPPRESS MTK_TEST_GUARD_ENFORCE=off: NOSONAR added" 0 "$(run_with "$(edit_payload "$CS" \
+  'var r = Calc.Parse(s);' 'var r = Calc.Parse(s); // NOSONAR')" MTK_TEST_GUARD_ENFORCE=off)"
+expect_nolog "MTK_TEST_GUARD_ENFORCE=off: NOSONAR added logs nothing" \
+  "$(edit_payload "$CS" 'var r = Calc.Parse(s);' 'var r = Calc.Parse(s); // NOSONAR')" MTK_TEST_GUARD_ENFORCE=off
+# The limit stated in the header: production code is out of reach, in every mode.
+p="$(edit_payload "$P/src/Calc/Parser.cs" 'public class Parser' "[ExcludeFromCodeCoverage]${NL}public class Parser")"
+expect "allow:T2-SUPPRESS non-test src/Calc/Parser.cs gains [ExcludeFromCodeCoverage] (test guard active)" 0 "$(run_active "$p")"
+expect_nolog "non-test src/Calc/Parser.cs with [ExcludeFromCodeCoverage] logs nothing in shadow mode" "$p"
+# The config class (active by default) reads none of the new markers.
+expect "config class unchanged: a # NOSONAR comment added to .editorconfig is allowed" 0 "$(run_guard "$(edit_payload \
+  "$P/.editorconfig" 'indent_size = 4' "# NOSONAR${NL}indent_size = 4")")"
 # T3-FEWER-TESTS
 tcase T3-FEWER-TESTS "C# [Theory] removed" "$(edit_payload "$CS" \
   "[Theory]${NL}[InlineData(1)]${NL}public void Id(int x) { Assert.Equal(x, Calc.Id(x)); }" \

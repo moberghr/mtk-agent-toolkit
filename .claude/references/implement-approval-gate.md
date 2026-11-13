@@ -49,7 +49,7 @@ Then invoke `AskUserQuestion` with:
 
 If `AskUserQuestion` is deferred in this session, call `ToolSearch` with `select:AskUserQuestion` first. If the harness does not expose it (e.g. Cursor, Copilot CLI, Gemini CLI), stop and print one line: "Approval gate requires AskUserQuestion (unavailable in this harness). Tell me: Approve & run until done / Approve (interactive) / Edit first / Revise." Wait for the engineer — do not proceed.
 
-Until the engineer answers: read-only Bash only, no Edit/Write on source code, no Phase 3. Proceed to Phase 3 only after `Approve & run until done` or `Approve (interactive)`. In autonomous mode, never call `AskUserQuestion` again for Phases 3-7 — stop and report instead.
+Until the engineer answers: read-only Bash only, no Edit/Write on source code, no Phase 3. Proceed to Phase 3 only after `Approve & run until done` or `Approve (interactive)`. Approval is choosing an approve option or an unqualified yes ("ok", "go", "lgtm" count); a reply that voices a doubt or a condition ("probably fine", "ok, but not sure about X") is not approval until that point is resolved. In autonomous mode, never call `AskUserQuestion` again for Phases 3-7 — stop and report instead.
 
 On approval, record the gate decision and the seal (below) in **one** call:
 `"$WFA" batch "$MTK_WF_UUID" gate plan_trust_gate pass --reason "<approve mode>" -- seal`

@@ -1,0 +1,20 @@
+{
+  "grader": "evals/webhook-double-credit/graders/source-unchanged.md",
+  "note": "Anchors the reviewed handler; samples are taken from a fresh scaffold run.",
+  "samples": [
+    {
+      "id": "seeded file",
+      "expect": "pass",
+      "scaffold_file": true
+    },
+    {
+      "id": "handler edited",
+      "expect": "fail",
+      "scaffold_file": true,
+      "replace": [
+        "import hashlib\n",
+        "import hashlib\nimport uuid\n"
+      ]
+    }
+  ]
+}

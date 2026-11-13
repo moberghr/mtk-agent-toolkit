@@ -32,7 +32,10 @@ a frontmatter-only batch) skips `architecture-reviewer`.
 
 **Silent-failure trigger.** Dispatch `silent-failure-hunter` alongside Stage 1 when `git diff`
 matches any of `\b(catch|except|finally)\b`, `\.catch\(`, `\?\?`, `\|\|`, or adds
-`// eslint-disable`, `# noqa`, `@ts-ignore`, `@ts-expect-error`, `Skip =`, `it\.skip`, `xit\(`.
+`// eslint-disable`, `# noqa`, `#pragma warning disable`, `@ts-ignore`, `@ts-expect-error`, `@ts-nocheck`,
+`biome-ignore`, `pylint: disable`, `pyright: ignore`, `type: ignore`, `#nowarn`, `NOSONAR`, `nosemgrep`, `nosec`, `gitleaks:allow`,
+`SuppressMessage`, `ExcludeFromCodeCoverage`, `pragma: no cover`, `istanbul ignore`, `c8 ignore`, `v8 ignore`,
+`Skip =`, `it\.skip`, `xit\(`.
 It emits `category: "error-handling"`; merge and dedupe by `(file, line, rule)`.
 
 ## Dispatch rules

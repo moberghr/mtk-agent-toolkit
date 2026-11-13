@@ -1,0 +1,20 @@
+{
+  "grader": "evals/migration-drops-live-column/graders/source-unchanged.md",
+  "note": "Anchors the reviewed migration; samples are taken from a fresh scaffold run.",
+  "samples": [
+    {
+      "id": "seeded file",
+      "expect": "pass",
+      "scaffold_file": true
+    },
+    {
+      "id": "migration edited",
+      "expect": "fail",
+      "scaffold_file": true,
+      "replace": [
+        "using Microsoft.EntityFrameworkCore.Migrations;\n",
+        "using System;\nusing Microsoft.EntityFrameworkCore.Migrations;\n"
+      ]
+    }
+  ]
+}

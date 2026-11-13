@@ -34,6 +34,10 @@ set -euo pipefail
 #     table (a route-table keyword appears in the prompt) or documented as a
 #     boundary/hook-routed case via a `note`.
 #
+#   skill-routing — behavioral check: runs scripts/routing-check.sh with the fixture
+#     as its prompts file (description collisions, positive and negative prompts,
+#     per-skill coverage, both rank-1 ratchets) and fails when that check fails.
+#
 # It does NOT run Claude or grade rationale text — that is human review.
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -291,6 +295,19 @@ print(f"OK (structural)   {name} (router-mapping, {len(cases)} cases: skills exi
 PY
 }
 
+check_skill_routing() {
+  local f="$1"
+  local name; name="$(basename "$f")"
+  local out rc=0
+  out="$(bash "${ROOT_DIR}/scripts/routing-check.sh" --prompts "$f" --quiet 2>&1)" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    printf '%s\n' "$out" >&2
+    printf 'FAIL: %s: routing-check.sh exited %s\n' "$name" "$rc" >&2
+    return 1
+  fi
+  printf 'OK   %s (skill-routing, %s)\n' "$name" "$(printf '%s\n' "$out" | awk '/^summary: /{sub(/^summary: /, ""); s=$0} END{print s}')"
+}
+
 # The evaluator in check_router_decision and the canonical prose list must not
 # drift apart: same number of preconditions, and no dropped gate in either doc.
 check_auto_proceed_contract() {
@@ -328,6 +345,8 @@ for f in "${FIX_DIR}"/*.json; do
       check_handoff "$f" || failures=$((failures + 1)) ;;
     router-mapping)
       check_router_mapping "$f" || failures=$((failures + 1)) ;;
+    skill-routing)
+      check_skill_routing "$f" || failures=$((failures + 1)) ;;
     router-decision)
       check_router_decision "$f" || failures=$((failures + 1)) ;;
     __unparseable__)

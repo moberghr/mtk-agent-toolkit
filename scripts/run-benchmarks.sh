@@ -521,7 +521,63 @@ PREREQ_OUT=$(bash hooks/check-prerequisites.sh dotnet 2>&1 || true)
 assert_match "produces formatted output" "$PREREQ_OUT" "(Prerequisites|recommended)"
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# BENCHMARK 7: Validate Toolkit — structural integrity
+# BENCHMARK 7: Config Guard — suppression markers added to a test file
+# Each fixture row is added by an Edit to its test-shaped file with the test
+# class active: a marker must be denied as T2-SUPPRESS, a look-alike allowed.
+# The first section's pass count is the guard's detection rate on the marker
+# list; the second is its false-positive floor.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+CG_PROJ="$(mktemp -d)"
+CG_PROJ="$(cd "$CG_PROJ" && pwd -P)"
+CG_TMP="$(mktemp -d)"
+# One line per fixture row: "<added line><TAB><Edit payload JSON>".
+cg_payloads() { # $1 fixture
+  python3 - "$1" "$CG_PROJ" <<'PY'
+import sys; sys.stdout.reconfigure(newline="\n")  # LF even on Windows python3: bash parses this output
+import json
+fixture, proj = sys.argv[1], sys.argv[2]
+for raw in open(fixture, encoding="utf-8"):
+    raw = raw.rstrip("\n")
+    if not raw or raw.startswith("#"):
+        continue
+    rel, line = raw.split("\t", 1)
+    payload = {"hook_event_name": "PreToolUse", "tool_name": "Edit",
+               "tool_input": {"file_path": proj + "/" + rel, "old_string": "probe();",
+                              "new_string": line + "\nprobe();"}}
+    print(line.replace("\t", " ") + "\t" + json.dumps(payload))
+PY
+}
+# Guard on payload $1, sandboxed, test class active: "<exit> <first stderr line>".
+cg_run() {
+  local rc=0 err
+  err="$(CLAUDE_PROJECT_DIR="$CG_PROJ" TMPDIR="$CG_TMP" MTK_CONFIG_GUARD=1 MTK_TEST_GUARD_ENFORCE=active \
+    bash hooks/config-guard.sh <<<"$1" 2>&1 >/dev/null)" || rc=$?
+  printf '%s %s\n' "$rc" "$(printf '%s\n' "$err" | awk 'NR == 1')"
+}
+# A fixture that yields no rows must fail the section, not pass it empty.
+cg_section() { # $1 fixture  $2 label prefix  $3 ERE the cg_run output must match
+  local n=0 line payload
+  while IFS=$'\t' read -r line payload; do
+    [ -n "$payload" ] || continue
+    n=$((n + 1))
+    assert_match "$2: $line" "$(cg_run "$payload")" "$3"
+  done < <(cg_payloads "$1")
+  if [ "$n" -eq 0 ]; then
+    TOTAL=$((TOTAL + 1)); _tally_fail
+    printf '  ✗ no fixture rows read from %s\n' "$1"
+  fi
+}
+
+section "Config Guard: test-file suppression markers"
+cg_section benchmarks/fixtures/test-suppressions.txt "denied as T2-SUPPRESS" '^2 TEST-GUARD: .*\(T2-SUPPRESS '
+
+section "Config Guard: suppression look-alikes (no false positives)"
+cg_section benchmarks/fixtures/test-suppression-lookalikes.txt "allowed" '^0 $'
+rm -rf "$CG_PROJ" "$CG_TMP"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# BENCHMARK 8: Validate Toolkit — structural integrity
 # ═══════════════════════════════════════════════════════════════════════════════
 
 section "Toolkit Validation"

@@ -1,0 +1,182 @@
+{
+  "id": "skill-routing",
+  "fixture_type": "skill-routing",
+  "description": "Everyday prompts and the skill each should reach, scored offline by scripts/routing-check.sh against every skill's name and description; also holds the collision allow-list, the exempt list and the committed thresholds.",
+  "thresholds": {
+    "warn": 0.5,
+    "fail": 0.75,
+    "top_k": 3,
+    "min_rank1": 90,
+    "min_rank1_name_free": 89,
+    "min_positive_per_skill": 2,
+    "min_name_free_per_skill": 1
+  },
+  "allow_pairs": [
+    { "skills": ["lessons", "promote-lesson"], "reason": "promote-lesson is the deprecated alias of `lessons promote`, kept for one release; it describes the same operation on purpose" }
+  ],
+  "exempt": [
+    { "skill": "mtk", "reason": "the /mtk router is reached by typing /mtk; it dispatches to another skill, so an everyday prompt belongs to the skill it routes to" },
+    { "skill": "promote-lesson", "reason": "deprecated alias of `lessons promote`; prompts about promoting a lesson belong to lessons" }
+  ],
+  "positive": [
+    { "prompt": "apply the review findings from PR 214, about eight small comments across different files", "skill": "batch-fix" },
+    { "prompt": "fix these five unrelated naming and null-check issues the reviewer flagged", "skill": "batch-fix" },
+    { "prompt": "work through the list of small fixes from the code review in one go", "skill": "batch-fix" },
+
+    { "prompt": "I'm not sure how to approach caching here, can we explore a few options first?", "skill": "brainstorming" },
+    { "prompt": "what are some alternative designs for the notification service?", "skill": "brainstorming" },
+    { "prompt": "let's brainstorm approaches for splitting the settlement module", "skill": "brainstorming" },
+    { "prompt": "how should we model partial refunds? I see a few ways", "skill": "brainstorming" },
+
+    { "prompt": "review this PR", "skill": "code-review-and-quality" },
+    { "prompt": "can you do a code review of my branch diff against main?", "skill": "code-review-and-quality" },
+    { "prompt": "review pull request 482 for quality and missing tests", "skill": "code-review-and-quality" },
+    { "prompt": "look over the changes on this branch before I open a pull request", "skill": "code-review-and-quality" },
+
+    { "prompt": "the feature works now, simplify the code without changing behavior", "skill": "code-simplification" },
+    { "prompt": "clean up and simplify what I just changed, it's too convoluted", "skill": "code-simplification" },
+    { "prompt": "now that the tests pass, tidy up what I changed without altering its behavior", "skill": "code-simplification" },
+    { "prompt": "this works but it's convoluted, make it easier to read without changing behavior", "skill": "code-simplification" },
+
+    { "prompt": "I'm new to this codebase, get oriented before we start", "skill": "context-engineering" },
+    { "prompt": "your output keeps drifting from our project conventions, reload the project norms", "skill": "context-engineering" },
+
+    { "prompt": "fix the null reference in OrderService.Calculate", "skill": "fix" },
+    { "prompt": "the date validation rejects leap days, please fix it", "skill": "fix" },
+    { "prompt": "small bug: the export button sends the wrong currency code", "skill": "fix" },
+    { "prompt": "why is this test failing?", "skill": "fix" },
+
+    { "prompt": "I'm stopping for today, write a handoff note so someone can pick this up", "skill": "handoff" },
+    { "prompt": "hand this unfinished work over to a teammate", "skill": "handoff" },
+    { "prompt": "I'm out tomorrow, leave notes for whoever continues this branch", "skill": "handoff" },
+
+    { "prompt": "add a new endpoint for exporting trades", "skill": "implement" },
+    { "prompt": "implement the invoice reminder feature from the spec", "skill": "implement" },
+    { "prompt": "build a feature that lets users schedule recurring payments", "skill": "implement" },
+    { "prompt": "add CSV export to the monthly statements page", "skill": "implement" },
+
+    { "prompt": "the plan is approved, start on batch 1 and make sure it compiles and the tests pass before moving on", "skill": "incremental-implementation" },
+    { "prompt": "execute the approved multi-file change one batch at a time", "skill": "incremental-implementation" },
+
+    { "prompt": "audit our AGENTS.md for stale references and commands that no longer work", "skill": "instructions" },
+    { "prompt": "capture the commands and gotchas we discovered this session into CLAUDE.md", "skill": "instructions" },
+
+    { "prompt": "remember this correction as a team lesson", "skill": "lessons" },
+    { "prompt": "mine last week's session transcripts for lessons", "skill": "lessons" },
+    { "prompt": "promote this memory to the team lessons file", "skill": "lessons" },
+    { "prompt": "add that to our team lessons so nobody repeats the mistake", "skill": "lessons" },
+    { "prompt": "record this correction so the whole team learns from it", "skill": "lessons" },
+    { "prompt": "remember this mistake so nobody on the team repeats it", "skill": "lessons" },
+
+    { "prompt": "check whether MTK is installed correctly", "skill": "mtk-doctor" },
+    { "prompt": "run the MTK health check", "skill": "mtk-doctor" },
+    { "prompt": "are the MTK hooks actually firing in this repo?", "skill": "mtk-doctor" },
+    { "prompt": "is my MTK install broken?", "skill": "mtk-doctor" },
+    { "prompt": "the hooks stopped firing, run a health check on the install", "skill": "mtk-doctor" },
+    { "prompt": "something is off with the toolkit install, check its hooks and config", "skill": "mtk-doctor" },
+
+    { "prompt": "set up MTK in this repository", "skill": "mtk-setup" },
+    { "prompt": "run mtk setup again to redo the architecture audit", "skill": "mtk-setup" },
+    { "prompt": "re-run the architecture audit on this repo", "skill": "mtk-setup" },
+    { "prompt": "bootstrap the toolkit in this repository", "skill": "mtk-setup" },
+
+    { "prompt": "the spec is approved, break the work into batches with checkpoints", "skill": "planning-and-task-breakdown" },
+    { "prompt": "make a task breakdown for this spec", "skill": "planning-and-task-breakdown" },
+
+    { "prompt": "review my staged changes before I commit", "skill": "pre-commit-review" },
+    { "prompt": "quick security check on what I'm about to commit", "skill": "pre-commit-review" },
+    { "prompt": "quick security pass on my staged changes", "skill": "pre-commit-review" },
+    { "prompt": "scan what I staged for compliance problems before it goes in", "skill": "pre-commit-review" },
+
+    { "prompt": "before we build this, check whether a helper or handler already does it", "skill": "prior-work-check" },
+    { "prompt": "is there already something in the codebase that covers this?", "skill": "prior-work-check" },
+
+    { "prompt": "how AI-ready is this repo? give me a health report", "skill": "repo-health" },
+    { "prompt": "what do reviewers keep repeating in our merged PRs?", "skill": "repo-health" },
+
+    { "prompt": "what does the latest EF Core version say about bulk updates", "skill": "research-context" },
+    { "prompt": "look up current best practices for retry policies with Polly", "skill": "research-context" },
+    { "prompt": "find the official migration guide from Newtonsoft to System.Text.Json", "skill": "research-context" },
+    { "prompt": "is AutoMapper still recommended in 2026 or is there a better option?", "skill": "research-context" },
+
+    { "prompt": "this change touches authentication and token handling, make sure it's secure", "skill": "security-and-hardening" },
+    { "prompt": "harden the webhook endpoint against untrusted input", "skill": "security-and-hardening" },
+    { "prompt": "make sure we're not logging secrets or card numbers in this handler", "skill": "security-and-hardening" },
+
+    { "prompt": "extract the architecture principles from this codebase", "skill": "setup-audit" },
+    { "prompt": "merge the audits from our three repos into one team document", "skill": "setup-audit" },
+
+    { "prompt": "bootstrap this repo: detect the stack and generate AGENTS.md", "skill": "setup-bootstrap" },
+    { "prompt": "first-time setup for a brand new repository", "skill": "setup-bootstrap" },
+    { "prompt": "this repo has never been onboarded, generate a project-specific AGENTS.md", "skill": "setup-bootstrap" },
+    { "prompt": "one-time onboarding for this codebase: detect the stack, pull our guidelines, generate AGENTS.md", "skill": "setup-bootstrap" },
+
+    { "prompt": "our AGENTS.md and architecture principles are out of date, refresh them against the code", "skill": "setup-refresh" },
+    { "prompt": "the codebase drifted since setup, refresh the generated files", "skill": "setup-refresh" },
+    { "prompt": "the generated AGENTS.md and principles drifted from the code, update them", "skill": "setup-refresh" },
+    { "prompt": "our conventions file is stale after the big refactor, regenerate it but show me diffs", "skill": "setup-refresh" },
+
+    { "prompt": "check whether the implementation matches the approved spec", "skill": "spec-drift-detection" },
+    { "prompt": "did we touch files outside the spec's declared scope?", "skill": "spec-drift-detection" },
+    { "prompt": "before review, confirm the files we touched and the contracts we added match what was approved", "skill": "spec-drift-detection" },
+
+    { "prompt": "write a spec for the new reporting feature before we code it", "skill": "spec-driven-development" },
+    { "prompt": "this is a breaking API change, let's get a spec approved first", "skill": "spec-driven-development" },
+    { "prompt": "this touches a dozen files across three services, I want to approve the design before any code", "skill": "spec-driven-development" },
+
+    { "prompt": "run each batch with a fresh subagent implementer", "skill": "subagent-implementation" },
+    { "prompt": "this one has 8 batches, use a separate subagent per batch", "skill": "subagent-implementation" },
+    { "prompt": "spin up a fresh agent for each of the nine batches", "skill": "subagent-implementation" },
+
+    { "prompt": "how do I build and run the .NET tests in this solution?", "skill": "tech-stack-dotnet" },
+    { "prompt": "which dotnet test command and EF Core conventions does this repo use?", "skill": "tech-stack-dotnet" },
+
+    { "prompt": "how do I run pytest and the linters in this Python project?", "skill": "tech-stack-python" },
+    { "prompt": "what's the SQLAlchemy guidance for this python service", "skill": "tech-stack-python" },
+    { "prompt": "which ruff and mypy settings does this FastAPI service use?", "skill": "tech-stack-python" },
+    { "prompt": "how are Alembic migrations run in this Django app?", "skill": "tech-stack-python" },
+
+    { "prompt": "what are the build and test commands for this Next.js app?", "skill": "tech-stack-typescript" },
+    { "prompt": "which test runner does our React Native Expo project use?", "skill": "tech-stack-typescript" },
+    { "prompt": "which package manager and lint command does this frontend use?", "skill": "tech-stack-typescript" },
+
+    { "prompt": "before you say it's done, show me fresh test output as evidence", "skill": "verification-before-completion" },
+    { "prompt": "prove the task is actually complete", "skill": "verification-before-completion" },
+    { "prompt": "did you actually run the tests before saying it works?", "skill": "verification-before-completion" },
+
+    { "prompt": "save the workflow state so we can resume after compaction", "skill": "workflow-artifacts" },
+    { "prompt": "read the durable workflow state under .mtk/workflows", "skill": "workflow-artifacts" },
+    { "prompt": "where does MTK keep the checkpoint for the running implement workflow?", "skill": "workflow-artifacts" },
+    { "prompt": "will the run survive a crash or compaction? where is its state saved?", "skill": "workflow-artifacts" },
+    { "prompt": "the session crashed mid-run, pick up the orchestration state where it stopped", "skill": "workflow-artifacts" },
+
+    { "prompt": "create a new skill for the toolkit", "skill": "writing-skills" },
+    { "prompt": "I want to write a new MTK skill that checks migration safety", "skill": "writing-skills" },
+    { "prompt": "add a skill to MTK that reviews database migrations", "skill": "writing-skills" },
+    { "prompt": "help me author a new toolkit command and test it before we ship it", "skill": "writing-skills" },
+    { "prompt": "I want to add a new capability to our toolkit, what anatomy does it need?", "skill": "writing-skills" }
+  ],
+  "negative": [
+    { "prompt": "the health check endpoint's integration test started failing after my change", "not": "mtk-doctor", "owner": "fix" },
+    { "prompt": "MTK hooks fail on every session start", "not": "fix", "owner": "mtk-doctor" },
+    { "prompt": "write a failing test for this bug before fixing it", "not": "writing-skills", "owner": "fix" },
+    { "prompt": "fix the typo in the README", "not": "batch-fix", "owner": "fix" },
+    { "prompt": "fix the off-by-one error in the paging feature", "not": "implement", "owner": "fix" },
+    { "prompt": "fix the twelve review comments across the services", "not": "fix", "owner": "batch-fix" },
+    { "prompt": "add a new payment endpoint with a handler and a migration", "not": "batch-fix", "owner": "implement" },
+    { "prompt": "capture this as a lesson", "not": "promote-lesson", "owner": "lessons" },
+    { "prompt": "mine the session transcripts for lessons", "not": "promote-lesson", "owner": "lessons" },
+    { "prompt": "clean up the stale entries in lessons.md", "not": "promote-lesson", "owner": "lessons" },
+    { "prompt": "refresh the generated AGENTS.md now that the code has drifted", "not": "setup-bootstrap", "owner": "setup-refresh" },
+    { "prompt": "extract architecture principles from the code", "not": "setup-bootstrap", "owner": "setup-audit" },
+    { "prompt": "merge the audits from several repos", "not": "mtk-setup", "owner": "setup-audit" },
+    { "prompt": "first-time setup of a new repo", "not": "setup-refresh" },
+    { "prompt": "first-time setup of a new repo", "not": "setup-audit" },
+    { "prompt": "what's the pytest command here", "not": "tech-stack-dotnet", "owner": "tech-stack-python" },
+    { "prompt": "what's the dotnet build command for this stack", "not": "tech-stack-python", "owner": "tech-stack-dotnet" },
+    { "prompt": "how do I run the tests in the Next.js app", "not": "tech-stack-dotnet", "owner": "tech-stack-typescript" },
+    { "prompt": "Python build and lint commands", "not": "tech-stack-typescript", "owner": "tech-stack-python" },
+    { "prompt": "what changed about error handling in the latest .NET version?", "not": "fix", "owner": "research-context" },
+    { "prompt": "fix the broken migration in the orders table", "not": "research-context", "owner": "fix" }
+  ]
+}

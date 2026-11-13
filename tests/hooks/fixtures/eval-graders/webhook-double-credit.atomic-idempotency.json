@@ -1,0 +1,56 @@
+{
+  "grader": "evals/webhook-double-credit/graders/atomic-idempotency.md",
+  "note": "Passes only when the remedy ties a database-enforced mechanism to the claim or insert of the event id.",
+  "samples": [
+    {
+      "id": "reviewer: negated mechanism",
+      "expect": "fail",
+      "text": "Fix: make the handler idempotent. Right now there is no database-level unique index on the event id."
+    },
+    {
+      "id": "reviewer: SELECT check plus an incidental primary key",
+      "expect": "fail",
+      "text": "Fix: add a SELECT to see if the event id was already processed before crediting. The wallets table has a primary key on merchant_id, so the wallet row itself is fine."
+    },
+    {
+      "id": "reviewer: composite unique key on the reference",
+      "expect": "pass",
+      "text": "Fix: record each delivery in a ledger table with UNIQUE(kind, reference) and skip the credit when the insert conflicts."
+    },
+    {
+      "id": "reviewer: advisory transaction lock on the event id",
+      "expect": "pass",
+      "text": "Fix: take pg_advisory_xact_lock(hashtext(event_id)) inside the transaction before the check and the credit."
+    },
+    {
+      "id": "reviewer: unique event_id column",
+      "expect": "pass",
+      "text": "Suggested fix: add a unique `event_id` column to transfers and insert it in the same transaction as the credit."
+    },
+    {
+      "id": "reviewer: remedy split across lines",
+      "expect": "pass",
+      "text": "Fix:\n\n```sql\nINSERT INTO processed_events (event_id)\nVALUES (:event_id)\nON CONFLICT DO NOTHING\n```\n\nand credit only when a row was inserted."
+    },
+    {
+      "id": "no remedy at all",
+      "expect": "fail",
+      "text": "The provider redelivers events and nothing deduplicates them, so a merchant can be credited twice."
+    },
+    {
+      "id": "recorded haiku/with0: proposes a unique constraint on the event id",
+      "expect": "pass",
+      "text": "**Verdict: NEEDS_CHANGES. Don't push this branch yet.** All four lanes have reported. Compliance, silent-failure and test lanes each returned an blocking result, and the architecture lane flagged the auth gap. The four blockers below are the minimum before merge.\n\n**Blockers**\n\n1. **Double credit on webhook redelivery (critical).** `settle_transfer` (`app/webhooks.py:47-59`) credits the wallet and inserts a ledger row on every delivery. The provider retries for up to 3 days until it gets a 2xx, and a response slower than 10s counts as a failure. Nothing stores `event.id` or `transfer_id`, and the ledger has no unique key on the reference. A retry after a timeout credits the merchant twice and returns 200. Fix: a unique key on the transfer reference, with an insert using `ON CONFLICT DO NOTHING` that credits only when a row is inserted, all in one transaction. The test lane also found that no test covers this.\n2. **Statement endpoint has no authentication (critical, needs confirmation).** `GET /merchants/{merchant_id}/statements/{year}/{month}` (`app/statements.py:19-37`) returns the full ledger for any merchant id in the path, with no auth or ownership check. The reviewers could not confirm how routers are mounted because the repo has no app entrypoint. Confirm where the app is wired. If it is served as written, this is a cross-tenant leak of financial data.\n3. **Webhook secret fails open (critical, pre-existing on `main`).** `_SECRET` defaults to `\"\"` when `PROVIDER_WEBHOOK_SECRET` is unset (`app/webhooks.py:15-20`). The HMAC key is then empty and anyone can forge a `transfer.settled`. This branch makes that dangerous because the handler now moves money. Fix: refuse to start with an empty secret.\n4. **No test coverage for anything that moves money or checks auth.** The 6 tests cover only `parse_event` and `_month_bounds`. Nothing tests the handlers, the signature check, the status codes, the statement query, or duplicate delivery. The test lane marked this FAIL.\n\n**Also needed before merge (high)**\n\n- **Payload validation.** `amount_cents` is not checked for sign, type or range, so a negative value debits the wallet. `currency` is read by nothing, so a non-EUR settlement is credited as EUR.\n- **Permanent errors retried for 3 days.** A missing field, or a `merchant_id` that doesn't exist, raises inside the handler and returns 500. The provider keeps retrying a bad event. Permanent failures should return 4xx or be recorded.\n- **Blocking I/O in an async route.** `payment_webhook` is `async def` and calls the synchronous handler, which does blocking DB work. Slow calls push deliveries past the timeout, which causes more retries.\n- **Silent no-op on `merchant.updated`** for a missing wallet. It returns 200 and the rename is lost.\n\n**Lower priority:** statement for an unknown merchant returns 200 with zero totals; `created_at` is processing time, not settlement time, so late settlements can land in the wrong month; a non-ASCII signature header returns 500 instead of 401; the migration uses a plain `CREATE INDEX`, which locks writes on a large table.\n\n**Review process.** Lanes run: compliance-reviewer, silent-failure-hunter, test-reviewer, architecture-reviewer. Context-miner did not run because it is on request only. This review is not bound to a workflow artifact, so no receipt is recorded. The architecture lane's \"critical\" layering finding is an overstatement; I'd treat it as tech debt.\n\n**Sprint question.** Items 1 and 4 are the real schedule risk. Fixing idempotency and adding the webhook tests is a day or two of work. Items 2 and 3 are small if the app wiring is in this repo or nearby. I can start on the blockers as edits to the working tree if you want, or start with the statement auth check once you confirm how the app is mounted. I have not pushed or changed any files."
+    },
+    {
+      "id": "recorded h6-wh-with0: says the (kind, reference) key has no unique constraint, then adds one with ON CONFLICT",
+      "expect": "pass",
+      "text": "## Verdict: NEEDS_CHANGES. Don't push this branch as it stands.\n\nAll four review lanes have reported. Three say NEEDS_CHANGES and architecture says PASS with warnings, so the aggregate is NEEDS_CHANGES.\n\n| Lane | Result | Findings |\n|---|---|---|\n| compliance-reviewer (opus) | NEEDS_CHANGES | 4 critical, 5 warning, 1 suggestion |\n| silent-failure-hunter | NEEDS_CHANGES | 1 warning |\n| test-reviewer | NEEDS_CHANGES | 2 critical, 5 warning |\n| architecture-reviewer | PASS | 3 warning |\n\nI didn't write a push receipt. The protocol only allows one on PASS. I also didn't run the test suite: `pytest` isn't installed in this sandbox, and the repo has no Postgres fixture.\n\n### Must fix before push\n\n1. **Redelivered `transfer.settled` double-credits wallets.** The provider retries for up to three days, and a delivery that commits but times out is redelivered. `settle_transfer` doesn't dedupe on `event.id` or `transfer_id`, and `ledger_entries (kind, reference)` has no unique constraint. Fix: a unique constraint, `INSERT ... ON CONFLICT DO NOTHING` first, and only update the balance when that insert wrote a row. Add a test that replays the same event and expects one credit. This is the one that matters most for finance.\n2. **The statement endpoint has no authentication or ownership check** (`app/statements.py:18`). Anyone who knows a `merchant_id` can read that merchant's ledger. Nothing in the repo mounts this router yet, so it isn't exposed today. It needs an auth dependency before it's wired in. I need you to decide the auth scheme, so I haven't picked one.\n3. **Empty webhook secret defaults to an empty HMAC key** (`app/webhooks.py:15`). If `PROVIDER_WEBHOOK_SECRET` is unset, anyone can sign a valid `transfer.settled`. The line predates this branch, but this branch makes that check the only thing standing between the internet and wallet credits. Fail at startup when it's empty.\n4. **No tests on the money path.** `settle_transfer`, `update_merchant`, the webhook dispatch paths (401/400/500/200) and `monthly_statement` have no tests. The existing tests cover only `parse_event` and `_month_bounds`. These need Postgres-backed tests, which the repo doesn't have yet.\n\n### Should fix in this PR\n\n5. **Blocking DB work inside `async def payment_webhook`** (`app/webhooks.py:24`). It blocks the event loop, and slow responses push deliveries past the provider's 10-second timeout, which causes more retries. Fix: `run_in_threadpool(handler, event)`.\n6. **Zero-row check in `update_merchant`** (`app/webhooks.py:62`). An update for an unknown merchant returns 200, the provider doesn't retry, and the change is lost without a log line.\n7. **Unvalidated payload** (`app/webhooks.py:49`). `amount_cents` isn't checked to be a positive integer, and `currency` is ignored. A missing key returns 500, so the provider retries an unprocessable event for three days.\n8. **`OverflowError` escapes the handler** (verified). `created=10**20` isn't caught by `parse_event`, and the endpoint doesn't catch it either, so it becomes an unhandled 500.\n\n### Smaller items\n\n- `CREATE INDEX` in migration 002 doesn't use `CONCURRENTLY`, so it locks writes to `ledger_entries` while it builds (below the lane threshold, but worth fixing).\n- `year` isn't range-checked, so `/9999/12` returns 500 instead of 400.\n- `_month_bounds` raises `HTTPException` from a pure helper. Move the translation to the route.\n- The architecture lane suggests moving money logic into a domain module (`app/ledger.py`). I'd treat that as a follow-up, not a blocker.\n\n### What's fine\n\n- Balance update and ledger insert are in one transaction, so a failed insert rolls the balance back.\n- All SQL uses bound parameters.\n- Logs contain IDs and types only, not payloads.\n- The December rollover in `_month_bounds` is correct and tested.\n- The index matches the statement query.\n\n### On the sprint deadline\n\nItems 1, 3 and 4 are the minimum before this can move money in production. Item 1 is a migration, a handler change and a test. Item 4 is the largest piece, since it needs a Postgres test setup. Finance can plausibly get settlements into wallets this sprint, but not from this branch unchanged, and not without the idempotency fix.\n\nI haven't changed any code. Two questions before I start fixing:\n\n- Which auth scheme should the statement endpoint use? (Merchant API key, JWT, or an internal service token?)\n- Is there a Postgres test setup in CI (testcontainers or a shared test DB), or should I add one?"
+    },
+    {
+      "id": "lacks-then-fix without a remedy",
+      "expect": "fail",
+      "text": "The (kind, reference) pair has no unique constraint, and the handler reads before it writes."
+    }
+  ]
+}

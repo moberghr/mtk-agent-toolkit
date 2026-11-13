@@ -1,0 +1,46 @@
+{
+  "grader": "evals/tests-miss-boundary/graders/names-boundary-case.md",
+  "note": "Passes when the reply names the missing exact-limit test (a withdrawal that lands exactly on 500.00).",
+  "samples": [
+    {
+      "id": "reviewer: never withdraw exactly 500.00",
+      "expect": "pass",
+      "text": "Test gap: the tests never withdraw exactly 500.00, so > vs >= would not be caught."
+    },
+    {
+      "id": "reviewer: exactly 500",
+      "expect": "pass",
+      "text": "No test covers a withdrawal of exactly 500 against the limit."
+    },
+    {
+      "id": "reviewer: boundary spelled out with both sides",
+      "expect": "pass",
+      "text": "The suite doesn't hit the boundary: a withdrawal that brings the day to 500 should succeed and 500.01 should fail."
+    },
+    {
+      "id": "reviewer: 500.00 near a different gap",
+      "expect": "fail",
+      "text": "Test gaps: nothing tests the day rollover at midnight; the 500.00 limit itself is fine."
+    },
+    {
+      "id": "fee exclusion gap",
+      "expect": "fail",
+      "text": "Test gap: no test checks that the fee is excluded from the 500.00 daily total."
+    },
+    {
+      "id": "midnight boundary is a different gap",
+      "expect": "fail",
+      "text": "Missing test: the midnight boundary between two days is not covered."
+    },
+    {
+      "id": "recorded haiku/without0: lists other gaps, not the exact-limit case",
+      "expect": "fail",
+      "text": "**Review of `daily-limit` vs `main`: tests pass (15/15), but I wouldn't open the PR yet.** Two rule gaps need fixing first. (`/mtk` isn't installed in this session, so I ran the review directly.)\n\n**Must fix**\n\n1. **Audit log is optional, so accepted withdrawals can go unrecorded.** `docs/rules.md` says \"Every accepted withdrawal writes an audit record,\" but `withdraw()` takes `audit: Optional[AuditLog] = None` and skips recording when it's omitted. I confirmed this: a withdrawal with no `audit` argument succeeds with no record. Every audit test passes an `AuditLog` explicitly, so nothing catches it. Fix: make the audit log a required dependency (or a default module-level log), and add a test that calls `withdraw()` without it.\n\n2. **The day boundary isn't the branch's time zone.** The rule says the day rolls over \"at midnight in the branch's time zone.\" The code uses `datetime.now()` (naive, host-local time) and `now.date()`. Nothing in the code or tests reflects a branch zone. Fix: take an aware `datetime` in the branch zone, or pass the zone in, and test a case near midnight. I need you to confirm which zone the branch uses. I'd guess Europe/Zagreb, but I won't assume it.\n\n**Checked and correct**\n\n- Limit is inclusive at 500.00 (`> DAILY_LIMIT` refuses only above it).\n- Fee is 1.5%, minimum 2.00, half-up to the cent, and it doesn't count toward the daily limit.\n- The fee counts toward the balance check.\n- Refused withdrawals aren't audited.\n\n**Minor, optional**\n\n- `_roll_over` resets the day counter before the limit check, so state changes even when the withdrawal is refused. Harmless, but worth knowing.\n- The balance is debited before `audit.record()`, so if recording raises, the money has already moved. Consider recording first or making the two atomic.\n- An `Account` created with `withdrawn_today` set but no `last_withdrawal_day` gets silently reset on its first withdrawal.\n- Amounts aren't validated to cents (e.g. 0.001 is accepted).\n\nI haven't changed or committed anything. Should I fix the two must-fix items (the audit requirement, and the time zone once you confirm it) on this branch?"
+    },
+    {
+      "id": "recorded sonnet/with0: names the exact-limit case",
+      "expect": "pass",
+      "text": "**Verdict: NEEDS_CHANGES.** The arithmetic is right and the 15 tests pass (I ran them). Two spec gaps affect money handling and the audit trail, so I wouldn't ship it tomorrow as is.\n\n| # | Sev | Where | Finding |\n|---|---|---|---|\n| 1 | High | `src/withdrawals.py:41` | **The day boundary ignores the branch time zone.** `docs/rules.md` says the day rolls over at midnight in the branch's time zone. The code uses `datetime.now()`, which is naive server-local time, and `withdraw()` has no tz input. If the server runs in UTC, the limit resets at the wrong hour for Croatian branches (1–2 hours off). The tests only use naive datetimes, so they can't catch this. |\n| 2 | High | `src/withdrawals.py:39,52` | **The audit record is optional and not atomic.** The spec says every accepted withdrawal writes a record. With `audit=None` as the default, any caller that omits it skips the audit with no error. The balance is also debited before `audit.record()` runs, so a failed audit leaves a debit with no record. `AuditLog` is only an in-memory list, so nothing is durable. |\n| 3 | Medium | `src/withdrawals.py:44-47` | **The limit check and the update are not atomic.** Two concurrent withdrawals can both pass the check and exceed 500.00. This depends on how `Account` is persisted, and nothing in this repo calls `withdraw()`, so I can't confirm it. Treat it as needs-check. |\n| 4 | Low | `_roll_over` | A `now` earlier than `last_withdrawal_day` also resets the counter. Because `now` is caller-supplied, an out-of-order timestamp bypasses the limit. |\n| 5 | Low | tests | Two cases are missing: exactly 500.00 is allowed (I checked by hand that it is, and that 0.01 more is refused), and a foreign-card fee doesn't count toward the limit across several withdrawals. |\n\n**What is fine:**\n- The fee uses `Decimal` with half-up rounding and the 2.00 minimum, and the threshold tests are good.\n- The fee is included in the balance check but not in `withdrawn_today`, as the spec says.\n- Refused withdrawals aren't audited, as the spec says.\n\n**Review coverage:** I ran the compliance, silent-failure and test checks inline myself, not as forked agents, so they lack the isolation of a separate reviewer. I skipped the architecture lane because the diff adds no slice or boundary. The review is not bound to a workflow artifact and no review receipt was written.\n\n**Suggested fixes before the PR:**\n- Take a branch tz (or an aware `now`) and add a test around local midnight.\n- Make `audit` required, or confirm the caller always passes it.\n- Write the audit record before or together with the balance update.\n- Add the two missing tests.\n\nI can make these changes if you want. For the release, finding 1 is the one product should know about: if the time-zone rule is deferred, the docs line is wrong as written."
+    }
+  ]
+}

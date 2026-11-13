@@ -1,6 +1,6 @@
 ---
 name: tech-stack-typescript
-description: Provides TypeScript/JavaScript build/test commands, ORM guidance, framework patterns (React, React Native/Expo, Next.js, Tauri, Node), and reference paths for workflow skills.
+description: TypeScript/JavaScript stack context — package manager build and test commands (Vitest, Jest), Prisma and Drizzle guidance, React, React Native/Expo, Next.js, Tauri and Node patterns.
 license: MIT
 compatibility:
   - claude-code
@@ -73,6 +73,7 @@ Match the ORM the project already uses. The rules that cause real defects:
 
 - **Prisma:** run `prisma generate` after every schema change (stale types otherwise); `PrismaClient` is server-only (Next.js: server actions, route handlers, server components) and a module-level singleton in serverless; `select` over `include` on read-heavy queries; `prisma migrate deploy` in CI/prod, `migrate dev` locally.
 - **Drizzle:** review `drizzle-kit` generated SQL before applying; it can read a rename as drop + add.
+- **Schema changes** ship expand-then-contract (`.claude/references/schema-migrations.md`): no drop, rename, type narrowing or `NOT NULL` on existing rows in the same deploy as code that still uses the old shape. Run every down path before merging; where the tool generates none, write the rollback SQL.
 - **TanStack Query:** `queryKey` arrays must be stable (`['resource', id, filters]`; a fresh object literal per render is a refetch loop); set `staleTime` explicitly; never mirror server state into `useState`.
 - **Test provider:** SQLite does not validate Postgres behavior (JSONB, arrays, `ILIKE`, partial indexes, advisory locks). Use `testcontainers` or an ephemeral Postgres when semantics matter.
 

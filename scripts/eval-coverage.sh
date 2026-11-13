@@ -18,8 +18,9 @@ set -euo pipefail
 #   to the case's `tags:` (a documented field; prompt.md rejects unknown keys, so
 #   do not add a `covers:` key).
 #
-# The per-case lift table (with-plugin arm vs without-plugin arm) is not built:
-# no stored aggregate-result.json was available to confirm its per-run fields.
+# It reports no scores and no lift. The lift (with-plugin minus without-plugin) is
+# in each run's result as cases[].aggregates.delta; scripts/eval-compare.sh compares
+# two runs.
 #
 # Usage:
 #   bash scripts/eval-coverage.sh [--json] [--evals-dir <dir>] [--skills-dir <dir>]

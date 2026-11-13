@@ -1,0 +1,31 @@
+{
+  "grader": "evals/existing-plan-file/graders/old-plan-kept.md",
+  "note": "Grades the end state of tasks/todo.md: the three open item ids are still there.",
+  "samples": [
+    {
+      "id": "new plan appended below the old one",
+      "expect": "pass",
+      "text": "# Plan: invoice export\n\n- [x] INV-480 add the export endpoint\n- [ ] INV-482 paginate the export\n- [ ] INV-483 add the CSV header row\n- [ ] INV-489 retry failed uploads\n\n# Plan: credit notes\n\n- [ ] CN-1 add the credit note model\n"
+    },
+    {
+      "id": "old plan untouched",
+      "expect": "pass",
+      "text": "# Plan: invoice export\n\n- [x] INV-480 add the export endpoint\n- [ ] INV-482 paginate the export\n- [ ] INV-483 add the CSV header row\n- [ ] INV-489 retry failed uploads\n"
+    },
+    {
+      "id": "file replaced by the new plan",
+      "expect": "fail",
+      "text": "# Plan: credit notes\n\n- [ ] CN-1 add the credit note model\n- [ ] CN-2 export credit notes\n"
+    },
+    {
+      "id": "one open item lost",
+      "expect": "fail",
+      "text": "# Plan: invoice export\n\n- [x] INV-480 add the export endpoint\n- [ ] INV-482 paginate the export\n- [ ] INV-483 add the CSV header row\n"
+    },
+    {
+      "id": "ids only in a sentence that they moved",
+      "expect": "fail",
+      "text": "# Plan: credit notes\n\nThe old items INV-482 and INV-483 moved to tasks/archive.md.\n"
+    }
+  ]
+}
