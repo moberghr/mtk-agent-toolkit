@@ -216,6 +216,15 @@ with-only`, or `tool_used: Skill` without `arm: both`). The totals give the mean
 the shared cases, the fires rate over the fires cases and the stays-quiet rate over the
 quiet cases.
 
+The fired rate is what a fires or quiet case measures, so a drop in a fires case (or a
+rise in a quiet case) beyond `--noise` is a regression. In every other case the score is
+the measurement and the indicator is context. Its status comes from the score delta alone
+(regressed, improved, within noise or same). If its fired rate moved by more than
+`--noise`, in either direction, the row says so (for example `improved; note: workflow
+loaded 1.00 -> 0.50`) and the case is listed under NOTES after REGRESSIONS. A note is
+never a regression or an improvement and does not change the exit code. `--json` carries
+it as `note` on the case and as `notes` at the top level.
+
 It exits 1 on a regression: a case score that drops by more than `--noise`, a FIRED rate
 that drops by more than `--noise` (or rises, on a quiet case), or a fires or stays-quiet
 rate that drops by more than `--noise`. The default noise of 0.2 treats one grader verdict
