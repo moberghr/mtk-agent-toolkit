@@ -9,9 +9,14 @@ set -euo pipefail
 # Python bytecode, git environment exported by a hook (GIT_INDEX_FILE, GIT_DIR +
 # GIT_WORK_TREE), a repo hook that must not fire, staged + unstaged + deleted +
 # untracked changes in the copy with the reviewed tree (files, index bytes, HEAD,
-# stash, refs) unchanged, a run that edits the reviewed tree, --timeout (also on
-# a command that ignores TERM), SIGTERM with a background grandchild, SIGHUP,
-# SIGINT, and usage errors.
+# stash, refs) unchanged, a run that edits the reviewed tree, untracked names
+# starting with -, a read-only untracked --file, --file marked assume-unchanged
+# or skip-worktree, --timeout (also on a command that ignores TERM, on the
+# mutated run only, and never cutting a run short of N seconds), processes a run
+# leaves in the background (an orphan, and a server that would otherwise answer
+# the mutated run), SIGTERM with a background grandchild, SIGHUP, SIGINT,
+# --file inside a submodule or under a gitlink, and usage errors. Every not_run
+# case also checks its reason.
 
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_COMMON_DIR GIT_NAMESPACE GIT_PREFIX
 unset PYTHONDONTWRITEBYTECODE
@@ -25,9 +30,15 @@ M="$$" # every sleep this test starts runs for NN.<this pid>, so a stray process
 pids_of() { ps -A -o pid= -o command= | awk -v m="$1" '{ p = $1; sub(/^ *[0-9]+ +/, ""); if ($0 == m) print p }'; }
 running() { [ -n "$(pids_of "$1")" ]; }
 kill_marker() { local p; for p in $(pids_of "$1"); do kill -KILL "$p" 2>/dev/null || true; done; }
+# pids_with <text>: pids of the processes whose command line contains the text
+# (passed through the environment, so awk's own command line does not match).
+pids_with() { ps -A -o pid= -o command= | MP_M="$1" awk 'index($0, ENVIRON["MP_M"]) { print $1 }'; }
+SRV_MATCH="" # set by the server case: its servers are killed on exit
 
 SANDBOX="$(mktemp -d)"
-trap 'for n in 51 52 53 54 55 56 57; do kill_marker "sleep $n.$M"; done; rm -rf "$SANDBOX"' EXIT
+trap 'for n in 51 52 53 54 55 56 57 58; do kill_marker "sleep $n.$M"; done
+  if [ -n "$SRV_MATCH" ]; then for p in $(pids_with "$SRV_MATCH"); do kill -KILL "$p" 2>/dev/null || true; done; fi
+  rm -rf "$SANDBOX"' EXIT
 mkdir -p "$SANDBOX/proj" "$SANDBOX/tmp" "$SANDBOX/nogit"
 PROJ="$SANDBOX/proj"
 export TMPDIR="$SANDBOX/tmp"
@@ -51,6 +62,7 @@ EOF
 printf 'base\n' > a.txt
 printf 'base\n' > b.txt
 printf 'x\n' > gone.txt
+printf 'f -gt 0\n' > flag.txt
 printf 'g() { [ "$1" -gt 0 ]; }\n' > real/g.sh
 ln -s "$PROJ/real/g.sh" link.sh
 g add -A && g commit -q -m init
@@ -64,9 +76,12 @@ probe() { RC=0; OUT="$(bash "$PROBE" "$@" 2>/dev/null)" || RC=$?; }
 # penv <VAR=value…> bash "$PROBE" <args…>: the same, with extra environment.
 penv() { RC=0; OUT="$(env "$@" 2>/dev/null)" || RC=$?; }
 verdict() { local v; v="$(printf '%s' "$OUT" | sed -n 's/^{"verdict":"\([a-z_]*\)",.*/\1/p')"; printf '%s' "${v:-unparseable}"; }
-expect() { # <exit> <verdict> <label>
-  local v; v="$(verdict)"
-  if [ "$RC" -eq "$1" ] && [ "$v" = "$2" ]; then pass "$3 (exit $RC, $v)"; else bad "$3: expected exit $1 / $2, got $RC / $v — $OUT"; fi
+reason() { printf '%s' "$OUT" | sed -n 's/^{"verdict":"[a-z_]*","reason":"\(.*\)","file":".*/\1/p'; }
+expect() { # <exit> <verdict> <label> [<text the reason must contain>]
+  local v r want="" ok=1; v="$(verdict)"; r="$(reason)"
+  [ "$RC" -eq "$1" ] && [ "$v" = "$2" ] || ok=0
+  if [ $# -ge 4 ]; then want=" / reason with \"$4\""; case "$r" in *"$4"*) ;; *) ok=0 ;; esac; fi
+  if [ "$ok" -eq 1 ]; then pass "$3 (exit $RC, $v)"; else bad "$3: expected exit $1 / $2$want, got $RC / $v — $OUT"; fi
 }
 worktrees() { g worktree list --porcelain | grep -c '^worktree ' || true; }
 leftovers() { find "$SANDBOX/tmp" -maxdepth 1 -name 'mtk-mutation.*' | wc -l | tr -d ' '; }
@@ -147,20 +162,20 @@ case "$OUT" in *'"file":"q\"b\\s/f.txt"'*) pass "JSON escapes a quote and a back
 echo ""
 echo "--- not_run ---"
 probe --file src/calc.sh --line 1 --from '-gt 0' --to '-ge 0' --test 'exit 1'
-expect 3 not_run "red baseline"
+expect 3 not_run "red baseline" "the test command fails before any mutation (exit 1)"
 no_leftover "after a failing test command"
 probe --file src/calc.sh --line 1 --from 'nope' --to 'x' --test "$TEST"
-expect 3 not_run "--from text absent from the line"
+expect 3 not_run "--from text absent from the line" "the --from text occurs 0 times on line 1"
 probe --file src/calc.sh --line 2 --from '"$' --to '"' --test "$TEST"
-expect 3 not_run "--from text twice on the line"
+expect 3 not_run "--from text twice on the line" "the --from text occurs 2 times on line 2"
 probe --file src/calc.sh --line 99 --from '-gt' --to '-ge' --test "$TEST"
-expect 3 not_run "line past the end of the file"
+expect 3 not_run "line past the end of the file" "line 99 is past the end of src/calc.sh"
 cp src/calc.sh "$SANDBOX/nogit/calc.sh"
 RC=0; OUT="$(cd "$SANDBOX/nogit" && bash "$PROBE" --file calc.sh --line 1 --from '-gt' --to '-ge' --test true 2>/dev/null)" || RC=$?
-expect 3 not_run "outside a git work tree"
+expect 3 not_run "outside a git work tree" "not inside a git work tree"
 mkdir tmpin
 penv TMPDIR="$PROJ/tmpin" bash "$PROBE" --file src/calc.sh --line 1 --from '-gt 0' --to '-ge 0' --test "$TEST"
-expect 3 not_run "TMPDIR inside the repository"
+expect 3 not_run "TMPDIR inside the repository" "is inside the repository; point it outside"
 case "$OUT" in *'is inside the repository; point it outside'*) up_front=1 ;; *) up_front=0 ;; esac
 [ "$up_front" -eq 1 ] && [ -z "$(ls -A tmpin)" ] && [ "$(worktrees)" -eq 1 ] && pass "in-repo TMPDIR rejected up front, nothing created" \
   || bad "in-repo TMPDIR not rejected up front: $OUT"
@@ -170,10 +185,11 @@ echo ""
 echo "--- the mutant write stays in the copy ---"
 fp="$(tree_fp)"
 probe --file link.sh --line 1 --from '-gt' --to '-lt' --test true
-expect 3 not_run "--file is a symlink to an absolute path in the reviewed repo"
+expect 3 not_run "--file is a symlink to an absolute path in the reviewed repo" "link.sh is a symlink in the copy"
 probe --file real/g.sh --line 1 --from '-gt' --to '-lt' \
   --test "if [ ! -L real ]; then mv real real.orig && ln -s '$PROJ/real' real; fi"
-expect 3 not_run "baseline turned the parent directory into a symlink to the reviewed repo"
+expect 3 not_run "baseline turned the parent directory into a symlink to the reviewed repo" \
+  "real/g.sh resolves outside the copy through a symlinked directory"
 grep -q -- '-gt 0' real/g.sh && pass "real/g.sh not mutated through a symlink" || bad "real/g.sh was mutated in the reviewed tree"
 same_tree "$fp" "symlinks"
 mkdir -p 'sp ace' && printf 'a\r\nif [ 1 -gt 0 ]; then :; fi\r\nlast -gt 0' > 'sp ace/u x.txt'
@@ -196,6 +212,25 @@ if command -v python3 >/dev/null 2>&1; then
 else
   echo "  SKIP  python3 not found: stale-bytecode case"
 fi
+
+echo ""
+echo "--- awkward untracked files ---"
+mkdir -p dsub && printf 'top\n' > ./-top.txt && printf 'v -gt 0\n' > dsub/-d.txt
+fp="$(tree_fp)"
+probe --file dsub/-d.txt --line 1 --from '-gt' --to '-lt' --test "grep -qx top ./-top.txt && grep -q -- '-gt' dsub/-d.txt"
+expect 0 killed "untracked files whose names start with - (one of them --file)"
+same_tree "$fp" "names starting with -"
+rm -f ./-top.txt dsub/-d.txt && rmdir dsub
+printf 'ro -gt 0\n' > ro.txt && chmod 444 ro.txt
+fp="$(tree_fp)"
+probe --file ro.txt --line 1 --from '-gt' --to '-lt' --test "ls -l ro.txt > '$SANDBOX/ro.mode'; grep -q -- '-gt' ro.txt"
+expect 0 killed "read-only untracked --file"
+case "$(cat "$SANDBOX/ro.mode" 2>/dev/null)" in
+  -r--r--r--*) pass "read-only untracked --file: the mutated run sees the same mode" ;;
+  *) bad "read-only untracked --file: mode in the mutated run: $(cat "$SANDBOX/ro.mode" 2>/dev/null)" ;;
+esac
+same_tree "$fp" "read-only untracked --file"
+chmod u+w ro.txt && rm -f ro.txt
 
 echo ""
 echo "--- environment a git hook passes down; repo hooks ---"
@@ -234,32 +269,106 @@ same_tree "$fp_before" "uncommitted changes (index bytes included)"
 grep -q -- '-gt 0' src/calc.sh && pass "mutated file untouched in the reviewed tree" || bad "src/calc.sh was mutated in place"
 no_leftover "after killed"
 probe --file src/calc.sh --line 1 --from '-gt 0' --to '-ge 0' --test "sh tests/run.sh && printf x >> '$PROJ/drift.txt'"
-expect 3 not_run "a run that edits the reviewed tree"
+expect 3 not_run "a run that edits the reviewed tree" "the reviewed working tree changed while the probe ran"
 rm -f drift.txt
+
+echo ""
+echo "--- edits git does not report ---"
+printf 'f -gt 0 # edited\n' > flag.txt
+for bit in assume-unchanged skip-worktree; do
+  g update-index "--$bit" flag.txt
+  probe --file flag.txt --line 1 --from '-gt' --to '-lt' --test true
+  expect 3 not_run "--file marked $bit (the copy would hold HEAD's content)" "flag.txt is marked assume-unchanged or skip-worktree"
+  g update-index "--no-$bit" flag.txt
+done
+g checkout -q -- flag.txt
 
 echo ""
 echo "--- --timeout ---"
 start_probe --file src/calc.sh --line 1 --from '-gt 0' --to '-ge 0' --timeout 1 --test "sleep 51.$M"
 finish_probe 100
-expect 3 not_run "run past --timeout"
+expect 3 not_run "run past --timeout" "the unmutated run did not finish within 1s"
 markers_stopped "timeout" "sleep 51.$M"
 no_leftover "timeout"
 start_probe --file src/calc.sh --line 1 --from '-gt 0' --to '-ge 0' --timeout 1 --test "trap '' TERM; sleep 52.$M"
 finish_probe 150
-expect 3 not_run "run past --timeout that ignores SIGTERM"
+expect 3 not_run "run past --timeout that ignores SIGTERM" "the unmutated run did not finish within 1s"
 markers_stopped "timeout, TERM ignored" "sleep 52.$M"
 no_leftover "timeout, TERM ignored"
+# Only the mutated copy holds '-ge 0', so only the mutated run sleeps.
 start_probe --file src/calc.sh --line 1 --from '-gt 0' --to '-ge 0' --timeout 2 \
   --test "if grep -q -- '-ge 0' src/calc.sh; then sleep 57.$M; fi; sh tests/run.sh"
+if wait_until 100 running "sleep 57.$M"; then pass "mutant timeout: the mutated run's sleep started"
+else bad "mutant timeout: the mutated run's sleep never started"; fi
 finish_probe 150
-expect 3 not_run "mutated run past --timeout (neither killed nor survived)"
+expect 3 not_run "mutated run past --timeout (neither killed nor survived)" "the mutated run did not finish within 2s"
 markers_stopped "mutant timeout" "sleep 57.$M"
+# The limit is at least --timeout seconds: a 0.5 s run always fits in --timeout 1.
+n=0
+for _ in 1 2 3 4; do
+  probe --file src/calc.sh --line 2 --from '-ge' --to '-gt' --timeout 1 --test 'sleep 0.5'
+  if [ "$RC" -eq 0 ] && [ "$(verdict)" = survived ]; then n=$((n + 1)); fi
+done
+if [ "$n" -eq 4 ]; then pass "--timeout 1 lets a 0.5 s run finish 4/4"; else bad "--timeout 1 let a 0.5 s run finish only $n/4 times"; fi
+
+echo ""
+echo "--- processes a run leaves in the background ---"
+probe --file src/calc.sh --line 1 --from '-gt 0' --to '-ge 0' --test "(sleep 58.$M; echo late > late.txt) & exit 0"
+expect 0 survived "test command that leaves a background process"
+markers_stopped "left in the background" "sleep 58.$M"
+no_leftover "left in the background"
+if command -v python3 >/dev/null 2>&1 && command -v curl >/dev/null 2>&1; then
+  mkdir -p srv
+  printf 'def ok(x):\n    return x > 0\n' > srv/lib.py
+  cat > srv/app.py <<'EOF'
+import http.server, sys
+import lib
+class H(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(str(lib.ok(1)).encode())
+    def log_message(self, *args):
+        pass
+http.server.HTTPServer(("127.0.0.1", int(sys.argv[1])), H).serve_forever()
+EOF
+  g add srv && g commit -q -m srv
+  PORT="$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')"
+  SRV_MATCH="srv/app.py $PORT"
+  # The test starts a server on a fixed port and leaves it running. A server the
+  # unmutated run left behind would keep the port, the mutated run's server
+  # could not bind, and curl would read the unmutated answer: a false survived.
+  srv_test="python3 srv/app.py $PORT >/dev/null 2>&1 &
+i=0; until r=\"\$(curl -s http://127.0.0.1:$PORT/)\"; do i=\$((i + 1)); [ \"\$i\" -lt 100 ] || break; sleep 0.1; done
+[ \"\$r\" = True ]"
+  probe --file srv/lib.py --line 2 --from 'x > 0' --to 'x < 0' --test "$srv_test"
+  expect 0 killed "a server the unmutated run left behind does not answer the mutated run"
+  if curl -s --max-time 2 "http://127.0.0.1:$PORT/" >/dev/null 2>&1; then bad "a server still answers on port $PORT after the probe"
+  else pass "no server left on port $PORT after the probe"; fi
+else
+  echo "  SKIP  python3 or curl not found: background server case"
+fi
 
 echo ""
 echo "--- a signal mid-run stops the whole test run and cleans up ---"
 signal_case TERM "SIGTERM, background grandchild" "sleep 53.$M & sleep 54.$M; wait" "sleep 53.$M" "sleep 54.$M"
 signal_case HUP "SIGHUP" "sleep 55.$M" "sleep 55.$M"
 signal_case INT "SIGINT" "sleep 56.$M" "sleep 56.$M"
+
+echo ""
+echo "--- submodule contents are not copied ---"
+mkdir -p "$SANDBOX/subsrc" "$SANDBOX/sup"
+cd "$SANDBOX/subsrc" && g init -q . && printf 's -gt 0\n' > s.txt && g add s.txt && g commit -q -m s
+cd "$SANDBOX/sup" && g init -q . && printf 'm\n' > m.txt && g add m.txt && g commit -q -m m
+g -c protocol.file.allow=always submodule add -q "$SANDBOX/subsrc" sub >/dev/null 2>&1
+g update-index --add --cacheinfo "160000,$(g rev-parse HEAD),glink"
+g commit -q -m sub
+mkdir -p glink && printf 'x -gt 0\n' > glink/x.txt
+probe --file sub/s.txt --line 1 --from '-gt' --to '-lt' --test true
+expect 3 not_run "--file inside a checked-out submodule" "sub/s.txt is inside the submodule"
+probe --file glink/x.txt --line 1 --from '-gt' --to '-lt' --test true
+expect 3 not_run "--file under a gitlink with no .git of its own" "glink/x.txt is inside the submodule glink"
+cd "$PROJ"
 
 echo ""
 echo "--- usage errors exit 2 ---"
@@ -269,6 +378,8 @@ u "missing --test" --file src/calc.sh --line 1 --from a --to b
 u "missing --to" --file src/calc.sh --line 1 --from a --test true
 u "non-numeric --line" --file src/calc.sh --line x --from a --to b --test true
 u "--line 0" --file src/calc.sh --line 0 --from a --to b --test true
+u "--line with 10 digits" --file src/calc.sh --line 1000000000 --from '-gt 0' --to '-ge 0' --test "$TEST"
+u "--line that wraps to 1 in shell arithmetic" --file src/calc.sh --line 18446744073709551617 --from '-gt 0' --to '-ge 0' --test "$TEST"
 u "empty --from" --file src/calc.sh --line 1 --from '' --to b --test true
 u "identical --from and --to" --file src/calc.sh --line 1 --from a --to a --test true
 u "unknown flag" --file src/calc.sh --bogus
@@ -277,6 +388,7 @@ u "missing file" --file src/none.sh --line 1 --from a --to b --test true
 u "file outside the repo" --file "$SANDBOX/nogit/calc.sh" --line 1 --from a --to b --test true
 u "--timeout 0" --file src/calc.sh --line 1 --from a --to b --test true --timeout 0
 u "non-numeric --timeout" --file src/calc.sh --line 1 --from a --to b --test true --timeout 5s
+u "--timeout with 10 digits" --file src/calc.sh --line 1 --from '-gt 0' --to '-ge 0' --test "$TEST" --timeout 1000000000
 
 echo ""
 if [ "$fails" -eq 0 ]; then echo "test-mutation-probe: all checks passed"; else echo "test-mutation-probe: $fails failure(s)" >&2; exit 1; fi
