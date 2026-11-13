@@ -303,39 +303,73 @@ EDIT_SEP=$'\034mtk-edit-boundary\034'
 
 # Every string value of key $2 in payload $1, in document order, one EDIT_SEP
 # line between values; exit 1 when the key is absent. Decodes each value exactly
-# like mtk_extract_json_string (hook-io.sh), which stops at the first one.
+# like mtk_extract_json_string (hook-io.sh), which stops at the first one; the
+# per-line piece split and emit_value are copies of the ones there (see that
+# function for why), so keep the two in step. The piece index only moves
+# forward from one value to the next, so decoding stays linear in the payload
+# size.
 extract_json_strings() {
   printf '%s' "$1" | awk -v key="$2" -v sep="$EDIT_SEP" '
-    { buf = (NR == 1 ? $0 : buf "\n" $0) }
+    # Prints the string value whose body starts at buffer position start, and
+    # returns the position of its closing quote, or len + 1 when the buffer
+    # ends first. Reads the pieces in part[1..n], where nl[i] is set when piece
+    # i follows a line break rather than a backslash. On entry part[k] holds
+    # start and begins at buffer position b; on return k and b name the piece
+    # that holds the closing quote.
+    function emit_value(   p, pb, q, c, skip) {
+      p = substr(part[k], start - b + 1); pb = start; skip = 0
+      for (;;) {
+        q = index(p, "\"")
+        if (q) { printf "%s", substr(p, 1, q - 1); return pb + q - 1 }
+        printf "%s", p
+        if (k >= n) return len + 1
+        # p is the tail of part[k], so pb + length(p) is the separator after it.
+        b = pb + length(p) + 1; k++
+        p = part[k]; pb = b
+        # The separator before this piece was the escaped character of the
+        # previous escape and is already printed.
+        if (skip) { skip = 0; continue }
+        # A line break inside the value is plain text.
+        if (nl[k]) { printf "%s", "\n"; continue }
+        # An empty piece means the escaped character is the separator after
+        # it: a backslash, or a line break that is kept with its backslash.
+        if (p == "") {
+          if (k >= n) return len + 1
+          if (nl[k + 1]) printf "%s%s", "\\", "\n"
+          else printf "%s", "\\"
+          skip = 1; continue
+        }
+        c = substr(p, 1, 1); p = substr(p, 2); pb++
+        if (c == "n") printf "%s", "\n"
+        else if (c == "t") printf "%s", "\t"
+        else if (c == "r") printf "%s", "\r"
+        else if (c == "\"") printf "%s", "\""
+        else if (c == "\\") printf "%s", "\\"
+        else if (c == "/") printf "%s", "/"
+        else if (c == "b") printf "%s", "\b"
+        else if (c == "f") printf "%s", "\f"
+        else printf "%s%s", "\\", c
+      }
+    }
+    # The first line is split straight into part; later lines are appended.
+    NR == 1 { buf = $0; n = split($0, part, "\\"); if (n == 0) { n = 1; part[1] = "" } }
+    NR > 1 {
+      buf = buf "\n" $0
+      nl[n + 1] = 1
+      m = split($0, piece, "\\")
+      if (m == 0) { m = 1; piece[1] = "" }
+      for (j = 1; j <= m; j++) part[++n] = piece[j]
+    }
     END {
       pattern = "\"" key "\"[[:space:]]*:[[:space:]]*\""
-      len = length(buf); pos = 1; n = 0
+      len = length(buf); pos = 1; nv = 0; k = 1; b = 1
       while (pos <= len && match(substr(buf, pos), pattern)) {
-        i = pos + RSTART + RLENGTH - 1
-        out = ""; esc = 0
-        for (; i <= len; i++) {
-          c = substr(buf, i, 1)
-          if (esc) {
-            if (c == "n") out = out "\n"
-            else if (c == "t") out = out "\t"
-            else if (c == "r") out = out "\r"
-            else if (c == "\"") out = out "\""
-            else if (c == "\\") out = out "\\"
-            else if (c == "/") out = out "/"
-            else if (c == "b") out = out "\b"
-            else if (c == "f") out = out "\f"
-            else out = out "\\" c
-            esc = 0
-            continue
-          }
-          if (c == "\\") { esc = 1; continue }
-          if (c == "\"") break
-          out = out c
-        }
-        printf "%s%s", (n++ ? "\n" sep "\n" : ""), out
-        pos = i + 1
+        start = pos + RSTART + RLENGTH - 1
+        while (k < n && start > b + (l = length(part[k]))) { b += l + 1; k++ }
+        if (nv++) printf "%s", "\n" sep "\n"
+        pos = emit_value() + 1
       }
-      if (n == 0) exit 1
+      if (nv == 0) exit 1
       printf "\n"
     }
   '
