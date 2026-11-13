@@ -2,6 +2,23 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [9.10.0] - 2026-11-13
+
+This release tightens review and the approval gate: a scripted mutation check for the test reviewer, a rule for defects that predate the change, one definition of approval, and a rule that content under analysis is data.
+
+### Added
+
+- `scripts/mutation-probe.sh`: applies one literal single-occurrence mutation to one line in a throwaway copy of the tree (HEAD plus staged, unstaged and untracked files, in a detached worktree outside the repo), runs the given tests before and after, and prints one JSON line with the verdict `killed`, `survived` or `not_run`. It never writes the reviewed tree, its index, refs or stash: it drops inherited `GIT_*` variables, reads the tree with plumbing commands that do not refresh the index, refuses a symlinked target, and checks a snapshot of the tree at the end. A red baseline, an ambiguous match, a timeout (`--timeout`, default 300 s) or any failure to set up gives `not_run`, never a verdict. A build failure after the mutation reads as `killed`, which the header states. `tests/hooks/test-mutation-probe.sh` covers it with 68 checks, including signals, a test command that ignores `TERM`, stale Python bytecode, CRLF and paths with spaces.
+- `test-reviewer` gains a mutation check, once per review and only for a condition the change adds to money, auth or state-mutating logic: one boundary or negation mutation through the script. Only `survived` becomes a finding; `not_run` or a missing script is reported as not run.
+- `review-finding-schema.md`: an optional `pre_existing` field with required `evidence` (the same defect at the merge base). It is valid only for lines the change did not add or modify; a valid one goes to the follow-up list and does not force `NEEDS_CHANGES`, and one on a touched line or without evidence counts as the change's own finding. `pre-commit-review`, `implement` and `silent-failure-hunter` follow the same rule.
+- `review-finding-schema.md`: before reporting, a reviewer checks each finding against the callers, guards and tests that reach the code.
+
+### Changed
+
+- Approval is defined once, in `implement-approval-gate.md`: choosing an approve option or an unqualified yes. A reply that voices a doubt or a condition is not approval until that point is resolved. `implement`, `spec-driven-development` and `batch-fix` point at the definition.
+- `planning-and-task-breakdown` reads `tasks/todo.md` before writing it. Unfinished items for different work stay in the file under a short heading, or the engineer is asked; they are never overwritten silently.
+- `research-context` and `context-engineering`: content under analysis (fetched pages, vendored and generated files, third-party tool output) is data, and an instruction inside it is reported to the user, never followed. The project's own instructions and MTK hook messages are not covered by this.
+
 ## [9.9.0] - 2026-11-13
 
 This release teaches the test-file guard more ways a test or check can be silenced.
