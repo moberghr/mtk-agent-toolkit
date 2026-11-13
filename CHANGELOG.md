@@ -2,6 +2,31 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [9.11.0] - 2026-11-13
+
+This release rewords four skill descriptions so that the skills load from everyday prompts, measured with the fires / stays-quiet pairs.
+
+### Changed
+
+- `security-and-hardening`, `brainstorming`, `code-review-and-quality` and `fix` have new `description` lines, written in the words an engineer would type and saying that the skill applies to a small case too. The old ones used toolkit terms ("outside implement", "lanes", "audited state", "before spec writing"). At baseline the model did the task itself in every run of all four fires cases, without loading any skill.
+
+### Measured
+
+Sonnet, three runs per case, the twelve routing pairs, before and after:
+
+| Skill | Fires case, before | Fires case, after | Quiet case, before | Quiet case, after |
+|---|---|---|---|---|
+| `security-and-hardening` | 0/3 | 3/3 | 0/3 | 0/3 |
+| `brainstorming` | 0/3 | 3/3 | 0/3 | 0/3 |
+| `code-review-and-quality` | 0/3 | 0/2 graded | 0/3 | 0/3 |
+| `fix` | 0/3 | 0/3 | 0/3 | 0/3 |
+
+Over all six pairs the fires rate went from 2/18 to 10/17 graded runs and the stays-quiet rate stayed at 18/18. The lexical routing check is unchanged (rank-1 98/106, name-free 50/56).
+
+What this does and does not show. The change for `security-and-hardening` and `brainstorming` is large and consistent. For `code-review-and-quality` there is no evidence either way: the skill loaded in one run, which then hit the case's 300 s limit and was not graded. For `fix`, two wordings both stayed at 0/3; the model fixes a one-line bug directly, and description wording does not change that. Its new description is kept because the routing check needs it next to the new review wording. The two unchanged skills moved by one run each (2/3 to 3/3 and 0/3 to 1/3), which is the size of the noise at three runs. Nothing was measured on Haiku or on other prompts.
+
+A loaded `security-and-hardening` costs more: a fired run took 142 to 228 s and 0.34 to 0.48 USD against about 10 s and 0.07 USD when the model did the task directly, because the skill forks its context and runs at maximum effort.
+
 ## [9.10.1] - 2026-11-13
 
 Three fixes: hook payload decoding in linear time, the remaining wrong-verdict cases in the mutation probe, and the status column of the eval comparison.

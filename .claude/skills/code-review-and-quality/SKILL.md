@@ -1,6 +1,6 @@
 ---
 name: code-review-and-quality
-description: Review a PR (pull request), branch or diff outside implement — runs the compliance, silent-failure, test and architecture lanes with full lane accounting.
+description: Review a PR (pull request), branch, diff or pasted patch for bugs and missing tests; use whenever asked to look over or check code before merging or applying it, even a short patch.
 type: skill
 effort: max
 context: fork
