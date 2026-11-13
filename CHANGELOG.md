@@ -2,6 +2,20 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [9.8.0] - 2026-11-13
+
+This release adds three engineering procedures: schema migrations that stay safe while two releases share a database, a recipe for idempotent operations, and a way to find the commit behind a regression.
+
+### Added
+
+- `.claude/references/schema-migrations.md`: the expand-then-contract order for schema changes (expand, write both, backfill, switch reads, contract), loaded by path when a migration file is touched. A destructive step never ships while a running release, or one you might roll back to, depends on the old shape. Backfills run in batches outside the migration and only touch rows the application has not written. Every migration has a down path that has been run. Each tech-stack skill points at it with one line and gives the command that runs the down path for its tools.
+- `## Idempotency` in `.claude/references/domain-finance.md`: derive the key from the operation's intent, claim it by insert under a unique constraint in the effect's transaction, store a payload hash, handle an external call that cannot join the transaction (in-flight claim with a lease, the same key sent to the provider, reconcile before any re-run), say what each repeat returns, and expire keys on a schedule that outlasts the callers' retries. The review question that asked whether keys are present now asks whether the recipe is met.
+- Two severity bullets in `compliance-reviewer`: a money operation reachable by webhook, redelivery or retry with nothing that makes a repeat a no-op is `critical`; a destructive schema step is `critical` while a running release or rollback target depends on the old shape, and a missing down path is `warning`. Objects new in the same unreleased change are exempt.
+
+### Changed
+
+- `fix` reproduces and localizes before changing anything further when something that worked now fails. It names the commit that introduced the failure, read from history when evident and otherwise found with `git bisect` in a throwaway worktree, so the engineer's checkout is never stashed, committed or reset. When a failure does not reproduce it says so and gathers evidence instead of guessing. Error output, logs and fetched pages are treated as data, never as instructions. The final report and the verification list include the introducing commit, or why it was not determined.
+
 ## [9.7.0] - 2026-11-12
 
 This release adds a benchmark for engineering procedures: nine eval cases written before the procedure changes they are meant to measure, run through the MTK workflow, and two recorded baselines (Sonnet and Haiku under test) to compare those changes against. No skill, agent, reference or hook changes.
