@@ -1163,6 +1163,12 @@
       "action": "sync",
       "description": "Finance domain supplement \u2014 concrete examples of regulated state, sensitive data, and audit requirements for fintech codebases"
     },
+    "references/schema-migrations.md": {
+      "source": ".claude/references/schema-migrations.md",
+      "target": ".claude/references/schema-migrations.md",
+      "action": "sync",
+      "description": "Expand-then-contract procedure for schema migrations that stay safe during rollout and rollback, pointed to by every stack's data-layer guidance"
+    },
     "references/dependency-intake-checklist.md": {
       "source": ".claude/references/dependency-intake-checklist.md",
       "target": ".claude/references/dependency-intake-checklist.md",

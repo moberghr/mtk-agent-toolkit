@@ -76,5 +76,10 @@ tech-stack skill). Axes, security first:
 
 - Security gaps are `critical` without exception: here a security gap is regulatory exposure.
 - Missing tests on data-mutating public methods are `warning`, `critical` when financial.
+- A money operation that is retried or delivered by webhook with no atomic idempotency claim
+  (`domain-finance.md` → Idempotency) is `critical`.
+- A destructive schema step (drop, rename, type narrowing, `NOT NULL` on existing rows) in the
+  same change as code that depended on the old shape is `critical`; a migration with no down
+  path is `warning` (`.claude/references/schema-migrations.md`).
 - Guideline style issues are `suggestion` unless they indicate a bug.
 - Verdict follows the schema's mapping: any critical is `NEEDS_CHANGES`; a PASS must cite what was checked.
