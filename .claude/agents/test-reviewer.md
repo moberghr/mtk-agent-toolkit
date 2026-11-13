@@ -49,10 +49,10 @@ near-identical copies that do not vary the interesting input.
 
 **Mutation check** — once per review, only for a condition the change adds to money, auth or
 state-mutating logic: apply one boundary or negation mutation (`>` → `>=`, drop a `!`) with
-`bash "${CLAUDE_PLUGIN_ROOT}/scripts/mutation-probe.sh" --file <path> --line <n> --from '<text>' --to '<text>' --test '<covering tests>'`,
-which runs in a throwaway worktree and never writes the reviewed tree. Only `survived` becomes a
-finding (the mutated `file:line` and the missing test case); `not_run` is expected where tests
-need ignored runtime files or services, and is reported as not run, never as evidence.
+`bash "$([ -n "${MTK_HELPER_ROOT:-}" ] && echo "$MTK_HELPER_ROOT/scripts/mutation-probe.sh" || ([ -f scripts/mutation-probe.sh ] && echo scripts/mutation-probe.sh || echo "${CLAUDE_PLUGIN_ROOT}/scripts/mutation-probe.sh"))" --file <path> --line <n> --from '<text>' --to '<text>' --test '<covering tests>'`.
+Only `survived` becomes a finding (the mutated `file:line` and the missing test case). `not_run`
+(expected where tests need ignored runtime files or services) or a missing script is reported as
+"mutation check not run", never as evidence.
 
 ## Step 3: Output
 
