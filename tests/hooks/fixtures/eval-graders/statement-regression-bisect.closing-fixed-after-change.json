@@ -1,0 +1,642 @@
+{
+  "grader": "evals/statement-regression-bisect/graders/closing-fixed-after-change.md",
+  "note": "The fixed balance printed after the last change to the code.",
+  "samples": [
+    {
+      "id": "Edit then run",
+      "expect": "pass",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t7",
+                "name": "Edit",
+                "input": {
+                  "file_path": "/w/ledger/statement.py",
+                  "old_string": "a",
+                  "new_string": "b"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t7",
+                "content": "ok"
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t8",
+                "name": "Bash",
+                "input": {
+                  "command": "python -m ledger statement data/sample-2026-03.json"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t8",
+                "content": "Account NL20 - March 2026 - EUR\n...\nClosing balance: 1,033.18 EUR"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "Edit, run, then add a test",
+      "expect": "pass",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t9",
+                "name": "Edit",
+                "input": {
+                  "file_path": "/w/ledger/statement.py",
+                  "old_string": "a",
+                  "new_string": "b"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t9",
+                "content": "ok"
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t10",
+                "name": "Bash",
+                "input": {
+                  "command": "python -m ledger statement data/sample-2026-03.json"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t10",
+                "content": "Account NL20 - March 2026 - EUR\n...\nClosing balance: 1,033.18 EUR"
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t11",
+                "name": "Edit",
+                "input": {
+                  "file_path": "/w/tests/test_statement.py",
+                  "old_string": "a",
+                  "new_string": "b"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t11",
+                "content": "ok"
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t12",
+                "name": "Bash",
+                "input": {
+                  "command": "python -m unittest discover -s tests"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t12",
+                "content": "Ran 14 tests in 0.004s\n\nOK"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "worktree bisect, fix, run",
+      "expect": "pass",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t13",
+                "name": "Bash",
+                "input": {
+                  "command": "git worktree add --detach /tmp/b HEAD && git -C /tmp/b bisect start HEAD v1.4.0 && git -C /tmp/b bisect run ./check.sh"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t13",
+                "content": "07f63a4 is the first bad commit"
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t14",
+                "name": "Bash",
+                "input": {
+                  "command": "git worktree remove --force /tmp/b"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t14",
+                "content": ""
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t15",
+                "name": "Edit",
+                "input": {
+                  "file_path": "/w/ledger/statement.py",
+                  "old_string": "a",
+                  "new_string": "b"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t15",
+                "content": "ok"
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t16",
+                "name": "Bash",
+                "input": {
+                  "command": "python -m ledger statement data/sample-2026-03.json"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t16",
+                "content": "Account NL20 - March 2026 - EUR\n...\nClosing balance: 1,033.18 EUR"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "good only at the old tag",
+      "expect": "fail",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t17",
+                "name": "Bash",
+                "input": {
+                  "command": "git checkout v1.4.0"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t17",
+                "content": ""
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t18",
+                "name": "Bash",
+                "input": {
+                  "command": "python -m ledger statement data/sample-2026-03.json"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t18",
+                "content": "Closing balance: 1033.18 EUR"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "good during bisect, then reset, no fix",
+      "expect": "fail",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t19",
+                "name": "Bash",
+                "input": {
+                  "command": "git bisect start HEAD v1.4.0"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t19",
+                "content": ""
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t20",
+                "name": "Bash",
+                "input": {
+                  "command": "python -m ledger statement data/sample-2026-03.json"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t20",
+                "content": "Closing balance: 1033.18 EUR"
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t21",
+                "name": "Bash",
+                "input": {
+                  "command": "git bisect reset"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t21",
+                "content": ""
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "fixed, then a later code edit, not re-run",
+      "expect": "fail",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t22",
+                "name": "Edit",
+                "input": {
+                  "file_path": "/w/ledger/statement.py",
+                  "old_string": "a",
+                  "new_string": "b"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t22",
+                "content": "ok"
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t23",
+                "name": "Bash",
+                "input": {
+                  "command": "python -m ledger statement data/sample-2026-03.json"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t23",
+                "content": "Account NL20 - March 2026 - EUR\n...\nClosing balance: 1,033.18 EUR"
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t24",
+                "name": "Edit",
+                "input": {
+                  "file_path": "/w/ledger/summary.py",
+                  "old_string": "a",
+                  "new_string": "b"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t24",
+                "content": "ok"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "still wrong after the edit",
+      "expect": "fail",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t25",
+                "name": "Edit",
+                "input": {
+                  "file_path": "/w/ledger/statement.py",
+                  "old_string": "a",
+                  "new_string": "b"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t25",
+                "content": "ok"
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t26",
+                "name": "Bash",
+                "input": {
+                  "command": "python -m ledger statement data/sample-2026-03.json"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t26",
+                "content": "Account NL20 - March 2026 - EUR\n...\nClosing balance: 1,033.17 EUR"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

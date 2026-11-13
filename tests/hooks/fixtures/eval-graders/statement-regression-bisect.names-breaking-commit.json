@@ -1,0 +1,31 @@
+{
+  "grader": "evals/statement-regression-bisect/graders/names-breaking-commit.md",
+  "note": "The commit that broke the closing balance, by id or subject.",
+  "samples": [
+    {
+      "id": "short id",
+      "expect": "pass",
+      "text": "Bisect points at 07f63a4: closing_balance now sums rounded subtotals."
+    },
+    {
+      "id": "full id prefix",
+      "expect": "pass",
+      "text": "First bad commit: 07f63a4c (Show subtotals per category)."
+    },
+    {
+      "id": "subject only",
+      "expect": "pass",
+      "text": "It broke in \"Show subtotals per category in the statement\"."
+    },
+    {
+      "id": "a decoy rounding commit",
+      "expect": "fail",
+      "text": "f334eac (banker's rounding for CSV amounts) broke it."
+    },
+    {
+      "id": "the formatting commit",
+      "expect": "fail",
+      "text": "d39dc51 \"Move amount formatting into money.fmt\" changed the output."
+    }
+  ]
+}

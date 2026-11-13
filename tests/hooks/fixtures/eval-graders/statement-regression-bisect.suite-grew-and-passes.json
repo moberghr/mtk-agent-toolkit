@@ -1,0 +1,530 @@
+{
+  "grader": "evals/statement-regression-bisect/graders/suite-grew-and-passes.md",
+  "note": "The whole suite, with at least one new test, passed after the last change.",
+  "samples": [
+    {
+      "id": "test added, suite green",
+      "expect": "pass",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t27",
+                "name": "Edit",
+                "input": {
+                  "file_path": "/w/ledger/statement.py",
+                  "old_string": "a",
+                  "new_string": "b"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t27",
+                "content": "ok"
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t28",
+                "name": "Edit",
+                "input": {
+                  "file_path": "/w/tests/test_statement.py",
+                  "old_string": "a",
+                  "new_string": "b"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t28",
+                "content": "ok"
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t29",
+                "name": "Bash",
+                "input": {
+                  "command": "python -m unittest discover -s tests"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t29",
+                "content": "......\nRan 14 tests in 0.004s\n\nOK"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "pytest form",
+      "expect": "pass",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t30",
+                "name": "Edit",
+                "input": {
+                  "file_path": "/w/tests/test_summary.py",
+                  "old_string": "a",
+                  "new_string": "b"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t30",
+                "content": "ok"
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t31",
+                "name": "Bash",
+                "input": {
+                  "command": "python -m pytest -q"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t31",
+                "content": "14 passed in 0.05s"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "no new test",
+      "expect": "fail",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t32",
+                "name": "Edit",
+                "input": {
+                  "file_path": "/w/ledger/statement.py",
+                  "old_string": "a",
+                  "new_string": "b"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t32",
+                "content": "ok"
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t33",
+                "name": "Bash",
+                "input": {
+                  "command": "python -m unittest discover -s tests"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t33",
+                "content": "Ran 13 tests in 0.004s\n\nOK"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "new test fails",
+      "expect": "fail",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t34",
+                "name": "Edit",
+                "input": {
+                  "file_path": "/w/tests/test_statement.py",
+                  "old_string": "a",
+                  "new_string": "b"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t34",
+                "content": "ok"
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t35",
+                "name": "Bash",
+                "input": {
+                  "command": "python -m pytest -q"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t35",
+                "content": "1 failed, 14 passed in 0.06s"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "green, then edited again",
+      "expect": "fail",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t36",
+                "name": "Edit",
+                "input": {
+                  "file_path": "/w/tests/test_statement.py",
+                  "old_string": "a",
+                  "new_string": "b"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t36",
+                "content": "ok"
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t37",
+                "name": "Bash",
+                "input": {
+                  "command": "python -m unittest discover -s tests"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t37",
+                "content": "Ran 14 tests in 0.004s\n\nOK"
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t38",
+                "name": "Edit",
+                "input": {
+                  "file_path": "/w/ledger/statement.py",
+                  "old_string": "a",
+                  "new_string": "b"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t38",
+                "content": "ok"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "one file only",
+      "expect": "fail",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t39",
+                "name": "Edit",
+                "input": {
+                  "file_path": "/w/tests/test_statement.py",
+                  "old_string": "a",
+                  "new_string": "b"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t39",
+                "content": "ok"
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t40",
+                "name": "Bash",
+                "input": {
+                  "command": "python -m unittest tests.test_statement"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t40",
+                "content": "Ran 6 tests in 0.001s\n\nOK"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "skipped test",
+      "expect": "fail",
+      "events": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t41",
+                "name": "Edit",
+                "input": {
+                  "file_path": "/w/tests/test_statement.py",
+                  "old_string": "a",
+                  "new_string": "b"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t41",
+                "content": "ok"
+              }
+            ]
+          }
+        },
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "t42",
+                "name": "Bash",
+                "input": {
+                  "command": "python -m unittest discover -s tests"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "user",
+          "message": {
+            "role": "user",
+            "content": [
+              {
+                "type": "tool_result",
+                "tool_use_id": "t42",
+                "content": "Ran 14 tests in 0.004s\n\nOK (skipped=1)"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

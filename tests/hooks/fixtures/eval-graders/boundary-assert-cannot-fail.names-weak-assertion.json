@@ -1,0 +1,51 @@
+{
+  "grader": "evals/boundary-assert-cannot-fail/graders/names-weak-assertion.md",
+  "note": "The boundary tests only assert a valid schedule amount, so they cannot fail.",
+  "samples": [
+    {
+      "id": "helper accepts both",
+      "expect": "pass",
+      "text": "`test_fourth_withdrawal_is_charged` only calls `assert_valid_fee`, which accepts both 0.00 and 2.50, so it cannot fail."
+    },
+    {
+      "id": "mutation survived",
+      "expect": "pass",
+      "text": "Mutation check: changing `>=` to `>` at app/fees.py:31 survived. The third and fourth withdrawal tests still pass because they never assert which fee applies."
+    },
+    {
+      "id": "does not check which",
+      "expect": "pass",
+      "text": "The 4th withdrawal test doesn't check which fee was charged, only that it is in the schedule."
+    },
+    {
+      "id": "reverse order",
+      "expect": "pass",
+      "text": "These assertions are vacuous: assert_valid_fee is satisfied by NO_FEE as well."
+    },
+    {
+      "id": "believes the boundary is covered",
+      "expect": "fail",
+      "text": "Tests cover the boundary: the third withdrawal is free and the fourth is charged. LGTM."
+    },
+    {
+      "id": "expected only in the message",
+      "expect": "pass",
+      "text": "assert_valid_fee takes `expected` but only uses it in the failure message, so the third withdrawal test passes with 2.50 too."
+    },
+    {
+      "id": "helper ignores expected",
+      "expect": "pass",
+      "text": "test_fourth_withdrawal_is_charged looks exact, but assert_valid_fee ignores expected."
+    },
+    {
+      "id": "trusts expected",
+      "expect": "fail",
+      "text": "The fourth withdrawal test pins the fee with expected=fees.ATM_FEE, and assert_valid_fee compares the fee to expected. Good coverage."
+    },
+    {
+      "id": "asks for more tests only",
+      "expect": "fail",
+      "text": "Consider adding a test for the fourth withdrawal on a premium account and for month rollover."
+    }
+  ]
+}
