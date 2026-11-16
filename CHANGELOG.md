@@ -2,6 +2,13 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Fixed
+
+- `implement` no longer records a skipped closing phase as done. The closing call's `memory_sync_gate pass` reason is what Phase 7 actually did, a Phase 6 or Phase 7 that did not run is recorded as a `phase_skipped` event with the reason, and a skipped Phase 7 leaves the gate `pending`. The final report names each skipped phase.
+- An implementer subagent may not relax an existing test to reach green (raise a threshold or cap, loosen or delete an assertion, skip a test), convention and guard tests included; it returns `blocked` instead. The orchestrator's drift micro-check treats a relaxed existing test as not auto-fixable, so it goes back to the engineer at the approval gate.
+
 ## [9.10.1] - 2026-11-13
 
 Three fixes: hook payload decoding in linear time, the remaining wrong-verdict cases in the mutation probe, and the status column of the eval comparison.
