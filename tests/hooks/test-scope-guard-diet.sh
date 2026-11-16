@@ -368,6 +368,14 @@ norm_is "glob characters are not expanded" "$WORK/*.cs" "$WORK/sub/../*.cs"
 norm_is "bracket and ? globs are not expanded" "/r/[a]/?.cs" "/r/[a]/x/../?.cs"
 norm_is "IFS characters are not separators" "/r/a:b,c d" "/r/a:b,c d"
 norm_is "a dot-dot-dot segment is a name" "/r/.../a" "/r/.../a"
+# Windows drive-letter paths (Claude Code on Windows) become the Git Bash form.
+norm_is "Windows backslash path to /<drive>" "/c/repo/.editorconfig" 'C:\repo\.editorconfig'
+norm_is "Windows forward-slash path (git toplevel)" "/c/repo" "C:/repo"
+norm_is "lowercase drive letter kept lowercase" "/d/x/a.cs" 'd:\x\a.cs'
+norm_is "Windows path .. segments resolved" "/c/repo/.mtk/config-guard-allow" 'C:\repo\src\..\.mtk\config-guard-allow'
+norm_is "Windows base anchors a relative path" "/c/repo/src/a.cs" "src/a.cs" 'C:\repo'
+norm_is "a backslash in a POSIX path is segment text" '/r/a\b.cs' '/r/a\b.cs'
+norm_is "a colon later in a relative name is not a drive" "/base/ab:c" "ab:c" "/base"
 got="$(bash -c '. "$1"; mtk_normalize_path_var r "/r/src/a.cs$2"; printf "%s." "$r"' _ "$NORM_LIB" "$LF" 2>&1)" || got="ERR:$got"
 [ "${got%.}" = "/r/src/a.cs${LF}" ] && pass "(k) _var keeps a trailing newline that \$(…) would strip" \
   || fail "(k) _var lost the trailing newline: [$(printf '%q' "${got%.}")]"

@@ -209,6 +209,9 @@ file_work_tree() {
 }
 FILE_ROOT="$(file_work_tree || true)"
 [ -n "$FILE_ROOT" ] && REPO_ROOT="$FILE_ROOT"
+# Same spelling as NORM_PATH: on Windows git prints `C:/repo` while the
+# normalised file path reads `/c/repo/...` (hooks/lib/normalize-path.sh).
+mtk_normalize_path_var REPO_ROOT "$REPO_ROOT"
 
 # Spelling-robust repo-relative path (S1.17): never a bare prefix strip.
 REL_PATH="$(mtk_repo_relative_path "$NORM_PATH" "$REPO_ROOT" 2>/dev/null || printf '%s' "$NORM_PATH")"

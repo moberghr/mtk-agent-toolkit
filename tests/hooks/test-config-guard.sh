@@ -272,6 +272,36 @@ check_msg "teaches no toggle" 0 "disable this guard"
 check_msg "does not name the kill-switch" 0 "MTK_CONFIG_GUARD"
 check_msg "does not print the approval list path" 0 "config-guard-allow"
 
+# ============================ SC10: Windows drive-letter paths =================
+# Claude Code on Windows sends `C:\...\.editorconfig`. The guard used to anchor
+# that at $PWD as a relative path, so the deny named `proj/C:\...`, an approved
+# path never matched the approval list, and the list itself was not protected.
+# Needs real Windows paths, so it runs only where cygpath exists (Git Bash).
+if command -v cygpath >/dev/null 2>&1; then
+  WP="$(cygpath -w "$P")"
+  WIN_PROPS="${WP}\\Directory.Build.props"
+  msg="$("$GUARD" 2>&1 >/dev/null <<<"$(edit_payload "$WIN_PROPS" \
+    '<NoWarn></NoWarn>' '<NoWarn>CS1591</NoWarn>')" || true)"
+  check_msg "(Windows path) names the repo-relative file" 1 "weakens Directory.Build.props ("
+  check_msg "(Windows path) does not echo the drive-letter path" 0 ":\\"
+  expect "deny:W1-SUPPRESS Windows path, no approval" 2 "$(run_guard "$(edit_payload \
+    "$WIN_PROPS" '<NoWarn></NoWarn>' '<NoWarn>CS1591</NoWarn>')")"
+  printf 'Directory.Build.props\n' > "$P/.mtk/config-guard-allow"
+  expect "allow:W1-SUPPRESS Windows path on a fresh approval list allowed" 0 "$(run_guard "$(edit_payload \
+    "$WIN_PROPS" '<NoWarn></NoWarn>' '<NoWarn>CS1591</NoWarn>')")"
+  rm -f "$P/.mtk/config-guard-allow"
+  expect "approval list denied via Windows backslash path" 2 "$(run_guard "$(write_payload \
+    "${WP}\\.mtk\\config-guard-allow" "Directory.Build.props")")"
+  expect "approval list denied via Windows path with .. segment" 2 "$(run_guard "$(edit_payload \
+    "${WP}\\src\\..\\.mtk\\config-guard-allow" "" "Directory.Build.props")")"
+  # PWD elsewhere: the relative-anchoring bug only showed when cwd != repo root.
+  msg="$(cd "$SANDBOX" && "$GUARD" 2>&1 >/dev/null <<<"$(edit_payload "$WIN_PROPS" \
+    '<NoWarn></NoWarn>' '<NoWarn>CS1591</NoWarn>')" || true)"
+  check_msg "(Windows path, cwd outside repo) names the repo-relative file" 1 "weakens Directory.Build.props ("
+else
+  printf '  SKIP  Windows drive-letter path cases (cygpath not available)\n'
+fi
+
 # ============================ SC2: non-weakening edits pass ====================
 
 expect "allow:W2-DISABLED severity error -> warning is not weakening" 0 "$(run_guard "$(edit_payload \

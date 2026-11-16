@@ -20,11 +20,39 @@ set -euo pipefail
 # never `read` (which stops at the first newline: `/r/.mtk/x<LF>/../../src/b.cs`
 # used to normalise to `/r/.mtk/x`) and never an unquoted expansion (which
 # would split on IFS and glob-expand `*`, `?` and `[`).
+#
+# Windows: Claude Code on Windows sends drive-letter paths (`C:\repo\.editorconfig`)
+# while Git Bash spells the same file `/c/repo/.editorconfig`, and
+# `git rev-parse --show-toplevel` prints `C:/repo`. A drive-letter path is not
+# `/`-prefixed, so it used to be anchored at $PWD as a relative path with its
+# backslashes kept as segment text: the guard named `repo/C:\repo\.editorconfig`,
+# an approved path never matched `.mtk/config-guard-allow`, and the approval
+# list itself was not recognised as such. A path that opens with `<letter>:\`
+# or `<letter>:/` is rewritten to the Git Bash form first: backslashes become
+# `/` and the drive becomes `/<lowercase letter>`. Nothing else is touched, so
+# on Linux and macOS a real path is unaffected (a drive-letter path is never an
+# absolute path there).
+#
+#   mtk_windows_path_to_posix_var <var> <path>
+
+mtk_windows_path_to_posix_var() {
+  local _wp_var="${1:-}" _wp_p="${2:-}" _wp_drive
+  case "$_wp_p" in
+    [A-Za-z]:[\\/]*|[A-Za-z]:)
+      _wp_drive="$(printf '%s' "${_wp_p:0:1}" | tr '[:upper:]' '[:lower:]')"
+      _wp_p="/${_wp_drive}${_wp_p:2}"
+      _wp_p="${_wp_p//\\//}"
+      ;;
+  esac
+  printf -v "$_wp_var" '%s' "$_wp_p"
+}
 
 mtk_normalize_path_var() {
   local _np_var="${1:-}" _np_p="${2:-}" _np_base="${3:-$PWD}" _np_rest _np_seg _np_out="" _np_n
   local -a _np_stack
   _np_stack=()
+  mtk_windows_path_to_posix_var _np_p "$_np_p"
+  mtk_windows_path_to_posix_var _np_base "$_np_base"
   case "$_np_p" in /*) ;; *) _np_p="$_np_base/$_np_p" ;; esac
   # A trailing `/` makes every segment, the last included, slash-terminated.
   _np_rest="$_np_p/"
