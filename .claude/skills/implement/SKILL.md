@@ -294,11 +294,19 @@ reconstructed.**
 procedure and the receipt's full field list.
 ## Final Report
 
-Close the workflow artifact in one call:
+Close the workflow artifact in one call. The reason is what Phase 7 actually did
+(`2 lessons appended`, `ran, nothing to capture`) — never a fixed phrase:
 ```bash
-"$WFA" batch "$MTK_WF_UUID" gate memory_sync_gate pass --reason "lessons captured" -- \
+"$WFA" batch "$MTK_WF_UUID" gate memory_sync_gate pass --reason "<what Phase 7 did>" -- \
   set status=completed -- event workflow_completed --data '{"summary":"<short>"}'
 ```
+
+**A phase that did not run is recorded as skipped, not passed.** If Phase 6 (cleanup) or
+Phase 7 (compound) was not run — out of budget, engineer said to stop, anything — add one
+`event phase_skipped --data '{"phase":"phase-6","reason":"<why>"}'` op per skipped phase to the
+same call. If Phase 7 was skipped, drop the `gate memory_sync_gate pass` op as well: the gate
+stays `pending`, which is what "Phase 7 not reached" means. Name each skipped phase in the
+report below.
 
 Report:
 
@@ -313,8 +321,9 @@ Report:
 - pre-existing failures carried from the baseline, named — a test red before this run began is
   reported as inherited, never as passing and never as this run's regression
 - collateral churn: the `hooks/collateral-guard.sh` verdict, and what was reverted
-- cleanup summary
-- **what compounded** — lessons captured, rules promoted, pre-commit-review items added
+- cleanup summary — or `Phase 6 not run: <why>`
+- **what compounded** — lessons captured, rules promoted, pre-commit-review items added — or
+  `Phase 7 not run: <why>`
 - whether `CLAUDE.md` changed
 
 ## Critical Rules

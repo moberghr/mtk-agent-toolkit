@@ -152,8 +152,9 @@ Take the manual Agent-loop path below unless the engineer opted in to the dynami
       - `missing_files = batch.files - actual_files` (excluding files explicitly deferred by the spec)
       - `public_contract_touched`: if any `actual_files` matches a path in `change_manifest` whose entry has a `public_contracts` linkage, confirm the contract change matches the planned one.
       - **Clean** → proceed to step 6.
-      - **Drifted, auto-fixable** (extra file is in-package, no new public contract, security_impact unchanged) → orchestrator amends the sidecar `change_manifest` with the new file and a `deviations` note. Continue.
-      - **Drifted, not auto-fixable** (cross-package leak, new public contract, security_impact escalated, or `out_of_scope` violated) → re-open Phase 2.5 approval gate. Halt the loop until the engineer answers.
+      - `test_relaxed`: the result carries a `test-relaxed` deviation, or the diff of an existing test file raises a threshold or cap, loosens or deletes an assertion, or skips a test — whether or not the file is in `batch.files`.
+      - **Drifted, auto-fixable** (extra file is in-package, no new public contract, security_impact unchanged, no `test_relaxed`) → orchestrator amends the sidecar `change_manifest` with the new file and a `deviations` note. Continue.
+      - **Drifted, not auto-fixable** (cross-package leak, new public contract, security_impact escalated, `out_of_scope` violated, or `test_relaxed` — a relaxed guard is the engineer's call even when the test's own comment prescribes it) → re-open Phase 2.5 approval gate. Halt the loop until the engineer answers.
    6. **Persist the batch result.**
       - Append `{batch_id, actual_files, build, tests, behavioral_diff, deviations, implementer_model}` to `sidecar.implement.completed_batches[]` — `implementer_model` is the tier that produced the *accepted* result (after any fallback), so a later reader can see which batches ran on which tier without replaying the event log.
       - **Record reported traps.** For each entry in the result's `traps[]`, add `trap add --title "<title>" --body "<body>" --phase "<batch_id>" --severity <warn|high>` as one more op in the same `"$WFA" batch` call that persists the result — this is the carry-forward the next batch's bundle (sub-step 1) reads back.
