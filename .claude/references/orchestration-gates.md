@@ -63,7 +63,7 @@ On `ESCALATE`, stop the loop, record `failure_stop_gate fail`, and hand the trig
 
 **Fail:** Lessons that should have been captured were dropped, or stable patterns were silently merged into protected files without engineer awareness.
 
-**Pending:** Phase 7 not yet reached.
+**Pending:** Phase 7 not yet reached, or not run. A workflow closed without Phase 7 keeps this gate `pending` and records a `phase_skipped` event with the reason; it never records `pass`.
 
 **Skill responsible:** `implement` (Phase 7), with input from the `lessons` skill (`capture` and `promote` modes).
 

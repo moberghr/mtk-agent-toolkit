@@ -2,6 +2,18 @@
 
 All notable changes to MTK are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+## [9.10.2] - 2026-11-17
+
+The security gate no longer denies simple commands because the machine is busy, plus two `implement` fixes.
+
+### Fixed
+
+- `hooks/security-gate.sh`: the self-deadline (`MTK_SECURITY_GATE_DEADLINE_SECS`, default 3 s) counts wall-clock time from the gate's shell start, so on a loaded host (Git Bash on Windows next to a Docker VM and a build) it fired before judging began and denied `echo ok`, `git status` and `sed -n` alike, sometimes every command for minutes. In one field sample 132 of 148 denials over ~3,500 Bash calls were this rule, 105 of them a single line under 200 characters and 71 of them ran unchanged on retry; it never caught anything. Past the deadline a command of at most 4096 bytes now gets a quick, process-free check instead: plain characters only and none of the words a destructive rule keys on. It is allowed when it clears that check (the S4.12 prompt check still runs) and denied as "the machine is busy" when it does not, so a timeout never lets a destructive command through. The size, segment, substitution and nesting caps are unchanged, and a longer command past the deadline is still denied as too complex. `tests/hooks/test-security-gate-deadline-fallback.sh` simulates a slow shell (`SECONDS=100`) and pins all three behaviours.
+- `implement` no longer records a skipped closing phase as done. The closing call's `memory_sync_gate pass` reason is what Phase 7 actually did, a Phase 6 or Phase 7 that did not run is recorded as a `phase_skipped` event with the reason, and a skipped Phase 7 leaves the gate `pending`. The final report names each skipped phase.
+- An implementer subagent may not relax an existing test to reach green (raise a threshold or cap, loosen or delete an assertion, skip a test), convention and guard tests included; it returns `blocked` instead. The orchestrator's drift micro-check treats a relaxed existing test as not auto-fixable, so it goes back to the engineer at the approval gate.
+
 ## [9.10.1] - 2026-11-13
 
 Three fixes: hook payload decoding in linear time, the remaining wrong-verdict cases in the mutation probe, and the status column of the eval comparison.

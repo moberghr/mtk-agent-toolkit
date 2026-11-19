@@ -55,6 +55,12 @@ Rules:
 2. Stay within batch.files. If you discover an unavoidable extra file, edit it but record it
    as a `deviation` in your final JSON.
 3. Add or update tests in this same batch — never defer to a later batch.
+   Never relax an existing test to get to green: do not raise a threshold or cap, loosen or
+   delete an assertion, or skip a test — convention and guard tests (file size, architecture,
+   naming) included, even when the test's own comment says to raise the limit. That decision is
+   the engineer's. Leave the test as it is and return `status: "blocked"` naming the test, the
+   value it needs and why. Updating an assertion because this batch's approved behavior changed
+   what it checks is not relaxing; record it as a `test-relaxed` deviation if in doubt.
 4. Do NOT spawn further subagents.
 5. Do NOT ask the engineer questions — you are an inner subagent, not the orchestrator.
 6. Tool discipline (each tool carries its own boundary):
@@ -143,7 +149,7 @@ spend / an error code; it is a cost signal, never a pass/fail input.)
   "tests": { "ok": true, "evidence": "test summary" },
   "behavioral_diff": "what an external caller now observes that they didn't before",
   "deviations": [
-    { "kind": "extra-file|skipped-file|extra-contract|other",
+    { "kind": "extra-file|skipped-file|extra-contract|test-relaxed|other",
       "detail": "...", "justification": "..." }
   ],
   "resume_note": { "done": "...", "left": "...", "next": "...", "files": ["src/Foo.cs"] },

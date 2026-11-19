@@ -90,9 +90,10 @@ Orchestration state that lives only in chat is lost on compaction or restart. Th
    - `"$WFA" checkpoint <uuid> --next … --decision … --verify …` re-renders the one canonical note and snapshots the tree; it is batchable as the LAST op (exit 3 = `--next` names a finished unit). Schema: `.claude/references/workflow-artifact-schema.md`.
 8. **Close the workflow.** At end of phase 7, one call:
    ```bash
-   "$WFA" batch "$MTK_WF_UUID" gate memory_sync_gate pass --reason "lessons captured" -- \
+   "$WFA" batch "$MTK_WF_UUID" gate memory_sync_gate pass --reason "<what Phase 7 did>" -- \
      set status=completed -- event workflow_completed --data '{"summary":"<short>"}'
    ```
+   A closing phase that did not run adds `event phase_skipped --data '{"phase":"<phase>","reason":"<why>"}'` to that call, and a skipped Phase 7 leaves out the `memory_sync_gate pass` op so the gate stays `pending` (`implement` → Final Report).
    On unrecoverable failure, close with the failure pair instead:
    ```bash
    "$WFA" batch "$MTK_WF_UUID" set status=failed -- event workflow_failed --data '{"reason":"<short>"}'
