@@ -1056,11 +1056,166 @@ if [ "${#NORM}" -gt "$_mtk_cnt_min" ] || [ "${#NORM}" -ge "$MTK_GATE_MAX_SEGMENT
   [ "$_mtk_c_all" -le $(( MTK_GATE_MAX_SUBST * 4 )) ] || gate_too_long "command substitutions" "$_mtk_c_all" "$(( MTK_GATE_MAX_SUBST * 4 ))"
 fi
 
+# ─── Interactive-prompt check (S4.12) ─────────────────────────────────────────
+# Formerly hooks/interactive-guard.sh, merged here so the Bash payload is read and
+# parsed once. It runs only after every destructive check passed, on the raw
+# COMMAND (a pipe binds within one line, so heredoc prose is judged line by line
+# below, never stripped). Kill-switch: MTK_INTERACTIVE_GUARD=0 — it disables this
+# section only; the destructive checks above have no off-switch.
+#
+# The failure this prevents: `gh pr merge 272 --squash 2>&1 | tail -5` ran to the
+# full Bash-tool timeout and returned "(No output)". The merge had already
+# SUCCEEDED — gh then blocked on its post-merge "Delete the branch?" prompt, and
+# `tail` buffers until EOF so the prompt never surfaced. Two independent blocks,
+# because either alone causes it:
+#   A. a prompt-capable command missing the flag that suppresses the prompt
+#   B. a prompt-capable command piped into tail/head, which hides the prompt
+# Defined here because a command allowed by the deadline fallback (gate_late)
+# still goes through it. Scope is deliberately narrow: a hard deny that over-blocks gets switched off, so
+# it fires only on commands that genuinely prompt, never on read-only ones.
+mtk_interactive_check() {
+[ "${MTK_INTERACTIVE_GUARD:-1}" = "0" ] && return 0
+
+# Anchored to command position — after a separator, not merely after a space — so
+# `echo "run gh pr merge"` and `grep -r "git push" .` are not invocations.
+# [;&|(] covers `&&` and `||` too.
+MTK_PROMPT_CAPABLE='(^|[;&|(])[[:space:]]*(gh[[:space:]]+(pr[[:space:]]+(merge|create)|release[[:space:]]+create)|git[[:space:]]+(push|rebase))([[:space:]]|$)'
+INTERACTIVE_HINT='MTK_INTERACTIVE_GUARD=0 in .claude/settings.local.json env'
+
+grep -qE "$MTK_PROMPT_CAPABLE" <<<"$COMMAND" || return 0
+
+# Judge each LINE on its own, and only lines where the command is at command
+# position: the PR that introduced this check was blocked by its own
+# `gh pr create --body "$(cat <<EOF ... )"`, whose prose carried "| tail -5".
+MTK_HIT_LINE=""
+MTK_MERGE_LINE=""
+while IFS= read -r _line; do
+  grep -qE "$MTK_PROMPT_CAPABLE" <<<"$_line" || continue
+  # `--help` never prompts, so a help invocation on this line disqualifies it.
+  grep -qE '(^|[[:space:]])(--help|-h)([[:space:]]|$)' <<<"$_line" && continue
+  [ -n "$MTK_HIT_LINE" ] || MTK_HIT_LINE="$_line"
+  if [ -z "$MTK_MERGE_LINE" ] \
+    && grep -qE '(^|[;&|(])[[:space:]]*gh[[:space:]]+pr[[:space:]]+merge([[:space:]]|$)' <<<"$_line"; then
+    MTK_MERGE_LINE="$_line"
+  fi
+done <<MTK_LINES
+$COMMAND
+MTK_LINES
+
+# Every prompt-capable mention was prose or a help invocation.
+[ -n "$MTK_HIT_LINE" ] || return 0
+
+# Block A: `gh pr merge` with no delete-branch decision. --squash/--merge/--rebase
+# leave the branch question open, so gh prompts after the merge already landed.
+if [ -n "$MTK_MERGE_LINE" ] \
+  && ! grep -qE '(^|[[:space:]])--(no-)?delete-branch([[:space:]]|$)' <<<"$MTK_MERGE_LINE"; then
+  mtk_deny - "$INTERACTIVE_HINT" <<'MTK_BLOCK_A'
+BLOCKED (S4.12): `gh pr merge` without a delete-branch decision prompts after the merge
+has already landed, then hangs until the Bash timeout with no visible output.
+
+Add --delete-branch (or --no-delete-branch) and redirect stdin:
+
+  gh pr merge <n> --squash --delete-branch < /dev/null
+
+Note the merge itself may still succeed while the command appears to hang — check
+`gh pr view <n> --json state` before retrying, so you do not act on a merge that landed.
+MTK_BLOCK_A
+fi
+
+# Block B: prompt-capable command piped into tail/head, which buffer until EOF so
+# the blocking prompt never reaches the transcript.
+if grep -qE '\|[[:space:]]*(tail|head)([[:space:]]|$)' <<<"$MTK_HIT_LINE"; then
+  mtk_deny - "$INTERACTIVE_HINT" <<'MTK_BLOCK_B'
+BLOCKED (S4.12): piping a prompt-capable command through tail/head hides the prompt that
+blocks it — tail buffers until EOF, so a waiting command reads as "(No output)".
+
+Drop the pipe and let the command stream:
+
+  gh pr merge <n> --squash --delete-branch < /dev/null
+
+Pipe-to-tail is fine for read-only commands (`git log`, `gh pr view`), just not for ones
+that can stop and ask a question.
+MTK_BLOCK_B
+fi
+}
+
+# ─── Deadline fallback ────────────────────────────────────────────────────────
+# The self-deadline (MTK_SECURITY_GATE_DEADLINE_SECS, hooks/lib/gate-backstop.sh)
+# counts wall-clock seconds since this shell started, which is what the
+# harness's 5 s hook timeout counts too. On a loaded host (Git Bash on Windows
+# next to a Docker VM and a build) starting the shell and sourcing the libs can
+# take most of that budget, so the deadline used to fire on `echo ok` and deny
+# every command for minutes at a time. A field sample: 132 of 148 denials in
+# ~3,500 Bash calls were this rule, 105 of them single lines under 200 chars,
+# and it never caught anything.
+#
+# Past the deadline a short command now gets one quick, conservative check
+# instead of a deny: plain characters only, and none of the words any
+# destructive rule keys on. It costs no process. A command it cannot clear is
+# still denied, so a timeout never lets a destructive command through; it only
+# lets through text that has no way to spell one. Over MTK_GATE_FALLBACK_MAX_BYTES,
+# or when the nesting bound (not the clock) fired, the old deny stands.
+MTK_GATE_FALLBACK_MAX_BYTES=4096
+MTK_GATE_BUSY_REASON='the security gate ran out of time judging this command (the machine is busy), and the quick check it falls back to cannot clear it. Re-run it; if this keeps happening, split it into smaller commands.'
+
+# 0 when $1 cannot run anything any destructive rule denies, 1 otherwise.
+# Deliberately cruder than the judges: any doubt answers 1.
+mtk_gate_fallback_safe() {
+  local LC_ALL=C t="${1-}" nl=$'\n' rc=1 _nc=0
+  # The S4.12 canonical form (`gh pr merge <n> --squash --delete-branch
+  # < /dev/null`) must clear: stdin from /dev/null and the branch-decision
+  # flags run nothing. Removing them can only join text into more matches.
+  t="${t//< \/dev\/null/}"; t="${t//<\/dev\/null/}"
+  t="${t//--no-delete-branch/}"; t="${t//--delete-branch/}"
+  # Plain characters only. No $ ` \ (expansion, substitution, escapes), no
+  # * ? [ ] { } (globs, braces), no ( ) < (subshells, process substitution,
+  # input redirects), no ! (history, git alias shell-outs), nothing non-ASCII.
+  local plain='^[A-Za-z0-9_./:=,@%+;&|>~#"'"'"'[:space:]-]*$'
+  [[ $t =~ $plain ]] || return 1
+  # Quotes can split a word (r''m, "r"m); drop them before matching words.
+  t="${t//\'/}"; t="${t//\"/}"
+  local b='(^|[^A-Za-z0-9_])' e='([^A-Za-z0-9_]|$)'
+  # Words any destructive or download rule keys on, shells and SQL clients
+  # (which run text this check does not read), and script files (whose
+  # contents the full gate scans).
+  local words="${b}(rm|rmdir|unlink|shred|drop|truncate|delete|hard|eval|exec|execdir|source|alias|function|xargs|curl|wget|base64|g?awk|mawk|nawk|perl|ruby|bash|sh|zsh|dash|ksh|fish|csh|tcsh|pwsh|powershell|cmd|psql|mysql|mariadb|sqlcmd|sqlite3|usql)${e}"
+  local scripts='\.(sh|bash|zsh|sql|ps1|bat|cmd)([^A-Za-z0-9_]|$)'
+  local dot="(^|[;&|${nl}])[[:space:]]*\.[[:space:]]"
+  local findok="(^|[[:space:]])-ok(dir)?${e}"
+  local gitc='(^|[[:space:]])-c[[:space:]]+[^[:space:]]*='
+  shopt -q nocasematch && _nc=1
+  shopt -s nocasematch
+  if [[ $t =~ $words || $t =~ $scripts || $t =~ $dot || $t =~ $findok || $t =~ $gitc ]]; then
+    rc=1
+  elif [[ $t =~ ${b}push${e} ]] && [[ $t =~ (force|mirror|\+|(^|[[:space:]])[+]?:|(^|[[:space:]])-[a-z]*[fd]) ]]; then
+    rc=1   # push with a force, delete or mirror spelling
+  elif [[ $t =~ ${b}clean${e} ]] && [[ $t =~ (force|(^|[[:space:]])-[a-z]*f) ]]; then
+    rc=1   # clean -f
+  else
+    rc=0
+  fi
+  [ "$_nc" = 1 ] || shopt -u nocasematch
+  return "$rc"
+}
+
+# A judging loop reported MTK_GATE_LATE. Deny, unless the clock (not the
+# nesting bound) is what fired and the command is short and clears the quick
+# check; then only the S4.12 prompt check is left, and it is cheap.
+gate_late() {
+  mtk_gate_late || gate_deny "BLOCKED: ${MTK_GATE_LATE_REASON}"
+  _mtk_byte_len "$NORM"
+  [ "$MTK_LEN" -le "$MTK_GATE_FALLBACK_MAX_BYTES" ] || gate_deny "BLOCKED: ${MTK_GATE_LATE_REASON}"
+  mtk_gate_fallback_safe "$NORM" || gate_deny "BLOCKED: ${MTK_GATE_BUSY_REASON}"
+  mtk_interactive_check
+  exit 0
+}
+
 # Layer 1 — the de0c626 regex backstop (hooks/lib/gate-backstop.sh), run over the
 # same text. Any hit denies; the token checks below can only add denials.
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/lib/gate-backstop.sh"
 if BACKSTOP_REASON="$(mtk_backstop_reason "$NORM")"; then
+  [ "$BACKSTOP_REASON" != "$MTK_GATE_LATE_REASON" ] || gate_late
   gate_deny "BLOCKED: ${BACKSTOP_REASON}"
 fi
 
@@ -1107,14 +1262,14 @@ fi
 
 # Text piped into a shell executes, even when the producer is read-only
 # (`echo '<delete>' | sh`): judge every segment, no read-only exemption.
-mtk_gate_late && gate_deny "BLOCKED: ${MTK_GATE_LATE_REASON}"
+mtk_gate_late && gate_late
 if grep -qE '\|[[:space:]]*(sudo[[:space:]]+)?(bash|sh|zsh|dash|ksh)([[:space:]]|$)' <<<"$NORM"; then
   EXEC_TEXT="$(MTK_SPLIT_RAW=1 mtk_bs_judge_text mtk_bs_print_seg "$NORM")"
 else
   EXEC_TEXT="$(mtk_executable_text "$NORM")"
 fi
 case "$EXEC_TEXT" in
-  *"$MTK_GATE_LATE"*) gate_deny "BLOCKED: ${MTK_GATE_LATE_REASON}" ;;
+  *"$MTK_GATE_LATE"*) gate_late ;;
   *"$MTK_GATE_SPLITERR"*) gate_deny "BLOCKED: ${MTK_GATE_SPLITERR_REASON}" ;;
 esac
 
@@ -1214,7 +1369,7 @@ MTK_SQL_FILES
 # Block: force push, reset --hard, clean -f, rm -rf on broad paths, ef drop.
 # Status 1 is "clean"; anything above it is an awk failure, and a gate that
 # cannot evaluate a command must not wave it through.
-mtk_gate_late && gate_deny "BLOCKED: ${MTK_GATE_LATE_REASON}"
+mtk_gate_late && gate_late
 REASON_RC=0
 REASON="$(mtk_destructive_reason "$EXEC_TEXT" 2>/dev/null)" || REASON_RC=$?
 case "$REASON_RC" in
@@ -1223,85 +1378,6 @@ case "$REASON_RC" in
   *) gate_deny "BLOCKED: the security gate could not evaluate this command (internal error ${REASON_RC}). Re-run it in a simpler form." ;;
 esac
 
-# ─── Interactive-prompt check (S4.12) ─────────────────────────────────────────
-# Formerly hooks/interactive-guard.sh, merged here so the Bash payload is read and
-# parsed once. It runs only after every destructive check passed, on the raw
-# COMMAND (a pipe binds within one line, so heredoc prose is judged line by line
-# below, never stripped). Kill-switch: MTK_INTERACTIVE_GUARD=0 — it disables this
-# section only; the destructive checks above have no off-switch.
-#
-# The failure this prevents: `gh pr merge 272 --squash 2>&1 | tail -5` ran to the
-# full Bash-tool timeout and returned "(No output)". The merge had already
-# SUCCEEDED — gh then blocked on its post-merge "Delete the branch?" prompt, and
-# `tail` buffers until EOF so the prompt never surfaced. Two independent blocks,
-# because either alone causes it:
-#   A. a prompt-capable command missing the flag that suppresses the prompt
-#   B. a prompt-capable command piped into tail/head, which hides the prompt
-# Scope is deliberately narrow: a hard deny that over-blocks gets switched off, so
-# it fires only on commands that genuinely prompt, never on read-only ones.
-[ "${MTK_INTERACTIVE_GUARD:-1}" = "0" ] && exit 0
-
-# Anchored to command position — after a separator, not merely after a space — so
-# `echo "run gh pr merge"` and `grep -r "git push" .` are not invocations.
-# [;&|(] covers `&&` and `||` too.
-MTK_PROMPT_CAPABLE='(^|[;&|(])[[:space:]]*(gh[[:space:]]+(pr[[:space:]]+(merge|create)|release[[:space:]]+create)|git[[:space:]]+(push|rebase))([[:space:]]|$)'
-INTERACTIVE_HINT='MTK_INTERACTIVE_GUARD=0 in .claude/settings.local.json env'
-
-grep -qE "$MTK_PROMPT_CAPABLE" <<<"$COMMAND" || exit 0
-
-# Judge each LINE on its own, and only lines where the command is at command
-# position: the PR that introduced this check was blocked by its own
-# `gh pr create --body "$(cat <<EOF ... )"`, whose prose carried "| tail -5".
-MTK_HIT_LINE=""
-MTK_MERGE_LINE=""
-while IFS= read -r _line; do
-  grep -qE "$MTK_PROMPT_CAPABLE" <<<"$_line" || continue
-  # `--help` never prompts, so a help invocation on this line disqualifies it.
-  grep -qE '(^|[[:space:]])(--help|-h)([[:space:]]|$)' <<<"$_line" && continue
-  [ -n "$MTK_HIT_LINE" ] || MTK_HIT_LINE="$_line"
-  if [ -z "$MTK_MERGE_LINE" ] \
-    && grep -qE '(^|[;&|(])[[:space:]]*gh[[:space:]]+pr[[:space:]]+merge([[:space:]]|$)' <<<"$_line"; then
-    MTK_MERGE_LINE="$_line"
-  fi
-done <<MTK_LINES
-$COMMAND
-MTK_LINES
-
-# Every prompt-capable mention was prose or a help invocation.
-[ -n "$MTK_HIT_LINE" ] || exit 0
-
-# Block A: `gh pr merge` with no delete-branch decision. --squash/--merge/--rebase
-# leave the branch question open, so gh prompts after the merge already landed.
-if [ -n "$MTK_MERGE_LINE" ] \
-  && ! grep -qE '(^|[[:space:]])--(no-)?delete-branch([[:space:]]|$)' <<<"$MTK_MERGE_LINE"; then
-  mtk_deny - "$INTERACTIVE_HINT" <<'MTK_BLOCK_A'
-BLOCKED (S4.12): `gh pr merge` without a delete-branch decision prompts after the merge
-has already landed, then hangs until the Bash timeout with no visible output.
-
-Add --delete-branch (or --no-delete-branch) and redirect stdin:
-
-  gh pr merge <n> --squash --delete-branch < /dev/null
-
-Note the merge itself may still succeed while the command appears to hang — check
-`gh pr view <n> --json state` before retrying, so you do not act on a merge that landed.
-MTK_BLOCK_A
-fi
-
-# Block B: prompt-capable command piped into tail/head, which buffer until EOF so
-# the blocking prompt never reaches the transcript.
-if grep -qE '\|[[:space:]]*(tail|head)([[:space:]]|$)' <<<"$MTK_HIT_LINE"; then
-  mtk_deny - "$INTERACTIVE_HINT" <<'MTK_BLOCK_B'
-BLOCKED (S4.12): piping a prompt-capable command through tail/head hides the prompt that
-blocks it — tail buffers until EOF, so a waiting command reads as "(No output)".
-
-Drop the pipe and let the command stream:
-
-  gh pr merge <n> --squash --delete-branch < /dev/null
-
-Pipe-to-tail is fine for read-only commands (`git log`, `gh pr view`), just not for ones
-that can stop and ask a question.
-MTK_BLOCK_B
-fi
-
-# Allow everything else
+# Every check passed.
+mtk_interactive_check
 exit 0

@@ -1,6 +1,6 @@
 {
-  "version": "9.10.1",
-  "updated": "2026-11-13",
+  "version": "9.10.2",
+  "updated": "2026-11-17",
   "description": "MTK (Moberg Toolkit) \u2014 language-agnostic workflow skills with pluggable tech stacks (.NET, Python, TypeScript). Commands, agents, references, and settings for consistent AI-assisted development.",
   "source": "https://github.com/moberghr/mtk-agent-toolkit",
   "coding-guidelines": {
@@ -2300,6 +2300,12 @@
       "target": "tests/hooks/test-security-gate.sh",
       "action": "sync",
       "description": "Fixture-based tests for hooks/security-gate.sh covering inline destructive statements, scripts and .sql files the command executes, the read-only allow path, and the repo tests/ carve-out"
+    },
+    "tests/hooks/test-security-gate-deadline-fallback.sh": {
+      "source": "tests/hooks/test-security-gate-deadline-fallback.sh",
+      "target": "tests/hooks/test-security-gate-deadline-fallback.sh",
+      "action": "sync",
+      "description": "Test that security-gate.sh past its self-deadline allows short safe commands, still denies destructive and over-cap ones, and still runs the S4.12 prompt check"
     },
     "tests/hooks/test-security-gate-long-command.sh": {
       "source": "tests/hooks/test-security-gate-long-command.sh",
