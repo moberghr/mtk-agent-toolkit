@@ -3726,6 +3726,12 @@
       "action": "sync",
       "description": "Fixture test for routing-check.sh: collision fail, warn and allow-list bands, positive hit, miss and tie, negatives with and without an owner and a negative tie, name-free counting, coverage and exempt list, both ratchets, frontmatter shapes read and rejected, non-finite numbers, a non-UTF-8 terminal, threshold flags, --json fields, exit-2 paths, run-fixtures and validate-toolkit failing on a failed check, and a deterministic run over the real skills"
     },
+    "tests/hooks/test-approval-gate-work-show.sh": {
+      "source": "tests/hooks/test-approval-gate-work-show.sh",
+      "target": "tests/hooks/test-approval-gate-work-show.sh",
+      "action": "sync",
+      "description": "Test for the approval gate's best-effort work show line: runs the line shipped in implement-approval-gate.md with work absent, failing and succeeding, and checks it runs before the question, names the spec .md, keeps the full plan and spec option, passes security-gate.sh, and that session-start adds the WORK SESSION: line only when WORK_SESSION is set and work is installed"
+    },
     "references/product-context.md": {
       "source": ".claude/references/product-context.md",
       "target": ".claude/references/product-context.md",

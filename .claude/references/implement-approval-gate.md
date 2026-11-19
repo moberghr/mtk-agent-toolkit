@@ -37,6 +37,14 @@ Keep the rendering proportional — the todo and batch breakdown are bounded by 
 
 If any condition fails, AUTO_PROCEED MUST NOT be applied — fall back to `AskUserQuestion`. Auto-proceed never overrides explicit user standards, open plan decisions, or the failure-stop gate. When AUTO_PROCEED is applied, record the gate decision on the workflow artifact: `"$WFA" gate "$MTK_WF_UUID" plan_trust_gate pass --reason "AUTO_PROCEED — all preconditions met"`.
 
+**Open the spec beside the terminal (best effort).** Only when the session context carries the `WORK SESSION:` line, which `session-start` adds when `work` launched the session (it sets `WORK_SESSION`) and the `work` command is installed. Without that line, skip this step entirely: no Bash call, so a session without `work` sees no extra call and no permission prompt. With it, before asking, run this once from the repo, with the spec's markdown path (`results.spec_path`, the `.md`, never its `.json` sidecar) in place of `<spec-md-path>`:
+
+```bash
+command -v work >/dev/null 2>&1 && work show "<spec-md-path>" >/dev/null 2>&1 || true
+```
+
+In a `work` dashboard session (work 2.13.0 or later) this opens the spec next to the terminal, rendered, and follows it as it is revised. It shows the spec rather than the plan because the batch breakdown above already puts the plan in the terminal, and the spec is the part the engineer would otherwise have to open. Everywhere else it does nothing and says nothing: `work` not installed, an older `work`, a folder that is not a work session, a dashboard that is not running, a spec git ignores (`work show` only shows files git does not ignore), or any other non-zero exit. Do not retry it, report its outcome, or mention it to the engineer; ask the question exactly as below. It is a read-only command, so it is allowed while the gate is open and does not count as a source edit. It adds to the inline rendering above and to the `Show full plan & spec in terminal` option; it replaces neither.
+
 Then invoke `AskUserQuestion` with:
 
 - **Question:** "Plan and todo are written. How would you like to proceed?"

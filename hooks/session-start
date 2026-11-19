@@ -337,11 +337,21 @@ if [ "$SS_SOURCE" = "compact" ]; then
   fi
 fi
 
+# work dashboard session: `work` sets WORK_SESSION in the sessions it launches.
+# The approval gate's `work show` step runs only when this line is in context,
+# so a session without `work` makes no extra Bash call and sees no permission
+# prompt for it. Every source, so the line survives a compaction.
+WORK_MSG=""
+if [ -n "${WORK_SESSION:-}" ] && command -v work >/dev/null 2>&1; then
+  WORK_MSG="WORK SESSION: this session runs in the work dashboard, so approval gates open the spec beside the terminal with work show (see implement-approval-gate.md)."
+fi
+
 # Build the context message
 BASE_MSG="Moberg toolkit is active. Available entry points: /mtk and /mtk-setup. Skills load on demand via progressive disclosure."
 CONTEXT="$BASE_MSG"
 [[ -n "$RECOVERY_MSG" ]] && CONTEXT="${CONTEXT} ${RECOVERY_MSG}"
 [[ -n "$VERSION_MSG" ]] && CONTEXT="${CONTEXT} ${VERSION_MSG}"
+[[ -n "$WORK_MSG" ]] && CONTEXT="${CONTEXT} ${WORK_MSG}"
 [[ -n "$COMPACT_MSG" ]] && CONTEXT="${CONTEXT} ${COMPACT_MSG}"
 
 # Escape for JSON (bash parameter substitution — no external deps)

@@ -4,6 +4,10 @@ All notable changes to MTK are documented here. Format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+
+- The approval gate opens the spec beside the terminal when you work in a `work` dashboard session. Before the Phase 2.5 question, and before `spec-driven-development` asks for approval on its own, the agent runs `work show <spec>.md` (work 2.13.0 or later). It runs only in a session `work` launched: `session-start` adds a `WORK SESSION:` line to the session context when `WORK_SESSION` is set and `work` is installed, and without that line the agent makes no call at all, so a session without `work` sees no extra Bash call and no permission prompt. Inside a work session the step is best effort: with an older `work` or the dashboard not running it does nothing and prints nothing, and the question is asked as before. `work show` refuses git-ignored files, so a spec under an ignored `docs/specs/` is not shown. The inline rendering and the `Show full plan & spec in terminal` option are unchanged. `tests/hooks/test-approval-gate-work-show.sh` runs the shipped line against stub `work` commands, checks when `session-start` emits the line, and checks that `security-gate.sh` allows the command.
+
 ### Fixed
 
 - `implement` no longer records a skipped closing phase as done. The closing call's `memory_sync_gate pass` reason is what Phase 7 actually did, a Phase 6 or Phase 7 that did not run is recorded as a `phase_skipped` event with the reason, and a skipped Phase 7 leaves the gate `pending`. The final report names each skipped phase.
