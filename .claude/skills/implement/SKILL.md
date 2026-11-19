@@ -145,7 +145,9 @@ Mandatory. Before Phase 3, ask via `AskUserQuestion`.
 not just cite paths: a scope/batch-count/rigor header line, the full
 `tasks/todo.md`, a per-batch breakdown (title, files, acceptance criteria,
 boundary), a `Gate sequence:` line, then the spec/plan/todo paths as bare
-repo-relative paths.
+repo-relative paths. Then, only if the session context has the `WORK SESSION:`
+line, open the spec beside the terminal with the reference's best-effort
+`work show` line before asking: silent, never blocks the gate.
 
 Options: `Approve & run until done` · `Approve (interactive)` · `Edit first` ·
 `Revise` · `Show full plan & spec in terminal`.
