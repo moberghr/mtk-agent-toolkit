@@ -3306,6 +3306,12 @@
       "action": "sync",
       "description": "Intake/curation contract for team-wide contributed lessons (validated by validate-lesson-pr.yml, human-merged)"
     },
+    "lessons/contributed/2026-11-20-gitless-copy-lints-node-modules.md": {
+      "source": "lessons/contributed/2026-11-20-gitless-copy-lints-node-modules.md",
+      "target": "lessons/contributed/2026-11-20-gitless-copy-lints-node-modules.md",
+      "action": "sync",
+      "description": "Contributed lesson: compare lint results against HEAD on changed files or a real worktree, never a git-less copy with symlinked node_modules"
+    },
     "tests/fixtures/handoff-evidence-channels.json": {
       "source": "tests/fixtures/handoff-evidence-channels.json",
       "target": "tests/fixtures/handoff-evidence-channels.json",

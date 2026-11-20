@@ -38,7 +38,7 @@ fi
 - **Test (full):** `<pm> test` or `<pm> run test`
 - **Bounded output is the default.** Pass `--reporter=dot` (vitest) or `--silent` (jest) where the runner supports it. Batch checkpoints run these through `bash scripts/mtk-verify-run.sh --label <batch-id>-<step> -- <cmd>` — the wrapper's bounded tail is the evidence, the log path is the receipt.
 - **Format:** see `## Format Command`.
-- **Lint:** `<pm> run lint` if defined, else `npx eslint <path>` or `npx biome check <path>` based on project config
+- **Lint:** `<pm> run lint` if defined, else `npx eslint <path>` or `npx biome check <path>` based on project config. Always ignore `node_modules` explicitly on the command line (`oxlint --ignore-pattern node_modules`) — oxlint reads it from `.gitignore` only inside a git repo, and its config `ignorePatterns` does not stop the walk. To tell new errors from pre-existing ones, lint the changed files and keep only errors on lines the diff touched (`git diff -U0`).
 
 **Tauri (when `src-tauri/` exists):** from `src-tauri/`, `cargo check` (fast) or `cargo build`, `cargo test`, `cargo fmt`, `cargo clippy -- -D warnings`; full app `<pm> run tauri dev` / `<pm> run tauri build`.
 
